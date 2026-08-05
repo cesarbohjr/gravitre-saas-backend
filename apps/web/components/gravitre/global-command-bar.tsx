@@ -175,7 +175,10 @@ export function GlobalCommandBar() {
       <motion.button
         onClick={() => setIsOpen(true)}
         aria-label="Search or run a command"
-        className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl border border-border/60 bg-secondary/50 px-3 text-sm text-muted-foreground backdrop-blur-sm transition-all hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground hover:shadow-lg hover:shadow-primary/5 sm:h-8 sm:px-3.5"
+        // rounded-full (RADIUS.control): this is a compact click target sitting in
+        // the same top-bar row as the Admin/Lite pill toggle, so rounded-xl made it
+        // read as a different control family inches away.
+        className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-border/60 bg-secondary/50 px-3 text-sm text-muted-foreground backdrop-blur-sm transition-all hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground hover:shadow-lg hover:shadow-primary/5 sm:h-8 sm:px-3.5"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >

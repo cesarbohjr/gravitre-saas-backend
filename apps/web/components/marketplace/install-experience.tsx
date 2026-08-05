@@ -148,6 +148,10 @@ export function InstallSuccessPanel({
                   key={`${link.entityType}:${link.entityId}:${link.path}`}
                   asChild
                   variant="outline"
+                  // Intentional exception to the pill rule (RADIUS.control): this
+                  // is a full-width, h-auto, two-line navigation card that happens
+                  // to be built on Button, not a compact click target. Card radius
+                  // is correct — a pill on a tall block reads as a lozenge.
                   className="h-auto justify-between rounded-2xl border-border/70 bg-background/70 px-4 py-3 text-left shadow-sm backdrop-blur hover:border-primary/40 hover:bg-background"
                 >
                   <Link href={linkHref(link)}>

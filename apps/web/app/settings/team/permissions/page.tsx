@@ -137,13 +137,13 @@ export default function PermissionsMatrixPage() {
           )}
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="gap-2 rounded-xl" asChild>
+            <Button variant="outline" className="gap-2" asChild>
               <Link href="/settings?section=team">
                 <Users className="h-4 w-4" />
                 Manage team
               </Link>
             </Button>
-            <Button variant="ghost" className="rounded-xl" asChild>
+            <Button variant="ghost" asChild>
               <Link href="/settings">Back to settings</Link>
             </Button>
           </div>

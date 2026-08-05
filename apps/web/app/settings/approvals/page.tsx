@@ -364,7 +364,7 @@ function ApprovalsContent() {
               onToggle={(value) => setApproverRoles((prev) => toggleInList(prev, value))}
             />
 
-            <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto" onClick={handleCreate} disabled={saving}>
+            <Button size="lg" className="w-full gap-2 sm:w-auto" onClick={handleCreate} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Add policy
             </Button>
@@ -401,7 +401,7 @@ function ApprovalsContent() {
             <Button
               asChild
               variant="secondary"
-              className="mt-4 w-full justify-between rounded-xl"
+              className="mt-4 w-full justify-between"
             >
               <Link href="/approvals">
                 Open Decision Queue
@@ -476,13 +476,13 @@ function ApprovalsContent() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" className="rounded-xl" onClick={() => handleToggleEnabled(policy)}>
+                  <Button variant="outline" size="sm" onClick={() => handleToggleEnabled(policy)}>
                     {policy.enabled ? "Disable" : "Enable"}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-xl text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive"
                     disabled={deletingId === policy.id}
                     onClick={() => handleDelete(policy.id)}
                   >
