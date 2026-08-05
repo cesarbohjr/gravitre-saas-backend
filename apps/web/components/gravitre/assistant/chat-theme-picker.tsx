@@ -2,6 +2,7 @@
 
 import { Check, Palette } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
@@ -39,17 +40,22 @@ export function ChatThemePicker({
 
   return (
     <Popover>
-      <PopoverTrigger
-        className={cn(
-          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
-          className,
-        )}
-        aria-label={`Chat background: ${active?.label ?? "theme"}`}
-        title="Chat background"
-      >
-        <Palette className="h-3.5 w-3.5" />
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "shrink-0 rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
+            className,
+          )}
+          aria-label={`Chat background: ${active?.label ?? "theme"}`}
+          title="Chat background"
+        >
+          <Palette />
+        </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="z-[70] w-72 p-3">
+      <PopoverContent align="end" className="z-[100] w-72 p-3">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-foreground">Chat background</p>
           <span className="text-[11px] text-muted-foreground">{active?.label}</span>

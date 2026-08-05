@@ -15,6 +15,7 @@ import {
   ArrowUp,
   Info,
   Loader2,
+  MoreHorizontal,
   PanelLeft,
   PanelLeftClose,
   PanelRight,
@@ -32,7 +33,6 @@ import {
 } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import {
-  DEPARTMENT_OPTIONS,
   getDepartmentHeader,
   getQuickDepartment,
   isCrossDepartmentPrompt,
@@ -78,17 +78,18 @@ import {
   TaskSidePanel,
 } from "@/components/gravitre/assistant/task-side-panel"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
-import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
+import { ChatSessionControls } from "@/components/gravitre/assistant/chat-session-controls"
 import { useChatBackground } from "@/hooks/use-chat-background"
 import { Button } from "@/components/ui/button"
+import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
@@ -1698,128 +1699,132 @@ export function AiWorkspace({
       />
 
       <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-border/70 bg-card/90 backdrop-blur-md">
-          <div className="flex h-9 items-center gap-1.5 overflow-x-auto px-2 md:gap-2 md:px-3">
+        <div className="shrink-0 border-b border-border bg-background">
+          {/* Primary header — handoff 5a/5b (desktop) / 4* top row (mobile) */}
+          <div className="flex h-12 items-center gap-2 px-3 sm:h-11 sm:gap-2.5 sm:px-3.5">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen((open) => !open)}
-              className="h-7 w-7 shrink-0 text-muted-foreground"
+              className={cn(TOUCH_ICON_BUTTON, "shrink-0 text-muted-foreground")}
               aria-label={sidebarOpen ? "Hide history" : "Show history"}
             >
-              {sidebarOpen ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeft className="h-3.5 w-3.5" />}
+              {sidebarOpen ? <PanelLeftClose /> : <PanelLeft />}
             </Button>
 
             <div className="min-w-0 shrink">
-              <p className="truncate text-xs font-semibold text-foreground md:text-[13px]">
-                {conversationTitle}
-              </p>
+              <p className="truncate text-[15px] font-bold text-foreground sm:text-sm">Chat</p>
             </div>
 
-            <div className="hidden h-3.5 w-px shrink-0 bg-border sm:block" />
+            <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:inline">
+              {activeMode.badge.replace(/ · /g, " · ")}
+            </span>
 
-            <div className="flex shrink-0 items-center gap-1">
-              {AI_MODES.length > 1
-                ? AI_MODES.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setMode(m.id)}
-                      className={cn(
-                        "shrink-0 rounded-full border px-1.5 py-px text-[9px] font-medium uppercase tracking-wide transition-colors",
-                        mode === m.id
-                          ? cn("ring-1", m.ring, "text-foreground")
-                          : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {m.label}
-                    </button>
-                  ))
-                : (
-                  <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
-                    {activeMode.badge}
-                  </span>
-                )}
-            </div>
-
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              <ChatThemePicker value={chatBackground} onChange={setChatBackground} />
+            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+              {/* Desktop chrome */}
+              <ChatThemePicker
+                value={chatBackground}
+                onChange={setChatBackground}
+                className={cn(TOUCH_ICON_BUTTON, "hidden sm:inline-flex")}
+              />
               <a
                 href="/ai/help/control"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                className={cn(
+                  TOUCH_ICON_BUTTON,
+                  "hidden items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground sm:inline-flex",
+                )}
                 title="How Gravitre keeps you in control"
                 aria-label="How Gravitre keeps you in control"
               >
-                <Info className="h-3.5 w-3.5" />
+                <Info />
               </a>
-              <Select
-                value={selectedDepartment}
-                onValueChange={(value) => {
-                  setSelectedDepartment(value)
-                  setSelectedDepartmentInStorage(value)
-                }}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="hidden h-7 w-[108px] border-border bg-background text-[11px] sm:flex"
-                  aria-label="Department context"
-                >
-                  <SelectValue placeholder="Department" />
-                </SelectTrigger>
-                <SelectContent align="end" className="z-[60]">
-                  {DEPARTMENT_OPTIONS.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
-              <button
-                type="button"
-                onClick={() => setChatMode((current) => (current === "deep" ? "fast" : "deep"))}
-                title={
-                  chatMode === "deep"
-                    ? "Agent mode — full connector tool surface with ReAct"
-                    : "Fast mode — lighter reasoning, fewer tool iterations"
-                }
-                className={cn(
-                  "h-7 rounded-md border px-1.5 text-[10px] font-medium uppercase tracking-wide",
-                  chatMode === "deep"
-                    ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                    : "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300",
-                )}
-              >
-                {chatMode === "deep" ? "Agent" : "Fast"}
-              </button>
-
-              {user ? (
-                <PersonaSelector
-                  value={preferredPersona}
-                  onChange={handlePersonaChange}
-                  disabled={!user}
-                  compact
-                  className="hidden sm:inline-flex"
+              <div className="hidden sm:block">
+                <ChatSessionControls
+                  department={selectedDepartment}
+                  onDepartmentChange={(value) => {
+                    setSelectedDepartment(value)
+                    setSelectedDepartmentInStorage(value)
+                  }}
+                  persona={preferredPersona}
+                  onPersonaChange={handlePersonaChange}
+                  personaDisabled={!user}
+                  chatMode={chatMode}
+                  onChatModeChange={setChatMode}
                 />
-              ) : null}
+              </div>
 
               {!showLanding ? (
                 <AiLayoutPanelPicker
                   enabledBlocks={layoutEnabledBlocks}
                   onToggleBlock={handleToggleLayoutBlock}
-                  className="h-7 gap-1 px-2 text-[11px] max-md:[&>span]:sr-only"
+                  className="hidden h-8 gap-1 px-2.5 text-[11px] sm:inline-flex"
                 />
               ) : null}
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 text-muted-foreground"
+                className={cn(
+                  TOUCH_ICON_BUTTON,
+                  "hidden shrink-0 text-muted-foreground sm:inline-flex",
+                )}
                 aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
                 onClick={() => setActivityRailOpen((open) => !open)}
               >
-                <PanelRight className={cn("h-3.5 w-3.5", activityRailOpen && "text-emerald-600 dark:text-emerald-400")} />
+                <PanelRight className={cn(activityRailOpen && "text-primary")} />
               </Button>
+
+              {/* Mobile overflow — theme / help / layout / activity */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(TOUCH_ICON_BUTTON, "shrink-0 text-muted-foreground sm:hidden")}
+                    aria-label="More chat options"
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[70] w-52">
+                  <DropdownMenuItem asChild>
+                    <a href="/ai/help/control">How control works</a>
+                  </DropdownMenuItem>
+                  {!showLanding ? (
+                    <DropdownMenuItem onClick={() => setActivityRailOpen((open) => !open)}>
+                      {activityRailOpen ? "Hide activity" : "Show activity"}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="sm:hidden">
+                <UserAccountAvatar useCurrentUser size="sm" className="h-8 w-8" />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile session chips — handoff 4* second row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border px-3 py-2 sm:hidden">
+            <ChatSessionControls
+              department={selectedDepartment}
+              onDepartmentChange={(value) => {
+                setSelectedDepartment(value)
+                setSelectedDepartmentInStorage(value)
+              }}
+              persona={preferredPersona}
+              onPersonaChange={handlePersonaChange}
+              personaDisabled={!user}
+              chatMode={chatMode}
+              onChatModeChange={setChatMode}
+            />
+            <div className="ml-auto shrink-0">
+              <ChatThemePicker
+                value={chatBackground}
+                onChange={setChatBackground}
+                className={TOUCH_ICON_BUTTON}
+              />
             </div>
           </div>
         </div>

@@ -48,6 +48,43 @@ export function formatMessageRelativeTime(iso: string, nowMs: number = Date.now(
   })
 }
 
+/** Calendar-day divider label for the transcript (handoff: "Today"). */
+export function formatMessageDayDivider(iso: string, nowMs: number = Date.now()): string {
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return ""
+  const date = new Date(ms)
+  const now = new Date(nowMs)
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startMsg = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const dayDiff = Math.round((startToday.getTime() - startMsg.getTime()) / 86_400_000)
+  if (dayDiff === 0) return "Today"
+  if (dayDiff === 1) return "Yesterday"
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  })
+}
+
+/** True when this message starts a new calendar day vs the previous visible message. */
+export function shouldShowDayDivider(
+  messages: Array<{ metadata?: unknown }>,
+  index: number,
+): boolean {
+  const iso = messageCreatedAt(messages[index])
+  if (!iso) return false
+  if (index === 0) return true
+  const prevIso = messageCreatedAt(messages[index - 1])
+  if (!prevIso) return true
+  const a = new Date(Date.parse(iso))
+  const b = new Date(Date.parse(prevIso))
+  return (
+    a.getFullYear() !== b.getFullYear() ||
+    a.getMonth() !== b.getMonth() ||
+    a.getDate() !== b.getDate()
+  )
+}
+
 /** Full exact timestamp for title/tooltip (audit-aligned). */
 export function formatMessageExactTime(iso: string): string {
   const ms = Date.parse(iso)

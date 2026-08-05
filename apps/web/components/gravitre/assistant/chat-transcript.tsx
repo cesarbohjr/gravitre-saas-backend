@@ -42,10 +42,12 @@ import {
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
+  formatMessageDayDivider,
   formatMessageExactTime,
   formatMessageRelativeTime,
   messageCreatedAt,
   shouldShowClusterTimestamp,
+  shouldShowDayDivider,
 } from "@/lib/chat-message-time"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
@@ -243,12 +245,21 @@ export function ChatTranscript({
           const isLastAssistant = message.id === lastAssistantId
           const createdAt = messageCreatedAt(message)
           const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
+          const showDay = shouldShowDayDivider(visibleMessages, visibleIndex)
+          const dayLabel = createdAt ? formatMessageDayDivider(createdAt) : null
           const exactTitle = createdAt ? formatMessageExactTime(createdAt) : undefined
           const relativeLabel = createdAt ? formatMessageRelativeTime(createdAt) : null
 
           return (
+            <div key={message.id || `msg-${sourceIndex}`} className="contents">
+            {showDay && dayLabel ? (
+              <div className="flex justify-center py-1">
+                <span className="rounded-full bg-background px-2.5 py-0.5 text-[10px] text-muted-foreground">
+                  {dayLabel}
+                </span>
+              </div>
+            ) : null}
             <motion.div
-              key={message.id || `msg-${sourceIndex}`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
@@ -259,7 +270,16 @@ export function ChatTranscript({
                 isUser ? "flex-row-reverse" : "flex-row",
               )}
             >
-              {isUser ? <UserAccountAvatar useCurrentUser size="md" /> : resolvedAvatar}
+              {isUser ? (
+                <UserAccountAvatar
+                  useCurrentUser
+                  size="md"
+                  className="hidden sm:flex"
+                  fallbackClassName="bg-primary text-[9px] text-primary-foreground"
+                />
+              ) : (
+                resolvedAvatar
+              )}
 
               <div
                 className={cn(
@@ -419,6 +439,7 @@ export function ChatTranscript({
                 </div>
               </div>
             </motion.div>
+            </div>
           )
         })}
 
