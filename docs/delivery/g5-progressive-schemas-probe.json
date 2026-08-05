@@ -1,0 +1,69 @@
+{
+  "probe": "g5_progressive_schemas",
+  "note": "Token/latency model_ttft requires live OpenAI; this probe reports comparable tools payload bytes on the TTFT probe set. Accuracy is covered by withhold_no_tool CI battery.",
+  "avg_before_full_narrowed_bytes": 5866,
+  "avg_after_progressive_bytes": 4416,
+  "avg_bytes_reduction_pct": 24.71,
+  "probes": [
+    {
+      "id": "email_intent",
+      "message": "Send an email to Stephanie about the proposal",
+      "turn_shape": "task_shaped",
+      "total_catalog": 122,
+      "visible_tools": 18,
+      "max_tools_cap": 16,
+      "before_full_narrowed_bytes": 5529,
+      "after_progressive_bytes": 4194,
+      "bytes_reduction_pct": 24.15,
+      "retrieval_method": "keyword_narrow_tools_for_turn"
+    },
+    {
+      "id": "list_create",
+      "message": "Create a HubSpot static list named MSPs",
+      "turn_shape": "task_shaped",
+      "total_catalog": 122,
+      "visible_tools": 29,
+      "max_tools_cap": 16,
+      "before_full_narrowed_bytes": 9887,
+      "after_progressive_bytes": 6655,
+      "bytes_reduction_pct": 32.69,
+      "retrieval_method": "keyword_narrow_tools_for_turn"
+    },
+    {
+      "id": "msp_enrich",
+      "message": "Use Clay to enrich Apollo list \"MSP Prospects\" into HubSpot MSPs",
+      "turn_shape": "task_shaped",
+      "total_catalog": 122,
+      "visible_tools": 16,
+      "max_tools_cap": 16,
+      "before_full_narrowed_bytes": 4572,
+      "after_progressive_bytes": 3748,
+      "bytes_reduction_pct": 18.02,
+      "retrieval_method": "keyword_narrow_tools_for_turn"
+    },
+    {
+      "id": "advise_only",
+      "message": "Don't take any action \u2014 just advise me on HubSpot vs Apollo lists",
+      "turn_shape": "task_shaped",
+      "total_catalog": 122,
+      "visible_tools": 16,
+      "max_tools_cap": 16,
+      "before_full_narrowed_bytes": 4710,
+      "after_progressive_bytes": 3750,
+      "bytes_reduction_pct": 20.38,
+      "retrieval_method": "keyword_narrow_tools_for_turn"
+    },
+    {
+      "id": "github_issues",
+      "message": "search GitHub issues mentioning billing",
+      "turn_shape": "task_shaped",
+      "total_catalog": 122,
+      "visible_tools": 16,
+      "max_tools_cap": 16,
+      "before_full_narrowed_bytes": 4632,
+      "after_progressive_bytes": 3736,
+      "bytes_reduction_pct": 19.34,
+      "retrieval_method": "keyword_narrow_tools_for_turn"
+    }
+  ]
+}
