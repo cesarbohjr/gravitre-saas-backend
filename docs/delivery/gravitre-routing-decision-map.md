@@ -299,8 +299,8 @@ Ranked by severity × breadth × structural fix value.
 | 2 | F2 | **CLOSED (Phase 1)** — removed bare apollo/slack/contact-list/knowledge-base; defer via `needs_tool_sse` + reduced safety net | Bare vendor defer patterns | High | Any Apollo/Slack utterance | Structured LIVE signal |
 | 3 | F3 | **CLOSED (Phase 1)** — C.2 probe **8/8 HIT** (unit); verbs set up/spin up/want/need; name capture 150 | List-create verb gaps | High | Pack TRY + NL list creates | Verb expansion |
 | 4 | F4 | **CLOSED (Phase 1)** — object-noun scoring + confusable veto; github issues / clickup tasks / SF contacts correct; G.1 9/10 HIT (linear catalog gap) | Mapper wrong-tool class | High | 77-vendor mapper | Noun-weighted scoring |
-| 5 | F5 | OPEN | Pack-common ignores pack install | Medium–High | MSP/Prospecting | Install gate (Phase 2) |
-| 6 | F6 | OPEN | Write completion = response proof, not membership verify | Medium | Writes/lists | Population verify (Phase 2) |
+| 5 | F5 | **CLOSED (Phase 2)** — `require_pack_install=True` on retrieve gate + classical MSP intercept; missing pack → honest clarify + Marketplace CTA | Pack-common ignores pack install | Medium–High | MSP/Prospecting | Install gate |
+| 6 | F6 | **CLOSED (Phase 2)** — `collection_population_verify.py` follow-up / membership proof; chat + extension + existing workflow honesty; empty → partial_success / accepted_async | Write completion without membership verify | Medium | Writes/lists | Population verify |
 | 7 | F7 | OPEN | Agent jobs / webhooks outside map | Medium | Non-chat | Phase 5 |
 | 8 | F8 | OPEN | Catalog schema quality | High for new connectors | 687 actions | Phase 4 |
 | 9 | F9 | **OUT OF SCOPE** this program | Gravitree naming debt | Brand | Cross-cutting | Separate PR series |

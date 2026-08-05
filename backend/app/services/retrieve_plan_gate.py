@@ -72,7 +72,8 @@ def retrieve_plan_or_none(
     )
     if enrich is not None:
         if require_pack_install and client is not None and org_id:
-            if not _org_has_pack(client, org_id, PACK_IDS):
+            installed = _org_has_pack(client, org_id, PACK_IDS)
+            if installed is False:
                 return RetrievedPlan(
                     kind="clarify",
                     user_message=(
@@ -102,12 +103,11 @@ def retrieve_plan_or_none(
     )
     if list_plan is not None:
         if require_pack_install and client is not None and org_id:
-            if not _org_has_pack(client, org_id, PACK_IDS):
-                # List create can still be a bare connector write — only block when
-                # the utterance is pack-hinted (msp/prospecting).
-                from app.services.pack_common_intent_defaults import _MSP_PACK_HINT
+            from app.services.pack_common_intent_defaults import _MSP_PACK_HINT
 
-                if _MSP_PACK_HINT.search(text):
+            if _MSP_PACK_HINT.search(text):
+                installed = _org_has_pack(client, org_id, PACK_IDS)
+                if installed is False:
                     return RetrievedPlan(
                         kind="clarify",
                         user_message=(
@@ -175,16 +175,26 @@ def _has_concrete_tool_anchors(text: str) -> bool:
     )
 
 
-def _org_has_pack(client: Any, org_id: str, pack_ids: frozenset[str] | set[str]) -> bool:
+def _org_has_pack(
+    client: Any, org_id: str, pack_ids: frozenset[str] | set[str]
+) -> bool | None:
+    """Return True/False when install state is known; None when lookup fails.
+
+    Fail-open (None) on infrastructure errors so a flaky installs table does not
+    silently block every pack-common retrieve. Fail-closed only when the query
+    succeeds and the pack is absent.
+    """
     try:
         from app.services.recommendation_heuristics_service import load_installed_packs
 
         installed = load_installed_packs(client, org_id) or set()
+        if not isinstance(installed, (set, frozenset, list, tuple)):
+            return None
         normalized = {str(x).strip().lower() for x in installed if str(x).strip()}
         wanted = {str(x).strip().lower() for x in pack_ids}
         return bool(normalized & wanted)
     except Exception:  # noqa: BLE001
-        return False
+        return None
 
 
 def _match_installed_workflow(

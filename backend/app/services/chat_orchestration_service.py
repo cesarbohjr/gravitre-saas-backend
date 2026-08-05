@@ -563,7 +563,7 @@ class ChatOrchestrationService:
                 org_id=org_id,
                 connected_integrations=connected_integrations,
                 client=client,
-                require_pack_install=False,
+                require_pack_install=True,
             )
             if retrieved is not None:
                 if retrieved.block_fabrication and retrieved.kind == "clarify":
@@ -992,46 +992,35 @@ class ChatOrchestrationService:
         connected_integrations: list[str],
         client: Any,
     ) -> dict[str, Any] | None:
-        """Stage pack MSP enrich as create_workflow confirm (not Search-contacts orch)."""
-        from app.services.pack_common_intent_defaults import (
-            format_pack_common_msp_enrich_confirm_message,
-            try_pack_common_msp_enrich_workflow_plan,
+        """Stage pack MSP enrich via F1/F5 retrieve gate (install-checked)."""
+        from app.services.retrieve_plan_gate import (
+            retrieve_plan_or_none,
+            stage_retrieved_plan_turn,
         )
 
-        enrich_plan = try_pack_common_msp_enrich_workflow_plan(
+        retrieved = retrieve_plan_or_none(
             message or "",
+            org_id=org_id,
             connected_integrations=connected_integrations,
-        )
-        if enrich_plan is None:
-            return None
-        pending_params = dict(enrich_plan)
-        await self._state.update_task_state(
-            conversation_id,
-            org_id,
-            {
-                "clarified_params": pending_params,
-                "pending_task": {
-                    "type": "create_workflow",
-                    "status": "awaiting_confirm",
-                    "params": pending_params,
-                },
-                "recent_user_messages": [message or ""],
-            },
             client=client,
+            require_pack_install=True,
         )
-        refreshed = await self._state.get_task_state(
-            conversation_id, org_id, client=client
+        if retrieved is None:
+            return None
+        if retrieved.kind not in {
+            "pack_common_msp_enrich",
+            "clarify",
+        }:
+            return None
+        return await stage_retrieved_plan_turn(
+            retrieved,
+            org_id=org_id,
+            conversation_id=conversation_id,
+            message=message or "",
+            task_state={},
+            client=client,
+            settings=self.settings,
         )
-        confirm_message = format_pack_common_msp_enrich_confirm_message(enrich_plan)
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "confirm",
-            "message": confirm_message,
-            "task_state": refreshed,
-            "pending_task": self._pending_task_payload(refreshed),
-            "workflow_status": "awaiting_confirm",
-            "answer_explanation": "Pack-common MSP Clay enrich (classical intercept)",
-        }
 
     async def _present_plan_confirm(
         self,

@@ -2677,7 +2677,7 @@ class AgentIntelligence:
                 org_id=org_id,
                 connected_integrations=connected_list,
                 client=client,
-                require_pack_install=False,
+                require_pack_install=True,
             )
             if retrieved is not None and retrieved.block_fabrication:
                 staged = await stage_retrieved_plan_turn(

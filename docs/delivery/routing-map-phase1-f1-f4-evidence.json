@@ -43,6 +43,7 @@
     "F3": "backend/app/services/chat_connector_models.py LIST_CREATE_INTENT",
     "F4": "backend/app/services/chat_action_mapper.py _OBJECT_CONFUSABLES + vendor actions"
   },
-  "deploy_git_sha": "PENDING_PUSH",
-  "note": "Production live re-verify required after Railway tip advances — unit evidence is not prod PASS."
+  "deploy_git_sha": "cb62f2d97e770da9a40c5edfaf732b4ac0d323c8",
+  "deploy_ci_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30988877306",
+  "note": "Pushed to main. Prod /health tip confirmation tracked with Phase 2 stamp bump — unit evidence is not prod PASS alone."
 }

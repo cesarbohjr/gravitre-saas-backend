@@ -914,7 +914,7 @@ async def apply_unified_turn_live(
             org_id=org_id,
             connected_integrations=list(connected_integrations or []),
             client=client,
-            require_pack_install=False,  # F5 enables install gate
+            require_pack_install=True,  # F5: pack must be installed
         )
         if retrieved is not None:
             staged = await stage_retrieved_plan_turn(

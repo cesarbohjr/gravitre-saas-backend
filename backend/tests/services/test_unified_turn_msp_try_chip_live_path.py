@@ -80,6 +80,10 @@ async def test_apply_unified_turn_live_try_chip_stages_draft_workflow_confirm():
             "app.services.conversation_state_service.get_conversation_state_service",
             return_value=state,
         ),
+        patch(
+            "app.services.retrieve_plan_gate._org_has_pack",
+            return_value=True,
+        ),
     ):
         out = await apply_unified_turn_live(
             org_id="org-1",
