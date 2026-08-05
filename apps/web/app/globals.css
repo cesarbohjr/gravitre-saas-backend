@@ -431,66 +431,80 @@
      Chat canvas background themes (selectable, behind /ai).
      Department icon-pattern tiles only — the gradient / mesh washes
      were removed. Tiles are seamless PNGs with the design-specified
-     0.15 opacity pre-baked into their alpha channel (see
+     0.08 opacity pre-baked into their alpha channel (see
      scripts/bake-chat-pattern-alpha.mjs), so they can render as a
      plain background-image without an overlay layer that would sit
-     on top of message content. `background-attachment: local`
-     (never `fixed`) keeps the tile scrolling with the canvas on iOS
-     Safari. Selected via `data-chat-bg="<id>"`; light/dark variants
-     swap on the `.dark` root class.
+     on top of message content.
+
+     Two background layers stack here, both below content:
+       1. the department tile (`--chat-bg-tile`)
+       2. a flat 10% black scrim that deepens the canvas so message
+          bubbles separate from it instead of competing.
+     The scrim is a background layer rather than a child element, so
+     it can never paint over a message. Theme rules below only swap
+     `--chat-bg-tile`; sizing/repeat/scrim live here once.
+
+     `background-attachment: local` (never `fixed`) keeps both layers
+     scrolling with the canvas on iOS Safari.
+     Selected via `data-chat-bg="<id>"`; light/dark tiles swap on the
+     `.dark` root class.
      ============================================================ */
   .ai-chat-canvas {
+    --chat-bg-tile: none;
+    --chat-bg-scrim: rgb(0 0 0 / 0.1);
     background-color: var(--background);
-    background-repeat: repeat;
+    background-image: var(--chat-bg-tile),
+      linear-gradient(var(--chat-bg-scrim), var(--chat-bg-scrim));
+    background-repeat: repeat, no-repeat;
     /* Desktop tile size per the handoff; mobile narrows below. */
-    background-size: 234px 234px;
-    background-attachment: local;
+    background-size: 234px 234px, 100% 100%;
+    background-attachment: local, local;
   }
 
   @media (max-width: 480px) {
     .ai-chat-canvas {
-      background-size: 180px 180px;
+      background-size: 180px 180px, 100% 100%;
     }
   }
 
   /* Marketing (default): megaphone / target / growth curve */
   .ai-chat-canvas,
   .ai-chat-canvas[data-chat-bg="marketing"] {
-    background-image: url("/patterns/gw-mkt-light.png");
+    --chat-bg-tile: url("/patterns/gw-mkt-light.png");
   }
   .dark .ai-chat-canvas,
   .dark .ai-chat-canvas[data-chat-bg="marketing"] {
-    background-image: url("/patterns/gw-mkt-dark.png");
+    --chat-bg-tile: url("/patterns/gw-mkt-dark.png");
   }
 
   /* Sales: pipeline / handshake / deal flow */
   .ai-chat-canvas[data-chat-bg="sales"] {
-    background-image: url("/patterns/gw-sales-light.png");
+    --chat-bg-tile: url("/patterns/gw-sales-light.png");
   }
   .dark .ai-chat-canvas[data-chat-bg="sales"] {
-    background-image: url("/patterns/gw-sales-dark.png");
+    --chat-bg-tile: url("/patterns/gw-sales-dark.png");
   }
 
   /* Developers: terminal / branch / build */
   .ai-chat-canvas[data-chat-bg="developers"] {
-    background-image: url("/patterns/gw-dev-light.png");
+    --chat-bg-tile: url("/patterns/gw-dev-light.png");
   }
   .dark .ai-chat-canvas[data-chat-bg="developers"] {
-    background-image: url("/patterns/gw-dev-dark.png");
+    --chat-bg-tile: url("/patterns/gw-dev-dark.png");
   }
 
   /* Operations: workflow / gear / monitoring */
   .ai-chat-canvas[data-chat-bg="operations"] {
-    background-image: url("/patterns/gw-ops-light.png");
+    --chat-bg-tile: url("/patterns/gw-ops-light.png");
   }
   .dark .ai-chat-canvas[data-chat-bg="operations"] {
-    background-image: url("/patterns/gw-ops-dark.png");
+    --chat-bg-tile: url("/patterns/gw-ops-dark.png");
   }
 
-  /* Plain: clean, distraction-free */
+  /* Plain: no tile — keeps the scrim so the canvas depth is consistent */
   .ai-chat-canvas[data-chat-bg="plain"],
   .dark .ai-chat-canvas[data-chat-bg="plain"] {
-    background-image: none;
+    --chat-bg-tile: none;
   }
 
   .ai-surface-shell {
