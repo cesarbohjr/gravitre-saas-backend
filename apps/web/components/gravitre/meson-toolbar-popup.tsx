@@ -20,6 +20,7 @@ import {
   shouldShowMesonToolbar,
 } from "@/lib/meson-page-context"
 import { cn } from "@/lib/utils"
+import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -122,14 +123,15 @@ export function MesonToolbarTrigger() {
             size="icon"
             onClick={togglePanel}
             className={cn(
-              "relative h-8 w-8 rounded-full p-0 hover:bg-violet-500/10",
+              "relative rounded-full p-0 hover:bg-violet-500/10",
+              TOUCH_ICON_BUTTON,
               panelOpen && "bg-violet-500/10 ring-1 ring-violet-500/30",
             )}
             aria-expanded={panelOpen}
             aria-label={panelOpen ? "Hide Meson tips" : "Show Meson tips"}
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
-              <Blocks className="h-3.5 w-3.5 text-white" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm sm:h-7 sm:w-7">
+              <Blocks className="h-4 w-4 text-white sm:h-3.5 sm:w-3.5" />
             </span>
           </Button>
         </TooltipTrigger>

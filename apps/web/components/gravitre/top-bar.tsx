@@ -23,6 +23,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
+import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Icon } from "@/lib/icons"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { OrgMonogram } from "@/components/gravitre/organization-logo"
@@ -142,9 +143,12 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
       <header
+        data-testid="app-top-bar"
         className={cn(
+          // Phones get a taller bar with larger tap targets — the 48px bar with
+          // 32px icon buttons tested below the 44px minimum on touch.
           "flex items-center justify-between border-b border-border bg-background px-3 sm:px-4",
-          compact ? "h-10" : "h-12 sm:h-14",
+          compact ? "h-12 sm:h-10" : "h-16 sm:h-14",
         )}
       >
         {/* Left side - Menu + Org + Environment + Page title */}
@@ -153,7 +157,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className={TOUCH_ICON_BUTTON}
             onClick={onMenuClick}
           >
             <Icon name="menu" size="lg" />
@@ -168,12 +172,18 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
+                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs"
                 aria-label={`Organization: ${org}. Switch organization`}
               >
-                <Icon name="company" size="sm" className="text-muted-foreground" />
+                <Icon name="company" size="md" className="text-muted-foreground sm:hidden" />
+                <Icon name="company" size="sm" className="hidden text-muted-foreground sm:block" />
                 <span className="hidden sm:inline">{org}</span>
-                <Icon name="caretDown" size="xs" className="text-muted-foreground" />
+                <Icon name="caretDown" size="sm" className="text-muted-foreground sm:hidden" />
+                <Icon
+                  name="caretDown"
+                  size="xs"
+                  className="hidden text-muted-foreground sm:block"
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
@@ -235,7 +245,20 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {title && !compact ? (
             <>
               <span className="text-muted-foreground/40 hidden md:inline">/</span>
-              <span className="text-sm font-medium text-foreground hidden md:block truncate max-w-[240px]" aria-current="page">{title}</span>
+              {/* On phones the org chip collapses to an icon, so the page title
+                  is the only text label — show it there too, at a legible size. */}
+              <span
+                className="max-w-[9rem] truncate text-base font-semibold text-foreground sm:hidden"
+                aria-current="page"
+              >
+                {title}
+              </span>
+              <span
+                className="hidden max-w-[240px] truncate text-sm font-medium text-foreground md:block"
+                aria-current="page"
+              >
+                {title}
+              </span>
             </>
           ) : null}
             </>
@@ -300,11 +323,11 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="group relative h-8 w-8 rounded-full p-0 hover:bg-accent" aria-label="Account menu">
+              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu">
                 <UserAccountAvatar
                   useCurrentUser
-                  size="sm"
-                  className="relative ring-1 ring-border transition-colors group-hover:ring-primary/40"
+                  size="md"
+                  className="relative ring-1 ring-border transition-colors group-hover:ring-primary/40 sm:h-8 sm:w-8"
                 />
               </Button>
             </DropdownMenuTrigger>
