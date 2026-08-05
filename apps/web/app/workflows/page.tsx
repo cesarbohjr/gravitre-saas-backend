@@ -22,15 +22,19 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp } from "lucide-react"
+import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp, LayoutGrid, Rows3 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { SegmentedControl } from "@/components/gravitre/filter-chip"
+import { RADIUS } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
@@ -187,6 +191,12 @@ const columns = [
   },
 ]
 
+/** Options for the grid/table switcher, declared once outside render. */
+const VIEW_MODES = [
+  { id: "grid" as const, label: "Grid", icon: LayoutGrid },
+  { id: "table" as const, label: "Table", icon: Rows3 },
+] as const
+
 type WorkflowStatsPayload = {
   overallSuccessRate?: number
   totalRunsThisWeek?: number
@@ -333,15 +343,15 @@ export default function WorkflowsPage() {
         {/* Header */}
         <div className="relative z-10">
           <PageHeader
+            eyebrow="Automation"
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
             icon={Workflow}
-            iconColor="from-blue-500/20 to-cyan-500/20"
             actions={
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-2">
+                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)}>
                     <Icon name="filter" size="sm" />
                     <span className="hidden sm:inline">Filter</span>
                     {activeFiltersCount > 0 && (
@@ -413,43 +423,47 @@ export default function WorkflowsPage() {
                   {activeFiltersCount > 0 && (
                     <>
                       <DropdownMenuSeparator />
-                      <button
-                        onClick={() => {
+                      <DropdownMenuItem
+                        onSelect={() => {
                           setStatusFilter([])
                           setEnvFilter([])
                         }}
-                        className="w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left"
+                        className="text-xs text-muted-foreground"
                       >
                         Clear all filters
-                      </button>
+                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              {/* Secondary actions share one neutral outline treatment. They
+                  were previously tinted success-green and violet, which read as
+                  three competing primary actions and pulled violet in from
+                  outside the palette. */}
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setGoalWizardOpen(true)}
-                className="h-8 gap-2 border-success/30 bg-success/5 hover:bg-success/10 hover:border-success/50 transition-colors"
+                className={cn("gap-2", RADIUS.control)}
               >
-                <Target className="h-3.5 w-3.5 text-success" />
-                <span className="hidden sm:inline text-success">Create from Goal</span>
+                <Target className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Create from Goal</span>
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setMesonWizardOpen(true)}
-                className="h-8 gap-2 border-violet-500/30 bg-transparent hover:bg-violet-500/10 hover:border-violet-500/50 transition-colors"
+                className={cn("gap-2", RADIUS.control)}
               >
-                <Blocks className="h-3.5 w-3.5 text-violet-400" />
-                <span className="hidden sm:inline text-violet-400">Build with Meson</span>
+                <Blocks className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Build with Meson</span>
               </Button>
-              <Link href="/workflows/new/builder">
-                <Button size="sm" className="h-8 gap-2">
+              <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
+                <Link href="/workflows/new/builder">
                   <Icon name="add" size="sm" />
                   <span className="hidden sm:inline">New Workflow</span>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </>
           }
         >
@@ -548,30 +562,13 @@ export default function WorkflowsPage() {
               />
             </div>
             
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border shrink-0">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "grid" 
-                    ? "bg-card text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon name="grid" size="sm" />
-                Grid
-              </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "table" 
-                    ? "bg-card text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon name="rows" size="sm" />
-                Table
-              </button>
-            </div>
+            <SegmentedControl
+              options={VIEW_MODES}
+              value={viewMode}
+              onChange={setViewMode}
+              ariaLabel="Switch workflow layout"
+              className="shrink-0 bg-secondary/50"
+            />
           </div>
 
           {/* Freshness + result count */}

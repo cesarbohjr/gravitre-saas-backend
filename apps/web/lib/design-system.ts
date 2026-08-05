@@ -1,0 +1,79 @@
+/**
+ * Canonical type / radius / motion scale for the core app surfaces.
+ *
+ * Why this file exists: an audit of the five main hub pages found the same role
+ * expressed a different way on nearly every page — page titles as `text-xl`
+ * (schedules), `text-lg sm:text-2xl font-bold` (assignments) and
+ * `text-2xl md:text-3xl font-semibold` (marketplace); eyebrow labels using
+ * `tracking-wide`, `tracking-wider` AND `tracking-[0.2em]`, two of them inside
+ * the same file. Those are the same semantic element, so they must resolve to
+ * one string.
+ *
+ * Rule: never hand-write these class strings in a page. Import the token, so a
+ * change lands everywhere at once and pages cannot silently drift again.
+ *
+ * The marketplace/assets treatment is the agreed baseline.
+ */
+
+/** Text roles, largest to smallest. */
+export const TYPE = {
+  /** The single <h1> on a page. */
+  pageTitle: "text-2xl font-semibold tracking-tight text-foreground md:text-3xl",
+  /** Supporting sentence under a page title. */
+  pageLead: "text-sm text-pretty text-muted-foreground",
+  /** Section heading inside a page (<h2>). */
+  sectionTitle: "text-lg font-semibold tracking-tight text-foreground",
+  /** Card / list-item heading (<h3>). */
+  cardTitle: "text-sm font-semibold leading-tight tracking-tight text-foreground",
+  /**
+   * Small caps label above a title or over a group of controls.
+   * One tracking value everywhere — this was the worst offender.
+   */
+  eyebrow: "text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+  /** Caps label under a metric. Same tracking as eyebrow, lighter weight. */
+  metricLabel: "text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground",
+  /** Large number in a stat card. */
+  metricValue: "text-2xl font-semibold tabular-nums text-foreground",
+  /** Default body copy. */
+  body: "text-sm leading-relaxed text-foreground",
+  /** De-emphasised body copy. */
+  bodyMuted: "text-sm leading-relaxed text-muted-foreground",
+  /** Row meta, timestamps, counts. */
+  meta: "text-xs text-muted-foreground",
+} as const
+
+/**
+ * Radius roles. The audit found `rounded-lg`, `rounded-xl`, `rounded-2xl`,
+ * `rounded-3xl` and `rounded-full` all used for surfaces of the same rank.
+ * Interactive controls are pill-shaped (the marketplace baseline); containers
+ * step up with their size.
+ */
+export const RADIUS = {
+  /** Buttons, chips, inputs, selects — anything you click or type into. */
+  control: "rounded-full",
+  /** Cards and list rows. */
+  card: "rounded-xl",
+  /** Panels and toolbars that contain cards. */
+  panel: "rounded-2xl",
+  /** Small square affordances: icon tiles, avatars, swatches. */
+  tile: "rounded-lg",
+} as const
+
+/**
+ * Shared motion timings. Durations stay short enough to feel like feedback
+ * rather than animation; every consumer must still honour `useReducedMotion()`.
+ */
+export const MOTION = {
+  /** Hover / press feedback. */
+  fast: 0.15,
+  /** Enter + exit transitions. */
+  base: 0.22,
+  /** Staggered list reveals. */
+  stagger: 0.04,
+  /** Sliding indicators (tab pills, segmented controls). */
+  spring: { type: "spring" as const, stiffness: 400, damping: 32 },
+} as const
+
+/** Canonical hover/focus transition for interactive surfaces. */
+export const INTERACTION =
+  "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"

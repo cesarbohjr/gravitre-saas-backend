@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { RADIUS, TYPE } from "@/lib/design-system"
 import { type DemoAssignment } from "@/lib/demo-assignments"
 import {
   ASSIGNMENTS_REFRESH_KEY,
@@ -427,7 +428,11 @@ function AssignmentFilterTabs({
     <div
       role="tablist"
       aria-label="Filter assignments by status"
-      className="flex items-center gap-1 overflow-x-auto rounded-xl bg-secondary/50 p-1 scrollbar-none"
+      className={cn(
+        "flex items-center gap-1 overflow-x-auto bg-secondary/50 p-1 scrollbar-none",
+        // Pill container, matching HubTabs / SegmentedControl / FilterChip.
+        RADIUS.control,
+      )}
     >
       {options.map((option) => {
         const isActive = value === option.id
@@ -604,26 +609,29 @@ export default function AssignmentsPage() {
           <div className="relative px-4 sm:px-8 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                <motion.div 
-                  className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20"
-                  animate={{ 
-                    boxShadow: ["0 0 20px rgba(16, 185, 129, 0.1)", "0 0 40px rgba(16, 185, 129, 0.2)", "0 0 20px rgba(16, 185, 129, 0.1)"]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
+                {/* Icon tile matches PageHeader's: same 10x10 box, RADIUS.tile
+                    and brand tint, instead of a bespoke 14x14 emerald gradient
+                    with a hardcoded rgba glow that sat outside the palette. */}
+                <div
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60",
+                    RADIUS.tile,
+                  )}
                 >
-                  <Icon name="tasks" size="lg" className="text-emerald-400" />
-                </motion.div>
-                <div>
+                  <Icon name="tasks" size="lg" className="text-primary" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className={TYPE.eyebrow}>Work</p>
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <h1 className="text-lg sm:text-2xl font-bold text-foreground">{SURFACE_COPY.pages.assignments.title}</h1>
+                    <h1 className={TYPE.pageTitle}>{SURFACE_COPY.pages.assignments.title}</h1>
                     <ActivityPulse />
                   </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{SURFACE_COPY.pages.assignments.description}</p>
+                  <p className={cn(TYPE.pageLead, "hidden sm:block")}>{SURFACE_COPY.pages.assignments.description}</p>
                 </div>
               </div>
               
-              <Button 
-                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25 w-full sm:w-auto"
+              <Button
+                className={cn("w-full gap-2 shadow-sm sm:w-auto", RADIUS.control)}
                 onClick={openNewAssignment}
               >
                 <Icon name="add" size="sm" />

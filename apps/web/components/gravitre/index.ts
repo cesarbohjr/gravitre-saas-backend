@@ -77,6 +77,9 @@ export {
 
 // Form Components
 export { SearchInput, DebouncedSearchInput } from "./search-input"
+export { FilterChip, SegmentedControl, FilterGroupLabel } from "./filter-chip"
+export { HubTabs } from "./hub-tabs"
+export { HubFilterBar, HubFilterField } from "./hub-filter-bar"
 
 // Data State Components
 export { DataFreshness } from "./data-freshness"
