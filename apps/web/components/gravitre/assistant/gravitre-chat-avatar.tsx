@@ -62,15 +62,22 @@ export function GravitreChatAvatar({
         ? { role: "status" as const, "aria-live": "polite" as const, "aria-label": title }
         : {})}
     >
-      {/* Thinking: a soft expanding ring. Rendered as a sibling ring rather than
-          an animated box-shadow so it cannot affect layout or clip inside the
-          overflow-hidden message list. */}
+      {/* Thinking: the handoff's `gv-glow` — a soft 6px halo that pulses, not an
+          expanding ring. An earlier ring-2 scaled to 1.35 read as a pale disc
+          around the avatar and washed the circle out; box-shadow spreads outside
+          the border box, so it stays subtle and still costs no layout. */}
       {isThinking && !reduceMotion ? (
         <motion.span
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary/40"
-          animate={{ scale: [1, 1.35], opacity: [0.55, 0] }}
-          transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeOut" }}
+          className="pointer-events-none absolute inset-0 rounded-full"
+          animate={{
+            boxShadow: [
+              "0 0 0 0 rgba(22,163,116,0.35)",
+              "0 0 0 6px rgba(22,163,116,0.12)",
+              "0 0 0 0 rgba(22,163,116,0.35)",
+            ],
+          }}
+          transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         />
       ) : null}
 

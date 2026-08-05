@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useCallback, useState, type ReactNode } from "react"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -76,14 +76,11 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 }
 
 /**
- * The assistant avatar now lives in `GravitreChatAvatar`, which implements the
+ * The assistant avatar lives in `GravitreChatAvatar`, which implements the
  * idle / thinking / speaking states from the design handoff. It is a filled 36px
  * circle carrying the mark, so it matches the user avatar's mass on the opposite
  * side of the thread — see that component for the sizing and asset rationale.
  */
-function GravitreAvatar() {
-  return <GravitreChatAvatar state="idle" />
-}
 
 type ChatTranscriptProps = {
   messages: UIMessage[]
@@ -164,7 +161,13 @@ export function ChatTranscript({
   assistantAvatar,
   waitingLabel,
 }: ChatTranscriptProps) {
-  const resolvedAvatar = assistantAvatar ?? <GravitreAvatar />
+  // Which assistant message is currently being read aloud, so that message's
+  // avatar can switch to the speaking waveform. Only one can speak at a time.
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
+  const handleSpeakingChange = useCallback((messageId: string, isSpeaking: boolean) => {
+    setSpeakingMessageId((current) => (isSpeaking ? messageId : current === messageId ? null : current))
+  }, [])
+
   const resolvedWaiting = waitingLabel ?? `${assistantLabel} is thinking…`
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
   const visible = messages
@@ -206,7 +209,15 @@ export function ChatTranscript({
                 isUser ? "flex-row-reverse" : "flex-row",
               )}
             >
-              {isUser ? <UserAccountAvatar useCurrentUser size="md" /> : resolvedAvatar}
+              {isUser ? (
+                <UserAccountAvatar useCurrentUser size="md" />
+              ) : (
+                assistantAvatar ?? (
+                  <GravitreChatAvatar
+                    state={speakingMessageId === message.id ? "speaking" : "idle"}
+                  />
+                )
+              )}
 
               <div
                 className={cn(
@@ -320,7 +331,12 @@ export function ChatTranscript({
 
                 <div className={cn(CHAT_ACTION_RAIL_CLASS, isUser && "flex-row-reverse")}>
                   {!isUser && displayText.trim() ? (
-                    <ReadAloudButton messageId={message.id} text={displayText} compact />
+                    <ReadAloudButton
+                      messageId={message.id}
+                      text={displayText}
+                      compact
+                      onSpeakingChange={handleSpeakingChange}
+                    />
                   ) : null}
                   {text.trim() && onCopyText ? (
                     <ActionIconButton label="Copy text" onClick={() => onCopyText(text)}>
@@ -377,11 +393,7 @@ export function ChatTranscript({
                 filled circle the avatar would have appeared to morph into a
                 different shape mid-thread. That loader is untouched and still
                 used for route transitions. */}
-            {assistantAvatar ? (
-              resolvedAvatar
-            ) : (
-              <GravitreChatAvatar state="thinking" title={resolvedWaiting} />
-            )}
+            {assistantAvatar ?? <GravitreChatAvatar state="thinking" title={resolvedWaiting} />}
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>
               <div
