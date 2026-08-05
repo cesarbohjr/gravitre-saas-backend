@@ -5,7 +5,6 @@ import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
-import Image from "next/image"
 import {
   BookmarkPlus,
   Copy,
@@ -49,7 +48,7 @@ import {
 } from "@/lib/chat-message-time"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
-import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
+import { GravitreChatAvatar } from "@/components/gravitre/assistant/gravitre-chat-avatar"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -77,65 +76,13 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 }
 
 /**
- * Bare platform mark — deliberately no bubble, border or background. Gravitre is
- * the platform voice rather than another participant in the thread, so the mark
- * sits directly on the canvas (the user avatar keeps its shell).
- *
- * The box is h-9/w-9 (36px) to match `USER_AVATAR_SIZE_CLASSES.md`, the size the
- * user avatar renders at on the opposite side of the thread, so both sides of the
- * conversation carry equal visual weight and no message row shifts.
+ * The assistant avatar now lives in `GravitreChatAvatar`, which implements the
+ * idle / thinking / speaking states from the design handoff. It is a filled 36px
+ * circle carrying the mark, so it matches the user avatar's mass on the opposite
+ * side of the thread — see that component for the sizing and asset rationale.
  */
-function GravitreAvatarShell({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center text-foreground",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
 function GravitreAvatar() {
-  return (
-    <GravitreAvatarShell>
-      {/* gravitre-mark-*.png are the icon files with their transparent padding
-          cropped off (scripts/trim-icon-padding.mjs). The originals sit on a
-          square canvas whose ink fills only ~49% of the width, so rendering them
-          in a 36px box produced a ~16px glyph that looked far smaller than the
-          36px user avatar. Cropped, `w-9` is 36px of actual mark.
-
-          The mark is wider than it is tall, so width is the matching dimension
-          and height follows the aspect ratio via object-contain.
-
-          Without a pale shell behind it the mark also has to invert per theme.
-          Both variants render and CSS picks one, so there is no
-          hydration-sensitive theme read on first paint. */}
-      <Image
-        src="/images/gravitre-mark-black.png"
-        alt="Gravitre"
-        width={1053}
-        height={614}
-        className="w-9 object-contain dark:hidden"
-      />
-      <Image
-        src="/images/gravitre-mark-white.png"
-        alt=""
-        aria-hidden
-        width={1030}
-        height={572}
-        className="hidden w-9 object-contain dark:block"
-      />
-    </GravitreAvatarShell>
-  )
+  return <GravitreChatAvatar state="idle" />
 }
 
 type ChatTranscriptProps = {
@@ -424,16 +371,16 @@ export function ChatTranscript({
 
         {showWaiting ? (
           <div className="flex gap-2.5">
+            {/* The avatar carries the thinking state itself now (breathing mark +
+                expanding ring inside the circle). The previous gooey
+                GravitreThinkingLoader sat bare on the canvas, so against the new
+                filled circle the avatar would have appeared to morph into a
+                different shape mid-thread. That loader is untouched and still
+                used for route transitions. */}
             {assistantAvatar ? (
               resolvedAvatar
             ) : (
-              <GravitreAvatarShell>
-                <GravitreThinkingLoader
-                  size={36}
-                  className="text-foreground"
-                  title={resolvedWaiting}
-                />
-              </GravitreAvatarShell>
+              <GravitreChatAvatar state="thinking" title={resolvedWaiting} />
             )}
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>
