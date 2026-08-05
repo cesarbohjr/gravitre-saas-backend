@@ -158,8 +158,6 @@ def _follow_up_membership_count(
         if action.startswith("hubspot.") and ctx is not None:
             from app.services.tool_service import invoke_tool
 
-            # HubSpot list membership size via contacts search filter is heavy;
-            # use lists.get when available, else accept async.
             try:
                 out = invoke_tool(
                     ctx,
@@ -167,17 +165,27 @@ def _follow_up_membership_count(
                     {"list_id": list_id},
                 )
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                size = (
-                    payload.get("size")
-                    or payload.get("membershipCount")
-                    or payload.get("meta", {}).get("size")
-                    if isinstance(payload.get("meta"), dict)
-                    else None
-                )
+                size = payload.get("size")
+                if size is None:
+                    size = payload.get("membershipCount")
+                if size is None:
+                    size = payload.get("contact_count")
+                if size is None:
+                    size = payload.get("member_count")
+                meta = payload.get("meta")
+                if size is None and isinstance(meta, dict):
+                    size = meta.get("size")
                 if size is None and isinstance(payload.get("list"), dict):
-                    size = payload["list"].get("size") or payload["list"].get("additionalProperties", {}).get(
-                        "hs_list_size"
-                    )
+                    list_obj = payload["list"]
+                    size = list_obj.get("size") or list_obj.get("membershipCount")
+                    if size is None:
+                        addl = list_obj.get("additionalProperties")
+                        if isinstance(addl, dict):
+                            size = addl.get("hs_list_size")
+                if size is None:
+                    members = payload.get("memberships") or payload.get("results") or []
+                    if isinstance(members, list) and members:
+                        size = len(members)
                 if size is not None:
                     return max(0, int(size))
             except Exception as exc:  # noqa: BLE001
@@ -188,13 +196,14 @@ def _follow_up_membership_count(
             from app.services.tool_service import invoke_tool
 
             try:
+                # apollo.lists.list with list_id uses contacts.search by label
+                # (GET /labels alone never returns membership — F6 empty-body root cause).
                 out = invoke_tool(
                     ctx,
                     "apollo.lists.list",
                     {"list_id": list_id},
                 )
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                # Prefer explicit counts; else treat non-empty contact arrays as proof.
                 for key in ("contact_count", "contacts_count", "member_count", "count"):
                     if payload.get(key) is not None:
                         return max(0, int(payload.get(key) or 0))

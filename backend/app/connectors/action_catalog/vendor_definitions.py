@@ -117,6 +117,20 @@ VENDOR_DEFINITIONS: tuple = (
         v3=(
             action("hubspot", "deals.update_stage", "Update deal stage", tier="v3", kind="advanced", scope_suffix="deals:write"),
             action("hubspot", "sequences.enroll", "Enroll in sequence", tier="v3", kind="advanced", scope_suffix="sequences:enroll"),
+            action(
+                "hubspot",
+                "lists.get",
+                "Get list membership",
+                tier="v3",
+                kind="read",
+                scope_suffix="lists:read",
+                idempotent=True,
+                description=(
+                    "Read a HubSpot list and its membership size/members. "
+                    "Use when verifying list population after add_contact, or when "
+                    "you need the current member count for a known list_id."
+                ),
+            ),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
             action("hubspot", "lists.create", "Create list", tier="v3", kind="advanced", scope_suffix="lists:write", destructive=True),
             action("hubspot", "tickets.create", "Create support ticket", tier="v3", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
@@ -563,7 +577,20 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "organizations.search", "Search companies", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
             action("apollo", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
             action("apollo", "contacts.search", "Search contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
-            action("apollo", "lists.list", "List contact lists", tier="v1", kind="read", scope_suffix="labels:read", idempotent=True),
+            action(
+                "apollo",
+                "lists.list",
+                "List contact lists",
+                tier="v1",
+                kind="read",
+                scope_suffix="labels:read",
+                idempotent=True,
+                description=(
+                    "List Apollo labels, or with list_id return that label's member "
+                    "contacts and contact_count. Use when enumerating lists or when "
+                    "verifying list population after apollo.lists.add."
+                ),
+            ),
             action("apollo", "people.match", "Enrich one person", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
             action("apollo", "organizations.enrich", "Enrich one organization", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
         ),

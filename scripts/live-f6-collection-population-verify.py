@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""F6 live proof: Apollo list membership write + collection_population_verify follow-up.
+"""F6 live proof: forced vendor re-read must VERIFIED (not write-response proof).
 
-Uses the smoke-org Apollo connector (same as list-populate-honesty). Reports:
-  - before/after vendor membership counts
-  - verify_collection_population() detail (follow_up_attempted / membership_count)
-  - mini-run id after honesty finalize
+Smoke org Apollo + HubSpot. For each vendor:
+  1. Create list → before membership read (expect 0)
+  2. Membership write
+  3. Strip write-response proof fields
+  4. verify_collection_population → must follow_up_membership_confirmed
+  5. After membership read non-empty
 
 Writes docs/delivery/f6-collection-population-verify-live.json
 """
@@ -13,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +29,22 @@ sys.path.insert(0, str(BACKEND))
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
 OUT = REPO / "docs" / "delivery" / "f6-collection-population-verify-live.json"
+
+_PROOF_KEYS = (
+    "contact_count",
+    "contacts_count",
+    "member_count",
+    "added_count",
+    "contacts",
+    "people",
+    "entity_ids",
+    "contact_ids",
+    "contact_id",
+    "size",
+    "membershipCount",
+    "memberships",
+    "results",
+)
 
 
 def utcnow() -> str:
@@ -52,7 +71,6 @@ def _load_env() -> None:
 
 _SB = None
 _SETTINGS = None
-_CONNECTORS: dict[str, str] = {}
 
 
 def _sb():
@@ -67,8 +85,6 @@ def _sb():
 
 
 def _connector_id(vendor: str) -> str | None:
-    if vendor in _CONNECTORS:
-        return _CONNECTORS[vendor]
     rows = (
         _sb()
         .table("connectors")
@@ -81,16 +97,14 @@ def _connector_id(vendor: str) -> str | None:
     ).data or []
     for row in rows:
         if str(row.get("status") or "").lower() in {"active", "connected", "healthy"}:
-            _CONNECTORS[vendor] = str(row["id"])
-            return _CONNECTORS[vendor]
+            return str(row["id"])
     return None
 
 
-def _ctx(action: str):
+def _ctx(vendor: str):
     from app.config import get_settings
     from app.services.tool_types import ToolContext
 
-    vendor = action.split(".", 1)[0]
     connector_id = _connector_id(vendor)
     return ToolContext(
         settings=_SETTINGS or get_settings(),
@@ -101,300 +115,272 @@ def _ctx(action: str):
     ), connector_id
 
 
-def _invoke(action: str, params: dict):
+def _invoke(action: str, params: dict, ctx=None, connector_id: str | None = None):
     from app.services.tool_service import invoke_tool
 
-    ctx, connector_id = _ctx(action)
+    vendor = action.split(".", 1)[0]
+    if ctx is None:
+        ctx, connector_id = _ctx(vendor)
     payload = dict(params)
     if connector_id:
         payload.setdefault("connector_id", connector_id)
-    return invoke_tool(ctx, action, payload), ctx
+    last = None
+    for attempt in range(1, 4):
+        last = invoke_tool(ctx, action, payload)
+        if last.success:
+            return last, ctx, connector_id
+        time.sleep(attempt)
+    return last, ctx, connector_id
 
 
-def _membership_count(list_id: str, ctx) -> dict:
-    from app.services.tool_service import invoke_tool
+def _strip_proof(data: dict, *, list_id: str) -> dict:
+    out = {k: v for k, v in data.items() if k not in _PROOF_KEYS}
+    out["list_id"] = list_id
+    out["success"] = True
+    return out
 
-    out = invoke_tool(ctx, "apollo.lists.list", {"list_id": list_id})
-    payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-    count = None
-    for key in ("contact_count", "contacts_count", "member_count", "count"):
-        if payload.get(key) is not None:
-            count = int(payload.get(key) or 0)
+
+def _apollo_case(suffix: str) -> dict:
+    from app.services.collection_population_verify import verify_collection_population
+
+    ctx, cid = _ctx("apollo")
+    list_name = f"F6-FollowUp-{suffix}"
+    create, ctx, cid = _invoke(
+        "apollo.lists.create",
+        {"name": list_name, "modality": "contacts"},
+        ctx=ctx,
+        connector_id=cid,
+    )
+    cdata = create.data if isinstance(create.data, dict) else {}
+    list_id = str(cdata.get("list_id") or cdata.get("id") or "").strip()
+    before, _, _ = _invoke("apollo.lists.list", {"list_id": list_id}, ctx=ctx, connector_id=cid)
+    bdata = before.data if isinstance(before.data, dict) else {}
+    before_n = int(bdata.get("contact_count") or 0)
+
+    contact, ctx, cid = _invoke(
+        "apollo.contacts.create",
+        {
+            "first_name": "F6",
+            "last_name": f"FU{suffix}",
+            "email": f"f6.fu.{suffix}@example.com",
+        },
+        ctx=ctx,
+        connector_id=cid,
+    )
+    ccd = contact.data if isinstance(contact.data, dict) else {}
+    entity_id = str(
+        ccd.get("id") or ccd.get("contact_id") or (ccd.get("contact") or {}).get("id") or ""
+    ).strip()
+
+    add = None
+    for attempt in range(1, 4):
+        time.sleep(attempt)
+        add, ctx, cid = _invoke(
+            "apollo.lists.add",
+            {
+                "entity_ids": [entity_id],
+                "label_names": [list_name],
+                "modality": "contacts",
+                "list_id": list_id,
+            },
+            ctx=ctx,
+            connector_id=cid,
+        )
+        if add.success:
             break
-    if count is None:
-        contacts = payload.get("contacts") or payload.get("people") or []
-        count = len(contacts) if isinstance(contacts, list) else None
+    adata = add.data if add and isinstance(add.data, dict) else {}
+    time.sleep(2)
+    stripped = _strip_proof(adata, list_id=list_id)
+    verify = verify_collection_population(
+        invoke_action="apollo.lists.add",
+        result_data=stripped,
+        client=_sb(),
+        org_id=ORG,
+        settings=_SETTINGS,
+        environment_name="production",
+        ctx=ctx,
+    )
+    after, _, _ = _invoke("apollo.lists.list", {"list_id": list_id}, ctx=ctx, connector_id=cid)
+    adata_after = after.data if isinstance(after.data, dict) else {}
+    after_n = int(adata_after.get("contact_count") or len(adata_after.get("contacts") or []) or 0)
+
     return {
-        "success": bool(out.success),
-        "error": out.error_message,
-        "count": count,
-        "raw_keys": sorted(payload.keys())[:40] if isinstance(payload, dict) else [],
+        "vendor": "apollo",
+        "connector_id": cid,
+        "list_name": list_name,
+        "list_id": list_id,
+        "entity_id": entity_id,
+        "create_success": bool(create.success),
+        "add_success": bool(add and add.success),
+        "add_error": add.error_message if add else None,
+        "before_membership": before_n,
+        "after_membership": after_n,
+        "after_read_keys": sorted(adata_after.keys())[:30],
+        "membership_source": adata_after.get("membership_source"),
+        "population_verify": {
+            "verified": verify.verified,
+            "effect": verify.effect,
+            "membership_count": verify.membership_count,
+            "detail": verify.detail,
+            "follow_up_attempted": verify.follow_up_attempted,
+        },
+        "pass": bool(
+            add
+            and add.success
+            and verify.follow_up_attempted
+            and verify.verified
+            and verify.detail == "follow_up_membership_confirmed"
+            and after_n > before_n
+        ),
+    }
+
+
+def _hubspot_case(suffix: str) -> dict:
+    from app.services.collection_population_verify import verify_collection_population
+
+    ctx, cid = _ctx("hubspot")
+    list_name = f"F6-HS-{suffix}"
+    create, ctx, cid = _invoke(
+        "hubspot.lists.create",
+        {"name": list_name},
+        ctx=ctx,
+        connector_id=cid,
+    )
+    cdata = create.data if isinstance(create.data, dict) else {}
+    list_id = str(
+        cdata.get("list_id")
+        or cdata.get("listId")
+        or (cdata.get("list") or {}).get("listId")
+        or cdata.get("id")
+        or ""
+    ).strip()
+
+    before, ctx, cid = _invoke(
+        "hubspot.lists.get", {"list_id": list_id}, ctx=ctx, connector_id=cid
+    )
+    bdata = before.data if isinstance(before.data, dict) else {}
+    before_n = int(bdata.get("size") or bdata.get("membershipCount") or 0)
+
+    # Prefer an existing contact; create if list is empty.
+    search, ctx, cid = _invoke(
+        "hubspot.contacts.search",
+        {"list_all": True, "limit": 5},
+        ctx=ctx,
+        connector_id=cid,
+    )
+    sdata = search.data if isinstance(search.data, dict) else {}
+    contact_id = None
+    for bag_key in ("contacts", "results", "data"):
+        for row in sdata.get(bag_key) or []:
+            if isinstance(row, dict):
+                contact_id = str(row.get("id") or row.get("contact_id") or "").strip()
+                if contact_id:
+                    break
+        if contact_id:
+            break
+    if not contact_id:
+        created, ctx, cid = _invoke(
+            "hubspot.contacts.create",
+            {
+                "properties": {
+                    "email": f"f6.hs.{suffix}@example.com",
+                    "firstname": "F6",
+                    "lastname": f"HS{suffix}",
+                }
+            },
+            ctx=ctx,
+            connector_id=cid,
+        )
+        ccd = created.data if isinstance(created.data, dict) else {}
+        contact_id = str(
+            ccd.get("id")
+            or (ccd.get("contact") or {}).get("id")
+            or ccd.get("contact_id")
+            or ""
+        ).strip()
+
+    add, ctx, cid = _invoke(
+        "hubspot.lists.add_contact",
+        {"list_id": list_id, "contact_id": contact_id},
+        ctx=ctx,
+        connector_id=cid,
+    )
+    adata = add.data if isinstance(add.data, dict) else {}
+    time.sleep(2)
+    stripped = _strip_proof(adata, list_id=list_id)
+    verify = verify_collection_population(
+        invoke_action="hubspot.lists.add_contact",
+        result_data=stripped,
+        client=_sb(),
+        org_id=ORG,
+        settings=_SETTINGS,
+        environment_name="production",
+        ctx=ctx,
+    )
+    after, _, _ = _invoke("hubspot.lists.get", {"list_id": list_id}, ctx=ctx, connector_id=cid)
+    adata_after = after.data if isinstance(after.data, dict) else {}
+    after_n = int(
+        adata_after.get("size")
+        or adata_after.get("membershipCount")
+        or len(adata_after.get("memberships") or [])
+        or 0
+    )
+
+    return {
+        "vendor": "hubspot",
+        "connector_id": cid,
+        "list_name": list_name,
+        "list_id": list_id,
+        "contact_id": contact_id,
+        "create_success": bool(create.success),
+        "add_success": bool(add.success),
+        "add_error": add.error_message,
+        "before_membership": before_n,
+        "after_membership": after_n,
+        "after_read_keys": sorted(adata_after.keys())[:30],
+        "population_verify": {
+            "verified": verify.verified,
+            "effect": verify.effect,
+            "membership_count": verify.membership_count,
+            "detail": verify.detail,
+            "follow_up_attempted": verify.follow_up_attempted,
+        },
+        "pass": bool(
+            add.success
+            and verify.follow_up_attempted
+            and verify.verified
+            and verify.detail == "follow_up_membership_confirmed"
+            and after_n > before_n
+        ),
     }
 
 
 def main() -> int:
     _load_env()
     suffix = uuid.uuid4().hex[:8]
-    list_name = f"F6-PopVerify-{suffix}"
     evidence: dict = {
         "started_at": utcnow(),
         "org_id": ORG,
-        "list_name": list_name,
+        "requirement": "forced_re_read_follow_up_membership_confirmed",
         "live_health_git_sha": None,
-        "pass": False,
     }
-
     try:
         import urllib.request
 
         with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as resp:
-            health = json.loads(resp.read().decode("utf-8"))
-            evidence["live_health_git_sha"] = health.get("git_sha")
+            evidence["live_health_git_sha"] = json.loads(resp.read().decode()).get("git_sha")
     except Exception as exc:  # noqa: BLE001
         evidence["live_health_error"] = str(exc)
 
-    create = _invoke("apollo.lists.create", {"name": list_name, "modality": "contacts"})
-    create_result, ctx = create
-    create_data = create_result.data if isinstance(create_result.data, dict) else {}
-    list_id = str(
-        create_data.get("list_id")
-        or create_data.get("listId")
-        or create_data.get("id")
-        or (create_data.get("list") or {}).get("id")
-        or ""
-    ).strip()
-    evidence["create"] = {
-        "success": bool(create_result.success),
-        "error": create_result.error_message,
-        "list_id": list_id or None,
-        "data_keys": sorted(create_data.keys())[:40],
-    }
-    if not create_result.success or not list_id:
-        evidence["error"] = "apollo.lists.create failed or missing list_id"
-        OUT.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
-        print(json.dumps(evidence, indent=2))
-        return 1
-
-    before = _membership_count(list_id, ctx)
-    evidence["before_vendor"] = before
-
-    # Find or create a contact to add.
-    entity_ids: list[str] = []
-    search, _ = _invoke(
-        "apollo.contacts.search",
-        {"q_keywords": "gravitre", "page": 1, "per_page": 5},
-    )
-    search_data = search.data if isinstance(search.data, dict) else {}
-    for bag_key in ("contacts", "people", "results"):
-        for c in search_data.get(bag_key) or []:
-            if not isinstance(c, dict):
-                continue
-            cid = str(c.get("id") or c.get("contact_id") or c.get("person_id") or "").strip()
-            if cid:
-                entity_ids.append(cid)
-            if len(entity_ids) >= 1:
-                break
-        if entity_ids:
-            break
-    if not entity_ids:
-        created_contact, _ = _invoke(
-            "apollo.contacts.create",
-            {
-                "first_name": "F6",
-                "last_name": f"Verify{suffix}",
-                "email": f"f6.verify.{suffix}@example.com",
-            },
-        )
-        cdata = created_contact.data if isinstance(created_contact.data, dict) else {}
-        cid = str(
-            cdata.get("id")
-            or cdata.get("contact_id")
-            or (cdata.get("contact") or {}).get("id")
-            or ""
-        ).strip()
-        evidence["contact_create"] = {
-            "success": bool(created_contact.success),
-            "error": created_contact.error_message,
-            "contact_id": cid or None,
-        }
-        if cid:
-            entity_ids.append(cid)
-
-    if not entity_ids:
-        evidence["error"] = "no entity_ids for apollo.lists.add"
-        OUT.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
-        print(json.dumps(evidence, indent=2))
-        return 1
-
-    add_result, add_ctx = _invoke(
-        "apollo.lists.add",
-        {
-            "entity_ids": entity_ids,
-            "label_names": [list_name],
-            "modality": "contacts",
-            "list_id": list_id,
-        },
-    )
-    add_data = add_result.data if isinstance(add_result.data, dict) else {}
-    # Ensure follow-up path has list_id even if vendor omits it from add response.
-    verify_payload = {**add_data, "list_id": list_id}
-    # Strip inline membership proof so verify must follow up (the F6 claim).
-    for k in ("contact_count", "contacts_count", "member_count", "added_count", "contacts", "people"):
-        verify_payload.pop(k, None)
-
-    from app.services.collection_population_verify import (
-        apply_population_verify_to_status,
-        verify_collection_population,
-    )
-
-    verify = verify_collection_population(
-        invoke_action="apollo.lists.add",
-        result_data=verify_payload,
-        client=_sb(),
-        org_id=ORG,
-        settings=_SETTINGS,
-        environment_name="production",
-        ctx=add_ctx,
-    )
-    status, effect, pop = apply_population_verify_to_status(
-        status="completed",
-        invoke_action="apollo.lists.add",
-        result_data=verify_payload,
-        client=_sb(),
-        org_id=ORG,
-        settings=_SETTINGS,
-        environment_name="production",
-        ctx=add_ctx,
-    )
-
-    after = _membership_count(list_id, add_ctx)
-    evidence["add"] = {
-        "success": bool(add_result.success),
-        "error": add_result.error_message,
-        "entity_ids": entity_ids,
-        "data_keys": sorted(add_data.keys())[:40],
-    }
-    evidence["population_verify"] = {
-        "verified": verify.verified,
-        "effect": verify.effect,
-        "membership_count": verify.membership_count,
-        "detail": verify.detail,
-        "follow_up_attempted": verify.follow_up_attempted,
-        "status_after_apply": status,
-        "effect_override": effect,
-        "apply_detail": None if pop is None else pop.detail,
-    }
-    evidence["after_vendor"] = after
-
-    # Persist a mini run id for evidence trail (finalize via connector honesty).
-    from app.services.connector_output_refs import collect_connector_output_refs, primary_vendor_url
-    from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-    from app.services.list_populate_honesty import apply_connector_run_honesty
-    from app.workflows.repository import create_run, create_step, update_step, get_run_with_steps
-
-    client = _sb()
-    created = create_run(
-        client,
-        org_id=ORG,
-        triggered_by=ACTOR,
-        definition_snapshot={
-            "name": f"F6 population verify {suffix}",
-            "source": "f6_collection_population_verify_live",
-            "steps": [
-                {"id": "s0", "name": "Create list", "type": "invoke_tool"},
-                {"id": "s1", "name": "Add contacts", "type": "invoke_tool"},
-            ],
-        },
-        parameters={
-            "source": "f6_collection_population_verify_live",
-            "expects_list_population": True,
-            "list_id": list_id,
-            "list_name": list_name,
-        },
-        run_hash=f"f6-pop-{uuid.uuid4().hex[:16]}",
-        workflow_id=None,
-        environment_name="production",
-        trigger_type="api",
-        run_type="execute",
-    )
-    run_id = str(created["id"])
-    now = utcnow()
-    for i, (name, action, data, ok) in enumerate(
-        [
-            ("Create list", "apollo.lists.create", create_data, create_result.success),
-            ("Add contacts", "apollo.lists.add", {**add_data, "list_id": list_id}, add_result.success),
-        ]
-    ):
-        row = create_step(
-            client,
-            run_id,
-            ORG,
-            step_id=f"s{i}",
-            step_index=i,
-            step_name=name,
-            step_type="invoke_tool",
-        )
-        update_step(
-            client,
-            str(row["id"]),
-            status="completed" if ok else "failed",
-            output_snapshot={
-                "invoke_action": action,
-                "success": bool(ok),
-                **(data if isinstance(data, dict) else {}),
-                "population_verify": evidence["population_verify"],
-            },
-            started_at=now,
-            completed_at=now,
-            error_message=None,
-        )
-
-    loaded = get_run_with_steps(client, ORG, run_id, "production") or {}
-    steps = loaded.get("steps") or []
-    refs = collect_connector_output_refs(steps)
-    vendor_url = primary_vendor_url(refs)
-    coerced, reason = apply_connector_run_honesty(
-        status="completed" if add_result.success else "failed",
-        step_rows=steps,
-        output_refs=refs,
-        parameters={"expects_list_population": True},
-    )
-    finalize_execution_outcome(
-        client,
-        org_id=ORG,
-        status=coerced,
-        source="api",
-        actor_id=ACTOR,
-        run_id=run_id,
-        verified_output=VerifiedOutputRef(
-            result_url=f"/runs/{run_id}",
-            external_url=vendor_url,
-            entity_type="workflow_run",
-            entity_id=run_id,
-            summary=f"F6 population verify list_id={list_id}",
-        ),
-        metadata={
-            "path": "f6_collection_population_verify_live",
-            "population_verify": evidence["population_verify"],
-            "list_populate_honesty_reason": reason,
-        },
-    )
-    evidence["run_id"] = run_id
-    evidence["coerced_status"] = coerced
-    evidence["honesty_reason"] = reason
+    evidence["apollo"] = _apollo_case(suffix)
+    evidence["hubspot"] = _hubspot_case(suffix)
     evidence["finished_at"] = utcnow()
-    evidence["pass"] = bool(
-        add_result.success
-        and verify.follow_up_attempted
-        and verify.verified
-        and verify.detail == "follow_up_membership_confirmed"
-        and (after.get("count") or 0) > (before.get("count") or 0)
+    evidence["pass"] = bool(evidence["apollo"].get("pass") and evidence["hubspot"].get("pass"))
+    evidence["verdict"] = (
+        "VERIFIED — both vendors follow_up_membership_confirmed with non-empty re-read"
+        if evidence["pass"]
+        else "FAIL — see vendor pass flags / population_verify.detail"
     )
-    # Soft pass: follow-up ran and after > before even if verify detail differs.
-    if not evidence["pass"] and add_result.success and verify.follow_up_attempted:
-        evidence["pass_partial"] = bool(
-            verify.verified or ((after.get("count") or 0) > (before.get("count") or 0))
-        )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     print(json.dumps(evidence, indent=2))

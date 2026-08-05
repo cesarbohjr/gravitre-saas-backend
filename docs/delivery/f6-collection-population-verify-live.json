@@ -1,46 +1,84 @@
 {
-  "started_at": "2026-08-05T09:28:33.560601+00:00",
-  "finished_at": "2026-08-05T09:32:30Z",
-  "live_health_git_sha": "882eed34af252f1a8ad106e35e2158432b78d9dd",
+  "started_at": "2026-08-05T09:48:41.491628+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-  "run_id": "2a532154-f638-47bc-ac6f-b3eb11b0876f",
-  "list_id": "6a7302268958060010fbfe76",
-  "list_name": "F6-FollowUp-4d1c3635",
-  "entity_id": "6a73022b8958060010fbff1a",
-  "before_vendor": {
-    "membership_count": 0,
-    "note": "New Apollo label created empty; lists.list returns empty payload keys"
+  "requirement": "forced_re_read_follow_up_membership_confirmed",
+  "live_health_git_sha": "0ccebea8beca49f08ebd9962851a689500262f8b",
+  "apollo": {
+    "vendor": "apollo",
+    "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "list_name": "F6-FollowUp-fe686fce",
+    "list_id": "6a7307072b39500018e0456c",
+    "entity_id": "6a730715412fcd001c702ea3",
+    "create_success": true,
+    "add_success": true,
+    "add_error": null,
+    "before_membership": 0,
+    "after_membership": 1,
+    "after_read_keys": [
+      "breadcrumbs",
+      "clay_records",
+      "contact_count",
+      "contact_ids",
+      "contacts",
+      "disable_eu_prospecting",
+      "enriched_records",
+      "entity_ids",
+      "has_join",
+      "hubspot_contact_properties",
+      "list_id",
+      "member_count",
+      "membership_source",
+      "num_fetch_result",
+      "pagination",
+      "partial_results_limit",
+      "partial_results_only",
+      "primary_contact_id",
+      "primary_email",
+      "record_count",
+      "records",
+      "result_url"
+    ],
+    "membership_source": "contacts.search_by_label",
+    "population_verify": {
+      "verified": true,
+      "effect": "created",
+      "membership_count": 1,
+      "detail": "follow_up_membership_confirmed",
+      "follow_up_attempted": true
+    },
+    "pass": true
   },
-  "add_success": true,
-  "add_error": null,
-  "after_vendor_write_response": {
-    "added_count": 1,
-    "contact_count": 1,
-    "labels_cached_count": 0,
-    "entity_ids": ["6a73022b8958060010fbff1a"],
-    "result_url": "https://app.apollo.io/#/contacts"
+  "hubspot": {
+    "vendor": "hubspot",
+    "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "list_name": "F6-HS-fe686fce",
+    "list_id": "35",
+    "contact_id": "270287894506",
+    "create_success": true,
+    "add_success": true,
+    "add_error": null,
+    "before_membership": 0,
+    "after_membership": 1,
+    "after_read_keys": [
+      "contact_count",
+      "list",
+      "list_id",
+      "member_count",
+      "membershipCount",
+      "memberships",
+      "result_url",
+      "size"
+    ],
+    "population_verify": {
+      "verified": true,
+      "effect": "created",
+      "membership_count": 1,
+      "detail": "follow_up_membership_confirmed",
+      "follow_up_attempted": true
+    },
+    "pass": true
   },
-  "population_verify_production_path": {
-    "verified": true,
-    "effect": "created",
-    "membership_count": 1,
-    "detail": "write_response_membership_proof",
-    "follow_up_attempted": false,
-    "note": "apollo.lists.add stamps entity_ids/added_count/contact_count on the write payload; verify accepts that as membership proof without vendor re-read"
-  },
-  "population_verify_forced_follow_up": {
-    "list_id": "6a73012b33e2a50010db7feb",
-    "note": "Separate probe: stripped entity_ids/counts from write payload so verify must call apollo.lists.list",
-    "verified": false,
-    "effect": "unknown",
-    "membership_count": 0,
-    "detail": "follow_up_empty_membership",
-    "follow_up_attempted": true,
-    "gap": "apollo.lists.list follow-up returns success with empty body; HubSpot path calls hubspot.lists.get which is not registered in tool_service (ToolNotFoundError)"
-  },
-  "coerced_status": "completed",
-  "pass_write": true,
-  "pass_follow_up_re_read": false,
-  "verdict": "PARTIAL — real Apollo membership write confirmed (run_id + before 0 → write contact_count=1). collection_population_verify production path PASS via write_response_membership_proof. Forced vendor re-read follow-up runs but does not confirm population (Apollo list read empty; HubSpot lists.get missing)."
+  "finished_at": "2026-08-05T09:49:59.149478+00:00",
+  "pass": true,
+  "verdict": "VERIFIED \u2014 both vendors follow_up_membership_confirmed with non-empty re-read"
 }

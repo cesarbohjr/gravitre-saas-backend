@@ -50,6 +50,8 @@ from app.connectors.hubspot import (
     get_company,
     get_contact,
     get_deal,
+    get_list as hubspot_get_list,
+    get_list_memberships as hubspot_get_list_memberships,
     get_ticket as hubspot_get_ticket,
     list_contacts,
     list_deal_pipelines,
@@ -695,6 +697,72 @@ def _exec_hubspot_lists_add_contact(ctx: ToolContext, params: dict[str, Any]) ->
             # Membership proof for list-populate honesty (count > 0).
             "added_count": 1,
             "contact_count": 1,
+        },
+    )
+
+
+def _exec_hubspot_lists_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Read HubSpot list metadata + membership for F6 population verify."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    list_id = params.get("list_id") or params.get("listId") or params.get("id")
+    if not list_id:
+        raise ToolValidationError("hubspot.lists.get requires list_id")
+    limit = int(params.get("limit") or 100)
+    try:
+        list_payload = hubspot_get_list(token, str(list_id))
+        memberships = hubspot_get_list_memberships(token, str(list_id), limit=limit)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+
+    list_obj = list_payload.get("list") if isinstance(list_payload, dict) else None
+    if not isinstance(list_obj, dict) and isinstance(list_payload, dict):
+        list_obj = list_payload
+
+    results = []
+    if isinstance(memberships, dict):
+        raw_results = memberships.get("results")
+        if isinstance(raw_results, list):
+            results = [r for r in raw_results if isinstance(r, dict)]
+
+    size: int | None = None
+    if isinstance(memberships, dict) and memberships.get("total") is not None:
+        try:
+            size = int(memberships.get("total"))
+        except (TypeError, ValueError):
+            size = None
+    if size is None and isinstance(list_obj, dict):
+        for key in ("size", "membershipCount", "hs_list_size"):
+            if list_obj.get(key) is not None:
+                try:
+                    size = int(list_obj.get(key))
+                    break
+                except (TypeError, ValueError):
+                    pass
+        addl = list_obj.get("additionalProperties")
+        if size is None and isinstance(addl, dict) and addl.get("hs_list_size") is not None:
+            try:
+                size = int(addl.get("hs_list_size"))
+            except (TypeError, ValueError):
+                size = None
+    if size is None:
+        size = len(results)
+
+    from app.services.hubspot_urls import list_membership_url
+
+    result_url = list_membership_url(_hubspot_hub_id(ctx, cid), list_id=str(list_id))
+    return NormalizedResult(
+        success=True,
+        action="hubspot.lists.get",
+        connector_id=cid,
+        data={
+            "list_id": str(list_id),
+            "list": list_obj if isinstance(list_obj, dict) else list_payload,
+            "memberships": results,
+            "size": int(size),
+            "membershipCount": int(size),
+            "contact_count": int(size),
+            "member_count": int(size),
+            "result_url": result_url,
         },
     )
 
@@ -4114,6 +4182,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
     "hubspot.lists.create": _exec_hubspot_lists_create,
+    "hubspot.lists.get": _exec_hubspot_lists_get,
     "hubspot.companies.search": _exec_hubspot_companies_search,
     "hubspot.companies.create": _exec_hubspot_companies_create,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,

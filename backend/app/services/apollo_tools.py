@@ -329,12 +329,90 @@ def _exec_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
 
 
 def _exec_lists_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """List Apollo labels, or resolve membership when ``list_id`` is provided.
+
+    Root cause of empty-body follow-ups (F6): callers passed ``list_id`` expecting
+    members, but this action only called ``GET /labels`` (label catalog). That
+    endpoint ignores list_id, often returns sparse/empty payloads (known Apollo
+    quirk — see create_label duplicate path), and never returns membership.
+    Membership for a label must come from ``POST /contacts/search`` with
+    ``contact_label_ids``.
+    """
     cid, headers = _session(ctx, params)
+    list_id = str(
+        params.get("list_id") or params.get("listId") or params.get("label_id") or ""
+    ).strip()
+
+    if list_id:
+        per_page = int(params.get("per_page") or params.get("page_size") or params.get("limit") or 25)
+        per_page = min(max(per_page, 1), 100)
+        try:
+            data = search_contacts(
+                headers,
+                payload={
+                    "contact_label_ids": [list_id],
+                    "page": 1,
+                    "per_page": per_page,
+                },
+            )
+        except ApolloAPIError as exc:
+            raise _handle_error(exc) from exc
+        contacts = data.get("contacts") if isinstance(data, dict) else None
+        if not isinstance(contacts, list):
+            contacts = []
+        # Prefer Apollo pagination totals when present; else page length.
+        total = None
+        if isinstance(data, dict):
+            for key in ("total_entries", "total", "pagination"):
+                raw = data.get(key)
+                if isinstance(raw, dict):
+                    for nested in ("total_entries", "total", "total_pages"):
+                        if raw.get(nested) is not None and nested != "total_pages":
+                            try:
+                                total = int(raw.get(nested))
+                                break
+                            except (TypeError, ValueError):
+                                pass
+                    if total is not None:
+                        break
+                elif raw is not None and key != "pagination":
+                    try:
+                        total = int(raw)
+                        break
+                    except (TypeError, ValueError):
+                        pass
+        count = int(total) if total is not None else len(contacts)
+        payload = _with_result_url(data if isinstance(data, dict) else {}, "https://app.apollo.io/#/contacts")
+        if not isinstance(payload, dict):
+            payload = {}
+        payload.update(
+            {
+                "list_id": list_id,
+                "contacts": contacts,
+                "contact_count": count,
+                "member_count": count,
+                "membership_source": "contacts.search_by_label",
+            }
+        )
+        payload = _stamp_membership_ids(payload, contacts)
+        return NormalizedResult(success=True, action="apollo.lists.list", connector_id=cid, data=payload)
+
     try:
         data = list_labels(headers)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="apollo.lists.list", connector_id=cid, data=data)
+    labels = _label_rows(data)
+    # Normalize sparse GET /labels responses so callers never see a bare {}.
+    payload: dict[str, Any] = {
+        "labels": labels,
+        "label_count": len(labels),
+        "membership_source": "labels.list",
+    }
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key not in payload:
+                payload[key] = value
+    return NormalizedResult(success=True, action="apollo.lists.list", connector_id=cid, data=payload)
 
 
 def _label_rows(payload: Any) -> list[dict[str, Any]]:
