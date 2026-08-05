@@ -255,6 +255,27 @@ class ChatOrchestrationService:
             pending_type = str(pending.get("type") or "")
             pending_status = str(pending.get("status") or "")
 
+        # Pack-common MSP Clay→HubSpot enrich: never invent 2× Search contacts.
+        # Intercept even when LIVE is off / deferred — approve-first draft workflow.
+        active_orch = pending_type == "connector_orchestration" and pending_status in {
+            "awaiting_plan_confirm",
+            "awaiting_step_confirm",
+            "running",
+        }
+        active_create_wf = (
+            pending_type == "create_workflow" and pending_status == "awaiting_confirm"
+        )
+        if not active_orch and not active_create_wf:
+            pack_enrich = await self._try_present_msp_enrich_workflow(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                message=message,
+                connected_integrations=connected_integrations,
+                client=client,
+            )
+            if pack_enrich is not None:
+                return pack_enrich
+
         # Module B: do NOT silent-supersede awaiting_plan/step orch. That bypass
         # cleared pending before the pending-reply classifier and answered the new
         # ask with no abandon/hold prompt (broke orch-seeded unrelated battery cases).
@@ -530,6 +551,46 @@ class ChatOrchestrationService:
             }
 
         if pending_type != "connector_orchestration":
+            # F1: retrieve-before-generate — never invent orch steps when a pack /
+            # installed workflow plan (or ambiguous clarify) applies.
+            from app.services.retrieve_plan_gate import (
+                retrieve_plan_or_none,
+                stage_retrieved_plan_turn,
+            )
+
+            retrieved = retrieve_plan_or_none(
+                message,
+                org_id=org_id,
+                connected_integrations=connected_integrations,
+                client=client,
+                require_pack_install=True,
+            )
+            if retrieved is not None:
+                if retrieved.block_fabrication and retrieved.kind == "clarify":
+                    return await stage_retrieved_plan_turn(
+                        retrieved,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                        message=message,
+                        task_state=task_state,
+                        client=client,
+                        settings=self.settings,
+                    )
+                if retrieved.kind in {
+                    "pack_common_msp_enrich",
+                    "pack_common_list_create",
+                    "installed_workflow",
+                }:
+                    return await stage_retrieved_plan_turn(
+                        retrieved,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                        message=message,
+                        task_state=task_state,
+                        client=client,
+                        settings=self.settings,
+                    )
+
             steps = await self._build_plan(message, connected_integrations, org_id, user_id, classification)
             if len(steps) < 2:
                 return None
@@ -921,6 +982,45 @@ class ChatOrchestrationService:
                 "task_label": "Multi-step orchestration blocked",
             },
         }
+
+    async def _try_present_msp_enrich_workflow(
+        self,
+        *,
+        conversation_id: str,
+        org_id: str,
+        message: str,
+        connected_integrations: list[str],
+        client: Any,
+    ) -> dict[str, Any] | None:
+        """Stage pack MSP enrich via F1/F5 retrieve gate (install-checked)."""
+        from app.services.retrieve_plan_gate import (
+            retrieve_plan_or_none,
+            stage_retrieved_plan_turn,
+        )
+
+        retrieved = retrieve_plan_or_none(
+            message or "",
+            org_id=org_id,
+            connected_integrations=connected_integrations,
+            client=client,
+            require_pack_install=True,
+        )
+        if retrieved is None:
+            return None
+        if retrieved.kind not in {
+            "pack_common_msp_enrich",
+            "clarify",
+        }:
+            return None
+        return await stage_retrieved_plan_turn(
+            retrieved,
+            org_id=org_id,
+            conversation_id=conversation_id,
+            message=message or "",
+            task_state={},
+            client=client,
+            settings=self.settings,
+        )
 
     async def _present_plan_confirm(
         self,

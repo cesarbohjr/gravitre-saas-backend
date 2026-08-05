@@ -7,7 +7,12 @@ from typing import Any
 
 LIST_CREATE_INTENT = re.compile(
     # Allow a short vendor/adj span: "create an Apollo contact list", "make a new list".
-    r"\b(create|new|add|make)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,3}(?:contact\s+)?(?:list|group|segment)\b",
+    # F3: also "set up" / "spin up" / desire forms ("I want a … segment named X").
+    r"(?:"
+    r"\b(?:create|new|add|make|build|start|(?:set|spin)\s+up)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,3}(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r"|"
+    r"\b(?:i\s+)?(?:want|need)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,4}(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r")",
     re.I,
 )
 

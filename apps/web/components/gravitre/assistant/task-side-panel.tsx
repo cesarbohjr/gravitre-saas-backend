@@ -196,6 +196,8 @@ export function TaskSidePanel({
         className,
       )}
       aria-label="Task progress panel"
+      data-testid="task-side-panel"
+      data-step-count={stepCount}
     >
       <PanelSection title="Progress" meta={stepCounter}>
         <ProgressChecklist steps={steps} />

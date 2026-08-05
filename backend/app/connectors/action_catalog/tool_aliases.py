@@ -45,10 +45,28 @@ def resolve_registry_action(action: str, registered: set[str]) -> str:
     (catalog-HTTP must not win). Other Google vendors keep their long-form
     dedicated handlers (e.g. ``google_drive.search_files``).
     Exact ``outlook.*`` remaps prefer microsoft365 executors (STA-337).
+    F8 short↔canonical id aliases keep legacy callers working.
     """
+    from app.connectors.action_catalog.action_id_aliases import (
+        ACTION_ID_ALIASES,
+        resolve_canonical_action_id,
+    )
+
     exact = REGISTRY_ACTION_ALIASES.get(action)
     if exact and exact in registered:
         return exact
+
+    # Prefer currently-registered short ids; accept canonical when present.
+    if action in registered:
+        # Fall through to google prefix logic only when needed below.
+        pass
+    else:
+        canonical = resolve_canonical_action_id(action)
+        if canonical in registered:
+            return canonical
+        for alias, canon in ACTION_ID_ALIASES.items():
+            if action == canon and alias in registered:
+                return alias
 
     vendor, _, rest = action.partition(".")
     alias_vendor = REGISTRY_VENDOR_PREFIX_ALIASES.get(vendor)

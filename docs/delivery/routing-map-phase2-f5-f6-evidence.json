@@ -1,0 +1,33 @@
+{
+  "phase": 2,
+  "items": ["F5", "F6"],
+  "date": "2026-08-05",
+  "evidence_class": "unit_pytest",
+  "pytest": {
+    "files": [
+      "tests/services/test_collection_population_verify.py",
+      "tests/services/test_retrieve_plan_gate.py",
+      "tests/services/test_unified_turn_msp_try_chip_live_path.py"
+    ],
+    "result": "14 passed (includes F5 install gate + F6 population verify)"
+  },
+  "F5": {
+    "code": "backend/app/services/retrieve_plan_gate.py require_pack_install=True at LIVE/orch/ReAct call sites",
+    "behavior": "pack not installed → clarify (block_fabrication); lookup failure fail-open (None)"
+  },
+  "F6": {
+    "code": "backend/app/services/collection_population_verify.py",
+    "wired": [
+      "chat_connector_execution_service._finalize_connector_run",
+      "extension_bridge_service._run_confirmed_extension_action",
+      "workflows already use list_populate_honesty.apply_connector_run_honesty"
+    ],
+    "unit": {
+      "membership_proof_created": true,
+      "empty_membership_partial_success": true
+    },
+    "live_write_verify": "PARTIAL — unit proof for membership_proof→created and empty→partial_success; vendor follow-up read needs connected Apollo/HubSpot live write (not run this pass)"
+  },
+  "prod_tip_at_phase2": "882eed34af252f1a8ad106e35e2158432b78d9dd @ https://api.gravitre.app/health (includes Phase 1 parent cb62f2d9)",
+  "phase1_deploy_note": "Phase 1 CI run 30988877306 failed wait gate; Phase 2 tip 882eed34 is live and contains F1–F6 code."
+}

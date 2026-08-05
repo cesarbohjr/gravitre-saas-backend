@@ -261,6 +261,22 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["list_id", "contact_id"],
     },
+    "hubspot.lists.get": {
+        "type": "object",
+        "properties": {
+            "list_id": {
+                "type": "string",
+                "description": "HubSpot ILS list id to read (membership size + sample members).",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Max membership rows to return (default 100, max 250).",
+                "default": 100,
+            },
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["list_id"],
+    },
     "hubspot.lists.create": {
         "type": "object",
         "properties": {
@@ -586,7 +602,22 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     },
     "apollo.lists.list": {
         "type": "object",
-        "properties": {"connector_id": _CONNECTOR_ID},
+        "properties": {
+            "list_id": {
+                "type": "string",
+                "description": (
+                    "When set, return membership for this Apollo label id via "
+                    "contacts search (contact_count + contacts). Without it, "
+                    "returns the label catalog from GET /labels."
+                ),
+            },
+            "per_page": {
+                "type": "integer",
+                "description": "Page size when resolving membership for list_id (default 25).",
+                "default": 25,
+            },
+            "connector_id": _CONNECTOR_ID,
+        },
         "required": [],
     },
     "apollo.contacts.search": {
@@ -712,6 +743,40 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "connector_id": _CONNECTOR_ID,
         },
         "required": ["subject"],
+    },
+    # F8 / Phase 1 high-risk additions
+    "github.issues.list": {
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "state": {"type": "string", "enum": ["open", "closed", "all"], "default": "open"},
+            "query": {"type": "string", "description": "Optional search keywords."},
+            "limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "clickup.tasks.list": {
+        "type": "object",
+        "properties": {
+            "list_id": {"type": "string", "description": "Optional ClickUp list id."},
+            "team_id": {"type": "string", "description": "Optional ClickUp team/workspace id."},
+            "include_closed": {"type": "boolean", "default": False},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "salesforce.contacts.search": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Contact name fragment."},
+            "email": {"type": "string"},
+            "query": {"type": "string", "description": "Alias for name."},
+            "soql": {"type": "string", "description": "Optional full SOQL override."},
+            "limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
     },
 }
 

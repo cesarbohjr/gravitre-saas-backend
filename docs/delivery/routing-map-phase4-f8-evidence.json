@@ -1,0 +1,18 @@
+{
+  "phase": 4,
+  "items": ["F8"],
+  "date": "2026-08-05",
+  "before_after": {
+    "when_why_descriptions_pct": {"before": 0.0, "after": 100.0, "n": 689},
+    "writes_unmarked_destructive": {"before": 6, "after": 0},
+    "action_parameters_high_risk_added": [
+      "github.issues.list",
+      "clickup.tasks.list",
+      "salesforce.contacts.search"
+    ],
+    "short_id_aliases": 28,
+    "mcp_hints": "readOnlyHint/destructiveHint derived from kind/destructive in ActionSpec.to_dict"
+  },
+  "standard_doc": "docs/engineering/connector-action-schema-standard.md",
+  "ci": "backend/tests/connectors/test_action_schema_standard_lint.py"
+}

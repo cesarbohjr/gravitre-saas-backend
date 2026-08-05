@@ -447,7 +447,28 @@ def main() -> int:
                     latest_commit=args.latest_commit,
                 )
             except (urllib.error.HTTPError, RuntimeError) as exc:
-                print(f"GraphQL deploy failed ({exc}); falling back to railway redeploy CLI.", file=sys.stderr)
+                # CRITICAL: `railway redeploy` rebuilds the *currently running*
+                # deployment, not --commit-sha. Falling back after GraphQL 403
+                # left prod on a stale tip through full wait cycles (Phase 1
+                # cb62f2d9 stuck on 554403df). Fail hard when a tip SHA was
+                # requested; only allow CLI redeploy for explicit --redeploy-cli
+                # or --latest-commit without a pin.
+                if args.commit_sha and not args.latest_commit:
+                    print(
+                        f"GraphQL deploy failed ({exc}). Refusing CLI redeploy "
+                        f"fallback — it would re-ship the live tip, not "
+                        f"{args.commit_sha}. Fix RAILWAY_TOKEN (account/team "
+                        f"Bearer with deploy scope) or bump "
+                        f"backend/.railway-deploy-stamp so GitHub auto-deploy "
+                        f"builds the tip.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                print(
+                    f"GraphQL deploy failed ({exc}); falling back to railway redeploy CLI "
+                    f"(latest-commit / unpinned path only).",
+                    file=sys.stderr,
+                )
                 deployment_id = redeploy_via_cli(args.service, token)
                 ids = {"project_id": "", "environment_id": "", "service_id": args.service}
         report["deployment_id"] = deployment_id

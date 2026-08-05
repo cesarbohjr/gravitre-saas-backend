@@ -369,6 +369,34 @@ def add_contact_to_list(access_token: str, list_id: str, contact_id: str) -> dic
     )
 
 
+def get_list(access_token: str, list_id: str) -> dict[str, Any]:
+    """Fetch a HubSpot CRM list by ILS id (GET /crm/v3/lists/{listId})."""
+    if not list_id:
+        raise HubSpotAPIError("list_id is required")
+    return _request("GET", f"/crm/v3/lists/{list_id}", access_token)
+
+
+def get_list_memberships(
+    access_token: str,
+    list_id: str,
+    *,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Fetch list memberships (GET /crm/v3/lists/{listId}/memberships).
+
+    Response may include ``total`` plus a page of ``results`` with ``recordId``.
+    """
+    if not list_id:
+        raise HubSpotAPIError("list_id is required")
+    lim = min(max(int(limit), 1), 250)
+    return _request(
+        "GET",
+        f"/crm/v3/lists/{list_id}/memberships",
+        access_token,
+        params={"limit": lim},
+    )
+
+
 def create_list(
     access_token: str,
     name: str,

@@ -1,0 +1,91 @@
+{
+  "probe": "chat_progress_ux_v1_v2_live",
+  "checked_at": "2026-08-04T21:48:50.126095+00:00",
+  "base_url": "https://api.gravitre.app",
+  "min_commit": "1fea14ff",
+  "threshold": 3,
+  "health": {
+    "http": 200,
+    "git_sha": "45b013b8e66af6ae985ac0f8a5721c7f1b980141"
+  },
+  "tip_includes_progress_ux": true,
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "seeded_multi_step": {
+    "conversation_id": "a9f2cc84-7efc-4b8f-ba6e-5d5f6a63bb7c",
+    "step_count": 3,
+    "labels": [
+      "Create contact list",
+      "Search contacts",
+      "Add contacts to list"
+    ]
+  },
+  "conversation_state_steps": {
+    "http": 200,
+    "pending_status": "awaiting_plan_confirm",
+    "step_count": 3
+  },
+  "under_threshold": {
+    "verdict": "PASS",
+    "conversation_id": "fd168be6-5bef-4733-b059-e3dc78172542",
+    "http": 200,
+    "step_count": 0,
+    "show_panel": false,
+    "best_steps": [
+      "Classifying request (simple)",
+      "Checking Apollo, Hubspot",
+      "Loading memory and knowledge"
+    ],
+    "labels": {
+      "verdict": "PASS",
+      "step_count": 0,
+      "show_panel": false,
+      "samples": []
+    }
+  },
+  "multi_step": {
+    "verdict": "PASS",
+    "conversation_id": "a9f2cc84-7efc-4b8f-ba6e-5d5f6a63bb7c",
+    "http": 200,
+    "step_count": 3,
+    "show_panel": true,
+    "best_steps": [
+      "Step 1/3: Create contact list",
+      "Step 2/3: Search contacts",
+      "Step 3/3: Add contacts to list"
+    ],
+    "pending_step_labels": [
+      "Create contact list",
+      "Search contacts",
+      "Add contacts to list"
+    ],
+    "named_labels": {
+      "verdict": "PASS",
+      "sample_count": 3,
+      "samples": [
+        "Step 1/3: Create contact list",
+        "Step 2/3: Search contacts",
+        "Step 3/3: Add contacts to list"
+      ],
+      "generic_hits": []
+    }
+  },
+  "outputs_identity": {
+    "verdict": "PASS",
+    "http": 200,
+    "total": 40,
+    "task_scoped": [],
+    "task_scoped_count": 0,
+    "filter_sample_conversation_id": "3e0d1b83-f40b-4e8b-b17a-5fbbbf15505b",
+    "filter_sample_count": 1,
+    "panel_matches_activity_filter": true,
+    "note": "TaskSidePanel Outputs uses businessOutcomesApi.list filtered by conversationId \u2014 same source as Activity/Outcomes."
+  },
+  "ui_harness": {
+    "verdict": "PASS",
+    "note": "Playwright e2e/task-side-panel proves panel on (\u22653) / absent (<3) + Progress checklist",
+    "path": "/e2e/task-side-panel",
+    "artifact": "docs/delivery/_artifacts/task-side-panel-harness.png"
+  },
+  "overall": "PASS"
+}

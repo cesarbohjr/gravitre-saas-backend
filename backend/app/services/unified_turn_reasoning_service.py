@@ -68,6 +68,8 @@ class UnifiedTurnShadowResult:
     latency_breakdown: dict[str, Any] = field(default_factory=dict)
     # R1: why LIVE returned None (intentional tool defer vs error). Empty when served.
     fallthrough_reason: str | None = None
+    # F2: structured defer signal from LIVE reasoning (not bare vendor keyword match).
+    needs_tool_sse: bool = False
     # Org connector inventory snapshot at turn time (audit/debug).
     connected_integrations: list[str] = field(default_factory=list)
     qa_force_tool: str | None = None
@@ -592,6 +594,7 @@ async def run_unified_turn_shadow(
                 settings=active,
             )
         result.outcome_kind = "connector_tool_proposal"
+        result.needs_tool_sse = True
         result.tool_name = tool_name
         result.tool_invoke_action = invoke or None
         result.tool_arguments = args
@@ -685,8 +688,10 @@ def _mark_live_fallthrough(
     result: UnifiedTurnShadowResult,
     reason: str,
 ) -> UnifiedTurnShadowResult:
+    from app.services.unified_turn_fallthrough import assert_known_fallthrough_reason
+
     result.live_served = False
-    result.fallthrough_reason = reason
+    result.fallthrough_reason = assert_known_fallthrough_reason(reason)
     return result
 
 
@@ -897,6 +902,51 @@ async def apply_unified_turn_live(
         )
         return None
 
+    # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
+    # ambiguous clarify). Runs before shadow + orch so classical never invents
+    # steps when a retrieved plan exists.
+    if conversation_id:
+        from app.services.retrieve_plan_gate import (
+            retrieve_plan_or_none,
+            stage_retrieved_plan_turn,
+        )
+
+        retrieved = retrieve_plan_or_none(
+            message or "",
+            org_id=org_id,
+            connected_integrations=list(connected_integrations or []),
+            client=client,
+            require_pack_install=True,  # F5: pack must be installed
+        )
+        if retrieved is not None:
+            staged = await stage_retrieved_plan_turn(
+                retrieved,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                message=message or "",
+                task_state=task_state,
+                client=client,
+                settings=active,
+            )
+            audit = UnifiedTurnShadowResult(
+                outcome_kind=str(  # type: ignore[arg-type]
+                    staged.get("unified_outcome_kind") or "confirmation_request"
+                ),
+                user_message=str(staged.get("message") or ""),
+                live_served=True,
+                model="retrieve_plan_gate",
+                connected_integrations=list(connected_integrations or []),
+                needs_tool_sse=False,
+            )
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=audit,
+            )
+            return staged
+
     result = await run_unified_turn_shadow(
         org_id=org_id,
         user_id=user_id,
@@ -921,41 +971,23 @@ async def apply_unified_turn_live(
         )
         return None
 
-    from app.services.unified_turn_classical_fallback import (
-        should_defer_unified_turn_live_to_classical,
+    # Pack-common intents must run BEFORE classical defer. The AI Chat TRY prompt
+    # contains "Apollo" / "contact list", which match message_requires_classical_tool_sse
+    # and used to fall through into a broken 2× Search-contacts orchestration.
+    from app.services.pack_common_intent_defaults import (
+        format_pack_common_msp_enrich_confirm_message,
+        try_pack_common_list_create_plan,
+        try_pack_common_msp_enrich_workflow_plan,
     )
 
-    if should_defer_unified_turn_live_to_classical(
-        mode_key=mode_key,
-        outcome_kind=str(result.outcome_kind or ""),
-        message=message,
-        classification=classification,
-    ):
-        defer_reason = (
-            "defer_connector_tool_proposal"
-            if str(result.outcome_kind or "") == "connector_tool_proposal"
-            else "defer_classical_tool_sse"
-        )
-        _mark_live_fallthrough(result, defer_reason)
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=result,
-        )
-        return None
+    connected_for_pack = list(
+        result.connected_integrations or connected_integrations or []
+    )
 
     # Part 3 — pack-common list create: stage awaiting_confirm directly.
-    # Beats LLM "static vs active" clarify and avoids write_plan_unavailable
-    # fallthrough when the model proposed a tool we already know how to fill.
-    from app.services.pack_common_intent_defaults import try_pack_common_list_create_plan
-
     pack_plan = try_pack_common_list_create_plan(
         message or "",
-        connected_integrations=list(
-            result.connected_integrations or connected_integrations or []
-        ),
+        connected_integrations=connected_for_pack,
     )
     if pack_plan is not None and conversation_id:
         from app.services.chat_connector_execution_service import (
@@ -967,7 +999,6 @@ async def apply_unified_turn_live(
         )
         from app.services.conversation_state_service import get_conversation_state_service
 
-        pack_plan = pack_plan
         staged_missing = missing_params_stage_patch(
             pack_plan, message or "", task_state=task_state or {}
         )
@@ -1023,17 +1054,11 @@ async def apply_unified_turn_live(
                 "unified_outcome_kind": "connector_tool_proposal",
             }
 
-    # Part 3 soft leftover — MSP Clay→HubSpot enrich: stage create_workflow confirm
+    # Part 3 — MSP Clay→HubSpot enrich: stage create_workflow confirm
     # (bare clay.crm.sync cannot approve-first; records are irreducible).
-    from app.services.pack_common_intent_defaults import (
-        try_pack_common_msp_enrich_workflow_plan,
-    )
-
     enrich_plan = try_pack_common_msp_enrich_workflow_plan(
         message or "",
-        connected_integrations=list(
-            result.connected_integrations or connected_integrations or []
-        ),
+        connected_integrations=connected_for_pack,
     )
     if enrich_plan is not None and conversation_id:
         from app.services.conversation_state_service import get_conversation_state_service
@@ -1057,15 +1082,7 @@ async def apply_unified_turn_live(
         refreshed = await state.get_task_state(
             conversation_id, org_id, client=client
         )
-        wf_name = str(enrich_plan.get("workflow_name") or "MSP enrichment workflow")
-        apollo_list = str(enrich_plan.get("apollo_list_name") or "MSP Prospects")
-        hubspot_list = str(enrich_plan.get("hubspot_list_name") or "MSPs")
-        confirm_message = (
-            f"I'll create a draft workflow **{wf_name}** to enrich Apollo list "
-            f"**{apollo_list}** with Clay and sync to HubSpot list **{hubspot_list}**.\n\n"
-            "Reply **yes** to create it now, or tell me what to adjust "
-            "(list names, filters, or sync rules)."
-        )
+        confirm_message = format_pack_common_msp_enrich_confirm_message(enrich_plan)
         result.outcome_kind = "confirmation_request"
         result.tool_name = str(enrich_plan.get("tool_name") or "assistant_create_workflow")
         result.tool_invoke_action = str(
@@ -1100,6 +1117,115 @@ async def apply_unified_turn_live(
             "model": result.model or "unified_turn_live",
             "unified_outcome_kind": "confirmation_request",
         }
+
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+    from app.services.chat_orchestration_service import ChatOrchestrationService
+
+    # F2: structured needs_tool_sse — orch / tool-shaped turns set the flag even
+    # when the model returned conversational text (no bare apollo/slack keyword).
+    if not result.needs_tool_sse and ChatOrchestrationService.is_orchestration_intent(
+        message or "",
+        task_state or {},
+        list(result.connected_integrations or connected_integrations or []),
+    ):
+        result.needs_tool_sse = True
+    if (
+        not result.needs_tool_sse
+        and isinstance(classification, dict)
+        and classification.get("requires_action")
+        and result.outcome_kind
+        in {"conversational_reply", "clarifying_question", "knowledge_boundary"}
+    ):
+        # Probe/tool SSE path when classical classifiers already flagged action.
+        from app.services.unified_turn_classical_fallback import (
+            message_requires_classical_tool_sse,
+        )
+
+        if message_requires_classical_tool_sse(message or ""):
+            result.needs_tool_sse = True
+
+    would_defer = should_defer_unified_turn_live_to_classical(
+        mode_key=mode_key,
+        outcome_kind=str(result.outcome_kind or ""),
+        message=message,
+        classification=classification,
+        needs_tool_sse=bool(result.needs_tool_sse),
+    )
+    # Class rule: never bare-defer a multi-step orchestration intent. Stage the
+    # plan on LIVE first (HubSpot+Slack TRY chip, etc.) — same structural order
+    # as pack-common intents. Bare fallthrough lets classical invent wrong steps.
+    if would_defer and conversation_id:
+        from app.services.chat_orchestration_service import (
+            ChatOrchestrationService,
+            get_chat_orchestration_service,
+        )
+
+        if ChatOrchestrationService.is_orchestration_intent(
+            message or "",
+            task_state or {},
+            connected_for_pack,
+        ):
+            orch_turn = await get_chat_orchestration_service(active).process_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=message or "",
+                classification=classification or {},
+                task_state=task_state or {},
+                connected_integrations=connected_for_pack,
+                client=client,
+                environment_name=environment_name,
+            )
+            if orch_turn and orch_turn.get("stop_pipeline"):
+                result.live_served = True
+                result.outcome_kind = "confirmation_request"
+                result.model = (
+                    f"{result.model or 'unified_turn'}+live_orchestration_before_defer"
+                )
+                result.user_message = str(orch_turn.get("message") or "")
+                emit_unified_turn_shadow_audit(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                    result=result,
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": str(orch_turn.get("dialogue_mode") or "confirm"),
+                    "message": finalize_user_facing_message(
+                        result.user_message,
+                        context="unified_turn_live_orchestration_before_defer",
+                    ),
+                    "task_state": orch_turn.get("task_state"),
+                    "pending_task": orch_turn.get("pending_task"),
+                    "workflow_status": orch_turn.get("workflow_status"),
+                    "answer_explanation": str(
+                        orch_turn.get("answer_explanation")
+                        or "Unified turn live (orchestration before defer)"
+                    ),
+                    "model": result.model or "unified_turn_live",
+                    "unified_outcome_kind": "confirmation_request",
+                    "execution_result": orch_turn.get("execution_result"),
+                }
+
+    if would_defer:
+        defer_reason = (
+            "defer_connector_tool_proposal"
+            if str(result.outcome_kind or "") == "connector_tool_proposal"
+            else "defer_classical_tool_sse"
+        )
+        _mark_live_fallthrough(result, defer_reason)
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return None
 
     text_kinds = {
         "conversational_reply",

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
@@ -52,10 +53,23 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
-  const { mode, setMode, isLite } = useViewMode()
+  const { mode, setMode } = useViewMode()
   const { user, signOut } = useAuth()
+
+  const switchMode = (next: "admin" | "lite") => {
+    setMode(next)
+    if (next === "lite" && !pathname.startsWith("/lite")) {
+      router.push("/lite")
+      return
+    }
+    if (next === "admin" && pathname.startsWith("/lite")) {
+      router.push("/home")
+    }
+  }
 
   // Live profile stats (real data, no mocks). Falls back to "—" while loading/unavailable.
   const { data: overviewData } = useSWR<{ activeWorkflows?: number; successRate?: number }>(
@@ -143,6 +157,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
       <header
+        data-testid="app-top-bar"
         className={cn(
           // Phones get a taller bar with larger tap targets — the 48px bar with
           // 32px icon buttons tested below the 44px minimum on touch.
@@ -275,7 +290,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setMode("admin")}
+                  onClick={() => switchMode("admin")}
                   className={cn(
                     "px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200",
                     mode === "admin"
@@ -293,11 +308,11 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setMode("lite")}
+                  onClick={() => switchMode("lite")}
                   className={cn(
                     "px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200",
                     mode === "lite"
-                      ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                      ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

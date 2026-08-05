@@ -843,6 +843,36 @@ def _run_confirmed_extension_action(
         effect=outcome_effect,
         invoke_action=action,
     )
+    # F6 — shared population verify for list membership writes.
+    try:
+        from app.services.collection_population_verify import (
+            apply_population_verify_to_status,
+        )
+
+        status, effect_override, pop_verify = apply_population_verify_to_status(
+            status=status,
+            invoke_action=action,
+            result_data=data,
+            client=ctx.client,
+            org_id=org_id,
+            settings=ctx.settings,
+            environment_name=ctx.environment_name or "production",
+            ctx=ctx,
+        )
+        if effect_override:
+            outcome_effect = effect_override
+        if pop_verify and not pop_verify.verified:
+            data = {
+                **data,
+                "population_verify": {
+                    "verified": pop_verify.verified,
+                    "effect": pop_verify.effect,
+                    "membership_count": pop_verify.membership_count,
+                    "detail": pop_verify.detail,
+                },
+            }
+    except Exception:  # noqa: BLE001
+        pass
 
     run_id: str | None = None
     try:

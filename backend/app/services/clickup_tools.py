@@ -89,6 +89,25 @@ def _exec_clickup_tasks_get(ctx: ToolContext, params: dict[str, Any]) -> Normali
     return NormalizedResult(success=True, action="clickup.tasks.get", connector_id=cid, data=data)
 
 
+def _exec_clickup_tasks_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.clickup_api import list_tasks
+
+    cid, token = _session(ctx, params)
+    team_id = params.get("team_id") or params.get("teamId")
+    list_id = params.get("list_id") or params.get("listId")
+    include_closed = bool(params.get("include_closed") or params.get("includeClosed"))
+    try:
+        data = list_tasks(
+            token,
+            team_id=str(team_id) if team_id else None,
+            list_id=str(list_id) if list_id else None,
+            include_closed=include_closed,
+        )
+    except ClickUpAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="clickup.tasks.list", connector_id=cid, data=data)
+
+
 def _exec_clickup_lists_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _session(ctx, params)
     list_id = params.get("list_id") or params.get("listId")
@@ -238,6 +257,7 @@ def _exec_clickup_members_list(ctx: ToolContext, params: dict[str, Any]) -> Norm
 
 CLICKUP_TOOL_EXECUTORS: dict[str, Any] = {
     "clickup.tasks.get": _exec_clickup_tasks_get,
+    "clickup.tasks.list": _exec_clickup_tasks_list,
     "clickup.lists.get": _exec_clickup_lists_get,
     "clickup.spaces.list": _exec_clickup_spaces_list,
     "clickup.tasks.create": _exec_clickup_tasks_create,

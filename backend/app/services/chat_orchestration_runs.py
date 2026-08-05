@@ -29,6 +29,52 @@ def _run_hash(conversation_id: str, goal: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:48]
 
 
+def _chat_orch_graph_from_steps(
+    steps: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build definition steps + linear graph so Retry step is not an empty-graph crash.
+
+    Chat orchestration historically stored only ``definition.steps`` (id/name/type)
+    with no ``graph.nodes``. ``retry_workflow_step`` → ``_graph_from_run`` then
+    raised ``Graph has no nodes`` for every Retry on these runs.
+    """
+    step_defs: list[dict[str, Any]] = []
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    prev_id: str | None = None
+    for idx, step in enumerate(steps, start=1):
+        nid = str(step.get("step_id") or f"step_{idx}")
+        label = str(step.get("label") or f"Step {idx}")
+        plan = step.get("plan") if isinstance(step.get("plan"), dict) else {}
+        action = str(plan.get("invoke_action") or step.get("invoke_action") or "").strip()
+        args = plan.get("args") if isinstance(plan.get("args"), dict) else {}
+        step_defs.append(
+            {
+                "id": nid,
+                "name": label,
+                "type": "connector",
+                "invoke_action": action or None,
+            }
+        )
+        nodes.append(
+            {
+                "id": nid,
+                "node_type": "connector",
+                "type": "connector",
+                "name": label,
+                "config": {
+                    "tool_action": action,
+                    "action": action,
+                    **dict(args or {}),
+                },
+            }
+        )
+        if prev_id:
+            edges.append({"from": prev_id, "to": nid, "from_node_id": prev_id, "to_node_id": nid})
+        prev_id = nid
+    return step_defs, nodes, edges
+
+
 def start_orchestration_run(
     client: Any,
     *,
@@ -41,18 +87,16 @@ def start_orchestration_run(
 ) -> str | None:
     """Create an execute run + steps for a chat orchestration. Returns run_id."""
     label = (goal or "Chat orchestration").strip()[:120] or "Chat orchestration"
+    step_defs, graph_nodes, graph_edges = _chat_orch_graph_from_steps(steps)
     definition = {
         "name": label,
         "source": "chat_orchestration",
         "conversation_id": conversation_id,
-        "steps": [
-            {
-                "id": str(step.get("step_id") or f"step_{idx}"),
-                "name": str(step.get("label") or f"Step {idx}"),
-                "type": "connector",
-            }
-            for idx, step in enumerate(steps, start=1)
-        ],
+        "steps": step_defs,
+        # Dual shape: graph engine reads graph.nodes; legacy readers use top-level nodes.
+        "nodes": graph_nodes,
+        "edges": graph_edges,
+        "graph": {"nodes": graph_nodes, "edges": graph_edges},
     }
     parameters = {
         "source": "chat_orchestration",

@@ -38,10 +38,15 @@ RELATIVE_DUE = re.compile(
 )
 OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     "contacts": ("contact", "contacts", "person", "people", "prospect"),
+    "leads": ("lead", "leads"),
     "deals": ("deal", "deals", "pipeline", "opportunity", "opportunities", "stale deal", "stale deals"),
     "tickets": ("ticket", "tickets", "case", "cases"),
     "issues": ("issue", "issues", "bug", "bugs", "story"),
-    "items": ("item", "items", "task", "tasks", "follow-up", "follow up", "follow-up task"),
+    "pulls": ("pull", "pulls", "pr", "prs", "pull request", "pull requests"),
+    # Prefer explicit tasks key so ClickUp tasks.* beats spaces.list (F4).
+    "tasks": ("task", "tasks", "follow-up", "follow up", "follow-up task"),
+    "items": ("item", "items"),
+    "spaces": ("space", "spaces"),
     "messages": ("message", "messages", "notify", "notification", "alert", "summary"),
     "files": ("file", "files", "folder", "folders", "document", "documents"),
     "events": ("event", "events", "meeting", "meetings", "appointment"),
@@ -51,6 +56,33 @@ OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     "keywords": ("keyword", "keywords", "negative keyword", "negative keywords"),
     "structure": ("campaign structure", "ad group structure", "funnel", "search campaign structure"),
 }
+
+# Resources that must not steal each other's noun hits (catalog-wide F4 class fix).
+_OBJECT_CONFUSABLES: dict[str, frozenset[str]] = {
+    "issues": frozenset({"pulls", "actions"}),
+    "pulls": frozenset({"issues"}),
+    "tasks": frozenset({"spaces", "lists", "members", "items"}),
+    "spaces": frozenset({"tasks"}),
+    "contacts": frozenset({"leads"}),
+    "leads": frozenset({"contacts"}),
+    "items": frozenset({"tasks"}),
+}
+
+
+def _message_object_keys(text: str) -> set[str]:
+    """Dominant object nouns present in the user message (word-boundary)."""
+    found: set[str] = set()
+    for obj_key, aliases in OBJECT_ALIASES.items():
+        for alias in aliases:
+            if re.search(rf"\b{re.escape(alias)}\b", text, re.I):
+                found.add(obj_key)
+                break
+    return found
+
+
+def _entry_resource_key(entry: ConnectorActionMatrixEntry) -> str:
+    suffix = entry.action_key.split(".", 1)[-1]
+    return suffix.split(".")[0] if "." in suffix else suffix.split("_")[0]
 
 GOOGLE_ADS_STRUCTURE_INTENT = re.compile(
     r"\b(?:google\s*ads|adwords|ads)\b[\s\S]{0,200}\b(?:campaign|ad\s*groups?|keywords?)\b"
@@ -247,7 +279,22 @@ class ChatActionMapper:
             return 0.0
         score = 12.0
         suffix = entry.action_key.split(".", 1)[-1]
-        resource = suffix.split(".")[0] if "." in suffix else suffix.split("_")[0]
+        resource = _entry_resource_key(entry)
+        msg_objects = _message_object_keys(text)
+        # F4 structural: weight message nouns against entry resource; veto confusables.
+        if msg_objects:
+            if resource in msg_objects or any(
+                obj_key in suffix or resource in obj_key for obj_key in msg_objects
+            ):
+                score += 22.0
+            else:
+                for msg_obj in msg_objects:
+                    confusable = _OBJECT_CONFUSABLES.get(msg_obj, frozenset())
+                    if resource in confusable or any(
+                        c in suffix for c in confusable
+                    ):
+                        score -= 36.0
+                        break
         for obj_key, obj_aliases in OBJECT_ALIASES.items():
             if obj_key in suffix or resource in obj_key:
                 if any(alias in text for alias in obj_aliases):
@@ -271,13 +318,20 @@ class ChatActionMapper:
             score += 10.0
         if entry.kind == "read" and WRITE_VERBS.search(text) and not READ_VERBS.search(text):
             score -= 4.0
-        if entry.kind != "read" and READ_VERBS.search(text) and not WRITE_VERBS.search(text):
+        # Do not penalize *.list/*.search reads for non-read kind — catalog tier noise.
+        if (
+            entry.kind != "read"
+            and READ_VERBS.search(text)
+            and not WRITE_VERBS.search(text)
+            and ".list" not in entry.action_key
+            and ".search" not in entry.action_key
+        ):
             score -= 4.0
         if "stale" in text and "deal" in suffix:
             score += 6.0
         if "notify" in text and "message" in suffix:
             score += 8.0
-        if "task" in text and "item" in suffix:
+        if "task" in text and ("item" in suffix or "task" in suffix):
             score += 8.0
         if entry.connector_id == "slack" and "post_message" in entry.registry_key:
             if re.search(r"\b(post|send|notify|draft|compose)\b", text) and "slack" in text:
@@ -328,17 +382,23 @@ class ChatActionMapper:
             elif "pause" in entry.action_key or "resume" in entry.action_key:
                 score -= 24.0
         if entry.connector_id == "apollo" and LIST_CREATE_INTENT.search(text):
-            # Prefer lists.create; demote list/search/contact creates that steal the match.
+            # Prefer lists.create; demote contact search/create that steal "contact list".
             if "lists.create" in entry.action_key:
-                score += 40.0
+                score += 55.0
+            elif "contacts.search" in entry.action_key or "contacts.list" in entry.action_key:
+                score -= 50.0
             elif "contacts.create" in entry.action_key:
                 score -= 40.0
+            elif "search" in entry.action_key and "lists.create" not in entry.action_key:
+                score -= 28.0
         if entry.connector_id == "hubspot" and LIST_CREATE_INTENT.search(text):
             # Part 3 — pack-common HubSpot static list create (MSP / Prospecting).
             if "lists.create" in entry.action_key:
-                score += 40.0
+                score += 55.0
             elif "contacts.create" in entry.action_key:
                 score -= 30.0
+            elif "contacts.search" in entry.action_key or "contacts.list" in entry.action_key:
+                score -= 50.0
             elif "companies.create" in entry.action_key:
                 score -= 30.0
             elif "lists.list" in entry.action_key or (

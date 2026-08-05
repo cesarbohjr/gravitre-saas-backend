@@ -31,12 +31,18 @@ SOURCE_PACK_DEFAULT = "pack_common_default"
 
 # Messages that imply pack-default list names without naming them.
 _OMIT_NAME_LIST_CREATE = re.compile(
-    r"\b(create|new|add|make)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,3}"
-    r"(?:contact\s+|static\s+)?(?:list|group|segment)\b",
+    r"(?:"
+    r"\b(?:create|new|add|make|build|start|(?:set|spin)\s+up)\s+(?:(?:a|an)\s+)?"
+    r"(?:[\w.-]+\s+){0,3}(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r"|"
+    r"\b(?:i\s+)?(?:want|need)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,4}"
+    r"(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r")",
     re.I,
 )
+# F3 RISK-80-NAME-CAP: raise capture bound so long quoted list names still match.
 _NAMED_LIST = re.compile(
-    r"(?:named|called|name(?:d)?\s*[:=]?\s*)[\"']?([A-Za-z0-9][\w\s.&/-]{0,80})[\"']?",
+    r"(?:named|called|name(?:d)?\s*[:=]?\s*)[\"']?([A-Za-z0-9][\w\s.&/-]{0,150})[\"']?",
     re.I,
 )
 _AMBIGUOUS_LIST_REF = re.compile(
@@ -54,10 +60,14 @@ _VENDOR_LOCATION_FALSE_NAME = re.compile(
     re.I,
 )
 # Pack-common Clay → HubSpot MSP enrich (multi-step → draft workflow approve-first).
+# Windows must cover the AI Chat TRY prompt wording (enrich→HubSpot is ~106 chars):
+# 'Use Clay to enrich the existing Apollo contact list "MSP Prospects", then add
+# those enriched contacts to the existing HubSpot static list "MSPs".'
 _MSP_CLAY_HUBSPOT_ENRICH = re.compile(
-    r"\benrich\b[\s\S]{0,120}\bclay\b[\s\S]{0,120}\b(?:hubspot|sync)\b|"
-    r"\bclay\b[\s\S]{0,80}\benrich\b[\s\S]{0,80}\bhubspot\b|"
-    r"\bmsp\s+prospects\b[\s\S]{0,80}\bclay\b[\s\S]{0,80}\bhubspot\b",
+    r"\benrich\b[\s\S]{0,200}\bclay\b[\s\S]{0,200}\b(?:hubspot|sync)\b|"
+    r"\bclay\b[\s\S]{0,120}\benrich\b[\s\S]{0,200}\bhubspot\b|"
+    r"\bmsp\s+prospects\b[\s\S]{0,200}\bclay\b[\s\S]{0,200}\bhubspot\b|"
+    r"\bclay\b[\s\S]{0,200}\bmsp\s+prospects\b[\s\S]{0,200}\bhubspot\b",
     re.I,
 )
 
@@ -258,6 +268,19 @@ def try_pack_common_msp_enrich_workflow_plan(
     }
 
 
+def format_pack_common_msp_enrich_confirm_message(plan: dict[str, Any]) -> str:
+    """User-facing approve-first copy for the MSP Clay→HubSpot pack workflow."""
+    wf_name = str(plan.get("workflow_name") or MSP_ENRICH_NAME)
+    apollo_list = str(plan.get("apollo_list_name") or MSP_ENRICH_APOLLO_LIST)
+    hubspot_list = str(plan.get("hubspot_list_name") or MSP_ENRICH_HUBSPOT_LIST)
+    return (
+        f"I'll create a draft workflow **{wf_name}** to enrich Apollo list "
+        f"**{apollo_list}** with Clay and sync to HubSpot list **{hubspot_list}**.\n\n"
+        "Reply **yes** to create it now, or tell me what to adjust "
+        "(list names, filters, or sync rules)."
+    )
+
+
 def try_pack_common_list_create_plan(
     message: str,
     connected_integrations: list[str] | tuple[str, ...] | None = None,
@@ -289,8 +312,10 @@ def try_pack_common_list_create_plan(
     for vendor in prefer:
         if connected and vendor not in connected:
             continue
+        # Bare "create list" has no vendor token — inject vendor so mapper can score.
+        scoped = text if re.search(rf"\b{re.escape(vendor)}\b", text, re.I) else f"{text} in {vendor}"
         match = get_chat_action_mapper().match_segment(
-            text, connected_integrations=list(connected or {vendor})
+            scoped, connected_integrations=[vendor]
         )
         if match is None:
             continue

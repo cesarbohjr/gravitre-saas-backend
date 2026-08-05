@@ -401,7 +401,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
         ),
         AgentToolSpec(
             name="github_search_issues",
-            description="Search GitHub pull requests in a repository (read-only discovery).",
+            description="Search GitHub issues in a repository (not pull requests).",
             parameters={
                 "type": "object",
                 "properties": {
@@ -411,7 +411,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
                 },
                 "required": ["repo"],
             },
-            invoke_action="github.pulls.list",
+            invoke_action="github.issues.list",
             integration="github",
             map_params=lambda args: {
                 **_dict_from_github_repo(args),

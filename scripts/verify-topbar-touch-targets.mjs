@@ -27,14 +27,24 @@ const VIEWPORTS = [
   { name: "desktop", width: 1440, height: 900, enforce: false },
 ]
 
+/** App chrome only — page-level <header>s (e.g. Activity toolbar) are out of scope. */
+const TOP_BAR = '[data-testid="app-top-bar"]'
 /** Elements the user cannot tap on a phone are excluded from enforcement. */
 const INTERACTIVE = "button, a[href], [role='button'], input, select"
 
 async function measure(page) {
-  return page.$$eval(
-    `header ${INTERACTIVE.split(", ").join(", header ")}`,
-    (nodes, minPx) =>
-      nodes
+  // App shell can mount two top bars (e.g. mobile + desktop). Measure the first
+  // visible one only so we don't double-count or hit Playwright strict mode.
+  return page.evaluate(
+    ({ topBar, minPx, interactive }) => {
+      const headers = Array.from(document.querySelectorAll(topBar))
+      const header = headers.find((h) => {
+        const r = h.getBoundingClientRect()
+        const s = getComputedStyle(h)
+        return s.display !== "none" && s.visibility !== "hidden" && r.width > 0 && r.height > 0
+      })
+      if (!header) return []
+      return Array.from(header.querySelectorAll(interactive))
         .map((el) => {
           const rect = el.getBoundingClientRect()
           const style = getComputedStyle(el)
@@ -56,8 +66,9 @@ async function measure(page) {
             ok: hidden || (rect.width >= minPx && rect.height >= minPx),
           }
         })
-        .filter((m) => !m.hidden),
-    MIN_TOUCH_PX,
+        .filter((m) => !m.hidden)
+    },
+    { topBar: TOP_BAR, minPx: MIN_TOUCH_PX, interactive: INTERACTIVE },
   )
 }
 
@@ -73,7 +84,10 @@ async function main() {
       colorScheme: "dark",
     })
     const page = await context.newPage()
-    const res = await page.goto(`${BASE_URL}${ROUTE}`, { waitUntil: "networkidle" })
+    const res = await page.goto(`${BASE_URL}${ROUTE}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    })
 
     if (!res || res.status() !== 200) {
       failures.push(`${vp.name}: ${ROUTE} returned ${res ? res.status() : "no response"}`)
@@ -88,8 +102,8 @@ async function main() {
       continue
     }
 
-    const header = page.locator("header").first()
-    await header.waitFor({ state: "visible" })
+    const header = page.locator(TOP_BAR).first()
+    await header.waitFor({ state: "visible", timeout: 60_000 })
 
     const measurements = await measure(page)
     console.log(`\n${vp.name} (${vp.width}x${vp.height}) — ${measurements.length} visible controls`)
@@ -101,15 +115,14 @@ async function main() {
       }
     }
 
-    // No horizontal overflow: the header must not scroll sideways.
-    const overflow = await page.evaluate(() => {
-      const h = document.querySelector("header")
-      if (!h) return null
-      return { scrollWidth: h.scrollWidth, clientWidth: h.clientWidth }
-    })
+    // No horizontal overflow: the top bar must not scroll sideways.
+    const overflow = await header.evaluate((h) => ({
+      scrollWidth: h.scrollWidth,
+      clientWidth: h.clientWidth,
+    }))
     if (overflow && overflow.scrollWidth > overflow.clientWidth + 1) {
       failures.push(
-        `${vp.name}: header overflows horizontally (${overflow.scrollWidth} > ${overflow.clientWidth})`,
+        `${vp.name}: top bar overflows horizontally (${overflow.scrollWidth} > ${overflow.clientWidth})`,
       )
     } else {
       console.log(`  ok   no horizontal overflow (${overflow?.scrollWidth}/${overflow?.clientWidth})`)

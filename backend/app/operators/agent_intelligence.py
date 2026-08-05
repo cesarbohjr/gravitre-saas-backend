@@ -2665,6 +2665,66 @@ class AgentIntelligence:
             connector_timeout_seconds=engine_settings.connector_timeout_seconds,
         )
 
+        # F1 tertiary gate: never let classical ReAct invent steps when retrieve hits.
+        if conversation_id:
+            from app.services.retrieve_plan_gate import (
+                retrieve_plan_or_none,
+                stage_retrieved_plan_turn,
+            )
+
+            retrieved = retrieve_plan_or_none(
+                task_text,
+                org_id=org_id,
+                connected_integrations=connected_list,
+                client=client,
+                require_pack_install=True,
+            )
+            if retrieved is not None and retrieved.block_fabrication:
+                staged = await stage_retrieved_plan_turn(
+                    retrieved,
+                    org_id=org_id,
+                    conversation_id=conversation_id,
+                    message=task_text,
+                    task_state=task_state if isinstance(task_state, dict) else {},
+                    client=client,
+                    settings=active_settings,
+                )
+                body = str(staged.get("message") or "")
+                if text_id is None:
+                    text_id, start_event = sse_text_start()
+                    yield start_event
+                if body:
+                    yield sse_text_delta(text_id, body)
+                    yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.85, "needs_clarification": retrieved.kind == "clarify"},
+                    answer_explanation=str(
+                        staged.get("answer_explanation") or "Retrieve-before-generate"
+                    ),
+                    dialogue_mode=str(staged.get("dialogue_mode") or "confirm"),
+                    task_state=staged.get("task_state"),
+                    effective_mode=mode_key,
+                )
+                yield AssistantStreamComplete(
+                    full_content=body,
+                    tool_results=tool_results,
+                    react_result=None,
+                    model="retrieve_plan_gate",
+                    message_id=message_id,
+                    confidence={
+                        "score": 0.85,
+                        "needs_clarification": retrieved.kind == "clarify",
+                    },
+                    answer_explanation=str(
+                        staged.get("answer_explanation") or "Retrieve-before-generate"
+                    ),
+                    validation=None,
+                    conflicts=rag_conflicts,
+                    refined_query=refined_query if refined_query != task_text else None,
+                )
+                return
+
         # Preserve Phase-5 correction_ack prefix already streamed above.
         react_result = None
         generation_started = time.monotonic()

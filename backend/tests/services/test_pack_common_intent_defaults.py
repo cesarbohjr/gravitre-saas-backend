@@ -141,6 +141,36 @@ def test_try_pack_common_msp_enrich_workflow_approve_first():
     assert "msp-prospects-clay-hubspot-enrichment" in str(plan.get("workflow_slug"))
 
 
+def test_try_pack_common_msp_enrich_matches_ai_chat_try_prompt():
+    """Exact AI_EXAMPLE_PROMPTS[0] text must hit pack enrich (not Search-contacts orch)."""
+    from app.services.pack_common_intent_defaults import (
+        format_pack_common_msp_enrich_confirm_message,
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+    from app.services.unified_turn_classical_fallback import (
+        message_requires_classical_tool_sse,
+    )
+
+    try_prompt = (
+        'Use Clay to enrich the existing Apollo contact list "MSP Prospects", '
+        'then add those enriched contacts to the existing HubSpot static list "MSPs".'
+    )
+    plan = try_pack_common_msp_enrich_workflow_plan(
+        try_prompt,
+        connected_integrations=["clay", "hubspot", "apollo"],
+    )
+    assert plan is not None
+    assert plan["invoke_action"] == "assistant.create_workflow"
+    assert plan["apollo_list_name"] == "MSP Prospects"
+    assert plan["hubspot_list_name"] == "MSPs"
+    # Must not defer to classical SSE solely because prompt mentions Apollo/list.
+    assert message_requires_classical_tool_sse(try_prompt) is False
+    confirm = format_pack_common_msp_enrich_confirm_message(plan)
+    assert "MSP Prospects" in confirm
+    assert "MSPs" in confirm
+    assert "draft workflow" in confirm.lower()
+
+
 def test_try_pack_common_msp_enrich_skips_ambiguous_my_list():
     from app.services.pack_common_intent_defaults import (
         try_pack_common_msp_enrich_workflow_plan,

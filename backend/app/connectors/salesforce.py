@@ -241,6 +241,37 @@ def search_leads(
     return query_soql(instance_url, access_token, query, api_version=api_version)
 
 
+def search_contacts(
+    instance_url: str,
+    access_token: str,
+    *,
+    soql: str | None = None,
+    email: str | None = None,
+    name: str | None = None,
+    limit: int = 25,
+    api_version: str = DEFAULT_API_VERSION,
+) -> dict[str, Any]:
+    """Search Salesforce Contact objects (not Lead)."""
+    if soql:
+        query = soql.strip()
+    else:
+        clauses: list[str] = []
+        if email:
+            clauses.append(f"Email = '{_soql_escape(str(email))}'")
+        if name:
+            safe = _soql_escape(str(name))
+            clauses.append(
+                f"(Name LIKE '%{safe}%' OR FirstName LIKE '%{safe}%' OR LastName LIKE '%{safe}%')"
+            )
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        lim = max(1, min(int(limit), 200))
+        query = (
+            "SELECT Id, FirstName, LastName, Name, Email, AccountId "
+            f"FROM Contact{where} LIMIT {lim}"
+        )
+    return query_soql(instance_url, access_token, query, api_version=api_version)
+
+
 def get_opportunity(
     instance_url: str,
     access_token: str,

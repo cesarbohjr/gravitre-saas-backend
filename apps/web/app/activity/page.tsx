@@ -422,7 +422,7 @@ export default function ActivityPage() {
   return (
     <Suspense
       fallback={
-        <AppShell>
+        <AppShell fillViewport>
           <CenteredLoader fill="parent" label="Loading activity" />
         </AppShell>
       }

@@ -28,6 +28,15 @@ VENDOR_DEFINITIONS: tuple = (
         v1=(
             action("salesforce", "leads.get", "Get lead", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
             action("salesforce", "leads.search", "Search leads", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
+            action(
+                "salesforce",
+                "contacts.search",
+                "Search contacts when the user asks for Salesforce contacts (not leads)",
+                tier="v1",
+                kind="read",
+                scope_suffix="contacts:read",
+                idempotent=True,
+            ),
             action("salesforce", "accounts.get", "Get account", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
             action("salesforce", "opportunities.get", "Get opportunity", tier="v1", kind="read", scope_suffix="opportunities:read", idempotent=True),
             action("salesforce", "query", "Run SOQL query", tier="v1", kind="read", scope_suffix="query:read", idempotent=True),
@@ -108,6 +117,20 @@ VENDOR_DEFINITIONS: tuple = (
         v3=(
             action("hubspot", "deals.update_stage", "Update deal stage", tier="v3", kind="advanced", scope_suffix="deals:write"),
             action("hubspot", "sequences.enroll", "Enroll in sequence", tier="v3", kind="advanced", scope_suffix="sequences:enroll"),
+            action(
+                "hubspot",
+                "lists.get",
+                "Get list membership",
+                tier="v3",
+                kind="read",
+                scope_suffix="lists:read",
+                idempotent=True,
+                description=(
+                    "Read a HubSpot list and its membership size/members. "
+                    "Use when verifying list population after add_contact, or when "
+                    "you need the current member count for a known list_id."
+                ),
+            ),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
             action("hubspot", "lists.create", "Create list", tier="v3", kind="advanced", scope_suffix="lists:write", destructive=True),
             action("hubspot", "tickets.create", "Create support ticket", tier="v3", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
@@ -554,7 +577,20 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "organizations.search", "Search companies", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
             action("apollo", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
             action("apollo", "contacts.search", "Search contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
-            action("apollo", "lists.list", "List contact lists", tier="v1", kind="read", scope_suffix="labels:read", idempotent=True),
+            action(
+                "apollo",
+                "lists.list",
+                "List contact lists",
+                tier="v1",
+                kind="read",
+                scope_suffix="labels:read",
+                idempotent=True,
+                description=(
+                    "List Apollo labels, or with list_id return that label's member "
+                    "contacts and contact_count. Use when enumerating lists or when "
+                    "verifying list population after apollo.lists.add."
+                ),
+            ),
             action("apollo", "people.match", "Enrich one person", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
             action("apollo", "organizations.enrich", "Enrich one organization", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
         ),
@@ -1066,6 +1102,15 @@ VENDOR_DEFINITIONS: tuple = (
         v1=(
             action("github", "pulls.list", "List pull requests", tier="v1", kind="read", scope_suffix="pulls:read", idempotent=True),
             action("github", "issues.get", "Get issue", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
+            action(
+                "github",
+                "issues.list",
+                "List issues when the user asks for GitHub issues (not pull requests)",
+                tier="v1",
+                kind="read",
+                scope_suffix="issues:read",
+                idempotent=True,
+            ),
             action("github", "repos.get", "Get repository", tier="v1", kind="read", scope_suffix="repos:read", idempotent=True),
             action("github", "actions.runs.list", "List workflow runs", tier="v1", kind="read", scope_suffix="actions:read", idempotent=True),
         ),
@@ -1082,7 +1127,6 @@ VENDOR_DEFINITIONS: tuple = (
             action("github", "releases.create", "Create release", tier="v3", kind="advanced", scope_suffix="releases:write"),
         ),
         v4=(
-            action("github", "issues.list", "List issues", tier="v4", kind="advanced", scope_suffix="issues:read", idempotent=True),
             action("github", "pulls.get", "Get pull request", tier="v4", kind="advanced", scope_suffix="pulls:read", idempotent=True),
             action("github", "pulls.close", "Close pull request", tier="v4", kind="advanced", scope_suffix="pulls:write", destructive=True, requires_approval=True),
         ),
@@ -1258,6 +1302,15 @@ VENDOR_DEFINITIONS: tuple = (
         department="operations",
         v1=(
             action("clickup", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
+            action(
+                "clickup",
+                "tasks.list",
+                "List tasks when the user asks for ClickUp tasks (not spaces or folders)",
+                tier="v1",
+                kind="read",
+                scope_suffix="tasks:read",
+                idempotent=True,
+            ),
             action("clickup", "lists.get", "Get list", tier="v1", kind="read", scope_suffix="lists:read", idempotent=True),
             action("clickup", "spaces.list", "List spaces", tier="v1", kind="read", scope_suffix="spaces:read", idempotent=True),
         ),

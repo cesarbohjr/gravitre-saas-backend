@@ -3,19 +3,23 @@
 # Prefer GitHub-connected Railway auto-deploy. If /health stays stale, force
 # path uses GraphQL redeploy (never CLI `railway up` — COPY checksum races).
 # See docs/delivery/railway-github-actions-deploy-status.md
+#
+# Trigger on backend pushes directly — do NOT require full CI green. Frontend /
+# Lighthouse / pip-audit failures were skipping this workflow and pinning tip.
 name: Railway backend production
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
     branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/railway-backend-production.yml"
   workflow_dispatch:
     inputs:
       force_railway_up:
         description: If GitHub auto-deploy is stuck, GraphQL-redeploy tip (never CLI railway up)
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: railway-backend-production
@@ -24,10 +28,6 @@ concurrency:
 jobs:
   detect-backend-changes:
     name: Detect backend changes
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
@@ -35,7 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
           fetch-depth: 2
 
       - id: detect
@@ -89,6 +88,10 @@ jobs:
           SVC="gravitre-saas-backend"
           ENV_NAME="production"
           FORCE="${{ github.event_name == 'workflow_dispatch' && inputs.force_railway_up || 'false' }}"
+          # Push-triggered backend changes: allow GraphQL force if GitHub auto-deploy lags.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            FORCE="true"
+          fi
 
           match_health() {
             local url="$1" timeout="$2"
@@ -104,6 +107,11 @@ jobs:
             [[ "$current" == "$FULL"* ]] || [[ "$current" == "$SHA"* ]]
           }
 
+          # Never leave a fake tip: /health prefers RAILWAY_GIT_COMMIT_SHA then GIT_SHA.
+          # A stale GIT_SHA env var can report a tip that is not actually running.
+          echo "Clearing override GIT_SHA (if set) so health reflects the real commit..."
+          railway variables delete GIT_SHA --service "$SVC" --environment "$ENV_NAME" || true
+
           CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
           echo "current_health_sha=$CURRENT expect=$FULL force=$FORCE"
 
@@ -118,7 +126,7 @@ jobs:
           # (see docs/delivery/railway-github-actions-deploy-status.md).
           echo "Waiting for GitHub-connected Railway auto-deploy..."
           set +e
-          match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
+          match_health "https://gravitre-saas-backend-production.up.railway.app/health" 600
           RAIL_WAIT=$?
           set -e
           CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
@@ -133,13 +141,10 @@ jobs:
             exit 1
           fi
 
-          # Never use `railway up` here — it races GitHub-connected builds and fails at
-          # Dockerfile COPY with "failed to calculate checksum" while the other deploy
-          # often succeeds (see docs/delivery/railway-github-actions-deploy-status.md).
-          # Force path: GraphQL / CLI redeploy of the GitHub commit, then wait on /health.
-          echo "::warning::force_railway_up=true and tip still stale ($CURRENT) — GraphQL redeploy (no CLI upload)"
+          # Force path: GraphQL / CLI redeploy of the GitHub commit — never set GIT_SHA
+          # (that previously faked /health tip without loading the new image).
+          echo "::warning::force deploy — tip still stale ($CURRENT) — GraphQL redeploy (no CLI upload, no GIT_SHA override)"
           set +e
-          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
           python3 scripts/railway_prod_deploy.py \
             --commit-sha "$FULL" \
             --wait-health \
@@ -182,9 +187,6 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
-          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
         run: |
           set +e
           python3 scripts/smoke-msp-enrichment-workflow-live.py

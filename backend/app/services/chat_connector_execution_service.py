@@ -1911,6 +1911,38 @@ class ChatConnectorExecutionService:
             effect=outcome_effect,
             invoke_action=plan.invoke_action,
         )
+        # F6 — list populate/membership writes need follow-up membership proof.
+        try:
+            from app.services.collection_population_verify import (
+                apply_population_verify_to_status,
+            )
+
+            status, effect_override, pop_verify = apply_population_verify_to_status(
+                status=status,
+                invoke_action=plan.invoke_action,
+                result_data=structured,
+                client=client,
+                org_id=org_id,
+                settings=self.settings,
+            )
+            if effect_override:
+                outcome_effect = effect_override
+            if pop_verify and not pop_verify.verified:
+                structured = {
+                    **structured,
+                    "population_verify": {
+                        "verified": pop_verify.verified,
+                        "effect": pop_verify.effect,
+                        "membership_count": pop_verify.membership_count,
+                        "detail": pop_verify.detail,
+                    },
+                }
+        except Exception as pop_exc:  # noqa: BLE001
+            logger.warning(
+                "collection population verify skipped action=%s err=%s",
+                plan.invoke_action,
+                pop_exc,
+            )
         run_id: str | None = None
         try:
             created = create_run(

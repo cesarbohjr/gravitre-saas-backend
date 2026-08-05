@@ -757,11 +757,62 @@ def _node_outputs_from_completed_steps(steps: list[dict[str, Any]]) -> dict[str,
     return outputs
 
 
+def _synthesize_nodes_from_definition_steps(
+    definition: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Recover a linear graph from chat-orchestration ``definition.steps`` snapshots."""
+    raw_steps = definition.get("steps") if isinstance(definition.get("steps"), list) else []
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    prev_id: str | None = None
+    for idx, step in enumerate(raw_steps, start=1):
+        if not isinstance(step, dict):
+            continue
+        nid = str(step.get("id") or step.get("step_id") or f"step_{idx}")
+        action = str(step.get("invoke_action") or step.get("action") or "").strip()
+        config = dict(step.get("config") or {}) if isinstance(step.get("config"), dict) else {}
+        if action:
+            config.setdefault("tool_action", action)
+            config.setdefault("action", action)
+        nodes.append(
+            {
+                "id": nid,
+                "node_type": str(step.get("node_type") or step.get("type") or "connector"),
+                "type": str(step.get("type") or "connector"),
+                "name": str(step.get("name") or step.get("label") or f"Step {idx}"),
+                "config": config,
+            }
+        )
+        if prev_id:
+            edges.append(
+                {"from": prev_id, "to": nid, "from_node_id": prev_id, "to_node_id": nid}
+            )
+        prev_id = nid
+    return nodes, edges
+
+
 def _graph_from_run(run: dict[str, Any]) -> tuple[ExecutionGraph, list[list[str]]]:
     definition = run.get("definition_snapshot") or {}
+    if not isinstance(definition, dict):
+        definition = {}
     graph_payload = definition.get("graph") if isinstance(definition.get("graph"), dict) else {}
     nodes = graph_payload.get("nodes") or definition.get("nodes") or []
     edges = graph_payload.get("edges") or definition.get("edges") or []
+    if not nodes:
+        # Legacy chat_orchestration runs stored steps without graph.nodes — Retry
+        # used to hard-fail with "Graph has no nodes". Synthesize a linear graph.
+        nodes, edges = _synthesize_nodes_from_definition_steps(definition)
+    if not nodes:
+        source = str(
+            definition.get("source")
+            or (run.get("parameters") or {}).get("source")
+            or ""
+        )
+        if source == "chat_orchestration":
+            raise GraphValidationError(
+                "This chat orchestration run has no executable graph for Retry step. "
+                "Re-run the plan from Chat instead."
+            )
     graph = build_execution_graph(nodes, edges)
     validate_execution_graph(graph)
     return graph, topological_batches(graph)
