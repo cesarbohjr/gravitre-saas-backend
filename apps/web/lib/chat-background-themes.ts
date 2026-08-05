@@ -1,101 +1,91 @@
 /**
  * Gravitre chat canvas background themes.
  *
- * Soft multi-point mesh washes only — no grids, dots, hatch, or lattice.
- * Colors come from brand tokens (primary emerald, info blue, chart violet /
- * amber / coral) so light and dark stay coherent. CSS lives in globals.css
- * keyed on `.ai-chat-canvas[data-chat-bg="<id>"]`.
+ * Department icon-pattern tiles only — no gradient / mesh washes. Each theme is
+ * a seamless PNG tile per app theme (light / dark), with the design-specified
+ * 0.15 opacity pre-baked into the asset's alpha channel by
+ * `scripts/bake-chat-pattern-alpha.mjs`. Baking rather than layering lets the
+ * canvas render the tile as a plain `background-image` with
+ * `background-attachment: local`, so it scrolls with the message list and never
+ * sits on top of message content.
+ *
+ * CSS lives in globals.css keyed on `.ai-chat-canvas[data-chat-bg="<id>"]`.
  */
 
-export type ChatBackgroundId =
-  | "mesh"
-  | "signal"
-  | "plain"
-  | "aurora"
-  | "bloom"
-  | "dusk"
-  | "tide"
-  | "ember"
+export type ChatBackgroundId = "marketing" | "sales" | "developers" | "operations" | "plain"
 
 export type ChatBackgroundTheme = {
   id: ChatBackgroundId
   label: string
   description: string
-  /** Small swatch preview used in the picker (CSS background shorthand). */
-  swatch: string
+  /**
+   * Tile basenames under /patterns, or null for the no-pattern option. Used to
+   * build the picker preview; the canvas itself is styled from globals.css.
+   */
+  tile: { light: string; dark: string } | null
 }
 
-/** Older pattern IDs → nearest mesh wash (localStorage / prefs migration). */
+/**
+ * Retired gradient/mesh and pattern IDs → nearest current theme.
+ * Read on load so an existing stored preference never renders as a blank canvas.
+ */
 const LEGACY_CHAT_BACKGROUND_IDS: Record<string, ChatBackgroundId> = {
-  dotgrid: "mesh",
-  grid: "aurora",
-  topo: "tide",
-  diagonal: "aurora",
-  constellation: "dusk",
-  plus: "bloom",
-  hex: "dusk",
-  lattice: "bloom",
+  // Gradient mesh washes (removed).
+  mesh: "marketing",
+  signal: "developers",
+  aurora: "developers",
+  bloom: "marketing",
+  dusk: "operations",
+  tide: "sales",
+  ember: "sales",
+  // Earlier line/dot patterns (removed before the mesh washes).
+  dotgrid: "marketing",
+  grid: "developers",
+  topo: "operations",
+  diagonal: "developers",
+  constellation: "operations",
+  plus: "marketing",
+  hex: "operations",
+  lattice: "sales",
 }
 
 export const CHAT_BACKGROUND_THEMES: ChatBackgroundTheme[] = [
   {
-    id: "mesh",
-    label: "Mesh",
-    description: "Soft multi-point gradient wash — emerald, blue, and violet.",
-    swatch:
-      "radial-gradient(circle at 18% 15%, color-mix(in oklch, var(--primary) 42%, transparent), transparent 52%), radial-gradient(circle at 78% 82%, color-mix(in oklch, var(--info) 38%, transparent), transparent 55%), radial-gradient(circle at 55% 35%, color-mix(in oklch, var(--chart-4) 28%, transparent), transparent 50%), var(--card)",
+    id: "marketing",
+    label: "Marketing",
+    description: "Megaphone, target, and growth-curve icons.",
+    tile: { light: "gw-mkt-light.png", dark: "gw-mkt-dark.png" },
   },
   {
-    id: "signal",
-    label: "Signal",
-    description: "Cool brand wash — primary and info, no lines or dots.",
-    swatch:
-      "radial-gradient(circle at 20% 10%, color-mix(in oklch, var(--primary) 40%, transparent), transparent 55%), radial-gradient(circle at 90% 90%, color-mix(in oklch, var(--info) 36%, transparent), transparent 50%), var(--card)",
+    id: "sales",
+    label: "Sales",
+    description: "Pipeline, handshake, and deal-flow icons.",
+    tile: { light: "gw-sales-light.png", dark: "gw-sales-dark.png" },
+  },
+  {
+    id: "developers",
+    label: "Developers",
+    description: "Terminal, branch, and build icons.",
+    tile: { light: "gw-dev-light.png", dark: "gw-dev-dark.png" },
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    description: "Workflow, gear, and monitoring icons.",
+    tile: { light: "gw-ops-light.png", dark: "gw-ops-dark.png" },
   },
   {
     id: "plain",
     label: "Plain",
-    description: "Clean, distraction-free surface with no wash.",
-    swatch: "var(--card)",
-  },
-  {
-    id: "aurora",
-    label: "Aurora",
-    description: "Icy blue into lavender and deep navy — cool diagonal bloom.",
-    swatch:
-      "radial-gradient(circle at 8% 8%, color-mix(in oklch, var(--accent) 55%, transparent), transparent 45%), radial-gradient(circle at 70% 20%, color-mix(in oklch, var(--info) 45%, transparent), transparent 50%), radial-gradient(circle at 92% 92%, color-mix(in oklch, var(--chart-4) 50%, transparent), transparent 48%), var(--card)",
-  },
-  {
-    id: "bloom",
-    label: "Bloom",
-    description: "Mint to sky to mauve to peach — warm multi-hue mesh.",
-    swatch:
-      "radial-gradient(circle at 10% 12%, color-mix(in oklch, var(--primary) 38%, transparent), transparent 48%), radial-gradient(circle at 40% 20%, color-mix(in oklch, var(--info) 36%, transparent), transparent 50%), radial-gradient(circle at 48% 55%, color-mix(in oklch, var(--chart-4) 40%, transparent), transparent 48%), radial-gradient(circle at 92% 55%, color-mix(in oklch, var(--chart-5) 42%, transparent), transparent 50%), var(--card)",
-  },
-  {
-    id: "dusk",
-    label: "Dusk",
-    description: "Cream into soft periwinkle — quiet evening wash.",
-    swatch:
-      "radial-gradient(circle at 15% 10%, color-mix(in oklch, var(--chart-3) 35%, transparent), transparent 48%), radial-gradient(circle at 55% 40%, color-mix(in oklch, var(--accent) 40%, transparent), transparent 52%), radial-gradient(circle at 88% 88%, color-mix(in oklch, var(--info) 48%, transparent), transparent 50%), var(--card)",
-  },
-  {
-    id: "tide",
-    label: "Tide",
-    description: "Soft emerald sea wash — primary with a cool info undertone.",
-    swatch:
-      "radial-gradient(circle at 25% 80%, color-mix(in oklch, var(--primary) 44%, transparent), transparent 55%), radial-gradient(circle at 80% 15%, color-mix(in oklch, var(--info) 32%, transparent), transparent 50%), radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--chart-1) 28%, transparent), transparent 55%), var(--card)",
-  },
-  {
-    id: "ember",
-    label: "Ember",
-    description: "Warm amber and coral haze with a touch of emerald.",
-    swatch:
-      "radial-gradient(circle at 20% 25%, color-mix(in oklch, var(--chart-3) 40%, transparent), transparent 50%), radial-gradient(circle at 85% 70%, color-mix(in oklch, var(--chart-5) 38%, transparent), transparent 52%), radial-gradient(circle at 45% 85%, color-mix(in oklch, var(--primary) 22%, transparent), transparent 48%), var(--card)",
+    description: "Clean, distraction-free surface with no pattern.",
+    tile: null,
   },
 ]
 
-export const DEFAULT_CHAT_BACKGROUND: ChatBackgroundId = "mesh"
+export const DEFAULT_CHAT_BACKGROUND: ChatBackgroundId = "marketing"
+
+/** Tile size in px, matching the design handoff (desktop / mobile). */
+export const CHAT_PATTERN_TILE_PX = { desktop: 234, mobile: 180 } as const
 
 const VALID_IDS = new Set<string>(CHAT_BACKGROUND_THEMES.map((t) => t.id))
 
