@@ -1,0 +1,362 @@
+{
+  "checked_at": "2026-08-06T07:35:35.912209+00:00",
+  "base": "https://gravitre.app",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "auth_mode": "password_grant_cookie",
+  "timeline_ms": [
+    {
+      "t_ms": 1068,
+      "label": "password_grant_ok"
+    },
+    {
+      "t_ms": 2239,
+      "label": "session_cookie_seeded"
+    },
+    {
+      "t_ms": 2944,
+      "label": "ai_domcontentloaded",
+      "url": "https://gravitre.app/login?error=session_expired"
+    },
+    {
+      "t_ms": 2944,
+      "label": "cookie_rejected_fallback_ui_login"
+    },
+    {
+      "t_ms": 6517,
+      "label": "login_complete",
+      "url": "https://gravitre.app/home"
+    },
+    {
+      "t_ms": 10635,
+      "label": "home_sidebar_interactive",
+      "url": "https://gravitre.app/home"
+    },
+    {
+      "t_ms": 10775,
+      "label": "ai_navigation",
+      "url": "https://gravitre.app/home"
+    },
+    {
+      "t_ms": 11609,
+      "label": "chat_input_interactive",
+      "selector": "textarea",
+      "url": "https://gravitre.app/ai"
+    },
+    {
+      "t_ms": 11622,
+      "label": "perf_entries_captured",
+      "final_url": "https://gravitre.app/ai"
+    }
+  ],
+  "chat_input_selector": "textarea",
+  "tti_from_script_start_ms": 11609,
+  "navigation_perf": {
+    "domContentLoaded": 258,
+    "loadEvent": 280,
+    "resourceCount": 50,
+    "overlappingPairs": [
+      [
+        "gravitre-logo-black.png",
+        "25c-48-vms73p.css"
+      ],
+      [
+        "privacy?_rsc=_H_fFy2_Q06N8BA7",
+        "security?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "security?_rsc=_H_fFy2_Q06N8BA7",
+        "terms?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "terms?_rsc=_H_fFy2_Q06N8BA7",
+        "get-started?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "get-started?_rsc=_H_fFy2_Q06N8BA7",
+        "script.js"
+      ],
+      [
+        "script.js",
+        "gtm.js?id=GTM-P9TXQF82"
+      ],
+      [
+        "gtm.js?id=GTM-P9TXQF82",
+        "forgot-password?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "forgot-password?_rsc=_H_fFy2_Q06N8BA7",
+        "docs?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "docs?_rsc=_H_fFy2_Q06N8BA7",
+        "pricing?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "pricing?_rsc=_H_fFy2_Q06N8BA7",
+        "extension?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "extension?_rsc=_H_fFy2_Q06N8BA7",
+        "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1"
+      ],
+      [
+        "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1",
+        "marketplace?_rsc=_H_fFy2_Q06N8BA7"
+      ]
+    ],
+    "resources": [
+      {
+        "name": "797e433ab948586e-s.p.0r6juujl39pe6.woff2",
+        "start": 196,
+        "dur": 0
+      },
+      {
+        "name": "caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
+        "start": 196,
+        "dur": 0
+      },
+      {
+        "name": "gravitre-logo-black.png",
+        "start": 197,
+        "dur": 31
+      },
+      {
+        "name": "25c-48-vms73p.css",
+        "start": 198,
+        "dur": 0
+      },
+      {
+        "name": "1oaqzh2ku4w7q.css",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "4483gjvptqds0.js",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "2y--8g4sb9ars.js",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "1fd5br4d0vs8b.js",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "1ijzq9hecfman.js",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "367pg5ryhpm7e.js",
+        "start": 199,
+        "dur": 0
+      },
+      {
+        "name": "turbopack-1ba9k8g9_9p3-.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "2k1dgo57vz449.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "0j7u1lacn1j68.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "3yt9gzftbgt8r.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "25or00ug621ye.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "3wl9tg0gyfnn2.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "2n-thgx2qcm5a.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "1cjaoaq6um37a.js",
+        "start": 200,
+        "dur": 0
+      },
+      {
+        "name": "2bq2f-v7qluzn.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "2rnv7wpk80g37.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "2rr3jyi2_sajg.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "0xuiztr6l0laj.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "297c975zzotub.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "1mu80nm0_i8bu.js",
+        "start": 201,
+        "dur": 0
+      },
+      {
+        "name": "privacy?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 494,
+        "dur": 160
+      },
+      {
+        "name": "security?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 494,
+        "dur": 178
+      },
+      {
+        "name": "terms?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 495,
+        "dur": 176
+      },
+      {
+        "name": "get-started?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 495,
+        "dur": 145
+      },
+      {
+        "name": "script.js",
+        "start": 505,
+        "dur": 65
+      },
+      {
+        "name": "gtm.js?id=GTM-P9TXQF82",
+        "start": 542,
+        "dur": 115
+      },
+      {
+        "name": "forgot-password?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 653,
+        "dur": 168
+      },
+      {
+        "name": "docs?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 659,
+        "dur": 148
+      },
+      {
+        "name": "pricing?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 675,
+        "dur": 193
+      },
+      {
+        "name": "extension?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 677,
+        "dur": 190
+      },
+      {
+        "name": "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1",
+        "start": 832,
+        "dur": 97
+      },
+      {
+        "name": "marketplace?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 879,
+        "dur": 149
+      },
+      {
+        "name": "technology?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 882,
+        "dur": 163
+      },
+      {
+        "name": "features?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 883,
+        "dur": 162
+      },
+      {
+        "name": "?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 884,
+        "dur": 144
+      },
+      {
+        "name": "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841h1v9258355920z89258348025za20gzb9258348",
+        "start": 1160,
+        "dur": 103
+      },
+      {
+        "name": "collect?v=2&tid=G-2BF902RJ72&cid=675385737.1786001728&gtm=45je6841h1v9258355920z",
+        "start": 1167,
+        "dur": 122
+      },
+      {
+        "name": "ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-2BF902RJ72&cid=675385737.1786001728&gt",
+        "start": 1200,
+        "dur": 83
+      },
+      {
+        "name": "privacy?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1213,
+        "dur": 146
+      },
+      {
+        "name": "security?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1215,
+        "dur": 174
+      },
+      {
+        "name": "terms?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1215,
+        "dur": 145
+      },
+      {
+        "name": "get-started?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1216,
+        "dur": 152
+      },
+      {
+        "name": "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841h1v9258355920z89258348025za20gzb9258348",
+        "start": 1271,
+        "dur": 22
+      },
+      {
+        "name": "support?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 1363,
+        "dur": 165
+      },
+      {
+        "name": "guides?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 1365,
+        "dur": 165
+      },
+      {
+        "name": "api?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 1370,
+        "dur": 160
+      }
+    ]
+  },
+  "verdict": "PASS",
+  "parallelism_note": "overlappingPairs lists resource fetches whose intervals overlap (parallel). Empty/small set with large start gaps \u2248 sequential."
+}

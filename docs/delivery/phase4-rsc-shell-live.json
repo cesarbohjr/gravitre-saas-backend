@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-08-06T02:30:27.051610+00:00",
+  "pages": [
+    {
+      "url": "https://gravitre.app/",
+      "html_bytes": 136618,
+      "ssr_visible_words": 487,
+      "ssr_text_sample": "Gravitre Your Team, Managed Simply Loading\u2026 Loading\u2026 Features Technology Marketplace Extension Pricing Docs Company Log Get Started GIBE operations platform Operators with org memory Gravitre connects your stack, runs workflows, and learns through GIBE the Gravitre Intelligent Business Engine with confidence scores, not guesswork. Get Started Free See How Works Approval before writes Verified run outcomes Org-scoped learning gravitre.app/ai Metrics Success rate (operational) Tracked live your workspace Live run telemetry your workspace never fabricated public Scroll Connector catalog includes Live",
+      "markers": {
+        "has_h1": true,
+        "has_cta_get_started": true,
+        "has_pricing_copy": true,
+        "rsc_flight_payload": true,
+        "client_island_hints": {
+          "HeroParallax": true,
+          "framer-motion": false,
+          "use client chunks": true
+        }
+      },
+      "verdict": "SERVER_SHELL_MEANINGFUL"
+    },
+    {
+      "url": "https://gravitre.app/pricing",
+      "html_bytes": 252761,
+      "ssr_visible_words": 893,
+      "ssr_text_sample": "Pricing Gravitre Loading\u2026 Loading\u2026 Features Technology Marketplace Extension Pricing Docs Company Log Get Started Plans for operators Intelligence included. Scale when ready. Every plan includes Gravitre AI, connector health checks, and governed execution. Higher tiers add Meson, cross-team agents, and GIBE admin surfaces. Pay for outputs and team seats not buzzword tiers. Start free card required Monthly Annual months free Prices USD billed monthly How teams use Gravitre Core Users Gravitre Core Build and configure agents, create workflows, and manage",
+      "markers": {
+        "has_h1": true,
+        "has_cta_get_started": true,
+        "has_pricing_copy": true,
+        "rsc_flight_payload": true,
+        "client_island_hints": {
+          "HeroParallax": false,
+          "framer-motion": false,
+          "use client chunks": true
+        }
+      },
+      "verdict": "SERVER_SHELL_MEANINGFUL"
+    }
+  ],
+  "summary": {
+    "all_meaningful_ssr": true,
+    "note": "RSC shells can still hydrate client islands; this checks whether the initial HTML already contains real marketing copy (h1 + substantial text), not empty shells."
+  }
+}

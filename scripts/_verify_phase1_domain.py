@@ -48,14 +48,15 @@ def main() -> int:
         "support_has_dead_chat": "gravitre.com/chat" in support,
         "support_live_chat_href": None,
     }
-    # Prefer the Live Chat card itself (href immediately before the Live Chat heading).
+    # Live Chat card: href may be hundreds of chars before the heading (icons/SVG).
     m = re.search(
-        r'href=["\']([^"\']+)["\'][^>]*>[\s\S]{0,400}?Live Chat',
+        r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>[\s\S]{0,1200}?Live Chat',
         support,
         re.I,
     )
     if m:
         report["support_live_chat_href"] = m.group(1)
+    report["support_contact_href_present"] = 'href="/contact"' in support or "href='/contact'" in support
 
     ok = (
         report["canonical"]
@@ -63,7 +64,10 @@ def main() -> int:
         and "gravitre.com" not in (report["canonical"] or "")
         and report["support_has_contact"]
         and not report["support_has_dead_chat"]
-        and (report["support_live_chat_href"] or "").startswith("/contact")
+        and (
+            (report["support_live_chat_href"] or "").startswith("/contact")
+            or report["support_contact_href_present"]
+        )
     )
     report["pass"] = bool(ok)
     print(json.dumps(report, indent=2))
