@@ -237,7 +237,7 @@ export default function SupportPage() {
               <p className="text-sm text-zinc-500">Response within 24 hours</p>
             </motion.a>
             <motion.button
-              onClick={() => window.open('https://gravitre.com/chat', '_blank')}
+              onClick={() => window.open('/contact', '_blank')}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}

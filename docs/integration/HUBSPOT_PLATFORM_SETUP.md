@@ -23,7 +23,7 @@ Production smoke: `docs/integration/TIER1_PRODUCTION_SMOKE.md`
 .\scripts\setup-hubspot-app.ps1
 
 # Or with a custom API host:
-$env:API_PUBLIC_URL = "https://api.gravitre.com"
+$env:API_PUBLIC_URL = "https://api.gravitre.app"
 .\scripts\setup-hubspot-app.ps1
 ```
 
@@ -61,8 +61,8 @@ If you **only** need OAuth + agent tools (no `contact.creation` / `deal.property
 HUBSPOT_CLIENT_ID=
 HUBSPOT_CLIENT_SECRET=
 CONNECTOR_SECRETS_ENCRYPTION_KEY=
-API_PUBLIC_URL=https://api.gravitre.com
-PUBLIC_APP_URL=https://app.gravitre.com
+API_PUBLIC_URL=https://api.gravitre.app
+PUBLIC_APP_URL=https://gravitre.app
 ```
 
 Leave `HUBSPOT_APP_ID` and `HUBSPOT_DEVELOPER_API_KEY` unset until you enable inbound triggers.
@@ -89,7 +89,7 @@ HubSpot is migrating to a newer developer platform (`2026.03` apps, newer webhoo
 Example redirect (production):
 
 ```text
-https://api.gravitre.com/api/connectors/oauth/hubspot/callback
+https://api.gravitre.app/api/connectors/oauth/hubspot/callback
 ```
 
 **Scopes** — must match published app hsmeta **and** `hubspot_oauth.py` (`scope` vs `optional_scope`):
@@ -139,7 +139,7 @@ Set **Target URL** to:
 Example:
 
 ```text
-https://api.gravitre.com/api/webhooks/hubspot/inbound
+https://api.gravitre.app/api/webhooks/hubspot/inbound
 ```
 
 On each customer **Connect HubSpot**, the backend also tries to sync this URL and subscriptions automatically (`ensure_app_event_subscriptions` in `hubspot_oauth.py`).
@@ -157,8 +157,8 @@ HUBSPOT_CLIENT_SECRET=
 CONNECTOR_SECRETS_ENCRYPTION_KEY=    # 64-char hex (32 bytes) — encrypts oauth_tokens in connector_secrets
 
 # Public URLs
-API_PUBLIC_URL=https://api.gravitre.com
-PUBLIC_APP_URL=https://app.gravitre.com   # fallback for OAuth redirect if API_PUBLIC_URL unset
+API_PUBLIC_URL=https://api.gravitre.app
+PUBLIC_APP_URL=https://gravitre.app   # fallback for OAuth redirect if API_PUBLIC_URL unset
 
 # Optional: separate staging HubSpot app
 HUBSPOT_SANDBOX_CLIENT_ID=
