@@ -23,7 +23,7 @@ const FeatureCard = dynamic(
 )
 const FloatingOrb = dynamic(
   () => import("@/components/marketing/home/floating-orb").then((m) => m.FloatingOrb),
-  { ssr: false }
+  { ssr: true }
 )
 const ProductShowcase = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.ProductShowcase),

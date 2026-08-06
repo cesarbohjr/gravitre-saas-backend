@@ -1,0 +1,79 @@
+{
+  "created": [
+    {
+      "index": "idx_audit_logs_actor_id_fk",
+      "table": "audit_logs",
+      "column": "actor_id"
+    },
+    {
+      "index": "idx_audit_events_actor_id_fk",
+      "table": "audit_events",
+      "column": "actor_id"
+    },
+    {
+      "index": "idx_model_calls_trained_model_id_fk",
+      "table": "model_calls",
+      "column": "trained_model_id"
+    },
+    {
+      "index": "idx_runs_triggered_by_fk",
+      "table": "runs",
+      "column": "triggered_by"
+    },
+    {
+      "index": "idx_workflow_runs_workflow_version_id_fk",
+      "table": "workflow_runs",
+      "column": "workflow_version_id"
+    },
+    {
+      "index": "idx_workflow_runs_rollback_of_run_id_fk",
+      "table": "workflow_runs",
+      "column": "rollback_of_run_id"
+    },
+    {
+      "index": "idx_workflow_runs_environment_id_fk",
+      "table": "workflow_runs",
+      "column": "environment_id"
+    },
+    {
+      "index": "idx_workflow_runs_triggered_by_fk",
+      "table": "workflow_runs",
+      "column": "triggered_by"
+    },
+    {
+      "index": "idx_workflow_runs_schedule_id_fk",
+      "table": "workflow_runs",
+      "column": "schedule_id"
+    },
+    {
+      "index": "idx_org_billing_plan_code_fk",
+      "table": "org_billing",
+      "column": "plan_code"
+    },
+    {
+      "index": "idx_agent_tool_permissions_granted_by_fk",
+      "table": "agent_tool_permissions",
+      "column": "granted_by"
+    },
+    {
+      "index": "idx_workflow_versions_created_by_fk",
+      "table": "workflow_versions",
+      "column": "created_by"
+    },
+    {
+      "index": "idx_workflow_defs_created_by_fk",
+      "table": "workflow_defs",
+      "column": "created_by"
+    },
+    {
+      "index": "idx_workflow_defs_environment_id_fk",
+      "table": "workflow_defs",
+      "column": "environment_id"
+    },
+    {
+      "index": "idx_workflows_created_by_fk",
+      "table": "workflows",
+      "column": "created_by"
+    }
+  ]
+}
