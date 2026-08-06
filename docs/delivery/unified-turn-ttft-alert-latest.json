@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-08-06T08:43:18.082569+00:00",
+  "window_hours": 24,
+  "sample_count": 74,
+  "wall_p50_ms": 947,
+  "wall_p99_ms": 5479,
+  "wall_max_ms": 20904,
+  "thresholds_ms": {
+    "p50": 1500,
+    "p99": 5000,
+    "max": 10000
+  },
+  "alerts": [
+    "ttft_p99>5000ms",
+    "ttft_max>10000ms"
+  ],
+  "verdict": "ALERT"
+}

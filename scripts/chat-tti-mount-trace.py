@@ -204,6 +204,17 @@ def main() -> int:
         mark("perf_entries_captured", final_url=page.url)
         browser.close()
 
+    nav_at = next((e["t_ms"] for e in timeline if e["label"] == "ai_navigation"), None)
+    ai_nav_to_interactive = (
+        int(interactive_at - nav_at)
+        if interactive_at is not None and nav_at is not None
+        else None
+    )
+    before_intel = [
+        row
+        for row in blocked_mount_apis
+        if interactive_at is not None and row["t_ms"] < interactive_at
+    ]
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "base": args.base,
@@ -216,12 +227,9 @@ def main() -> int:
         ),
         "chat_input_selector": used,
         "chat_tti_from_script_start_ms": interactive_at,
+        "ai_nav_to_interactive_ms": ai_nav_to_interactive,
         "mount_intel_api_requests": blocked_mount_apis,
-        "mount_intel_before_interactive": [
-            row
-            for row in blocked_mount_apis
-            if interactive_at is not None and row["t_ms"] < interactive_at
-        ],
+        "mount_intel_before_interactive": before_intel,
         "navigation_perf": perf,
         "verdict": (
             "PASS"
@@ -238,6 +246,26 @@ def main() -> int:
         ),
     }
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    try:
+        from supabase import create_client
+
+        from qa_signal_audit import write_platform_signal
+
+        sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+        write_platform_signal(
+            sb,
+            action="platform.chat_mount_tti.sample",
+            verdict=report["verdict"],
+            metadata={
+                "ai_nav_to_interactive_ms": ai_nav_to_interactive,
+                "chat_tti_from_script_start_ms": interactive_at,
+                "mount_intel_before_interactive_n": len(before_intel),
+                "verdict": report["verdict"],
+            },
+            resource_id="chat-mount-tti",
+        )
+    except Exception:
+        pass
     print(json.dumps(report, indent=2))
     return 0 if report["verdict"] == "PASS" else 1
 

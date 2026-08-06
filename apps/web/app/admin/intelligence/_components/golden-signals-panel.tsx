@@ -30,6 +30,20 @@ type GoldenSignalsResponse = {
     avg_cached_prompt_ratio?: number | null
     avg_ttft_delta_ms?: number | null
   }
+  ttft?: {
+    wall_p50_ms?: number | null
+    wall_p99_ms?: number | null
+    wall_max_ms?: number | null
+    sample_count?: number
+    alerts?: string[]
+  }
+  mount_tti?: {
+    ai_nav_to_interactive_p50_ms?: number | null
+    ai_nav_to_interactive_max_ms?: number | null
+    sample_count?: number
+    alerts?: string[]
+  }
+  alerts?: string[]
   r2_removal_gates?: {
     ready?: boolean
     current_fallthrough_pct?: number
@@ -47,6 +61,8 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   const hardening = signals?.hardening_smoke
   const ft = signals?.fallthrough
   const cache = signals?.prefix_cache
+  const ttft = signals?.ttft
+  const mount = signals?.mount_tti
 
   return (
     <section
@@ -87,6 +103,29 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
                 : "—"
           }
           variant={hardening?.pass === true ? "success" : hardening?.pass === false ? "danger" : "default"}
+        />
+        <StatCard
+          label="TTFT wall p50"
+          value={ttft?.wall_p50_ms != null ? `${ttft.wall_p50_ms}ms` : "—"}
+          variant={ttft?.alerts?.length ? "warning" : "default"}
+        />
+        <StatCard
+          label="TTFT wall p99 / max"
+          value={
+            ttft?.wall_p99_ms != null || ttft?.wall_max_ms != null
+              ? `${ttft?.wall_p99_ms ?? "—"} / ${ttft?.wall_max_ms ?? "—"}ms`
+              : "—"
+          }
+          variant={ttft?.alerts?.length ? "warning" : "default"}
+        />
+        <StatCard
+          label="Mount /ai nav→TTI p50"
+          value={
+            mount?.ai_nav_to_interactive_p50_ms != null
+              ? `${mount.ai_nav_to_interactive_p50_ms}ms`
+              : "—"
+          }
+          variant={mount?.alerts?.length ? "warning" : "default"}
         />
         <StatCard
           label="Prefix cache ratio"

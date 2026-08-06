@@ -1,8 +1,8 @@
 # Text-response latency — Phase 3 tail investigation
 
-**Status:** IN PROGRESS → fix shipping  
-**Tip at diagnosis:** `8c21d5c1` / docs tip after Phase 2  
-**Artifact:** `phase3-ttft-tail-audit.json`, `phase3-ttft-tail-worst-detail.json`
+**Status:** DONE on tip `5e068eb1`  
+**Tip at diagnosis:** `8c21d5c1`  
+**Artifacts:** `phase3-ttft-tail-audit.json`, `phase3-ttft-tail-worst-detail.json`, `unified-turn-task-ttft-phase3-post-tail-fix.json`
 
 ## Prod distribution (7d, n=224 with TTFT)
 
@@ -41,6 +41,11 @@ Secondary: cold MiniLM encode (~800ms+) on some workers; stream rounds had no ha
 3. Record `progressive_round_ms` / `progressive_preloaded` / `stream_timed_out`.
 4. Warm local MiniLM encoder at boot alongside tool-doc cache.
 
-## Post-deploy verification
+## Post-deploy verification (tip `5e068eb1`)
 
-Re-run TTFT battery; report new wall p50 **and** max. Gate honesty is Phase 4.
+| Battery | wall p50 | wall max | notes |
+|---------|---------:|---------:|-------|
+| phase3-post-tail-fix (`ef7ef50f`) | 735 | 2599 | preload briefly targeted browser_* — fixed in `5e068eb1` |
+| phase4-standing-gate (`5e068eb1`) | **973** | **1840** | HubSpot preload = hubspot_*; no search-round overhead |
+
+Max class **20904 → 1840**. Gate honesty is Phase 4.
