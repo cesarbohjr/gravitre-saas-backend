@@ -396,8 +396,17 @@ async def run_unified_turn_shadow(
         preload_ok = preload_n > 0 and (
             top_sim is None or (isinstance(top_sim, (int, float)) and float(top_sim) >= min_sim)
         )
+        focused = (tool_stats or {}).get("focusedConnectors") or []
+        if not isinstance(focused, list):
+            focused = []
         preload_names = (
-            set(select_progressive_preload_names(list(visible), max_preload=preload_n))
+            set(
+                select_progressive_preload_names(
+                    list(visible),
+                    max_preload=preload_n,
+                    focused_connectors=[str(c) for c in focused],
+                )
+            )
             if preload_ok
             else set()
         )

@@ -96,7 +96,7 @@ def test_progressive_preload_attaches_full_schema_for_top_connector_tools():
     tools = registry.get_tools_for_agent(["*"], ["apollo", "hubspot", "platform"])[:16]
     preload = select_progressive_preload_names(tools, max_preload=2)
     assert preload, "expected connector tools to preload"
-    assert all(not n.startswith("platform_") for n in preload)
+    assert all(not n.startswith(("platform_", "browser_", "assistant_")) for n in preload)
     attach, full_by_name, loaded = apply_progressive_disclosure(
         tools, loaded_names=set(preload)
     )
@@ -109,3 +109,37 @@ def test_progressive_preload_attaches_full_schema_for_top_connector_tools():
         )
         assert not full.get("gravitre_deferred")
         assert full_by_name[name]["function"].get("parameters")
+
+
+def test_progressive_preload_prefers_focused_connector_over_browser_platform():
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "browser_agent_interact",
+                "description": "Browser",
+                "parameters": {"type": "object", "properties": {"x": {"type": "string"}}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "hubspot_search_contacts",
+                "description": "Search HubSpot",
+                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "apollo_lists_create",
+                "description": "Apollo list",
+                "parameters": {"type": "object", "properties": {"name": {"type": "string"}}},
+            },
+        },
+    ]
+    preload = select_progressive_preload_names(
+        tools, max_preload=2, focused_connectors=["hubspot"]
+    )
+    assert preload == ["hubspot_search_contacts"] or preload[0] == "hubspot_search_contacts"
+    assert "browser_agent_interact" not in preload

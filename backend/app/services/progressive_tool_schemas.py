@@ -65,29 +65,60 @@ def search_catalog_tools_definition() -> dict[str, Any]:
     }
 
 
+# Mirror agent_platform_optimizer platform prefixes — never preload these as
+# "top connector" schemas (they sit at the front of narrowed lists).
+_PRELOAD_SKIP_PREFIXES = (
+    "platform_",
+    "gravitre_",
+    "catalog_",
+    "assistant_",
+    "browser_",
+    "browser_agent_",
+    "web_search",
+    "knowledge_",
+)
+
+
 def select_progressive_preload_names(
     narrowed: list[dict[str, Any]],
     *,
     max_preload: int = 2,
+    focused_connectors: list[str] | None = None,
 ) -> list[str]:
     """Pick top connector candidates to attach with full schemas up front.
 
     Avoids a second model round via ``search_catalog_tools`` when embedding/keyword
     narrowing already ranked the likely tool(s). Skips platform/meta helpers.
+    Prefers tools whose name prefix matches ``focused_connectors`` when provided.
     """
     if max_preload <= 0:
         return []
+    focus = {str(c).strip().lower() for c in (focused_connectors or []) if str(c).strip()}
+
+    def _eligible(name: str) -> bool:
+        lower = name.lower()
+        if not name or name == SEARCH_CATALOG_TOOLS_NAME:
+            return False
+        return not any(lower.startswith(p) for p in _PRELOAD_SKIP_PREFIXES)
+
     names: list[str] = []
+    if focus:
+        for tool in narrowed:
+            if not isinstance(tool, dict):
+                continue
+            name = tool_name(tool)
+            if not _eligible(name) or name in names:
+                continue
+            prefix = name.split("_", 1)[0].lower()
+            if prefix in focus or any(f in name.lower() for f in focus):
+                names.append(name)
+                if len(names) >= max_preload:
+                    return names
     for tool in narrowed:
         if not isinstance(tool, dict):
             continue
         name = tool_name(tool)
-        if not name or name == SEARCH_CATALOG_TOOLS_NAME:
-            continue
-        lower = name.lower()
-        if lower.startswith(("platform_", "gravitre_", "catalog_", "assistant_")):
-            continue
-        if name in names:
+        if not _eligible(name) or name in names:
             continue
         names.append(name)
         if len(names) >= max_preload:
