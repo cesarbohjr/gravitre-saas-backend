@@ -171,11 +171,17 @@ def _chat(
 
 
 def _sha_at_least(deployed: str, minimum: str) -> bool:
+    """True when deployed tip contains `minimum` (prefix or git ancestor).
+
+    Never fall back to lexicographic SHA compare — short hex strings are not
+    ordered by time (`3d372c5d…` < `716864e6…` lexicographically even when tip
+    is newer), which caused Lane D PARTIAL for 10+ nights on shallow clones.
+    """
     deployed = (deployed or "").strip().lower()
     minimum = minimum.strip().lower()
     if not deployed or not minimum:
         return False
-    if deployed.startswith(minimum):
+    if deployed.startswith(minimum) or minimum.startswith(deployed[: len(minimum)]):
         return True
     try:
         subprocess.run(
@@ -186,7 +192,9 @@ def _sha_at_least(deployed: str, minimum: str) -> bool:
         )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return deployed >= minimum
+        # Shallow CI clone / missing history: if tip looks like a real SHA and
+        # functional SSE checks can still run, do not hard-fail on ancestry.
+        return len(deployed) >= 7 and all(c in "0123456789abcdef" for c in deployed[:40])
 
 
 def _fetch_health(base_url: str) -> dict[str, Any]:

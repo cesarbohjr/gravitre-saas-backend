@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so research-cascade deploy_sha ancestry checks work.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
