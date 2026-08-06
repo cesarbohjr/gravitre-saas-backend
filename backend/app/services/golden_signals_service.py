@@ -11,7 +11,7 @@ from app.workflows.repository import get_supabase_client
 
 PLATFORM_ORG_ID = os.environ.get(
     "GRAVITRE_PLATFORM_SIGNALS_ORG_ID",
-    "00000000-0000-4000-8000-000000000001",
+    "f07e57c0-1501-4000-8000-c04e57a00001",
 )
 
 FALLTHROUGH_ALERT_PCT = float(os.environ.get("UNIFIED_TURN_FALLTHROUGH_ALERT_PCT", "10"))
