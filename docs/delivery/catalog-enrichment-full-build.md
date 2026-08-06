@@ -1,7 +1,7 @@
 # Catalog-wide retrieval enrichment — full build
 
 **Status:** DONE — adopt default ON  
-**Tip (code):** pending deploy of this commit  
+**Tip:** `45ae7d052d1f88236d2aacb675b84cece751d825` (`/health` git_sha live)  
 **Catalog count:** **690** actions / **77** vendors (`all_catalog_action_specs()`)
 
 ## Part 1 — Enriched content
@@ -24,17 +24,20 @@ Report: `docs/delivery/action-retrieval-enrichment-generation-report.json`
 
 ## Part 3 — Measurement (hard targets)
 
-Artifact: `docs/delivery/catalog-enrichment-nl-variance-live.json`
+Artifact: `docs/delivery/catalog-enrichment-nl-variance-live.json`  
+Live tip verify `@ 2026-08-06T09:39:09Z` against `api_git_sha=45ae7d05…`
 
 | Target | Result |
 |--------|--------|
 | ≥200 cases, all 77 vendors | **770 cases / 77 vendors** |
 | Correct-tool (top-k) ≥90% | **95.06%** PASS |
 | Withhold battery 100% (3 cats) | **PASS** (standing tests with enrichment ON) |
-| Latency unregressed | narrow p50 **~27–40ms**, embed_query p50 **~20ms** — PASS |
-| vs 18-action pilot `delta_correct=0` | A/B sample **delta_correct=+1** (off 77/80 → on 79/80); catalog-scale rate **0.9506** |
+| Latency unregressed | narrow p50 **27ms**, embed_query p50 **20ms** — PASS |
+| Coverage | **690/690** enriched (`full_coverage=true`) |
+| A/B sample | **delta_correct=+1** (off→on) |
 
-**Recommendation:** permanent default ON (`adopt_enrichment_default_on`).
+**Recommendation:** permanent default ON (`adopt_enrichment_default_on`).  
+**Verdict:** `overall_pass=true`
 
 ## Part 4 — Standing protection
 
