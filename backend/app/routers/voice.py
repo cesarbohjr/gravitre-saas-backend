@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -98,7 +98,6 @@ async def post_stt_form(
     _org: Annotated[dict, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     audio: UploadFile = File(...),
-    _note: str | None = Form(default=None),
 ) -> dict[str, Any]:
     """Alias for multipart clients that prefer field name `audio`."""
     started = time.perf_counter()
