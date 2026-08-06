@@ -45,14 +45,19 @@ def load_env() -> dict[str, str]:
 
 def main() -> int:
     env = load_env()
+    from supabase import create_client
+
     health = json.load(urllib.request.urlopen(f"{BASE}/health", timeout=30))
-    actor = resolve_isolated_conversation_actor()
+    sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+    org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
+    url = env["SUPABASE_URL"].rstrip("/")
     tok = jwt.encode(
         {
-            "sub": actor["user_id"],
-            "email": actor.get("email") or "conversation-smoke-sa@gravitre.app",
+            "sub": user_id,
+            "email": email or "conversation-smoke-sa@gravitre.app",
             "role": "authenticated",
             "aud": "authenticated",
+            "iss": f"{url}/auth/v1",
             "iat": int(time.time()),
             "exp": int(time.time()) + 3600,
         },
@@ -62,7 +67,7 @@ def main() -> int:
     headers = {
         **smoke_http_headers(),
         "Authorization": f"Bearer {tok}",
-        "x-org-id": actor["org_id"],
+        "x-org-id": org_id,
         "Content-Type": "application/json",
     }
     report: dict = {

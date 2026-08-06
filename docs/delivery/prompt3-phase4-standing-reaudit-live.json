@@ -1,0 +1,121 @@
+{
+  "feature": "prompt3_phase4_standing_reaudit",
+  "checked_at": "2026-08-06T20:03:00.210137+00:00",
+  "live_health": {
+    "url": "https://api.gravitre.app/health",
+    "timestamp": "2026-08-06T19:55:13.583293+00:00",
+    "git_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+    "environment": "prod",
+    "unified_turn_live_enabled": true
+  },
+  "deploy_runs": {
+    "31126500276": {
+      "title": "Railway backend production",
+      "headSha": "3e7c90fe428b36333dedd4c090e2be21708e254a",
+      "status": "pending",
+      "conclusion": null,
+      "updatedAt": "2026-08-06T18:55:27Z",
+      "url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31126500276",
+      "note": "stuck_pending_empty_jobs"
+    },
+    "31126385881": {
+      "title": "feat(voice): Tier 1 ElevenLabs TTS + Deepgram STT on chat pipeline",
+      "headSha": "3e7c90fe428b36333dedd4c090e2be21708e254a",
+      "status": "queued",
+      "conclusion": null,
+      "updatedAt": "2026-08-06T20:01:49Z",
+      "url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31126385881",
+      "note": "stuck_queued_detect_backend_changes"
+    },
+    "tip_matches_queued_voice_sha": false
+  },
+  "checklist": {
+    "1_ttft": {
+      "result": "PARTIAL",
+      "label": "prompt3-p4",
+      "ok": false,
+      "wall_p50_ms": 707,
+      "wall_min_ms": 607,
+      "wall_max_ms": 2008,
+      "model_p50_ms": 560,
+      "functional_pass_n": 4,
+      "functional_n": 5,
+      "tip_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+      "artifact": "docs/delivery/unified-turn-task-ttft-prompt3-p4.json",
+      "finished_at": "2026-08-06T20:01:30.900125+00:00"
+    },
+    "2_enrichment": {
+      "result": "TIP_DRIFT",
+      "artifact_api_git_sha": "45ae7d052d1f88236d2aacb675b84cece751d825",
+      "live_tip_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+      "tip_matched": false,
+      "artifact_overall_pass": true,
+      "artifact": "docs/delivery/catalog-enrichment-nl-variance-live.json"
+    },
+    "3_f6_apollo_settle": {
+      "result": "PASS",
+      "pass": true,
+      "verdict": "VERIFIED \u2014 Apollo+HubSpot follow_up_membership_confirmed; Marketo NOT_RUN (no connector) \u2014 follow-up branch wired (decision a)",
+      "live_health_git_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+      "apollo": {
+        "pass": true,
+        "list_id": "6a74e705ae28c7001c69630d",
+        "list_name": "F6-FollowUp-46fa83d4",
+        "entity_id": "6a74e70cf4bbe5000c7c8483",
+        "after_membership": 1
+      },
+      "hubspot": {
+        "pass": true,
+        "list_id": "46",
+        "list_name": "F6-HS-46fa83d4",
+        "contact_id": "270287894506",
+        "after_membership": 1
+      },
+      "marketo": {
+        "pass": false,
+        "not_run": true,
+        "reason": "no_active_marketo_connector"
+      },
+      "finished_at": "2026-08-06T19:57:58.480628+00:00",
+      "artifact": "docs/delivery/f6-collection-population-verify-live.json"
+    },
+    "4_click_audit": {
+      "result": "PASS_PRIOR",
+      "verdict": "PASS",
+      "checked_at": "2026-08-06T17:10:00.000Z",
+      "summary": {
+        "surfaces_ok": 11,
+        "surfaces_fail": 0,
+        "surfaces_total": 11,
+        "dead_controls": 0
+      },
+      "reprobed_this_pass": false,
+      "artifact": "docs/delivery/prompt3-phase2-click-audit-live.json"
+    },
+    "5_voice": {
+      "result": "FAIL",
+      "verdict": "FAIL",
+      "api_git_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+      "status_http": 404,
+      "tts_skipped_reason": "ELEVENLABS_API_KEY not configured on tip",
+      "checked_at": "2026-08-06T20:01:51.045464+00:00",
+      "artifact": "docs/delivery/prompt3-tier1-voice-live.json"
+    },
+    "6_routing_f1_f10": {
+      "result": "NOT_RUN",
+      "note": "bounded pass; F6 G.5.9 covered under checklist 3"
+    },
+    "7_rls_perf": {
+      "result": "ASSUMED_HOLD",
+      "note": "no schema change this pass; no fresh RLS probe"
+    }
+  },
+  "named_gaps": [
+    "Deploy stuck: GH 31126500276 pending + 31126385881 queued on 3e7c90fe; live tip remains 26c32007",
+    "Voice FAIL on tip (404 / no ElevenLabs) until voice SHA deploys",
+    "Catalog enrichment artifact tip-drifted from 45ae7d05 to live 26c32007",
+    "TTFT ok=false functional 4/5 (apollo_list_write); wall_p50=707 wall_max=2008",
+    "Marketo F6 NOT_RUN (no connector) \u2014 accepted",
+    "Click-audit / F1-F10 / RLS not freshly tip-stamped this pass"
+  ]
+}
