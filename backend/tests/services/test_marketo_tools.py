@@ -13,6 +13,7 @@ def test_marketo_tool_executors_registered():
     assert "marketo.campaigns.list" in TOOL_EXECUTORS
     assert "marketo.programs.status" in TOOL_EXECUTORS
     assert "marketo.lists.add_to_static_list" in TOOL_EXECUTORS
+    assert "marketo.lists.get_leads" in TOOL_EXECUTORS
 
 
 def test_marketo_leads_get_success():

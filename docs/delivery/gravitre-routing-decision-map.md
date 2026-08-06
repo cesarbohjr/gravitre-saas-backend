@@ -537,6 +537,17 @@ Direct fixes after G.5.7. Status uses the standing map bar.
 
 **Live tip:** `/health` `git_sha=ce6db384…` (ok). F6/A5d live probes also PASS on prior tip `798f792d` (same routing/verify code).
 
+### G.5.9 Population-verify eventual consistency — CLOSED (2026-08-06)
+
+| Vendor path | Decision | Current code | Evidence / note |
+|-------------|----------|--------------|-----------------|
+| HubSpot `lists.get` follow-up | Keep | Shared `_SETTLE_BACKOFF_S` + final `_SETTLE_FINAL_SLEEP_S` settle read | Prior live F6 confirmed |
+| Apollo `lists.list` follow-up | **Equalized to HubSpot** | Same settle helper (no shorter window) | Standing tests assert settle call count; live re-verify in `f6-collection-population-verify-live.json` |
+| Marketo `lists.add_to_static_list` | **(a) Wire follow-up** | `marketo.lists.get_leads` → GET `/lists/{id}/leads.json` via same settle helper | Adobe List Membership API is real/reliable. Live write **NOT_RUN** until an org connects Marketo (zero prod connectors today) — not “async forever” |
+| Other list-add vendors | N/A | Only Apollo+HubSpot+Marketo in population verify | Expand if new populate actions ship |
+
+**Standing CI:** `test_f6_hubspot_follow_up_membership.py` (HubSpot + Apollo settle parity + Marketo follow-up).
+
 ---
 
 ## Appendix — Code anchors

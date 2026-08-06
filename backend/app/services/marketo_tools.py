@@ -8,6 +8,7 @@ from app.connectors.marketo import (
     add_to_static_list,
     get_lead,
     get_program_status,
+    get_static_list_leads,
     list_campaigns,
     update_leads,
 )
@@ -143,10 +144,42 @@ def _exec_marketo_lists_add_to_static_list(ctx: ToolContext, params: dict[str, A
     return NormalizedResult(success=True, action="marketo.lists.add_to_static_list", connector_id=cid, data=data)
 
 
+def _exec_marketo_lists_get_leads(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, munchkin_id = _marketo_connector_and_session(ctx, params)
+    list_id = params.get("list_id") or params.get("listId")
+    if not list_id:
+        raise ToolValidationError("marketo.lists.get_leads requires list_id")
+    try:
+        data = get_static_list_leads(
+            token,
+            munchkin_id,
+            list_id,
+            batch_size=params.get("batch_size") or params.get("batchSize"),
+            next_page_token=params.get("next_page_token") or params.get("nextPageToken"),
+            fields=params.get("fields"),
+        )
+    except MarketoAPIError as exc:
+        raise _handle_marketo_error(exc) from exc
+    result = data.get("result") if isinstance(data, dict) else None
+    member_count = len(result) if isinstance(result, list) else 0
+    stamped = dict(data) if isinstance(data, dict) else {"raw": data}
+    stamped["list_id"] = str(list_id)
+    stamped["member_count"] = member_count
+    stamped["lead_count"] = member_count
+    stamped["contact_count"] = member_count
+    return NormalizedResult(
+        success=True,
+        action="marketo.lists.get_leads",
+        connector_id=cid,
+        data=stamped,
+    )
+
+
 TOOL_EXECUTORS: dict[str, ToolExecutor] = {
     "marketo.leads.get": _exec_marketo_leads_get,
     "marketo.leads.update": _exec_marketo_leads_update,
     "marketo.campaigns.list": _exec_marketo_campaigns_list,
     "marketo.programs.status": _exec_marketo_programs_status,
     "marketo.lists.add_to_static_list": _exec_marketo_lists_add_to_static_list,
+    "marketo.lists.get_leads": _exec_marketo_lists_get_leads,
 }

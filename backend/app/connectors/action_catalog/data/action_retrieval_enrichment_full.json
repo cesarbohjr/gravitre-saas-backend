@@ -7166,6 +7166,24 @@
         "add-to-static-list"
       ]
     },
+    "marketo.lists.get_leads": {
+      "examples": [
+        "Show me the leads currently on this Marketo static list.",
+        "Verify membership after I add a lead to a Marketo list.",
+        "List the contacts in Marketo static list 1001.",
+        "Get members of my Marketo static list by list id.",
+        "Who is on this Marketo list right now?"
+      ],
+      "tags": [
+        "marketo",
+        "lists",
+        "get_leads",
+        "read",
+        "membership",
+        "verify",
+        "static-list"
+      ]
+    },
     "marketo.programs.members.add": {
       "examples": [
         "How can I add members to a program in Marketo?",

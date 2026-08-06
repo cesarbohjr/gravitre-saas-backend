@@ -128,6 +128,114 @@ def verify_collection_population(
     )
 
 
+# F6 HubSpot-proven eventual-consistency window (shared by Apollo + Marketo).
+# Live F6: membership can stay 0 across ~30s then appear on the next get.
+_SETTLE_BACKOFF_S = (3.0, 5.0, 8.0, 10.0, 12.0, 15.0, 20.0)
+_SETTLE_FINAL_SLEEP_S = 8.0
+
+
+def _retry_membership_with_settle(
+    *,
+    read_size: Any,
+    vendor_label: str,
+    list_id: str,
+) -> int | None:
+    """Identical HubSpot F6 settle pattern: long backoff, then final settle read.
+
+    ``read_size`` is a zero-arg callable that returns membership count (int) or
+    None when the payload has no usable size. Soft exceptions are retried; a
+    final settle sleep+read runs after the loop (live F6 first non-zero often
+    landed there).
+    """
+    last_err: Exception | None = None
+    last_size: int | None = None
+    for attempt, delay in enumerate(_SETTLE_BACKOFF_S):
+        try:
+            size = read_size()
+            if size is not None:
+                last_size = max(0, int(size))
+                if last_size > 0:
+                    return last_size
+            if attempt < len(_SETTLE_BACKOFF_S) - 1:
+                time.sleep(delay)
+            continue
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            if attempt < len(_SETTLE_BACKOFF_S) - 1:
+                time.sleep(delay)
+            continue
+    # Final settle read — live F6 saw first non-zero on the get immediately
+    # after the retry loop returned empty.
+    try:
+        time.sleep(_SETTLE_FINAL_SLEEP_S)
+        size = read_size()
+        if size is not None:
+            last_size = max(0, int(size))
+            if last_size > 0:
+                return last_size
+    except Exception as exc:  # noqa: BLE001
+        last_err = exc
+    if last_size is not None:
+        return last_size
+    if last_err is not None:
+        logger.info(
+            "%s list follow-up failed list_id=%s err=%s", vendor_label, list_id, last_err
+        )
+        return -1
+    return None
+
+
+def _hubspot_membership_size(payload: dict[str, Any]) -> int | None:
+    size = payload.get("size")
+    if size is None:
+        size = payload.get("membershipCount")
+    if size is None:
+        size = payload.get("contact_count")
+    if size is None:
+        size = payload.get("member_count")
+    meta = payload.get("meta")
+    if size is None and isinstance(meta, dict):
+        size = meta.get("size")
+    if size is None and isinstance(payload.get("list"), dict):
+        list_obj = payload["list"]
+        size = list_obj.get("size") or list_obj.get("membershipCount")
+        if size is None:
+            addl = list_obj.get("additionalProperties")
+            if isinstance(addl, dict):
+                size = addl.get("hs_list_size")
+    members = payload.get("memberships") or payload.get("results") or []
+    if isinstance(members, list) and members:
+        member_n = len(members)
+        if size is None or int(size or 0) < member_n:
+            size = member_n
+    if size is None:
+        return None
+    return max(0, int(size))
+
+
+def _apollo_membership_size(payload: dict[str, Any]) -> int | None:
+    size: int | None = None
+    for key in ("contact_count", "contacts_count", "member_count", "count"):
+        if payload.get(key) is not None:
+            size = max(0, int(payload.get(key) or 0))
+            break
+    if size is None:
+        contacts = payload.get("contacts") or payload.get("people") or []
+        if isinstance(contacts, list):
+            size = len(contacts)
+    return size
+
+
+def _marketo_membership_size(payload: dict[str, Any]) -> int | None:
+    for key in ("member_count", "contact_count", "lead_count", "count"):
+        if payload.get(key) is not None:
+            return max(0, int(payload.get(key) or 0))
+    result = payload.get("result") or payload.get("leads") or payload.get("memberships") or []
+    if isinstance(result, list):
+        return len(result)
+    return None
+
+
 def _follow_up_membership_count(
     *,
     action: str,
@@ -159,136 +267,57 @@ def _follow_up_membership_count(
         if action.startswith("hubspot.") and ctx is not None:
             from app.services.tool_service import invoke_tool
 
-            # HubSpot ILS membership index is eventually consistent after add —
-            # live F6 showed size=0 for ~10s then size=1 on a later get. Retry
-            # with longer backoff so verify does not false-fail as empty.
-            last_err: Exception | None = None
-            last_size: int | None = None
-            # Live F6: membership can stay 0 across ~30s then appear on the next get.
-            backoff_s = (3.0, 5.0, 8.0, 10.0, 12.0, 15.0, 20.0)
             get_params: dict[str, Any] = {"list_id": list_id}
             cid = getattr(ctx, "connector_id", None)
             if cid:
                 get_params["connector_id"] = cid
 
-            def _hubspot_size(payload: dict[str, Any]) -> int | None:
-                size = payload.get("size")
-                if size is None:
-                    size = payload.get("membershipCount")
-                if size is None:
-                    size = payload.get("contact_count")
-                if size is None:
-                    size = payload.get("member_count")
-                meta = payload.get("meta")
-                if size is None and isinstance(meta, dict):
-                    size = meta.get("size")
-                if size is None and isinstance(payload.get("list"), dict):
-                    list_obj = payload["list"]
-                    size = list_obj.get("size") or list_obj.get("membershipCount")
-                    if size is None:
-                        addl = list_obj.get("additionalProperties")
-                        if isinstance(addl, dict):
-                            size = addl.get("hs_list_size")
-                members = payload.get("memberships") or payload.get("results") or []
-                if isinstance(members, list) and members:
-                    member_n = len(members)
-                    if size is None or int(size or 0) < member_n:
-                        size = member_n
-                if size is None:
-                    return None
-                return max(0, int(size))
-
-            for attempt, delay in enumerate(backoff_s):
-                try:
-                    out = invoke_tool(
-                        ctx,
-                        "hubspot.lists.get",
-                        get_params,
-                    )
-                    payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                    size = _hubspot_size(payload)
-                    if size is not None:
-                        last_size = size
-                        if last_size > 0:
-                            return last_size
-                    # size 0 / missing — wait and retry (eventual consistency)
-                    if attempt < len(backoff_s) - 1:
-                        time.sleep(delay)
-                    continue
-                except Exception as exc:  # noqa: BLE001
-                    last_err = exc
-                    if attempt < len(backoff_s) - 1:
-                        time.sleep(delay)
-                    continue
-            # Final settle read — live F6 saw first non-zero on the get immediately
-            # after the retry loop returned empty.
-            try:
-                time.sleep(8.0)
+            def _read() -> int | None:
                 out = invoke_tool(ctx, "hubspot.lists.get", get_params)
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                size = _hubspot_size(payload)
-                if size is not None:
-                    last_size = size
-                    if last_size > 0:
-                        return last_size
-            except Exception as exc:  # noqa: BLE001
-                last_err = exc
-            if last_size is not None:
-                return last_size
-            if last_err is not None:
-                logger.info(
-                    "hubspot list follow-up failed list_id=%s err=%s", list_id, last_err
-                )
-                return -1
+                return _hubspot_membership_size(payload)
+
+            return _retry_membership_with_settle(
+                read_size=_read, vendor_label="hubspot", list_id=list_id
+            )
 
         if action.startswith("apollo.") and ctx is not None:
             from app.services.tool_service import invoke_tool
 
-            # Apollo label/search membership can lag the add the same way HubSpot ILS
-            # does — retry before declaring empty.
-            last_err: Exception | None = None
-            last_size: int | None = None
-            backoff_s = (2.0, 3.0, 5.0, 8.0, 8.0)
+            # apollo.lists.list with list_id uses contacts.search by label
+            # (GET /labels alone never returns membership — F6 empty-body root cause).
             list_params: dict[str, Any] = {"list_id": list_id}
             cid = getattr(ctx, "connector_id", None)
             if cid:
                 list_params["connector_id"] = cid
-            for attempt, delay in enumerate(backoff_s):
-                try:
-                    # apollo.lists.list with list_id uses contacts.search by label
-                    # (GET /labels alone never returns membership — F6 empty-body root cause).
-                    out = invoke_tool(
-                        ctx,
-                        "apollo.lists.list",
-                        list_params,
-                    )
-                    payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                    size: int | None = None
-                    for key in ("contact_count", "contacts_count", "member_count", "count"):
-                        if payload.get(key) is not None:
-                            size = max(0, int(payload.get(key) or 0))
-                            break
-                    if size is None:
-                        contacts = payload.get("contacts") or payload.get("people") or []
-                        if isinstance(contacts, list):
-                            size = len(contacts)
-                    if size is not None:
-                        last_size = size
-                        if last_size > 0:
-                            return last_size
-                    if attempt < len(backoff_s) - 1:
-                        time.sleep(delay)
-                    continue
-                except Exception as exc:  # noqa: BLE001
-                    last_err = exc
-                    if attempt < len(backoff_s) - 1:
-                        time.sleep(delay)
-                    continue
-            if last_size is not None:
-                return last_size
-            if last_err is not None:
-                logger.info("apollo list follow-up failed list_id=%s err=%s", list_id, last_err)
-                return -1
+
+            def _read() -> int | None:
+                out = invoke_tool(ctx, "apollo.lists.list", list_params)
+                payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
+                return _apollo_membership_size(payload)
+
+            return _retry_membership_with_settle(
+                read_size=_read, vendor_label="apollo", list_id=list_id
+            )
+
+        if action.startswith("marketo.") and ctx is not None:
+            from app.services.tool_service import invoke_tool
+
+            # Adobe Marketo: GET /rest/v1/lists/{listId}/leads.json is the
+            # documented membership read (same resource family as the add POST).
+            get_params: dict[str, Any] = {"list_id": list_id, "batch_size": 50}
+            cid = getattr(ctx, "connector_id", None)
+            if cid:
+                get_params["connector_id"] = cid
+
+            def _read() -> int | None:
+                out = invoke_tool(ctx, "marketo.lists.get_leads", get_params)
+                payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
+                return _marketo_membership_size(payload)
+
+            return _retry_membership_with_settle(
+                read_size=_read, vendor_label="marketo", list_id=list_id
+            )
     except Exception as exc:  # noqa: BLE001
         logger.info("collection population follow-up skipped action=%s err=%s", action, exc)
         return -1

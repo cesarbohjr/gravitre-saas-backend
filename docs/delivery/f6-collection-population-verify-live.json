@@ -1,14 +1,15 @@
 {
-  "started_at": "2026-08-05T22:30:55.013466+00:00",
-  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "started_at": "2026-08-06T09:56:24.555776+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "requirement": "forced_re_read_follow_up_membership_confirmed",
-  "live_health_git_sha": "798f792de7abab3b11a3c864b7b4eea580a83be5",
+  "live_health_git_sha": "45ae7d052d1f88236d2aacb675b84cece751d825",
+  "g59_marketo_decision": "a_wire_follow_up_via_lists.get_leads",
   "apollo": {
     "vendor": "apollo",
-    "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-    "list_name": "F6-FollowUp-de5d3118",
-    "list_id": "6a73b9a772eb1c0010817dc8",
-    "entity_id": "6a73b9ac886a8d0010c7fc80",
+    "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
+    "list_name": "F6-FollowUp-227252e6",
+    "list_id": "6a745a5453956d0010a1e55f",
+    "entity_id": "6a745a5a4e8a3200102de75c",
     "create_success": true,
     "add_success": true,
     "add_error": null,
@@ -50,9 +51,9 @@
   },
   "hubspot": {
     "vendor": "hubspot",
-    "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
-    "list_name": "F6-HS-de5d3118",
-    "list_id": "43",
+    "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+    "list_name": "F6-HS-227252e6",
+    "list_id": "45",
     "contact_id": "270287894506",
     "create_success": true,
     "add_success": true,
@@ -78,7 +79,16 @@
     },
     "pass": true
   },
-  "finished_at": "2026-08-05T22:31:49.362447+00:00",
+  "marketo": {
+    "vendor": "marketo",
+    "connector_id": null,
+    "pass": false,
+    "not_run": true,
+    "reason": "no_active_marketo_connector",
+    "decision": "a_follow_up_wired_marketo.lists.get_leads",
+    "note": "Code path ships with HubSpot-identical settle-read; live write blocked until an org connects Marketo OAuth + munchkin."
+  },
+  "finished_at": "2026-08-06T09:57:22.766828+00:00",
   "pass": true,
-  "verdict": "VERIFIED \u2014 both vendors follow_up_membership_confirmed with non-empty re-read"
+  "verdict": "VERIFIED \u2014 Apollo+HubSpot follow_up_membership_confirmed; Marketo NOT_RUN (no connector) \u2014 follow-up branch wired (decision a)"
 }

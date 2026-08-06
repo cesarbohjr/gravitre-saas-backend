@@ -26,8 +26,10 @@ REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
-ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
+# Prefer isolated smoke org — Cesar workspace Apollo OAuth is often stale while
+# smoke Apollo (8992743f…) stays healthy for TTFT / F6 writes.
+ORG = os.environ.get("F6_ORG_ID", "f07e57c0-1501-4000-8000-c04e57a00001")
+ACTOR = os.environ.get("F6_ACTOR_ID", "a9f1240f-910a-42ca-aebf-38caeac288c3")
 OUT = REPO / "docs" / "delivery" / "f6-collection-population-verify-live.json"
 
 _PROOF_KEYS = (
@@ -355,6 +357,131 @@ def _hubspot_case(suffix: str) -> dict:
     }
 
 
+def _marketo_case(suffix: str) -> dict:
+    """Real Marketo write + settle-read verify when a healthy connector exists.
+
+    Decision G.5.9(a): follow-up uses GET /lists/{id}/leads (marketo.lists.get_leads)
+    with the same HubSpot settle window. Without a connected Marketo org connector,
+    report NOT_RUN — do not fake accepted_async as a live pass.
+    """
+    from app.services.collection_population_verify import verify_collection_population
+
+    cid = _connector_id("marketo")
+    if not cid:
+        return {
+            "vendor": "marketo",
+            "connector_id": None,
+            "pass": False,
+            "not_run": True,
+            "reason": "no_active_marketo_connector",
+            "decision": "a_follow_up_wired_marketo.lists.get_leads",
+            "note": (
+                "Code path ships with HubSpot-identical settle-read; live write "
+                "blocked until an org connects Marketo OAuth + munchkin."
+            ),
+        }
+
+    ctx, cid = _ctx("marketo")
+    # Prefer an existing static list id from env; else skip create (Marketo has no
+    # catalog create-list tool in this pack).
+    list_id = str(os.environ.get("MARKETO_F6_LIST_ID") or "").strip()
+    if not list_id:
+        return {
+            "vendor": "marketo",
+            "connector_id": cid,
+            "pass": False,
+            "not_run": True,
+            "reason": "MARKETO_F6_LIST_ID unset — need an existing static list id for add+verify",
+            "decision": "a_follow_up_wired_marketo.lists.get_leads",
+        }
+
+    email = f"f6.mk.{suffix}@example.com"
+    before, ctx, cid = _invoke(
+        "marketo.lists.get_leads", {"list_id": list_id, "batch_size": 50}, ctx=ctx, connector_id=cid
+    )
+    bdata = before.data if isinstance(before.data, dict) else {}
+    before_n = int(bdata.get("member_count") or len(bdata.get("result") or []) or 0)
+
+    lead, ctx, cid = _invoke(
+        "marketo.leads.update",
+        {
+            "action": "createOrUpdate",
+            "leads": [{"email": email, "firstName": "F6", "lastName": f"MK{suffix}"}],
+            "lookup_field": "email",
+        },
+        ctx=ctx,
+        connector_id=cid,
+    )
+    if not lead.success:
+        return {
+            "vendor": "marketo",
+            "connector_id": cid,
+            "list_id": list_id,
+            "pass": False,
+            "lead_create_error": lead.error_message,
+        }
+    ldata = lead.data if isinstance(lead.data, dict) else {}
+    lead_id = None
+    for row in ldata.get("result") or []:
+        if isinstance(row, dict) and row.get("id") is not None:
+            lead_id = row.get("id")
+            break
+
+    add_params: dict = {"list_id": list_id}
+    if lead_id is not None:
+        add_params["lead_ids"] = [lead_id]
+    else:
+        add_params["emails"] = [email]
+    add, ctx, cid = _invoke(
+        "marketo.lists.add_to_static_list", add_params, ctx=ctx, connector_id=cid
+    )
+    adata = add.data if add and isinstance(add.data, dict) else {}
+    time.sleep(2)
+    stripped = _strip_proof(adata, list_id=list_id)
+    verify = verify_collection_population(
+        invoke_action="marketo.lists.add_to_static_list",
+        result_data=stripped,
+        client=_sb(),
+        org_id=ORG,
+        settings=_SETTINGS,
+        environment_name="production",
+        ctx=ctx,
+    )
+    after, _, _ = _invoke(
+        "marketo.lists.get_leads", {"list_id": list_id, "batch_size": 50}, ctx=ctx, connector_id=cid
+    )
+    adata_after = after.data if isinstance(after.data, dict) else {}
+    after_n = int(
+        adata_after.get("member_count") or len(adata_after.get("result") or []) or 0
+    )
+    return {
+        "vendor": "marketo",
+        "connector_id": cid,
+        "list_id": list_id,
+        "lead_id": lead_id,
+        "email": email,
+        "add_success": bool(add and add.success),
+        "add_error": add.error_message if add else None,
+        "before_membership": before_n,
+        "after_membership": after_n,
+        "population_verify": {
+            "verified": verify.verified,
+            "effect": verify.effect,
+            "membership_count": verify.membership_count,
+            "detail": verify.detail,
+            "follow_up_attempted": verify.follow_up_attempted,
+        },
+        "pass": bool(
+            add
+            and add.success
+            and verify.follow_up_attempted
+            and verify.verified
+            and verify.detail == "follow_up_membership_confirmed"
+            and after_n > before_n
+        ),
+    }
+
+
 def main() -> int:
     _load_env()
     suffix = uuid.uuid4().hex[:8]
@@ -363,6 +490,7 @@ def main() -> int:
         "org_id": ORG,
         "requirement": "forced_re_read_follow_up_membership_confirmed",
         "live_health_git_sha": None,
+        "g59_marketo_decision": "a_wire_follow_up_via_lists.get_leads",
     }
     try:
         import urllib.request
@@ -374,13 +502,26 @@ def main() -> int:
 
     evidence["apollo"] = _apollo_case(suffix)
     evidence["hubspot"] = _hubspot_case(suffix)
+    evidence["marketo"] = _marketo_case(suffix)
     evidence["finished_at"] = utcnow()
-    evidence["pass"] = bool(evidence["apollo"].get("pass") and evidence["hubspot"].get("pass"))
-    evidence["verdict"] = (
-        "VERIFIED — both vendors follow_up_membership_confirmed with non-empty re-read"
-        if evidence["pass"]
-        else "FAIL — see vendor pass flags / population_verify.detail"
-    )
+    apollo_ok = bool(evidence["apollo"].get("pass"))
+    hubspot_ok = bool(evidence["hubspot"].get("pass"))
+    marketo = evidence["marketo"]
+    marketo_ok = bool(marketo.get("pass"))
+    marketo_not_run = bool(marketo.get("not_run"))
+    # Apollo+HubSpot required. Marketo required only when a connector is present.
+    evidence["pass"] = apollo_ok and hubspot_ok and (marketo_ok or marketo_not_run)
+    if apollo_ok and hubspot_ok and marketo_ok:
+        evidence["verdict"] = (
+            "VERIFIED — Apollo+HubSpot+Marketo follow_up_membership_confirmed"
+        )
+    elif apollo_ok and hubspot_ok and marketo_not_run:
+        evidence["verdict"] = (
+            "VERIFIED — Apollo+HubSpot follow_up_membership_confirmed; "
+            "Marketo NOT_RUN (no connector) — follow-up branch wired (decision a)"
+        )
+    else:
+        evidence["verdict"] = "FAIL — see vendor pass flags / population_verify.detail"
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     print(json.dumps(evidence, indent=2))
