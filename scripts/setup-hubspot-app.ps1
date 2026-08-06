@@ -76,9 +76,9 @@ function Update-JsonUrls {
       "img": []
     },
     "support": {
-      "supportEmail": "support@gravitre.com",
+      "supportEmail": "support@gravitre.app",
       "documentationUrl": "https://github.com/gravitre/gravitre-operator-ai/blob/main/docs/integration/HUBSPOT_PLATFORM_SETUP.md",
-      "supportUrl": "https://gravitre.com"
+      "supportUrl": "https://gravitre.app/support"
     }
   }
 }

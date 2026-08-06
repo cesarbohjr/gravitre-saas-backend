@@ -95,7 +95,7 @@ export default function SupportPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
@@ -131,7 +131,7 @@ export default function SupportPage() {
                 <motion.a
                   key={category.title}
                   href={category.href}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                   className="group rounded-xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
@@ -155,9 +155,9 @@ export default function SupportPage() {
       <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-3xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.15 }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-zinc-900">Popular Articles</h2>
@@ -167,9 +167,9 @@ export default function SupportPage() {
               <motion.a
                 key={article.title}
                 href={article.href}
-                initial={{ opacity: 0, x: -10 }}
+                initial={false}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.15 }}
                 transition={{ delay: i * 0.05 }}
                 className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
               >
@@ -185,9 +185,9 @@ export default function SupportPage() {
       <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-3xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.15 }}
             className="text-center mb-12"
           >
             <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Frequently Asked Questions</h2>
@@ -196,9 +196,9 @@ export default function SupportPage() {
             {faqs.map((faq, i) => (
               <motion.div
                 key={faq.question}
-                initial={{ opacity: 0, y: 10 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.15 }}
                 transition={{ delay: i * 0.05 }}
                 className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm"
               >
@@ -214,9 +214,9 @@ export default function SupportPage() {
       <section className="px-6 py-16 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-4xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.15 }}
             className="text-center mb-12"
           >
             <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Still need help?</h2>
@@ -225,9 +225,9 @@ export default function SupportPage() {
           <div className="grid gap-6 sm:grid-cols-3">
             <motion.a
               href="/contact"
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.15 }}
               className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4">
@@ -236,11 +236,11 @@ export default function SupportPage() {
               <h3 className="font-medium text-zinc-900 mb-1">Email Support</h3>
               <p className="text-sm text-zinc-500">Response within 24 hours</p>
             </motion.a>
-            <motion.button
-              onClick={() => window.open('/contact', '_blank')}
-              initial={{ opacity: 0, y: 20 }}
+            <motion.a
+              href="/contact"
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.2 }}
               transition={{ delay: 0.1 }}
               className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
@@ -249,12 +249,12 @@ export default function SupportPage() {
               </div>
               <h3 className="font-medium text-zinc-900 mb-1">Live Chat</h3>
               <p className="text-sm text-zinc-500">Available 9am-6pm PT</p>
-            </motion.button>
+            </motion.a>
             <motion.a
               href="/docs"
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.15 }}
               transition={{ delay: 0.2 }}
               className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
