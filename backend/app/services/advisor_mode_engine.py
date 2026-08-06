@@ -43,6 +43,7 @@ class AdvisorModeEngine:
         department: str | None = None,
         query: str | None = None,
         client: Any | None = None,
+        include_predictive: bool = True,
     ) -> dict[str, Any]:
         dept = (department or "operations").strip().lower()
         # Single collect — department brief previously re-ran collect_signals (2–3× stack).
@@ -51,6 +52,7 @@ class AdvisorModeEngine:
             department=dept,
             query=query,
             client=client,
+            include_predictive=include_predictive,
         )
         signals = list(signals_payload.get("signals") or [])
 

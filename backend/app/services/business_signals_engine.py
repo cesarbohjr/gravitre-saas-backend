@@ -66,8 +66,9 @@ class BusinessSignalsEngine:
         query: str | None = None,
         client: Any | None = None,
         use_cache: bool = True,
+        include_predictive: bool = True,
     ) -> dict[str, Any]:
-        cache_key = self._cache_key(org_id, department, query)
+        cache_key = f"{self._cache_key(org_id, department, query)}|pred={int(include_predictive)}"
         if use_cache:
             hit = _SIGNALS_CACHE.get(cache_key)
             if hit and (time.monotonic() - hit[0]) < _SIGNALS_CACHE_TTL_S:
@@ -117,11 +118,15 @@ class BusinessSignalsEngine:
             )
 
         async def _org_alerts():
-            snapshot = get_org_context_service().get_snapshot(db_client, org_id, depth="minimal")
+            snapshot = await asyncio.to_thread(
+                lambda: get_org_context_service().get_snapshot(db_client, org_id, depth="minimal")
+            )
             return list(snapshot.get("alerts") or [])[:3]
 
         async def _failure_alerts():
-            return list_failure_alerts(db_client, org_id, limit=5)
+            return await asyncio.to_thread(
+                lambda: list_failure_alerts(db_client, org_id, limit=5)
+            )
 
         async def _decision():
             if not query:
@@ -133,19 +138,25 @@ class BusinessSignalsEngine:
                 query,
             )
 
-        # Predictions first (needed to avoid duplicate work in early warnings),
-        # then gather the remaining independent sources.
-        domain_predictions = await _with_timeout("domain_predictions", _domain_predictions())
+        domain_predictions = None
+        early_warnings: list[Any] | None = None
+        if include_predictive:
+            # Predictions first (reuse for early warnings). Hard-timeout — ML
+            # catalog status/load is the measured multi-second mount culprit.
+            domain_predictions = await _with_timeout("domain_predictions", _domain_predictions())
+            early_warnings = await _with_timeout(
+                "early_warnings",
+                _early_warnings(domain_predictions if isinstance(domain_predictions, dict) else None),
+            )
+
         (
             graph_result,
-            early_warnings,
             suggestions_payload,
             org_alerts,
             failure_alerts,
             decision_payload,
         ) = await asyncio.gather(
             _with_timeout("graph", _graph()),
-            _with_timeout("early_warnings", _early_warnings(domain_predictions if isinstance(domain_predictions, dict) else None)),
             _with_timeout("suggestions", _suggestions()),
             _with_timeout("org_alerts", _org_alerts()),
             _with_timeout("failure_alerts", _failure_alerts()),

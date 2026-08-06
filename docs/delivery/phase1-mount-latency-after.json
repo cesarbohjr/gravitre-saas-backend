@@ -1,0 +1,26 @@
+{
+  "api_git_sha": "b38449f0f5cfe6f504e10c1167641b1ad9d463cb",
+  "checked_at": "2026-08-06T07:54:59Z",
+  "runs": [
+    {
+      "/api/assistant/business-signals": {
+        "http_status": 200,
+        "wall_ms": 5497
+      },
+      "/api/assistant/advisor-brief": {
+        "http_status": 200,
+        "wall_ms": 1905
+      }
+    },
+    {
+      "/api/assistant/business-signals": {
+        "http_status": 200,
+        "wall_ms": 2574
+      },
+      "/api/assistant/advisor-brief": {
+        "http_status": 200,
+        "wall_ms": 4849
+      }
+    }
+  ]
+}
