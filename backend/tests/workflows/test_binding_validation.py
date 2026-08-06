@@ -118,3 +118,21 @@ def test_assert_bindings_valid_raises_named_codes():
     with pytest.raises(WorkflowValidationError) as exc:
         assert_bindings_valid(broken, declared_parameters=_declared())
     assert "binding.from_step_unknown" in (exc.value.errors or [])
+
+
+def test_canvas_graph_disconnected_flagged_when_edges_empty():
+    """Phase 0 validator gap: empty graph.edges must not look like a healthy save."""
+    definition = {
+        "schema_version": SCHEMA_VERSION,
+        "steps": [
+            {"id": "a", "type": "task", "config": {}},
+            {"id": "b", "type": "task", "config": {}},
+        ],
+        "graph": {
+            "nodes": [{"id": "a"}, {"id": "b"}],
+            "edges": [],
+        },
+    }
+    result = validate_bindings(definition)
+    assert not result.ok
+    assert any(e.code == "binding.canvas_graph_disconnected" for e in result.errors)

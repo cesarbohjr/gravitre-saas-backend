@@ -248,16 +248,32 @@ def main() -> int:
     step_count = saved.get("step_count") or len(saved.get("definition", {}).get("steps") or [])
     print(f"PASS save builder: step_count={step_count}")
 
+    saved_edge_count = len(saved.get("edges") or [])
+    if save_edges and saved_edge_count != len(save_edges):
+        print(
+            f"FAIL save edge persistence: sent={len(save_edges)} stored={saved_edge_count} "
+            f"(Phase 0 camelCase wipe regression)"
+        )
+        return 1
+    print(f"PASS save edges: count={saved_edge_count}")
+
     status, reloaded = _request("GET", f"/api/workflows/{workflow_id}/builder", token, org_id)
     if status != 200:
         print(f"FAIL reload builder: {status} {reloaded}")
         return 1
     reloaded_nodes = reloaded.get("nodes") or []
+    reloaded_edges = reloaded.get("edges") or []
+    if save_edges and len(reloaded_edges) != len(save_edges):
+        print(
+            f"FAIL reload edge persistence: sent={len(save_edges)} reloaded={len(reloaded_edges)}"
+        )
+        return 1
     council_nodes = [
         n for n in reloaded_nodes if str(n.get("node_type") or n.get("type")) == "council"
     ]
     print(
-        f"PASS reload builder: nodes={len(reloaded_nodes)} council_nodes={len(council_nodes)}"
+        f"PASS reload builder: nodes={len(reloaded_nodes)} edges={len(reloaded_edges)} "
+        f"council_nodes={len(council_nodes)}"
     )
 
     status, dry_run = _request(

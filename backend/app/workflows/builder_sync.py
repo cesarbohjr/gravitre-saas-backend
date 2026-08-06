@@ -87,9 +87,43 @@ def _node_position(node: dict[str, Any]) -> dict[str, int]:
     if isinstance(position, dict):
         return {"x": int(position.get("x") or 0), "y": int(position.get("y") or 0)}
     return {
-        "x": int(node.get("position_x") or 0),
-        "y": int(node.get("position_y") or 0),
+        "x": int(
+            node.get("position_x")
+            or node.get("positionX")
+            or 0
+        ),
+        "y": int(
+            node.get("position_y")
+            or node.get("positionY")
+            or 0
+        ),
     }
+
+
+def edge_endpoints(raw: dict[str, Any]) -> tuple[str, str]:
+    """Normalize builder edge endpoints from snake_case, camelCase, or contract keys.
+
+    PUT /builder dumps Pydantic models with ``by_alias=True`` (``fromNodeId`` /
+    ``toNodeId``). Sync must accept those keys or every edge is silently skipped
+    after ``delete_workflow_graph`` — the Phase 0 canvas-wiring persistence bug.
+    """
+    from_id = str(
+        raw.get("from_node_id")
+        or raw.get("fromNodeId")
+        or raw.get("from")
+        or raw.get("source")
+        or raw.get("source_node_id")
+        or ""
+    ).strip()
+    to_id = str(
+        raw.get("to_node_id")
+        or raw.get("toNodeId")
+        or raw.get("to")
+        or raw.get("target")
+        or raw.get("target_node_id")
+        or ""
+    ).strip()
+    return from_id, to_id
 
 
 def _outgoing_targets(node_id: str, edges: list[dict[str, Any]]) -> list[str]:
@@ -759,10 +793,23 @@ def sync_builder_graph(
         stored_nodes.append(created)
 
     stored_edges: list[dict[str, Any]] = []
+    dropped_edges = 0
     for raw in edges:
-        from_id = id_map.get(str(raw.get("from_node_id") or raw.get("from") or ""))
-        to_id = id_map.get(str(raw.get("to_node_id") or raw.get("to") or ""))
+        if not isinstance(raw, dict):
+            dropped_edges += 1
+            continue
+        client_from, client_to = edge_endpoints(raw)
+        from_id = id_map.get(client_from)
+        to_id = id_map.get(client_to)
         if not from_id or not to_id:
+            dropped_edges += 1
+            logger.warning(
+                "builder_edge_dropped workflow_id=%s from=%r to=%r keys=%s",
+                workflow_id,
+                client_from,
+                client_to,
+                sorted(raw.keys()),
+            )
             continue
         edge = create_workflow_edge(
             client,
@@ -772,12 +819,30 @@ def sync_builder_graph(
             payload={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": raw.get("edge_type"),
+                "edge_type": raw.get("edge_type") or raw.get("edgeType"),
                 "condition": raw.get("condition"),
             },
             created_by=created_by,
         )
         stored_edges.append(edge)
+
+    if edges and not stored_edges:
+        from app.workflows.schema import WorkflowValidationError
+
+        raise WorkflowValidationError(
+            "Builder save included edges but none could be persisted "
+            "(unrecognized edge keys or unknown node ids). "
+            "Refusing to wipe the graph into a silently disconnected state.",
+            errors=["builder.edges_not_persisted"],
+        )
+    if dropped_edges:
+        from app.workflows.schema import WorkflowValidationError
+
+        raise WorkflowValidationError(
+            f"Builder save dropped {dropped_edges} of {len(edges)} edges "
+            "(unrecognized keys or unknown node ids).",
+            errors=["builder.edges_partially_dropped"],
+        )
 
     definition = validate_definition(graph_to_definition(stored_nodes, stored_edges))
     definition["graph"] = {
