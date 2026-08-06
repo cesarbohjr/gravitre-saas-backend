@@ -49,15 +49,16 @@ export function PageHeader({
               className={cn(
                 // ring-border/60 is theme-aware (was ring-white/10, invisible
                 // in light mode). Consumers appending ring-* still override it.
-                "flex aspect-square h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60 sm:h-10 sm:w-10",
+                "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60",
                 tint
               )}
+              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
             >
               {/* On the brand tint the glyph reads as branded; on a custom
                   tint it stays neutral so it can't clash with that hue. */}
               <Icon
                 className={cn(
-                  "h-6 w-6 sm:h-5 sm:w-5",
+                  "h-5 w-5 shrink-0",
                   usesBrandTint ? "text-primary" : "text-foreground",
                 )}
               />
