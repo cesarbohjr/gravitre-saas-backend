@@ -87,12 +87,15 @@ class SmokeReport:
         passed = sum(1 for s in self.steps if s.status == "pass")
         warned = sum(1 for s in self.steps if s.status == "warn")
         failed = sum(1 for s in self.steps if s.status == "fail")
+        ok = failed == 0 and passed > 0
         return {
             "target": self.target,
             "orgId": self.org_id,
             "userId": self.user_id,
             "startedAt": self.started_at,
             "finishedAt": self.finished_at,
+            "ok": ok,
+            "verdict": "PASS" if ok else "FAIL",
             "summary": {"pass": passed, "warn": warned, "fail": failed},
             "impl8": {
                 sta: any(s.linear == sta and s.status in {"pass", "warn"} for s in self.steps)

@@ -1,4 +1,4 @@
-"""HTTP middleware — rate limits on sensitive POST routes."""
+"""HTTP middleware — rate limits on sensitive routes (auth, OAuth, webhooks, etc.)."""
 from __future__ import annotations
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -12,13 +12,15 @@ class ApiRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
         method = request.method.upper()
-        if method == "POST":
-            for rule_method, prefix, limit in SENSITIVE_RATE_LIMITS:
-                if rule_method == method and path.startswith(prefix):
-                    await enforce_rate_limit(
-                        request,
-                        endpoint=prefix,
-                        limit=limit,
-                    )
-                    break
+        for rule_method, prefix, limit in SENSITIVE_RATE_LIMITS:
+            if rule_method not in ("*", method):
+                continue
+            if not path.startswith(prefix):
+                continue
+            await enforce_rate_limit(
+                request,
+                endpoint=prefix,
+                limit=limit,
+            )
+            break
         return await call_next(request)

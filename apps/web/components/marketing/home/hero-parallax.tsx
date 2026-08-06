@@ -28,59 +28,27 @@ export function HeroParallax() {
         className="relative mx-auto max-w-7xl px-6 py-32 sm:py-40"
       >
         <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 backdrop-blur-sm px-4 py-2"
-          >
-            <motion.div
-              className="h-2 w-2 rounded-full bg-emerald-500"
-              animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
+          {/* LCP: headline + CTA render opaque immediately (no delayed opacity:0). */}
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 backdrop-blur-sm px-4 py-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
             <span className="text-sm font-medium text-emerald-700">{MARKETING_COPY.hero.badge}</span>
             <ChevronRight strokeWidth={1.5} className="h-4 w-4 text-emerald-500" />
-          </motion.div>
-
-          <div className="overflow-hidden">
-            <motion.h1
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight"
-            >
-              <span className="text-zinc-900">{MARKETING_COPY.hero.headline[0]}</span>
-            </motion.h1>
-          </div>
-          <div className="overflow-hidden">
-            <motion.h1
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight"
-            >
-              <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                {MARKETING_COPY.hero.headline[1]}
-              </span>
-            </motion.h1>
           </div>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-2xl mx-auto leading-relaxed"
-          >
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight">
+            <span className="text-zinc-900">{MARKETING_COPY.hero.headline[0]}</span>
+          </h1>
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              {MARKETING_COPY.hero.headline[1]}
+            </span>
+          </h1>
+
+          <p className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-2xl mx-auto leading-relaxed">
             {MARKETING_COPY.hero.subhead}
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1 }}
-            className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/get-started"
               className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98]"
@@ -92,41 +60,23 @@ export function HeroParallax() {
               href="/features"
               className="group inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-all hover:bg-white hover:border-zinc-400 hover:scale-[1.02] active:scale-[0.98]"
             >
-              <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-                <Play strokeWidth={1.5} className="h-5 w-5 fill-zinc-900" />
-              </motion.div>
+              <Play strokeWidth={1.5} className="h-5 w-5 fill-zinc-900" />
               <span>See How It Works</span>
             </Link>
-          </motion.div>
+          </div>
 
           <ProductTruthPills />
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.8 }}
-          className="mt-20 sm:mt-28"
-        >
+        <div className="mt-20 sm:mt-28">
           <ProductPreview />
-        </motion.div>
+        </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex flex-col items-center gap-2 text-zinc-400"
-        >
-          <span className="text-xs uppercase tracking-widest">Scroll</span>
-          <div className="h-8 w-px bg-gradient-to-b from-zinc-400 to-transparent" />
-        </motion.div>
-      </motion.div>
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-zinc-400">
+        <span className="text-xs uppercase tracking-widest">Scroll</span>
+        <div className="h-8 w-px bg-gradient-to-b from-zinc-400 to-transparent" />
+      </div>
     </section>
   )
 }

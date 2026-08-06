@@ -259,13 +259,14 @@ def _suggestion_row(
         "workflow_template_id": workflow_template_id,
         "title": title,
         "message": message,
-        "evidence": evidence,
+        # STA-331 honesty fields live in evidence JSON — not DB columns
+        # (unknown columns → PostgREST PGRST204 → HTTP 500 on scan).
+        "evidence": {
+            **evidence,
+            "confidenceIsEstimate": True,
+            "confidenceSource": "heuristic",
+        },
         "confidence": confidence,
-        # Module C / STA-331: formula scores are estimates until outcome-seasoned.
-        "confidence_is_estimate": True,
-        "confidenceIsEstimate": True,
-        "confidence_source": "heuristic",
-        "confidenceSource": "heuristic",
         "priority": priority,
         "status": "open",
         "suggested_at": _now_iso(),
@@ -395,9 +396,20 @@ def build_integration_suggestions(
 
 
 def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
+    evidence = row.get("evidence") or {}
+    if not isinstance(evidence, dict):
+        evidence = {}
     is_estimate = row.get("confidence_is_estimate")
     if is_estimate is None:
-        is_estimate = row.get("confidenceIsEstimate", True)
+        is_estimate = row.get("confidenceIsEstimate")
+    if is_estimate is None:
+        is_estimate = evidence.get("confidenceIsEstimate", True)
+    confidence_source = (
+        row.get("confidence_source")
+        or row.get("confidenceSource")
+        or evidence.get("confidenceSource")
+        or "heuristic"
+    )
     return {
         "id": row.get("id"),
         "orgId": row.get("org_id"),
@@ -407,12 +419,10 @@ def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
         "workflowTemplateId": row.get("workflow_template_id"),
         "title": row.get("title"),
         "message": row.get("message"),
-        "evidence": row.get("evidence") or {},
+        "evidence": evidence,
         "confidence": float(row.get("confidence") or 0),
         "confidenceIsEstimate": bool(is_estimate),
-        "confidenceSource": row.get("confidence_source")
-        or row.get("confidenceSource")
-        or "heuristic",
+        "confidenceSource": confidence_source,
         "priority": int(row.get("priority") or 0),
         "status": row.get("status"),
         "suggestedAt": row.get("suggested_at"),

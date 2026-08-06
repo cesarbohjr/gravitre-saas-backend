@@ -1,19 +1,42 @@
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { ArrowRight, Play } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
-import { ProductShowcase, HowItWorks, TestimonialsCarousel } from "@/components/marketing/product-showcase"
 import { IntegrationStrip } from "@/components/marketing/integration-strip"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
-import { AnimatedStat } from "@/components/marketing/home/animated-stat"
-import { FeatureCard } from "@/components/marketing/home/feature-card"
-import { FloatingOrb } from "@/components/marketing/home/floating-orb"
 import { HeroParallax } from "@/components/marketing/home/hero-parallax"
 import {
   AgentsStepVisual,
   ConnectorsStepVisual,
   GibeHonestyStepVisual,
 } from "@/components/marketing/home/how-it-works-step-visuals"
+
+// Below-fold client islands — keep HeroParallax eager for LCP; split the rest.
+const AnimatedStat = dynamic(
+  () => import("@/components/marketing/home/animated-stat").then((m) => m.AnimatedStat),
+  { ssr: true }
+)
+const FeatureCard = dynamic(
+  () => import("@/components/marketing/home/feature-card").then((m) => m.FeatureCard),
+  { ssr: true }
+)
+const FloatingOrb = dynamic(
+  () => import("@/components/marketing/home/floating-orb").then((m) => m.FloatingOrb),
+  { ssr: false }
+)
+const ProductShowcase = dynamic(
+  () => import("@/components/marketing/product-showcase").then((m) => m.ProductShowcase),
+  { ssr: true }
+)
+const HowItWorks = dynamic(
+  () => import("@/components/marketing/product-showcase").then((m) => m.HowItWorks),
+  { ssr: true }
+)
+const TestimonialsCarousel = dynamic(
+  () => import("@/components/marketing/product-showcase").then((m) => m.TestimonialsCarousel),
+  { ssr: true }
+)
 
 /**
  * Home stays a short pitch + proof + CTA.

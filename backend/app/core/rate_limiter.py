@@ -147,10 +147,13 @@ async def enforce_rate_limit(
 
 
 # (method, path_prefix, limit_per_minute)
+# method "*" matches any HTTP method (needed for OAuth GET callbacks + webhooks).
 SENSITIVE_RATE_LIMITS: tuple[tuple[str, str, int], ...] = (
     ("POST", "/api/auth", 10),
     ("POST", "/api/intelligence-engine", 60),
     ("POST", "/api/agent-jobs", 30),
     ("POST", "/api/marketplace", 10),
     ("POST", "/api/admin/mcp", 5),
+    ("*", "/api/connectors/oauth", 60),
+    ("*", "/api/webhooks", 120),
 )
