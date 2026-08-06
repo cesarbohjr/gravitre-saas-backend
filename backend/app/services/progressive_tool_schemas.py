@@ -65,6 +65,36 @@ def search_catalog_tools_definition() -> dict[str, Any]:
     }
 
 
+def select_progressive_preload_names(
+    narrowed: list[dict[str, Any]],
+    *,
+    max_preload: int = 2,
+) -> list[str]:
+    """Pick top connector candidates to attach with full schemas up front.
+
+    Avoids a second model round via ``search_catalog_tools`` when embedding/keyword
+    narrowing already ranked the likely tool(s). Skips platform/meta helpers.
+    """
+    if max_preload <= 0:
+        return []
+    names: list[str] = []
+    for tool in narrowed:
+        if not isinstance(tool, dict):
+            continue
+        name = tool_name(tool)
+        if not name or name == SEARCH_CATALOG_TOOLS_NAME:
+            continue
+        lower = name.lower()
+        if lower.startswith(("platform_", "gravitre_", "catalog_", "assistant_")):
+            continue
+        if name in names:
+            continue
+        names.append(name)
+        if len(names) >= max_preload:
+            break
+    return names
+
+
 def apply_progressive_disclosure(
     narrowed: list[dict[str, Any]],
     *,

@@ -87,6 +87,19 @@ def reset_tool_retrieval_encoder_for_tests() -> None:
         _QUERY_CACHE.clear()
 
 
+def warm_local_tool_encoder(settings: Settings) -> bool:
+    """Load MiniLM into process memory so first-query encode is not a cold 500ms+ hit."""
+    if not _use_local_tool_embed(settings):
+        return False
+    try:
+        _get_sentence_encoder(settings)
+        embed_tool_retrieval_texts(["warmup query"], settings)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("warm_local_tool_encoder skipped: %s", exc)
+        return False
+
+
 def embed_tool_retrieval_texts(
     texts: list[str],
     settings: Settings,

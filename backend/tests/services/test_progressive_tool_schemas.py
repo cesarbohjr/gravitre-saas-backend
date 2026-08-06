@@ -7,6 +7,7 @@ from app.services.progressive_tool_schemas import (
     execute_search_catalog_tools,
     gate_deferred_tool_call,
     payload_bytes,
+    select_progressive_preload_names,
     to_stub,
 )
 from app.services.react_write_gate import tool_requires_user_write_approval
@@ -88,3 +89,23 @@ def test_to_stub_strips_parameters():
     params = stub["function"]["parameters"]
     assert params.get("properties") == {}
     assert "required" not in params or not params.get("required")
+
+
+def test_progressive_preload_attaches_full_schema_for_top_connector_tools():
+    registry = get_tool_registry()
+    tools = registry.get_tools_for_agent(["*"], ["apollo", "hubspot", "platform"])[:16]
+    preload = select_progressive_preload_names(tools, max_preload=2)
+    assert preload, "expected connector tools to preload"
+    assert all(not n.startswith("platform_") for n in preload)
+    attach, full_by_name, loaded = apply_progressive_disclosure(
+        tools, loaded_names=set(preload)
+    )
+    assert set(preload).issubset(loaded)
+    for name in preload:
+        full = next(
+            t
+            for t in attach
+            if str((t.get("function") or {}).get("name") or "") == name
+        )
+        assert not full.get("gravitre_deferred")
+        assert full_by_name[name]["function"].get("parameters")

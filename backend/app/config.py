@@ -178,6 +178,30 @@ class Settings(BaseSettings):
             "unified_turn_progressive_schemas",
         ),
     )
+    # Preload top-N narrowed connector tools with full schemas so high-confidence
+    # turns skip the search_catalog_tools model round (dominant 20s+ TTFT tail).
+    unified_turn_progressive_preload_top: int = Field(
+        default=2,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_PROGRESSIVE_PRELOAD_TOP",
+            "unified_turn_progressive_preload_top",
+        ),
+    )
+    unified_turn_progressive_preload_min_similarity: float = Field(
+        default=0.2,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_PROGRESSIVE_PRELOAD_MIN_SIMILARITY",
+            "unified_turn_progressive_preload_min_similarity",
+        ),
+    )
+    # Hard cap per progressive model stream round (create + consume).
+    unified_turn_stream_timeout_s: float = Field(
+        default=20.0,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_STREAM_TIMEOUT_S",
+            "unified_turn_stream_timeout_s",
+        ),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     # Phase 2 — durable chat artifacts (md/docx/csv/pdf/html) for file-reference chips

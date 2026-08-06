@@ -326,8 +326,10 @@ def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:
     if not _use_local_tool_embed(active) and not (active.openai_api_key or "").strip():
         return 0
     try:
+        from app.rag.tool_retrieval_embedding import warm_local_tool_encoder
         from app.services.tool_registry import get_tool_registry
 
+        warm_local_tool_encoder(active)
         registry = get_tool_registry()
         tools: list[dict[str, Any]] = []
         for name in registry.list_tool_names():

@@ -114,99 +114,110 @@ async def _complete_unified_turn_stream(
     kwargs: dict[str, Any],
     wall_start: float,
     model_start: float,
+    timeout_s: float = 20.0,
 ) -> _StreamedCompletion:
     """Stream the shadow completion; record wall TTFT and model-only TTFT."""
-    stream_kwargs = {
-        **kwargs,
-        "stream": True,
-        "stream_options": {"include_usage": True},
-    }
-    content_parts: list[str] = []
-    tool_acc: dict[int, dict[str, Any]] = {}
-    first_token_ms: int | None = None
-    model_ttft_ms: int | None = None
-    prompt_tokens = 0
-    completion_tokens = 0
-    cached_tokens = 0
 
-    stream = await openai_client.chat.completions.create(**stream_kwargs)
-    async for chunk in stream:
-        usage = getattr(chunk, "usage", None)
-        if usage is not None:
-            prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
-            completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
-            details = getattr(usage, "prompt_tokens_details", None)
-            if details is not None:
-                cached_tokens = int(getattr(details, "cached_tokens", 0) or 0)
-        choices = getattr(chunk, "choices", None) or []
-        if not choices:
-            continue
-        delta = getattr(choices[0], "delta", None)
-        if delta is None:
-            continue
-        piece = getattr(delta, "content", None) or ""
-        if piece:
-            if first_token_ms is None:
-                now = time.perf_counter()
-                first_token_ms = int((now - wall_start) * 1000)
-                model_ttft_ms = int((now - model_start) * 1000)
-            content_parts.append(str(piece))
-        for tc_delta in getattr(delta, "tool_calls", None) or []:
-            if first_token_ms is None:
-                now = time.perf_counter()
-                first_token_ms = int((now - wall_start) * 1000)
-                model_ttft_ms = int((now - model_start) * 1000)
-            idx = int(getattr(tc_delta, "index", 0) or 0)
-            slot = tool_acc.setdefault(
-                idx,
-                {"id": None, "function": {"name": "", "arguments": ""}},
-            )
-            if getattr(tc_delta, "id", None):
-                slot["id"] = tc_delta.id
-            fn = getattr(tc_delta, "function", None)
-            if fn is not None:
-                if getattr(fn, "name", None):
-                    slot["function"]["name"] = str(fn.name or "")
-                if getattr(fn, "arguments", None):
-                    slot["function"]["arguments"] = (
-                        str(slot["function"].get("arguments") or "") + str(fn.arguments or "")
-                    )
+    async def _run() -> _StreamedCompletion:
+        stream_kwargs = {
+            **kwargs,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+        }
+        content_parts: list[str] = []
+        tool_acc: dict[int, dict[str, Any]] = {}
+        first_token_ms: int | None = None
+        model_ttft_ms: int | None = None
+        prompt_tokens = 0
+        completion_tokens = 0
+        cached_tokens = 0
 
-    tool_calls: list[Any] = []
-    for idx in sorted(tool_acc):
-        slot = tool_acc[idx]
-        name = str(slot["function"].get("name") or "")
-        if not name:
-            continue
-        tool_calls.append(
-            SimpleNamespace(
-                id=slot.get("id"),
-                type="function",
-                function=SimpleNamespace(
-                    name=name,
-                    arguments=slot["function"].get("arguments") or "{}",
-                ),
+        stream = await openai_client.chat.completions.create(**stream_kwargs)
+        async for chunk in stream:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+                details = getattr(usage, "prompt_tokens_details", None)
+                if details is not None:
+                    cached_tokens = int(getattr(details, "cached_tokens", 0) or 0)
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            if delta is None:
+                continue
+            piece = getattr(delta, "content", None) or ""
+            if piece:
+                if first_token_ms is None:
+                    now = time.perf_counter()
+                    first_token_ms = int((now - wall_start) * 1000)
+                    model_ttft_ms = int((now - model_start) * 1000)
+                content_parts.append(str(piece))
+            for tc_delta in getattr(delta, "tool_calls", None) or []:
+                if first_token_ms is None:
+                    now = time.perf_counter()
+                    first_token_ms = int((now - wall_start) * 1000)
+                    model_ttft_ms = int((now - model_start) * 1000)
+                idx = int(getattr(tc_delta, "index", 0) or 0)
+                slot = tool_acc.setdefault(
+                    idx,
+                    {"id": None, "function": {"name": "", "arguments": ""}},
+                )
+                if getattr(tc_delta, "id", None):
+                    slot["id"] = tc_delta.id
+                fn = getattr(tc_delta, "function", None)
+                if fn is not None:
+                    if getattr(fn, "name", None):
+                        slot["function"]["name"] = str(fn.name or "")
+                    if getattr(fn, "arguments", None):
+                        slot["function"]["arguments"] = (
+                            str(slot["function"].get("arguments") or "")
+                            + str(fn.arguments or "")
+                        )
+
+        tool_calls: list[Any] = []
+        for idx in sorted(tool_acc):
+            slot = tool_acc[idx]
+            name = str(slot["function"].get("name") or "")
+            if not name:
+                continue
+            tool_calls.append(
+                SimpleNamespace(
+                    id=slot.get("id"),
+                    type="function",
+                    function=SimpleNamespace(
+                        name=name,
+                        arguments=slot["function"].get("arguments") or "{}",
+                    ),
+                )
             )
+
+        end = time.perf_counter()
+        latency_ms = int((end - wall_start) * 1000)
+        model_total_ms = int((end - model_start) * 1000)
+        if first_token_ms is None and (content_parts or tool_calls):
+            first_token_ms = latency_ms
+            model_ttft_ms = model_total_ms
+        return _StreamedCompletion(
+            content="".join(content_parts).strip(),
+            tool_calls=tool_calls,
+            first_token_ms=first_token_ms,
+            model_ttft_ms=model_ttft_ms,
+            latency_ms=latency_ms,
+            model_total_ms=model_total_ms,
+            streamed=True,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cached_tokens=cached_tokens,
         )
 
-    end = time.perf_counter()
-    latency_ms = int((end - wall_start) * 1000)
-    model_total_ms = int((end - model_start) * 1000)
-    if first_token_ms is None and (content_parts or tool_calls):
-        first_token_ms = latency_ms
-        model_ttft_ms = model_total_ms
-    return _StreamedCompletion(
-        content="".join(content_parts).strip(),
-        tool_calls=tool_calls,
-        first_token_ms=first_token_ms,
-        model_ttft_ms=model_ttft_ms,
-        latency_ms=latency_ms,
-        model_total_ms=model_total_ms,
-        streamed=True,
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
-        cached_tokens=cached_tokens,
-    )
+    cap = max(5.0, float(timeout_s or 20.0))
+    try:
+        return await asyncio.wait_for(_run(), timeout=cap)
+    except asyncio.TimeoutError as exc:
+        logger.warning("unified_turn_stream_timeout timeout_s=%s", cap)
+        raise TimeoutError(f"unified_turn_stream_timeout:{cap}") from exc
 
 
 def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -368,6 +379,7 @@ async def run_unified_turn_shadow(
         gate_deferred_tool_call,
         is_search_catalog_tools,
         payload_bytes,
+        select_progressive_preload_names,
     )
 
     progressive_on = bool(getattr(active, "unified_turn_progressive_schemas", True))
@@ -376,13 +388,27 @@ async def run_unified_turn_shadow(
     full_narrowed_bytes = payload_bytes(list(visible or []))
     attach_tools = visible
     if progressive_on and visible:
+        preload_n = int(getattr(active, "unified_turn_progressive_preload_top", 2) or 0)
+        min_sim = float(
+            getattr(active, "unified_turn_progressive_preload_min_similarity", 0.2) or 0.2
+        )
+        top_sim = (tool_stats or {}).get("topSimilarity")
+        preload_ok = preload_n > 0 and (
+            top_sim is None or (isinstance(top_sim, (int, float)) and float(top_sim) >= min_sim)
+        )
+        preload_names = (
+            set(select_progressive_preload_names(list(visible), max_preload=preload_n))
+            if preload_ok
+            else set()
+        )
         attach_tools, full_by_name, loaded_names = apply_progressive_disclosure(
-            list(visible), loaded_names=set()
+            list(visible), loaded_names=preload_names
         )
         tool_stats = {
             **(tool_stats or {}),
             **(getattr(attach_tools, "stats", None) or {}),
             "progressiveDisclosure": True,
+            "progressivePreloaded": sorted(preload_names),
             "fullNarrowedPayloadBytes": full_narrowed_bytes,
             "progressivePayloadBytes": payload_bytes(list(attach_tools)),
         }
@@ -439,10 +465,20 @@ async def run_unified_turn_shadow(
         )
         names = [n for n in names if n and n != SEARCH_CATALOG_TOOLS_NAME][:40]
         if progressive_on:
+            loaded_note = ""
+            if loaded_names:
+                loaded_note = (
+                    f" Full schemas already loaded for: {', '.join(sorted(loaded_names))}. "
+                    f"Call {SEARCH_CATALOG_TOOLS_NAME} only if you need another tool's parameters."
+                )
+            else:
+                loaded_note = (
+                    f" Stubs are name + description only; call {SEARCH_CATALOG_TOOLS_NAME} "
+                    "to load full parameters before invoking a connector tool."
+                )
             user_parts.append(
-                "AVAILABLE TOOLS THIS TURN (stubs: name + description only; "
-                f"call {SEARCH_CATALOG_TOOLS_NAME} to load full parameters before "
-                "invoking a connector tool; you have NO other live data sources):\n- "
+                "AVAILABLE TOOLS THIS TURN "
+                f"({loaded_note.strip()} You have NO other live data sources):\n- "
                 + "\n- ".join(names)
             )
         else:
@@ -546,6 +582,12 @@ async def run_unified_turn_shadow(
     try:
         model_start = time.perf_counter()
         breakdown["openai_create_schedule_ms"] = int((model_start - t_after_prompt) * 1000)
+        stream_timeout_s = float(getattr(active, "unified_turn_stream_timeout_s", 20.0) or 20.0)
+        breakdown["stream_timeout_s"] = stream_timeout_s
+        if loaded_names:
+            breakdown["progressive_preloaded"] = sorted(loaded_names)
+            breakdown["progressive_loaded_count"] = len(loaded_names)
+        progressive_round_ms: list[int] = []
         # Up to 2 rounds: search_catalog_tools may load full schemas then continue.
         for prog_round in range(2):
             kwargs: dict[str, Any] = {
@@ -557,12 +599,16 @@ async def run_unified_turn_shadow(
             if _supports_custom_temperature(model):
                 kwargs["temperature"] = 0.2
             assert_tools_narrowed(attach_tools, where=f"unified_turn.round_{prog_round}")
+            round_start = time.perf_counter()
             completion = await _complete_unified_turn_stream(
                 openai_client,
                 kwargs=kwargs,
                 wall_start=wall_start,
                 model_start=model_start if prog_round == 0 else time.perf_counter(),
+                timeout_s=stream_timeout_s,
             )
+            progressive_round_ms.append(int((time.perf_counter() - round_start) * 1000))
+            breakdown["progressive_round_ms"] = list(progressive_round_ms)
             content = completion.content
             tool_calls = list(completion.tool_calls or [])
             if (
@@ -620,6 +666,8 @@ async def run_unified_turn_shadow(
     except Exception as exc:  # noqa: BLE001
         logger.warning("unified_turn_shadow model call failed: %s", exc)
         breakdown["error"] = str(exc)[:200]
+        if "unified_turn_stream_timeout" in str(exc):
+            breakdown["stream_timed_out"] = True
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error=str(exc)[:500],
