@@ -1,0 +1,83 @@
+{
+  "tip": "40064803",
+  "samples": [
+    {
+      "path": "/api/auth/me",
+      "status": 200,
+      "ms": 970,
+      "bytes": 935
+    },
+    {
+      "path": "/api/organizations",
+      "status": 200,
+      "ms": 181,
+      "bytes": 475
+    },
+    {
+      "path": "/api/billing/status",
+      "status": 200,
+      "ms": 601,
+      "bytes": 1998
+    },
+    {
+      "path": "/api/onboarding",
+      "status": 200,
+      "ms": 310,
+      "bytes": 1136
+    },
+    {
+      "path": "/api/conversations?limit=100&include_archived=true",
+      "status": 200,
+      "ms": 451,
+      "bytes": 515
+    },
+    {
+      "path": "/api/assistant/preferences",
+      "status": 200,
+      "ms": 299,
+      "bytes": 52
+    },
+    {
+      "path": "/api/assistant/business-signals",
+      "status": 200,
+      "ms": 4576,
+      "bytes": 2728
+    },
+    {
+      "path": "/api/assistant/advisor-brief",
+      "status": 200,
+      "ms": 6008,
+      "bytes": 6040
+    },
+    {
+      "path": "/api/metrics/overview",
+      "status": 200,
+      "ms": 739,
+      "bytes": 907
+    },
+    {
+      "path": "/api/approvals",
+      "status": 200,
+      "ms": 359,
+      "bytes": 16
+    },
+    {
+      "path": "/api/notifications?limit=50",
+      "status": 200,
+      "ms": 378,
+      "bytes": 16962
+    },
+    {
+      "path": "/api/connectors",
+      "status": 200,
+      "ms": 1204,
+      "bytes": 8201
+    },
+    {
+      "path": "/api/agents",
+      "status": 200,
+      "ms": 447,
+      "bytes": 17081
+    }
+  ]
+}
