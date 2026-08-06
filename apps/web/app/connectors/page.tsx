@@ -2666,10 +2666,10 @@ function ConnectorsPageContent() {
         <div className="border-b border-border px-4 md:px-6 py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3 md:gap-4">
-              {/* Brand gradient + theme-aware ring, matching PageHeader's icon
-                  chip. Was off-brand blue/violet with a blue ring. */}
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-border">
-                <Cable className="h-4 w-4 md:h-5 md:w-5 text-foreground" />
+              {/* Match PageHeader icon chip: fixed square + shrink-0 so flex
+                  compression cannot oval-stretch the tile. */}
+              <div className="flex aspect-square h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60 sm:h-10 sm:w-10">
+                <Cable className="h-6 w-6 text-primary sm:h-5 sm:w-5" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>

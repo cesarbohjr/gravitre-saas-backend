@@ -49,7 +49,7 @@ export function PageHeader({
               className={cn(
                 // ring-border/60 is theme-aware (was ring-white/10, invisible
                 // in light mode). Consumers appending ring-* still override it.
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60 sm:h-10 sm:w-10",
+                "flex aspect-square h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60 sm:h-10 sm:w-10",
                 tint
               )}
             >

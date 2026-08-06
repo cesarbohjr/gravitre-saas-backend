@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/select"
 import {
   CalendarDays,
-  CalendarRange,
   ChevronLeft,
   ChevronRight,
   GanttChartSquare,
@@ -245,10 +244,10 @@ export function SchedulesView({
       {/* Toolbar — one panel so the month, the view switcher and the type
           filters read as a single control surface instead of three cards. */}
       <div className="space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Period nav (calendar + gantt) */}
           {view !== "list" ? (
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -297,10 +296,10 @@ export function SchedulesView({
             </h2>
           )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {/* Month / Week / Day — only when Calendar is active */}
+          <div className="flex min-w-0 shrink-0 flex-col gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] sm:flex-row sm:items-center sm:justify-end">
+            {/* Month / Week / Day — equal columns so Day never shrinks vs Month/Week */}
             {view === "calendar" ? (
-              <div className="inline-flex gap-1 rounded-full border border-border bg-muted/50 p-1">
+              <div className="grid w-full min-w-[15rem] shrink-0 grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 sm:w-[15rem]">
                 {CALENDAR_SCOPES.map((scope) => {
                   const active = calendarScope === scope.id
                   return (
@@ -309,14 +308,13 @@ export function SchedulesView({
                       type="button"
                       onClick={() => setCalendarScope(scope.id)}
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                        "inline-flex w-full items-center justify-center rounded-full px-2 py-1.5 text-xs font-medium transition-colors sm:text-sm",
                         active
                           ? "bg-background text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                       aria-pressed={active}
                     >
-                      {scope.id === "week" ? <CalendarRange className="h-3.5 w-3.5" /> : null}
                       {scope.label}
                     </button>
                   )
@@ -324,8 +322,8 @@ export function SchedulesView({
               </div>
             ) : null}
 
-            {/* View switcher — full width on phones so the targets stay tappable */}
-            <div className="grid grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 lg:inline-flex lg:w-auto">
+            {/* View switcher — equal columns; never clip Calendar/Gantt/List */}
+            <div className="grid w-full min-w-[18rem] shrink-0 grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 sm:w-[18rem]">
               {VIEWS.map((v) => {
                 const Icon = v.icon
                 const active = view === v.id
@@ -335,15 +333,15 @@ export function SchedulesView({
                     type="button"
                     onClick={() => setView(v.id)}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-colors sm:py-1.5",
+                      "inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 py-2 text-sm font-medium transition-colors sm:py-1.5",
                       active
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                     aria-pressed={active}
                   >
-                    <Icon className="h-4 w-4" />
-                    {v.label}
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{v.label}</span>
                   </button>
                 )
               })}
@@ -420,6 +418,7 @@ export function SchedulesView({
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`${view}:${calendarScope}`}
+            className="min-w-0"
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}

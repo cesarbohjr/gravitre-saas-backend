@@ -47,7 +47,7 @@ export function DayView({
 
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card"
+      className="flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card"
       style={scheduleBoardStyle}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
@@ -87,8 +87,8 @@ export function DayView({
             ))}
           </div>
 
-          {/* Event lane */}
-          <div className="relative min-w-0 flex-1">
+          {/* Event lane — clip so stacked cards never spill past the board edge */}
+          <div className="relative min-w-0 flex-1 overflow-hidden">
             {hours.map((hour) => (
               <div
                 key={hour}
@@ -114,8 +114,9 @@ export function DayView({
               const top = Math.max(0, minutes * (HOUR_PX / 60))
               const color = kindColorVar(occurrence.item.kind)
               const selected = occurrence.item.id === selectedId
-              // Stack slight horizontal offsets when multiple share a slot.
-              const lane = index % 3
+              // Equal lanes stay fully inside the column (old 28%+68% math overflowed).
+              const laneCount = 3
+              const lane = index % laneCount
               return (
                 <button
                   key={occurrence.key}
@@ -123,13 +124,13 @@ export function DayView({
                   onFocus={() => onSelect(occurrence)}
                   onClick={() => onOpen(occurrence)}
                   className={cn(
-                    "absolute z-10 flex min-h-[2.5rem] flex-col justify-center rounded-lg px-2.5 py-1.5 text-left shadow-sm transition-shadow hover:shadow-md",
+                    "absolute z-10 flex min-h-[2.5rem] flex-col justify-center overflow-hidden rounded-lg px-2.5 py-1.5 text-left shadow-sm transition-shadow hover:shadow-md",
                     selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
                   )}
                   style={{
                     top,
-                    left: `calc(0.5rem + ${lane * 28}%)`,
-                    width: "min(68%, calc(100% - 1rem))",
+                    left: `calc(0.5rem + ${lane} * ((100% - 1rem) / ${laneCount}))`,
+                    width: `calc((100% - 1rem) / ${laneCount} - 0.25rem)`,
                     backgroundColor: `color-mix(in oklab, ${color} 18%, white)`,
                     borderLeft: `3px solid ${color}`,
                   }}
