@@ -1,6 +1,7 @@
 """Unified predictive operations organized by domain packs."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -119,22 +120,25 @@ class PredictiveOperationsEngine:
         domain: str,
     ) -> dict[str, Any]:
         pack = self.DOMAIN_PREDICTION_PACKS.get(domain, [])
-        results: dict[str, Any] = {}
-        for model_name in pack:
+
+        async def _one(model_name: str) -> tuple[str, dict[str, Any]]:
             try:
-                results[model_name] = await self._predict_model(org_id, model_name)
+                return model_name, await self._predict_model(org_id, model_name)
             except ModelNotTrainedError:
-                results[model_name] = {
+                return model_name, {
                     "status": "insufficient_data",
                     "model": model_name,
                     "advisory_only": True,
                 }
             except ModelPlannedError:
-                results[model_name] = {
+                return model_name, {
                     "status": "planned",
                     "model": model_name,
                     "advisory_only": True,
                 }
+
+        pairs = await asyncio.gather(*[_one(name) for name in pack]) if pack else []
+        results = {name: payload for name, payload in pairs}
         return {
             "domain": domain,
             "predictions": results,
@@ -145,10 +149,27 @@ class PredictiveOperationsEngine:
     async def generate_early_warning_alerts(
         self,
         org_id: str,
+        *,
+        domains: list[str] | None = None,
+        persist_suggestions: bool = True,
+        precomputed: dict[str, dict[str, Any]] | None = None,
     ) -> list[dict]:
+        """Build early-warning alerts.
+
+        Mount/chat paths should pass ``domains=[current]`` and
+        ``persist_suggestions=False`` — the historical default looped every
+        domain pack sequentially and re-ran suggestion detection on every
+        `/business-signals` hit (multi-second mount tax).
+        """
         alerts: list[dict] = []
-        for domain in self.DOMAIN_PREDICTION_PACKS:
-            predictions = await self.run_domain_predictions(org_id, domain)
+        selected = domains or list(self.DOMAIN_PREDICTION_PACKS.keys())
+
+        async def _domain(domain: str) -> list[dict]:
+            if precomputed and domain in precomputed:
+                predictions = precomputed[domain]
+            else:
+                predictions = await self.run_domain_predictions(org_id, domain)
+            out: list[dict] = []
             for model_name, payload in (predictions.get("predictions") or {}).items():
                 if payload.get("status") != "ok":
                     continue
@@ -156,7 +177,7 @@ class PredictiveOperationsEngine:
                 if risk is None:
                     continue
                 if float(risk) >= self.RISK_THRESHOLD:
-                    alerts.append(
+                    out.append(
                         {
                             "domain": domain,
                             "model": model_name,
@@ -166,7 +187,13 @@ class PredictiveOperationsEngine:
                             "scope_note": SCOPE_NOTE,
                         }
                     )
-        if alerts:
+            return out
+
+        nested = await asyncio.gather(*[_domain(d) for d in selected]) if selected else []
+        for batch in nested:
+            alerts.extend(batch)
+
+        if alerts and persist_suggestions:
             opt = get_optimization_suggestion_service(self.settings)
             await opt.detect_suggestions_for_org(org_id)
             await opt.list_suggestions(org_id, status="pending_review", limit=5)

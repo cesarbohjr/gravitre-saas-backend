@@ -441,14 +441,41 @@ export function AiWorkspace({
     },
   })
 
+  // Side-rail intelligence is not on the chat critical path. Defer until the
+  // shell is interactive so /business-signals + /advisor-brief (multi-second
+  // backend fan-out) cannot contend with conversation list / composer mount.
+  const [deferSideRailIntel, setDeferSideRailIntel] = useState(false)
+  useEffect(() => {
+    if (!user || !orgReady) {
+      setDeferSideRailIntel(false)
+      return
+    }
+    let cancelled = false
+    const enable = () => {
+      if (!cancelled) setDeferSideRailIntel(true)
+    }
+    let idleId: number | undefined
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 2500 })
+    }
+    const timer = window.setTimeout(enable, 2500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (idleId != null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
+  }, [user, orgReady])
+
   const { data: businessSignalsPayload } = useSWR(
-    user ? "ai-business-signals" : null,
+    deferSideRailIntel && user ? "ai-business-signals" : null,
     () => assistantApi.businessSignals(),
     { revalidateOnFocus: false },
   )
 
   const { data: advisorBriefPayload } = useSWR(
-    user ? "ai-advisor-brief" : null,
+    deferSideRailIntel && user ? "ai-advisor-brief" : null,
     () => assistantApi.advisorBrief(),
     { revalidateOnFocus: false },
   )

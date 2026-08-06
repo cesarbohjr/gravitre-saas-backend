@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-08-06T07:50:00Z",
+  "api_git_sha": "3d372c5d399e764f03ac807110ad4439d7c5732d",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "endpoints": {
+    "/api/assistant/business-signals": { "http_status": 200, "wall_ms": 5196 },
+    "/api/assistant/advisor-brief": { "http_status": 200, "wall_ms": 4447 }
+  },
+  "root_cause": [
+    "collect_signals awaited predictive + early-warning + suggestions + org + failures sequentially",
+    "generate_early_warning_alerts looped ALL domain packs and re-ran detect_suggestions_for_org on every hit",
+    "advisor generate_brief called collect_signals then generate_department_brief which called collect_signals again",
+    "frontend useSWR fired both endpoints as soon as user hydrated, contending with conversation list / composer mount"
+  ]
+}
