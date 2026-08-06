@@ -74,6 +74,7 @@ from app.routers import (
     search,
     sso,
     training,
+    voice,
     workflows,
     sources,
     environments,
@@ -567,6 +568,7 @@ app.include_router(intelligence_packs_plumbing.router)
 app.include_router(intelligence_visibility.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
+app.include_router(voice.router)
 app.include_router(conversations.router)
 app.include_router(meson.router)
 app.include_router(agent_interrupts.router)

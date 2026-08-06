@@ -440,6 +440,40 @@ class Settings(BaseSettings):
     disable_ai: bool = False
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
+
+    # Prompt 3 Tier 1 voice — ElevenLabs TTS + Deepgram STT (optional; browser fallback).
+    elevenlabs_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_API_KEY", "elevenlabs_api_key"),
+    )
+    elevenlabs_tts_model: str = Field(
+        default="eleven_turbo_v2_5",
+        validation_alias=AliasChoices("ELEVENLABS_TTS_MODEL", "elevenlabs_tts_model"),
+    )
+    elevenlabs_default_voice: str = Field(
+        default="rachel",
+        validation_alias=AliasChoices("ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"),
+    )
+    elevenlabs_voice_rachel: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_VOICE_RACHEL", "elevenlabs_voice_rachel"),
+    )
+    elevenlabs_voice_adam: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_VOICE_ADAM", "elevenlabs_voice_adam"),
+    )
+    elevenlabs_voice_josh: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_VOICE_JOSH", "elevenlabs_voice_josh"),
+    )
+    deepgram_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("DEEPGRAM_API_KEY", "deepgram_api_key"),
+    )
+    deepgram_stt_model: str = Field(
+        default="nova-2",
+        validation_alias=AliasChoices("DEEPGRAM_STT_MODEL", "deepgram_stt_model"),
+    )
     internet_research_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
