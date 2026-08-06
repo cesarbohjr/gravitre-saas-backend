@@ -108,7 +108,7 @@ def main() -> int:
             action="platform.unified_turn_fallthrough.alert",
             verdict=f"ALERT — {'; '.join(alerts)}",
             metadata=report,
-            resource_id="fallthrough-alert",
+            resource_id="00000000-0000-4000-8000-0000000000a2",
         )
     print(json.dumps(report, indent=2))
     return 1 if alerts else 0

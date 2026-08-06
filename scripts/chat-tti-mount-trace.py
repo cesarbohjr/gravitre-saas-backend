@@ -262,7 +262,8 @@ def main() -> int:
                 "mount_intel_before_interactive_n": len(before_intel),
                 "verdict": report["verdict"],
             },
-            resource_id="chat-mount-tti",
+            # audit_events.resource_id is uuid-typed
+            resource_id="00000000-0000-4000-8000-0000000000c1",
         )
     except Exception:
         pass
