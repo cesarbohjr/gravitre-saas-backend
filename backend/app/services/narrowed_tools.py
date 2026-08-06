@@ -27,8 +27,18 @@ class NarrowedTools(list):
         self.gravitre_narrowed = True
 
     def as_openai_tools(self) -> list[dict[str, Any]]:
-        """Plain list for provider SDKs that reject subclasses."""
-        return list(self)
+        """Plain OpenAI tool defs (strip retrieval metadata OpenAI rejects)."""
+        return [openai_tool_payload(t) for t in self]
+
+
+_OPENAI_TOOL_KEYS = frozenset({"type", "function"})
+
+
+def openai_tool_payload(tool: dict[str, Any]) -> dict[str, Any]:
+    """Keep only OpenAI-legal keys (drop invoke_action/integration/etc.)."""
+    if not isinstance(tool, dict):
+        return tool
+    return {k: tool[k] for k in _OPENAI_TOOL_KEYS if k in tool}
 
 
 def mark_narrowed(

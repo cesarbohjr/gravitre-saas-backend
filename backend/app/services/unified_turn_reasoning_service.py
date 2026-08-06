@@ -599,10 +599,12 @@ async def run_unified_turn_shadow(
         progressive_round_ms: list[int] = []
         # Up to 2 rounds: search_catalog_tools may load full schemas then continue.
         for prog_round in range(2):
+            from app.services.narrowed_tools import openai_tool_payload
+
             kwargs: dict[str, Any] = {
                 "model": model,
                 "messages": messages,
-                "tools": list(attach_tools),
+                "tools": [openai_tool_payload(t) for t in list(attach_tools)],
                 "tool_choice": "auto",
             }
             if _supports_custom_temperature(model):

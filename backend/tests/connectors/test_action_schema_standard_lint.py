@@ -57,3 +57,26 @@ def test_legacy_short_ids_have_canonical_aliases():
     assert not missing_alias, (
         "Add ACTION_ID_ALIASES entries for short ids: " + ", ".join(missing_alias[:20])
     )
+
+
+def test_every_action_has_retrieval_enrichment_examples_and_tags():
+    """Standing gate: new catalog actions must ship examples + tags."""
+    from app.connectors.action_catalog.action_retrieval_enrichment import (
+        enrichment_catalog,
+        enrichment_coverage,
+    )
+
+    cov = enrichment_coverage()
+    assert cov["data_path_exists"], "missing action_retrieval_enrichment_full.json"
+    assert cov["full_coverage"], (
+        f"enrichment gaps: missing={cov['missing_count']} sample={cov['missing_sample']}"
+    )
+    cat = enrichment_catalog()
+    bad: list[str] = []
+    for s in all_catalog_action_specs():
+        row = cat.get(s.id.lower()) or {}
+        examples = row.get("examples") or []
+        tags = row.get("tags") or []
+        if len(examples) < 3 or len(tags) < 3:
+            bad.append(s.id)
+    assert not bad, f"examples/tags incomplete for {len(bad)} actions e.g. {bad[:10]}"

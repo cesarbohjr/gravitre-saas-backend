@@ -8,6 +8,7 @@
 
 1. **NAMING** — `vendor.resource.verb` (≥3 dot segments). Legacy short ids keep backward-compat aliases; new ids must not introduce 2-segment exceptions.
 2. **DESCRIPTION QUALITY** — Include a when/why cue (`Use when…` / `Use this to…` / `Prefer when…`), not only a mechanical what.
+2b. **RETRIEVAL ENRICHMENT** — Every action must have ≥3 natural-language example phrasings and ≥3 functional tags in `action_retrieval_enrichment_full.json` (regenerate via `scripts/generate-action-retrieval-enrichment.py`). Used for MiniLM semantic tool retrieval; does not change write authority.
 3. **FLAT, ATOMIC SCHEMAS** — One purpose per action; avoid mega-tools toggled by flags.
 4. **JSON SCHEMA CONFORMANCE** — Prefer enums, required vs optional, and typed fields in `action_parameters` / `input_schema`.
 5. **TOKEN BUDGET** — Keep descriptions concise (one short when/why sentence). Rely on keyword/embedding narrowing for the prompt subset.
@@ -18,6 +19,7 @@
 
 - [ ] Action id is `vendor.resource.verb` (or listed alias of a canonical id)
 - [ ] Description has a when/why sentence
+- [ ] Retrieval enrichment has ≥3 examples + ≥3 tags (or regenerate full JSON)
 - [ ] Parameters use JSON Schema (enums where constrained)
 - [ ] `kind` / `destructive` / `requires_approval` correct for writes
 - [ ] No placeholder (`TODO`, `TBD`, empty) description
