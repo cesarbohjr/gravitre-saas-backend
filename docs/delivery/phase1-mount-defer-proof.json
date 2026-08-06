@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-08-06T08:09:48.952328+00:00",
+  "api_health_git_sha": "8c21d5c1a5f8d106882eb88ffae55fd4562047fa",
+  "chat_input_interactive_ms": 11838,
+  "waited_until_ms": 15850,
+  "mount_intel_before_interactive": [],
+  "mount_intel_after_interactive": [
+    {
+      "t_ms": 15500,
+      "url": "https://gravitre.app/api/assistant/business-signals"
+    }
+  ],
+  "all_mount_intel_api_requests": [
+    {
+      "t_ms": 15500,
+      "url": "https://gravitre.app/api/assistant/business-signals"
+    }
+  ],
+  "verdict": "PASS"
+}

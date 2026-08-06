@@ -1,58 +1,61 @@
 {
-  "checked_at": "2026-08-06T07:35:35.912209+00:00",
+  "checked_at": "2026-08-06T08:08:31.415131+00:00",
   "base": "https://gravitre.app",
   "email": "conversation-smoke-sa@gravitre.app",
-  "auth_mode": "password_grant_cookie",
+  "auth_mode": "password_grant_cookie_then_ui_login",
   "timeline_ms": [
     {
-      "t_ms": 1068,
+      "t_ms": 1081,
       "label": "password_grant_ok"
     },
     {
-      "t_ms": 2239,
+      "t_ms": 2012,
       "label": "session_cookie_seeded"
     },
     {
-      "t_ms": 2944,
+      "t_ms": 4106,
       "label": "ai_domcontentloaded",
       "url": "https://gravitre.app/login?error=session_expired"
     },
     {
-      "t_ms": 2944,
+      "t_ms": 4106,
       "label": "cookie_rejected_fallback_ui_login"
     },
     {
-      "t_ms": 6517,
+      "t_ms": 7277,
       "label": "login_complete",
       "url": "https://gravitre.app/home"
     },
     {
-      "t_ms": 10635,
+      "t_ms": 12814,
       "label": "home_sidebar_interactive",
       "url": "https://gravitre.app/home"
     },
     {
-      "t_ms": 10775,
+      "t_ms": 13046,
       "label": "ai_navigation",
       "url": "https://gravitre.app/home"
     },
     {
-      "t_ms": 11609,
+      "t_ms": 13898,
       "label": "chat_input_interactive",
       "selector": "textarea",
       "url": "https://gravitre.app/ai"
     },
     {
-      "t_ms": 11622,
+      "t_ms": 13909,
       "label": "perf_entries_captured",
       "final_url": "https://gravitre.app/ai"
     }
   ],
+  "home_sidebar_interactive_ms": 12814,
   "chat_input_selector": "textarea",
-  "tti_from_script_start_ms": 11609,
+  "chat_tti_from_script_start_ms": 13898,
+  "mount_intel_api_requests": [],
+  "mount_intel_before_interactive": [],
   "navigation_perf": {
-    "domContentLoaded": 258,
-    "loadEvent": 280,
+    "domContentLoaded": 230,
+    "loadEvent": 239,
     "resourceCount": 50,
     "overlappingPairs": [
       [
@@ -60,15 +63,15 @@
         "25c-48-vms73p.css"
       ],
       [
-        "privacy?_rsc=_H_fFy2_Q06N8BA7",
-        "security?_rsc=_H_fFy2_Q06N8BA7"
-      ],
-      [
         "security?_rsc=_H_fFy2_Q06N8BA7",
         "terms?_rsc=_H_fFy2_Q06N8BA7"
       ],
       [
         "terms?_rsc=_H_fFy2_Q06N8BA7",
+        "privacy?_rsc=_H_fFy2_Q06N8BA7"
+      ],
+      [
+        "privacy?_rsc=_H_fFy2_Q06N8BA7",
         "get-started?_rsc=_H_fFy2_Q06N8BA7"
       ],
       [
@@ -80,7 +83,7 @@
         "gtm.js?id=GTM-P9TXQF82"
       ],
       [
-        "gtm.js?id=GTM-P9TXQF82",
+        "js?id=G-2BF902RJ72&cx=c&gtm=4e6841",
         "forgot-password?_rsc=_H_fFy2_Q06N8BA7"
       ],
       [
@@ -93,267 +96,267 @@
       ],
       [
         "pricing?_rsc=_H_fFy2_Q06N8BA7",
-        "extension?_rsc=_H_fFy2_Q06N8BA7"
+        "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841v9258355920z89258348025za20gzb925834802"
       ],
       [
-        "extension?_rsc=_H_fFy2_Q06N8BA7",
-        "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1"
+        "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841v9258355920z89258348025za20gzb925834802",
+        "collect?v=2&tid=G-2BF902RJ72&cid=166348031.1786003702&gtm=45je6841v9258355920z89"
       ],
       [
-        "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1",
-        "marketplace?_rsc=_H_fFy2_Q06N8BA7"
+        "collect?v=2&tid=G-2BF902RJ72&cid=166348031.1786003702&gtm=45je6841v9258355920z89",
+        "ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-2BF902RJ72&cid=166348031.1786003702&gt"
       ]
     ],
     "resources": [
       {
         "name": "797e433ab948586e-s.p.0r6juujl39pe6.woff2",
-        "start": 196,
+        "start": 184,
         "dur": 0
       },
       {
         "name": "caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-        "start": 196,
+        "start": 184,
         "dur": 0
       },
       {
         "name": "gravitre-logo-black.png",
-        "start": 197,
-        "dur": 31
+        "start": 184,
+        "dur": 30
       },
       {
         "name": "25c-48-vms73p.css",
-        "start": 198,
+        "start": 185,
         "dur": 0
       },
       {
         "name": "1oaqzh2ku4w7q.css",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "4483gjvptqds0.js",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "2y--8g4sb9ars.js",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "1fd5br4d0vs8b.js",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "1ijzq9hecfman.js",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "367pg5ryhpm7e.js",
-        "start": 199,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "turbopack-1ba9k8g9_9p3-.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "2k1dgo57vz449.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "0j7u1lacn1j68.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "3yt9gzftbgt8r.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "25or00ug621ye.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "3wl9tg0gyfnn2.js",
-        "start": 200,
+        "start": 186,
         "dur": 0
       },
       {
         "name": "2n-thgx2qcm5a.js",
-        "start": 200,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "1cjaoaq6um37a.js",
-        "start": 200,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "2bq2f-v7qluzn.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "2rnv7wpk80g37.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "2rr3jyi2_sajg.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "0xuiztr6l0laj.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "297c975zzotub.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
         "name": "1mu80nm0_i8bu.js",
-        "start": 201,
+        "start": 187,
         "dur": 0
       },
       {
-        "name": "privacy?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 494,
-        "dur": 160
-      },
-      {
         "name": "security?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 494,
-        "dur": 178
+        "start": 307,
+        "dur": 343
       },
       {
         "name": "terms?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 495,
-        "dur": 176
+        "start": 308,
+        "dur": 203
+      },
+      {
+        "name": "privacy?_rsc=_H_fFy2_Q06N8BA7",
+        "start": 308,
+        "dur": 225
       },
       {
         "name": "get-started?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 495,
-        "dur": 145
+        "start": 308,
+        "dur": 172
       },
       {
         "name": "script.js",
-        "start": 505,
-        "dur": 65
+        "start": 335,
+        "dur": 351
       },
       {
         "name": "gtm.js?id=GTM-P9TXQF82",
-        "start": 542,
-        "dur": 115
+        "start": 336,
+        "dur": 99
+      },
+      {
+        "name": "js?id=G-2BF902RJ72&cx=c&gtm=4e6841",
+        "start": 504,
+        "dur": 47
       },
       {
         "name": "forgot-password?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 653,
-        "dur": 168
+        "start": 524,
+        "dur": 171
       },
       {
         "name": "docs?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 659,
-        "dur": 148
+        "start": 529,
+        "dur": 528
       },
       {
         "name": "pricing?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 675,
-        "dur": 193
+        "start": 535,
+        "dur": 1052
+      },
+      {
+        "name": "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841v9258355920z89258348025za20gzb925834802",
+        "start": 656,
+        "dur": 94
+      },
+      {
+        "name": "collect?v=2&tid=G-2BF902RJ72&cid=166348031.1786003702&gtm=45je6841v9258355920z89",
+        "start": 657,
+        "dur": 93
+      },
+      {
+        "name": "ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-2BF902RJ72&cid=166348031.1786003702&gt",
+        "start": 680,
+        "dur": 96
       },
       {
         "name": "extension?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 677,
-        "dur": 190
-      },
-      {
-        "name": "js?id=G-2BF902RJ72&cx=c&gtm=4e6841h1",
-        "start": 832,
-        "dur": 97
+        "start": 694,
+        "dur": 221
       },
       {
         "name": "marketplace?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 879,
-        "dur": 149
+        "start": 698,
+        "dur": 246
       },
       {
         "name": "technology?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 882,
-        "dur": 163
+        "start": 917,
+        "dur": 178
       },
       {
         "name": "features?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 883,
-        "dur": 162
+        "start": 946,
+        "dur": 746
       },
       {
         "name": "?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 884,
-        "dur": 144
-      },
-      {
-        "name": "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841h1v9258355920z89258348025za20gzb9258348",
-        "start": 1160,
-        "dur": 103
-      },
-      {
-        "name": "collect?v=2&tid=G-2BF902RJ72&cid=675385737.1786001728&gtm=45je6841h1v9258355920z",
-        "start": 1167,
-        "dur": 122
-      },
-      {
-        "name": "ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-2BF902RJ72&cid=675385737.1786001728&gt",
-        "start": 1200,
-        "dur": 83
+        "start": 1059,
+        "dur": 184
       },
       {
         "name": "privacy?_rsc=sW2A7HEmFQnSVIMx",
-        "start": 1213,
-        "dur": 146
+        "start": 1097,
+        "dur": 162
       },
       {
         "name": "security?_rsc=sW2A7HEmFQnSVIMx",
-        "start": 1215,
-        "dur": 174
+        "start": 1248,
+        "dur": 159
       },
       {
         "name": "terms?_rsc=sW2A7HEmFQnSVIMx",
-        "start": 1215,
-        "dur": 145
+        "start": 1264,
+        "dur": 154
       },
       {
         "name": "get-started?_rsc=sW2A7HEmFQnSVIMx",
-        "start": 1216,
-        "dur": 152
+        "start": 1412,
+        "dur": 151
       },
       {
-        "name": "collect?v=2&tid=G-2BF902RJ72&gtm=45je6841h1v9258355920z89258348025za20gzb9258348",
-        "start": 1271,
-        "dur": 22
+        "name": "forgot-password?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1422,
+        "dur": 158
       },
       {
-        "name": "support?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 1363,
+        "name": "login?intent=login&_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1567,
+        "dur": 188
+      },
+      {
+        "name": "docs?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1583,
+        "dur": 199
+      },
+      {
+        "name": "pricing?_rsc=sW2A7HEmFQnSVIMx",
+        "start": 1589,
         "dur": 165
-      },
-      {
-        "name": "guides?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 1365,
-        "dur": 165
-      },
-      {
-        "name": "api?_rsc=_H_fFy2_Q06N8BA7",
-        "start": 1370,
-        "dur": 160
       }
     ]
   },
