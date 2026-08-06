@@ -53,7 +53,7 @@ export function CalendarView({
 
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
+      className="flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
       style={scheduleBoardStyle}
     >
       <div className="mb-2 grid shrink-0 grid-cols-7 gap-2">

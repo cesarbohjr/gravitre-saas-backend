@@ -120,7 +120,7 @@ export function GanttView({
 
   return (
     <div
-      className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
+      className="flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
       style={scheduleBoardStyle}
     >
       {rows.length === 0 ? (
