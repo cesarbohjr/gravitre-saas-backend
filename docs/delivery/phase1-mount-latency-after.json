@@ -1,25 +1,39 @@
 {
-  "api_git_sha": "b38449f0f5cfe6f504e10c1167641b1ad9d463cb",
-  "checked_at": "2026-08-06T07:54:59Z",
+  "api_git_sha": "948689ef579b1d33c47cc47fa42355b492a124f5",
+  "checked_at": "2026-08-06T08:00:04Z",
+  "before": {
+    "business-signals_ms": 5196,
+    "advisor-brief_ms": 4447
+  },
   "runs": [
     {
       "/api/assistant/business-signals": {
         "http_status": 200,
-        "wall_ms": 5497
+        "wall_ms": 2598
       },
       "/api/assistant/advisor-brief": {
         "http_status": 200,
-        "wall_ms": 1905
+        "wall_ms": 1878
       }
     },
     {
       "/api/assistant/business-signals": {
         "http_status": 200,
-        "wall_ms": 2574
+        "wall_ms": 1219
       },
       "/api/assistant/advisor-brief": {
         "http_status": 200,
-        "wall_ms": 4849
+        "wall_ms": 1797
+      }
+    },
+    {
+      "/api/assistant/business-signals": {
+        "http_status": 200,
+        "wall_ms": 1404
+      },
+      "/api/assistant/advisor-brief": {
+        "http_status": 200,
+        "wall_ms": 2244
       }
     }
   ]

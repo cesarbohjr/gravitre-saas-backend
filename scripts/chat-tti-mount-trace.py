@@ -119,6 +119,19 @@ def main() -> int:
         seed_session_cookie(context, base, env["SUPABASE_URL"], session)
         mark("session_cookie_seeded")
         page = context.new_page()
+        blocked_mount_apis: list[dict] = []
+
+        def _on_request(req):
+            url = req.url
+            if "/api/assistant/business-signals" in url or "/api/assistant/advisor-brief" in url:
+                blocked_mount_apis.append(
+                    {
+                        "t_ms": round((time.perf_counter() - t0) * 1000),
+                        "url": url.split("?")[0],
+                    }
+                )
+
+        page.on("request", _on_request)
 
         page.goto(f"{base}/ai", wait_until="domcontentloaded", timeout=90_000)
         mark("ai_domcontentloaded", url=page.url)
@@ -203,6 +216,12 @@ def main() -> int:
         ),
         "chat_input_selector": used,
         "chat_tti_from_script_start_ms": interactive_at,
+        "mount_intel_api_requests": blocked_mount_apis,
+        "mount_intel_before_interactive": [
+            row
+            for row in blocked_mount_apis
+            if interactive_at is not None and row["t_ms"] < interactive_at
+        ],
         "navigation_perf": perf,
         "verdict": (
             "PASS"

@@ -67,6 +67,9 @@ class AdvisorModeEngine:
                 return []
 
         async def _daily() -> dict[str, Any]:
+            if not include_predictive:
+                # Mount path: daily briefing is another multi-query fan-out.
+                return {}
             try:
                 return await self._user_intel.get_daily_briefing(
                     self.settings,
