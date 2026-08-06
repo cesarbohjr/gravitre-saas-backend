@@ -1794,10 +1794,33 @@ function SettingsContent() {
 
   const organization = (orgData as { organization?: Record<string, unknown> } | undefined)?.organization
   const team = ((teamData as { team?: User[] } | undefined)?.team ?? []) as User[]
+  // Prompt3 click-audit: bare spinner with zero copy looks like a blank empty state.
+  // Cap auth/admin wait and surface a recoverable message instead of spinning forever.
+  const [bootWaitMs, setBootWaitMs] = useState(0)
+  useEffect(() => {
+    if (!(authLoading || adminLoading)) {
+      setBootWaitMs(0)
+      return
+    }
+    const started = Date.now()
+    const id = window.setInterval(() => setBootWaitMs(Date.now() - started), 500)
+    return () => window.clearInterval(id)
+  }, [authLoading, adminLoading])
   if (authLoading || adminLoading) {
+    const stuck = bootWaitMs >= 12_000
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center gap-3 h-64 px-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          {stuck
+            ? "Settings is taking longer than usual to load. Check your connection, then refresh — or open Profile / Organizations from the sidebar."
+            : "Loading settings…"}
+        </p>
+        {stuck ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Refresh settings
+          </Button>
+        ) : null}
       </div>
     )
   }

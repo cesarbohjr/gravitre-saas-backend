@@ -153,7 +153,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:navigation": "playwright test e2e/marketing-navigation-crawler.spec.ts e2e/execution-result-navigation.spec.ts e2e/app-navigation-crawler.spec.ts",
-    "test:navigation:install": "playwright install --with-deps chromium"
+    "test:navigation:install": "playwright install --with-deps chromium",
+    "test:click-audit:prompt3": "node scripts/prompt3-authenticated-click-audit.js https://gravitre.app"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"

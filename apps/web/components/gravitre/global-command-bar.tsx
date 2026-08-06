@@ -71,10 +71,10 @@ const aiCommands: CommandItem[] = [
   { id: "ai-agent", type: "ai", title: "Run marketing agent", subtitle: "Execute agent", icon: "agents", keywords: ["run", "agent", "marketing"] },
 ]
 
-const recentItems: CommandItem[] = [
-  { id: "recent-1", type: "recent", title: "Investigating failed customer sync", subtitle: "2 minutes ago", icon: "pending", href: APP_ROUTES.gravitreAi },
-  { id: "recent-2", type: "recent", title: "sync-customers-1234", subtitle: "Workflow run", icon: "run", href: "/runs/sync-customers-1234" },
-]
+// Do not ship hard-coded demo "recent" rows — they look clickable but are mocks
+// (Prompt3 click-audit: dead/misleading affordances). Real recents should come
+// from conversation/run history when wired; until then keep this empty.
+const recentItems: CommandItem[] = []
 
 export function GlobalCommandBar() {
   const [isOpen, setIsOpen] = useState(false)
