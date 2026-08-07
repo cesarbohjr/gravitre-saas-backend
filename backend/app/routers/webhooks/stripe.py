@@ -105,6 +105,22 @@ def _plan_from_price(settings: Settings, price_id: str | None) -> str | None:
     return _normalize_tier(plan)
 
 
+def _licensed_base_price_id(data: dict[str, Any]) -> str | None:
+    """Return the first non-metered recurring price id on a Stripe subscription object."""
+    items = (data.get("items") or {}).get("data") or []
+    for item in items:
+        price = item.get("price") if isinstance(item, dict) else None
+        if not isinstance(price, dict):
+            continue
+        recurring = price.get("recurring") if isinstance(price.get("recurring"), dict) else {}
+        if str(recurring.get("usage_type") or "").lower() == "metered":
+            continue
+        price_id = str(price.get("id") or "").strip()
+        if price_id:
+            return price_id
+    return None
+
+
 def _plan_from_subscription_items(settings: Settings, data: dict[str, Any]) -> str | None:
     """Pick the first known *base* plan price from subscription items (skip metered)."""
     items = (data.get("items") or {}).get("data") or []
@@ -127,12 +143,14 @@ def _resolve_plan_code(
     metadata: dict[str, Any] | None = None,
 ) -> str | None:
     meta = metadata if isinstance(metadata, dict) else {}
-    from_meta = _normalize_billing_plan_code(meta.get("plan_code") if meta else None)
-    if from_meta:
-        return from_meta
+    # Prefer live subscription items over metadata so upgrades always win even if
+    # stale checkout metadata still says "node".
     from_items = _plan_from_subscription_items(settings, data)
     if from_items:
         return _normalize_billing_plan_code(from_items)
+    from_meta = _normalize_billing_plan_code(meta.get("plan_code") if meta else None)
+    if from_meta:
+        return from_meta
     return None
 
 
@@ -244,6 +262,10 @@ def _process_stripe_event(
             plan_code = _normalize_billing_plan_code(
                 (metadata.get("plan_code") if isinstance(metadata, dict) else None)
             )
+            # Checkout sessions often lack line items; subscription.* events fill price_id.
+            price_id = _licensed_base_price_id(data)
+            if not plan_code and price_id:
+                plan_code = _plan_from_price(settings, price_id)
             subscription_row: dict[str, Any] = {
                 "org_id": org_id,
                 "stripe_customer_id": customer_id,
@@ -261,6 +283,8 @@ def _process_stripe_event(
             if plan_code:
                 subscription_row["tier"] = plan_code
                 org_billing_row["plan_code"] = plan_code
+            if price_id:
+                org_billing_row["stripe_price_id"] = price_id
             client.table("subscriptions").upsert(subscription_row, on_conflict="org_id").execute()
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
@@ -281,6 +305,7 @@ def _process_stripe_event(
                 promote_user_to_org_owner(client, org_id, payer_user_id)
         if org_id:
             plan_code = _resolve_plan_code(settings, data, metadata if isinstance(metadata, dict) else {})
+            price_id = _licensed_base_price_id(data)
             billing_status = data.get("status") or "active"
             if billing_status == "incomplete":
                 billing_status = "pending"
@@ -294,6 +319,8 @@ def _process_stripe_event(
             }
             if plan_code:
                 org_billing_row["plan_code"] = plan_code
+            if price_id:
+                org_billing_row["stripe_price_id"] = price_id
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
     if event_type == "customer.subscription.deleted":
@@ -314,14 +341,22 @@ def _process_stripe_event(
 
     if event_type == "invoice.payment_succeeded":
         if org_id:
+            now = datetime.now(timezone.utc).isoformat()
             client.table("subscriptions").update(
-                {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}
+                {"status": "active", "updated_at": now}
+            ).eq("org_id", org_id).execute()
+            client.table("org_billing").update(
+                {"billing_status": "active", "updated_at": now}
             ).eq("org_id", org_id).execute()
 
     if event_type == "invoice.payment_failed":
         if org_id:
+            now = datetime.now(timezone.utc).isoformat()
             client.table("subscriptions").update(
-                {"status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}
+                {"status": "past_due", "updated_at": now}
+            ).eq("org_id", org_id).execute()
+            client.table("org_billing").update(
+                {"billing_status": "past_due", "updated_at": now}
             ).eq("org_id", org_id).execute()
 
     if event_type == "account.updated":

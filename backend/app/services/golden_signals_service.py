@@ -186,6 +186,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
 
     deploy_smoke = _latest_platform_signal(client, "platform.deploy_smoke")
     hardening = _latest_platform_signal(client, "platform.hardening_smoke")
+    billing_drift = _billing_plan_price_drift(client, settings)
 
     alerts: list[str] = []
     if fallthrough_pct > FALLTHROUGH_ALERT_PCT:
@@ -193,6 +194,8 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
     defer_proposal = defer_counts.get("defer_connector_tool_proposal", 0)
     if defer_proposal >= FALLTHROUGH_ALERT_BUCKET_SPIKE:
         alerts.append(f"defer_connector_tool_proposal_spike>={FALLTHROUGH_ALERT_BUCKET_SPIKE}")
+    if billing_drift.get("drift_count", 0) > 0:
+        alerts.append(f"billing_plan_price_drift>{billing_drift['drift_count']}")
 
     ttft_alerts: list[str] = []
     if ttft_p50 is not None and ttft_p50 > TTFT_ALERT_P50_MS:
@@ -261,6 +264,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             else None,
         },
         "alerts": alerts,
+        "billing_plan_drift": billing_drift,
         "r2_removal_gates": {
             "fallthrough_pct_target": 1.0,
             "current_fallthrough_pct": fallthrough_pct,
@@ -272,4 +276,68 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             "customer_facing": "deferred",
             "note": "Internal golden signals first; public uptime page is a product decision.",
         },
+    }
+
+
+def _billing_plan_price_drift(client: Any, settings: Any) -> dict[str, Any]:
+    """Flag orgs where org_billing.stripe_price_id maps to a different plan than plan_code.
+
+    Catches the Command-upgrade / stale-Node-price class of drift without a Stripe API call.
+    """
+    price_to_plan: dict[str, str] = {}
+    for attr, plan in (
+        ("stripe_price_id_node_monthly", "node"),
+        ("stripe_price_id_node_annual", "node"),
+        ("stripe_price_id_control_monthly", "control"),
+        ("stripe_price_id_control_annual", "control"),
+        ("stripe_price_id_command_monthly", "command"),
+        ("stripe_price_id_command_annual", "command"),
+        ("stripe_price_id_starter", "node"),
+        ("stripe_price_id_growth", "control"),
+        ("stripe_price_id_scale", "command"),
+    ):
+        price_id = str(getattr(settings, attr, "") or "").strip()
+        if price_id:
+            price_to_plan[price_id] = plan
+
+    if not price_to_plan:
+        return {
+            "sample_size": 0,
+            "drift_count": 0,
+            "drifts": [],
+            "note": "stripe_price_id_* env not configured; skip",
+        }
+
+    try:
+        rows = (
+            client.table("org_billing")
+            .select("org_id, plan_code, stripe_price_id, stripe_subscription_id")
+            .not_.is_("stripe_subscription_id", "null")
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"sample_size": 0, "drift_count": 0, "drifts": [], "error": str(exc)}
+
+    drifts: list[dict[str, Any]] = []
+    for row in rows:
+        price_id = str(row.get("stripe_price_id") or "").strip()
+        plan_code = str(row.get("plan_code") or "").strip().lower()
+        mapped = price_to_plan.get(price_id)
+        if mapped and plan_code and mapped != plan_code:
+            drifts.append(
+                {
+                    "org_id": row.get("org_id"),
+                    "plan_code": plan_code,
+                    "stripe_price_id": price_id,
+                    "price_maps_to": mapped,
+                }
+            )
+    return {
+        "sample_size": len(rows),
+        "drift_count": len(drifts),
+        "drifts": drifts[:25],
+        "note": "org_billing.plan_code vs configured Stripe price id mapping",
     }

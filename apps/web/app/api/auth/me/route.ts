@@ -35,7 +35,8 @@ async function fallbackMeFromSupabase(user: {
     onboarding: { seeded: false, completed_at: null, checklist_dismissed: false },
     billing: {
       status: "unknown",
-      plan_code: "node",
+      // Never invent Node — degraded auth must not masquerade as a paid plan.
+      plan_code: null,
       can_access_app: null,
     },
     _auth_degraded: true,

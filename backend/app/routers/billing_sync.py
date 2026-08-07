@@ -16,8 +16,14 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
-from app.auth.dependencies import require_admin
-from app.billing.service import get_current_period, get_supabase_client
+from app.auth.dependencies import require_admin, require_platform_admin
+from app.billing.service import (
+    DEFAULT_PLAN_CODE,
+    get_current_period,
+    get_org_billing,
+    get_supabase_client,
+    normalize_plan_code,
+)
 from app.billing.stripe_research_lookup_metering import (
     attach_research_lookup_metered_price_to_subscription,
     report_research_lookup_overage_for_active_orgs,
@@ -33,6 +39,7 @@ from app.billing.stripe_metering import (
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.workflows.audit import write_audit_event
 
 logger = get_logger(__name__)
 
@@ -79,6 +86,15 @@ class AttachMeteredPriceRequest(BaseModel):
 
 class AttachAllMeteredPricesRequest(BaseModel):
     dry_run: bool = True
+
+
+class AdminPlanChangeRequest(BaseModel):
+    org_id: str
+    plan_code: str
+    # internal_override: update Gravitre rows only (labeled in audit).
+    # stripe_sync: also attempt to move the Stripe subscription to the plan price.
+    mode: str = "internal_override"
+    reason: str | None = None
 
 
 def _lookup_org_subscription(client: Any, org_id: str) -> dict[str, Any] | None:
@@ -370,3 +386,144 @@ async def set_budget_enforcement_internal(
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id is required")
     return _set_hard_budget_override(settings, org_id, body.enabled)
+
+
+@admin_router.post("/plan")
+async def admin_set_org_plan(
+    body: AdminPlanChangeRequest,
+    platform_admin: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Platform-admin plan change against the single SoT (org_billing + subscriptions).
+
+    mode=internal_override updates Gravitre only and is audited as such — it does
+    not invent a second plan store. mode=stripe_sync also updates the Stripe
+    subscription price when configured.
+    """
+    org_id = (body.org_id or "").strip()
+    plan_code = normalize_plan_code(body.plan_code)
+    mode = (body.mode or "internal_override").strip().lower()
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id is required")
+    if plan_code not in {"node", "control", "command", "enterprise"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan_code")
+    if mode not in {"internal_override", "stripe_sync"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid mode")
+
+    client = get_supabase_client(settings)
+    before = get_org_billing(client, org_id) or {}
+    previous = normalize_plan_code(before.get("plan_code") or DEFAULT_PLAN_CODE)
+    now = datetime.now(timezone.utc).isoformat()
+    stripe_result: dict[str, Any] | None = None
+
+    if mode == "stripe_sync":
+        from app.billing.stripe import init_stripe, price_id_for_plan
+        import stripe
+
+        sub_id = str(before.get("stripe_subscription_id") or "").strip()
+        if not sub_id or not settings.stripe_secret_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="stripe_sync requires an active Stripe subscription and STRIPE_SECRET_KEY",
+            )
+        try:
+            price_id = price_id_for_plan(settings, plan_code, "monthly")
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        if not price_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No Stripe price configured for plan_code={plan_code}",
+            )
+        init_stripe(settings)
+        try:
+            stripe_sub = stripe.Subscription.retrieve(sub_id)
+            items = (stripe_sub.get("items") or {}).get("data") or []
+            licensed = next(
+                (
+                    item
+                    for item in items
+                    if str(((item.get("price") or {}).get("recurring") or {}).get("usage_type") or "").lower()
+                    != "metered"
+                ),
+                items[0] if items else None,
+            )
+            if not licensed:
+                raise HTTPException(status_code=400, detail="No licensed subscription item to update")
+            updated = stripe.Subscription.modify(
+                sub_id,
+                items=[{"id": licensed["id"], "price": price_id}],
+                proration_behavior="create_prorations",
+                metadata={"plan_code": plan_code, "org_id": org_id},
+            )
+            stripe_result = {"subscription_id": sub_id, "price_id": price_id, "status": updated.get("status")}
+        except HTTPException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    billing_payload: dict[str, Any] = {
+        "org_id": org_id,
+        "plan_code": plan_code,
+        "billing_status": before.get("billing_status") or "active",
+        "updated_at": now,
+    }
+    if stripe_result and stripe_result.get("price_id"):
+        billing_payload["stripe_price_id"] = stripe_result["price_id"]
+    client.table("org_billing").upsert(billing_payload, on_conflict="org_id").execute()
+    client.table("subscriptions").upsert(
+        {
+            "org_id": org_id,
+            "tier": plan_code,
+            "status": "active",
+            "updated_at": now,
+            **(
+                {"stripe_subscription_id": before["stripe_subscription_id"]}
+                if before.get("stripe_subscription_id")
+                else {}
+            ),
+        },
+        on_conflict="org_id",
+    ).execute()
+
+    actor_id = str(platform_admin.get("user_id") or platform_admin.get("id") or "")
+    write_audit_event(
+        client,
+        org_id,
+        actor_id,
+        "billing.plan.changed",
+        "org_billing",
+        org_id,
+        {
+            "from_plan": previous,
+            "to_plan": plan_code,
+            "mode": mode,
+            "reason": body.reason,
+            "stripe": stripe_result,
+            "internal_override": mode == "internal_override",
+        },
+    )
+    client.table("billing_events").insert(
+        {
+            "org_id": org_id,
+            "action": "billing.plan.changed",
+            "event_type": "billing.plan.changed",
+            "status": "success",
+            "payload": {
+                "from_plan": previous,
+                "to_plan": plan_code,
+                "mode": mode,
+                "reason": body.reason,
+                "stripe": stripe_result,
+            },
+        }
+    ).execute()
+
+    return {
+        "org_id": org_id,
+        "from_plan": previous,
+        "to_plan": plan_code,
+        "mode": mode,
+        "stripe": stripe_result,
+        "source_of_truth": "org_billing.plan_code",
+    }

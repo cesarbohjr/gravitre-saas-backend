@@ -34,8 +34,10 @@ from app.billing.stripe import (
 )
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
+from app.core.logging import get_logger
 from app.workflows.audit import write_audit_event
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
@@ -232,14 +234,15 @@ def _reconcile_plan_from_stripe(
     org_id: str,
     subscription_row: dict | None,
 ) -> str | None:
-    """When Stripe is available, repair stale node/free tier from the live subscription."""
+    """Repair local plan/price rows from the live Stripe subscription (single SoT)."""
     sub_id = str((subscription_row or {}).get("stripe_subscription_id") or "").strip()
     if not sub_id or not settings.stripe_secret_key:
         return None
     try:
         init_stripe(settings)
         stripe_sub = stripe.Subscription.retrieve(sub_id)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("stripe reconcile retrieve failed org_id=%s error=%s", org_id, exc)
         return None
 
     if hasattr(stripe_sub, "to_dict"):
@@ -256,44 +259,54 @@ def _reconcile_plan_from_stripe(
             return None
 
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
-    from app.routers.webhooks.stripe import _resolve_plan_code
+    from app.routers.webhooks.stripe import _licensed_base_price_id, _resolve_plan_code
 
     plan_code = _resolve_plan_code(settings, data, metadata)
     if not plan_code:
         return None
+    price_id = _licensed_base_price_id(data)
 
     now = datetime.now(timezone.utc).isoformat()
+    period_end = (
+        datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
+        if data.get("current_period_end")
+        else (subscription_row or {}).get("current_period_end")
+    )
+    billing_status = (
+        "active"
+        if data.get("status") in {None, "active", "trialing"}
+        else str(data.get("status") or "active")
+    )
+    org_billing_payload: dict = {
+        "org_id": org_id,
+        "plan_code": plan_code,
+        "stripe_subscription_id": sub_id,
+        "stripe_customer_id": data.get("customer") or (subscription_row or {}).get("stripe_customer_id"),
+        "billing_status": billing_status,
+        "current_period_end": period_end,
+        "updated_at": now,
+    }
+    if price_id:
+        org_billing_payload["stripe_price_id"] = price_id
     try:
         client.table("subscriptions").update(
             {
                 "tier": plan_code,
                 "status": str(data.get("status") or (subscription_row or {}).get("status") or "active"),
-                "current_period_end": (
-                    datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
-                    if data.get("current_period_end")
-                    else (subscription_row or {}).get("current_period_end")
-                ),
+                "current_period_end": period_end,
                 "updated_at": now,
             }
         ).eq("org_id", org_id).execute()
-        client.table("org_billing").upsert(
-            {
-                "org_id": org_id,
-                "plan_code": plan_code,
-                "stripe_subscription_id": sub_id,
-                "stripe_customer_id": data.get("customer") or (subscription_row or {}).get("stripe_customer_id"),
-                "billing_status": "active" if data.get("status") in {None, "active", "trialing"} else data.get("status"),
-                "current_period_end": (
-                    datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
-                    if data.get("current_period_end")
-                    else None
-                ),
-                "updated_at": now,
-            },
-            on_conflict="org_id",
-        ).execute()
-    except Exception:
-        return plan_code
+        client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "stripe reconcile upsert failed org_id=%s plan=%s price=%s error=%s",
+            org_id,
+            plan_code,
+            price_id,
+            exc,
+        )
+        return None
     return plan_code
 
 
@@ -519,16 +532,26 @@ async def billing_overview(
     billing_row = get_org_billing(client, org_id) or {}
     sub_tier = str((subscription_row or {}).get("tier") or "").strip().lower()
     billing_tier = str(billing_row.get("plan_code") or "").strip().lower()
-    # Repair stale Node/Free when Stripe still has the paid Command/Control price.
-    if (subscription_row or {}).get("stripe_subscription_id") and (
-        canonical_tier in {"node", "free"} or sub_tier != billing_tier or not billing_tier
-    ):
+    # Always reconcile from Stripe when a subscription id exists. Prior logic only
+    # ran for node/free or tier mismatch, which left stripe_price_id stuck on Node
+    # after a Command upgrade while plan_code already said command.
+    if (subscription_row or {}).get("stripe_subscription_id") and settings.stripe_secret_key:
         repaired = _reconcile_plan_from_stripe(client, settings, org_id, subscription_row)
         if repaired:
             canonical_tier = repaired
-            # Refresh local rows after repair so period dates stay aligned.
             refreshed = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
             subscription_row = (refreshed.data or [subscription_row])[0]
+            billing_row = get_org_billing(client, org_id) or billing_row
+    elif (subscription_row or {}).get("stripe_subscription_id") and (
+        canonical_tier in {"node", "free"} or sub_tier != billing_tier or not billing_tier
+    ):
+        # No Stripe key locally: still surface the dual-row mismatch for ops logs.
+        logger.warning(
+            "billing overview skip stripe reconcile (no key) org_id=%s billing=%s sub=%s",
+            org_id,
+            billing_tier,
+            sub_tier,
+        )
 
     # Keep subscriptions.tier aligned with org_billing so UI + usage share one plan.
     if subscription_row and str(subscription_row.get("tier") or "").strip().lower() != canonical_tier:
@@ -628,6 +651,7 @@ async def get_billing_status(
         "overrides": overrides or {},
         "billingStatus": billing_status,
         "planCode": plan_code,
+        "billingKnown": True,
         "canAccessApp": access["can_access_app"],
         "requiresUpgrade": access["requires_upgrade"],
         "upgradeReason": access["upgrade_reason"],
