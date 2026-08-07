@@ -14,12 +14,14 @@
 5. **TOKEN BUDGET** — Keep descriptions concise (one short when/why sentence). Rely on keyword/embedding narrowing for the prompt subset.
 6. **ANNOTATIONS** — `readOnlyHint` / `destructiveHint` are **derived** from existing `kind` + `destructive` (same signal as `catalog_write_authority`). Do not invent a parallel marking system.
 7. **OUTPUT STRUCTURING** — Writes return parseable fields (`entity_id`, `list_id`, membership counts) suitable for verified-output / population checks.
+8. **SUCCESS VERIFICATION (Phase 3)** — Every mutating action must declare how success is independently confirmed in `success_verification_catalog.json` (`follow_up_membership` / `follow_up_entity_get` / honest `accepted_async`). Follow-up settle reuses F6 retry logic and must run **async after** the user-visible response (never block TTFT). Regenerate via `python backend/scripts/generate_success_verification_catalog.py`.
 
 ## PR checklist
 
 - [ ] Action id is `vendor.resource.verb` (or listed alias of a canonical id)
 - [ ] Description has a when/why sentence
 - [ ] Retrieval enrichment has ≥3 examples + ≥3 tags (or regenerate full JSON)
+- [ ] Mutating actions have a `success_verification_catalog.json` entry (or regenerate)
 - [ ] Parameters use JSON Schema (enums where constrained)
 - [ ] `kind` / `destructive` / `requires_approval` correct for writes
 - [ ] No placeholder (`TODO`, `TBD`, empty) description

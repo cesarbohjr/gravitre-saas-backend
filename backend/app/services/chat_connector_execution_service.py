@@ -1799,14 +1799,17 @@ class ChatConnectorExecutionService:
                     )
                 return failed
 
+        finalize_run_id: str | None = None
         if own_terminal_outcome:
-            self._finalize_connector_outcome(
+            finalize_run_id = self._finalize_connector_outcome(
                 client,
                 org_id=org_id,
                 user_id=user_id,
                 conversation_id=conversation_id,
                 plan=plan,
                 result=result,
+                tool_ctx=ctx,
+                connector_id=connector_id,
             )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -1880,11 +1883,16 @@ class ChatConnectorExecutionService:
         conversation_id: str,
         plan: ConnectorActionPlan,
         result: ExecutionResult,
-    ) -> None:
+        tool_ctx: ToolContext | None = None,
+        connector_id: str | None = None,
+    ) -> str | None:
         """Route single-connector chat terminals through finalize_execution_outcome().
 
         Creates a lightweight workflow_run so Module A fanout includes Runs (not only
         notify/audit/learning). Titles/bodies are shaped by Module D inside finalize.
+
+        Returns run_id when created. Population follow-up settle is scheduled async
+        (Phase 3) so TTFT is not blocked by F6 backoff sleeps.
         """
         from uuid import uuid4
 
@@ -1918,10 +1926,13 @@ class ChatConnectorExecutionService:
             effect=outcome_effect,
             invoke_action=plan.invoke_action,
         )
-        # F6 — list populate/membership writes need follow-up membership proof.
+        # F6/Phase 3 — sync path only uses inline membership proof (no settle sleep).
+        # Follow-up vendor re-reads are scheduled after finalize so chat TTFT stays clean.
+        schedule_async_population = False
         try:
             from app.services.collection_population_verify import (
                 apply_population_verify_to_status,
+                is_population_write_action,
             )
 
             status, effect_override, pop_verify = apply_population_verify_to_status(
@@ -1931,6 +1942,7 @@ class ChatConnectorExecutionService:
                 client=client,
                 org_id=org_id,
                 settings=self.settings,
+                ctx=None,  # force non-blocking; settle happens async with tool_ctx
             )
             if effect_override:
                 outcome_effect = effect_override
@@ -1944,6 +1956,7 @@ class ChatConnectorExecutionService:
                         "detail": pop_verify.detail,
                     },
                 }
+                schedule_async_population = is_population_write_action(plan.invoke_action)
         except Exception as pop_exc:  # noqa: BLE001
             logger.warning(
                 "collection population verify skipped action=%s err=%s",
@@ -2089,6 +2102,43 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
+
+        # Phase 3 — schedule F6 settle AFTER user-visible finalize (non-blocking).
+        if schedule_async_population and run_id and tool_ctx is not None:
+            try:
+                from app.services.tool_types import ToolContext as _TC
+                from app.services.write_success_verification import (
+                    schedule_write_success_verification,
+                )
+
+                verify_ctx = tool_ctx
+                cid = str(connector_id or result.entity_id or "").strip()
+                if cid and not getattr(verify_ctx, "connector_id", None):
+                    verify_ctx = _TC(
+                        settings=tool_ctx.settings,
+                        client=tool_ctx.client,
+                        org_id=tool_ctx.org_id,
+                        actor_id=tool_ctx.actor_id,
+                        environment_name=tool_ctx.environment_name,
+                        connector_id=cid,
+                    )
+                schedule_write_success_verification(
+                    client=client,
+                    org_id=org_id,
+                    run_id=run_id,
+                    invoke_action=plan.invoke_action,
+                    result_data=structured,
+                    settings=self.settings,
+                    ctx=verify_ctx,
+                    environment_name=getattr(tool_ctx, "environment_name", None) or "production",
+                )
+            except Exception as sched_exc:  # noqa: BLE001
+                logger.warning(
+                    "async population verify schedule skipped action=%s err=%s",
+                    plan.invoke_action,
+                    sched_exc,
+                )
+        return run_id
 
     async def _try_inline_preview_turn(
         self,

@@ -27,6 +27,7 @@ LIST_ADD_ACTIONS = frozenset(
     {
         "apollo.lists.add",
         "hubspot.lists.add_contact",
+        "marketo.lists.add_to_static_list",
     }
 )
 

@@ -1,0 +1,146 @@
+{
+  "mutating_action_count": 344,
+  "declared_count": 344,
+  "catalog_path_exists": true,
+  "coverage_pct": 100.0,
+  "full_coverage": true,
+  "missing_count": 0,
+  "missing_sample": [],
+  "by_mode": {
+    "follow_up_entity_get": 70,
+    "accepted_async": 271,
+    "follow_up_membership": 3
+  },
+  "examples": {
+    "follow_up_membership": [
+      {
+        "action": "hubspot.lists.add_contact",
+        "mode": "follow_up_membership",
+        "read_action": "hubspot.lists.get",
+        "assert_field": "membership_count",
+        "reason": "F6 collection population membership proof"
+      },
+      {
+        "action": "marketo.lists.add_to_static_list",
+        "mode": "follow_up_membership",
+        "read_action": "marketo.lists.get_leads",
+        "assert_field": "membership_count",
+        "reason": "F6 collection population membership proof"
+      },
+      {
+        "action": "apollo.lists.add",
+        "mode": "follow_up_membership",
+        "read_action": "apollo.lists.list",
+        "assert_field": "membership_count",
+        "reason": "F6 collection population membership proof"
+      }
+    ],
+    "follow_up_entity_get": [
+      {
+        "action": "salesforce.leads.create",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.leads.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "salesforce.leads.update",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.leads.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "salesforce.accounts.create",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.accounts.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "salesforce.opportunities.create",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.opportunities.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "salesforce.accounts.update",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.accounts.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "salesforce.opportunities.update",
+        "mode": "follow_up_entity_get",
+        "read_action": "salesforce.opportunities.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "hubspot.contacts.create",
+        "mode": "follow_up_entity_get",
+        "read_action": "hubspot.contacts.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      },
+      {
+        "action": "hubspot.contacts.update",
+        "mode": "follow_up_entity_get",
+        "read_action": "hubspot.contacts.get",
+        "assert_field": "id",
+        "reason": "Sibling GET must return the written entity id/field"
+      }
+    ],
+    "accepted_async": [
+      {
+        "action": "salesforce.tasks.create",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "salesforce.opportunities.update_stage",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.contacts.delete",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.deals.delete",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.notes.create",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.notes.delete",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.associations.create",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      },
+      {
+        "action": "hubspot.deals.update_stage",
+        "mode": "accepted_async",
+        "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      }
+    ]
+  },
+  "population_actions": [
+    "apollo.lists.add",
+    "hubspot.lists.add_contact",
+    "marketo.lists.add_to_static_list"
+  ],
+  "generatedAt": "2026-08-07T08:14:07.992538+00:00",
+  "phase": "phase3_catalog_verified_completion"
+}
