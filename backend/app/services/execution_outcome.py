@@ -33,6 +33,7 @@ from app.workflows.constants import (
     RUN_STATUS_CANCELLED,
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
+    RUN_STATUS_FLAGGED_FOR_REVIEW,
     RUN_STATUS_PARTIAL_SUCCESS,
 )
 
@@ -42,7 +43,9 @@ logger = get_logger(__name__)
 # See docs/delivery/module-a-outcome-schema-changelog.md
 OUTCOME_SCHEMA_VERSION = "1.0.0"
 
-TerminalStatus = Literal["completed", "failed", "cancelled", "partial_success"]
+TerminalStatus = Literal[
+    "completed", "failed", "cancelled", "partial_success", "flagged_for_review"
+]
 OutcomeSource = Literal[
     "chat_orch",
     "assistant_chat",
@@ -59,6 +62,7 @@ TERMINAL_STATUSES = frozenset(
         RUN_STATUS_FAILED,
         RUN_STATUS_CANCELLED,
         RUN_STATUS_PARTIAL_SUCCESS,
+        RUN_STATUS_FLAGGED_FOR_REVIEW,
     }
 )
 
@@ -162,6 +166,8 @@ def _normalize_status(status: str) -> TerminalStatus:
     normalized = str(status or "").strip().lower()
     if normalized == RUN_STATUS_PARTIAL_SUCCESS:
         return "partial_success"
+    if normalized == RUN_STATUS_FLAGGED_FOR_REVIEW:
+        return "flagged_for_review"
     if normalized == RUN_STATUS_CANCELLED:
         return "cancelled"
     if normalized == RUN_STATUS_FAILED:
@@ -182,6 +188,8 @@ def _audit_action_for(status: TerminalStatus) -> str:
         return "workflow.execute.failed"
     if status == "cancelled":
         return "workflow.execute.cancelled"
+    if status == "flagged_for_review":
+        return "workflow.execute.flagged_for_review"
     return "workflow.execute.completed"
 
 
@@ -190,6 +198,8 @@ def _notification_event_for(status: TerminalStatus) -> str:
         return "run_failed"
     if status == "cancelled":
         return "run_cancelled"
+    if status == "flagged_for_review":
+        return "run_flagged_for_review"
     return "run_completed"
 
 
@@ -198,6 +208,8 @@ def _learning_event_for(status: TerminalStatus) -> str:
         return "workflow_failed"
     if status == "cancelled":
         return "workflow_cancelled"
+    if status == "flagged_for_review":
+        return "workflow_flagged_for_review"
     return "workflow_executed"
 
 
@@ -635,7 +647,8 @@ def finalize_execution_outcome(
     effect = classify_write_effect(
         invoke_action=invoke_action,
         result_data=result_bag or None,
-        success=terminal in {"completed", "partial_success"},
+        success=terminal in {"completed", "partial_success"}
+        and terminal != "flagged_for_review",
         metadata=meta,
     )
     coerced = coerce_terminal_status_for_effect(

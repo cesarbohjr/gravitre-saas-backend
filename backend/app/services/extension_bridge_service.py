@@ -875,6 +875,21 @@ def _run_confirmed_extension_action(
     except Exception:  # noqa: BLE001
         pass
 
+    # Phase 4 — degenerate / low-info multi-record batches → flagged_for_review.
+    try:
+        from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
+
+        status, deg = apply_batch_degeneracy_to_status(
+            status=status,
+            invoke_action=action,
+            result_data=data,
+        )
+        if deg and deg.flagged:
+            outcome_effect = "flagged_for_review"
+            data = {**data, "batch_degeneracy": deg.as_dict()}
+    except Exception:  # noqa: BLE001
+        pass
+
     run_id: str | None = None
     try:
         created = create_run(

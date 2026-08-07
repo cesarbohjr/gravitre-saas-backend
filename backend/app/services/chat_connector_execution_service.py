@@ -1963,6 +1963,25 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 pop_exc,
             )
+        # Phase 4 — statistical batch degeneracy (independent of schema / Phase 3).
+        try:
+            from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
+
+            status, deg = apply_batch_degeneracy_to_status(
+                status=status,
+                invoke_action=plan.invoke_action,
+                result_data=structured,
+            )
+            if deg and deg.flagged:
+                outcome_effect = "flagged_for_review"
+                structured = {**structured, "batch_degeneracy": deg.as_dict()}
+                schedule_async_population = False  # do not upgrade a flagged batch later
+        except Exception as deg_exc:  # noqa: BLE001
+            logger.warning(
+                "batch degeneracy check skipped action=%s err=%s",
+                plan.invoke_action,
+                deg_exc,
+            )
         run_id: str | None = None
         try:
             created = create_run(
