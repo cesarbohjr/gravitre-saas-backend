@@ -1001,9 +1001,10 @@ function BillingPageInner() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
             {SELECTABLE_PLANS.map((plan) => {
               const PlanIcon = plan.icon
-              const isCurrent = plan.code === currentTier
+              const isCurrent = planKnown && plan.code === currentTier
               const isSelected = selectedPlan === plan.code
-              const direction = planDirection(plan.code, currentTier)
+              const direction = planDirection(plan.code, currentTier ?? "free")
+
               return (
                 <button
                   type="button"
