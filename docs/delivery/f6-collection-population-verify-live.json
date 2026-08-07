@@ -1,15 +1,15 @@
 {
-  "started_at": "2026-08-06T19:56:30.567108+00:00",
+  "started_at": "2026-08-07T08:21:05.468279+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "requirement": "forced_re_read_follow_up_membership_confirmed",
-  "live_health_git_sha": "26c32007151a5e17370d9c9e2105e44ed0e97562",
+  "live_health_git_sha": "8ef2542734b41a58f77fa9a0d986c217bf9a33ae",
   "g59_marketo_decision": "a_wire_follow_up_via_lists.get_leads",
   "apollo": {
     "vendor": "apollo",
     "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
-    "list_name": "F6-FollowUp-46fa83d4",
-    "list_id": "6a74e705ae28c7001c69630d",
-    "entity_id": "6a74e70cf4bbe5000c7c8483",
+    "list_name": "F6-FollowUp-877eccc2",
+    "list_id": "6a75957eff90d800187e1dfb",
+    "entity_id": "6a759584ab332e002052c58b",
     "create_success": true,
     "add_success": true,
     "add_error": null,
@@ -52,8 +52,8 @@
   "hubspot": {
     "vendor": "hubspot",
     "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
-    "list_name": "F6-HS-46fa83d4",
-    "list_id": "46",
+    "list_name": "F6-HS-877eccc2",
+    "list_id": "47",
     "contact_id": "270287894506",
     "create_success": true,
     "add_success": true,
@@ -88,7 +88,7 @@
     "decision": "a_follow_up_wired_marketo.lists.get_leads",
     "note": "Code path ships with HubSpot-identical settle-read; live write blocked until an org connects Marketo OAuth + munchkin."
   },
-  "finished_at": "2026-08-06T19:57:58.480628+00:00",
+  "finished_at": "2026-08-07T08:21:57.365987+00:00",
   "pass": true,
   "verdict": "VERIFIED \u2014 Apollo+HubSpot follow_up_membership_confirmed; Marketo NOT_RUN (no connector) \u2014 follow-up branch wired (decision a)"
 }

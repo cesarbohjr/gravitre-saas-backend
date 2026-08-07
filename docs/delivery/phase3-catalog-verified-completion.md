@@ -43,3 +43,13 @@ Settle sleeps are not on the finalize hot path. Unit proof:
 `test_schedule_write_success_verification_returns_immediately`.
 Live F6 script remains the membership settle proof (may take tens of seconds
 **after** the user-visible response).
+
+## Live evidence (tip-matched)
+
+- Deploy tip: `8ef2542734b41a58f77fa9a0d986c217bf9a33ae` via `GET /health`
+- F6 live: `docs/delivery/f6-collection-population-verify-live.json`
+  - Apollo list `6a75957eff90d800187e1dfb` — `follow_up_membership_confirmed` (count 1)
+  - HubSpot list `47` — `follow_up_membership_confirmed` (count 1)
+  - Marketo: **NOT_RUN** (`no_active_marketo_connector`)
+  - Checked `2026-08-07T08:21:05Z`–`08:21:57Z`
+- Coverage artifact: `docs/delivery/phase3-success-verification-coverage.json` (100% of 344)
