@@ -1051,8 +1051,9 @@ async def update_seats(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    resp_err = getattr(response, "error", None)
+    if resp_err:
+        raise HTTPException(status_code=500, detail=str(resp_err))
     row = (response.data or [None])[0]
     return {"subscription": _normalize_subscription(row, org_id)}
 
@@ -1081,8 +1082,9 @@ async def cancel_subscription(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    resp_err = getattr(response, "error", None)
+    if resp_err:
+        raise HTTPException(status_code=500, detail=str(resp_err))
     return _normalize_subscription((response.data or [None])[0], org_id)
 
 
@@ -1108,8 +1110,9 @@ async def reactivate_subscription(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    resp_err = getattr(response, "error", None)
+    if resp_err:
+        raise HTTPException(status_code=500, detail=str(resp_err))
     return _normalize_subscription((response.data or [None])[0], org_id)
 
 
