@@ -185,9 +185,11 @@ def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
         lite_seats = int(fallback["lite_seats"])
         addons = fallback["meson_addons"]
 
-    limits = dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
+    limits_source = TIER_LIMITS[tier] if tier in TIER_LIMITS else TIER_LIMITS["free"]
+    limits = dict(limits_source)
     limits["lite_seats_included"] = max(int(limits.get("lite_seats_included") or 0), lite_seats)
-    features = dict(TIER_FEATURES.get(tier, TIER_FEATURES["free"]))
+    features_source = TIER_FEATURES[tier] if tier in TIER_FEATURES else TIER_FEATURES["free"]
+    features = dict(features_source)
     usage = _usage_totals(client, org_id)
     return {
         "tier": tier,

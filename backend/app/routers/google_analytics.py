@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.connectors.google_analytics import GoogleAnalyticsAPIError, list_ga4_properties
 from app.connectors.google_analytics_oauth import link_ga4_property, normalize_vendor
 from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+from app.core.safe_dict import safe_normalize_stored_dict
 
 router = APIRouter(prefix="/api/connectors", tags=["google-analytics"])
 
@@ -64,7 +65,7 @@ async def list_google_analytics_properties(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         ) from exc
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     return {
         "connectorId": connector_id,
         "properties": properties,

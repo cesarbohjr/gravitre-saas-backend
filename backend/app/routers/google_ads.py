@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.connectors.google_ads import GoogleAdsAPIError, list_accessible_customers
 from app.connectors.google_ads_oauth import link_google_ads_customer, normalize_google_ads_vendor
 from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+from app.core.safe_dict import safe_normalize_stored_dict
 
 router = APIRouter(prefix="/api/connectors", tags=["google-ads"])
 
@@ -70,7 +71,7 @@ async def list_google_ads_customers(
         customers = list_accessible_customers(token, developer_token=developer_token)
     except GoogleAdsAPIError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     return {
         "connectorId": connector_id,
         "customers": customers,

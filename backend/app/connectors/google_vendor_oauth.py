@@ -23,6 +23,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,7 @@ def _connector_property_id(client: Any, org_id: str, connector_id: str) -> str |
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     property_id = (config.get("property_id") or config.get("propertyId") or "").strip()
     return property_id or None
 
@@ -204,7 +205,7 @@ def _connector_site_url(client: Any, org_id: str, connector_id: str) -> str | No
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     site_url = (config.get("site_url") or config.get("siteUrl") or "").strip()
     return site_url or None
 
@@ -249,7 +250,7 @@ def complete_google_vendor_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = vendor
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
@@ -366,6 +367,6 @@ def _connector_ads_customer_id(client: Any, org_id: str, connector_id: str) -> s
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     cid = str(config.get("customer_id") or config.get("customerId") or "").strip().replace("-", "")
     return cid or None

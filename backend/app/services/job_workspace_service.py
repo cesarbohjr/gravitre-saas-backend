@@ -8,6 +8,7 @@ from uuid import uuid4
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -45,7 +46,7 @@ class JobWorkspaceService:
                 .execute()
             )
             row = resp.data or {}
-            payload = dict(row.get("payload") or {})
+            payload = safe_normalize_stored_dict(row, key="payload")
             workspace = self._workspace_from_payload(payload)
             if "workspace" not in payload:
                 payload["workspace"] = workspace
@@ -63,7 +64,7 @@ class JobWorkspaceService:
         content: str,
     ) -> dict[str, Any]:
         workspace = await self.ensure_workspace(job_id, org_id)
-        files = dict(workspace.get("files") or {})
+        files = safe_normalize_stored_dict(workspace, key="files")
         files[path] = content[:200_000]
         workspace["files"] = files
         workspace["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -77,7 +78,7 @@ class JobWorkspaceService:
                 .maybe_single()
                 .execute()
             )
-            payload = dict((resp.data or {}).get("payload") or {})
+            payload = safe_normalize_stored_dict((resp.data or {}), key="payload")
             payload["workspace"] = workspace
             self._client().table("agent_jobs").update({"payload": payload}).eq("id", job_id).execute()
         except Exception as exc:  # noqa: BLE001

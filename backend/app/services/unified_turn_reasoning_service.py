@@ -31,6 +31,7 @@ from app.services.unified_turn_tool_retrieval import (
     is_task_shaped_for_retrieval,
 )
 from app.services.user_facing_copy_guard import assert_no_raw_catalog_action_keys, finalize_user_facing_message
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -1050,7 +1051,7 @@ async def apply_unified_turn_live(
             result=channel_result,
         )
         updated_state = dict(task_state or {})
-        clarified = dict(updated_state.get("clarified_params") or {})
+        clarified = safe_normalize_stored_dict(updated_state, key='clarified_params')
         from app.services.gravitree_voice import detect_channel_override_integration
 
         override = detect_channel_override_integration(message)

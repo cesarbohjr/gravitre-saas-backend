@@ -13,6 +13,7 @@ from app.connectors.generic_oauth import (
 )
 from app.connectors.hubspot_oauth import load_oauth_tokens
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
+from app.core.safe_dict import safe_normalize_stored_dict
 
 APOLLO_API_BASE = "https://api.apollo.io/api/v1"
 TIMEOUT_SEC = 30.0
@@ -74,7 +75,7 @@ def _connector_auth_type(client: Any, org_id: str, connector_id: str) -> str:
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     return str(config.get("auth_type") or "").strip().lower()
 
 

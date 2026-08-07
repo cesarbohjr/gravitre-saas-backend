@@ -6,12 +6,13 @@ from typing import Any
 from app.intelligence_packs.shared.normalize import NormalizedExternalRecord, register_mapper
 from app.intelligence_packs.shared.schemas import SourceResult
 from app.intelligence_packs.shared.signals import PackSignalDefinition, register_signal
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def map_fred(raw: SourceResult) -> list[NormalizedExternalRecord]:
     data = raw.get("data")
     observations: list[dict[str, Any]] = data if isinstance(data, list) else []
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     series_id = str(prov.get("series_id") or "unknown")
     latest = next((o for o in observations if o.get("value") not in (None, ".", "")), None)
     title = f"FRED series {series_id}"
@@ -38,7 +39,7 @@ def map_fred(raw: SourceResult) -> list[NormalizedExternalRecord]:
 def map_nvd(raw: SourceResult) -> list[NormalizedExternalRecord]:
     data = raw.get("data")
     payload = data if isinstance(data, dict) else {"raw": data}
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     cve = str(prov.get("cve") or "").upper()
     vulns = payload.get("vulnerabilities") if isinstance(payload, dict) else None
     if not cve and isinstance(vulns, list) and vulns:
@@ -72,7 +73,7 @@ def map_world_bank(raw: SourceResult) -> list[NormalizedExternalRecord]:
     """Third-source proof mapper — plugs into the same dispatcher only."""
     data = raw.get("data")
     rows: list[dict[str, Any]] = data if isinstance(data, list) else []
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     country = str(prov.get("country") or "US")
     indicator = str(prov.get("indicator") or "unknown")
     latest = next((r for r in rows if r.get("value") is not None), None)
@@ -102,7 +103,7 @@ def map_world_bank(raw: SourceResult) -> list[NormalizedExternalRecord]:
 def map_cisa_kev(raw: SourceResult) -> list[NormalizedExternalRecord]:
     data = raw.get("data")
     payload = data if isinstance(data, dict) else {"raw": data}
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     sample = payload.get("sample") if isinstance(payload, dict) else None
     sample_list = sample if isinstance(sample, list) else []
     count = int(payload.get("count") or len(sample_list) or 0) if isinstance(payload, dict) else 0
@@ -130,7 +131,7 @@ def map_cisa_kev(raw: SourceResult) -> list[NormalizedExternalRecord]:
 def map_sec_edgar(raw: SourceResult) -> list[NormalizedExternalRecord]:
     data = raw.get("data")
     findings: list[dict[str, Any]] = data if isinstance(data, list) else []
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     query = str(prov.get("query") or "unknown")
     first = findings[0] if findings else {}
     title = str((first or {}).get("title") or f"SEC filings for {query}")
@@ -160,7 +161,7 @@ def map_google_search_console(raw: SourceResult) -> list[NormalizedExternalRecor
 
     data = raw.get("data")
     payload = data if isinstance(data, dict) else {"raw": data}
-    prov = dict(raw.get("provenance") or {})
+    prov = safe_normalize_stored_dict(raw, key='provenance')
     safe = sanitize_gsc_payload_for_memory_kg(payload)
     assert_gsc_safe_for_memory_kg(safe)
     rows = safe.get("rows") if isinstance(safe.get("rows"), list) else []

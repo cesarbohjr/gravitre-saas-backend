@@ -11,6 +11,7 @@ from app.connectors.constants import (
 from app.connectors.crypto import decrypt_secret, encrypt_secret
 from app.config import Settings
 from app.services.data_residency_service import enforce_region_for_connector_tokens, get_org_data_region
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def _org_residency(client: Client, org_id: str) -> str:
@@ -212,7 +213,7 @@ def set_secret(
             .execute()
         )
         if connector.data:
-            config = dict(connector.data[0].get("config") or {})
+            config = safe_normalize_stored_dict(connector.data[0], key="config")
             config["dataRegion"] = org_region
             client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
     enc = encrypt_secret(plaintext_value, settings.connector_secrets_encryption_key)

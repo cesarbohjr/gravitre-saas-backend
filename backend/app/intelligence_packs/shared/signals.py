@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from app.core.logging import get_logger
 from app.intelligence_packs.shared.normalize import NormalizedExternalRecord
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,7 @@ def evaluate_pack_signals(record: NormalizedExternalRecord) -> list[dict[str, An
                 "severity": str(detected.get("severity") or definition.severity),
                 "payload": detected.get("payload") or {},
                 "provenance": {
-                    **dict(record.get("provenance") or {}),
+                    **safe_normalize_stored_dict(record, key='provenance'),
                     "signal_definition_id": definition.id,
                     "evaluated_via": "evaluate_pack_signals",
                 },

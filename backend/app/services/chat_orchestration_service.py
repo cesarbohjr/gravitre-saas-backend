@@ -41,6 +41,7 @@ from app.services.connector_session_state import (
     record_step_output,
     sync_legacy_resolved_entities,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -1105,7 +1106,7 @@ class ChatOrchestrationService:
         client: Any,
         environment_name: str = "production",
     ) -> dict[str, Any]:
-        params = dict((task_state.get("clarified_params") or {}))
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
         if not steps:
             return {
@@ -1170,7 +1171,7 @@ class ChatOrchestrationService:
         client: Any,
         environment_name: str = "production",
     ) -> dict[str, Any]:
-        params = dict((task_state.get("clarified_params") or {}))
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
         idx = int(params.get("current_step_index") or 0)
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
         if idx >= len(steps):
@@ -1430,7 +1431,7 @@ class ChatOrchestrationService:
         client: Any,
         environment_name: str = "production",
     ) -> dict[str, Any]:
-        params = dict((task_state.get("clarified_params") or {}))
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
         idx = int(params.get("current_step_index") or 0)
 
@@ -1795,8 +1796,10 @@ class ChatOrchestrationService:
 
     @staticmethod
     def _pending_task_payload(task_state: dict[str, Any]) -> dict[str, Any]:
-        pending = dict(task_state.get("pending_task") or {})
-        params = dict((task_state.get("clarified_params") or pending.get("params") or {}))
+        pending = safe_normalize_stored_dict(task_state, key="pending_task")
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
+        if not params:
+            params = safe_normalize_stored_dict(pending, key="params")
         payload = {
             "type": "connector_orchestration",
             "params": params,
@@ -1811,7 +1814,7 @@ class ChatOrchestrationService:
     def _reminder_message(task_state: dict[str, Any]) -> str:
         pending = task_state.get("pending_task") or {}
         status = str(pending.get("status") or "")
-        params = dict((task_state.get("clarified_params") or {}))
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
         if status == "awaiting_plan_confirm":
             return "Reply **yes** to approve the orchestration plan, or tell me what to adjust."
         idx = int(params.get("current_step_index") or 0) + 1
@@ -1908,10 +1911,12 @@ class ChatOrchestrationService:
             re.I,
         ):
             return True
-        params = dict(
-            (task_state.get("clarified_params") or {})
-            or ((task_state.get("pending_task") or {}).get("params") or {})
-        )
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
+        if not params:
+            params = safe_normalize_stored_dict(
+                safe_normalize_stored_dict(task_state, key="pending_task"),
+                key="params",
+            )
         goal = str(params.get("goal") or "")
         pending_integrations = set(
             ChatOrchestrationService._mentioned_integrations(goal, connected_integrations)
@@ -2062,7 +2067,7 @@ class ChatOrchestrationService:
                 success=bool(row.get("success")),
                 summary=str(row.get("summary") or ""),
                 url=row.get("url"),
-                structured=dict(row.get("structured") or {}),
+                structured=safe_normalize_stored_dict(row, key="structured"),
             )
         enriched = bind_plan_from_session(plan, session)
         if enriched.integration != "slack" or enriched.invoke_action != "slack.post_message":

@@ -95,6 +95,26 @@ assistant turns when enabled.
 
 `pnpm audit --audit-level=critical` and `pip-audit` run on every PR in `.github/workflows/ci.yml` and **fail the build on new critical** findings. **High** severities are reported in the same job (`continue-on-error`) and require reachability triage (runtime vs dev-only) before dismissing — do not treat dev-only ESLint/shadcn highs as production blockers without documenting that triage.
 
+## 10. Stored payload dict normalization (no direct coercion)
+
+When reading persisted or serialized payload fields (`params`, `args`, `config`,
+`metadata`, `settings`, `structured`, etc.), never use direct coercions such as:
+
+- `dict(payload.get("params") or {})`
+- `dict(payload["args"])`
+- any equivalent that assumes the stored shape is already a dict
+
+Use the shared helper `safe_normalize_stored_dict(...)` from
+`app/core/safe_dict.py` instead. It is the only approved path for this class:
+
+- accepts dict/mapping values
+- accepts JSON-string object payloads
+- safely falls back to `{}` for malformed strings and non-dict types
+- never raises during live request reconstruction
+
+CI enforces this rule via `backend/tests/lint/test_no_unguarded_dict_coercion.py`.
+Any newly introduced direct coercion on stored fields must fail review.
+
 ---
 
 ## How to cite

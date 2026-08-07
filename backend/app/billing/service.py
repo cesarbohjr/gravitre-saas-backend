@@ -11,6 +11,7 @@ from supabase import Client, create_client
 from app.config import Settings
 from app.core.errors import error_detail
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -195,12 +196,13 @@ def _resolve_plan(plans: dict[str, dict[str, Any]], plan_code: str) -> dict[str,
 def _normalize_plan_row(row: dict[str, Any]) -> dict[str, Any]:
     """Merge DB billing_plans rows with code defaults (features JSON is often partial)."""
     code = normalize_plan_code(str(row.get("code") or DEFAULT_PLAN_CODE))
-    template = dict(DEFAULT_PLANS.get(code) or DEFAULT_PLANS[DEFAULT_PLAN_CODE])
+    template_source = DEFAULT_PLANS[code] if code in DEFAULT_PLANS else DEFAULT_PLANS[DEFAULT_PLAN_CODE]
+    template = dict(template_source)
     merged = {
         **template,
         **{k: v for k, v in row.items() if k not in {"features"} and v is not None},
     }
-    template_features = dict(template.get("features") or {})
+    template_features = safe_normalize_stored_dict(template, key="features")
     db_features = row.get("features") if isinstance(row.get("features"), dict) else {}
     merged["features"] = {**template_features, **db_features}
     return merged
@@ -362,7 +364,7 @@ def apply_overrides(plan: dict[str, Any], overrides: dict | None) -> dict[str, A
     ):
         if overrides.get(key) is not None:
             merged[key] = overrides.get(key)
-    features = dict(merged.get("features") or {})
+    features = safe_normalize_stored_dict(merged, key="features")
     for feature_key in ("approvals", "audit_logs", "versioning", "advanced_connectors", "rbac"):
         if overrides.get(feature_key) is not None:
             features[feature_key] = overrides.get(feature_key)

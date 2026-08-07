@@ -46,6 +46,7 @@ from app.workflows.repository import (
     update_run,
     update_step,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -116,7 +117,7 @@ def execute_workflow_steps(
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
-        config = dict(sdef.get("config") or {})
+        config = safe_normalize_stored_dict(sdef, key='config')
         if isinstance(sdef.get("metadata"), dict):
             config["metadata"] = sdef["metadata"]
         if steps_exist and idx < len(existing_steps):

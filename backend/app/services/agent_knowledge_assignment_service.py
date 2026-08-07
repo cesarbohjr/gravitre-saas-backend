@@ -11,6 +11,7 @@ from app.core.logging import get_logger
 from app.services.agent_memory_service import ensure_agent_in_org
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
 from app.services.knowledge_source_types import build_sync_rules, normalize_source_type, validate_source_type, validate_sync_frequency
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -442,7 +443,7 @@ class AgentKnowledgeAssignmentService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         agent = ensure_agent_in_org(client, org_id, agent_id)
-        config = dict(agent.get("config") or {})
+        config = safe_normalize_stored_dict(agent, key="config")
         folders = list(config.get("reference_folders") or [])
         if payload["source_type"] == "folder":
             folders.append(

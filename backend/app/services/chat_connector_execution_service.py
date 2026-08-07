@@ -36,6 +36,7 @@ from app.services.connector_session_state import (
     record_step_output,
     sync_legacy_resolved_entities,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -871,27 +872,19 @@ class ChatConnectorExecutionService:
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
         inferred = payload.get("inferred_fields") or []
-        raw_args = payload.get("args")
-        if isinstance(raw_args, str):
-            try:
-                parsed = __import__("json").loads(raw_args)
-                raw_args = parsed if isinstance(parsed, dict) else {}
-            except Exception:  # noqa: BLE001
-                raw_args = {}
-        elif not isinstance(raw_args, dict):
-            raw_args = {}
+        raw_args = safe_normalize_stored_dict(payload, key="args")
         return ConnectorActionPlan(
             tool_name=str(payload.get("tool_name") or ""),
             invoke_action=str(payload.get("invoke_action") or ""),
             integration=str(payload.get("integration") or ""),
             kind=str(payload.get("kind") or "write"),
             label=str(payload.get("label") or ""),
-            args=dict(raw_args),
+            args=raw_args,
             requires_approval=bool(payload.get("requires_approval")),
             approval_reason=payload.get("approval_reason"),
             destructive=bool(payload.get("destructive")),
             inferred_fields=tuple(str(item) for item in inferred),
-            inference_sources=dict(payload.get("inference_sources") or {}),
+            inference_sources=safe_normalize_stored_dict(payload, key="inference_sources"),
         )
 
     # Free-text write args that can inherit a leaked scope banner from task text.
@@ -2176,7 +2169,7 @@ class ChatConnectorExecutionService:
             session_fallback=session_fallback,
         )
         serialized = serialize_execution_result(execution)
-        structured = dict(serialized.get("structured") or {})
+        structured = safe_normalize_stored_dict(serialized, key="structured")
         structured["inlinePreview"] = True
         structured["source"] = "post_action_inline_preview"
         serialized["structured"] = structured

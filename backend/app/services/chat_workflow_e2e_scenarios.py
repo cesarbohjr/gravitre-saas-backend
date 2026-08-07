@@ -28,6 +28,7 @@ from app.services.chat_workflow_e2e_live import (
 )
 from app.services.conversation_state_service import DEFAULT_TASK_STATE
 from app.services.conversational_execution_service import ExecutionResult
+from app.core.safe_dict import safe_normalize_stored_dict
 
 ScenarioStatus = Literal["passed", "failed", "skipped", "blocked"]
 WorkflowCheckName = Literal[
@@ -264,7 +265,7 @@ def _default_memory_state() -> dict[str, Any]:
 
 
 def _orch_task_state(turn: dict[str, Any]) -> dict[str, Any]:
-    state = dict(turn.get("task_state") or {})
+    state = safe_normalize_stored_dict(turn, key="task_state")
     pending = turn.get("pending_task") or state.get("pending_task")
     if pending:
         state["pending_task"] = pending

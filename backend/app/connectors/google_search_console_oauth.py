@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def normalize_gsc_vendor(vendor: str) -> str:
@@ -36,7 +37,7 @@ def link_gsc_site(
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     config["site_url"] = url
     config["siteUrl"] = url
     if permission_level:

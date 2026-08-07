@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from app.core.logging import get_logger
 from app.intelligence_packs.shared.normalize import NormalizedExternalRecord
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -26,7 +27,7 @@ def write_external_entity_with_provenance(
         raise ValueError("org_id, vendor, and external_id are required")
 
     now = datetime.now(timezone.utc).isoformat()
-    provenance = dict(record.get("provenance") or {})
+    provenance = safe_normalize_stored_dict(record, key='provenance')
     provenance.setdefault("source", vendor)
     provenance.setdefault("written_via", "write_external_entity_with_provenance")
     provenance.setdefault("written_at", now)

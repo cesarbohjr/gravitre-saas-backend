@@ -11,6 +11,7 @@ from app.services.department_pack_catalog import get_pack_spec
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 from app.workflows.audit import write_audit_event
 from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -719,7 +720,7 @@ async def apply_integration_suggestion(
     if suggestion_type in MUTATING_SUGGESTION_TYPES:
         pending = _build_mutating_pending_task(row)
         now = _now_iso()
-        evidence = dict(row.get("evidence") or {})
+        evidence = safe_normalize_stored_dict(row, key="evidence")
         evidence["pending_approval"] = pending
         updated = (
             client.table("integration_suggestions")
@@ -789,9 +790,9 @@ async def confirm_integration_suggestion(
     if suggestion_type not in MUTATING_SUGGESTION_TYPES:
         raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
 
-    evidence = dict(row.get("evidence") or {})
+    evidence = safe_normalize_stored_dict(row, key="evidence")
     pending = evidence.get("pending_approval") if isinstance(evidence.get("pending_approval"), dict) else {}
-    params = dict(pending.get("params") or {})
+    params = safe_normalize_stored_dict(pending, key="params")
 
     result: dict[str, Any] = {
         "workflowId": None,

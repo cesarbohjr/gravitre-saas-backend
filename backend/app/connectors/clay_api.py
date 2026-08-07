@@ -12,6 +12,7 @@ import httpx
 
 from app.config import Settings
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
+from app.core.safe_dict import safe_normalize_stored_dict
 
 CLAY_API_BASE = "https://api.clay.com"
 TIMEOUT_SEC = 30.0
@@ -33,7 +34,7 @@ def _connector_config(client: Any, org_id: str, connector_id: str) -> dict[str, 
         .limit(1)
         .execute()
     )
-    return dict((row.data or [{}])[0].get("config") or {})
+    return safe_normalize_stored_dict((row.data or [{}])[0], key="config")
 
 
 def resolve_clay_connector(
@@ -57,7 +58,7 @@ def resolve_clay_connector(
     )
     if not api_key:
         raise ClayAPIError("Clay API key not configured", status_code=401)
-    config = dict(conn.get("config") or {})
+    config = safe_normalize_stored_dict(conn, key="config")
     if not config:
         config = _connector_config(client, org_id, cid)
     return cid, api_key.strip(), config

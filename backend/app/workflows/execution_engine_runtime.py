@@ -57,6 +57,7 @@ from app.workflows.repository import (
     update_run,
     update_step,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -415,7 +416,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     step_id = str(step_def["id"])
     step_name = str(step_def.get("name") or step_id)
     step_type = str(step_def["type"])
-    config = dict(step_def.get("config") or {})
+    config = safe_normalize_stored_dict(step_def, key='config')
     if isinstance(step_def.get("metadata"), dict):
         config["metadata"] = step_def["metadata"]
 
@@ -770,7 +771,7 @@ def _synthesize_nodes_from_definition_steps(
             continue
         nid = str(step.get("id") or step.get("step_id") or f"step_{idx}")
         action = str(step.get("invoke_action") or step.get("action") or "").strip()
-        config = dict(step.get("config") or {}) if isinstance(step.get("config"), dict) else {}
+        config = safe_normalize_stored_dict(step, key='config') if isinstance(step.get("config"), dict) else {}
         if action:
             config.setdefault("tool_action", action)
             config.setdefault("action", action)
@@ -1039,7 +1040,7 @@ def resolve_approval_batch_and_resume(
     run = get_run_with_steps(client, org_id, run_id, environment_name)
     if not run:
         raise GraphValidationError("Run not found")
-    params = dict(run.get("parameters") or {})
+    params = safe_normalize_stored_dict(run, key='parameters')
     checkpoint = params.get(_CHECKPOINT_KEY) or {}
     paused_at = checkpoint.get("paused_at_node") or params.get("paused_at_node")
     if not paused_at:
@@ -1050,7 +1051,7 @@ def resolve_approval_batch_and_resume(
     graph = build_execution_graph(nodes, edges)
     batches = topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
-    approval_context = dict(checkpoint.get("approval_context") or params.get("approval_context") or {})
+    approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
     on_reject = str(approval_context.get("on_reject") or "fail_workflow")
 
     rejected = summary["rejected"]
@@ -1086,7 +1087,7 @@ def resolve_approval_batch_and_resume(
         parameters=params,
         client=client,
         environment_name=environment_name,
-        node_outputs=dict(checkpoint.get("node_outputs") or {}),
+        node_outputs=safe_normalize_stored_dict(checkpoint, key='node_outputs'),
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
     )
@@ -1137,7 +1138,7 @@ def resume_workflow_graph(
     if run.get("status") != RUN_STATUS_AWAITING_APPROVAL:
         raise GraphValidationError(f"Run is not awaiting approval (status={run.get('status')})")
 
-    params = dict(run.get("parameters") or {})
+    params = safe_normalize_stored_dict(run, key='parameters')
     checkpoint = params.get(_CHECKPOINT_KEY) or {}
     paused_at = checkpoint.get("paused_at_node") or params.get("paused_at_node")
     if not paused_at:
@@ -1149,7 +1150,7 @@ def resume_workflow_graph(
     batches = topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
 
-    approval_context = dict(checkpoint.get("approval_context") or params.get("approval_context") or {})
+    approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
     on_reject = str(approval_context.get("on_reject") or "fail_workflow")
     normalized = str(decision or "").lower()
 
@@ -1163,7 +1164,7 @@ def resume_workflow_graph(
         parameters=params,
         client=client,
         environment_name=environment_name,
-        node_outputs=dict(checkpoint.get("node_outputs") or {}),
+        node_outputs=safe_normalize_stored_dict(checkpoint, key='node_outputs'),
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
     )
@@ -1241,7 +1242,7 @@ def resume_paused_workflow_graph(
     if run.get("status") != RUN_STATUS_PAUSED:
         raise GraphValidationError(f"Run is not paused (status={run.get('status')})")
 
-    params = dict(run.get("parameters") or {})
+    params = safe_normalize_stored_dict(run, key='parameters')
     checkpoint = params.get(_CHECKPOINT_KEY) or {}
     if not checkpoint:
         raise GraphValidationError("Missing pause checkpoint — cannot resume this run")
@@ -1258,7 +1259,7 @@ def resume_paused_workflow_graph(
         parameters=params,
         client=client,
         environment_name=environment_name,
-        node_outputs=dict(checkpoint.get("node_outputs") or {}),
+        node_outputs=safe_normalize_stored_dict(checkpoint, key='node_outputs'),
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
     )
@@ -1324,7 +1325,7 @@ def retry_workflow_step(
 
     client.table("workflow_steps").delete().eq("run_id", run_id).gte("step_index", step_index).execute()
 
-    params = dict(run.get("parameters") or {})
+    params = safe_normalize_stored_dict(run, key='parameters')
     ctx = _GraphRunContext(
         settings=settings,
         org_id=org_id,

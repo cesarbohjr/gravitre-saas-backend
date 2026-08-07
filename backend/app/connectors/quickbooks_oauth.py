@@ -18,6 +18,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,7 @@ def _connector_realm_id(client: Any, org_id: str, connector_id: str) -> str | No
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     realm_id = (config.get("realm_id") or config.get("realmId") or "").strip()
     return realm_id or None
 
@@ -279,7 +280,7 @@ def complete_quickbooks_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "quickbooks"
     config["realm_id"] = str(realm_id)
     config["sandbox"] = is_staging_environment(env)

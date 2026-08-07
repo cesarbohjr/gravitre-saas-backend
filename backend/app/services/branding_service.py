@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import secrets
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 DEFAULT_BRANDING = {
     "logoUrl": None,
@@ -27,8 +28,8 @@ def get_org_branding(org_settings: dict[str, Any] | None) -> dict[str, Any]:
 
 def merge_branding(org_settings: dict[str, Any] | None, updates: dict[str, Any]) -> dict[str, Any]:
     settings = dict(org_settings or {})
-    enterprise = dict(settings.get("enterprise") or {})
-    branding = dict(enterprise.get("branding") or DEFAULT_BRANDING)
+    enterprise = safe_normalize_stored_dict(settings, key="enterprise")
+    branding = safe_normalize_stored_dict(enterprise, key='branding') or safe_normalize_stored_dict(DEFAULT_BRANDING)
     previous_domain = branding.get("customDomain")
     for key, value in updates.items():
         if key in DEFAULT_BRANDING:
@@ -44,8 +45,8 @@ def merge_branding(org_settings: dict[str, Any] | None, updates: dict[str, Any])
 
 def ensure_domain_verification_token(org_settings: dict[str, Any] | None) -> dict[str, Any]:
     settings = dict(org_settings or {})
-    enterprise = dict(settings.get("enterprise") or {})
-    branding = dict(enterprise.get("branding") or DEFAULT_BRANDING)
+    enterprise = safe_normalize_stored_dict(settings, key="enterprise")
+    branding = safe_normalize_stored_dict(enterprise, key='branding') or safe_normalize_stored_dict(DEFAULT_BRANDING)
     if branding.get("customDomain") and not branding.get("domainVerificationToken"):
         branding["domainVerificationToken"] = secrets.token_urlsafe(24)
     enterprise["branding"] = branding
@@ -55,8 +56,8 @@ def ensure_domain_verification_token(org_settings: dict[str, Any] | None) -> dic
 
 def mark_domain_verified(org_settings: dict[str, Any] | None, *, verified_at: str) -> dict[str, Any]:
     settings = dict(org_settings or {})
-    enterprise = dict(settings.get("enterprise") or {})
-    branding = dict(enterprise.get("branding") or DEFAULT_BRANDING)
+    enterprise = safe_normalize_stored_dict(settings, key="enterprise")
+    branding = safe_normalize_stored_dict(enterprise, key='branding') or safe_normalize_stored_dict(DEFAULT_BRANDING)
     branding["customDomainVerified"] = True
     branding["customDomainVerifiedAt"] = verified_at
     enterprise["branding"] = branding

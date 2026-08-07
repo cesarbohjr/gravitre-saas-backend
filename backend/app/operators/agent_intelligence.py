@@ -90,6 +90,7 @@ from app.services.unified_retrieval_service import UnifiedRetrievalService, get_
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -283,7 +284,7 @@ def resolve_agent_record(
     connectors = list_connectors_by_ids(client, org_id, connector_ids, environment_name)
     systems = sorted({str(c.get("type")).lower() for c in connectors if c.get("type")})
 
-    config = dict(operator.get("config") or {})
+    config = safe_normalize_stored_dict(operator, key="config")
     if operator.get("role") and not config.get("persona"):
         config.setdefault("persona", operator.get("role"))
 

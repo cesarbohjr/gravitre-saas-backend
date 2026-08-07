@@ -42,6 +42,7 @@ from app.workflows.schema import (
     validate_definition,
     validate_parameters,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 
@@ -93,7 +94,7 @@ def execute_dry_run(
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
-        config = dict(sdef.get("config") or {})
+        config = safe_normalize_stored_dict(sdef, key='config')
         if isinstance(sdef.get("metadata"), dict):
             config["metadata"] = sdef["metadata"]
         created = create_step(

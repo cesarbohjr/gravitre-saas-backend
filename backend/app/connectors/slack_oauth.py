@@ -18,6 +18,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
 )
 from app.connectors.repository import get_decrypted_secret, set_secret
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,7 @@ def complete_slack_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["auth_type"] = "oauth"
     config["oauth_provider"] = "slack"
     if data.get("app_id"):
