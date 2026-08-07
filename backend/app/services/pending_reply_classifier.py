@@ -6,6 +6,7 @@ with one ontology every pending family shares.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -113,6 +114,20 @@ def _pending_action_args(state: dict[str, Any], params: dict[str, Any]) -> dict[
     return out
 
 
+def _coerce_params_dict(value: Any) -> dict[str, Any]:
+    """Normalize legacy pending params payloads to a dictionary."""
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(parsed, dict):
+            return dict(parsed)
+    return {}
+
+
 def _pending_action_proof_line(snap: PendingSnapshot) -> str:
     args = snap.action_args or {}
     to = str(args.get("to") or args.get("email") or "").strip()
@@ -130,7 +145,7 @@ def _pending_action_proof_line(snap: PendingSnapshot) -> str:
 def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot:
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
-    params = dict(pending.get("params") or {}) if pending else {}
+    params = _coerce_params_dict(pending.get("params")) if pending else {}
     current_plan = state.get("current_plan") if isinstance(state.get("current_plan"), dict) else None
     ledger = get_ledger(state)
     missing = list(ledger.pending_missing or [])
