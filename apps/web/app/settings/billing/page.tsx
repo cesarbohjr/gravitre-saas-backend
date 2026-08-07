@@ -324,7 +324,9 @@ function BillingPageInner() {
             ]
           : []),
       ]
-    : emptyUsageMetrics(currentTier ?? "node")
+    : planKnown
+      ? emptyUsageMetrics(currentTier!)
+      : []
 
   const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
     active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
