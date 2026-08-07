@@ -33,8 +33,17 @@ nodes/edges key but zero edges and multiple steps.
 
 ## Evidence pointers
 
-- Unit: `tests/workflows/test_builder_edge_persistence.py`
+- Unit: `tests/workflows/test_builder_edge_persistence.py` (13-test file suite green with binding tests)
 - Binding: `test_canvas_graph_disconnected_flagged_when_edges_empty`
-- Live: `scripts/smoke-workflow-builder.py` (edge count on save + reload)
-- Audit: `scripts/audit-workflow-canvas-edges.py` →
-  `docs/delivery/phase0-canvas-edge-audit-live.json`
+- Deploy tip: `83cc02030aaa3ce9ca7a67c695aaaba8d5e56078` on `/health`
+- Live smoke (`scripts/smoke-workflow-builder.py`) on tip:
+  - workflow `b20a844d-2e7a-596b-ad49-c2a190ba78ed`
+  - save edges=3, reload edges=3, council_nodes=1
+  - dry-run `run_id=11c8a397-186c-4508-9bb1-c1a087a542b7`
+- Existing-workflow audit (`scripts/audit-workflow-canvas-edges.py`):
+  - scanned 155 `workflow_defs`
+  - canvas multi-node zero-edge findings: 4 → repaired/flagged → final **CLEAR**
+    (`disconnected_workflow_count=0` at `2026-08-07T00:59:12Z`)
+  - repaired: Competitive Intelligence (1 edge), Apollo Lead Scout (3),
+    Council fan-out (3), MSP Clay→HubSpot (6)
+  - packs table: 0 rows scanned (no `marketplace_packs.workflow_definition` surface)

@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-08-07T00:59:12.478925+00:00",
+  "feature": "phase0_canvas_edge_audit",
+  "workflow_defs_scanned": 155,
+  "workflow_edges_rows": 16,
+  "workflow_nodes_rows": 22,
+  "disconnected_workflow_count": 0,
+  "disconnected_workflows": [],
+  "packs_scanned": 0,
+  "packs_table_error": "{'message': \"Could not find the table 'public.marketplace_packs' in the schema cache\", 'code': 'PGRST205', 'hint': \"Perhaps you meant the table 'public.marketplace_saves'\", 'details': None}",
+  "disconnected_pack_count": 0,
+  "disconnected_packs": [],
+  "verdict": "CLEAR"
+}

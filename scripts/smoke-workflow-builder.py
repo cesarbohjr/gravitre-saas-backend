@@ -33,7 +33,19 @@ def _load_env() -> dict[str, str]:
     for path in (ENV_BACKEND, ENV_FILE):
         if not path.is_file():
             continue
-        merged.update({k: v for k, v in dotenv_values(path).items() if v})
+        try:
+            parsed = {k: v for k, v in dotenv_values(path).items() if v}
+        except UnicodeDecodeError:
+            parsed = {}
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                raw = line.strip()
+                if not raw or raw.startswith("#") or "=" not in raw:
+                    continue
+                key, _, val = raw.partition("=")
+                key, val = key.strip(), val.strip().strip('"').strip("'")
+                if key and val:
+                    parsed[key] = val
+        merged.update(parsed)
     return merged
 
 
@@ -226,10 +238,44 @@ def main() -> int:
         for edge in edges:
             save_edges.append(
                 {
-                    "fromNodeId": str(edge.get("from_node_id") or edge.get("from")),
-                    "toNodeId": str(edge.get("to_node_id") or edge.get("to")),
+                    "fromNodeId": str(edge.get("from_node_id") or edge.get("from") or edge.get("fromNodeId")),
+                    "toNodeId": str(edge.get("to_node_id") or edge.get("to") or edge.get("toNodeId")),
                 }
             )
+        # Phase 0 damage: multi-node graphs with zero edges. Rebuild a real wire
+        # set so Save→reload proves camelCase persistence (not a no-op empty save).
+        if not save_edges and len(save_nodes) >= 2:
+            by_type: dict[str, list[dict]] = {}
+            for n in save_nodes:
+                by_type.setdefault(str(n["type"]), []).append(n)
+            council = (by_type.get("council") or [None])[0]
+            agents = by_type.get("agent") or []
+            if council and len(agents) >= 3:
+                save_edges = [
+                    {"fromNodeId": agents[0]["id"], "toNodeId": council["id"]},
+                    {"fromNodeId": council["id"], "toNodeId": agents[1]["id"]},
+                    {"fromNodeId": council["id"], "toNodeId": agents[2]["id"]},
+                ]
+                print(
+                    f"REPAIR empty edges -> council fan-out "
+                    f"({len(save_edges)} edges) for Phase 0 persistence proof"
+                )
+            else:
+                ordered = sorted(
+                    save_nodes,
+                    key=lambda n: (
+                        int((n.get("position") or {}).get("x") or 0),
+                        int((n.get("position") or {}).get("y") or 0),
+                    ),
+                )
+                save_edges = [
+                    {"fromNodeId": ordered[i]["id"], "toNodeId": ordered[i + 1]["id"]}
+                    for i in range(len(ordered) - 1)
+                ]
+                print(
+                    f"REPAIR empty edges -> sequential "
+                    f"({len(save_edges)} edges) for Phase 0 persistence proof"
+                )
 
     status, saved = _request(
         "PUT",

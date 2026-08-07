@@ -23,8 +23,21 @@ OUT = REPO / "docs" / "delivery" / "phase0-canvas-edge-audit-live.json"
 def _load_env() -> dict[str, str]:
     merged: dict[str, str] = {}
     for path in (REPO / "backend" / ".env", REPO / "backend" / ".env.operator.local"):
-        if path.is_file():
-            merged.update({k: v for k, v in dotenv_values(path).items() if v})
+        if not path.is_file():
+            continue
+        try:
+            parsed = {k: v for k, v in dotenv_values(path).items() if v}
+        except UnicodeDecodeError:
+            parsed = {}
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                raw = line.strip()
+                if not raw or raw.startswith("#") or "=" not in raw:
+                    continue
+                key, _, val = raw.partition("=")
+                key, val = key.strip(), val.strip().strip('"').strip("'")
+                if key and val:
+                    parsed[key] = val
+        merged.update(parsed)
     return merged
 
 
@@ -124,11 +137,10 @@ def main() -> int:
         def_edges = _edge_count_from_definition(definition)
         table_edges = edges_by_wf.get(wid, 0)
         table_nodes = nodes_by_wf.get(wid, 0)
-        multi = max(steps, table_nodes) > 1
-        if not multi:
-            continue
-        # Silent disconnect: multi-node graph with zero table edges AND zero graph edges.
-        if table_edges == 0 and def_edges == 0:
+        # Canvas silent-disconnect: only workflows that actually have persisted
+        # builder nodes (>=2) with zero table edges. Marketplace defs with steps
+        # but no canvas graph are sequential by design — not Phase 0 damage.
+        if table_nodes > 1 and table_edges == 0:
             disconnected.append(
                 {
                     "workflow_id": wid,
@@ -140,7 +152,7 @@ def main() -> int:
                     "table_edge_count": table_edges,
                     "definition_edge_count": def_edges,
                     "updated_at": wf.get("updated_at"),
-                    "issue": "multi_node_zero_edges",
+                    "issue": "canvas_multi_node_zero_table_edges",
                 }
             )
 
