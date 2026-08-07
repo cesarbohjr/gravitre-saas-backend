@@ -70,18 +70,52 @@ def main() -> int:
     from supabase import create_client
 
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
-    members = (
-        sb.table("organization_members")
-        .select("org_id, user_id, role")
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-    )
-    if not members.data:
-        print("FAIL no admin member")
+    # Meson requires control+; prefer explicit smoke org, then any active control/command sub.
+    preferred = (
+        os.environ.get("SMOKE_ORG_ID")
+        or env.get("SMOKE_ORG_ID")
+        or "f07e57c0-1501-4000-8000-c04e57a00001"
+    ).strip()
+    org_id = ""
+    user_id = ""
+    for candidate in (preferred,):
+        members = (
+            sb.table("organization_members")
+            .select("org_id, user_id, role")
+            .eq("org_id", candidate)
+            .eq("role", "admin")
+            .limit(1)
+            .execute()
+        )
+        if members.data:
+            org_id = str(members.data[0]["org_id"])
+            user_id = str(members.data[0]["user_id"])
+            break
+    if not org_id:
+        subs = (
+            sb.table("subscriptions")
+            .select("org_id, tier, status")
+            .eq("status", "active")
+            .in_("tier", ["control", "command"])
+            .limit(20)
+            .execute()
+        )
+        for sub in subs.data or []:
+            members = (
+                sb.table("organization_members")
+                .select("org_id, user_id, role")
+                .eq("org_id", str(sub["org_id"]))
+                .eq("role", "admin")
+                .limit(1)
+                .execute()
+            )
+            if members.data:
+                org_id = str(members.data[0]["org_id"])
+                user_id = str(members.data[0]["user_id"])
+                break
+    if not org_id:
+        print("FAIL no control/command admin org")
         return 1
-    org_id = str(members.data[0]["org_id"])
-    user_id = str(members.data[0]["user_id"])
     users = sb.auth.admin.get_user_by_id(user_id)
     email = (users.user.email if users and users.user else None) or f"{user_id}@gravitre.local"
     secret = env["SUPABASE_JWT_SECRET"]

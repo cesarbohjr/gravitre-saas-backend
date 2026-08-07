@@ -43,3 +43,11 @@
 
 - `backend/tests/workflows/test_phase1_wiring_audit.py`
 - Existing builder edge + binding suites still apply.
+
+## Live evidence (tip-matched)
+
+- Deploy tip: `515267a8edb444c5c85400dae512442b5c4561d9` via `GET /health`
+- Meson binding: `docs/delivery/phase1-meson-binding-live.json`
+  - `POST /api/meson/deploy` → 201, workflow `872074ad-89fc-400d-a5b1-c2b44c15c2af`
+  - Builder graph: `node_count=5`, `edge_count=4`, verdict `PASS`
+  - Checked at `2026-08-07T01:42:12Z`

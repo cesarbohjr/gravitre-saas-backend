@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-08-07T01:42:12.589536+00:00",
+  "api_git_sha": "515267a8edb444c5c85400dae512442b5c4561d9",
+  "deploy_http": 201,
+  "deploy": {
+    "agentId": "7dc35224-6cd5-43eb-81ba-01529e5ae639",
+    "workflowId": "872074ad-89fc-400d-a5b1-c2b44c15c2af",
+    "result": {
+      "intent": "Phase1 Meson binding verify 7cca2e00: qualify leads and notify Slack",
+      "department": "sales",
+      "systems": [
+        "crm",
+        "slack"
+      ],
+      "outputTypes": [
+        "workflows",
+        "tasks"
+      ],
+      "generatedConfig": {
+        "agent": "Lead Qualification Slack Agent",
+        "agent_role": "Sales lead qualification operator",
+        "agent_description": "Qualifies new and updated CRM leads against sales criteria and notifies the right Slack channel with the lead status, rationale, and next action. It keeps sales response focused on leads that are likely ready for outreach based on connected CRM data.",
+        "training": [
+          "CRM lead, contact, account, opportunity, owner, lifecycle stage, source, score, and activity fields",
+          "Sales qualification criteria including ideal customer profile, lead source priority, engagement signals, territory or segment rules, and disqualification reasons",
+          "Slack channel, mention, and notification conventions for sales handoff",
+          "Existing sales follow-up task naming, priority, and SLA rules if available"
+        ],
+        "workflows": [
+          "Qualify new CRM leads",
+          "Re-qualify CRM leads when key fields change",
+          "Notify Slack for qualified leads",
+          "Create sales follow-up tasks for qualified leads",
+          "Flag incomplete CRM records for enrichment"
+        ],
+        "sample_outputs": [
+          "Slack notification: Qualified lead with CRM link, owner, company, qualification reason, priority, and next action",
+          "CRM task: Follow up with qualified lead within the configured SLA",
+          "CRM note: Qualification summary with matched criteria and missing fields",
+          "Slack digest: Leads qualified today by owner, priority, and source"
+        ]
+      },
+      "confidence": 0.74,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic",
+      "explanation": "Estimate \u2014 based on what's Connected so far: CRM and Slack are the selected systems, and the requested outcome is to qualify leads and notify Slack. This plan is likely Executable once CRM lead fields, qualification rules, Slack destination, and task ownership rules are Configured. It is not Verified because no connector health, schema mapping, Slack channel, or qualification policy results were provided."
+    }
+  },
+  "workflow_id": "872074ad-89fc-400d-a5b1-c2b44c15c2af",
+  "builder_http": 200,
+  "node_count": 5,
+  "edge_count": 4,
+  "verdict": "PASS"
+}
