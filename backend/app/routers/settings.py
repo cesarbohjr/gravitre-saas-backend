@@ -11,6 +11,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.core.supabase_response import response_error
 from app.services.model_policy_service import load_org_model_policy, normalize_model_policy, save_org_model_policy
 from app.services.memory_entity_embeddings_settings import (
     load_memory_entity_embeddings_settings,
@@ -233,10 +234,11 @@ async def get_lite_seats_route(
         .order("created_at", desc=False)
         .execute()
     )
-    if _is_missing_table_error(departments_resp.error):
+    departments_err = response_error(departments_resp)
+    if _is_missing_table_error(departments_err):
         return {"summary": {"included": 0, "allocated": 0, "used": 0}, "departments": []}
-    if departments_resp.error:
-        raise HTTPException(status_code=500, detail=str(departments_resp.error))
+    if departments_err:
+        raise HTTPException(status_code=500, detail=str(departments_err))
     departments = list(departments_resp.data or [])
 
     members_resp = (
@@ -246,7 +248,7 @@ async def get_lite_seats_route(
         .execute()
     )
     members_by_department: dict[str, int] = defaultdict(int)
-    if not _is_missing_table_error(members_resp.error):
+    if not _is_missing_table_error(response_error(members_resp)):
         for member in members_resp.data or []:
             dept_id = member.get("department_id")
             if dept_id:
@@ -260,7 +262,7 @@ async def get_lite_seats_route(
         .execute()
     )
     included = 0
-    if not _is_missing_table_error(subscription_resp.error):
+    if not _is_missing_table_error(response_error(subscription_resp)):
         included = int((subscription_resp.data or [{}])[0].get("lite_seats") or 0)
 
     allocated = sum(int(d.get("lite_seat_allocation") or 0) for d in departments)
@@ -308,8 +310,8 @@ async def create_lite_seat_department_route(
         .single()
         .execute()
     )
-    if created.error:
-        raise HTTPException(status_code=500, detail=str(created.error))
+    if response_error(created):
+        raise HTTPException(status_code=500, detail=str(response_error(created)))
     return {"department": created.data}
 
 
@@ -339,8 +341,8 @@ async def update_lite_seat_department_route(
         .single()
         .execute()
     )
-    if updated.error:
-        raise HTTPException(status_code=500, detail=str(updated.error))
+    if response_error(updated):
+        raise HTTPException(status_code=500, detail=str(response_error(updated)))
     return {"department": updated.data}
 
 
@@ -360,7 +362,7 @@ async def delete_lite_seat_department_route(
         .execute()
     )
     if getattr(deleted, "error", None):
-        raise HTTPException(status_code=500, detail=str(deleted.error))
+        raise HTTPException(status_code=500, detail=str(response_error(deleted)))
     return {"success": True}
 
 
@@ -504,7 +506,7 @@ async def add_department_member_route(
         .execute()
     )
     if getattr(inserted, "error", None):
-        raise HTTPException(status_code=500, detail=str(inserted.error))
+        raise HTTPException(status_code=500, detail=str(response_error(inserted)))
     member_row = None
     if isinstance(inserted.data, list) and inserted.data:
         member_row = inserted.data[0]
@@ -520,7 +522,7 @@ async def add_department_member_route(
             .execute()
         )
         if getattr(fetched, "error", None):
-            raise HTTPException(status_code=500, detail=str(fetched.error))
+            raise HTTPException(status_code=500, detail=str(response_error(fetched)))
         member_row = (fetched.data or [None])[0]
     if not member_row:
         raise HTTPException(status_code=500, detail="Department member upsert failed")
@@ -567,7 +569,7 @@ async def remove_department_member_route(
         .execute()
     )
     if getattr(deleted, "error", None):
-        raise HTTPException(status_code=500, detail=str(deleted.error))
+        raise HTTPException(status_code=500, detail=str(response_error(deleted)))
     write_audit_event(
         client,
         org_id=org_id,
@@ -595,10 +597,11 @@ async def get_meson_addons_route(
         .order("monthly_price_usd", desc=False)
         .execute()
     )
-    if _is_missing_table_error(catalog_resp.error):
+    catalog_err = response_error(catalog_resp)
+    if _is_missing_table_error(catalog_err):
         return {"addons": [], "monthly_total_usd": 0}
-    if catalog_resp.error:
-        raise HTTPException(status_code=500, detail=str(catalog_resp.error))
+    if catalog_err:
+        raise HTTPException(status_code=500, detail=str(catalog_err))
 
     sub_resp = (
         client.table("subscriptions")
@@ -608,7 +611,8 @@ async def get_meson_addons_route(
         .execute()
     )
     enabled_codes: set[str] = set()
-    if not _is_missing_table_error(sub_resp.error):
+    sub_err = response_error(sub_resp)
+    if not _is_missing_table_error(sub_err):
         values = (sub_resp.data or [{}])[0].get("meson_addons") or []
         if isinstance(values, list):
             enabled_codes = {str(item) for item in values}
@@ -645,10 +649,10 @@ async def update_meson_addons_route(
     existing = (
         client.table("subscriptions").select("meson_addons").eq("org_id", org_id).limit(1).execute()
     )
-    if _is_missing_table_error(existing.error):
+    if _is_missing_table_error(response_error(existing)):
         raise HTTPException(status_code=400, detail="subscriptions table missing; run migrations")
-    if existing.error:
-        raise HTTPException(status_code=500, detail=str(existing.error))
+    if response_error(existing):
+        raise HTTPException(status_code=500, detail=str(response_error(existing)))
     current = (existing.data or [{}])[0].get("meson_addons") or []
     if not isinstance(current, list):
         current = []
@@ -664,8 +668,8 @@ async def update_meson_addons_route(
         .single()
         .execute()
     )
-    if updated.error:
-        raise HTTPException(status_code=500, detail=str(updated.error))
+    if response_error(updated):
+        raise HTTPException(status_code=500, detail=str(response_error(updated)))
     return {"subscription": updated.data}
 
 

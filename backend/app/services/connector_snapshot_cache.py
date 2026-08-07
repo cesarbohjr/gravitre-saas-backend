@@ -61,14 +61,24 @@ def list_connected_integrations_cached(
     from app.connectors.connector_availability_service import list_executable_integrations
     from app.config import get_settings
 
-    connected = list_executable_integrations(
-        client,
-        org_id,
-        get_settings(),
-        environment_name=environment_name,
-        force_live=force_live,
-        action_key=action_key,
-    )
+    try:
+        connected = list_executable_integrations(
+            client,
+            org_id,
+            get_settings(),
+            environment_name=environment_name,
+            force_live=force_live,
+            action_key=action_key,
+        )
+    except Exception as exc:  # noqa: BLE001 — never poison assistant stream
+        logger.warning(
+            "list_connected_integrations_failed org_id=%s force_live=%s error=%s",
+            org_id,
+            force_live,
+            str(exc)[:240],
+        )
+        cached = get_cached_connected(org_id, environment_name)
+        return list(cached or [])
     return set_cached_connected(
         org_id,
         connected,

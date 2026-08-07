@@ -680,7 +680,12 @@ def _build_stream(
                         streamed_text_parts.append(delta)
                 yield assistant_event_to_sse_line(event)
         except Exception as exc:  # noqa: BLE001
-            logger.error("assistant unified stream failed org_id=%s error=%s", org_id, str(exc))
+            logger.error(
+                "assistant unified stream failed org_id=%s error_type=%s error=%s",
+                org_id,
+                type(exc).__name__,
+                str(exc)[:500],
+            )
             if not streamed_text_parts:
                 yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
                 yield sse_done()

@@ -491,9 +491,17 @@ def ensure_generic_session(
             merged = {**tokens, **refreshed}
             store_oauth_tokens(client, org_id, connector_id, merged, settings)
             tokens = merged
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, ValueError) as exc:
+            # _exchange_token raises ValueError on non-2xx OAuth responses (not HTTPError).
+            # Must soft-fail: otherwise list_connected_integrations / chat stream aborts
+            # for every turn when any generic OAuth connector has a revoked refresh token.
             mark_connector_oauth_failure(client, org_id, connector_id, "Token refresh failed")
-            logger.warning("generic oauth refresh failed vendor=%s err=%s", vendor, type(exc).__name__)
+            logger.warning(
+                "generic oauth refresh failed vendor=%s err=%s detail=%s",
+                vendor,
+                type(exc).__name__,
+                str(exc)[:240],
+            )
             return None, "Token refresh failed"
 
     access = str(tokens.get("access_token") or "").strip()
