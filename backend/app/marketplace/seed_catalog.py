@@ -357,7 +357,7 @@ def _workflows() -> list[CatalogAsset]:
             [HUBSPOT],
             [
                 _invoke("lookup", "HubSpot contact lookup", "hubspot.contacts.search", connector="hubspot"),
-                _agent_step("qualify", "Qualify lead", "sales-pipeline-agent", "Score fit and recommend next step."),
+                _agent_step("qualify", "Qualify lead", "sales-pipeline-agent", "Score HubSpot contact fit against ICP, recommend next sales step, and flag missing firmographics."),
             ],
         ),
         (
@@ -366,7 +366,7 @@ def _workflows() -> list[CatalogAsset]:
             "Finance",
             [],
             [
-                _agent_step("summarize", "Executive summary", "cfo-agent", "Draft monthly executive KPI narrative."),
+                _agent_step("summarize", "Executive summary", "cfo-agent", "Draft a monthly executive KPI narrative covering revenue, margin, and risks with clear owners."),
                 _invoke("notify", "Notify leadership", "slack.post_message", connector="slack"),
             ],
         ),
@@ -377,7 +377,7 @@ def _workflows() -> list[CatalogAsset]:
             [HUBSPOT],
             [
                 _invoke("accounts", "Pull account signals", "hubspot.contacts.search", connector="hubspot"),
-                _agent_step("health", "Health score review", "customer-success-agent", "Flag at-risk accounts."),
+                _agent_step("health", "Health score review", "customer-success-agent", "Flag at-risk HubSpot accounts with evidence, churn drivers, and a concrete save play for CS."),
             ],
         ),
         (
@@ -391,18 +391,18 @@ def _workflows() -> list[CatalogAsset]:
                     "icp_content",
                     "ICP strategy and content draft",
                     "product-icp-strategist",
-                    "Define ICP focus and campaign thesis for this run.",
+                    "Define ICP focus and campaign thesis for this run using analytics signals and brand constraints.",
                     next_agent_slug="content-writer",
-                    receiver_task="Draft campaign copy using the ICP briefing and brand voice guide.",
+                    receiver_task="Draft campaign copy using the ICP briefing and brand voice guide with CTA variants.",
                 ),
                 _agent_step(
                     "design_ops",
                     "Design brief and ops handoff",
                     "marketing-designer",
-                    "Produce a creative brief from prior campaign context.",
+                    "Produce a creative brief from prior campaign context including channels, assets, and due dates.",
                     next_agent_slug="marketing-ops-coordinator",
                     briefing_from_steps=True,
-                    receiver_task="Build publish checklist and coordinate next marketing actions.",
+                    receiver_task="Build publish checklist and coordinate next marketing actions with owners and SLAs.",
                 ),
             ],
         ),
@@ -413,7 +413,7 @@ def _workflows() -> list[CatalogAsset]:
             [HUBSPOT, GOOGLE_ANALYTICS],
             [
                 _invoke("traffic", "Pull analytics snapshot", "analytics.reports.run", connector="google_analytics"),
-                _agent_step("attribute", "Attribution review", "marketing-analyst", "Summarize channel contribution."),
+                _agent_step("attribute", "Attribution review", "marketing-analyst", "Summarize channel contribution from analytics, call out low-confidence gaps, and recommend budget shifts."),
             ],
         ),
         (
@@ -422,8 +422,8 @@ def _workflows() -> list[CatalogAsset]:
             "Marketing",
             [],
             [
-                _agent_step("scan", "Competitive scan", "competitor-research-agent", "Summarize competitor moves."),
-                _agent_step("brief", "Marketing brief", "marketing-analyst", "Translate intel into campaign actions."),
+                _agent_step("scan", "Competitive scan", "competitor-research-agent", "Summarize competitor product, pricing, and messaging moves with sources and confidence labels."),
+                _agent_step("brief", "Marketing brief", "marketing-analyst", "Translate competitive intel into concrete campaign actions, owners, and measurement checks."),
             ],
         ),
         (
@@ -433,7 +433,7 @@ def _workflows() -> list[CatalogAsset]:
             [SALESFORCE],
             [
                 _invoke("pipeline", "Pipeline snapshot", "salesforce.query", connector="salesforce"),
-                _agent_step("review", "Pipeline review", "sales-pipeline-agent", "Highlight stalled deals."),
+                _agent_step("review", "Pipeline review", "sales-pipeline-agent", "Highlight stalled Salesforce deals with stage age, risk reasons, and recommended owner actions."),
             ],
         ),
         (
@@ -442,8 +442,8 @@ def _workflows() -> list[CatalogAsset]:
             "Revenue Operations",
             [],
             [
-                _agent_step("revops", "RevOps rollup", "revenue-operations-agent", "Summarize cross-functional KPIs."),
-                _agent_step("exec", "Executive narrative", "cfo-agent", "Produce board-ready summary."),
+                _agent_step("revops", "RevOps rollup", "revenue-operations-agent", "Summarize cross-functional revenue KPIs, pipeline health, and handoff gaps for leadership."),
+                _agent_step("exec", "Executive narrative", "cfo-agent", "Produce a board-ready executive summary with decisions needed and quantified risks."),
             ],
         ),
         (
@@ -452,7 +452,7 @@ def _workflows() -> list[CatalogAsset]:
             "Revenue Operations",
             [SLACK],
             [
-                _agent_step("collect", "Collect status themes", "revenue-operations-agent", "Draft weekly status bullets."),
+                _agent_step("collect", "Collect status themes", "revenue-operations-agent", "Draft weekly status bullets covering wins, blockers, and asks with clear owners for Slack."),
                 _invoke("publish", "Post to Slack", "slack.post_message", connector="slack"),
             ],
         ),
@@ -476,7 +476,7 @@ def _workflows() -> list[CatalogAsset]:
                     "triage",
                     "AI ticket triage",
                     "ticket-triage",
-                    "Classify urgency, suggest response macro, and flag escalation if needed.",
+                    "Classify Zendesk ticket urgency, suggest a response macro, and flag escalation paths when needed.",
                 ),
             ],
         ),

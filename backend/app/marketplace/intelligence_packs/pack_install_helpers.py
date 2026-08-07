@@ -39,9 +39,13 @@ def upsert_preconfigured_workflow(
         list(steps),
         agent_ids_by_seed={f"agent:{agent_slug}": agent_id},
     )
-    definition = {"schema_version": SCHEMA_VERSION, "steps": bound}
+    from app.marketplace.pack_prewiring import (
+        definition_with_sequential_graph,
+        materialize_pack_canvas_graph,
+    )
     from app.workflows.binding_validation import assert_bindings_valid
 
+    definition = definition_with_sequential_graph(bound, schema_version=SCHEMA_VERSION)
     # Pack-embedded MSP enrichment declares these install vars; allow at write time.
     declared = {
         "HUBSPOT_LIST_ID",
@@ -79,6 +83,14 @@ def upsert_preconfigured_workflow(
         },
         on_conflict="id",
     ).execute()
+    materialize_pack_canvas_graph(
+        client,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        environment_name=environment_name,
+        steps=bound,
+        created_by=actor_id,
+    )
     try:
         from app.services.vertical_workflow_helper import ensure_active_workflow_version
 

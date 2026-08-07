@@ -1,0 +1,1026 @@
+{
+  "generatedAt": "2026-08-07T06:59:36.221813+00:00",
+  "source": "seed_catalog.list_catalog_assets",
+  "phase": "phase2_pack_prewiring",
+  "totalCatalogAssets": 72,
+  "workflowBearingAudited": 38,
+  "fullyPrewiredPass": 38,
+  "prewiringFail": 0,
+  "passWithHonestManualSetup": 17,
+  "fixedInThisPassNote": "Stub agent tasks expanded; install embeds definition.graph and materializes canvas via sync_builder_graph.",
+  "topErrorCodes": [],
+  "failedSlugs": [],
+  "assets": [
+    {
+      "slug": "marketing-analyst",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "product-icp-strategist",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "content-writer",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "marketing-designer",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "marketing-ops-coordinator",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "seo-analyst",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "competitor-research-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "revenue-operations-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "sales-pipeline-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "customer-success-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "ticket-triage",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "cfo-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "sdr-coach",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "lead-enrichment-coordinator",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "hubspot-lead-qualification",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "monthly-executive-reporting",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "customer-health-monitoring",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "marketing-campaign-production",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "marketing-attribution-analysis",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "competitive-intelligence-monitoring",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "salesforce-pipeline-review",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "salesforce",
+          "reason": "Connect salesforce before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "executive-summary-generation",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "weekly-team-status-report",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "zendesk-ticket-triage",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "zendesk",
+          "reason": "Connect zendesk before running this pack"
+        },
+        {
+          "kind": "install_variable",
+          "key": "TICKET_ID",
+          "reason": "Ticket to look up for triage (install/run parameter for $TICKET_ID)."
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "msp-prospects-clay-hubspot-enrichment",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 10,
+      "edgeCount": 9,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "apollo",
+          "reason": "Connect apollo before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "clay",
+          "reason": "Connect clay before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        },
+        {
+          "kind": "install_variable",
+          "key": "HUBSPOT_LIST_ID",
+          "reason": "Numeric list ID for the existing HubSpot static list (e.g. \"MSPs\"). Find it in HubSpot \u2192 Lists \u2192 open the list \u2192 copy the ID from the URL."
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "marketing-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "saas-sales-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "customer-success-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "msp-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "hr-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "revenue-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "marketing-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "revops-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "ai-search-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "finance-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "hr-talent-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "sales-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "prospecting-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 6,
+      "edgeCount": 5,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "apollo",
+          "reason": "Connect apollo before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "clay",
+          "reason": "Connect clay before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "support-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "customer-success-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 5,
+      "edgeCount": 4,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "msp-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 10,
+      "edgeCount": 9,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "apollo",
+          "reason": "Connect apollo before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "executive-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 4,
+      "edgeCount": 3,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "platform-health-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "content-strategist-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "pipeline-forecast-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "renewal-risk-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "finance-variance-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "it-incident-triage-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "talent-pipeline-agent",
+      "assetType": "ai_agent",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "lead-routing-automation",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "campaign-performance-digest",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "qbr-preparation-workflow",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "invoice-exception-review",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "sla-breach-escalation",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "new-hire-onboarding-checklist",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 1,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "deal-desk-approval-flow",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "salesforce",
+          "reason": "Connect salesforce before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "product-feedback-synthesis",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 1,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "security-access-review",
+      "assetType": "workflow",
+      "hasWorkflow": true,
+      "stepCount": 1,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "product-marketing-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "enterprise-sales-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "support-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "finance-close-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "compliance-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "people-ops-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "revops-analytics-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "product-ops-knowledge",
+      "assetType": "knowledge_pack",
+      "hasWorkflow": false,
+      "stepCount": 0,
+      "edgeCount": 0,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "N_A"
+    },
+    {
+      "slug": "marketing-operations-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "msp-operations-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "revenue-operations-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        },
+        {
+          "kind": "connect_account",
+          "connector": "salesforce",
+          "reason": "Connect salesforce before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "customer-success-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 2,
+      "edgeCount": 1,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "hubspot",
+          "reason": "Connect hubspot before running this pack"
+        }
+      ],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "hr-operations-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [],
+      "verdict": "PASS"
+    },
+    {
+      "slug": "support-operations-pack",
+      "assetType": "department_pack",
+      "hasWorkflow": true,
+      "stepCount": 3,
+      "edgeCount": 2,
+      "bindingOk": true,
+      "bindingErrors": [],
+      "errors": [],
+      "manualSetupRequired": [
+        {
+          "kind": "connect_account",
+          "connector": "zendesk",
+          "reason": "Connect zendesk before running this pack"
+        },
+        {
+          "kind": "install_variable",
+          "key": "TICKET_ID",
+          "reason": "Ticket to look up for triage (install/run parameter for $TICKET_ID)."
+        }
+      ],
+      "verdict": "PASS"
+    }
+  ]
+}

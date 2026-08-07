@@ -664,9 +664,16 @@ def _install_workflow_entity(
         agent_ids=resolved_agent_ids,
         connector_ids=connector_ids or {},
     )
-    definition = {"schema_version": config.schema_version or SCHEMA_VERSION, "steps": steps}
+    from app.marketplace.pack_prewiring import (
+        definition_with_sequential_graph,
+        materialize_pack_canvas_graph,
+    )
     from app.workflows.binding_validation import assert_bindings_valid
 
+    definition = definition_with_sequential_graph(
+        steps,
+        schema_version=config.schema_version or SCHEMA_VERSION,
+    )
     install_vars = asset.get("install_variables") if isinstance(asset.get("install_variables"), list) else []
     declared = {
         str(row.get("key") or "")
@@ -707,6 +714,16 @@ def _install_workflow_entity(
         },
         on_conflict="id",
     ).execute()
+
+    # Phase 2: materialize canvas tables so install is fully pre-wired, not hydrate-only.
+    materialize_pack_canvas_graph(
+        client,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        environment_name=environment_name,
+        steps=steps,
+        created_by=actor_id,
+    )
 
     try:
         ensure_active_workflow_version(
