@@ -1214,6 +1214,7 @@ class AgentIntelligence:
         research_scope: str | None = None,
         qa_force_tool: str | None = None,
         qa_force_outcome: str | None = None,
+        department: str | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1542,6 +1543,15 @@ class AgentIntelligence:
             org_id,
             task_text,
         )
+        # Phase 1: UI department desk scope must reach persona + classification,
+        # not only the prepare_stream system prompt in assistant.py.
+        department_scope = (department or "").strip() or None
+        if department_scope:
+            pipeline_classification = {
+                **pipeline_classification,
+                "department": department_scope,
+                "ui_department_scope": department_scope,
+            }
         router_enrichments = await chat_facade.run_router_enrichments(
             org_id,
             task_text,
@@ -1614,14 +1624,21 @@ class AgentIntelligence:
         persona = await get_persona_service(active_settings).get_persona_for_request(
             org_id,
             user_id,
-            pipeline_classification.get("department"),
+            pipeline_classification.get("department") or department_scope,
             conversation_id,
             explicit_persona=explicit_persona,
         )
 
+        # Phase 1: resolve custom/department agent before unified LIVE so tool
+        # catalog uses the same resolve_permitted_tools path as classical ReAct.
+        early_agent: dict[str, Any] | None = None
+        if agent_id:
+            early_agent = resolve_agent_record(client, org_id, str(agent_id))
+
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
         if getattr(active_settings, "unified_turn_live_enabled", False):
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
+            from app.operators.react_engine import resolve_permitted_tools
 
             live_turn = await apply_unified_turn_live(
                 org_id=org_id,
@@ -1638,6 +1655,14 @@ class AgentIntelligence:
                 classification=pipeline_classification,
                 qa_force_tool=qa_force_tool,
                 qa_force_outcome=qa_force_outcome,
+                agent=early_agent,
+                # Agent-row systems/tools win over FE tool lists (custom agent chat
+                # previously shipped a hardcoded 5-tool list that bypassed agent scope).
+                permitted_tools=resolve_permitted_tools(
+                    early_agent,
+                    None if early_agent else requested_tools,
+                ),
+                agent_id=agent_id,
             )
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state

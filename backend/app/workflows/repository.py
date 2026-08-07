@@ -686,6 +686,16 @@ def update_workflow_node(
 
 
 def delete_workflow_node(client: Client, org_id: str, node_id: str, environment_name: str) -> bool:
+    # Phase 1: cascade incident edges so incremental DELETE /nodes cannot leave ghosts.
+    try:
+        client.table("workflow_edges").delete().eq("org_id", org_id).eq(
+            "environment", environment_name
+        ).eq("from_node_id", node_id).execute()
+        client.table("workflow_edges").delete().eq("org_id", org_id).eq(
+            "environment", environment_name
+        ).eq("to_node_id", node_id).execute()
+    except Exception:  # noqa: BLE001
+        pass
     r = (
         client.table("workflow_nodes")
         .delete()

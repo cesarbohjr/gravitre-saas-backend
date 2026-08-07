@@ -598,12 +598,14 @@ def resolve_builder_graph(
 
     prepared_edges: list[dict[str, Any]] = []
     for edge in edges:
-        from_id = edge.get("from_node_id") or edge.get("from")
-        to_id = edge.get("to_node_id") or edge.get("to")
+        from_id, to_id = edge_endpoints(edge) if isinstance(edge, dict) else ("", "")
         if not from_id or not to_id:
             continue
         try:
-            prepared_edges.append(prepare_builder_edge(edge, str(workflow_id), environment_name))
+            prepared = dict(edge)
+            prepared["from_node_id"] = from_id
+            prepared["to_node_id"] = to_id
+            prepared_edges.append(prepare_builder_edge(prepared, str(workflow_id), environment_name))
         except ValueError:
             continue
     return nodes, prepared_edges
@@ -616,10 +618,12 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
     edges: list[dict[str, Any]] = []
     x = 120
     prev_id: str | None = None
+    step_ids: list[str] = []
     for idx, step in enumerate(steps):
         if not isinstance(step, dict):
             continue
         step_id = str(step.get("id") or f"step-{idx + 1}")
+        step_ids.append(step_id)
         step_type = str(step.get("type") or "noop")
         metadata = step.get("metadata") if isinstance(step.get("metadata"), dict) else {}
         config = step.get("config") if isinstance(step.get("config"), dict) else {}
@@ -651,6 +655,9 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
             node_type = "approval"
             tool_config = dict(config)
             node_metadata["has_approval_gate"] = True
+        elif mapped_type in {"decision", "if", "switch", "council"}:
+            node_type = mapped_type
+            tool_config = dict(config)
         else:
             node_type = "agent" if step_type == "agent" else "task"
             tool_config = dict(config)
@@ -679,6 +686,9 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
         if node_metadata.get("agent_seed") and not agent_id:
             tool_config.setdefault("agent_seed", node_metadata.get("agent_seed"))
 
+        pos = node_metadata.get("position") if isinstance(node_metadata.get("position"), dict) else {}
+        px = int(pos.get("x") or x)
+        py = int(pos.get("y") or (160 + (idx % 3) * 40))
         nodes.append(
             {
                 "id": step_id,
@@ -689,15 +699,28 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
                 "instruction": description or None,
                 "config": tool_config,
                 "metadata": node_metadata,
-                "position": {"x": x, "y": 160 + (idx % 3) * 40},
-                "position_x": x,
-                "position_y": 160 + (idx % 3) * 40,
+                "position": {"x": px, "y": py},
+                "position_x": px,
+                "position_y": py,
             }
         )
-        if prev_id:
-            edges.append({"from_node_id": prev_id, "to_node_id": step_id})
-        prev_id = step_id
         x += 260
+
+    # Prefer declared edges (Meson/builder) over sequential fallback.
+    id_set = set(step_ids)
+    declared = definition.get("edges") if isinstance(definition.get("edges"), list) else []
+    graph = definition.get("graph") if isinstance(definition.get("graph"), dict) else {}
+    if not declared and isinstance(graph.get("edges"), list):
+        declared = graph.get("edges") or []
+    for raw in declared:
+        if not isinstance(raw, dict):
+            continue
+        src, dst = edge_endpoints(raw)
+        if src in id_set and dst in id_set:
+            edges.append({"from_node_id": src, "to_node_id": dst})
+    if not edges:
+        for i in range(len(step_ids) - 1):
+            edges.append({"from_node_id": step_ids[i], "to_node_id": step_ids[i + 1]})
     return nodes, edges
 
 
@@ -732,6 +755,82 @@ def delete_workflow_graph(
         logger.warning("workflow_nodes delete skipped for %s: %s", workflow_id, exc)
 
 
+def _preflight_builder_definition(
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compile + binding-validate from the client payload before wiping the DB graph."""
+    from app.workflows.schema import WorkflowValidationError
+
+    fake_nodes: list[dict[str, Any]] = []
+    id_map: dict[str, str] = {}
+    for raw in nodes:
+        if not isinstance(raw, dict):
+            continue
+        client_id = str(raw.get("id") or "").strip()
+        if not client_id:
+            continue
+        canvas_type = str(raw.get("type") or raw.get("node_type") or "task")
+        node_type, type_metadata = persist_node_type(canvas_type)
+        metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        if type_metadata:
+            metadata = {**metadata, **type_metadata}
+        position = _node_position(raw)
+        fake_nodes.append(
+            {
+                "id": client_id,
+                "node_type": node_type,
+                "title": str(raw.get("name") or raw.get("title") or "Node"),
+                "name": raw.get("name"),
+                "description": raw.get("description"),
+                "config": raw.get("config") if isinstance(raw.get("config"), dict) else {},
+                "metadata": metadata,
+                "position": position,
+                "position_x": position["x"],
+                "position_y": position["y"],
+            }
+        )
+        id_map[client_id] = client_id
+
+    fake_edges: list[dict[str, Any]] = []
+    dropped = 0
+    for raw in edges:
+        if not isinstance(raw, dict):
+            dropped += 1
+            continue
+        src, dst = edge_endpoints(raw)
+        if src not in id_map or dst not in id_map:
+            dropped += 1
+            continue
+        fake_edges.append(
+            {
+                "from_node_id": src,
+                "to_node_id": dst,
+                "edge_type": raw.get("edge_type") or raw.get("edgeType") or "sequence",
+            }
+        )
+    if edges and not fake_edges:
+        raise WorkflowValidationError(
+            "Builder save included edges but none could be resolved before persist.",
+            errors=["builder.edges_not_persisted"],
+        )
+    if dropped:
+        raise WorkflowValidationError(
+            f"Builder save would drop {dropped} of {len(edges)} edges.",
+            errors=["builder.edges_partially_dropped"],
+        )
+    definition = validate_definition(graph_to_definition(fake_nodes, fake_edges))
+    definition["graph"] = {
+        "nodes": fake_nodes,
+        "edges": [
+            {"from_node_id": e["from_node_id"], "to_node_id": e["to_node_id"]}
+            for e in fake_edges
+        ],
+    }
+    assert_bindings_valid(definition)
+    return definition
+
+
 def sync_builder_graph(
     client: Any,
     *,
@@ -743,6 +842,8 @@ def sync_builder_graph(
     created_by: str | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Replace workflow graph, compile definition, publish active version."""
+    # Phase 1 durability: validate compile + bindings BEFORE wiping prior graph.
+    _preflight_builder_definition(nodes, edges)
     delete_workflow_graph(client, org_id, workflow_id, environment_name)
 
     id_map: dict[str, str] = {}

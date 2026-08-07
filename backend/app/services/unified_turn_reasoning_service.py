@@ -290,6 +290,8 @@ async def run_unified_turn_shadow(
     settings: Settings | None = None,
     qa_force_tool: str | None = None,
     qa_force_outcome: str | None = None,
+    agent: dict[str, Any] | None = None,
+    permitted_tools: list[str] | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -318,7 +320,11 @@ async def run_unified_turn_shadow(
 
     wall_start = time.perf_counter()
     registry = get_tool_registry()
-    permitted = ["*"]
+    from app.operators.react_engine import resolve_permitted_tools
+
+    # Phase 1: custom/department agents must not receive the full org catalog when
+    # their row scopes tools/systems — same resolve_permitted_tools as classical ReAct.
+    permitted = resolve_permitted_tools(agent, permitted_tools)
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
     if "platform" not in connected:
         connected.append("platform")
@@ -991,6 +997,9 @@ async def apply_unified_turn_live(
     classification: dict[str, Any] | None = None,
     qa_force_tool: str | None = None,
     qa_force_outcome: str | None = None,
+    agent: dict[str, Any] | None = None,
+    permitted_tools: list[str] | None = None,
+    agent_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1177,6 +1186,8 @@ async def apply_unified_turn_live(
         settings=active,
         qa_force_tool=qa_force_tool,
         qa_force_outcome=qa_force_outcome,
+        agent=agent,
+        permitted_tools=permitted_tools,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")
