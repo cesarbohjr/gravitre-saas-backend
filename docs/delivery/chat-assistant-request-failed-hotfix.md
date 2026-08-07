@@ -31,3 +31,15 @@ stream and aborted every turn — including non-connector hellos.
 
 - `test_ensure_generic_session_soft_fails_on_valueerror_refresh`
 - `test_list_connector_availability_soft_fails_one_bad_connector`
+
+## Live evidence (tip-matched)
+
+- Tip: `b2e7e20f491d1565b420686a2661ec474307961b` (`/health` `git_sha`)
+- Operator org `cbbf993b-…` conversation `1e87d4c4-…` mode=fast → assistant
+  `Hello! How can I assist you today?` (no stream errors) @ `2026-08-07T10:21–10:22Z`
+- Fresh FAST + chat modes also PASS on operator org
+- Isolated smoke: `PASS — post-deploy chat ok @ b2e7e20f`
+  (`conversation_id=114550c2-8409-4866-afe3-75c5896174b8`)
+
+Note: Apollo refresh is still expired for that org — reconnect Apollo for
+Apollo *writes*. Chat must not depend on that token being valid.
