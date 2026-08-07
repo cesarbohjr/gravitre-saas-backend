@@ -34,3 +34,11 @@ Phase 4 degeneracy to **every** reporting surface — not only Activity/Outcomes
 ## Standing tests
 
 - `backend/tests/services/test_reporting_honesty.py`
+
+## Live evidence (tip-matched)
+
+- Tip: `4e807263252399aaa2ff9b44952b02072ce7193a` (`/health` `git_sha`)
+- `GET /api/reporting/honesty-audit` → `verdict=PASS`, `surface_count=12`
+- Metrics overview `honesty.successRateProvenance=live_runs`; `range=24h` → HTTP 400
+- ROI placeholders provenance `not_configured`
+- Artifact: `docs/delivery/phase5-reporting-insights-honesty-live.json`
