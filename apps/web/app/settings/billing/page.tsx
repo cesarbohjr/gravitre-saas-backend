@@ -226,7 +226,13 @@ function BillingPageInner() {
   const currentTier = (resolvedTierRaw || null) as PlanCode | null
   const currentPlan = currentTier ? getPlan(currentTier) : null
   const planKnown = Boolean(currentPlan)
-  const subStatus = subscription?.status ?? (planKnown ? "active" : "unknown")
+  // Never invent Active when status is missing — that left cancelled orgs looking live
+  // after subscription.deleted wrote only a partial cancel. Prefer overview.billing_status.
+  const rawStatus = (subscription?.status || overview?.billing_status || "unknown")
+    .toString()
+    .trim()
+    .toLowerCase()
+  const subStatus = rawStatus === "cancelled" ? "canceled" : rawStatus || "unknown"
   const liveInvoices =
     overview?.invoices?.map((invoice) => ({
       id: invoice.id,
@@ -335,7 +341,7 @@ function BillingPageInner() {
     canceled: { label: "Canceled", classes: "bg-muted text-muted-foreground border-border", beacon: "idle" },
     unknown: { label: overviewLoading ? "Loading" : "Unavailable", classes: "bg-muted text-muted-foreground border-border", beacon: "idle" },
   }
-  const status = statusDisplay[subStatus] ?? (planKnown ? statusDisplay.active : statusDisplay.unknown)
+  const status = statusDisplay[subStatus] ?? statusDisplay.unknown
 
   const renewalLabel = (() => {
     if (!subscription?.current_period_end) return null

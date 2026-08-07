@@ -50,7 +50,7 @@ class _FakeTable:
             row = dict(self._pending_insert)
             rows.append(row)
             self._pending_insert = None
-            return MagicMock(data=[row])
+            return MagicMock(data=[row], error=None)
 
         if self._pending_upsert is not None:
             row = dict(self._pending_upsert)
@@ -65,7 +65,7 @@ class _FakeTable:
                 stored = row
             self._pending_upsert = None
             self._on_conflict = None
-            return MagicMock(data=[stored])
+            return MagicMock(data=[stored], error=None)
 
         if self._pending_update is not None:
             row = dict(self._pending_update)
@@ -78,7 +78,7 @@ class _FakeTable:
                 item.update(row)
             self._pending_update = None
             self._filters = {}
-            return MagicMock(data=matches)
+            return MagicMock(data=matches, error=None)
 
         matches = [
             item
@@ -86,7 +86,7 @@ class _FakeTable:
             if all(item.get(k) == v for k, v in self._filters.items())
         ]
         self._filters = {}
-        return MagicMock(data=matches)
+        return MagicMock(data=matches, error=None)
 
 
 class _FakeClient:
@@ -178,6 +178,61 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
 
     assert client._store["subscriptions"][0]["tier"] == "command"
     assert client._store["org_billing"][0]["plan_code"] == "command"
+
+
+def test_subscription_deleted_writes_complete_terminal_state():
+    """subscription.deleted must not leave paid plan_code/tier/price looking active."""
+    client = _FakeClient()
+    settings = _settings()
+    org_id = "33333333-3333-3333-3333-333333333333"
+    client._store["subscriptions"] = [
+        {
+            "org_id": org_id,
+            "stripe_subscription_id": "sub_cmd_del",
+            "stripe_customer_id": "cus_cmd_del",
+            "tier": "command",
+            "status": "active",
+            "cancel_at_period_end": False,
+        }
+    ]
+    client._store["org_billing"] = [
+        {
+            "org_id": org_id,
+            "stripe_subscription_id": "sub_cmd_del",
+            "stripe_customer_id": "cus_cmd_del",
+            "plan_code": "command",
+            "stripe_price_id": "price_command_m",
+            "billing_status": "active",
+            "cancel_at_period_end": False,
+        }
+    ]
+    data = {
+        "id": "sub_cmd_del",
+        "customer": "cus_cmd_del",
+        "status": "canceled",
+        "metadata": {"org_id": org_id, "plan_code": "command"},
+    }
+
+    stripe_webhook_router._process_stripe_event(
+        client,
+        settings,
+        "customer.subscription.deleted",
+        data,
+        data["metadata"],
+        org_id,
+        {"id": "evt_sub_del", "type": "customer.subscription.deleted"},
+    )
+
+    sub = client._store["subscriptions"][0]
+    billing = client._store["org_billing"][0]
+    assert sub["status"] == "canceled"
+    assert sub["tier"] == "node"
+    assert sub["stripe_subscription_id"] is None
+    assert billing["billing_status"] == "cancelled"
+    assert billing["plan_code"] == "node"
+    assert billing["stripe_price_id"] is None
+    assert billing["stripe_subscription_id"] is None
+    assert billing["cancel_at_period_end"] is False
 
 
 def test_process_subscription_updated_with_incomplete_status():

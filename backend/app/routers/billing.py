@@ -259,12 +259,11 @@ def _reconcile_plan_from_stripe(
             return None
 
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
-    from app.routers.webhooks.stripe import _licensed_base_price_id, _resolve_plan_code
-
-    plan_code = _resolve_plan_code(settings, data, metadata)
-    if not plan_code:
-        return None
-    price_id = _licensed_base_price_id(data)
+    from app.routers.webhooks.stripe import (
+        _licensed_base_price_id,
+        _normalize_subscription_status,
+        _resolve_plan_code,
+    )
 
     now = datetime.now(timezone.utc).isoformat()
     period_end = (
@@ -272,10 +271,52 @@ def _reconcile_plan_from_stripe(
         if data.get("current_period_end")
         else (subscription_row or {}).get("current_period_end")
     )
+    sub_status = _normalize_subscription_status(data.get("status"))
+
+    # Deleted/canceled Stripe subs must write a complete terminal state — never leave
+    # a paid plan_code + active-looking local rows (or resurrect them from items).
+    if sub_status == "canceled":
+        org_billing_payload = {
+            "org_id": org_id,
+            "plan_code": DEFAULT_PLAN_CODE,
+            "stripe_subscription_id": None,
+            "stripe_customer_id": data.get("customer")
+            or (subscription_row or {}).get("stripe_customer_id"),
+            "stripe_price_id": None,
+            "billing_status": "cancelled",
+            "cancel_at_period_end": False,
+            "current_period_end": period_end,
+            "updated_at": now,
+        }
+        try:
+            client.table("subscriptions").update(
+                {
+                    "tier": DEFAULT_PLAN_CODE,
+                    "status": "canceled",
+                    "stripe_subscription_id": None,
+                    "current_period_end": period_end,
+                    "updated_at": now,
+                }
+            ).eq("org_id", org_id).execute()
+            client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "stripe reconcile cancel upsert failed org_id=%s error=%s",
+                org_id,
+                exc,
+            )
+            return None
+        return DEFAULT_PLAN_CODE
+
+    plan_code = _resolve_plan_code(settings, data, metadata)
+    if not plan_code:
+        return None
+    price_id = _licensed_base_price_id(data)
+
     billing_status = (
         "active"
         if data.get("status") in {None, "active", "trialing"}
-        else str(data.get("status") or "active")
+        else normalize_billing_status(str(data.get("status") or "active"))
     )
     org_billing_payload: dict = {
         "org_id": org_id,
@@ -292,7 +333,7 @@ def _reconcile_plan_from_stripe(
         client.table("subscriptions").update(
             {
                 "tier": plan_code,
-                "status": str(data.get("status") or (subscription_row or {}).get("status") or "active"),
+                "status": sub_status or (subscription_row or {}).get("status") or "active",
                 "current_period_end": period_end,
                 "updated_at": now,
             }
@@ -514,22 +555,41 @@ async def billing_overview(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    billing_row = get_org_billing(client, org_id) or {}
+    billing_status = normalize_billing_status(billing_row.get("billing_status"))
     sub_resp = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
-    if sub_resp.error:
-        raise HTTPException(status_code=500, detail=str(sub_resp.error))
+    sub_err = getattr(sub_resp, "error", None)
+    if sub_err:
+        raise HTTPException(status_code=500, detail=str(sub_err))
     subscription_row = (sub_resp.data or [None])[0]
     if subscription_row is None:
-        insert_resp = (
-            client.table("subscriptions")
-            .insert({"org_id": org_id, "tier": "free", "status": "trialing", "seat_count": 1, "lite_seats": 0})
-            .select("*")
-            .limit(1)
-            .execute()
-        )
-        subscription_row = (insert_resp.data or [None])[0]
+        # Never invent an active Trial for orgs already cancelled in org_billing —
+        # that paints "Node Plan / Trial" on Billing & Plan after real cancellation.
+        if billing_status == "cancelled":
+            seed = {
+                "org_id": org_id,
+                "tier": str(billing_row.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower()
+                or DEFAULT_PLAN_CODE,
+                "status": "canceled",
+                "seat_count": 1,
+                "lite_seats": 0,
+                "stripe_customer_id": billing_row.get("stripe_customer_id"),
+                "stripe_subscription_id": billing_row.get("stripe_subscription_id"),
+            }
+            insert_resp = client.table("subscriptions").insert(seed).execute()
+            subscription_row = (insert_resp.data or [seed])[0]
+        else:
+            seed = {
+                "org_id": org_id,
+                "tier": "free",
+                "status": "trialing",
+                "seat_count": 1,
+                "lite_seats": 0,
+            }
+            insert_resp = client.table("subscriptions").insert(seed).execute()
+            subscription_row = (insert_resp.data or [seed])[0]
 
     canonical_tier = _canonical_plan_code(client, org_id, subscription_row)
-    billing_row = get_org_billing(client, org_id) or {}
     sub_tier = str((subscription_row or {}).get("tier") or "").strip().lower()
     billing_tier = str(billing_row.get("plan_code") or "").strip().lower()
     # Always reconcile from Stripe when a subscription id exists. Prior logic only
@@ -542,6 +602,7 @@ async def billing_overview(
             refreshed = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
             subscription_row = (refreshed.data or [subscription_row])[0]
             billing_row = get_org_billing(client, org_id) or billing_row
+            billing_status = normalize_billing_status(billing_row.get("billing_status"))
     elif (subscription_row or {}).get("stripe_subscription_id") and (
         canonical_tier in {"node", "free"} or sub_tier != billing_tier or not billing_tier
     ):
@@ -563,7 +624,25 @@ async def billing_overview(
         except Exception:
             subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
 
+    # org_billing.billing_status is authoritative for cancel — do not let a missing
+    # or stale subscriptions.status invent Active/Trial on the Billing page.
+    if billing_status == "cancelled" and subscription_row:
+        if str(subscription_row.get("status") or "").strip().lower() != "canceled":
+            try:
+                client.table("subscriptions").update(
+                    {
+                        "status": "canceled",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                ).eq("org_id", org_id).execute()
+            except Exception:
+                pass
+            subscription_row = {**(subscription_row or {}), "status": "canceled"}
+
     subscription = _normalize_subscription(subscription_row, org_id, tier=canonical_tier)
+    if billing_status == "cancelled":
+        subscription["status"] = "canceled"
+        subscription["cancel_at_period_end"] = False
     usage = _usage_from_records(client, org_id, canonical_tier, settings=settings)
     plan = get_plan_for_org(client, org_id)
     usage["plan"] = plan
@@ -572,10 +651,12 @@ async def billing_overview(
     weekly_totals = _weekly_workflow_totals(client, org_id, period_start)
     invoices, payment_methods = _fetch_invoices_and_payment_methods(
         settings=settings,
-        customer_id=(subscription_row or {}).get("stripe_customer_id"),
+        customer_id=(subscription_row or {}).get("stripe_customer_id")
+        or billing_row.get("stripe_customer_id"),
     )
     return {
         "subscription": subscription,
+        "billing_status": billing_status,
         "usage": _map_usage_for_billing_status(usage, weekly_totals=weekly_totals),
         "invoices": invoices,
         "payment_methods": payment_methods,

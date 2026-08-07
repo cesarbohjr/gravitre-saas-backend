@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import create_client
 
 from app.billing.service import (
+    DEFAULT_PLAN_CODE,
     resolve_org_id_from_checkout_metadata,
     resolve_org_id_from_stripe_customer,
 )
@@ -186,6 +187,59 @@ def _write_event(client, org_id: str | None, event_type: str, payload: Any, stat
     ).execute()
 
 
+def _apply_subscription_deleted(
+    client,
+    *,
+    org_id: str | None,
+    data: dict[str, Any],
+) -> None:
+    """Write the complete terminal cancel state for a deleted Stripe subscription.
+
+    Partial updates (status-only) leave plan_code/tier/price looking like an active
+    paid plan on Billing & Plan — same class of accuracy bug as stale stripe_price_id.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    subscription_id = str(data.get("id") or "").strip() or None
+    customer_id = data.get("customer")
+    post_cancel_plan = DEFAULT_PLAN_CODE
+
+    subscription_payload: dict[str, Any] = {
+        "status": "canceled",
+        "tier": post_cancel_plan,
+        "stripe_subscription_id": None,
+        "updated_at": now,
+    }
+    if customer_id:
+        subscription_payload["stripe_customer_id"] = customer_id
+
+    org_billing_payload: dict[str, Any] = {
+        "billing_status": "cancelled",
+        "plan_code": post_cancel_plan,
+        "stripe_price_id": None,
+        "stripe_subscription_id": None,
+        "cancel_at_period_end": False,
+        "updated_at": now,
+    }
+    if customer_id:
+        org_billing_payload["stripe_customer_id"] = customer_id
+
+    if org_id:
+        subscription_payload["org_id"] = org_id
+        org_billing_payload["org_id"] = org_id
+        client.table("subscriptions").upsert(subscription_payload, on_conflict="org_id").execute()
+        client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+        return
+
+    # Fallback when metadata/customer lookup failed: match on Stripe subscription id.
+    if subscription_id:
+        client.table("subscriptions").update(subscription_payload).eq(
+            "stripe_subscription_id", subscription_id
+        ).execute()
+        client.table("org_billing").update(org_billing_payload).eq(
+            "stripe_subscription_id", subscription_id
+        ).execute()
+
+
 def _upsert_subscription_from_event(
     client,
     settings: Settings,
@@ -324,20 +378,7 @@ def _process_stripe_event(
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
     if event_type == "customer.subscription.deleted":
-        subscription_id = data.get("id")
-        if subscription_id:
-            client.table("subscriptions").update(
-                {
-                    "status": "canceled",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }
-            ).eq("stripe_subscription_id", subscription_id).execute()
-            client.table("org_billing").update(
-                {
-                    "billing_status": "cancelled",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }
-            ).eq("stripe_subscription_id", subscription_id).execute()
+        _apply_subscription_deleted(client, org_id=org_id, data=data)
 
     if event_type == "invoice.payment_succeeded":
         if org_id:

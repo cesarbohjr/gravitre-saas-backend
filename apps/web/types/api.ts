@@ -682,6 +682,8 @@ export interface PaymentMethod {
 
 export interface BillingOverview {
   subscription: Subscription
+  /** Authoritative org_billing status (cancelled spelling normalized by API). */
+  billing_status?: string
   usage: BillingUsageResponse
   invoices: Invoice[]
   payment_methods: PaymentMethod[]
