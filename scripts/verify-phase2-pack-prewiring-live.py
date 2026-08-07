@@ -21,7 +21,8 @@ REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "docs" / "delivery" / "phase2-pack-prewiring-live.json"
 API_BASE = os.environ.get("BACKEND_URL", "https://api.gravitre.app").rstrip("/")
 ORG = os.environ.get("SMOKE_ORG_ID", "f07e57c0-1501-4000-8000-c04e57a00001")
-SLUG = os.environ.get("PHASE2_PACK_SLUG", "hubspot-lead-qualification")
+# Default: no required connectors so smoke org can install without OAuth.
+SLUG = os.environ.get("PHASE2_PACK_SLUG", "competitive-intelligence-monitoring")
 
 
 def _load_env() -> dict[str, str]:

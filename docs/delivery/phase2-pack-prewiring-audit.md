@@ -24,5 +24,18 @@ install-ready gate.
 
 ## Accounting
 
-See `docs/delivery/published-pack-prewiring-audit.json` and live artifact
-`docs/delivery/phase2-pack-prewiring-live.json` after tip-matched verify.
+| Metric | Count |
+|--------|------:|
+| Workflow-bearing audited | 38 |
+| Fully pre-wired PASS | 38 |
+| Fixed in this pass (stub tasks) | 23 seed agent tasks expanded |
+| Honest manual setup (connect account / install var) | labeled via `manualSetupRequired` on PASS rows |
+| Remaining broken | 0 |
+
+Artifacts:
+- Seed audit: `docs/delivery/published-pack-prewiring-audit.json` (`fail=0`)
+- Live install: `docs/delivery/phase2-pack-prewiring-live.json`
+  - tip `e258a691…` @ `2026-08-07T07:36:08Z`
+  - slug `competitive-intelligence-monitoring`
+  - workflow `75d651be-fb4f-5031-be42-83035c4cd19e`
+  - builder `nodes=2` `edges=1` verdict `PASS`

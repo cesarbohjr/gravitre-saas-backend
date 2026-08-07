@@ -1,0 +1,74 @@
+{
+  "checked_at": "2026-08-07T07:36:08.274290+00:00",
+  "api_git_sha": "e258a691a591ed4d786291380ba3e8a655f31ae8",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "slug": "competitive-intelligence-monitoring",
+  "asset_id": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+  "install_http": 200,
+  "install": {
+    "installed": true,
+    "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+    "assetType": "workflow",
+    "slug": "competitive-intelligence-monitoring",
+    "title": "Competitive Intelligence Monitoring",
+    "install": {
+      "id": "77585895-e00c-4ab4-b80a-27afe71a2c0f",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "asset_id": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+      "asset_version": 1,
+      "installed_entity_type": "workflow",
+      "installed_entity_id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "install_variables": {},
+      "status": "active",
+      "installed_by": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "installed_at": "2026-08-07T07:36:10.224649+00:00",
+      "updated_at": "2026-08-07T07:36:10.224675+00:00",
+      "metadata": {
+        "agentIds": [
+          "d7575e83-62c8-5185-88e4-20d36cd49ba1",
+          "c4940fc5-357d-5b3e-9bbc-704febe7d86c"
+        ],
+        "checklist": [],
+        "workflowId": "75d651be-fb4f-5031-be42-83035c4cd19e",
+        "workflowIds": [
+          "75d651be-fb4f-5031-be42-83035c4cd19e"
+        ]
+      }
+    },
+    "entities": {
+      "entityType": "workflow",
+      "entityId": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "workflowId": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "agentIds": [
+        "d7575e83-62c8-5185-88e4-20d36cd49ba1",
+        "c4940fc5-357d-5b3e-9bbc-704febe7d86c"
+      ]
+    },
+    "deepLinks": [
+      {
+        "label": "Primary",
+        "entityType": "workflow",
+        "entityId": "75d651be-fb4f-5031-be42-83035c4cd19e",
+        "path": "/workflows/75d651be-fb4f-5031-be42-83035c4cd19e"
+      },
+      {
+        "label": "Agent",
+        "entityType": "agent",
+        "entityId": "d7575e83-62c8-5185-88e4-20d36cd49ba1",
+        "path": "/agents/d7575e83-62c8-5185-88e4-20d36cd49ba1"
+      },
+      {
+        "label": "Agent",
+        "entityType": "agent",
+        "entityId": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+        "path": "/agents/c4940fc5-357d-5b3e-9bbc-704febe7d86c"
+      }
+    ],
+    "connectorChecklist": []
+  },
+  "workflow_id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+  "builder_http": 200,
+  "node_count": 2,
+  "edge_count": 1,
+  "verdict": "PASS"
+}
