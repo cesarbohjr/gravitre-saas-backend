@@ -32,3 +32,12 @@ and `failed`. UI surfacing is Phase 6.
 
 `test_cmumulle72_six_identical_schema_valid_rows_flagged` — six schema-valid
 identical rows → `flagged_for_review`.
+
+## Live evidence (tip-matched)
+
+- Tip: `84f729dbe50802a87a5f36b67dc4dfc1e8f12da5` (`/health` `git_sha`)
+- Scenario: cmumulle72 six identical schema-valid enrichment rows
+- Detector: `flagged=true`, reason=`identical_value_dominance`, ratios 1.0/1.0
+- Persist: `workflow_runs.id=c19876ec-7c0f-4337-b2bd-13c620f4ee62` status=`flagged_for_review`
+- Artifact: `docs/delivery/phase4-batch-degeneracy-live.json`
+- DB: `workflow_runs_status_check` includes `flagged_for_review` (applied 2026-08-07)

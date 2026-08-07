@@ -22,6 +22,7 @@ REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "docs" / "delivery" / "phase4-batch-degeneracy-live.json"
 API_BASE = os.environ.get("BACKEND_URL", "https://api.gravitre.app").rstrip("/")
 ORG = os.environ.get("SMOKE_ORG_ID", "f07e57c0-1501-4000-8000-c04e57a00001")
+ACTOR = os.environ.get("OAUTH_SMOKE_USER_ID", "f7e32f06-49df-4e73-8962-f41c21850762")
 
 sys.path.insert(0, str(REPO / "backend"))
 
@@ -97,6 +98,7 @@ def main() -> int:
         "id": run_id,
         "org_id": ORG,
         "status": "flagged_for_review",
+        "triggered_by": ACTOR,
         "trigger_type": "api",
         "run_type": "execute",
         "run_hash": f"phase4-degen-{uuid.uuid4().hex[:12]}",
@@ -109,7 +111,6 @@ def main() -> int:
             "scenario": "cmumulle72_six_identical_schema_valid",
         },
         "created_at": now,
-        "updated_at": now,
         "completed_at": now,
     }
     try:

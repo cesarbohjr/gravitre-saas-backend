@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-08-07T09:23:52.909467+00:00",
+  "api_git_sha": "84f729dbe50802a87a5f36b67dc4dfc1e8f12da5",
+  "scenario": "cmumulle72_six_identical_schema_valid",
+  "assessed": {
+    "flagged": true,
+    "batch_class": "enrichment",
+    "record_count": 6,
+    "reason": "identical_value_dominance",
+    "field": "industry",
+    "identical_ratio": 1.0,
+    "placeholder_ratio": 1.0,
+    "threshold_identical": 0.8,
+    "threshold_placeholder": 0.5,
+    "modal_value": "cannot tell"
+  },
+  "status_after": "flagged_for_review",
+  "verdict": "PASS",
+  "run_id": "c19876ec-7c0f-4337-b2bd-13c620f4ee62",
+  "persisted_status": "flagged_for_review"
+}
