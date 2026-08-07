@@ -688,7 +688,12 @@ class ChatConnectorExecutionService:
                     # (catalog invoke_action is authoritative).
                     if resumed.invoke_action:
                         return self._sanitize_plan_message_bodies(resumed)
-            params = dict(pending.get("params") or task_state.get("clarified_params") or {})
+            raw_params = pending.get("params")
+            if isinstance(raw_params, dict):
+                params = dict(raw_params)
+            else:
+                clarified = task_state.get("clarified_params")
+                params = dict(clarified) if isinstance(clarified, dict) else {}
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
             if not spec:
@@ -866,13 +871,22 @@ class ChatConnectorExecutionService:
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
         inferred = payload.get("inferred_fields") or []
+        raw_args = payload.get("args")
+        if isinstance(raw_args, str):
+            try:
+                parsed = __import__("json").loads(raw_args)
+                raw_args = parsed if isinstance(parsed, dict) else {}
+            except Exception:  # noqa: BLE001
+                raw_args = {}
+        elif not isinstance(raw_args, dict):
+            raw_args = {}
         return ConnectorActionPlan(
             tool_name=str(payload.get("tool_name") or ""),
             invoke_action=str(payload.get("invoke_action") or ""),
             integration=str(payload.get("integration") or ""),
             kind=str(payload.get("kind") or "write"),
             label=str(payload.get("label") or ""),
-            args=dict(payload.get("args") or {}),
+            args=dict(raw_args),
             requires_approval=bool(payload.get("requires_approval")),
             approval_reason=payload.get("approval_reason"),
             destructive=bool(payload.get("destructive")),

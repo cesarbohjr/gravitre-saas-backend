@@ -756,7 +756,8 @@ def resume_awaiting_params(
         return None, get_ledger(task_state), {}
 
     pending = task_state.get("pending_task") or {}
-    params = dict(pending.get("params") or {})
+    raw_params = pending.get("params")
+    params = dict(raw_params) if isinstance(raw_params, dict) else {}
     invoke_action = str(params.get("invoke_action") or "")
     if not invoke_action:
         return None, get_ledger(task_state), {}
@@ -766,7 +767,16 @@ def resume_awaiting_params(
         turn_index=_next_turn_index(task_state),
         ledger=get_ledger(task_state),
     )
-    args = bind_args_from_ledger(invoke_action, dict(params.get("args") or {}), ledger)
+    raw_args = params.get("args")
+    if isinstance(raw_args, str):
+        try:
+            parsed = json.loads(raw_args)
+            raw_args = parsed if isinstance(parsed, dict) else {}
+        except Exception:  # noqa: BLE001
+            raw_args = {}
+    elif not isinstance(raw_args, dict):
+        raw_args = {}
+    args = bind_args_from_ledger(invoke_action, dict(raw_args), ledger)
 
     # Follow-up body: fill first missing free-text required field from the message.
     schema = get_workflow_schema(invoke_action)
