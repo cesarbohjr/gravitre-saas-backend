@@ -57,13 +57,28 @@ function mapAgentRow(
       gradient: String(personality.gradient ?? inferAgentPersonality(department).gradient),
       glow: String(personality.glow ?? inferAgentPersonality(department).glow),
     },
-    stats: {
-      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
-      successRate: Number(stats.successRate ?? stats.success_rate ?? 100),
-      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
-      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
-      knowledgeDocCount,
-    },
+    stats: (() => {
+      const tasksToday = Number(stats.tasksToday ?? stats.tasks_today ?? 0)
+      const rawRate = stats.successRate ?? stats.success_rate
+      const hasRate = rawRate !== undefined && rawRate !== null && rawRate !== ""
+      const parsed = hasRate ? Number(rawRate) : null
+      // Phase 5 honesty: never invent 100% with no evidence.
+      const successRate =
+        tasksToday <= 0 && !hasRate
+          ? null
+          : parsed !== null && Number.isFinite(parsed)
+            ? parsed
+            : null
+      return {
+        tasksToday,
+        successRate,
+        successRateSource:
+          successRate == null ? ("insufficient_data" as const) : ("stored_column" as const),
+        avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+        workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+        knowledgeDocCount,
+      }
+    })(),
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
@@ -83,8 +98,16 @@ function mapOperatorRow(
   const role = String(input.role ?? name)
   const department = inferAgentDepartment(name, String(input.description ?? ""), role)
   const personality = inferAgentPersonality(department)
-  const successRate = Number(input.success_rate ?? 100)
   const totalRuns = Number(input.total_runs ?? 0)
+  const hasRate = input.success_rate !== undefined && input.success_rate !== null && input.success_rate !== ""
+  const parsedRate = hasRate ? Number(input.success_rate) : null
+  // Phase 5 honesty: zero-run operators must not surface as 100% success.
+  const successRate =
+    totalRuns <= 0 && !hasRate
+      ? null
+      : parsedRate !== null && Number.isFinite(parsedRate)
+        ? parsedRate
+        : null
   const icon = isAgentIconId(String(input.icon ?? "")) ? String(input.icon) : null
   const avatarColor = isAgentAvatarColorId(String(input.avatar_color ?? input.avatarColor ?? ""))
     ? String(input.avatar_color ?? input.avatarColor)
@@ -109,7 +132,9 @@ function mapOperatorRow(
     personality,
     stats: {
       tasksToday: totalRuns,
-      successRate: Number.isFinite(successRate) ? successRate : 100,
+      successRate,
+      successRateSource:
+        successRate == null ? ("insufficient_data" as const) : ("stored_column" as const),
       avgResponseTime: "-",
       workflowsUsing: 0,
       knowledgeDocCount,

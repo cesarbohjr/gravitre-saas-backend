@@ -89,16 +89,18 @@ export default function IntelligenceReportsPage() {
   const insufficient = totalEvents < 5
   const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
+  // Phase 5 honesty: Hours/Revenue/Cost are not wired to BusinessOutcome — always not_configured.
+  // Never imply they are "insufficient" as if computation exists but sample is small.
   const roiCards = [
-    { label: "Hours saved", value: metricValue(null), note: insufficient ? "insufficient_data" : undefined },
-    { label: "Revenue influenced", value: metricValue(null), note: insufficient ? "insufficient_data" : undefined },
-    { label: "Cost savings", value: metricValue(null), note: insufficient ? "insufficient_data" : undefined },
-    { label: "Workflow efficiency", value: metricValue(byEvent.workflow_executed), note: insufficient ? "insufficient_data" : undefined },
-    { label: "Agent productivity", value: metricValue(byEvent.connector_action_executed), note: insufficient ? "insufficient_data" : undefined },
+    { label: "Hours saved", value: metricValue(null), note: "not_configured" },
+    { label: "Revenue influenced", value: metricValue(null), note: "not_configured" },
+    { label: "Cost savings", value: metricValue(null), note: "not_configured" },
+    { label: "Workflow efficiency", value: metricValue(byEvent.workflow_executed), note: insufficient ? "insufficient_data" : "live_outcomes" },
+    { label: "Agent productivity", value: metricValue(byEvent.connector_action_executed), note: insufficient ? "insufficient_data" : "live_outcomes" },
     {
       label: "Recommendation success rate",
       value: approvalRate != null ? formatPercent(approvalRate) : "—",
-      note: approvalRate == null ? "insufficient_data" : undefined,
+      note: approvalRate == null ? "insufficient_data" : "live_outcomes",
     },
   ]
 

@@ -162,12 +162,26 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
       glow: String(personality.glow ?? "shadow-blue-500/30"),
     },
-    stats: {
-      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
-      successRate: Number(stats.successRate ?? stats.success_rate ?? 0),
-      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
-      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
-    },
+    stats: (() => {
+      const tasksToday = Number(stats.tasksToday ?? stats.tasks_today ?? 0)
+      const raw = stats.successRate ?? stats.success_rate
+      const hasRate = raw !== undefined && raw !== null && raw !== ""
+      const parsed = hasRate ? Number(raw) : NaN
+      const successRate =
+        !hasRate || !Number.isFinite(parsed) ? null : parsed
+      return {
+        tasksToday,
+        successRate,
+        successRateSource:
+          (typeof stats.successRateSource === "string"
+            ? stats.successRateSource
+            : successRate == null
+              ? "insufficient_data"
+              : "stored_column") as Agent["stats"]["successRateSource"],
+        avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+        workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+      }
+    })(),
     capabilities: Array.isArray(input.capabilities)
       ? (input.capabilities as string[])
       : [],
@@ -227,7 +241,10 @@ const statusConfig = {
 }
 
 function shouldShowSuccessRate(agent: Agent): boolean {
-  return !(agent.status === "idle" && agent.stats.successRate === 0)
+  const rate = agent.stats.successRate
+  if (rate == null || Number.isNaN(Number(rate))) return false
+  if (agent.stats.tasksToday <= 0) return false
+  return !(agent.status === "idle" && rate === 0)
 }
 
 function successRateColorClass(rate: number): string {

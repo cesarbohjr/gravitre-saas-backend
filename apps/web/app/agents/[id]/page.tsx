@@ -87,7 +87,8 @@ function toProfileAgent(api: ApiAgent): Agent {
     })),
     skills: (api.capabilities || []).map((name) => ({
       name: name.replace(/_/g, " "),
-      level: Math.min(100, Math.max(40, api.stats?.successRate ?? 75)),
+      // Phase 5: do not invent a 40–75% skill floor from missing stats.
+      level: Math.min(100, Math.max(0, Math.round(api.stats?.successRate ?? 0))),
       color: "emerald",
     })),
     recentWork: api.lastAction

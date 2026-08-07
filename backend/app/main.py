@@ -51,6 +51,7 @@ from app.routers import (
     extension,
     feedback_mode,
     metrics,
+    reporting_honesty,
     memory_promotion,
     notifications,
     onboarding,
@@ -521,6 +522,7 @@ app.include_router(workflows.approvals_router)
 app.include_router(workflows.runs_router)
 app.include_router(audit.router)
 app.include_router(metrics.router)
+app.include_router(reporting_honesty.router)
 app.include_router(notifications.router)
 app.include_router(activity.router)
 app.include_router(onboarding.router)

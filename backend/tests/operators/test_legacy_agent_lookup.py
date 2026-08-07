@@ -34,6 +34,20 @@ def test_legacy_agent_as_operator_maps_marketing_seed_row():
     assert operator["success_rate"] == 96.0
 
 
+def test_legacy_agent_as_operator_does_not_invent_100_without_rate():
+    """Phase 5 honesty — missing stats.successRate must not become 100%."""
+    agent = {
+        "id": "new-id",
+        "name": "New Agent",
+        "status": "idle",
+        "stats": {"tasksToday": 0},
+        "capabilities": [],
+    }
+    operator = _legacy_agent_as_operator(agent)
+    assert operator["total_runs"] == 0
+    assert operator["success_rate"] == 0.0
+
+
 def test_get_legacy_agent_reads_agents_table():
     client = MagicMock()
     chain = MagicMock()
