@@ -39,4 +39,9 @@ Begin only after tip-matched functional PASS below.
 
 ## Live evidence (tip-matched)
 
-_Filled after deploy + verify script._
+- Tip: `229cae76d77c5708cf87685992d64bb5e764001f` (`/health` `git_sha`)
+- Projection: `reviewState=flagged_for_review`, `checkFailed=batch_degeneracy`, finding includes `6 of 6`
+- Phase 3 distinguishability: `checkFailed=follow_up_proof` (≠ batch_degeneracy)
+- Persist: `workflow_runs.id=57484c83-6969-431b-9d03-376e06e4f591` status=`flagged_for_review`
+- Artifact: `docs/delivery/phase6-flagged-for-review-ui-live.json`
+- Verdict: **PASS**
