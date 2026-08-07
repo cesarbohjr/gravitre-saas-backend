@@ -27,6 +27,7 @@ LIST_ADD_ACTIONS = frozenset(
     {
         "apollo.lists.add",
         "hubspot.lists.add_contact",
+        "marketo.lists.add_to_static_list",
     }
 )
 
@@ -344,5 +345,45 @@ def apply_connector_run_honesty(
         workflow_slug=workflow_slug,
     )
     if populate_reason:
-        return populate_status, populate_reason
+        coerced, reason = populate_status, populate_reason
+    else:
+        coerced = populate_status
+
+    # Phase 4 — batch degeneracy across step snapshots / output refs.
+    try:
+        from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
+
+        payloads: list[Any] = []
+        for ref in output_refs or []:
+            if isinstance(ref, dict):
+                payloads.append(ref)
+                nested = ref.get("structured") or ref.get("data") or ref.get("result")
+                if nested is not None:
+                    payloads.append(nested)
+        for step in step_rows or []:
+            if isinstance(step, dict):
+                snap = step.get("output_snapshot")
+                if isinstance(snap, dict):
+                    payloads.append(snap)
+        invoke = next(
+            (
+                str(ref.get("invoke_action") or "")
+                for ref in (output_refs or [])
+                if isinstance(ref, dict) and ref.get("invoke_action")
+            ),
+            None,
+        )
+        for payload in payloads:
+            flagged_status, deg = apply_batch_degeneracy_to_status(
+                status=coerced,
+                invoke_action=invoke,
+                result_data=payload,
+            )
+            if deg and deg.flagged:
+                return flagged_status, (
+                    f"batch_degeneracy:{deg.reason}:{deg.field or 'fields'}"
+                )
+    except Exception:  # noqa: BLE001
+        pass
+
     return coerced, reason

@@ -1,0 +1,835 @@
+{
+  "feature": "catalog_enrichment_nl_variance",
+  "checked_at": "2026-08-06T09:39:09.819233+00:00",
+  "api_git_sha": "45ae7d052d1f88236d2aacb675b84cece751d825",
+  "coverage": {
+    "catalog_action_count": 690,
+    "enriched_action_count": 690,
+    "catalog_map_size": 693,
+    "missing_count": 0,
+    "missing_sample": [],
+    "full_coverage": true,
+    "data_path_exists": true,
+    "enrichment_enabled": true
+  },
+  "targets": {
+    "correct_rate": 0.9,
+    "min_cases": 200,
+    "withhold_100pct": true,
+    "narrow_p50_ms_max": 200,
+    "embed_query_p50_ms_max": 150
+  },
+  "case_count": 770,
+  "vendors_in_cases": 77,
+  "retrieval": {
+    "warm_tool_docs": 721,
+    "tool_pool_size": 721,
+    "n": 770,
+    "vendors_covered": 77,
+    "correct_topk_rate": 0.9506,
+    "correct_top1_rate": 0.0,
+    "correct_topk_n": 732,
+    "correct_top1_n": 0,
+    "narrow_tools_ms_p50": 27,
+    "narrow_tools_ms_max": 1146,
+    "embed_query_ms_p50": 20,
+    "embed_query_ms_max": 1132,
+    "target_correct_rate": 0.9,
+    "meets_correct_target": true,
+    "latency_ok": true
+  },
+  "retrieval_misses_sample": [
+    {
+      "id": "google_ads.accounts.list#0",
+      "vendor": "google_ads",
+      "expected": "google_ads.accounts.list",
+      "message": "List all my accessible Google Ads customer accounts.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 112,
+      "embed_query_ms": 103,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.accounts.list#1",
+      "vendor": "google_ads",
+      "expected": "google_ads.accounts.list",
+      "message": "Can you show me the accounts I can access in Google Ads?",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 26,
+      "embed_query_ms": 20,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.accounts.list#2",
+      "vendor": "google_ads",
+      "expected": "google_ads.accounts.list",
+      "message": "I need to retrieve a list of my Google Ads accounts.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 54,
+      "embed_query_ms": 47,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.accounts.list#3",
+      "vendor": "google_ads",
+      "expected": "google_ads.accounts.list",
+      "message": "Fetch the customer accounts I have in Google Ads.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 25,
+      "embed_query_ms": 18,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.accounts.list#4",
+      "vendor": "google_ads",
+      "expected": "google_ads.accounts.list",
+      "message": "What accounts do I have access to in Google Ads?",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 25,
+      "embed_query_ms": 19,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.ad_groups.list#0",
+      "vendor": "google_ads",
+      "expected": "google_ads.ad_groups.list",
+      "message": "List all ad groups in my Google Ads account.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 25,
+      "embed_query_ms": 18,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.ad_groups.list#1",
+      "vendor": "google_ads",
+      "expected": "google_ads.ad_groups.list",
+      "message": "Can you show me the ad groups for my campaigns in Google Ads?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 23,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.ad_groups.list#2",
+      "vendor": "google_ads",
+      "expected": "google_ads.ad_groups.list",
+      "message": "I need to retrieve the list of ad groups from Google Ads.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 27,
+      "embed_query_ms": 21,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.ad_groups.list#3",
+      "vendor": "google_ads",
+      "expected": "google_ads.ad_groups.list",
+      "message": "Fetch the ad groups associated with my Google Ads campaigns.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 25,
+      "embed_query_ms": 19,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_ads.ad_groups.list#4",
+      "vendor": "google_ads",
+      "expected": "google_ads.ad_groups.list",
+      "message": "What ad groups do I have in Google Ads?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 22,
+      "embed_query_ms": 16,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_calendar.calendars.list#3",
+      "vendor": "google_calendar",
+      "expected": "google_calendar.calendars.list",
+      "message": "Please fetch my calendars from Google Calendar.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 25,
+      "embed_query_ms": 19,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_calendar.calendars.list#4",
+      "vendor": "google_calendar",
+      "expected": "google_calendar.calendars.list",
+      "message": "What calendars do I have set up in Google Calendar?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 22,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_docs.documents.get#0",
+      "vendor": "google_docs",
+      "expected": "google_docs.documents.get",
+      "message": "Show me a specific document from Google Docs.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 35,
+      "embed_query_ms": 29,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_docs.documents.get#1",
+      "vendor": "google_docs",
+      "expected": "google_docs.documents.get",
+      "message": "I want to retrieve a document using the Google Docs API.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 27,
+      "embed_query_ms": 21,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_docs.documents.get#2",
+      "vendor": "google_docs",
+      "expected": "google_docs.documents.get",
+      "message": "Can you get the document with ID XYZ from Google Docs?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 31,
+      "embed_query_ms": 23,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_docs.documents.get#3",
+      "vendor": "google_docs",
+      "expected": "google_docs.documents.get",
+      "message": "get Google Docs documents",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 24,
+      "embed_query_ms": 18,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_docs.documents.get#4",
+      "vendor": "google_docs",
+      "expected": "google_docs.documents.get",
+      "message": "fetch my Google Docs documents",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 33,
+      "embed_query_ms": 24,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_search_console.searchAnalytics.query#0",
+      "vendor": "google_search_console",
+      "expected": "google_search_console.searchAnalytics.query",
+      "message": "How can I query search analytics in Google Search Console?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 26,
+      "embed_query_ms": 20,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_search_console.searchAnalytics.query#1",
+      "vendor": "google_search_console",
+      "expected": "google_search_console.searchAnalytics.query",
+      "message": "I need to run a search analytics query using the Google Search Console API.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 31,
+      "embed_query_ms": 25,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_search_console.searchAnalytics.query#2",
+      "vendor": "google_search_console",
+      "expected": "google_search_console.searchAnalytics.query",
+      "message": "Can you help me query search analytics in Google Search Console?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 23,
+      "embed_query_ms": 17,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_search_console.searchAnalytics.query#3",
+      "vendor": "google_search_console",
+      "expected": "google_search_console.searchAnalytics.query",
+      "message": "Please execute this search analytics query for me in Google Search Console.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 27,
+      "embed_query_ms": 21,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "google_search_console.searchAnalytics.query#4",
+      "vendor": "google_search_console",
+      "expected": "google_search_console.searchAnalytics.query",
+      "message": "What\u2019s the process to query search analytics via Google Search Console?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 32,
+      "embed_query_ms": 26,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "microsoft365.calendar.events.create#3",
+      "vendor": "microsoft365",
+      "expected": "microsoft365.calendar.events.create",
+      "message": "Please add a calendar event for next week.",
+      "kind": "write",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 28,
+      "embed_query_ms": 22,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.batch.send#0",
+      "vendor": "outlook",
+      "expected": "outlook.batch.send",
+      "message": "Batch send multiple messages using Outlook.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 20,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.batch.send#1",
+      "vendor": "outlook",
+      "expected": "outlook.batch.send",
+      "message": "Can you help me send a group of emails via Outlook?",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 22,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.batch.send#2",
+      "vendor": "outlook",
+      "expected": "outlook.batch.send",
+      "message": "I want to perform batch sending of messages in Outlook.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 27,
+      "embed_query_ms": 20,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.batch.send#3",
+      "vendor": "outlook",
+      "expected": "outlook.batch.send",
+      "message": "Please send several emails at once using Outlook.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 32,
+      "embed_query_ms": 22,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.batch.send#4",
+      "vendor": "outlook",
+      "expected": "outlook.batch.send",
+      "message": "Batch process my email sends in Outlook.",
+      "kind": "advanced",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 33,
+      "embed_query_ms": 21,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.messages.list#0",
+      "vendor": "outlook",
+      "expected": "outlook.messages.list",
+      "message": "List all messages in my Outlook inbox.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 35,
+      "embed_query_ms": 25,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.messages.list#1",
+      "vendor": "outlook",
+      "expected": "outlook.messages.list",
+      "message": "Can you show me the emails I have in Outlook?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 31,
+      "embed_query_ms": 24,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.messages.list#2",
+      "vendor": "outlook",
+      "expected": "outlook.messages.list",
+      "message": "I want to see my messages in Outlook.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 26,
+      "embed_query_ms": 18,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.messages.list#3",
+      "vendor": "outlook",
+      "expected": "outlook.messages.list",
+      "message": "Please fetch the list of messages from my Outlook account.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 22,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "outlook.messages.list#4",
+      "vendor": "outlook",
+      "expected": "outlook.messages.list",
+      "message": "What emails do I have in my Outlook inbox?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 26,
+      "embed_query_ms": 19,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "webhook.connectors.get#0",
+      "vendor": "webhook",
+      "expected": "webhook.connectors.get",
+      "message": "Get the webhook connector details.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 29,
+      "embed_query_ms": 24,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "webhook.connectors.get#1",
+      "vendor": "webhook",
+      "expected": "webhook.connectors.get",
+      "message": "Can you fetch the webhook connector for me?",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 38,
+      "embed_query_ms": 33,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "webhook.connectors.get#2",
+      "vendor": "webhook",
+      "expected": "webhook.connectors.get",
+      "message": "I need to retrieve information about a specific webhook connector.",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 171,
+      "embed_query_ms": 160,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "webhook.connectors.get#3",
+      "vendor": "webhook",
+      "expected": "webhook.connectors.get",
+      "message": "get Webhook connectors",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 115,
+      "embed_query_ms": 86,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    },
+    {
+      "id": "webhook.connectors.get#4",
+      "vendor": "webhook",
+      "expected": "webhook.connectors.get",
+      "message": "fetch my Webhook connectors",
+      "kind": "read",
+      "hit_topk": false,
+      "rank": null,
+      "top1": false,
+      "narrow_tools_ms": 48,
+      "embed_query_ms": 40,
+      "retrieval_method": "embedding_narrow_tools_for_turn",
+      "visible_sample": [
+        "web.search",
+        "browser_agent.read",
+        "browser_agent.interact",
+        "assistant.agent_status",
+        "assistant.connector_status"
+      ]
+    }
+  ],
+  "withhold": {
+    "categories": {
+      "ambiguous_enrich": true,
+      "no_matching_action_connected_vendor": true,
+      "advise_only_mentions_vendor": true
+    },
+    "errors": {},
+    "pass_n": 3,
+    "pass_rate": 1.0,
+    "meets_100pct": true
+  },
+  "ab_vs_pilot_style": {
+    "sample_n": 80,
+    "correct_enrichment_off": 79,
+    "correct_enrichment_on": 80,
+    "delta_correct": 1,
+    "rate_off": 0.9875,
+    "rate_on": 1.0
+  },
+  "pilot_reference": {
+    "sample_actions": 18,
+    "delta_correct": 0,
+    "note": "Prior G.5 Phase 4.2 mapper probe; this report is embedding retrieval at catalog scale"
+  },
+  "recommendation": "adopt_enrichment_default_on",
+  "verdict": {
+    "correct_target": true,
+    "withhold_ok": true,
+    "latency_ok": true,
+    "full_coverage": true,
+    "overall_pass": true
+  }
+}

@@ -18,6 +18,7 @@ from app.services.zendesk_knowledge_sync_service import (
     zendesk_knowledge_sync_enabled,
 )
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,7 @@ def _update_connector_after_sync(
     )
     if not row.data:
         return
-    config = dict(row.data[0].get("config") or {})
+    config = safe_normalize_stored_dict(row.data[0], key="config")
     spec = SOURCE_REGISTRY.get(source_type) or {}
     last_key = spec.get("last_synced_key")
     if last_key:

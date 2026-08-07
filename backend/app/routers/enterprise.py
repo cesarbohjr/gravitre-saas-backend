@@ -54,6 +54,7 @@ from app.services.hipaa_service import accept_baa, get_hipaa_status, set_hipaa_e
 from app.services.transparency_service import build_transparency_export_bundle, list_decision_logs
 from app.workers.queue import is_queue_available
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 router = APIRouter(prefix="/api/enterprise", tags=["enterprise"])
 
@@ -181,7 +182,7 @@ async def update_data_region(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     org_settings = _org_settings(client, org_id)
     region = normalize_region(body.region)
-    enterprise = dict(org_settings.get("enterprise") or {})
+    enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
     enterprise["dataResidency"] = {"region": region}
     org_settings["enterprise"] = enterprise
     org_settings["data_region"] = region
@@ -751,7 +752,7 @@ async def update_siem_config(
     _user, org_id = admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     org_settings = _org_settings(client, org_id)
-    enterprise = dict(org_settings.get("enterprise") or {})
+    enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
     existing_siem = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
     secret_plain = (body.secret or "").strip()
     if not secret_plain:

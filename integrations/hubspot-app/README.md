@@ -28,7 +28,7 @@ Defaults in `app-hsmeta.json` / `webhooks-hsmeta.json` use production Railway + 
 Override for upload:
 
 ```powershell
-$env:API_PUBLIC_URL = "https://api.gravitre.com"
+$env:API_PUBLIC_URL = "https://api.gravitre.app"
 .\scripts\setup-hubspot-app.ps1 -SkipAuth
 ```
 

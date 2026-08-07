@@ -3,12 +3,10 @@
 /**
  * Canonical BusinessOutcome renderer.
  * Zero business logic — displays exactly what the DTO provides.
- * Shared by chat, timeline, and export preview surfaces.
+ * Shared by chat, timeline, Activity, and export preview surfaces.
  *
- * Presentation pass (preview-fidelity handoff, Surface 1): this file changed
- * ONLY visually. No DTO field, no copy substance, and no link target was
- * altered. The three status treatments below are all derived from fields the
- * DTO already carries (`status` + `sections.verification.verified`).
+ * Four honest presentation states derived from DTO fields only:
+ * `status` + `sections.verification` (verified / reviewState / finding).
  */
 
 import { createContext, useContext, useState, type ReactNode } from "react"
@@ -19,6 +17,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDashed,
+  Flag,
   ShieldAlert,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -43,7 +42,15 @@ export type BusinessOutcomeDto = {
       entityId?: string | null
       integration?: string | null
     }
-    verification?: { verified?: boolean; method?: string; detail?: string | null }
+    verification?: {
+      verified?: boolean
+      method?: string
+      detail?: string | null
+      reviewState?: string | null
+      checkFailed?: string | null
+      finding?: string | null
+      nextActions?: string[] | null
+    }
     explanation?: string
     timeline?: Array<{
       index?: number
@@ -86,14 +93,13 @@ type Props = {
 }
 
 /**
- * Three honest presentation states, all derived from existing DTO fields:
+ * Four honest presentation states, all derived from DTO fields:
  * - failed:   the action did not happen (destructive).
+ * - flagged:  Phase 4 degenerate batch (or review_state) — calm concern, not failure.
  * - verified: it happened AND was independently verified (success).
- * - unproven: it happened but carries no verification proof — shown calm and
- *             neutral rather than a false-alarm amber, matching the product's
- *             honesty language without overstating or panicking.
+ * - unproven: it happened but carries no verification proof — calm/neutral.
  */
-type OutcomeState = "verified" | "unproven" | "failed"
+type OutcomeState = "verified" | "unproven" | "failed" | "flagged"
 
 const STATE_STYLES: Record<
   OutcomeState,
@@ -112,7 +118,6 @@ const STATE_STYLES: Record<
     accent: "border-l-success",
     surface: "border-success/25",
     pillClass: "bg-success/10 text-success ring-1 ring-inset ring-success/20",
-    // Existing card string, reused verbatim.
     pillLabel: "Verified",
   },
   unproven: {
@@ -121,8 +126,15 @@ const STATE_STYLES: Record<
     accent: "border-l-border",
     surface: "border-border/80",
     pillClass: "bg-muted text-muted-foreground ring-1 ring-inset ring-border",
-    // Existing card string, reused verbatim.
     pillLabel: "Not verified",
+  },
+  flagged: {
+    icon: Flag,
+    iconClass: "text-warning",
+    accent: "border-l-warning",
+    surface: "border-warning/30 bg-warning/[0.04]",
+    pillClass: "bg-warning/15 text-warning ring-1 ring-inset ring-warning/25",
+    pillLabel: "Flagged for review",
   },
   failed: {
     icon: ShieldAlert,
@@ -132,6 +144,15 @@ const STATE_STYLES: Record<
     pillClass: "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20",
     pillLabel: "Failed",
   },
+}
+
+function resolveOutcomeState(outcome: BusinessOutcomeDto): OutcomeState {
+  const status = (outcome.status || "").toLowerCase()
+  const reviewState = (outcome.sections?.verification?.reviewState || "").toLowerCase()
+  if (status === "failed") return "failed"
+  if (status === "flagged_for_review" || reviewState === "flagged_for_review") return "flagged"
+  if (outcome.sections?.verification?.verified === true) return "verified"
+  return "unproven"
 }
 
 function isExternal(href: string): boolean {
@@ -202,11 +223,10 @@ function Section({
 
 export function BusinessOutcomeView({ outcome, className, density = "chat" }: Props) {
   const sections = outcome.sections || {}
-  const failed = (outcome.status || "").toLowerCase() === "failed"
-  const verified = !failed && sections.verification?.verified === true
-  const state: OutcomeState = failed ? "failed" : verified ? "verified" : "unproven"
+  const state = resolveOutcomeState(outcome)
   const style = STATE_STYLES[state]
   const Icon = style.icon
+  const verification = sections.verification
   // Only the inspector surface collapses; chat and export stay fully expanded.
   const collapsibleSections = density === "timeline"
 
@@ -219,16 +239,18 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
         // and washed out against them).
         "rounded-lg border px-3.5 py-3 text-sm shadow-sm",
         style.surface,
-        density === "export" ? "bg-background border-l-0" : "bg-card",
+        density === "export" ? "bg-background border-l-0" : state === "flagged" ? "" : "bg-card",
         density === "chat" && "border-l-2",
         density === "chat" && style.accent,
         density === "timeline" && "rounded-md",
+        density === "timeline" && state === "flagged" && "border-l-2 border-l-warning",
         className,
       )}
       data-business-outcome-id={outcome.id}
       data-projection={outcome.projection || "business_outcome"}
       data-lifecycle={outcome.lifecycleState}
       data-outcome-state={state}
+      data-check-failed={verification?.checkFailed || undefined}
     >
       <div className="flex items-start gap-2">
         <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", style.iconClass)} />
@@ -304,14 +326,29 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
             </Section>
           ) : null}
 
-          {sections.verification ? (
-            <Section title="Verification">
+          {verification ? (
+            <Section title="Verification" defaultOpen={state === "flagged"}>
               <p>
-                {sections.verification.verified ? "Verified" : "Not verified"}
-                {sections.verification.method ? ` · ${sections.verification.method}` : ""}
+                {state === "flagged"
+                  ? "Flagged for review"
+                  : verification.verified
+                    ? "Verified"
+                    : "Not verified"}
+                {verification.method ? ` · ${verification.method}` : ""}
+                {verification.checkFailed ? ` · check: ${verification.checkFailed}` : ""}
               </p>
-              {sections.verification.detail ? (
-                <p className="mt-0.5 text-muted-foreground">{sections.verification.detail}</p>
+              {verification.finding ? (
+                <p className="mt-1 font-medium text-foreground/90">{verification.finding}</p>
+              ) : null}
+              {verification.detail ? (
+                <p className="mt-0.5 text-muted-foreground">{verification.detail}</p>
+              ) : null}
+              {verification.nextActions?.length ? (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
+                  {verification.nextActions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ul>
               ) : null}
             </Section>
           ) : null}

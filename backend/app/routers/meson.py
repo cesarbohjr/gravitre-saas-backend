@@ -135,16 +135,26 @@ async def deploy_build_route(
         if isinstance(cfg.get("sample_outputs"), list):
             plan.generated_config.sample_outputs = [str(x) for x in cfg["sample_outputs"]]
 
-    return await meson.deploy_build(
-        client=client,
-        org_id=org_id,
-        user_id=str(current_user.get("user_id") or ""),
-        environment_name=environment_name,
-        plan=plan,
-        create_workflow=body.create_workflow,
-        icon=body.icon,
-        avatar_color=body.avatar_color,
-    )
+    try:
+        return await meson.deploy_build(
+            client=client,
+            org_id=org_id,
+            user_id=str(current_user.get("user_id") or ""),
+            environment_name=environment_name,
+            plan=plan,
+            create_workflow=body.create_workflow,
+            icon=body.icon,
+            avatar_color=body.avatar_color,
+        )
+    except Exception as exc:  # noqa: BLE001
+        from app.workflows.schema import WorkflowValidationError
+
+        if isinstance(exc, WorkflowValidationError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": exc.message, "errors": list(exc.errors or [])},
+            ) from exc
+        raise
 
 
 @router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)

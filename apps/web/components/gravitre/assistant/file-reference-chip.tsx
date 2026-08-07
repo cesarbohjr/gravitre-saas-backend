@@ -1,5 +1,6 @@
 "use client"
 
+import { createElement } from "react"
 import { Download, FileSpreadsheet, FileText, FileType2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -72,7 +73,6 @@ export function FileReferenceChip({
     ("download_url" in file && (file.download_url || file.downloadUrl)) ||
     ("result_url" in file && (file.result_url || file.resultUrl)) ||
     null
-  const Icon = fileIcon(role, mime || undefined)
   const meta = [role?.toUpperCase(), formatBytes(typeof bytes === "number" ? bytes : undefined)]
     .filter(Boolean)
     .join(" · ")
@@ -86,7 +86,9 @@ export function FileReferenceChip({
       data-testid="file-reference-chip"
       data-file-role={role || undefined}
     >
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      {createElement(fileIcon(role, mime || undefined), {
+        className: "h-4 w-4 shrink-0 text-muted-foreground",
+      })}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-foreground">{filename}</p>
         {meta ? <p className="truncate text-[10px] text-muted-foreground">{meta}</p> : null}

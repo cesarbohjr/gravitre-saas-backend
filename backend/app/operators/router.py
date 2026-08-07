@@ -182,6 +182,18 @@ def _get_legacy_agent(client, org_id: str, agent_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+def _legacy_stats_success_rate(stats: dict) -> float:
+    raw = stats.get("successRate")
+    if raw is None:
+        raw = stats.get("success_rate")
+    if raw is None or raw == "":
+        return 0.0
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _legacy_agent_as_operator(agent: dict) -> dict:
     stats = agent.get("stats") if isinstance(agent.get("stats"), dict) else {}
     return {
@@ -193,7 +205,8 @@ def _legacy_agent_as_operator(agent: dict) -> dict:
         "capabilities": list(agent.get("capabilities") or []),
         "config": agent.get("config") or {},
         "total_runs": int(stats.get("tasksToday") or stats.get("tasks_today") or 0),
-        "success_rate": float(stats.get("successRate") or stats.get("success_rate") or 100),
+        # Phase 5: never invent 100% when stats omit a rate (honesty).
+        "success_rate": _legacy_stats_success_rate(stats),
         "created_at": agent.get("created_at"),
         "updated_at": agent.get("updated_at"),
         "allowed_environments": [],

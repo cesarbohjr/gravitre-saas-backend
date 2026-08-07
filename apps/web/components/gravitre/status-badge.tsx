@@ -70,6 +70,7 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   completed: "success",
   active: "success",
   partial_success: "warning",
+  flagged_for_review: "warning",
   failed: "error",
   error: "error",
   cancelled: "muted",

@@ -146,11 +146,15 @@ class TaskClassifier:
                 pipeline_action = TASK_TYPE_PIPELINE_MAP["workflow_execution"]
                 base.update(pipeline_action)
                 intent = "workflow_execution"
-        pipeline_flags = dict(
-            TASK_TYPE_PIPELINE_MAP.get(intent, TASK_TYPE_PIPELINE_MAP["general"])
+        pipeline_source = (
+            TASK_TYPE_PIPELINE_MAP[intent]
+            if intent in TASK_TYPE_PIPELINE_MAP
+            else TASK_TYPE_PIPELINE_MAP["general"]
         )
+        pipeline_flags = dict(pipeline_source)
         if understanding and understanding.get("conversational_create"):
-            pipeline_flags = dict(TASK_TYPE_PIPELINE_MAP["workflow_planning"])
+            workflow_planning_flags = TASK_TYPE_PIPELINE_MAP["workflow_planning"]
+            pipeline_flags = dict(workflow_planning_flags)
             intent = "workflow_planning"
         elif REVENUE_PATTERN.search(request):
             pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["data_analysis"])

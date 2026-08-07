@@ -16,6 +16,7 @@ from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
 from app.services.conversational_execution_service import ExecutionResult
 from app.services.recommendation_heuristics_service import assert_no_execute_surface
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _SWARM_UUID = re.compile(
     r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b",
@@ -688,7 +689,7 @@ def enrich_execution_turn(
     )
 
     serialized = serialize_execution_result(execution)
-    structured = dict(serialized.get("structured") or {})
+    structured = safe_normalize_stored_dict(serialized, key='structured')
     structured["whatThisMeans"] = means
     structured["completionCard"] = {
         "whatHappened": execution.body,

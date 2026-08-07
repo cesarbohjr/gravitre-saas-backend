@@ -419,16 +419,16 @@ function GlowTooltip({ active, payload, label }: { active?: boolean; payload?: u
   )
 }
 
+// Backend /api/metrics only accepts 7d|30d|90d — shorter ranges 400'd and looked "broken".
 const timeRangeOptions = [
-  { value: "1h", label: "Last hour" },
-  { value: "24h", label: "Last 24h" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
+  { value: "90d", label: "Last 90 days" },
 ]
 
 export default function MetricsPage() {
   const { user } = useAuth()
-  const [timeRange, setTimeRange] = useState("24h")
+  const [timeRange, setTimeRange] = useState("7d")
   const [isExporting, setIsExporting] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
 
@@ -529,7 +529,7 @@ export default function MetricsPage() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-2">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Last</span> {timeRangeOptions.find(o => o.value === timeRange)?.label.replace("Last ", "") || "24h"}
+                    <span className="hidden sm:inline">Last</span> {timeRangeOptions.find(o => o.value === timeRange)?.label.replace("Last ", "") || "7 days"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

@@ -13,6 +13,7 @@ from app.core.logging import get_logger
 from app.data.connection_service import ConnectionTestError, config_from_encrypted_blob, discover_schema, run_connection_test
 from app.data.source_registry import DATA_SOURCE_TYPES, get_source_type
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -134,7 +135,7 @@ async def sync_source_row(
 ) -> dict[str, Any]:
     started = time.perf_counter()
     source_id = str(row["id"])
-    metadata = dict(row.get("metadata") or {}) if isinstance(row.get("metadata"), dict) else {}
+    metadata = safe_normalize_stored_dict(row, key='metadata') if isinstance(row.get("metadata"), dict) else {}
     type_id, config = load_source_config(settings, row)
     tables_count = int(metadata.get("tablesCount") or row.get("tables_count") or 0)
     record_count = int(metadata.get("recordCount") or 0)

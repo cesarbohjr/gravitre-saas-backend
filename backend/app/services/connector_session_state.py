@@ -8,6 +8,7 @@ from typing import Any
 
 from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
+from app.core.safe_dict import safe_normalize_stored_dict
 
 STEP_REF = re.compile(r"\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}")
 
@@ -89,9 +90,7 @@ class ConnectorSessionState:
                 if isinstance(value, dict)
             },
             pending_approval=(
-                dict(payload["pendingApproval"])
-                if isinstance(payload.get("pendingApproval"), dict)
-                else None
+                safe_normalize_stored_dict(payload, key="pendingApproval") or None
             ),
             session_summary=str(payload.get("sessionSummary") or ""),
             resolved_entities={
@@ -320,7 +319,7 @@ def _legacy_step_outputs(task_state: dict[str, Any] | None) -> dict[str, dict[st
             "success": bool(row.get("success")),
             "summary": row.get("summary") or "",
             "url": row.get("url"),
-            "structured": dict(row.get("structured") or {}),
+            "structured": safe_normalize_stored_dict(row, key="structured"),
         }
     return outputs
 

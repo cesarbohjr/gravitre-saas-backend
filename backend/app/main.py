@@ -51,6 +51,7 @@ from app.routers import (
     extension,
     feedback_mode,
     metrics,
+    reporting_honesty,
     memory_promotion,
     notifications,
     onboarding,
@@ -74,6 +75,7 @@ from app.routers import (
     search,
     sso,
     training,
+    voice,
     workflows,
     sources,
     environments,
@@ -520,6 +522,7 @@ app.include_router(workflows.approvals_router)
 app.include_router(workflows.runs_router)
 app.include_router(audit.router)
 app.include_router(metrics.router)
+app.include_router(reporting_honesty.router)
 app.include_router(notifications.router)
 app.include_router(activity.router)
 app.include_router(onboarding.router)
@@ -567,6 +570,7 @@ app.include_router(intelligence_packs_plumbing.router)
 app.include_router(intelligence_visibility.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
+app.include_router(voice.router)
 app.include_router(conversations.router)
 app.include_router(meson.router)
 app.include_router(agent_interrupts.router)

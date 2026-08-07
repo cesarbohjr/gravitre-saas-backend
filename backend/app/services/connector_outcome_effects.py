@@ -256,6 +256,9 @@ def coerce_terminal_status_for_effect(
     """Downgrade false COMPLETED when a mutating write lacks a proven create."""
     normalized = str(status or "").strip().lower()
     effect_norm = str(effect or "").strip().lower()
+    # Phase 4 — never upgrade/downgrade away from explicit review flags.
+    if normalized == "flagged_for_review":
+        return status
     if (
         normalized == "completed"
         and is_mutating_action(invoke_action)

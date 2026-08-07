@@ -10,6 +10,7 @@ from app.connectors.connector_availability_service import (
     evaluate_connector_availability,
     find_integration_availability,
     format_connector_blocking_message,
+    list_connector_availability,
     list_executable_integrations,
 )
 
@@ -170,6 +171,36 @@ def test_list_executable_integrations_uses_live_availability(mock_list):
     connected = list_executable_integrations(MagicMock(), "org-1", _settings(), force_live=True)
     assert connected == ["hubspot"]
     mock_list.assert_called_once()
+
+
+@patch(
+    "app.connectors.connector_availability_service.evaluate_connector_availability",
+    side_effect=[
+        ValueError("apollo token exchange failed: revoked"),
+        {
+            "vendor": "hubspot",
+            "execution_available": True,
+            "display_status": "connected",
+            "source_of_truth": "connector_availability_service",
+        },
+    ],
+)
+@patch(
+    "app.connectors.connector_availability_service.list_connectors",
+    return_value=[
+        {"id": "c-apollo", "vendor": "apollo", "status": "healthy", "environment": "production"},
+        {"id": "c-hubspot", "vendor": "hubspot", "status": "healthy", "environment": "production"},
+    ],
+)
+def test_list_connector_availability_soft_fails_one_bad_connector(_list, _eval):
+    """One revoked OAuth connector must not abort availability for the org."""
+    rows = list_connector_availability(MagicMock(), "org-1", _settings(), force_live=True)
+    assert len(rows) == 2
+    apollo = next(r for r in rows if r.get("vendor") == "apollo")
+    hubspot = next(r for r in rows if r.get("vendor") == "hubspot")
+    assert apollo["execution_available"] is False
+    assert apollo["auth_status"] == "auth_expired"
+    assert hubspot["execution_available"] is True
 
 
 @patch("app.connectors.connector_availability_service.list_connector_availability")

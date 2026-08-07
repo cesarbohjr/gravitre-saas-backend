@@ -13,6 +13,7 @@ from app.services.answer_explanation import generate_suggestion_explanation
 from app.services.outcome_attribution_service import MIN_SAMPLE_SIZE, get_outcome_attribution_service
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -740,7 +741,7 @@ class OptimizationSuggestionService:
                 or []
             )
             if rows:
-                merged = dict(rows[0].get("evidence") or {})
+                merged = safe_normalize_stored_dict(rows[0], key="evidence")
                 merged.update(evidence_patch)
                 update["evidence"] = merged
         updated = (
@@ -808,14 +809,14 @@ class OptimizationSuggestionService:
         if not nodes:
             raise ValueError(f"No workflow node found matching step name '{step_name}'")
         node = nodes[0]
-        config = dict(node.get("config") or {})
+        config = safe_normalize_stored_dict(node, key="config")
         before_config = dict(config)
         after_config = dict(config)
         after_config["cache_ttl_seconds"] = DEFAULT_CACHE_TTL_SECONDS
         preview_token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(preview_token.encode("utf-8")).hexdigest()
         expires_at = (self._now() + timedelta(seconds=PREVIEW_TOKEN_TTL_SECONDS)).isoformat()
-        evidence = dict(suggestion.get("evidence") or {})
+        evidence = safe_normalize_stored_dict(suggestion, key="evidence")
         evidence["apply_preview"] = {
             "token_hash": token_hash,
             "expires_at": expires_at,
@@ -856,7 +857,7 @@ class OptimizationSuggestionService:
             )
         if suggestion.get("status") != "pending_review":
             raise ValueError("Suggestion is not pending review")
-        evidence = dict(suggestion.get("evidence") or {})
+        evidence = safe_normalize_stored_dict(suggestion, key="evidence")
         preview = evidence.get("apply_preview") if isinstance(evidence.get("apply_preview"), dict) else {}
         if not preview:
             raise ValueError("Apply preview must be generated before applying")
@@ -870,8 +871,8 @@ class OptimizationSuggestionService:
         if token_hash != str(preview.get("token_hash") or ""):
             raise ValueError("Invalid apply preview token")
         node_id = str(preview.get("node_id") or "")
-        before_config = dict(preview.get("before_config") or {})
-        after_config = dict(preview.get("after_config") or {})
+        before_config = safe_normalize_stored_dict(preview, key="before_config")
+        after_config = safe_normalize_stored_dict(preview, key="after_config")
         if set(after_config.keys()) - set(before_config.keys()) - {"cache_ttl_seconds"}:
             raise ValueError("Previewed change touches more than cache_ttl_seconds")
         if after_config.get("cache_ttl_seconds") != DEFAULT_CACHE_TTL_SECONDS:

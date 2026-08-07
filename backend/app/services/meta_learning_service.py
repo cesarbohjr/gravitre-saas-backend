@@ -11,6 +11,7 @@ from app.services.learning_confidence_service import get_learning_confidence_ser
 from app.services.learning_strategy_keys import parse_base_segment_key_from_segment
 from app.services.strategy_performance_ledger import get_strategy_performance_ledger
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -98,9 +99,14 @@ class MetaLearningService:
         )
 
         state = await self._load_segment_state(org_id, segment_key)
-        meta_state = dict(state.get("meta_learning_state") or {})
-        family_bucket = dict(meta_state.get(family) or {})
-        entry = dict(family_bucket.get(key) or {"wins": 0, "losses": 0, "neutral": 0, "samples": 0})
+        meta_state = safe_normalize_stored_dict(state, key="meta_learning_state")
+        family_bucket = safe_normalize_stored_dict(meta_state, key=family)
+        entry = safe_normalize_stored_dict(family_bucket, key=key) or {
+            "wins": 0,
+            "losses": 0,
+            "neutral": 0,
+            "samples": 0,
+        }
         entry["samples"] = int(entry.get("samples") or 0) + 1
         if outcome == "win":
             entry["wins"] = int(entry.get("wins") or 0) + 1

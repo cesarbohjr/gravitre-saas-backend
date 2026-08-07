@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _CONNECTOR_ID: dict[str, Any] = {
     "type": "string",
@@ -325,7 +326,7 @@ def normalize_schema(schema: dict[str, Any]) -> dict[str, Any]:
         schema = dict(schema)
         schema["properties"] = {}
     if "connector_id" not in schema.get("properties", {}):
-        merged = dict(schema.get("properties") or {})
+        merged = safe_normalize_stored_dict(schema, key='properties')
         merged["connector_id"] = _CONNECTOR_ID
         schema = dict(schema)
         schema["properties"] = merged

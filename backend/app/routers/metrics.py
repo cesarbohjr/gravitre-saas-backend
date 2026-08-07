@@ -79,6 +79,27 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
         end_at,
         records_processed=records_processed,
     )
+    from app.services.reporting_honesty import assess_metric_series
+
+    trend_rates: list[float] = []
+    trends = dashboard.get("trends") if isinstance(dashboard.get("trends"), dict) else {}
+    for key in ("successRate", "success_rate", "dailySuccessRates"):
+        series = trends.get(key)
+        if isinstance(series, list):
+            for item in series:
+                if isinstance(item, (int, float)):
+                    trend_rates.append(float(item))
+                elif isinstance(item, dict) and item.get("value") is not None:
+                    try:
+                        trend_rates.append(float(item["value"]))
+                    except (TypeError, ValueError):
+                        pass
+    series_assessment = assess_metric_series(
+        trend_rates or [success_rate],
+        metric_name="ops_success_rate",
+        min_periods=3 if len(trend_rates) >= 3 else 1,
+    )
+
     data.update(
         {
             "totalWorkflows": len(wf_rows),
@@ -94,6 +115,13 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
             "trends": dashboard.get("trends", {}),
             "connectorHealthLatencyMs": health_latency.get("avg_latency_ms", 0.0),
             "connectorHealthLatencyP95Ms": health_latency.get("p95_latency_ms", 0.0),
+            # Phase 5 honesty: provenance so UI never paints this as intelligence outcomes.
+            "honesty": {
+                "successRateProvenance": "live_runs",
+                "source": "workflow_runs.status completed/(completed+failed)",
+                "range": rng,
+                "seriesAssessment": series_assessment,
+            },
         }
     )
     return data

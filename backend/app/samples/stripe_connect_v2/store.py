@@ -5,6 +5,7 @@ import json
 import threading
 from pathlib import Path
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _lock = threading.Lock()
 
@@ -54,7 +55,7 @@ def get_seller(store_path: str, seller_id: str) -> dict[str, Any] | None:
 
 def list_sellers(store_path: str) -> dict[str, dict[str, Any]]:
     with _lock:
-        return dict(_read(store_path).get("sellers") or {})
+        return safe_normalize_stored_dict(_read(store_path), key='sellers')
 
 
 def save_product(

@@ -194,7 +194,12 @@ class PersonaService:
             else:
                 key = org_default
 
-        persona = dict(self.COMMUNICATION_PERSONAS.get(key, self.COMMUNICATION_PERSONAS["friendly_assistant"]))
+        persona_source = (
+            self.COMMUNICATION_PERSONAS[key]
+            if key in self.COMMUNICATION_PERSONAS
+            else self.COMMUNICATION_PERSONAS["friendly_assistant"]
+        )
+        persona = dict(persona_source)
         persona["persona_key"] = key if key in self.COMMUNICATION_PERSONAS else "friendly_assistant"
         return persona
 

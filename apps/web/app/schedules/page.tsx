@@ -52,25 +52,29 @@ export default function SchedulesPage() {
 
   return (
     <AppShell title="Schedules">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6">
+      <div className="mx-auto w-full min-w-0 max-w-7xl p-4 sm:p-6">
         {/* Shared PageHeader rather than a bespoke title block, so the type
             scale, icon tile and action row match every other hub page. */}
         <PageHeader
-          className="mb-5 border-0 p-0"
+          className="mb-5 min-w-0 border-0 p-0"
           eyebrow="Operations"
           title="Schedules"
           description="All workflow schedules, task runs and training jobs across your organization."
           icon={CalendarClock}
           actions={
             <>
-              <Button size="sm" className={cn("gap-2", RADIUS.control)} onClick={() => setCreateOpen(true)}>
+              <Button
+                size="sm"
+                className={cn("shrink-0 gap-2", RADIUS.control)}
+                onClick={() => setCreateOpen(true)}
+              >
                 <Plus className="h-3.5 w-3.5" />
-                New schedule
+                <span className="whitespace-nowrap">New schedule</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className={cn("gap-2", RADIUS.control)}
+                className={cn("shrink-0 gap-2", RADIUS.control)}
                 onClick={refresh}
                 disabled={isLoading}
               >

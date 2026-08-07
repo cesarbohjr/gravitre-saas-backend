@@ -232,6 +232,7 @@ function ActivityPageInner() {
                     <SelectItem value="failed">Failed</SelectItem>
                     <SelectItem value="running">Running</SelectItem>
                     <SelectItem value="partial_success">Partial success</SelectItem>
+                    <SelectItem value="flagged_for_review">Flagged for review</SelectItem>
                   </SelectContent>
                 </Select>
               </HubFilterField>
@@ -244,9 +245,11 @@ function ActivityPageInner() {
                     {/* Values stay exactly as the API expects them; only the
                         labels are humanized so raw enums don't leak into the UI. */}
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                    <SelectItem value="partial_success">Partial success</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="created">Created</SelectItem>
+                    <SelectItem value="verified">Verified</SelectItem>
+                    <SelectItem value="presented">Presented</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="undone">Undone</SelectItem>
                   </SelectContent>
                 </Select>
               </HubFilterField>
@@ -396,12 +399,22 @@ function ActivityPageInner() {
                               className={cn(
                                 "group relative flex w-full flex-col gap-1 py-3 pl-4 pr-3 text-left transition-colors duration-150",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                                String(outcome.status || "").toLowerCase() === "flagged_for_review" &&
+                                  "bg-warning/[0.05]",
                                 active
                                   ? "bg-gradient-to-r from-primary/[0.07] to-transparent"
                                   : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-transparent",
                               )}
                               onClick={() => setSelectedId(id)}
                             >
+                              {/* Flagged rows keep a calm warning rail so they are
+                                  never buried among ordinary completed items. */}
+                              {String(outcome.status || "").toLowerCase() === "flagged_for_review" && !active ? (
+                                <span
+                                  className="absolute inset-y-0 left-0 w-[3px] bg-warning"
+                                  aria-hidden
+                                />
+                              ) : null}
                               {/* One accent bar shared across rows, so selection
                                   slides rather than blinking between positions. */}
                               {active ? (
@@ -420,9 +433,11 @@ function ActivityPageInner() {
                                 <span className="line-clamp-2 text-sm font-medium text-foreground">
                                   {outcome.title || "Untitled outcome"}
                                 </span>
-                                {outcome.lifecycleState || outcome.status ? (
+                                {outcome.status || outcome.lifecycleState ? (
                                   <AutoStatusBadge
-                                    status={String(outcome.lifecycleState || outcome.status)}
+                                    // Prefer Module A terminal status so flagged_for_review
+                                    // is never buried under a lifecycle label like "presented".
+                                    status={String(outcome.status || outcome.lifecycleState)}
                                     className="shrink-0"
                                   />
                                 ) : null}

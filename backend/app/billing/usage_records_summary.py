@@ -45,8 +45,11 @@ def summarize_usage_records_billing(
         .gte("recorded_at", month_start)
         .execute()
     )
-    if usage_resp.error:
-        raise RuntimeError(str(usage_resp.error))
+    # supabase-py v2 APIResponse has data/count only — .error raises AttributeError
+    # and was 500ing GET /api/billing (Billing page: Plan unavailable).
+    usage_err = getattr(usage_resp, "error", None)
+    if usage_err:
+        raise RuntimeError(str(usage_err))
 
     totals: dict[str, int] = {
         "outputs": 0,

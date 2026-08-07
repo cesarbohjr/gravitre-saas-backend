@@ -1,0 +1,61 @@
+{
+  "checked_at": "2026-08-07T20:43:35.540418+00:00",
+  "api_git_sha": "229cae76d77c5708cf87685992d64bb5e764001f",
+  "scenario": "phase6_flagged_business_outcome_projection",
+  "phase4_projection": {
+    "status": "flagged_for_review",
+    "verification": {
+      "verified": false,
+      "method": "batch_degeneracy",
+      "detail": "Phase 4 check failed: records look schema-valid but the batch is degenerate (identical or placeholder-dominated values).",
+      "reviewState": "flagged_for_review",
+      "checkFailed": "batch_degeneracy",
+      "finding": "6 of 6 records returned the same fit: 'unknown'",
+      "nextActions": [
+        "Review the specific records manually \u2014 do not treat this batch as verified work.",
+        "Open the source-system record from Evidence and confirm whether the values are real.",
+        "Retry the operation with better source data or a narrower batch once you know why the values collapsed."
+      ]
+    },
+    "summary": "6 of 6 records returned the same fit: 'unknown'",
+    "recommendation_count": 3
+  },
+  "phase3_projection": {
+    "status": "partial_success",
+    "verification": {
+      "verified": false,
+      "method": "follow_up_proof",
+      "detail": "Phase 3 check failed: mutating list/populate write lacks confirmed follow-up membership proof.",
+      "checkFailed": "follow_up_proof",
+      "finding": "Phase 3 follow-up proof missing (follow_up_empty_membership). The write was accepted but membership/completion was not confirmed.",
+      "nextActions": [
+        "Open the list in the source system and confirm contacts were added.",
+        "Wait for vendor async settle, then re-check membership on the list.",
+        "Retry the populate action if the list is still empty after settle."
+      ]
+    }
+  },
+  "verdict": "PASS",
+  "persist": {
+    "workflow_runs.id": "57484c83-6969-431b-9d03-376e06e4f591",
+    "status": "flagged_for_review",
+    "has_batch_degeneracy": true
+  },
+  "pipeline_dto": {
+    "status": "flagged_for_review",
+    "verification": {
+      "verified": false,
+      "method": "batch_degeneracy",
+      "detail": "Phase 4 check failed: records look schema-valid but the batch is degenerate (identical or placeholder-dominated values).",
+      "reviewState": "flagged_for_review",
+      "checkFailed": "batch_degeneracy",
+      "finding": "6 of 6 records returned the same fit: 'unknown'",
+      "nextActions": [
+        "Review the specific records manually \u2014 do not treat this batch as verified work.",
+        "Open the source-system record from Evidence and confirm whether the values are real.",
+        "Retry the operation with better source data or a narrower batch once you know why the values collapsed."
+      ]
+    },
+    "dataOutcomeState": "flagged"
+  }
+}

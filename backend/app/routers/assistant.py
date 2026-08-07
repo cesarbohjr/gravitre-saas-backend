@@ -619,6 +619,7 @@ def _build_stream(
     force_serial_tools: bool = False,
     qa_force_tool: str | None = None,
     qa_force_outcome: str | None = None,
+    department: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -663,6 +664,7 @@ def _build_stream(
                 research_scope=research_scope,
                 qa_force_tool=qa_force_tool,
                 qa_force_outcome=qa_force_outcome,
+                department=department,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -678,7 +680,12 @@ def _build_stream(
                         streamed_text_parts.append(delta)
                 yield assistant_event_to_sse_line(event)
         except Exception as exc:  # noqa: BLE001
-            logger.error("assistant unified stream failed org_id=%s error=%s", org_id, str(exc))
+            logger.error(
+                "assistant unified stream failed org_id=%s error_type=%s error=%s",
+                org_id,
+                type(exc).__name__,
+                str(exc)[:500],
+            )
             if not streamed_text_parts:
                 yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
                 yield sse_done()
@@ -1111,6 +1118,7 @@ async def assistant_chat(
             force_serial_tools=force_serial,
             qa_force_tool=qa_force_tool,
             qa_force_outcome=qa_force_outcome,
+            department=department_scope,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,
@@ -1276,10 +1284,13 @@ async def assistant_business_signals(
     from app.services.business_signals_engine import get_business_signals_engine
 
     client = get_supabase_client(settings)
+    # Mount/side-rail path: skip predictive ML fan-out (was 4–6s). DB/org
+    # signals stay; predictive packs load on explicit intelligence surfaces.
     return await get_business_signals_engine(settings).collect_signals(
         org_id,
         department=department,
         client=client,
+        include_predictive=False,
     )
 
 
@@ -1318,12 +1329,14 @@ async def assistant_advisor_brief(
 
     user_id = str(current_user.get("user_id") or "")
     client = get_supabase_client(settings)
+    # Same mount contract as /business-signals — no predictive ML on chat open.
     return await get_advisor_mode_engine(settings).generate_brief(
         org_id,
         user_id,
         department=department,
         query=query,
         client=client,
+        include_predictive=False,
     )
 
 

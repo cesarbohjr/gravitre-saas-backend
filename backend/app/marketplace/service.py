@@ -21,6 +21,7 @@ from app.marketplace.schemas import (
 from app.marketplace.counters import increment_marketplace_counter
 from app.marketplace.variables import VariableResolutionError, resolve_variables
 from app.operators.repository import create_operator, list_operators
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
 from app.services.department_pack_catalog import get_pack_spec, pack_seed_id
 from app.services.vertical_workflow_helper import ensure_active_workflow_version
@@ -404,12 +405,12 @@ def _resolve_workflow_steps(
             "type": step["type"],
         }
         if step.get("config"):
-            config = dict(step["config"])
+            config = safe_normalize_stored_dict(step, key="config")
             if requires and connector_ids.get(str(requires)):
                 config["connector_id"] = connector_ids[str(requires)]
             row["config"] = config
         if step.get("metadata"):
-            metadata = dict(step["metadata"])
+            metadata = safe_normalize_stored_dict(step, key="metadata")
             agent_seed = metadata.pop("agent_seed", None)
             if agent_seed:
                 agent_id = agent_ids.get(str(agent_seed))
@@ -663,9 +664,16 @@ def _install_workflow_entity(
         agent_ids=resolved_agent_ids,
         connector_ids=connector_ids or {},
     )
-    definition = {"schema_version": config.schema_version or SCHEMA_VERSION, "steps": steps}
+    from app.marketplace.pack_prewiring import (
+        definition_with_sequential_graph,
+        materialize_pack_canvas_graph,
+    )
     from app.workflows.binding_validation import assert_bindings_valid
 
+    definition = definition_with_sequential_graph(
+        steps,
+        schema_version=config.schema_version or SCHEMA_VERSION,
+    )
     install_vars = asset.get("install_variables") if isinstance(asset.get("install_variables"), list) else []
     declared = {
         str(row.get("key") or "")
@@ -706,6 +714,16 @@ def _install_workflow_entity(
         },
         on_conflict="id",
     ).execute()
+
+    # Phase 2: materialize canvas tables so install is fully pre-wired, not hydrate-only.
+    materialize_pack_canvas_graph(
+        client,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        environment_name=environment_name,
+        steps=steps,
+        created_by=actor_id,
+    )
 
     try:
         ensure_active_workflow_version(

@@ -2093,6 +2093,8 @@ function ConfigPanel({
   node,
   onClose,
   onUpdate,
+  onDuplicate,
+  onDelete,
   orgAgents = [],
   orgConnectors = [],
   actionCatalog = null,
@@ -2101,6 +2103,8 @@ function ConfigPanel({
   node: WorkflowNode | null
   onClose: () => void
   onUpdate: (updates: Partial<WorkflowNode>) => void
+  onDuplicate?: () => void
+  onDelete?: () => void
   orgAgents?: BuilderOrgAgent[]
   orgConnectors?: Connector[]
   actionCatalog?: ConnectorActionCatalogResponse | null
@@ -3258,11 +3262,25 @@ node.type === "approval" && "bg-red-500",
 
         {/* Footer actions */}
         <div className="mt-6 pt-4 border-t border-border flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 flex-1"
+            type="button"
+            onClick={() => onDuplicate?.()}
+            disabled={!onDuplicate}
+          >
             <Copy className="h-3.5 w-3.5" />
             Duplicate
           </Button>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 text-destructive hover:text-destructive flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 text-destructive hover:text-destructive flex-1"
+            type="button"
+            onClick={() => onDelete?.()}
+            disabled={!onDelete}
+          >
             <Trash2 className="h-3.5 w-3.5" />
             Delete
           </Button>
@@ -3755,6 +3773,30 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       setSelectedNodeId(null)
     }
   }, [selectedNodeId])
+
+  const handleDuplicateNode = useCallback((nodeId: string) => {
+    setNodes((prev) => {
+      const source = prev.find((n) => n.id === nodeId)
+      if (!source) return prev
+      const copyId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `node-${Date.now()}`
+      const clone: WorkflowNode = {
+        ...source,
+        id: copyId,
+        name: `${source.name} (copy)`,
+        // Independent wiring — never share connections with the original.
+        connections: [],
+        position: {
+          x: (source.position?.x || 0) + 40,
+          y: (source.position?.y || 0) + 40,
+        },
+        config: source.config ? { ...source.config } : source.config,
+      }
+      return [...prev, clone]
+    })
+  }, [])
 
   const handleUpdateNode = useCallback((updates: Partial<WorkflowNode>) => {
     if (!selectedNodeId) return
@@ -6227,6 +6269,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             node={selectedNode}
             onClose={() => setSelectedNodeId(null)}
             onUpdate={handleUpdateNode}
+            onDuplicate={
+              selectedNodeId ? () => handleDuplicateNode(selectedNodeId) : undefined
+            }
+            onDelete={selectedNodeId ? () => handleDeleteNode(selectedNodeId) : undefined}
             orgAgents={orgAgents}
             orgConnectors={orgConnectors}
             actionCatalog={actionCatalogData ?? null}

@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
 from app.services.department_pack_catalog import (
     DepartmentPackSpec,
@@ -257,12 +258,12 @@ def _resolve_workflow_steps(
             "type": step["type"],
         }
         if step.get("config"):
-            config = dict(step["config"])
+            config = safe_normalize_stored_dict(step, key="config")
             if requires and connector_ids.get(str(requires)):
                 config["connector_id"] = connector_ids[str(requires)]
             row["config"] = config
         if step.get("metadata"):
-            metadata = dict(step["metadata"])
+            metadata = safe_normalize_stored_dict(step, key="metadata")
             agent_seed = metadata.pop("agent_seed", None)
             if agent_seed:
                 metadata["agent_id"] = agent_ids.get(str(agent_seed))

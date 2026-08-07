@@ -19,6 +19,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ def _connector_tenant_config(client: Any, org_id: str, connector_id: str) -> tup
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     tenant_url = (config.get("tenant_url") or config.get("tenantUrl") or "").strip()
     tenant = (config.get("tenant") or config.get("tenant_name") or config.get("tenantName") or "").strip()
     return tenant_url or None, tenant or None
@@ -244,7 +245,7 @@ def persist_workday_tenant_config(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["tenant_url"] = normalize_tenant_url(tenant_url)
     config["tenant"] = normalize_tenant_name(tenant)
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
@@ -356,7 +357,7 @@ def complete_workday_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     resolved_tenant_url = normalize_tenant_url(
         tenant_url or config.get("tenant_url") or config.get("tenantUrl") or ""
     )

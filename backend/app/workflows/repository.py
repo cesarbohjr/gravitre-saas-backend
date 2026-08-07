@@ -29,6 +29,7 @@ from app.workflows.constants import (
     RESOURCE_TYPE_WORKFLOW_RUN,
 )
 from app.workflows.schema import compute_run_hash, validate_definition, validate_parameters
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def get_supabase_client(settings: Settings) -> Client:
@@ -316,7 +317,7 @@ def patch_workflow_run(client: Client, run_id: str, payload: dict[str, Any]) -> 
 def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     """Merge keys into workflow_runs.parameters (read-modify-write)."""
     row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
-    current = dict((row.data or [{}])[0].get("parameters") or {})
+    current = safe_normalize_stored_dict((row.data or [{}])[0], key='parameters')
     current.update(patch)
     patch_workflow_run(client, run_id, {"parameters": current})
     return current
@@ -686,6 +687,16 @@ def update_workflow_node(
 
 
 def delete_workflow_node(client: Client, org_id: str, node_id: str, environment_name: str) -> bool:
+    # Phase 1: cascade incident edges so incremental DELETE /nodes cannot leave ghosts.
+    try:
+        client.table("workflow_edges").delete().eq("org_id", org_id).eq(
+            "environment", environment_name
+        ).eq("from_node_id", node_id).execute()
+        client.table("workflow_edges").delete().eq("org_id", org_id).eq(
+            "environment", environment_name
+        ).eq("to_node_id", node_id).execute()
+    except Exception:  # noqa: BLE001
+        pass
     r = (
         client.table("workflow_nodes")
         .delete()

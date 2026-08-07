@@ -18,6 +18,7 @@ from app.services.chat_orchestration_service import ChatOrchestrationService
 from app.services.conversation_state_service import DEFAULT_TASK_STATE
 from app.services.conversational_execution_service import ExecutionResult
 from app.services.oauth_smoke_runner import _is_sandbox_write_allowed
+from app.core.safe_dict import safe_normalize_stored_dict
 
 StepLiveStatus = Literal["passed", "failed", "skipped", "blocked"]
 
@@ -232,7 +233,7 @@ def sanitize_write_plan(
         args["text"] = body
     elif plan.invoke_action == "hubspot.contacts.create":
         email = f"gravitre-workflow-{run_tag}@example.com"
-        props = dict(args.get("properties") or {})
+        props = safe_normalize_stored_dict(args, key="properties")
         props.setdefault("firstname", "Gravitre")
         props.setdefault("lastname", f"Workflow-{run_tag[:8]}")
         props["email"] = email
@@ -244,7 +245,7 @@ def sanitize_write_plan(
             args["deal_id"] = deal_id
             args.setdefault("properties", {"notes_last_contacted": f"{prefix} smoke touch"})
     else:
-        payload = dict(args.get("payload") or {})
+        payload = safe_normalize_stored_dict(args, key="payload")
         payload["workflow_e2e_tag"] = run_tag
         args["payload"] = payload
 

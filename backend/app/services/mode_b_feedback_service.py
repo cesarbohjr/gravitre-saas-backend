@@ -32,6 +32,7 @@ from app.services.feedback_mode_constants import (
 from app.services.outcome_attribution_service import get_outcome_attribution_service
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -258,7 +259,7 @@ class ModeBFeedbackService:
         outcome_before = await outcome_service.get_agent_outcome_summary(org_id, agent_id)
         win_rate_before = outcome_before.get("winRate")
 
-        config_before = dict(agent.get("config") or {})
+        config_before = safe_normalize_stored_dict(agent, key="config")
         profile[dimension if dimension != "content_type" else "content_type"] = after_value
         config_after = _write_feedback_profile(config_before, profile)
 

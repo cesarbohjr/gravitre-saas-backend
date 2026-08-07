@@ -125,6 +125,10 @@ import {
   writeCachedInlineTurns,
   writeStoredConversationId,
 } from "@/lib/ai-conversation-storage"
+import {
+  isAuthoritativeMissingConversationError,
+  shouldVerifyMissingConversation,
+} from "@/lib/active-conversation-recovery"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
 import {
@@ -284,6 +288,7 @@ export function AiWorkspace({
   const chatFirstTokenMarkedRef = useRef(false)
   const persistedTurnIdsRef = useRef<Set<string>>(new Set())
   const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
+  const missingConversationVerificationRef = useRef<string | null>(null)
   const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
   const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
@@ -441,14 +446,41 @@ export function AiWorkspace({
     },
   })
 
+  // Side-rail intelligence is not on the chat critical path. Defer until the
+  // shell is interactive so /business-signals + /advisor-brief (multi-second
+  // backend fan-out) cannot contend with conversation list / composer mount.
+  const [deferSideRailIntel, setDeferSideRailIntel] = useState(false)
+  useEffect(() => {
+    if (!user || !orgReady) {
+      setDeferSideRailIntel(false)
+      return
+    }
+    let cancelled = false
+    const enable = () => {
+      if (!cancelled) setDeferSideRailIntel(true)
+    }
+    let idleId: number | undefined
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 2500 })
+    }
+    const timer = window.setTimeout(enable, 2500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (idleId != null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
+  }, [user, orgReady])
+
   const { data: businessSignalsPayload } = useSWR(
-    user ? "ai-business-signals" : null,
+    deferSideRailIntel && user ? "ai-business-signals" : null,
     () => assistantApi.businessSignals(),
     { revalidateOnFocus: false },
   )
 
   const { data: advisorBriefPayload } = useSWR(
-    user ? "ai-advisor-brief" : null,
+    deferSideRailIntel && user ? "ai-advisor-brief" : null,
     () => assistantApi.advisorBrief(),
     { revalidateOnFocus: false },
   )
@@ -641,24 +673,85 @@ export function AiWorkspace({
     if (!activeConversationId) return
     if (!conversations.some((conversation) => conversation.id === activeConversationId)) return
     pendingConversationIdsRef.current.delete(activeConversationId)
+    if (missingConversationVerificationRef.current === activeConversationId) {
+      missingConversationVerificationRef.current = null
+    }
   }, [activeConversationId, conversations])
 
   useEffect(() => {
-    if (!orgReady || !activeConversationId || conversationsLoading) return
-    if (conversations.length === 0) return
-    if (conversations.some((conversation) => conversation.id === activeConversationId)) return
-    if (pendingConversationRef.current) return
-    if (pendingConversationIdsRef.current.has(activeConversationId)) return
-    if (sessionBusyRef.current) return
-    if (chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming") return
-    writeStoredConversationId(null)
-    setActiveConversationId(null)
-    activeConversationIdRef.current = null
-    setMessages([])
-    setConversationTitle("Chat")
-    setThreadRestoreStale(false)
-    setMessagesHydrated(false)
-  }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
+    const hasConversationInList = Boolean(
+      activeConversationId && conversations.some((conversation) => conversation.id === activeConversationId),
+    )
+    const shouldVerify = shouldVerifyMissingConversation({
+      orgReady,
+      activeConversationId,
+      conversationsLoading,
+      hasConversationInList,
+      hasPendingConversation: Boolean(
+        pendingConversationRef.current ||
+          (activeConversationId && pendingConversationIdsRef.current.has(activeConversationId)),
+      ),
+      isSessionBusy: sessionBusyRef.current,
+      chatStatus: chatStatusRef.current,
+    })
+    if (!shouldVerify || !activeConversationId) return
+    if (missingConversationVerificationRef.current === activeConversationId) return
+
+    const verificationId = activeConversationId
+    missingConversationVerificationRef.current = verificationId
+    let cancelled = false
+
+    void conversationsApi
+      .get(verificationId)
+      .then((conversation) => {
+        if (cancelled || activeConversationIdRef.current !== verificationId) return
+        pendingConversationIdsRef.current.delete(verificationId)
+        if (conversation.title) {
+          setConversationTitle(conversation.title)
+        }
+        if (!deferredHistorySearch) {
+          void mutateConversations(
+            (current) => {
+              if (!current) return { conversations: [conversation] }
+              if (current.conversations.some((row) => row.id === conversation.id)) return current
+              return {
+                ...current,
+                conversations: [conversation, ...current.conversations],
+              }
+            },
+            { revalidate: false },
+          )
+        }
+      })
+      .catch((error) => {
+        if (cancelled || activeConversationIdRef.current !== verificationId) return
+        if (!isAuthoritativeMissingConversationError(error)) return
+        writeStoredConversationId(null)
+        setActiveConversationId(null)
+        activeConversationIdRef.current = null
+        setMessages([])
+        setConversationTitle("Chat")
+        setThreadRestoreStale(false)
+        setMessagesHydrated(false)
+      })
+      .finally(() => {
+        if (!cancelled && missingConversationVerificationRef.current === verificationId) {
+          missingConversationVerificationRef.current = null
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    orgReady,
+    activeConversationId,
+    conversations,
+    conversationsLoading,
+    deferredHistorySearch,
+    mutateConversations,
+    setMessages,
+  ])
 
   useEffect(() => {
     setLayoutBlockOrder(loadLayoutOrder())

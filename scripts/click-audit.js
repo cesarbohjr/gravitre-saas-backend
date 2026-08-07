@@ -446,7 +446,9 @@ function printReport(title, results) {
       }
     }
   } finally {
-    const out = path.join("/tmp", "click-audit-report.json")
+    const outDir = process.env.CLICK_AUDIT_OUT_DIR || path.join(__dirname, "..", "docs", "delivery")
+    fs.mkdirSync(outDir, { recursive: true })
+    const out = path.join(outDir, "phase4-click-audit-live.json")
     fs.writeFileSync(out, JSON.stringify(report, null, 2))
     console.log(`Wrote ${out}`)
     await browser.close()

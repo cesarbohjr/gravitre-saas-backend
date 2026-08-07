@@ -83,16 +83,22 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     { revalidateOnFocus: false, refreshInterval: 60_000 },
   )
   const { data: billingStatus } = useSWR<{
-    planCode?: string
+    planCode?: string | null
     billingStatus?: string
+    billingKnown?: boolean
+    _auth_degraded?: boolean
   }>(user ? "/api/billing/status" : null, apiFetcher, {
     revalidateOnFocus: false,
     refreshInterval: 120_000,
   })
 
-  const currentPlan = getPlan(billingStatus?.planCode)
-  const planPriceLabel =
-    currentPlan.price === null
+  const planCodeKnown = Boolean(
+    billingStatus?.planCode && billingStatus.billingKnown !== false && !billingStatus._auth_degraded,
+  )
+  const currentPlan = planCodeKnown ? getPlan(billingStatus?.planCode) : null
+  const planPriceLabel = !currentPlan
+    ? "—"
+    : currentPlan.price === null
       ? "Custom"
       : currentPlan.price === 0
         ? "Free"
@@ -427,7 +433,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Billing</p>
-                      <p className="text-[10px] text-muted-foreground">{currentPlan.name} Plan</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {currentPlan ? `${currentPlan.name} Plan` : "Plan status"}
+                      </p>
                     </div>
                     <span className="text-xs font-medium text-primary">{planPriceLabel}</span>
                   </Link>

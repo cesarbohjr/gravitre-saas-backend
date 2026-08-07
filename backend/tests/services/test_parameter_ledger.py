@@ -123,6 +123,32 @@ def test_resume_advances_pending_task_args_from_live_ledger():
     assert "hello" in (advanced_args.get("body") or "").lower()
 
 
+def test_resume_awaiting_params_handles_stringified_args_payload():
+    """Legacy task_state rows may serialize args as a JSON string."""
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail",
+        args={"subject": "Follow-up"},
+    )
+    patch = stage_awaiting_params(plan, ("recipient",), ledger=ingest_message_slots("send an email"))
+    task_state = {
+        **patch,
+        "recent_user_messages": ["send an email"],
+    }
+    task_state["pending_task"]["params"]["args"] = '{"subject":"Follow-up"}'
+
+    resumed, _, resume_patch = resume_awaiting_params("alex@acme.com", task_state)
+    assert resumed is not None
+    assert resumed.args.get("subject") == "Follow-up"
+    assert resumed.args.get("to") == "alex@acme.com"
+    pending_args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert pending_args.get("subject") == "Follow-up"
+    assert pending_args.get("to") == "alex@acme.com"
+
+
 def test_ingest_title_is_unquoted():
     ledger = ingest_message_slots(
         "title is Checkout fails on mobile for VIP accounts priority urgent"

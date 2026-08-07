@@ -1,0 +1,27 @@
+{
+  "ci_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31065773698",
+  "tip_sha": "4cf35bcb8d3acc052759e91a7fb1de4a10dcbb78",
+  "pages": {
+    "home": {
+      "requestedUrl": "http://127.0.0.1:3000/",
+      "performance": 0.87,
+      "lcp_ms": 922.8362499999998,
+      "si_ms": 5755.949040579682,
+      "tbt_ms": 123.00000000000034,
+      "fcp_ms": 383.705,
+      "cls": 0,
+      "report_url": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1785983627565-97049.report.html"
+    },
+    "pricing": {
+      "requestedUrl": "http://127.0.0.1:3000/pricing",
+      "performance": 0.99,
+      "lcp_ms": 931.8899999999999,
+      "si_ms": 430.3864583333335,
+      "tbt_ms": 7,
+      "fcp_ms": 425.15599999999995,
+      "cls": 0,
+      "report_url": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1785983628032-81146.report.html"
+    }
+  },
+  "home_meets_0_75": true
+}

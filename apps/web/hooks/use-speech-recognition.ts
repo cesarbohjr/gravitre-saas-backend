@@ -8,6 +8,7 @@ import {
   speechRecognitionErrorMessage,
   type SpeechRecognitionStatus,
 } from "@/lib/speech-recognition"
+import { getVoiceStatus, transcribeViaDeepgram } from "@/lib/tier1-voice-client"
 
 type UseSpeechRecognitionOptions = {
   /** Current composer value — preserved as prefix when dictation starts. */
@@ -39,13 +40,19 @@ export function useSpeechRecognition({
   lang = "en-US",
   disabled = false,
 }: UseSpeechRecognitionOptions): UseSpeechRecognitionResult {
-  const [status, setStatus] = useState<SpeechRecognitionStatus>(() =>
-    isSpeechRecognitionSupported() ? "idle" : "unsupported",
-  )
+  const [status, setStatus] = useState<SpeechRecognitionStatus>(() => {
+    if (isSpeechRecognitionSupported()) return "idle"
+    if (typeof window !== "undefined" && typeof MediaRecorder !== "undefined") return "idle"
+    return "unsupported"
+  })
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaChunksRef = useRef<Blob[]>([])
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const committedRef = useRef("")
   const prefixRef = useRef("")
   const listeningRef = useRef(false)
+  const deepgramModeRef = useRef(false)
   const onTranscriptRef = useRef(onTranscript)
   const onErrorRef = useRef(onError)
 
@@ -59,12 +66,74 @@ export function useSpeechRecognition({
 
   const stopListening = useCallback(() => {
     listeningRef.current = false
+    if (deepgramModeRef.current && mediaRecorderRef.current) {
+      try {
+        mediaRecorderRef.current.stop()
+      } catch {
+        /* ignore */
+      }
+      mediaRecorderRef.current = null
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
+      mediaStreamRef.current = null
+      return
+    }
     recognitionRef.current?.stop()
     setStatus((prev) => (prev === "unsupported" ? prev : "idle"))
   }, [])
 
+  const startDeepgramListening = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      return false
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
+      mediaChunksRef.current = []
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      deepgramModeRef.current = true
+      prefixRef.current = value.trim() ? `${value.trim()} ` : ""
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) mediaChunksRef.current.push(ev.data)
+      }
+      recorder.onstop = () => {
+        void (async () => {
+          const blob = new Blob(mediaChunksRef.current, { type: "audio/webm" })
+          mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
+          mediaStreamRef.current = null
+          deepgramModeRef.current = false
+          listeningRef.current = false
+          setStatus("idle")
+          if (!blob.size) return
+          const result = await transcribeViaDeepgram(blob)
+          if (result?.transcript) {
+            const combined = `${prefixRef.current}${result.transcript}`.trim()
+            onTranscriptRef.current(combined, { isFinal: true })
+          } else {
+            onErrorRef.current?.("Could not transcribe audio. Try again or type instead.")
+          }
+        })()
+      }
+      recorder.start()
+      listeningRef.current = true
+      setStatus("listening")
+      return true
+    } catch {
+      onErrorRef.current?.("Microphone permission denied.")
+      setStatus("permission-denied")
+      return false
+    }
+  }, [value])
+
   const startListening = useCallback(() => {
     if (disabled) return
+
+    void (async () => {
+      const status = await getVoiceStatus()
+      if (status?.stt_enabled) {
+        const ok = await startDeepgramListening()
+        if (ok) return
+      }
 
     const Ctor = getSpeechRecognitionConstructor()
     if (!Ctor) {
@@ -75,6 +144,7 @@ export function useSpeechRecognition({
       return
     }
 
+    deepgramModeRef.current = false
     committedRef.current = ""
     prefixRef.current = value.trim() ? `${value.trim()} ` : ""
     const recognition = new Ctor()
@@ -144,7 +214,8 @@ export function useSpeechRecognition({
     } catch {
       onErrorRef.current?.("Voice input is already active.")
     }
-  }, [disabled, lang, value])
+    })()
+  }, [disabled, lang, startDeepgramListening, value])
 
   const toggleListening = useCallback(() => {
     if (listeningRef.current) {

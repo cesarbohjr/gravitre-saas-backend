@@ -36,6 +36,7 @@ from app.services.connector_session_state import (
     record_step_output,
     sync_legacy_resolved_entities,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -688,7 +689,12 @@ class ChatConnectorExecutionService:
                     # (catalog invoke_action is authoritative).
                     if resumed.invoke_action:
                         return self._sanitize_plan_message_bodies(resumed)
-            params = dict(pending.get("params") or task_state.get("clarified_params") or {})
+            raw_params = pending.get("params")
+            if isinstance(raw_params, dict):
+                params = dict(raw_params)
+            else:
+                clarified = task_state.get("clarified_params")
+                params = dict(clarified) if isinstance(clarified, dict) else {}
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
             if not spec:
@@ -866,18 +872,19 @@ class ChatConnectorExecutionService:
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
         inferred = payload.get("inferred_fields") or []
+        raw_args = safe_normalize_stored_dict(payload, key="args")
         return ConnectorActionPlan(
             tool_name=str(payload.get("tool_name") or ""),
             invoke_action=str(payload.get("invoke_action") or ""),
             integration=str(payload.get("integration") or ""),
             kind=str(payload.get("kind") or "write"),
             label=str(payload.get("label") or ""),
-            args=dict(payload.get("args") or {}),
+            args=raw_args,
             requires_approval=bool(payload.get("requires_approval")),
             approval_reason=payload.get("approval_reason"),
             destructive=bool(payload.get("destructive")),
             inferred_fields=tuple(str(item) for item in inferred),
-            inference_sources=dict(payload.get("inference_sources") or {}),
+            inference_sources=safe_normalize_stored_dict(payload, key="inference_sources"),
         )
 
     # Free-text write args that can inherit a leaked scope banner from task text.
@@ -1792,14 +1799,17 @@ class ChatConnectorExecutionService:
                     )
                 return failed
 
+        finalize_run_id: str | None = None
         if own_terminal_outcome:
-            self._finalize_connector_outcome(
+            finalize_run_id = self._finalize_connector_outcome(
                 client,
                 org_id=org_id,
                 user_id=user_id,
                 conversation_id=conversation_id,
                 plan=plan,
                 result=result,
+                tool_ctx=ctx,
+                connector_id=connector_id,
             )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -1873,11 +1883,16 @@ class ChatConnectorExecutionService:
         conversation_id: str,
         plan: ConnectorActionPlan,
         result: ExecutionResult,
-    ) -> None:
+        tool_ctx: ToolContext | None = None,
+        connector_id: str | None = None,
+    ) -> str | None:
         """Route single-connector chat terminals through finalize_execution_outcome().
 
         Creates a lightweight workflow_run so Module A fanout includes Runs (not only
         notify/audit/learning). Titles/bodies are shaped by Module D inside finalize.
+
+        Returns run_id when created. Population follow-up settle is scheduled async
+        (Phase 3) so TTFT is not blocked by F6 backoff sleeps.
         """
         from uuid import uuid4
 
@@ -1911,10 +1926,13 @@ class ChatConnectorExecutionService:
             effect=outcome_effect,
             invoke_action=plan.invoke_action,
         )
-        # F6 — list populate/membership writes need follow-up membership proof.
+        # F6/Phase 3 — sync path only uses inline membership proof (no settle sleep).
+        # Follow-up vendor re-reads are scheduled after finalize so chat TTFT stays clean.
+        schedule_async_population = False
         try:
             from app.services.collection_population_verify import (
                 apply_population_verify_to_status,
+                is_population_write_action,
             )
 
             status, effect_override, pop_verify = apply_population_verify_to_status(
@@ -1924,6 +1942,7 @@ class ChatConnectorExecutionService:
                 client=client,
                 org_id=org_id,
                 settings=self.settings,
+                ctx=None,  # force non-blocking; settle happens async with tool_ctx
             )
             if effect_override:
                 outcome_effect = effect_override
@@ -1937,11 +1956,31 @@ class ChatConnectorExecutionService:
                         "detail": pop_verify.detail,
                     },
                 }
+                schedule_async_population = is_population_write_action(plan.invoke_action)
         except Exception as pop_exc:  # noqa: BLE001
             logger.warning(
                 "collection population verify skipped action=%s err=%s",
                 plan.invoke_action,
                 pop_exc,
+            )
+        # Phase 4 — statistical batch degeneracy (independent of schema / Phase 3).
+        try:
+            from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
+
+            status, deg = apply_batch_degeneracy_to_status(
+                status=status,
+                invoke_action=plan.invoke_action,
+                result_data=structured,
+            )
+            if deg and deg.flagged:
+                outcome_effect = "flagged_for_review"
+                structured = {**structured, "batch_degeneracy": deg.as_dict()}
+                schedule_async_population = False  # do not upgrade a flagged batch later
+        except Exception as deg_exc:  # noqa: BLE001
+            logger.warning(
+                "batch degeneracy check skipped action=%s err=%s",
+                plan.invoke_action,
+                deg_exc,
             )
         run_id: str | None = None
         try:
@@ -1971,6 +2010,17 @@ class ChatConnectorExecutionService:
                     "action_args": _proof_args_for_run(plan),
                     "already_existed": already_existed,
                     "outcome_effect": outcome_effect,
+                    # Phase 6 — durable Phase 4 finding for Activity/BusinessOutcome.
+                    **(
+                        {"batch_degeneracy": structured.get("batch_degeneracy")}
+                        if isinstance(structured.get("batch_degeneracy"), dict)
+                        else {}
+                    ),
+                    **(
+                        {"population_verify": structured.get("population_verify")}
+                        if isinstance(structured.get("population_verify"), dict)
+                        else {}
+                    ),
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
@@ -2083,6 +2133,43 @@ class ChatConnectorExecutionService:
                 exc,
             )
 
+        # Phase 3 — schedule F6 settle AFTER user-visible finalize (non-blocking).
+        if schedule_async_population and run_id and tool_ctx is not None:
+            try:
+                from app.services.tool_types import ToolContext as _TC
+                from app.services.write_success_verification import (
+                    schedule_write_success_verification,
+                )
+
+                verify_ctx = tool_ctx
+                cid = str(connector_id or result.entity_id or "").strip()
+                if cid and not getattr(verify_ctx, "connector_id", None):
+                    verify_ctx = _TC(
+                        settings=tool_ctx.settings,
+                        client=tool_ctx.client,
+                        org_id=tool_ctx.org_id,
+                        actor_id=tool_ctx.actor_id,
+                        environment_name=tool_ctx.environment_name,
+                        connector_id=cid,
+                    )
+                schedule_write_success_verification(
+                    client=client,
+                    org_id=org_id,
+                    run_id=run_id,
+                    invoke_action=plan.invoke_action,
+                    result_data=structured,
+                    settings=self.settings,
+                    ctx=verify_ctx,
+                    environment_name=getattr(tool_ctx, "environment_name", None) or "production",
+                )
+            except Exception as sched_exc:  # noqa: BLE001
+                logger.warning(
+                    "async population verify schedule skipped action=%s err=%s",
+                    plan.invoke_action,
+                    sched_exc,
+                )
+        return run_id
+
     async def _try_inline_preview_turn(
         self,
         *,
@@ -2162,7 +2249,7 @@ class ChatConnectorExecutionService:
             session_fallback=session_fallback,
         )
         serialized = serialize_execution_result(execution)
-        structured = dict(serialized.get("structured") or {})
+        structured = safe_normalize_stored_dict(serialized, key="structured")
         structured["inlinePreview"] = True
         structured["source"] = "post_action_inline_preview"
         serialized["structured"] = structured

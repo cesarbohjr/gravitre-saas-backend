@@ -38,7 +38,16 @@ def _tool_document(tool: dict[str, Any], *, use_enrichment: bool = True) -> str:
     fn = tool.get("function") if isinstance(tool.get("function"), dict) else {}
     name = str(fn.get("name") or tool.get("name") or "")
     desc = str(fn.get("description") or tool.get("description") or "")
-    invoke = str(tool.get("invoke_action") or "")
+    invoke = str(tool.get("invoke_action") or "").strip()
+    if not invoke:
+        try:
+            from app.connectors.action_catalog.action_id_resolve import (
+                resolve_action_id_from_tool_name,
+            )
+
+            invoke = resolve_action_id_from_tool_name(name)
+        except Exception:  # noqa: BLE001
+            invoke = ""
     integration = _tool_integration(tool)
     parts = [name.replace("_", " "), integration, desc]
     if invoke:
@@ -49,15 +58,13 @@ def _tool_document(tool: dict[str, Any], *, use_enrichment: bool = True) -> str:
                 enrichment_document_suffix,
             )
 
-            suffix = enrichment_document_suffix(invoke or name.replace("_", "."))
-            # Also try dotted id from function name (hubspot_contacts_search → hubspot.contacts.search)
-            if not suffix and "_" in name:
-                approx = name.replace("_", ".", 1).replace("_", ".")
-                # Better: vendor_rest → vendor.rest with remaining underscores → dots
-                bits = name.split("_")
-                if len(bits) >= 3:
-                    approx = bits[0] + "." + ".".join(bits[1:])
-                suffix = enrichment_document_suffix(approx)
+            suffix = enrichment_document_suffix(invoke)
+            if not suffix and name:
+                from app.connectors.action_catalog.action_id_resolve import (
+                    resolve_action_id_from_tool_name,
+                )
+
+                suffix = enrichment_document_suffix(resolve_action_id_from_tool_name(name))
             if suffix:
                 parts.append(suffix)
         except Exception:  # noqa: BLE001
@@ -326,8 +333,10 @@ def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:
     if not _use_local_tool_embed(active) and not (active.openai_api_key or "").strip():
         return 0
     try:
+        from app.rag.tool_retrieval_embedding import warm_local_tool_encoder
         from app.services.tool_registry import get_tool_registry
 
+        warm_local_tool_encoder(active)
         registry = get_tool_registry()
         tools: list[dict[str, Any]] = []
         for name in registry.list_tool_names():

@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.connectors.google_search_console import GoogleSearchConsoleAPIError, list_gsc_sites
 from app.connectors.google_search_console_oauth import link_gsc_site, normalize_gsc_vendor
 from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+from app.core.safe_dict import safe_normalize_stored_dict
 
 router = APIRouter(prefix="/api/connectors", tags=["google-search-console"])
 
@@ -60,7 +61,7 @@ async def list_google_search_console_sites(
         sites = list_gsc_sites(token)
     except GoogleSearchConsoleAPIError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     return {
         "connectorId": connector_id,
         "sites": sites,

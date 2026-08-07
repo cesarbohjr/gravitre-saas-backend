@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.parameter_ledger import (
     EMAIL_RE,
     _is_meta_field_clarify_question,
@@ -130,7 +131,7 @@ def _pending_action_proof_line(snap: PendingSnapshot) -> str:
 def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot:
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
-    params = dict(pending.get("params") or {}) if pending else {}
+    params = safe_normalize_stored_dict(pending, key="params") if pending else {}
     current_plan = state.get("current_plan") if isinstance(state.get("current_plan"), dict) else None
     ledger = get_ledger(state)
     missing = list(ledger.pending_missing or [])

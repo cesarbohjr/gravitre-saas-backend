@@ -1,0 +1,1529 @@
+{
+  "actions": {
+    "absorb_lms.batch.enroll": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "absorb_lms.certificates.issue": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "absorb_lms.courses.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "absorb_lms.enrollments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "adp.benefits.elect": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "adp.payroll.preview": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "adp.profile.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "adp.timecards.submit": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "ahrefs.brand_radar.prompts.track": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "ahrefs.projects.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "ahrefs.rank_tracker.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "ai_visibility_ui.prompts.batch": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "airtable.batch.records": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "airtable.records.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "airtable.records.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "airtable.records.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "airtable.records.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "airtable.records.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "airtable.webhooks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.contacts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "apollo.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "apollo.contacts.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.contacts.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "apollo.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "apollo.enrichment.bulk": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.lists.add": {
+      "assert_field": "membership_count",
+      "mode": "follow_up_membership",
+      "read_action": "apollo.lists.list",
+      "reason": "F6 collection population membership proof"
+    },
+    "apollo.lists.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.sequences.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.sequences.remove": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "apollo.tasks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.batch.tasks": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.sections.move": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.stories.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.tasks.add_project": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.tasks.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "asana.tasks.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "asana.tasks.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "asana.tasks.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "asana.tasks.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "aws_s3.batch.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "aws_s3.multipart.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "aws_s3.objects.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "aws_s3.objects.put": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "bamboohr.employees.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "bamboohr.employees.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "bamboohr.onboarding.tasks.assign": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "bamboohr.timeoff.requests.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "bamboohr.webhooks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "canva.autofill.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "canva.batch.exports": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "canva.designs.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "canva.designs.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "canva.designs.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "canva.exports.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "canva.exports.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "clay.crm.sync": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clay.enrichments.request": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clay.leads.push": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.comments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.goals.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.tasks.bulk_update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.tasks.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "clickup.tasks.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "clickup.tasks.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.tasks.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "clickup.tasks.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "clickup.time_entries.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clickup.webhooks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clio.conflict.checklist": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clio.intake.tasks": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clio.matters.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "clio.tasks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "confluence.attachments.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "confluence.labels.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "confluence.pages.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "confluence.pages.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "confluence.pages.move": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "confluence.pages.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "confluence.pages.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "constant_contact.campaigns.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "constant_contact.campaigns.schedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "constant_contact.contacts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "constant_contact.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "constant_contact.contacts.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "constant_contact.contacts.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "constant_contact.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "constant_contact.lists.add_contacts": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "constant_contact.tags.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "email.batch.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "email.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "email.send.template": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "engagebay.contacts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "engagebay.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "engagebay.contacts.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "engagebay.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "engagebay.tasks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "fhir.prior_auth.checklist": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "figma.comments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "figma.comments.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "figma.dev_resources.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "finseo.prompts.track": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "freshdesk.automations.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "freshdesk.notes.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "freshdesk.satisfaction.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "freshdesk.tickets.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "freshdesk.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "freshdesk.tickets.merge": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "freshdesk.tickets.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "freshdesk.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "github.actions.dispatch": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "github.issues.comment": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "github.issues.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "github.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "github.issues.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "github.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "github.pulls.close": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "github.pulls.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "github.pulls.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "github.pulls.merge": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "github.pulls.request_reviewer": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "github.releases.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gmail.drafts.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gmail.labels.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gmail.messages.batch": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gmail.messages.send": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "gmail.messages.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "gmail.threads.modify": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gmail.watch.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_ads.campaigns.pause": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_ads.campaigns.resume": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_ads.campaigns.update_budget": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_ads.structure.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_analytics.audiences.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_analytics.conversions.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_calendar.batch.events": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_calendar.events.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_calendar.events.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_calendar.events.quick_add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_calendar.events.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_docs.documents.batch_update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_docs.documents.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "google_docs.documents.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "google_docs.documents.insert_table": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_docs.documents.replace_text": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_drive.batch.permissions": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_drive.files.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "google_drive.files.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "google_drive.files.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "google_drive.files.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "google_drive.permissions.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_sheets.charts.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_sheets.pivot.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_sheets.spreadsheets.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "google_sheets.spreadsheets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "google_sheets.values.append": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_sheets.values.batch_update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "google_sheets.values.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "google_sheets.values.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "gorgias.macros.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gorgias.rules.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gorgias.satisfaction.request": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gorgias.tags.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gorgias.tickets.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "gorgias.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "gorgias.tickets.reply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "greenhouse.candidates.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "greenhouse.candidates.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "greenhouse.offers.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gusto.benefits.enroll": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gusto.contractors.pay": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gusto.employees.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "gusto.employees.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "gusto.payrolls.run": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hootsuite.approvals.submit": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hootsuite.bulk.schedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hootsuite.inbox.reply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hootsuite.messages.schedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hootsuite.messages.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.associations.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.companies.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.companies.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.contacts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.contacts.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.contacts.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.deals.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.deals.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.deals.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.deals.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.deals.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.deals.update_stage": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.lists.add_contact": {
+      "assert_field": "membership_count",
+      "mode": "follow_up_membership",
+      "read_action": "hubspot.lists.get",
+      "reason": "F6 collection population membership proof"
+    },
+    "hubspot.lists.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.lists.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "hubspot.notes.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.notes.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.sequences.enroll": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "hubspot.tickets.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "intercom.contacts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "intercom.contacts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "intercom.contacts.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "intercom.conversations.reply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "intercom.notes.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "intercom.series.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "intercom.tags.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "intercom.tickets.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "jira.issues.assign": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "jira.issues.comment": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "jira.issues.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "jira.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "jira.issues.transition": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "jira.issues.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "jira.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "linkedin.audience.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "linkedin.campaigns.optimize": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "linkedin.conversions.track": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "linkedin.leads.submit": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mailchimp.automations.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mailchimp.batch.subscribe": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mailchimp.campaigns.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mailchimp.members.add": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "mailchimp.members.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "mailchimp.segments.add_member": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mailchimp.tags.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "marketo.campaigns.schedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "marketo.leads.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "marketo.leads.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "marketo.leads.merge": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "marketo.leads.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "marketo.leads.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "marketo.lists.add_to_static_list": {
+      "assert_field": "membership_count",
+      "mode": "follow_up_membership",
+      "read_action": "marketo.lists.get_leads",
+      "reason": "F6 collection population membership proof"
+    },
+    "marketo.programs.members.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.batch.mail": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.calendar.events.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.excel.workbook.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.files.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.mail.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.sharepoint.files.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.sharepoint.files.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.meetings.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.members.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.messages.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.notify": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.presence.set": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft365.teams.tabs.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.meetings.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.members.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.messages.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.presence.set": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.tabs.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mixpanel.annotations.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mixpanel.events.track": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mixpanel.profiles.set": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "monday.automations.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "monday.batch.items": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "monday.items.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "monday.items.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "monday.items.delete": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "monday.items.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "monday.items.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "monday.updates.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mongodb.batch.bulk_write": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mongodb.documents.insert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "mongodb.documents.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "motion.batch.reschedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "motion.calendar.optimize": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "motion.focus.block": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "motion.tasks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "motion.tasks.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "n8n.batch.executions": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "n8n.executions.retry": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "n8n.webhooks.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "n8n.workflows.activate": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "n8n.workflows.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "netsuite.customers.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "netsuite.customers.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "netsuite.fulfillment.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "netsuite.journalentries.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "netsuite.salesorders.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "netsuite.salesorders.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "notion.blocks.append": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "notion.comments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "notion.databases.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "notion.pages.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "notion.pages.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "notion.pages.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "notion.pages.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "odoo.batch.partners": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.crm.leads.convert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.invoices.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.invoices.post": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.manufacturing.orders.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.partners.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "odoo.partners.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "odoo.partners.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "odoo.partners.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "odoo.sales.orders.confirm": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "odoo.sales.orders.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "outlook.batch.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "outlook.messages.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pagerduty.incidents.acknowledge": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pagerduty.incidents.add_note": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pagerduty.incidents.escalate": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pagerduty.incidents.reassign": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pagerduty.incidents.resolve": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pipedrive.deals.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "pipedrive.deals.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "pipedrive.deals.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "pipedrive.deals.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "pipedrive.deals.update_stage": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "pipedrive.persons.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "pipedrive.persons.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "pipedrive.persons.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "pipedrive.persons.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "plaid.link.token.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "plaid.public_token.exchange": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "postgresql.batch.upsert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "postgresql.migrations.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "postgresql.query.insert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "postgresql.query.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "quickbooks.customers.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "quickbooks.customers.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "quickbooks.invoices.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "quickbooks.invoices.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "quickbooks.journalentries.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "quickbooks.payments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "real_estate.handoff.brief": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "real_estate.listing.publish": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "real_estate.mls.note": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "salesforce.accounts.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.accounts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.accounts.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.accounts.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.leads.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.leads.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.leads.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.leads.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.opportunities.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.opportunities.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.opportunities.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "salesforce.opportunities.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "salesforce.opportunities.update_stage": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "salesforce.tasks.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.alias": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.batch": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.group": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.identify": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.page": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "segment.track": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "semrush.exports.run": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "semrush.position_tracking.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "semrush.projects.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "sendgrid.batch.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "sendgrid.campaigns.schedule": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "sendgrid.contacts.upsert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "sendgrid.mail.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "sendgrid.suppressions.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.chat.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.conversations.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.conversations.join": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.files.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.post_message": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.reactions.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "slack.workflows.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "snowflake.batch.copy": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "snowflake.pipes.refresh": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "snowflake.query.insert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "snowflake.stages.put": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "snowflake.tasks.run": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stackadapt.audiences.sync": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stackadapt.campaigns.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "stackadapt.campaigns.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "stackadapt.campaigns.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "stackadapt.campaigns.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "stackadapt.creatives.upload": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stripe.checkout.sessions.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stripe.customers.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "stripe.customers.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "stripe.invoices.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stripe.payment_intents.confirm": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stripe.refunds.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "stripe.subscriptions.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "stripe.subscriptions.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "twilio.calls.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "twilio.conversations.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "twilio.messages.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "twilio.studio.flows.execute": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "twilio.verify.check": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "webhook.post": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "webhook.post.replay": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "workday.jobs.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "workday.learning.enroll": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "workday.timeoff.request": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "xero.banktransactions.import": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "xero.batch.invoices": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "xero.contacts.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "xero.invoices.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "xero.payments.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zapier.batch.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zapier.hooks.trigger": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zapier.interfaces.submit": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zapier.tables.rows.upsert": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zapier.zaps.enable": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.macros.apply": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.side_conversations.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.tickets.add_tags": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.tickets.close": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.tickets.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "zendesk.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "zendesk.tickets.merge": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "zendesk.tickets.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "zendesk.tickets.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    }
+  },
+  "generated_by": "write_success_verification.generate_success_verification_catalog",
+  "mutating_action_count": 344,
+  "version": 1
+}

@@ -1,0 +1,166 @@
+{
+  "generated_at": "2026-08-06T01:32:16.470894+00:00",
+  "isolated_org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated_user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "foreign_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "policies": [
+    {
+      "tablename": "agent_execution_interrupts",
+      "policyname": "agent_execution_interrupts_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "domain_optimization_recommendations",
+      "policyname": "domain_optimization_recommendations_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "domain_segment_learning_state",
+      "policyname": "domain_segment_learning_state_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "intelligence_learning_signals",
+      "policyname": "intelligence_learning_signals_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "intelligence_outcome_events",
+      "policyname": "intelligence_outcome_events_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "restricted_test_user_ids",
+      "policyname": "restricted_test_user_ids_deny_clients",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "strategy_performance_records",
+      "policyname": "strategy_performance_records_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "test_credential_org_allowlist",
+      "policyname": "test_credential_org_allowlist_org_scope",
+      "cmd": "ALL",
+      "has_using": true,
+      "has_check": true
+    }
+  ],
+  "rls_enabled": [
+    {
+      "table_name": "agent_execution_interrupts",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "domain_optimization_recommendations",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "domain_segment_learning_state",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "intelligence_learning_signals",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "intelligence_outcome_events",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "restricted_test_user_ids",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "strategy_performance_records",
+      "rls_enabled": true
+    },
+    {
+      "table_name": "test_credential_org_allowlist",
+      "rls_enabled": true
+    }
+  ],
+  "cross_org_probes": [
+    {
+      "table": "agent_execution_interrupts",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "df42fc0e-09d3-41fa-a6d1-08e724d8fb71"
+    },
+    {
+      "table": "intelligence_outcome_events",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "05764142-6640-40d1-8101-463008e3ed91"
+    },
+    {
+      "table": "intelligence_learning_signals",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "select-only:APIError"
+    },
+    {
+      "table": "strategy_performance_records",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "select-only:APIError"
+    },
+    {
+      "table": "domain_segment_learning_state",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "e32ffe4e-7ab8-45d6-a584-6cb3f60ce850"
+    },
+    {
+      "table": "domain_optimization_recommendations",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "select-only:APIError"
+    },
+    {
+      "table": "test_credential_org_allowlist",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": null
+    },
+    {
+      "table": "restricted_test_user_ids",
+      "http": 200,
+      "row_count": 0,
+      "blocked": true,
+      "leaked": false,
+      "seed": "deny-all-policy"
+    }
+  ],
+  "service_role_still_reads": true,
+  "pass": true
+}

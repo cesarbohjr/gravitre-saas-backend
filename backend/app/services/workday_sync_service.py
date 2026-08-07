@@ -13,6 +13,7 @@ from app.connectors.workday import (
 )
 from app.connectors.workday_oauth import ensure_workday_session
 from app.rag.ingest import create_ingest_job, create_source, get_source
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def set_workday_sync_config(
     if not row.data:
         raise ValueError("Connector not found")
     connector = dict(row.data[0])
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key='config')
     if targets is not None:
         normalized: list[dict[str, Any]] = []
         for item in targets:
@@ -107,7 +108,7 @@ def ensure_workday_rag_source(
     created_by: str,
 ) -> str:
     _ = settings
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key='config')
     existing = config.get("workday_rag_source_id")
     environment = str(connector.get("environment") or "production")
     department_id = config.get("workday_department_id")
@@ -249,7 +250,7 @@ def run_workday_sync(
         except WorkdayAPIError as exc:
             errors.append(f"content {content_id}: {exc}")
 
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key='config')
     config["workday_last_synced_at"] = _now_iso()
     config["workday_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()

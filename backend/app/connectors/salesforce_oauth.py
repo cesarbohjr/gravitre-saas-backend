@@ -21,6 +21,8 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
+
 logger = logging.getLogger(__name__)
 
 SALESFORCE_SCOPES = "api refresh_token"
@@ -260,7 +262,7 @@ def complete_salesforce_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "salesforce"
     config["instance_url"] = tokens.get("instance_url")
     if not (config.get("webhook_secret") or "").strip():
@@ -302,7 +304,7 @@ def _connector_instance_url(client: Any, org_id: str, connector_id: str) -> str 
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     url = (config.get("instance_url") or "").strip()
     return url or None
 

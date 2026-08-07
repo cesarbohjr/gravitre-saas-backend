@@ -1,6 +1,8 @@
 """Proactive business signals — alerts, opportunities, risks, and briefs."""
 from __future__ import annotations
 
+import asyncio
+import time
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -33,6 +35,12 @@ DEPARTMENT_DOMAINS: dict[str, str] = {
     "engineering": "engineering",
 }
 
+# Short TTL cache — mount hits both /business-signals and /advisor-brief;
+# without this, advisor re-runs the full sequential predictive stack.
+_SIGNALS_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_SIGNALS_CACHE_TTL_S = 45.0
+_SOURCE_TIMEOUT_S = 2.5
+
 
 class BusinessSignalsEngine:
     """Aggregates CRM, finance, support, workflow, connector, and prediction signals."""
@@ -46,6 +54,10 @@ class BusinessSignalsEngine:
     def _client(self) -> Any:
         return get_supabase_client(self.settings)
 
+    @staticmethod
+    def _cache_key(org_id: str, department: str | None, query: str | None) -> str:
+        return f"{org_id}|{(department or 'operations').lower()}|{(query or '').strip().lower()}"
+
     async def collect_signals(
         self,
         org_id: str,
@@ -53,22 +65,111 @@ class BusinessSignalsEngine:
         department: str | None = None,
         query: str | None = None,
         client: Any | None = None,
+        use_cache: bool = True,
+        include_predictive: bool = True,
     ) -> dict[str, Any]:
+        cache_key = f"{self._cache_key(org_id, department, query)}|pred={int(include_predictive)}"
+        if use_cache:
+            hit = _SIGNALS_CACHE.get(cache_key)
+            if hit and (time.monotonic() - hit[0]) < _SIGNALS_CACHE_TTL_S:
+                return hit[1]
+
+        domain = DEPARTMENT_DOMAINS.get((department or "operations").lower(), "operations")
+        db_client = client or self._client()
         signals: list[dict[str, Any]] = []
         graph_payload: dict[str, Any] = {}
 
-        if query:
+        async def _with_timeout(label: str, coro):
             try:
-                graph_payload = await get_knowledge_graph_service().answer_business_question(org_id, query)
-                for signal in list((graph_payload.get("explanation") or {}).get("businessSignals") or [])[:5]:
-                    signals.append(self._normalize_signal(signal, source="knowledge_graph", signal_type="insight"))
+                return await asyncio.wait_for(coro, timeout=_SOURCE_TIMEOUT_S)
             except Exception as exc:  # noqa: BLE001
-                logger.debug("business_signals_graph_skipped org_id=%s error=%s", org_id, exc)
+                logger.debug(
+                    "business_signals_source_skipped org_id=%s source=%s error=%s",
+                    org_id,
+                    label,
+                    exc,
+                )
+                return None
 
-        domain = DEPARTMENT_DOMAINS.get((department or "operations").lower(), "operations")
-        try:
-            predictions = await self._predictive.run_domain_predictions(org_id, domain)
-            for model_name, payload in (predictions.get("predictions") or {}).items():
+        async def _graph():
+            if not query:
+                return None
+            return await get_knowledge_graph_service().answer_business_question(org_id, query)
+
+        async def _domain_predictions():
+            return await self._predictive.run_domain_predictions(org_id, domain)
+
+        async def _early_warnings(precomputed_domain: dict[str, Any] | None):
+            # Scope to the active department only — full-pack fan-out was the
+            # multi-second mount tax (re-ran every domain sequentially).
+            precomputed = {domain: precomputed_domain} if precomputed_domain else None
+            return await self._predictive.generate_early_warning_alerts(
+                org_id,
+                domains=[domain],
+                persist_suggestions=False,
+                precomputed=precomputed,
+            )
+
+        async def _suggestions():
+            return await get_optimization_suggestion_service(self.settings).list_suggestions(
+                org_id,
+                status="pending_review",
+                limit=5,
+            )
+
+        async def _org_alerts():
+            snapshot = await asyncio.to_thread(
+                lambda: get_org_context_service().get_snapshot(db_client, org_id, depth="minimal")
+            )
+            return list(snapshot.get("alerts") or [])[:3]
+
+        async def _failure_alerts():
+            return await asyncio.to_thread(
+                lambda: list_failure_alerts(db_client, org_id, limit=5)
+            )
+
+        async def _decision():
+            if not query:
+                return None
+            from app.services.decision_intelligence_service import get_decision_intelligence_service
+
+            return await get_decision_intelligence_service(self.settings).recommend_next_action(
+                org_id,
+                query,
+            )
+
+        domain_predictions = None
+        early_warnings: list[Any] | None = None
+        if include_predictive:
+            # Predictions first (reuse for early warnings). Hard-timeout — ML
+            # catalog status/load is the measured multi-second mount culprit.
+            domain_predictions = await _with_timeout("domain_predictions", _domain_predictions())
+            early_warnings = await _with_timeout(
+                "early_warnings",
+                _early_warnings(domain_predictions if isinstance(domain_predictions, dict) else None),
+            )
+
+        (
+            graph_result,
+            suggestions_payload,
+            org_alerts,
+            failure_alerts,
+            decision_payload,
+        ) = await asyncio.gather(
+            _with_timeout("graph", _graph()),
+            _with_timeout("suggestions", _suggestions()),
+            _with_timeout("org_alerts", _org_alerts()),
+            _with_timeout("failure_alerts", _failure_alerts()),
+            _with_timeout("decision", _decision()),
+        )
+
+        if isinstance(graph_result, dict):
+            graph_payload = graph_result
+            for signal in list((graph_payload.get("explanation") or {}).get("businessSignals") or [])[:5]:
+                signals.append(self._normalize_signal(signal, source="knowledge_graph", signal_type="insight"))
+
+        if isinstance(domain_predictions, dict):
+            for model_name, payload in (domain_predictions.get("predictions") or {}).items():
                 if payload.get("status") != "ok":
                     continue
                 risk = float(payload.get("risk_score") or 0.0)
@@ -87,34 +188,25 @@ class BusinessSignalsEngine:
                         signal_type="risk" if risk >= 0.65 else "opportunity",
                     )
                 )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("business_signals_predictive_skipped org_id=%s error=%s", org_id, exc)
 
-        try:
-            alerts = await self._predictive.generate_early_warning_alerts(org_id)
-            for alert in alerts[:5]:
-                signals.append(
-                    self._normalize_signal(
-                        {
-                            "title": f"Early warning: {alert.get('model')}",
-                            "summary": f"{alert.get('domain')} domain risk score {alert.get('riskScore')}",
-                            "confidence": alert.get("riskScore"),
-                            "estimated_impact": "high",
-                        },
-                        source="predictive_operations",
-                        signal_type="alert",
-                    )
+        for alert in list(early_warnings or [])[:5]:
+            if not isinstance(alert, dict):
+                continue
+            signals.append(
+                self._normalize_signal(
+                    {
+                        "title": f"Early warning: {alert.get('model')}",
+                        "summary": f"{alert.get('domain')} domain risk score {alert.get('riskScore')}",
+                        "confidence": alert.get("riskScore"),
+                        "estimated_impact": "high",
+                    },
+                    source="predictive_operations",
+                    signal_type="alert",
                 )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("business_signals_alerts_skipped org_id=%s error=%s", org_id, exc)
-
-        try:
-            suggestions = await get_optimization_suggestion_service(self.settings).list_suggestions(
-                org_id,
-                status="pending_review",
-                limit=5,
             )
-            for row in suggestions.get("suggestions") or []:
+
+        if isinstance(suggestions_payload, dict):
+            for row in suggestions_payload.get("suggestions") or []:
                 signals.append(
                     self._normalize_signal(
                         {
@@ -127,75 +219,65 @@ class BusinessSignalsEngine:
                         signal_type="opportunity",
                     )
                 )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("business_signals_optimization_skipped org_id=%s error=%s", org_id, exc)
 
-        if client is not None:
-            try:
-                snapshot = get_org_context_service().get_snapshot(client, org_id, depth="minimal")
-                for alert in list(snapshot.get("alerts") or [])[:3]:
-                    signals.append(
-                        self._normalize_signal(
-                            {
-                                "title": alert.get("title") or "Workflow alert",
-                                "summary": alert.get("message") or alert.get("summary") or "",
-                                **label_confidence(0.7, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
-                            },
-                            source="org_context",
-                            signal_type="alert",
-                        )
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("business_signals_org_context_skipped org_id=%s error=%s", org_id, exc)
+        for alert in list(org_alerts or []):
+            if not isinstance(alert, dict):
+                continue
+            signals.append(
+                self._normalize_signal(
+                    {
+                        "title": alert.get("title") or "Workflow alert",
+                        "summary": alert.get("message") or alert.get("summary") or "",
+                        **label_confidence(0.7, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
+                    },
+                    source="org_context",
+                    signal_type="alert",
+                )
+            )
 
-        try:
-            db_client = client or self._client()
-            failure_alerts = list_failure_alerts(db_client, org_id, limit=5)
-            for alert in failure_alerts:
+        for alert in list(failure_alerts or []):
+            if not isinstance(alert, dict):
+                continue
+            signals.append(
+                self._normalize_signal(
+                    {
+                        "title": alert.get("title") or "Workflow failure risk",
+                        "summary": alert.get("message") or alert.get("summary") or "",
+                        **label_confidence(0.65, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
+                    },
+                    source="workflow_prediction",
+                    signal_type="risk",
+                )
+            )
+
+        if isinstance(decision_payload, dict):
+            for row in decision_payload.get("recommendations") or []:
                 signals.append(
                     self._normalize_signal(
                         {
-                            "title": alert.get("title") or "Workflow failure risk",
-                            "summary": alert.get("message") or alert.get("summary") or "",
-                            **label_confidence(0.65, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
+                            "title": row.get("action") or row.get("title"),
+                            "summary": row.get("reasoning") or row.get("reason"),
+                            "confidence": row.get("confidence"),
+                            "estimated_impact": row.get("estimated_impact"),
                         },
-                        source="workflow_prediction",
-                        signal_type="risk",
+                        source="decision_intelligence",
+                        signal_type="opportunity",
                     )
                 )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("business_signals_workflow_skipped org_id=%s error=%s", org_id, exc)
-
-        if query:
-            try:
-                from app.services.decision_intelligence_service import get_decision_intelligence_service
-
-                decision_payload = await get_decision_intelligence_service(self.settings).recommend_next_action(
-                    org_id,
-                    query,
-                )
-                for row in decision_payload.get("recommendations") or []:
-                    signals.append(
-                        self._normalize_signal(
-                            {
-                                "title": row.get("action") or row.get("title"),
-                                "summary": row.get("reasoning") or row.get("reason"),
-                                "confidence": row.get("confidence"),
-                                "estimated_impact": row.get("estimated_impact"),
-                            },
-                            source="decision_intelligence",
-                            signal_type="opportunity",
-                        )
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("business_signals_decision_skipped org_id=%s error=%s", org_id, exc)
 
         ranked = await self._quality.rank_recommendations(
             signals,
             org_id=org_id,
             department=department,
         )
-        return {"signals": ranked[:10], "graph": graph_payload, "collected_at": datetime.now(timezone.utc).isoformat()}
+        payload = {
+            "signals": ranked[:10],
+            "graph": graph_payload,
+            "collected_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if use_cache:
+            _SIGNALS_CACHE[cache_key] = (time.monotonic(), payload)
+        return payload
 
     async def generate_department_brief(
         self,
@@ -203,8 +285,11 @@ class BusinessSignalsEngine:
         department: str,
         *,
         client: Any | None = None,
+        signals_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = await self.collect_signals(org_id, department=department, client=client)
+        payload = signals_payload or await self.collect_signals(
+            org_id, department=department, client=client
+        )
         signals = payload.get("signals") or []
         risks = [row for row in signals if row.get("signal_type") in {"risk", "alert"}][:3]
         opportunities = [row for row in signals if row.get("signal_type") == "opportunity"][:3]
@@ -245,8 +330,10 @@ class BusinessSignalsEngine:
         departments = list(DEPARTMENT_DOMAINS.keys())
         sections: list[dict[str, Any]] = []
         all_signals: list[dict[str, Any]] = []
-        for dept in departments:
-            brief = await self.generate_department_brief(org_id, dept, client=client)
+        briefs = await asyncio.gather(
+            *[self.generate_department_brief(org_id, dept, client=client) for dept in departments]
+        )
+        for brief in briefs:
             if brief.get("what_changed"):
                 sections.append(brief)
                 all_signals.extend(brief.get("risks") or [])

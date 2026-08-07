@@ -472,22 +472,60 @@ class MesonService:
                 approval_required=True,
                 org_id=org_id,
             )
+            # Phase 1: map GoalService template types onto canvas types, then
+            # compile through sync_builder_graph (same assert_bindings_valid gate
+            # as PUT /builder). Do not call validate_definition on raw Meson
+            # types (trigger/action/end) — those are canvas aliases.
+            from app.workflows.builder_sync import sync_builder_graph
+            from app.workflows.definition_resolver import normalize_legacy_node_type
+            from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
+
+            _MESON_CANVAS_TYPE = {
+                "trigger": "source",
+                "action": "task",
+                "end": "task",
+                "human_approval": "approval",
+            }
+
+            edges = [
+                {
+                    "from_node_id": edge.source,
+                    "to_node_id": edge.target,
+                }
+                for edge in generated.edges
+            ]
+            builder_nodes = []
+            for node in generated.nodes:
+                canvas_type = _MESON_CANVAS_TYPE.get(
+                    str(node.type),
+                    normalize_legacy_node_type(str(node.type)),
+                )
+                builder_nodes.append(
+                    {
+                        "id": node.id,
+                        "type": canvas_type,
+                        "name": node.name,
+                        "description": node.description,
+                        "config": node.config or {},
+                        "position": node.position or {"x": 0, "y": 0},
+                        "metadata": {"description": node.description, "meson_type": node.type},
+                    }
+                )
+
+            # Placeholder definition until sync_builder_graph writes the compiled one.
             definition = {
                 "schema_version": SCHEMA_VERSION,
                 "steps": [
                     {
-                        "id": node.id,
-                        "name": node.name,
-                        "type": node.type,
-                        "config": node.config,
-                        "metadata": {
-                            "description": node.description,
-                            "position": node.position,
-                        },
+                        "id": n["id"],
+                        "name": n["name"],
+                        "type": "noop",
+                        "config": {},
+                        "metadata": n.get("metadata") or {},
                     }
-                    for node in generated.nodes
+                    for n in builder_nodes
                 ],
-                "edges": [edge.model_dump() for edge in generated.edges],
+                "edges": edges,
             }
             row = {
                 "org_id": org_id,
@@ -504,9 +542,17 @@ class MesonService:
             created = client.table("workflow_defs").insert(row).execute()
             if created.data:
                 workflow_id = str(created.data[0]["id"])
-                from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
-
                 mirror_legacy_workflow_row_to_contract(client, dict(created.data[0]))
+                # Materialize nodes/edges + binding validation (raises on failure).
+                sync_builder_graph(
+                    client,
+                    org_id=org_id,
+                    workflow_id=workflow_id,
+                    environment_name=environment_name,
+                    nodes=builder_nodes,
+                    edges=edges,
+                    created_by=user_id,
+                )
                 write_audit_event(
                     client,
                     org_id=org_id,

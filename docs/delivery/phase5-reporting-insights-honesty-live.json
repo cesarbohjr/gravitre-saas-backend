@@ -1,0 +1,71 @@
+{
+  "probe": "phase5_reporting_honesty_live",
+  "checked_at": "2026-08-07T20:17:09.359857+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "api_git_sha": "4e807263252399aaa2ff9b44952b02072ce7193a",
+  "audit_http": 200,
+  "audit_verdict": "PASS",
+  "surface_count": 12,
+  "summary": {
+    "surface_count": 12,
+    "finding_errors": 0,
+    "finding_warnings": 0,
+    "agents_scanned": 9,
+    "invented_100pct_zero_run": 0,
+    "intelligence_outcome_events": 397,
+    "ops_success_rate_series_7_30_90": [
+      46.67,
+      20.0,
+      20.0
+    ],
+    "ops_series_assessment": {
+      "flagged": false,
+      "reason": "ok_variance",
+      "metric_name": "ops_success_rate_7_30_90",
+      "period_count": 3,
+      "identical_ratio": 0.6667,
+      "modal_value": 20.0
+    }
+  },
+  "roi_placeholders": [
+    {
+      "label": "Hours saved",
+      "value": null,
+      "provenance": "not_configured",
+      "honesty_ok": true,
+      "note": "Not computed from BusinessOutcome / Module A \u2014 never shown as live."
+    },
+    {
+      "label": "Revenue influenced",
+      "value": null,
+      "provenance": "not_configured",
+      "honesty_ok": true,
+      "note": "Not computed from BusinessOutcome / Module A \u2014 never shown as live."
+    },
+    {
+      "label": "Cost savings",
+      "value": null,
+      "provenance": "not_configured",
+      "honesty_ok": true,
+      "note": "Not computed from BusinessOutcome / Module A \u2014 never shown as live."
+    }
+  ],
+  "metrics_http": 200,
+  "metrics_honesty": {
+    "successRateProvenance": "live_runs",
+    "source": "workflow_runs.status completed/(completed+failed)",
+    "range": "7d",
+    "seriesAssessment": {
+      "flagged": false,
+      "reason": "ok_variance",
+      "metric_name": "ops_success_rate",
+      "period_count": 4,
+      "identical_ratio": 0.5,
+      "modal_value": 0.0
+    }
+  },
+  "metrics_success_rate": 46.67,
+  "metrics_24h_http": 400,
+  "verdict": "PASS \u2014 reporting honesty @ 4e807263"
+}

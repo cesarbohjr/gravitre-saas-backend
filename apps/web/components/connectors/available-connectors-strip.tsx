@@ -73,31 +73,36 @@ export function AvailableConnectorsStrip({
   return (
     <section
       aria-label="Available connectors"
-      className={cn("border-b border-border bg-secondary/20 px-4 py-2.5 md:px-6", className)}
+      className={cn(
+        // min-w-0 keeps this strip inside AppShell (overflow-x-hidden); without
+        // it the card track grows to content width and the right edge clips.
+        "w-full min-w-0 border-b border-border bg-secondary/20 px-4 py-2.5 md:px-6",
+        className,
+      )}
     >
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-        <div className="flex flex-wrap items-baseline gap-x-2">
+      <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
           <p className="text-xs text-muted-foreground">
             Self-serve integrations ready to connect from this workspace.
           </p>
         </div>
         {showBrowseAll && (
-          <Button variant="outline" size="sm" className="h-8" onClick={onBrowseAll}>
+          <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={onBrowseAll}>
             Browse all
           </Button>
         )}
       </div>
       <div
         ref={trackRef}
-        className="flex gap-2 overflow-x-auto pb-1 scroll-smooth [scrollbar-width:thin]"
+        className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin]"
       >
         {entries.map((entry) => (
           <button
             key={entry.vendorKey}
             type="button"
             onClick={() => onSelect(entry.type)}
-            className="group flex min-w-[180px] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
+            className="group flex w-[200px] max-w-[80vw] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
           >
             <ConnectorIcon vendor={entry.type} size="sm" />
             <div className="min-w-0 flex-1">

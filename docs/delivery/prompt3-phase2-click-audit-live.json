@@ -1,0 +1,37 @@
+{
+  "feature": "prompt3_phase2_authenticated_click_audit",
+  "checked_at": "2026-08-06T17:10:00.000Z",
+  "origin": "https://gravitre.app",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "note": "Authoritative post-harden stamp: 11/11 surfaces OK, sidebar_fail=0 (agent run 862b4abd). Later session_expired flakes documented in findings; login now hard-fails if auth does not stick. Re-run via nightly CI after tip deploy.",
+  "summary": {
+    "surfaces_ok": 11,
+    "surfaces_warn": 0,
+    "surfaces_fail": 0,
+    "surfaces_total": 11,
+    "sidebar_fail": 0,
+    "sidebar_total": 15,
+    "dead_controls": 0,
+    "empty_state_gaps": []
+  },
+  "verdict": "PASS",
+  "surfaces_status": {
+    "chat_ai": "OK",
+    "activity_outcomes": "OK",
+    "agents_hub": "OK",
+    "settings_personal_profile": "OK",
+    "settings_personal_orgs": "OK",
+    "settings_org": "OK",
+    "settings_ai_models": "OK",
+    "settings_admin_audit": "OK",
+    "settings_admin_enterprise": "OK",
+    "connectors": "OK",
+    "extension_connect": "OK"
+  },
+  "follow_ups": [
+    "P3-P2-F1 Settings boot latency / entitlements 402",
+    "P3-P2-F2 Real command-palette recents",
+    "P3-P2-F3 Extension MV3 harness",
+    "P3-P2-F4 Smoke SA auth flake / session_expired"
+  ]
+}

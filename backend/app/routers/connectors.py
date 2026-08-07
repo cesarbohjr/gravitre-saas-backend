@@ -1,4 +1,7 @@
 """BE-30: Integration registry API. Admin-only. Never return secrets."""
+from __future__ import annotations
+
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 from uuid import UUID
@@ -6,6 +9,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+
+logger = logging.getLogger(__name__)
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -245,15 +250,42 @@ def _connector_response_item(
 
     connector_id = str(row["id"])
     vendor = str(row.get("vendor") or row.get("type") or "").strip()
-    availability = evaluate_connector_availability(
-        client,
-        org_id,
-        row,
-        settings,
-        environment_name=str(row.get("environment") or environment_name),
-        force_live=force_live,
-    )
-    api_key = masked_api_key_for_response(client, connector_id, row, settings)
+    raw_config = row.get("config")
+    config = raw_config if isinstance(raw_config, dict) else {}
+    try:
+        availability = evaluate_connector_availability(
+            client,
+            org_id,
+            row,
+            settings,
+            environment_name=str(row.get("environment") or environment_name),
+            force_live=force_live,
+        )
+    except Exception:  # noqa: BLE001 — one bad availability check must not 500 the hub
+        logger.exception(
+            "connector availability evaluation failed id=%s vendor=%s",
+            connector_id,
+            vendor,
+        )
+        availability = {
+            "health_status": row.get("status") or "error",
+            "auth_status": "error",
+            "display_status": "error",
+            "configured": False,
+            "authenticated": False,
+            "token_valid": False,
+            "scopes_valid": False,
+            "execution_available": False,
+            "blocking_reason": "availability_eval_failed",
+            "recovery_action": "Retry loading connectors or reconnect this integration.",
+            "last_checked_at": None,
+            "source_of_truth": "connectors_list_fallback",
+        }
+    try:
+        api_key = masked_api_key_for_response(client, connector_id, row, settings)
+    except Exception:  # noqa: BLE001
+        logger.exception("connector api key mask failed id=%s", connector_id)
+        api_key = None
     return {
         "id": connector_id,
         "name": row.get("name") or "",
@@ -282,7 +314,7 @@ def _connector_response_item(
         "config": {
             "apiKey": api_key,
             "webhookUrl": row.get("webhook_url"),
-            "authType": (row.get("config") or {}).get("auth_type"),
+            "authType": config.get("auth_type"),
         },
         "docsUrl": row.get("docs_url"),
         "phiCapable": bool(row.get("phi_capable")),
@@ -502,30 +534,61 @@ async def list_connectors_route_alias(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    q = (
-        client.table("connectors")
-        .select(
-            "id, name, vendor, type, description, status, environment, config, sync_frequency, "
-            "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
+    try:
+        q = (
+            client.table("connectors")
+            .select(
+                "id, name, vendor, type, description, status, environment, config, sync_frequency, "
+                "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
+            )
+            .eq("org_id", org_id)
+            .eq("environment", environment_name)
+            .is_("deleted_at", "null")
+            .order("updated_at", desc=True)
+            .execute()
         )
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .is_("deleted_at", "null")
-        .order("updated_at", desc=True)
-        .execute()
-    )
-    items = [
-        _connector_response_item(
-            row,
-            environment_name=environment_name,
-            settings=settings,
-            client=client,
-            org_id=org_id,
-            force_live=live,
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("connectors list query failed org_id=%s env=%s", org_id, environment_name)
+        if is_connector_type_schema_error(exc):
+            raise_connector_type_schema_error(exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(
+                "Failed to load connectors from the database.",
+                "CONNECTORS_LIST_QUERY_FAILED",
+            ),
+        ) from exc
+    if getattr(q, "error", None):
+        logger.error("connectors list query error org_id=%s error=%s", org_id, q.error)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(
+                "Failed to load connectors from the database.",
+                "CONNECTORS_LIST_QUERY_FAILED",
+            ),
         )
-        for row in list(q.data or [])
-        if _visible_on_connectors_hub(row)
-    ]
+
+    items: list[dict] = []
+    for row in list(q.data or []):
+        if not _visible_on_connectors_hub(row):
+            continue
+        try:
+            items.append(
+                _connector_response_item(
+                    row,
+                    environment_name=environment_name,
+                    settings=settings,
+                    client=client,
+                    org_id=org_id,
+                    force_live=live,
+                )
+            )
+        except Exception:  # noqa: BLE001 — isolate poison rows
+            logger.exception(
+                "Skipping connector that failed to serialize id=%s vendor=%s",
+                row.get("id"),
+                row.get("vendor") or row.get("type"),
+            )
     return {"connectors": items}
 
 

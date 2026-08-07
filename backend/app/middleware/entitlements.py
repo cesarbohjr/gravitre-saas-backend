@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, Callable
 
 from fastapi import Depends, HTTPException, status
-from supabase import create_client
 
 from app.auth.dependencies import get_org_context
+from app.billing.service import get_org_billing, get_plan_for_org, get_supabase_client
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
 
@@ -162,32 +162,63 @@ def _usage_totals(client, org_id: str) -> dict[str, int]:
     return totals
 
 
-def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    subscription = _select_latest_subscription(client, org_id)
-    if subscription:
-        tier = _normalize_tier(subscription.get("tier"))
-        status = str(subscription.get("status") or "inactive")
-        seat_count = int(subscription.get("seat_count") or 1)
-        lite_seats = int(subscription.get("lite_seats") or 0)
-        addons = subscription.get("meson_addons") or []
-    else:
-        fallback = _fallback_org_billing(client, org_id) or {
-            "tier": "free",
-            "status": "inactive",
-            "seat_count": 1,
-            "lite_seats": 0,
-            "meson_addons": [],
-        }
-        tier = _normalize_tier(str(fallback["tier"]))
-        status = str(fallback["status"])
-        seat_count = int(fallback["seat_count"])
-        lite_seats = int(fallback["lite_seats"])
-        addons = fallback["meson_addons"]
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() not in {"", "false", "none", "off", "0"}
+    if isinstance(value, (int, float)):
+        return value != 0
+    return bool(value)
 
-    limits = dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
-    limits["lite_seats_included"] = max(int(limits.get("lite_seats_included") or 0), lite_seats)
-    features = dict(TIER_FEATURES.get(tier, TIER_FEATURES["free"]))
+
+def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
+    """Resolve tier/limits from org_billing + billing_plans (same SoT as Billing UI)."""
+    client = get_supabase_client(settings)
+    plan = get_plan_for_org(client, org_id)
+    org_billing = get_org_billing(client, org_id) or {}
+    subscription = _select_latest_subscription(client, org_id)
+
+    tier = _normalize_tier(str(plan.get("code") or org_billing.get("plan_code") or "free"))
+    status = str(
+        org_billing.get("billing_status")
+        or (subscription or {}).get("status")
+        or "inactive"
+    )
+    seat_count = int((subscription or {}).get("seat_count") or 1)
+    lite_seats = int((subscription or {}).get("lite_seats") or 0)
+    addons = (subscription or {}).get("meson_addons") or []
+
+    tier_defaults = dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
+    plan_features = dict(plan.get("features") or {})
+    default_lite = tier_defaults.get("lite_seats_included")
+    limits = {
+        "workflows": plan.get("workflows_limit", tier_defaults.get("workflows")),
+        "agents": plan.get("agents_limit", tier_defaults.get("agents")),
+        "connectors": tier_defaults.get("connectors"),
+        "runs_per_month": plan.get("workflow_runs_included", tier_defaults.get("runs_per_month")),
+        "operator_sessions_concurrent": tier_defaults.get("operator_sessions_concurrent"),
+        "lite_seats_included": (
+            None if default_lite is None else max(int(default_lite or 0), lite_seats)
+        ),
+        "environments": plan.get("environments_limit"),
+        "ai_credits_included": plan.get("ai_credits_included"),
+        "workflow_runs_included": plan.get("workflow_runs_included"),
+    }
+    features_source = TIER_FEATURES[tier] if tier in TIER_FEATURES else TIER_FEATURES["free"]
+    features = {
+        **dict(features_source),
+        "approvals": _as_bool(plan_features.get("approvals", features_source.get("approvals"))),
+        "audit_logs": _as_bool(plan_features.get("audit_logs", features_source.get("audit_logs"))),
+        "versioning": _as_bool(plan_features.get("versioning", features_source.get("versioning"))),
+        "advanced_connectors": _as_bool(
+            plan_features.get("advanced_connectors", features_source.get("advanced_connectors"))
+        ),
+        "rbac": _as_bool(plan_features.get("rbac", features_source.get("rbac"))),
+        "custom_webhooks": _as_bool(
+            plan_features.get("advanced_connectors", features_source.get("custom_webhooks"))
+        ),
+    }
     usage = _usage_totals(client, org_id)
     return {
         "tier": tier,

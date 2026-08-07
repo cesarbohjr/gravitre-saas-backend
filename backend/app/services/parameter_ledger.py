@@ -17,6 +17,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.services.chat_connector_models import ConnectorActionPlan
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -755,8 +756,8 @@ def resume_awaiting_params(
     if not is_awaiting_params(task_state):
         return None, get_ledger(task_state), {}
 
-    pending = task_state.get("pending_task") or {}
-    params = dict(pending.get("params") or {})
+    pending = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+    params = safe_normalize_stored_dict(pending, key="params")
     invoke_action = str(params.get("invoke_action") or "")
     if not invoke_action:
         return None, get_ledger(task_state), {}
@@ -766,7 +767,8 @@ def resume_awaiting_params(
         turn_index=_next_turn_index(task_state),
         ledger=get_ledger(task_state),
     )
-    args = bind_args_from_ledger(invoke_action, dict(params.get("args") or {}), ledger)
+    raw_args = safe_normalize_stored_dict(params, key="args")
+    args = bind_args_from_ledger(invoke_action, raw_args, ledger)
 
     # Follow-up body: fill first missing free-text required field from the message.
     schema = get_workflow_schema(invoke_action)
@@ -826,7 +828,7 @@ def resume_awaiting_params(
         approval_reason=params.get("approval_reason"),
         destructive=bool(params.get("destructive")),
         inferred_fields=tuple(str(x) for x in (params.get("inferred_fields") or [])),
-        inference_sources=dict(params.get("inference_sources") or {}),
+        inference_sources=safe_normalize_stored_dict(params, key='inference_sources'),
     )
     # Advance pending_task.args from live ledger (root cause of test-1 stall).
     advanced = stage_awaiting_params(plan, ledger=ledger)
@@ -841,7 +843,7 @@ def resume_awaiting_params(
         ledger.pending_missing = []
         advanced["parameter_ledger"] = ledger.to_dict()
         # Mark complete so callers can promote.
-        pending_params = dict((advanced.get("pending_task") or {}).get("params") or {})
+        pending_params = safe_normalize_stored_dict(safe_normalize_stored_dict(advanced, key='pending_task'), key='params')
         pending_params["args"] = dict(plan.args or {})
         for key in ("channel", "to", "email", "subject", "body", "message", "text"):
             if plan.args.get(key):

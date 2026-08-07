@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import HTTPException, status
+from app.core.safe_dict import safe_normalize_stored_dict
 
 KNOWLEDGE_SOURCE_TYPES: frozenset[str] = frozenset(
     {
@@ -88,7 +89,19 @@ def connector_vendor_for_source_type(source_type: str) -> str | None:
 
 def build_sync_rules(payload: dict[str, Any]) -> dict[str, Any]:
     """Normalize include/exclude/sync rule fields from API payload."""
-    metadata = dict(payload.get("metadata") or {})
+    metadata = safe_normalize_stored_dict(payload, key="metadata")
+    freshness_policy = safe_normalize_stored_dict(payload, key="freshness_policy")
+    if not freshness_policy:
+        freshness_policy = safe_normalize_stored_dict(payload, key="freshnessPolicy")
+    if not freshness_policy:
+        freshness_policy = safe_normalize_stored_dict(metadata, key="freshness_policy")
+
+    permission_policy = safe_normalize_stored_dict(payload, key="permission_policy")
+    if not permission_policy:
+        permission_policy = safe_normalize_stored_dict(payload, key="permissionPolicy")
+    if not permission_policy:
+        permission_policy = safe_normalize_stored_dict(metadata, key="permission_policy")
+
     include_rules = list(payload.get("include_rules") or payload.get("includeRules") or [])
     exclude_rules = list(payload.get("exclude_rules") or payload.get("excludeRules") or [])
     return {
@@ -97,6 +110,6 @@ def build_sync_rules(payload: dict[str, Any]) -> dict[str, Any]:
         "tags_required": list(payload.get("tags_required") or payload.get("tagsRequired") or metadata.get("tags_required") or []),
         "tags_excluded": list(payload.get("tags_excluded") or payload.get("tagsExcluded") or metadata.get("tags_excluded") or []),
         "sync_frequency": payload.get("sync_frequency") or payload.get("syncFrequency") or payload.get("sync_schedule") or "daily",
-        "freshness_policy": dict(payload.get("freshness_policy") or payload.get("freshnessPolicy") or metadata.get("freshness_policy") or {}),
-        "permission_policy": dict(payload.get("permission_policy") or payload.get("permissionPolicy") or metadata.get("permission_policy") or {}),
+        "freshness_policy": freshness_policy,
+        "permission_policy": permission_policy,
     }

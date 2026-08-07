@@ -41,6 +41,26 @@ def _read(path: Path) -> dict[str, Any]:
         return {"parse_error": True, "path": str(path.name)}
 
 
+def artifact_ok(data: dict[str, Any]) -> bool:
+    """Accept the three distinct smoke report shapes used by Lane D."""
+    if data.get("missing") or data.get("parse_error"):
+        return False
+    if data.get("ok") is True:
+        return True
+    if data.get("pass") is True:
+        return True
+    verdict = str(data.get("verdict") or data.get("status") or "").upper()
+    if verdict.startswith("PASS") or verdict == "OK":
+        return True
+    summary = data.get("summary")
+    if isinstance(summary, dict):
+        fail = summary.get("fail")
+        passed = summary.get("pass")
+        if fail == 0 and isinstance(passed, int) and passed > 0:
+            return True
+    return False
+
+
 def main() -> int:
     env = load_env()
     from supabase import create_client
@@ -48,20 +68,24 @@ def main() -> int:
     from qa_signal_audit import write_platform_signal
 
     results = {p.name: _read(p) for p in ARTIFACTS}
-    oks = []
-    for name, data in results.items():
-        if data.get("missing") or data.get("parse_error"):
-            oks.append(False)
-            continue
-        verdict = str(data.get("verdict") or data.get("status") or "").upper()
-        ok_flag = data.get("ok")
-        oks.append(ok_flag is True or verdict.startswith("PASS") or verdict == "OK")
+    oks = [artifact_ok(data) for data in results.values()]
     passed = all(oks) and bool(oks)
 
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "artifacts": list(results.keys()),
-        "results": results,
+        "results": {
+            name: {
+                "ok": artifact_ok(data),
+                "missing": bool(data.get("missing")),
+                "parse_error": bool(data.get("parse_error")),
+                "summary": data.get("summary"),
+                "verdict": data.get("verdict") or data.get("status"),
+                "pass": data.get("pass"),
+                "ok_flag": data.get("ok"),
+            }
+            for name, data in results.items()
+        },
         "verdict": "PASS" if passed else "PARTIAL",
     }
     out = ROOT / "docs" / "delivery" / "smoke-hardening-summary-latest.json"
@@ -76,7 +100,7 @@ def main() -> int:
         metadata=report,
         resource_id="hardening-smoke",
     )
-    print(json.dumps({"verdict": report["verdict"], "out": str(out)}, indent=2))
+    print(json.dumps({"verdict": report["verdict"], "out": str(out), "oks": oks}, indent=2))
     return 0 if passed else 1
 
 

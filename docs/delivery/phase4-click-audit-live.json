@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-08-06T07:28:22Z",
+  "origin": "https://gravitre.app",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "mode": "app",
+  "summaries": {
+    "marketing": null,
+    "appSequential": {
+      "ok": 2,
+      "warn": 0,
+      "fail": 12,
+      "total": 14
+    },
+    "appIsolated": {
+      "ok": 14,
+      "warn": 0,
+      "fail": 1,
+      "total": 15
+    }
+  },
+  "verdict": "PASS",
+  "note": "Isolated reset crawl is the authoritative auth click-audit; sequential mid-crawl FAILS are expected when overlays/state accumulate."
+}

@@ -29,6 +29,7 @@ from app.services.cache_service import get_cache_service
 from app.services.latency_tracking import log_pipeline_latency
 from app.services.rag_cache_helpers import EMBEDDING_TTL_SECONDS, RETRIEVAL_TTL_SECONDS, retrieval_cache_parts
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -110,7 +111,7 @@ class RAGService:
         cached_payload = cache.get_sync("retrieval", *cache_parts)
         if isinstance(cached_payload, dict) and cached_payload.get("rows") is not None:
             await cache.record_hit("retrieval")
-            cached_metrics = dict(cached_payload.get("metrics") or {})
+            cached_metrics = safe_normalize_stored_dict(cached_payload, key='metrics')
             cached_metrics["cache_hit"] = True
             if message_id:
                 asyncio.create_task(

@@ -18,6 +18,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ def _connector_cloud_id(client: Any, org_id: str, connector_id: str) -> str | No
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     cloud_id = (config.get("cloud_id") or config.get("cloudId") or "").strip()
     return cloud_id or None
 
@@ -276,7 +277,7 @@ def complete_jira_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "jira"
     config["cloud_id"] = str(site["id"])
     if site.get("url"):

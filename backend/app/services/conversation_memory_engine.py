@@ -7,6 +7,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.conversation_state_service import get_conversation_state_service
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -77,7 +78,7 @@ class ConversationMemoryEngine:
         client: Any | None = None,
     ) -> None:
         memory = await self.get_memory(org_id, "", conversation_id, client=client)
-        prefs = dict(memory.get("preferences") or {})
+        prefs = safe_normalize_stored_dict(memory, key="preferences")
         prefs[key] = value
         await self._persist_memory(conversation_id, org_id, {"preferences": prefs}, client=client)
 

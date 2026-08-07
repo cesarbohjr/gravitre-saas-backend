@@ -26,6 +26,7 @@ from app.connectors.oauth_provider_registry import (
     TokenRequestStyle,
 )
 from app.public_urls import connector_oauth_callback_url, is_legacy_platform_host
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -315,7 +316,7 @@ def persist_generic_oauth_connector_config(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = vendor
     config["auth_type"] = "oauth"
     if subdomain:
@@ -340,7 +341,7 @@ def _connector_context(client: Any, org_id: str, connector_id: str) -> dict[str,
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     return provider_context_from_connector_config(config)
 
 
@@ -490,9 +491,17 @@ def ensure_generic_session(
             merged = {**tokens, **refreshed}
             store_oauth_tokens(client, org_id, connector_id, merged, settings)
             tokens = merged
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, ValueError) as exc:
+            # _exchange_token raises ValueError on non-2xx OAuth responses (not HTTPError).
+            # Must soft-fail: otherwise list_connected_integrations / chat stream aborts
+            # for every turn when any generic OAuth connector has a revoked refresh token.
             mark_connector_oauth_failure(client, org_id, connector_id, "Token refresh failed")
-            logger.warning("generic oauth refresh failed vendor=%s err=%s", vendor, type(exc).__name__)
+            logger.warning(
+                "generic oauth refresh failed vendor=%s err=%s detail=%s",
+                vendor,
+                type(exc).__name__,
+                str(exc)[:240],
+            )
             return None, "Token refresh failed"
 
     access = str(tokens.get("access_token") or "").strip()

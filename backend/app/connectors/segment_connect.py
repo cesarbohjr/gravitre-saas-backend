@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.platform import masked_api_key_for_response, store_connector_api_key
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def normalize_vendor(vendor: str) -> str:
@@ -31,7 +32,7 @@ def store_segment_write_key(
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     config["auth_type"] = "api_key"
     config["segment_write_key_configured"] = True
     client.table("connectors").update(

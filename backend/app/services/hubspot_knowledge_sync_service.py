@@ -9,6 +9,7 @@ from app.config import Settings
 from app.connectors.hubspot import HubSpotAPIError, list_emails_since, list_notes_since
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
 from app.rag.ingest import create_ingest_job, create_source, get_source
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def ensure_hubspot_rag_source(
     *,
     created_by: str,
 ) -> str:
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     existing = config.get("hubspot_rag_source_id")
     environment = str(connector.get("environment") or "production")
     if existing and get_source(client, org_id, str(existing), environment_name=environment):
@@ -157,7 +158,7 @@ def run_hubspot_knowledge_sync(
     if err or not token:
         raise ValueError(err or "HubSpot not connected")
 
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     since_ms = _since_ms(config, full_sync=full_sync)
     source_id = ensure_hubspot_rag_source(client, org_id, connector, settings, created_by=actor_id)
     environment = str(connector.get("environment") or "production")

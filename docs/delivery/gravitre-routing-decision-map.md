@@ -531,11 +531,22 @@ Direct fixes after G.5.7. Status uses the standing map bar.
 |---|------|--------|----------|
 | 1 | Monday F4-class (`items` vs `automations`) | **CLOSED** | Root cause: `_OBJECT_CONFUSABLES` treated `tasks`↔`items` as confusable → vetoed `monday.items.create`. Fix: shared `_OBJECT_SYNONYMS` (boost) + `automations` confusables in `chat_action_mapper.py` (not vendor one-off). G.1 probe **11/11** incl. Monday task+item (`docs/delivery/g1-untested-connectors-probe.json`). Unit: `test_monday_task_does_not_map_to_automations_trigger`. |
 | 2 | MSP TRY clarify≠confirm CI | **CLOSED (stale test, not F1 regression)** | Orchestration uses `require_pack_install=True`; MagicMock pack absent → **clarify is correct**. Also multi-step false-positive on Sheet→HubSpot (“then … HubSpot”) without pack-risk. Fixes: pack-installed mock + pack-absent clarify test; `retrieve_plan_gate.multi_step_guess` requires pack-risk anchors. Full backend pytest: **4386 passed, 3 skipped**. |
-| 3 | F6 HubSpot follow-up | **CLOSED** | Cause ≠ wrong-endpoint: HubSpot ILS eventual consistency (size 0 then 1). Fix: retry/backoff in `collection_population_verify._follow_up_membership_count`. Live: Apollo + HubSpot both `follow_up_membership_confirmed` (`docs/delivery/f6-collection-population-verify-live.json`). Standing CI: `test_f6_hubspot_follow_up_membership.py`. |
-| 4 | A5d progressive + write governance | **CLOSED (gap fixed)** | Live pre-fix tip short-circuited writes via `handoff_short_circuit` (never entered LIVE). Fix: write intents always run `execute_task_streaming` (progressive + write authority); overlay may still `needsHandoff` after. Unit: `test_extension_chat_write_intent_runs_execute_task_streaming`. Live probe: `scripts/probe-a5d-extension-progressive.py` → `docs/delivery/a5d-extension-progressive-live.json` (re-run on deployed tip). |
-| CI | Full backend suite | **GREEN locally @ tip-of-fixes** | `python -m pytest -q` → **4386 passed, 3 skipped**. |
+| 3 | F6 HubSpot follow-up | **CLOSED** | Cause ≠ wrong-endpoint: HubSpot/Apollo membership eventual consistency. Fix: retry/backoff + HubSpot settle read. Live tip `798f792d`: both `follow_up_membership_confirmed` — Apollo `6a73b9a772eb1c0010817dc8`, HubSpot list `43` (`f6-collection-population-verify-live.json`). Standing CI: `test_f6_hubspot_follow_up_membership.py`. |
+| 4 | A5d progressive + write governance | **CLOSED** | Gap: write short-circuit. Live tip `798f792d`: `progressive_disclosure=true` (4001 B), Apollo write “Reply **yes**”, path `execute_task_streaming` — conv `8a7d3e74…` / `3acf82a1…` (`a5d-extension-progressive-live.json`). |
+| CI | Full CI workflow | **GREEN on tip `ce6db384`** | Actions run [31053173670](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31053173670): Backend pytest, Dependency audit, Web lint/typecheck/build, Integration Smoke — all **success**. Local full suite **4386 passed, 3 skipped**. |
 
-**Deploy note:** Re-verify A5d + F6 + G.1 against `/health` `git_sha` after stamp deploy of this closure commit.
+**Live tip:** `/health` `git_sha=ce6db384…` (ok). F6/A5d live probes also PASS on prior tip `798f792d` (same routing/verify code).
+
+### G.5.9 Population-verify eventual consistency — CLOSED (2026-08-06)
+
+| Vendor path | Decision | Current code | Evidence / note |
+|-------------|----------|--------------|-----------------|
+| HubSpot `lists.get` follow-up | Keep | Shared `_SETTLE_BACKOFF_S` + final `_SETTLE_FINAL_SLEEP_S` settle read | Prior live F6 confirmed |
+| Apollo `lists.list` follow-up | **Equalized to HubSpot** | Same settle helper (no shorter window) | Standing tests assert settle call count; live re-verify in `f6-collection-population-verify-live.json` |
+| Marketo `lists.add_to_static_list` | **(a) Wire follow-up** | `marketo.lists.get_leads` → GET `/lists/{id}/leads.json` via same settle helper | Adobe List Membership API is real/reliable. Live write **NOT_RUN** until an org connects Marketo (zero prod connectors today) — not “async forever” |
+| Other list-add vendors | N/A | Only Apollo+HubSpot+Marketo in population verify | Expand if new populate actions ship |
+
+**Standing CI:** `test_f6_hubspot_follow_up_membership.py` (HubSpot + Apollo settle parity + Marketo follow-up).
 
 ---
 
@@ -588,3 +599,4 @@ NL variance + withhold assertions also live in CI via `test_routing_nl_variance_
 | 2026-08-05 | **G.5 FINAL** — Phase 4.1–4.3 closed (embed re-test keep 40; enrichment decline; compression defer). Schema-augmentation research thread complete. |
 | 2026-08-05 | **G.5.7 operational re-verify** — tip `97b2e319`; progressive+MiniLM+enrichment-off CONFIRMED; F6 HubSpot + tip CI green GAP. |
 | 2026-08-05 | **G.5.8 gap closure** — Monday F4-class; MSP stale-test CI; HubSpot ILS retry; A5d write short-circuit removed; full pytest 4386 passed. |
+| 2026-08-05 | **G.5.8 tip `ce6db384`** — full CI green (pytest+audit+web); F6 both vendors + A5d progressive/governance live PASS. |

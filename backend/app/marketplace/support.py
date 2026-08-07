@@ -10,6 +10,7 @@ from app.marketplace.browse import (
     MarketplaceBrowseError,
     resolve_browsable_asset,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _INSTALL_STATUSES = frozenset({"active", "failed", "uninstalled"})
 
@@ -341,7 +342,7 @@ def uninstall_marketplace_asset(
 
     install_row = existing.data[0]
     install_id = str(install_row["id"])
-    metadata = dict(install_row.get("metadata") or {})
+    metadata = safe_normalize_stored_dict(install_row, key="metadata")
     deactivated = _deactivate_install_entities(
         client,
         org_id,

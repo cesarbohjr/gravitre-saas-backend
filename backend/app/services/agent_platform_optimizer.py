@@ -29,9 +29,22 @@ def _tool_name(tool: dict[str, Any]) -> str:
 
 
 def _tool_integration(tool: dict[str, Any]) -> str:
+    explicit = str(tool.get("integration") or "").strip().lower()
+    if explicit:
+        return explicit
     name = _tool_name(tool)
     if name.startswith("assistant_"):
         return "platform"
+    try:
+        from app.connectors.action_catalog.action_id_resolve import (
+            resolve_integration_from_tool_name,
+        )
+
+        resolved = resolve_integration_from_tool_name(name)
+        if resolved:
+            return resolved
+    except Exception:  # noqa: BLE001
+        pass
     if "_" in name:
         return name.split("_", 1)[0].lower()
     return name.lower()

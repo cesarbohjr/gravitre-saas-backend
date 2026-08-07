@@ -18,6 +18,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +229,7 @@ def _connector_account_id(client: Any, org_id: str, connector_id: str) -> str | 
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     account_id = (config.get("account_id") or config.get("accountId") or "").strip()
     return account_id or None
 
@@ -286,7 +287,7 @@ def complete_netsuite_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     resolved_account_id = (account_id or config.get("account_id") or config.get("accountId") or "").strip()
     if not resolved_account_id:
         raise ValueError("NetSuite accountId is required from OAuth callback or connector config")

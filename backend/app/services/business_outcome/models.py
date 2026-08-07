@@ -64,6 +64,11 @@ class VerificationSection:
     verified: bool
     method: str
     detail: str | None = None
+    # Phase 6 — honest review state (Phase 3 follow-up vs Phase 4 degeneracy).
+    review_state: str | None = None  # e.g. flagged_for_review
+    check_failed: str | None = None  # batch_degeneracy | follow_up_proof | effect_unproven
+    finding: str | None = None
+    next_actions: list[str] | None = None
 
 
 @dataclass
@@ -184,7 +189,22 @@ def _sections_to_dict(sections: BusinessOutcomeSections) -> dict[str, Any]:
             "integration": sections.evidence.integration,
         }
     if sections.verification is not None:
-        out["verification"] = asdict(sections.verification)
+        ver = sections.verification
+        verification: dict[str, Any] = {
+            "verified": ver.verified,
+            "method": ver.method,
+        }
+        if ver.detail:
+            verification["detail"] = ver.detail
+        if ver.review_state:
+            verification["reviewState"] = ver.review_state
+        if ver.check_failed:
+            verification["checkFailed"] = ver.check_failed
+        if ver.finding:
+            verification["finding"] = ver.finding
+        if ver.next_actions:
+            verification["nextActions"] = list(ver.next_actions)
+        out["verification"] = verification
     if sections.explanation:
         out["explanation"] = sections.explanation
     if sections.timeline:

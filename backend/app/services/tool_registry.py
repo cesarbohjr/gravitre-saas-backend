@@ -241,6 +241,9 @@ class AgentToolSpec:
     always_available: bool = False
 
     def to_openai_tool(self) -> dict[str, Any]:
+        # Top-level invoke_action / integration are for retrieval + governance.
+        # Callers that talk to OpenAI must pass only type/function (see
+        # unified_turn_reasoning_service tool sanitize).
         return {
             "type": "function",
             "function": {
@@ -248,6 +251,9 @@ class AgentToolSpec:
                 "description": self.description,
                 "parameters": self.parameters,
             },
+            "invoke_action": self.invoke_action,
+            "integration": self.integration,
+            "always_available": self.always_available,
         }
 
 

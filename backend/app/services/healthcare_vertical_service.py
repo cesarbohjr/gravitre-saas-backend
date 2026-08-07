@@ -10,6 +10,7 @@ from app.services.agent_tool_permissions import default_demo_scopes_for_system, 
 from app.services.vertical_workflow_helper import ensure_active_workflow_version
 from app.workflows.audit import write_audit_event
 from app.workflows.constants import SCHEMA_VERSION
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -353,7 +354,7 @@ def install_healthcare_vertical_pack(
     )
 
     org_row = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute()
-    settings = dict((org_row.data or [{}])[0].get("settings") or {})
+    settings = safe_normalize_stored_dict((org_row.data or [{}])[0], key="settings")
     now = datetime.now(timezone.utc).isoformat()
     settings["healthcare"] = {
         "installed": True,

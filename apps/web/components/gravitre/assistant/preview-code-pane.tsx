@@ -27,11 +27,10 @@ export function PreviewCodePane({
   const hasHtml = Boolean(previewHtml && String(previewHtml).trim())
   const markdownPreview =
     !hasHtml && hasCode && (previewFormat === "markdown" || previewFormat === "md")
-  if (!hasCode && !hasHtml) return null
-
   const [tab, setTab] = useState<"preview" | "code">(
     defaultTab === "code" && hasCode ? "code" : hasHtml || markdownPreview ? "preview" : "code",
   )
+  if (!hasCode && !hasHtml) return null
 
   return (
     <div

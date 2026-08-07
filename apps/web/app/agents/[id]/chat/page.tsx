@@ -152,7 +152,8 @@ export default function AgentChatPage({
           ...buildChatOrgPayload(),
           agent_id: agentId,
           mode: "agent",
-          tools: ["knowledge_base", "agent_status", "connector_status", "workflow_runs", "search_web"],
+          // Phase 1: do not ship a hardcoded tool list — backend resolves agent
+          // systems/tools via resolve_permitted_tools (same as unified LIVE).
           preferred_persona: preferredPersona,
         }),
       }),

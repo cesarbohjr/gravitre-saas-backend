@@ -91,12 +91,22 @@ export async function POST(request: NextRequest) {
       status: String(snake.status ?? "active"),
     }
 
-    const { data: subData } = await supabase
-      .from("subscriptions")
-      .select("tier")
+    // Prefer org_billing.plan_code (canonical) over subscriptions.tier (can lag).
+    const { data: billingData } = await supabase
+      .from("org_billing")
+      .select("plan_code")
       .eq("org_id", orgId)
       .maybeSingle()
-    if (!tierSupportsCustomWebhooks(subData?.tier)) {
+    let planCode = billingData?.plan_code
+    if (!planCode) {
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("tier")
+        .eq("org_id", orgId)
+        .maybeSingle()
+      planCode = subData?.tier
+    }
+    if (!tierSupportsCustomWebhooks(planCode)) {
       return NextResponse.json(
         { error: "Custom webhooks require Control or Command tier" },
         { status: 403 }

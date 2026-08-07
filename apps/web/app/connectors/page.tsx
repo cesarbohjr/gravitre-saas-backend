@@ -2661,23 +2661,26 @@ function ConnectorsPageContent() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
-      <div className="flex flex-col h-full min-h-0">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
         {/* Header */}
-        <div className="border-b border-border px-4 md:px-6 py-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3 md:gap-4">
-              {/* Brand gradient + theme-aware ring, matching PageHeader's icon
-                  chip. Was off-brand blue/violet with a blue ring. */}
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-border">
-                <Cable className="h-4 w-4 md:h-5 md:w-5 text-foreground" />
+        <div className="w-full min-w-0 border-b border-border px-4 py-4 md:px-6">
+          <div className="flex w-full min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-3 md:gap-4">
+              {/* Fixed 40×40 tile (same as PageHeader sm). Explicit width/height
+                  beats flex compression that was oval-stretching the chip. */}
+              <div
+                className="flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60"
+                style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
+              >
+                <Cable className="h-5 w-5 shrink-0 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>
                 <p className="text-xs md:text-sm text-muted-foreground">{SURFACE_COPY.pages.connectors.description}</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
-              <div className="relative flex-1 md:flex-none">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
+              <div className="relative w-full min-w-0 md:w-auto md:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search connectors..."
@@ -2927,7 +2930,7 @@ function ConnectorsPageContent() {
         />
 
         {/* Network Topology View */}
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
+        <div className="min-h-0 min-w-0 w-full flex-1 overflow-auto p-4 md:p-6">
           {connectors.length > 0 && (
             <div className="mb-4 flex justify-end">
               <DataFreshness

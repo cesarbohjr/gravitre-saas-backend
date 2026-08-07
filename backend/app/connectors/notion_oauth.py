@@ -18,6 +18,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,7 @@ def complete_notion_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "notion"
     if tokens.get("workspace_id"):
         config["notion_workspace_id"] = str(tokens["workspace_id"])

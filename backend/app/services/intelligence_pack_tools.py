@@ -12,6 +12,7 @@ from typing import Any, Coroutine, TypeVar
 from app.intelligence_packs.shared.auth_mode import AuthMode, get_auth_mode, resolve_credential_source
 from app.intelligence_packs.shared.pipeline import run_shared_ingestion
 from app.services.tool_types import NormalizedResult, ToolContext, ToolValidationError
+from app.core.safe_dict import safe_normalize_stored_dict
 
 ToolExecutor = Any
 T = TypeVar("T")
@@ -126,7 +127,7 @@ def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
         raw=raw,
         ttl_seconds=3600,
     )
-    provenance = dict(raw.get("provenance") or {})
+    provenance = safe_normalize_stored_dict(raw, key="provenance")
     result_url = str(provenance.get("url") or f"https://fred.stlouisfed.org/series/{series_id}")
     _emit_pack_source_notification(
         ctx,
@@ -174,7 +175,7 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
         raw=raw,
         ttl_seconds=3600,
     )
-    provenance = dict(raw.get("provenance") or {})
+    provenance = safe_normalize_stored_dict(raw, key="provenance")
     result_url = f"https://nvd.nist.gov/vuln/detail/{cve_id}"
     _emit_pack_source_notification(
         ctx,

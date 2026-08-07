@@ -6,9 +6,10 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as co
 
 /** Do not grant access when backend billing is unavailable — client uses session 402 state. */
 function degradedBillingStatus(reason: string) {
+  // Never invent "node" — a degraded response must not look like a real paid plan.
   return {
     billingStatus: "unknown",
-    planCode: "node",
+    planCode: null,
     canAccessApp: null,
     requiresUpgrade: false,
     upgradeReason: null,

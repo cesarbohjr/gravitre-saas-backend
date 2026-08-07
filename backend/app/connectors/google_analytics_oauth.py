@@ -24,6 +24,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +135,7 @@ def _connector_property_id(client: Any, org_id: str, connector_id: str) -> str |
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     property_id = (config.get("property_id") or config.get("propertyId") or "").strip()
     return property_id or None
 
@@ -156,14 +157,14 @@ def _apply_property_link(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["property_id"] = property_id
     if property_name:
         config["property_name"] = property_name
     if property_resource:
         config["property_resource"] = property_resource
     # Mirror GSC link_gsc_site: property link completes connect (not pending_property).
-    health = dict(config.get("health") or {}) if isinstance(config.get("health"), dict) else {}
+    health = safe_normalize_stored_dict(config, key="health") if isinstance(config.get("health"), dict) else {}
     health["authStatus"] = "connected"
     config["health"] = health
     client.table("connectors").update({"config": config, "status": "connected"}).eq(
@@ -233,7 +234,7 @@ def complete_google_analytics_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "google_analytics"
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 

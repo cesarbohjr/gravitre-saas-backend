@@ -103,9 +103,19 @@ def _project_from_run(
     # Rewrite legacy chat CTAs so Evidence buttons open the correct thread.
     if result_url.startswith("/ai?conversation="):
         result_url = result_url.replace("/ai?conversation=", "/ai?c=", 1)
+    run_status = str(run_payload.get("status") or "").lower()
+    batch_degeneracy = (
+        params.get("batch_degeneracy")
+        if isinstance(params.get("batch_degeneracy"), dict)
+        else None
+    )
+    population_verify = (
+        params.get("population_verify")
+        if isinstance(params.get("population_verify"), dict)
+        else None
+    )
     execution_result = {
-        "success": str(run_payload.get("status") or "").lower()
-        in {"completed", "success", "succeeded"},
+        "success": run_status in {"completed", "success", "succeeded"},
         "title": params.get("label") or run_payload.get("error_message") or "Completed work",
         "body": summary,
         "result_url": result_url,
@@ -121,6 +131,10 @@ def _project_from_run(
             "step_results": params.get("step_results") or [],
             "external_url": verified.get("external_url"),
             "action_args": action_args or None,
+            "outcome_effect": params.get("outcome_effect"),
+            "batch_degeneracy": batch_degeneracy,
+            "population_verify": population_verify,
+            "already_existed": params.get("already_existed"),
         },
     }
     notification_emitted = bool(params.get("notification_emitted") or params.get("notified"))

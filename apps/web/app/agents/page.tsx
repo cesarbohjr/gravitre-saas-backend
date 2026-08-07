@@ -162,12 +162,26 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
       glow: String(personality.glow ?? "shadow-blue-500/30"),
     },
-    stats: {
-      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
-      successRate: Number(stats.successRate ?? stats.success_rate ?? 0),
-      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
-      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
-    },
+    stats: (() => {
+      const tasksToday = Number(stats.tasksToday ?? stats.tasks_today ?? 0)
+      const raw = stats.successRate ?? stats.success_rate
+      const hasRate = raw !== undefined && raw !== null && raw !== ""
+      const parsed = hasRate ? Number(raw) : NaN
+      const successRate =
+        !hasRate || !Number.isFinite(parsed) ? null : parsed
+      return {
+        tasksToday,
+        successRate,
+        successRateSource:
+          (typeof stats.successRateSource === "string"
+            ? stats.successRateSource
+            : successRate == null
+              ? "insufficient_data"
+              : "stored_column") as Agent["stats"]["successRateSource"],
+        avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+        workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+      }
+    })(),
     capabilities: Array.isArray(input.capabilities)
       ? (input.capabilities as string[])
       : [],
@@ -226,8 +240,17 @@ const statusConfig = {
   error: { label: "Error", color: "text-destructive", dotColor: "bg-destructive", animate: false },
 }
 
+/** Phase 5 honesty: withhold rate when null / no tasks / idle-zero. */
+function getDisplaySuccessRate(agent: Agent): number | null {
+  const rate = agent.stats.successRate
+  if (rate == null || Number.isNaN(Number(rate))) return null
+  if (agent.stats.tasksToday <= 0) return null
+  if (agent.status === "idle" && rate === 0) return null
+  return rate
+}
+
 function shouldShowSuccessRate(agent: Agent): boolean {
-  return !(agent.status === "idle" && agent.stats.successRate === 0)
+  return getDisplaySuccessRate(agent) != null
 }
 
 function successRateColorClass(rate: number): string {
@@ -451,11 +474,14 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
 
         {/* Success rate · tasks today */}
         <p className="text-[10px] text-muted-foreground">
-          {shouldShowSuccessRate(agent) ? (
-            <span className={successRateColorClass(agent.stats.successRate)}>{agent.stats.successRate}%</span>
-          ) : (
-            <span className="text-muted-foreground/70">No tasks yet</span>
-          )}
+          {(() => {
+            const rate = getDisplaySuccessRate(agent)
+            return rate != null ? (
+              <span className={successRateColorClass(rate)}>{rate}%</span>
+            ) : (
+              <span className="text-muted-foreground/70">No tasks yet</span>
+            )
+          })()}
           <span className="mx-1">·</span>
           <span>{agent.stats.tasksToday} today</span>
         </p>
@@ -596,14 +622,19 @@ function AgentDetailPanel({
         </div>
         <p className="mt-3 text-sm text-muted-foreground">{agent.description}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {(() => {
+            const rate = getDisplaySuccessRate(agent)
+            return (
           <span className={cn(
             "rounded-md px-2 py-1 text-xs font-medium",
-            shouldShowSuccessRate(agent)
-              ? successRateBadgeClass(agent.stats.successRate)
+            rate != null
+              ? successRateBadgeClass(rate)
               : "bg-secondary text-muted-foreground",
           )}>
-            {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}% success` : "No tasks yet"}
+            {rate != null ? `${rate}% success` : "No tasks yet"}
           </span>
+            )
+          })()}
           <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
             {agent.stats.tasksToday} tasks
           </span>
@@ -644,14 +675,19 @@ function AgentDetailPanel({
           <div className={TYPE.metricLabel}>Tasks Today</div>
         </div>
         <div className="bg-card p-4 text-center">
+          {(() => {
+            const rate = getDisplaySuccessRate(agent)
+            return (
           <div className={cn(
             "text-2xl font-semibold",
-            shouldShowSuccessRate(agent)
-              ? successRateColorClass(agent.stats.successRate)
+            rate != null
+              ? successRateColorClass(rate)
               : "text-muted-foreground",
           )}>
-            {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
+            {rate != null ? `${rate}%` : "—"}
           </div>
+            )
+          })()}
           <div className={TYPE.metricLabel}>Success Rate</div>
         </div>
         <div className="bg-card p-4 text-center">
@@ -831,7 +867,10 @@ function AgentPreviewSheet({
             </div>
             <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
               <div className="text-lg font-semibold text-foreground">
-                {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
+                {(() => {
+                  const rate = getDisplaySuccessRate(agent)
+                  return rate != null ? `${rate}%` : "—"
+                })()}
               </div>
               <div className={TYPE.metricLabel}>Success</div>
             </div>

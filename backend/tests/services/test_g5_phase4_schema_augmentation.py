@@ -24,13 +24,14 @@ def test_enrichment_sample_covers_f4_and_g1_vendors():
 
 
 def test_enrichment_toggle_disables_suffix():
+    prior = enrich_mod.ENRICHMENT_ENABLED
     enrich_mod.ENRICHMENT_ENABLED = False
     assert enrichment_document_suffix("gmail.messages.send") == ""
     enrich_mod.ENRICHMENT_ENABLED = True
     try:
         assert "examples:" in enrichment_document_suffix("gmail.messages.send")
     finally:
-        enrich_mod.ENRICHMENT_ENABLED = False
+        enrich_mod.ENRICHMENT_ENABLED = prior
 
 
 def test_aggressive_compress_keeps_when_why_cue():
@@ -67,6 +68,7 @@ def test_aggressive_compress_keeps_when_why_cue():
 
 
 def test_g1_github_issues_still_maps_with_enrichment():
+    prior = enrich_mod.ENRICHMENT_ENABLED
     enrich_mod.ENRICHMENT_ENABLED = True
     try:
         match = ChatActionMapper().match_segment(
@@ -76,8 +78,14 @@ def test_g1_github_issues_still_maps_with_enrichment():
         assert match is not None
         assert "issues" in match.entry.registry_key
     finally:
-        enrich_mod.ENRICHMENT_ENABLED = False
+        enrich_mod.ENRICHMENT_ENABLED = prior
 
 
-def test_enrichment_defaults_off_after_phase42_decline():
-    assert enrich_mod.ENRICHMENT_ENABLED is False
+def test_enrichment_defaults_on_with_full_catalog():
+    from app.connectors.action_catalog.action_retrieval_enrichment import enrichment_coverage
+
+    assert enrich_mod.ENRICHMENT_ENABLED is True
+    cov = enrichment_coverage()
+    assert cov["data_path_exists"] is True
+    assert cov["full_coverage"] is True
+    assert cov["catalog_action_count"] >= 690

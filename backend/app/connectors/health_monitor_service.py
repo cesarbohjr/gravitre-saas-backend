@@ -11,6 +11,7 @@ from app.config import Settings
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
 from app.core.logging import get_logger
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -89,7 +90,7 @@ def _persist_health_result(client: Client, row: dict[str, Any], result: dict[str
 
     connector_id = result["connector_id"]
     org_id = result["org_id"]
-    config = dict(row.get("config") or {})
+    config = safe_normalize_stored_dict(row, key="config")
     config["health"] = {
         "checkedAt": _now_iso(),
         "latencyMs": result["latency_ms"],

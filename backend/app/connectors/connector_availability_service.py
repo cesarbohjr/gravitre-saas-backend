@@ -345,19 +345,59 @@ def list_connector_availability(
     force_live: bool = False,
     action_key: str | None = None,
 ) -> list[dict[str, Any]]:
+    from app.core.logging import get_logger
+
+    logger = get_logger(__name__)
     rows = list_connectors(client, org_id, environment_name=environment_name)
-    return [
-        evaluate_connector_availability(
-            client,
-            org_id,
-            row,
-            settings,
-            environment_name=environment_name,
-            force_live=force_live,
-            action_key=action_key,
-        )
-        for row in rows
-    ]
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            out.append(
+                evaluate_connector_availability(
+                    client,
+                    org_id,
+                    row,
+                    settings,
+                    environment_name=environment_name,
+                    force_live=force_live,
+                    action_key=action_key,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — one bad connector must not kill chat/listing
+            vendor = str(row.get("vendor") or row.get("type") or "unknown")
+            logger.warning(
+                "connector_availability_eval_failed org_id=%s connector_id=%s vendor=%s error=%s",
+                org_id,
+                row.get("id"),
+                vendor,
+                str(exc)[:240],
+            )
+            out.append(
+                {
+                    "connector_id": str(row.get("id") or ""),
+                    "vendor": vendor,
+                    "configured": True,
+                    "authenticated": False,
+                    "token_valid": False,
+                    "scopes_valid": True,
+                    "health_status": "error",
+                    "execution_available": False,
+                    "read_available": False,
+                    "write_available": False,
+                    "last_checked_at": _utc_now(),
+                    "source_of_truth": SOURCE_OF_TRUTH,
+                    "blocking_reason": "token_expired",
+                    "recovery_action": f"Reconnect {vendor.title()} on the Connectors page.",
+                    "auth_status": "auth_expired",
+                    "display_status": "error",
+                    "status": "error",
+                    "connected": False,
+                    "raw_status": str(row.get("status") or "error"),
+                    "environment": str(row.get("environment") or environment_name),
+                    "name": str(row.get("name") or vendor or "connector"),
+                }
+            )
+    return out
 
 
 def list_executable_integrations(

@@ -166,3 +166,29 @@ def add_to_static_list(
     else:
         raise MarketoAPIError("lead_ids or emails required")
     return _request("POST", munchkin_id, access_token, f"/lists/{list_id}/leads.json", json_body=body)
+
+
+def get_static_list_leads(
+    access_token: str,
+    munchkin_id: str,
+    list_id: str | int,
+    *,
+    batch_size: int | None = None,
+    next_page_token: str | None = None,
+    fields: str | None = None,
+) -> dict[str, Any]:
+    """GET /rest/v1/lists/{listId}/leads.json — membership read for F6 verify."""
+    params: dict[str, Any] = {}
+    if batch_size is not None:
+        params["batchSize"] = max(1, min(int(batch_size), 300))
+    if next_page_token:
+        params["nextPageToken"] = next_page_token
+    if fields:
+        params["fields"] = fields
+    return _request(
+        "GET",
+        munchkin_id,
+        access_token,
+        f"/lists/{list_id}/leads.json",
+        params=params or None,
+    )

@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
 from app.workflows.constants import RESOURCE_TYPE_WORKFLOW_RUN
@@ -54,15 +55,18 @@ def build_handoff_briefing(
         deal = None
 
     decision: dict[str, Any] | None = None
-    if isinstance(parameters.get("decision"), dict):
-        decision = dict(parameters["decision"])
-    elif source_output and isinstance(source_output.get("decision"), dict):
-        decision = dict(source_output["decision"])
-    elif source_output and source_output.get("summary"):
-        decision = {
-            "summary": str(source_output.get("summary") or ""),
-            "confidence": source_output.get("confidence"),
-        }
+    decision_from_params = safe_normalize_stored_dict(parameters, key="decision")
+    if decision_from_params:
+        decision = decision_from_params
+    elif source_output:
+        decision_from_output = safe_normalize_stored_dict(source_output, key="decision")
+        if decision_from_output:
+            decision = decision_from_output
+        elif source_output.get("summary"):
+            decision = {
+                "summary": str(source_output.get("summary") or ""),
+                "confidence": source_output.get("confidence"),
+            }
 
     artifacts: list[dict[str, Any]] = []
     hubspot = parameters.get("hubspot_event")

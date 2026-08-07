@@ -659,8 +659,14 @@ async def save_workflow_builder(
         client.table("workflow_defs").update(update_payload).eq("id", str(workflow_id)).eq("org_id", org_id).execute()
 
     try:
-        nodes_payload = [n.model_dump(by_alias=True) for n in body.nodes]
-        edges_payload = [e.model_dump(by_alias=True) for e in body.edges]
+        # Prefer snake_case field names for sync_builder_graph. by_alias=True
+        # previously emitted fromNodeId/toNodeId which sync ignored, wiping edges.
+        nodes_payload = [n.model_dump(by_alias=False) for n in body.nodes]
+        edges_payload = [e.model_dump(by_alias=False) for e in body.edges]
+        # Keep canvas type alias available — node_type field is aliased as "type".
+        for node, original in zip(nodes_payload, body.nodes, strict=True):
+            if "type" not in node and original.node_type:
+                node["type"] = original.node_type
         stored_nodes, stored_edges, definition = sync_builder_graph(
             client,
             org_id=org_id,

@@ -11,6 +11,7 @@ from app.intelligence_packs.shared.auth_mode import (
     get_auth_mode,
     resolve_credential_source,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def _platform_env_present(vendor: str, settings: Settings) -> bool:
@@ -81,7 +82,7 @@ def activate_gravitree_connector(
     if not resolved.get("ok"):
         raise RuntimeError(str(resolved.get("message") or f"{vendor} platform credentials unavailable"))
 
-    config = dict(conn.get("config") or {})
+    config = safe_normalize_stored_dict(conn, key="config")
     config["auth_mode"] = AuthMode.GRAVITREE_MANAGED.value
     config["activated_via"] = "activate_gravitree_connector"
     client.table("connectors").update({"status": "active", "config": config}).eq("id", connector_id).eq(

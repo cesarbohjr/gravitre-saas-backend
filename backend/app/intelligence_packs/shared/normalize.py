@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from app.intelligence_packs.shared.schemas import SourceResult
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 class NormalizedExternalRecord(TypedDict, total=False):
@@ -52,6 +53,6 @@ def normalize_source_result(vendor: str, raw: SourceResult) -> list[NormalizedEx
         item = dict(rec)
         item.setdefault("vendor", key)
         item.setdefault("payload", {})
-        item.setdefault("provenance", dict(raw.get("provenance") or {}))
+        item.setdefault("provenance", safe_normalize_stored_dict(raw, key='provenance'))
         out.append(item)  # type: ignore[arg-type]
     return out

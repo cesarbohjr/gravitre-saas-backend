@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def normalize_google_ads_vendor(vendor: str) -> str:
@@ -36,7 +37,7 @@ def link_google_ads_customer(
         .limit(1)
         .execute()
     )
-    config = dict((row.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((row.data or [{}])[0], key="config")
     config["customer_id"] = cid
     config["customerId"] = cid
     if descriptive_name:

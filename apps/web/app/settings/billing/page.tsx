@@ -214,22 +214,25 @@ function BillingPageInner() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Live subscription so the header reflects the user's actual plan instead of
-  // hardcoded values. Falls back gracefully while loading / if unavailable.
-  const { data: overview } = useSWR(
+  // Live subscription — never invent Node while loading or on error (that regression
+  // made Command orgs look like $49 Node when /api/billing failed or was slow).
+  const { data: overview, error: overviewError, isLoading: overviewLoading } = useSWR(
     user ? "billing-overview" : null,
     () => billingApi.overview(),
     { revalidateOnFocus: false },
   )
   const subscription = overview?.subscription
-  // Prefer usage.tier (org_billing-backed) over subscriptions.tier, which can lag after upgrades.
-  const currentTier = (
-    overview?.usage?.tier ||
-    subscription?.tier ||
-    "node"
-  ).toLowerCase() as PlanCode
-  const currentPlan = getPlan(currentTier)
-  const subStatus = subscription?.status ?? "active"
+  const resolvedTierRaw = (overview?.usage?.tier || subscription?.tier || "").toString().trim().toLowerCase()
+  const currentTier = (resolvedTierRaw || null) as PlanCode | null
+  const currentPlan = currentTier ? getPlan(currentTier) : null
+  const planKnown = Boolean(currentPlan)
+  // Never invent Active when status is missing — that left cancelled orgs looking live
+  // after subscription.deleted wrote only a partial cancel. Prefer overview.billing_status.
+  const rawStatus = (subscription?.status || overview?.billing_status || "unknown")
+    .toString()
+    .trim()
+    .toLowerCase()
+  const subStatus = rawStatus === "cancelled" ? "canceled" : rawStatus || "unknown"
   const liveInvoices =
     overview?.invoices?.map((invoice) => ({
       id: invoice.id,
@@ -245,7 +248,7 @@ function BillingPageInner() {
     })) ?? []
   const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
   const usageFromApi = overview?.usage
-  const planLimits = planLimitsFor(usageFromApi?.tier ?? currentTier)
+  const planLimits = planLimitsFor(usageFromApi?.tier ?? currentTier ?? undefined)
   const showResearchBilling = Boolean(usageFromApi?.research_lookups_billing_visible)
   const usageForecast = useMemo(
     () =>
@@ -327,15 +330,18 @@ function BillingPageInner() {
             ]
           : []),
       ]
-    : emptyUsageMetrics(currentTier)
+    : planKnown
+      ? emptyUsageMetrics(currentTier!)
+      : []
 
   const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
     active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
     trialing: { label: "Trial", classes: "bg-info/10 text-info border-info/20", beacon: "active" },
     past_due: { label: "Past due", classes: "bg-warning/10 text-warning border-warning/20", beacon: "warning" },
     canceled: { label: "Canceled", classes: "bg-muted text-muted-foreground border-border", beacon: "idle" },
+    unknown: { label: overviewLoading ? "Loading" : "Unavailable", classes: "bg-muted text-muted-foreground border-border", beacon: "idle" },
   }
-  const status = statusDisplay[subStatus] ?? statusDisplay.active
+  const status = statusDisplay[subStatus] ?? statusDisplay.unknown
 
   const renewalLabel = (() => {
     if (!subscription?.current_period_end) return null
@@ -560,7 +566,15 @@ function BillingPageInner() {
                     </motion.div>
                     <div>
                       <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-foreground">{currentPlan.name} Plan</h1>
+                        <h1 className="text-2xl font-bold text-foreground">
+                          {planKnown
+                            ? `${currentPlan!.name} Plan`
+                            : overviewLoading
+                              ? "Loading plan…"
+                              : overviewError
+                                ? "Plan unavailable"
+                                : "Plan unknown"}
+                        </h1>
                         <span className={cn(
                           "flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border",
                           status.classes
@@ -570,7 +584,11 @@ function BillingPageInner() {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        {renewalLabel ?? currentPlan.tagline}
+                        {planKnown
+                          ? (renewalLabel ?? currentPlan!.tagline)
+                          : overviewError
+                            ? "Could not load billing status. Retry or contact support."
+                            : "Confirming your subscription with Stripe…"}
                       </p>
                     </div>
                   </div>
@@ -578,8 +596,10 @@ function BillingPageInner() {
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-4xl font-bold text-foreground tracking-tight">{formatPlanPrice(currentPlan)}</p>
-                    {currentPlan.price !== null && currentPlan.price > 0 && (
+                    <p className="text-4xl font-bold text-foreground tracking-tight">
+                      {planKnown ? formatPlanPrice(currentPlan!) : "—"}
+                    </p>
+                    {planKnown && currentPlan!.price !== null && currentPlan!.price > 0 && (
                       <p className="text-sm text-muted-foreground">/month</p>
                     )}
                   </div>
@@ -589,6 +609,7 @@ function BillingPageInner() {
                       variant="outline" 
                       size="sm" 
                       className="gap-2 group"
+                      disabled={!planKnown}
                       onClick={() => setUpgradeModalOpen(true)}
                     >
                       <TrendingUp className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5" />
@@ -598,6 +619,7 @@ function BillingPageInner() {
                       variant="ghost" 
                       size="sm" 
                       className="text-xs text-muted-foreground"
+                      disabled={!planKnown}
                       onClick={() => setCancelModalOpen(true)}
                     >
                       Cancel Subscription
@@ -985,9 +1007,10 @@ function BillingPageInner() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
             {SELECTABLE_PLANS.map((plan) => {
               const PlanIcon = plan.icon
-              const isCurrent = plan.code === currentTier
+              const isCurrent = planKnown && plan.code === currentTier
               const isSelected = selectedPlan === plan.code
-              const direction = planDirection(plan.code, currentTier)
+              const direction = planDirection(plan.code, currentTier ?? "free")
+
               return (
                 <button
                   type="button"

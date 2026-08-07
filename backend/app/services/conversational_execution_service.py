@@ -13,6 +13,8 @@ from app.services.entity_link_service import (
     build_entity_url,
     resolve_execution_result_url,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
+
 logger = get_logger(__name__)
 
 CONFIRM_PATTERN = re.compile(
@@ -328,10 +330,11 @@ class ConversationalExecutionService:
                     "block_fabrication": True,
                 }
 
-        clarified = dict(task_state.get("clarified_params") or {})
+        clarified = safe_normalize_stored_dict(task_state, key="clarified_params")
         # ReAct platform materialize stores params on pending_task — merge so confirm works.
-        if pending_early.get("params") and isinstance(pending_early["params"], dict):
-            merged = dict(pending_early["params"])
+        pending_params = safe_normalize_stored_dict(pending_early, key="params")
+        if pending_params:
+            merged = pending_params
             merged.update(clarified)
             clarified = merged
         updates = self.extract_param_updates(message, task_type, clarified)
@@ -434,7 +437,9 @@ class ConversationalExecutionService:
         task_state = await self._state.get_task_state(conversation_id, org_id, client=client)
         pending = task_state.get("pending_task") or {}
         task_type = str(pending.get("type") or "")
-        clarified = dict(task_state.get("clarified_params") or pending.get("params") or {})
+        clarified = safe_normalize_stored_dict(task_state, key="clarified_params")
+        if not clarified:
+            clarified = safe_normalize_stored_dict(pending, key="params")
         if not task_type or not self.params_ready(task_type, clarified):
             return ExecutionResult(
                 success=False,

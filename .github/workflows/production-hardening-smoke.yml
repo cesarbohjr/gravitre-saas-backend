@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so research-cascade deploy_sha ancestry checks work.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -45,7 +48,11 @@ jobs:
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
 
+      # Each probe writes its own artifact; later steps must still run when one
+      # probe fails so the summary is not PARTIAL on stale checkout JSON.
       - name: Run post-Tier 5 production smoke
+        id: post_tier5
+        continue-on-error: true
         env:
           BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -54,6 +61,8 @@ jobs:
         run: python scripts/smoke-post-tier5-platform.py
 
       - name: Run marketplace production smoke
+        id: marketplace
+        continue-on-error: true
         env:
           BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -64,6 +73,8 @@ jobs:
             --json docs/delivery/smoke-marketplace-production-latest.json
 
       - name: Run AI production smoke report
+        id: ai_smoke
+        continue-on-error: true
         env:
           BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -72,6 +83,8 @@ jobs:
         run: python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json
 
       - name: Run research cascade production smoke (Phases 1–6)
+        id: research
+        continue-on-error: true
         env:
           BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -82,6 +95,8 @@ jobs:
             --json docs/delivery/smoke-research-cascade-prod-latest.json
 
       - name: Check deployed marketing/app links (gravitre.app)
+        id: link_check
+        continue-on-error: true
         run: |
           python scripts/check-deployed-links.py \
             --base-url https://gravitre.app \

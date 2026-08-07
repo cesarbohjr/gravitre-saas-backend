@@ -10,6 +10,7 @@ from app.core.logging import get_logger
 from app.services.learning_confidence_service import get_learning_confidence_service
 from app.services.learning_strategy_keys import parse_base_segment_key_from_segment
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -154,8 +155,8 @@ class AdaptiveLearningService:
             float(state.get("outcome_multiplier") or 1.0) + (direction * step),
         )
 
-        assignment_deltas = dict(state.get("assignment_boost_deltas") or {})
-        source_deltas = dict(state.get("source_weight_deltas") or {})
+        assignment_deltas = safe_normalize_stored_dict(state, key="assignment_boost_deltas")
+        source_deltas = safe_normalize_stored_dict(state, key="source_weight_deltas")
         retrieval_effectiveness = (response or {}).get("retrieval_effectiveness") or (metadata or {}).get(
             "retrieval_effectiveness"
         )

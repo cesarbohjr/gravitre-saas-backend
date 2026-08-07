@@ -132,7 +132,9 @@ export interface AgentPersonality {
 
 export interface AgentStats {
   tasksToday: number
-  successRate: number
+  /** null when Phase 5 honesty withholds a rate (no runs / no evidence). */
+  successRate: number | null
+  successRateSource?: "live_outcomes" | "live_runs" | "stored_column" | "insufficient_data"
   avgResponseTime: string
   workflowsUsing: number
 }
@@ -682,6 +684,8 @@ export interface PaymentMethod {
 
 export interface BillingOverview {
   subscription: Subscription
+  /** Authoritative org_billing status (cancelled spelling normalized by API). */
+  billing_status?: string
   usage: BillingUsageResponse
   invoices: Invoice[]
   payment_methods: PaymentMethod[]

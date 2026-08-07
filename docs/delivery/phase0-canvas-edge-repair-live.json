@@ -1,0 +1,84 @@
+{
+  "checked_at": "2026-08-07T00:40:47.670884+00:00",
+  "apply": true,
+  "source_audit": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\phase0-canvas-edge-audit-live.json",
+  "disconnected_input": 4,
+  "repaired_or_planned": 2,
+  "flagged_manual": 2,
+  "skipped": 0,
+  "repaired": [
+    {
+      "workflow_id": "3c4c2dba-715e-5c61-8761-2d2594113217",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "name": "Competitive Intelligence Monitoring",
+      "status": "active",
+      "step_count": 2,
+      "table_node_count": 2,
+      "table_edge_count": 0,
+      "definition_edge_count": 0,
+      "updated_at": "2026-08-02T19:38:39.536877+00:00",
+      "issue": "canvas_multi_node_zero_table_edges",
+      "action": "repaired_sequential",
+      "edge_count": 1,
+      "node_types": [
+        "agent"
+      ],
+      "stored_edge_count": 1,
+      "stored_node_count": 2
+    },
+    {
+      "workflow_id": "4c218adc-9ae7-5acf-b7a8-8b2a3bfac686",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "name": "Prospecting Apollo Lead Scout",
+      "status": "active",
+      "step_count": 6,
+      "table_node_count": 4,
+      "table_edge_count": 0,
+      "definition_edge_count": 0,
+      "updated_at": "2026-07-19T10:34:35.426359+00:00",
+      "issue": "canvas_multi_node_zero_table_edges",
+      "action": "repaired_sequential",
+      "edge_count": 3,
+      "node_types": [
+        "task"
+      ],
+      "stored_edge_count": 3,
+      "stored_node_count": 4
+    }
+  ],
+  "flagged": [
+    {
+      "workflow_id": "40c042cc-2372-5837-a663-4db6fa3ce403",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "name": "Uncertain lead \u2192 Council \u2192 Enroll or nurture",
+      "status": "active",
+      "step_count": 4,
+      "table_node_count": 4,
+      "table_edge_count": 0,
+      "definition_edge_count": 0,
+      "updated_at": "2026-07-02T06:41:06.235596+00:00",
+      "issue": "canvas_multi_node_zero_table_edges",
+      "reason": "branching_graph_needs_manual_repair",
+      "node_types": [
+        "agent",
+        "council"
+      ],
+      "action": "flagged"
+    },
+    {
+      "workflow_id": "e88619c4-b42e-58cc-884b-2e14a398e953",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "name": "MSP Prospects Clay Enrichment \u2192 HubSpot Sync",
+      "status": "active",
+      "step_count": 10,
+      "table_node_count": 7,
+      "table_edge_count": 0,
+      "definition_edge_count": 0,
+      "updated_at": "2026-08-02T09:26:39.028227+00:00",
+      "issue": "canvas_multi_node_zero_table_edges",
+      "reason": "repair_failed: binding.dollar_unresolved: step 'fd7ab3a0-9a7a-489d-984d-77cef357010c' param 'records' references unresolved run/install parameter $clay_records; binding.dollar_unresolved: step '0af78b13-41cd-4fd2-91a0-beaaa124e457' param 'records' references unresolved run/install parameter $enriched_records",
+      "action": "flagged"
+    }
+  ],
+  "skipped_rows": []
+}

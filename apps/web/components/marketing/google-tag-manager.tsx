@@ -59,11 +59,21 @@ try {
 } catch (e) {}
 `.trim()
 
+  // Defer gtm.js until idle/load so homepage LCP/TBT aren't blocked by ~237KiB unused JS.
+  // Consent defaults stay synchronous (Google: must not be set too late).
   const gtmBootstrap = `
-(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+(function(w,d,s,l,i){
+  function loadGtm(){
+    w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+    var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+    j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+    f.parentNode.insertBefore(j,f);
+  }
+  if (w.requestIdleCallback) {
+    w.requestIdleCallback(loadGtm, { timeout: 3500 });
+  } else {
+    w.addEventListener('load', function(){ setTimeout(loadGtm, 1); });
+  }
 })(window,document,'script','dataLayer','${MARKETING_GTM_ID}');
 `.trim()
 
@@ -71,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <>
       {/* Sync: must run before gtm.js (Google: default consent must not be set too late). */}
       <script dangerouslySetInnerHTML={{ __html: consentBootstrap }} />
-      {/* Google Tag Manager */}
+      {/* Google Tag Manager (idle-deferred) */}
       <script dangerouslySetInnerHTML={{ __html: gtmBootstrap }} />
       {/* Google Tag Manager (noscript) */}
       <noscript>

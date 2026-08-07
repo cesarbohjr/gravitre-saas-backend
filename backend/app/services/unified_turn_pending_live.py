@@ -19,6 +19,7 @@ from app.services.pending_reply_classifier import (
     format_unrelated_hold_prompt,
     has_pending_family,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _HOLD_ABANDON_RE = re.compile(
     r"\babandon\b.*\bhold\b|\bhold\b.*\babandon\b|reply [`'\"]?abandon[`'\"]? or [`'\"]?hold",
@@ -119,7 +120,7 @@ async def resolve_unified_live_channel_override_reply(
         return None
 
     state = dict(task_state or {})
-    clarified = dict(state.get("clarified_params") or {})
+    clarified = safe_normalize_stored_dict(state, key='clarified_params')
     clarified["channel_override"] = override
     state["clarified_params"] = clarified
     state["preferred_connector"] = override

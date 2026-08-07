@@ -173,6 +173,19 @@ VENDOR_DEFINITIONS: tuple = (
             action("marketo", "leads.get", "Get lead", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
             action("marketo", "campaigns.list", "List campaigns", tier="v1", kind="read", scope_suffix="campaigns:read", idempotent=True),
             action("marketo", "programs.status", "Get program status", tier="v1", kind="read", scope_suffix="programs:read", idempotent=True),
+            action(
+                "marketo",
+                "lists.get_leads",
+                "Get static list members",
+                tier="v1",
+                kind="read",
+                scope_suffix="lists:read",
+                idempotent=True,
+                description=(
+                    "Use when you need to read members of a Marketo static list "
+                    "(GET /lists/{id}/leads) after an add, or to verify list membership."
+                ),
+            )
         ),
         v2=(
             action("marketo", "leads.update", "Update lead", tier="v2", kind="write", scope_suffix="leads:write", destructive=True),

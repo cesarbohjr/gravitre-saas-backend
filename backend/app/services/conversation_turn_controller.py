@@ -43,6 +43,7 @@ from app.services.pending_reply_classifier import (
     has_pending_family,
     map_legacy_plan_intent,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -653,7 +654,9 @@ def bind_canvas_step_args(
     from app.services.schema_param_extractor import extract_action_args_heuristic
 
     cfg = dict(step_config or {})
-    existing = dict(cfg.get("params") or cfg.get("args") or {})
+    existing = safe_normalize_stored_dict(cfg, key="params")
+    if not existing:
+        existing = safe_normalize_stored_dict(cfg, key="args")
     ledger = get_ledger(task_state)
     text = intent_text or str(cfg.get("intent_text") or cfg.get("prompt") or "")
     if text:

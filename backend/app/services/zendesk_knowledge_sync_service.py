@@ -9,6 +9,7 @@ from app.config import Settings
 from app.connectors.repository import get_decrypted_secret
 from app.connectors.zendesk import ZendeskAPIError, list_resolved_tickets_since
 from app.rag.ingest import create_ingest_job, create_source, get_source
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def ensure_zendesk_rag_source(
     *,
     created_by: str,
 ) -> str:
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key='config')
     existing = config.get("zendesk_rag_source_id")
     environment = str(connector.get("environment") or "production")
     if existing and get_source(client, org_id, str(existing), environment_name=environment):
@@ -130,7 +131,7 @@ def run_zendesk_knowledge_sync(
         raise ValueError("Zendesk knowledge sync is disabled for this connector")
 
     subdomain, email, api_token = _zendesk_credentials(client, connector, connector_id, settings)
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key='config')
     since_date = _since_date(config, full_sync=full_sync)
     source_id = ensure_zendesk_rag_source(client, org_id, connector, settings, created_by=actor_id)
     environment = str(connector.get("environment") or "production")

@@ -73,13 +73,39 @@ def project_business_outcome(
     timeline = _timeline(steps or params.get("step_results") or params.get("connector_output_refs") or [])
     approval = _approval(run)
     recs = _recommendations(recommendation or er.get("recommendation"))
+    if not recs and verification and verification.next_actions:
+        recs = [
+            RecommendationSection(
+                title=action_line[:120],
+                reason=verification.finding
+                or verification.detail
+                or "Review required before treating this as verified work.",
+                suggested_utterance=None,
+                advisory_only=True,
+                href=None,
+                confidence=None,
+                confidence_is_estimate=True,
+            )
+            for action_line in verification.next_actions
+        ]
+    # Prefer concrete finding as summary when the run was flagged for review.
+    if (
+        verification
+        and verification.review_state == "flagged_for_review"
+        and verification.finding
+    ):
+        summary = verification.finding
     action = invoke_action or str(params.get("invoke_action") or params.get("invokeAction") or "")
     undo = _undo(action)
     diff = _diff(action, compensation_snapshot)
 
     lifecycle_reached = _lifecycle_reached(
         status=status,
-        verified=bool(verification and verification.verified),
+        verified=bool(
+            verification
+            and verification.verified
+            and str(status).lower() != "flagged_for_review"
+        ),
         presented=notification_emitted or bool(er),
         approved=bool(approval and str(approval.status).lower() in {"approved", "not_required"}),
         undone=str(status).lower() in {"rolled_back", "compensated", "undone"},
@@ -140,6 +166,9 @@ def _infer_kind(
 ) -> BusinessOutcomeKind:
     if str(status).lower() in {"failed", "error", "cancelled"}:
         return "failed_action"
+    if str(status).lower() == "flagged_for_review":
+        # Not a successful create — honesty state, not a net-new verified record.
+        return "other"
     if str(params.get("source") or "").startswith("swarm") or er.get("entity_type") == "swarm_run":
         return "completed_swarm"
     structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
@@ -262,6 +291,67 @@ def _verification(
     action = str(
         invoke_action or params.get("invoke_action") or params.get("invokeAction") or ""
     )
+    # Phase 4 — degenerate batch: never claim verified; carry concrete finding.
+    deg = (
+        params.get("batch_degeneracy")
+        if isinstance(params.get("batch_degeneracy"), dict)
+        else structured.get("batch_degeneracy")
+        if isinstance(structured.get("batch_degeneracy"), dict)
+        else None
+    )
+    if str(status).lower() == "flagged_for_review" or (
+        isinstance(deg, dict) and deg.get("flagged") is True
+    ):
+        from app.services.batch_degeneracy import (
+            batch_degeneracy_next_actions,
+            format_batch_degeneracy_finding,
+        )
+
+        finding = format_batch_degeneracy_finding(deg or {})
+        return VerificationSection(
+            verified=False,
+            method="batch_degeneracy",
+            detail=(
+                "Phase 4 check failed: records look schema-valid but the batch is "
+                "degenerate (identical or placeholder-dominated values)."
+            ),
+            review_state="flagged_for_review",
+            check_failed="batch_degeneracy",
+            finding=finding,
+            next_actions=batch_degeneracy_next_actions(deg),
+        )
+
+    # Phase 3 — missing follow-up membership proof (distinct from Phase 4).
+    pop = (
+        params.get("population_verify")
+        if isinstance(params.get("population_verify"), dict)
+        else structured.get("population_verify")
+        if isinstance(structured.get("population_verify"), dict)
+        else None
+    )
+    if isinstance(pop, dict) and pop.get("verified") is False:
+        detail_code = str(pop.get("detail") or "follow_up_unavailable_or_async").strip()
+        finding = (
+            f"Phase 3 follow-up proof missing ({detail_code}). "
+            "The write was accepted but membership/completion was not confirmed."
+        )
+        return VerificationSection(
+            verified=False,
+            method="follow_up_proof",
+            detail=(
+                "Phase 3 check failed: mutating list/populate write lacks confirmed "
+                "follow-up membership proof."
+            ),
+            review_state=None,
+            check_failed="follow_up_proof",
+            finding=finding,
+            next_actions=[
+                "Open the list in the source system and confirm contacts were added.",
+                "Wait for vendor async settle, then re-check membership on the list.",
+                "Retry the populate action if the list is still empty after settle.",
+            ],
+        )
+
     effect = str(
         params.get("outcome_effect")
         or structured.get("outcome_effect")
@@ -308,12 +398,22 @@ def _verification(
     if mutating and (effect == "unknown" or not proven):
         # Do not claim module_a_verified_output for unproven creates.
         return VerificationSection(
-            verified=True,
+            verified=False,
             method="module_a_effect_unproven",
             detail=(
                 "Mutating action completed without durable entity proof "
                 "(id / list_id / contact_id / vendor URL). Treated as unproven effect."
             ),
+            check_failed="effect_unproven",
+            finding=(
+                "No durable vendor entity proof (id / list_id / contact_id / URL) "
+                "was returned for this mutating action."
+            ),
+            next_actions=[
+                "Open the run Evidence links and confirm whether a vendor record exists.",
+                "Retry the action if the vendor record is missing.",
+                "Do not treat this as a verified create until proof appears.",
+            ],
         )
     if body or external or result_url:
         return VerificationSection(

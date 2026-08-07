@@ -39,9 +39,9 @@ export function PageHeader({
   const tint = iconColor ?? "from-primary/15 to-primary/5"
 
   return (
-    <div className={cn("p-4 sm:p-6", !className?.includes("border") && "border-b border-border", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-3">
+    <div className={cn("min-w-0 p-4 sm:p-6", !className?.includes("border") && "border-b border-border", className)}>
+      <div className="mb-4 flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
           {Icon && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -49,15 +49,16 @@ export function PageHeader({
               className={cn(
                 // ring-border/60 is theme-aware (was ring-white/10, invisible
                 // in light mode). Consumers appending ring-* still override it.
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60 sm:h-10 sm:w-10",
+                "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60",
                 tint
               )}
+              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
             >
               {/* On the brand tint the glyph reads as branded; on a custom
                   tint it stays neutral so it can't clash with that hue. */}
               <Icon
                 className={cn(
-                  "h-6 w-6 sm:h-5 sm:w-5",
+                  "h-5 w-5 shrink-0",
                   usesBrandTint ? "text-primary" : "text-foreground",
                 )}
               />
@@ -75,7 +76,7 @@ export function PageHeader({
           </div>
         </div>
         {actions && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             {actions}
           </div>
         )}

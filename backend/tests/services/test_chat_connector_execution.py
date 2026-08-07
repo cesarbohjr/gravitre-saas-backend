@@ -180,6 +180,51 @@ def test_plan_slack_followup_uses_staged_channel(connector_service):
     assert "hi everyone" in plan.args["message"].lower()
 
 
+def test_plan_action_awaiting_params_legacy_string_args_does_not_raise(connector_service):
+    """Legacy pending_task.params.args may arrive as a non-JSON string."""
+    task_state = {
+        "clarified_params": {},
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_params",
+            "params": {
+                "tool_name": "gmail_messages_send",
+                "invoke_action": "gmail.messages.send",
+                "integration": "gmail",
+                "kind": "write",
+                "label": "Send email",
+                "args": "to=demo@example.com",
+                "requires_approval": True,
+            },
+        },
+        "recent_user_messages": ["Send an email using Gmail"],
+    }
+
+    plan = connector_service.plan_action(
+        "Send an email",
+        connected_integrations=["gmail"],
+        task_state=task_state,
+    )
+
+    assert plan is not None
+    assert plan.invoke_action == "gmail.messages.send"
+    assert isinstance(plan.args, dict)
+
+
+def test_plan_from_dict_parses_json_args_string(connector_service):
+    payload = {
+        "tool_name": "slack_send_message",
+        "invoke_action": "slack.post_message",
+        "integration": "slack",
+        "kind": "write",
+        "label": "Post to Slack #general",
+        "args": '{"channel":"general","message":"hello"}',
+    }
+
+    plan = connector_service.plan_from_dict(payload)
+    assert plan.args == {"channel": "general", "message": "hello"}
+
+
 @pytest.mark.asyncio
 async def test_read_action_executes_immediately(connector_service):
     mock_execution = ExecutionResult(

@@ -182,8 +182,20 @@ def _build_upstream_sets(
     for edge in edges or []:
         if not isinstance(edge, dict):
             continue
-        src = str(edge.get("from_node_id") or edge.get("from") or "")
-        dst = str(edge.get("to_node_id") or edge.get("to") or "")
+        src = str(
+            edge.get("from_node_id")
+            or edge.get("fromNodeId")
+            or edge.get("from")
+            or edge.get("source")
+            or ""
+        ).strip()
+        dst = str(
+            edge.get("to_node_id")
+            or edge.get("toNodeId")
+            or edge.get("to")
+            or edge.get("target")
+            or ""
+        ).strip()
         if src in id_set and dst in id_set:
             normalized_edges.append((src, dst))
 
@@ -382,6 +394,26 @@ def validate_bindings(
     edges = graph.get("edges") if isinstance(graph.get("edges"), list) else definition.get("edges")
     if not isinstance(edges, list):
         edges = []
+    graph_nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
+    # Builder saves always embed definition.graph. Empty edges with multiple steps
+    # means canvas wiring was dropped (Phase 0 failure mode) — do NOT silently
+    # treat that as sequential marketplace order.
+    if (
+        len(steps) > 1
+        and isinstance(graph, dict)
+        and ("edges" in graph or graph_nodes)
+        and not edges
+    ):
+        errors.append(
+            BindingError(
+                code="binding.canvas_graph_disconnected",
+                message=(
+                    f"definition.graph has {len(graph_nodes) or len(steps)} nodes but zero "
+                    "edges — connections appear missing from the persisted graph "
+                    "(not a sequential marketplace definition)"
+                ),
+            )
+        )
     upstream = _build_upstream_sets(steps, edges)
 
     declared = set(declared_parameters or ())

@@ -115,10 +115,12 @@ export function GanttView({
   const today = new Date()
   const todayOffset = dayOffset(rangeStart, today)
   const showToday = todayOffset >= 0 && todayOffset < days.length
+  const boardWidth = RAIL_WIDTH + days.length * COL_WIDTH
+  const timelineWidth = days.length * COL_WIDTH
 
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-xl border border-border bg-card"
+      className="flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
       style={scheduleBoardStyle}
     >
       {rows.length === 0 ? (
@@ -126,123 +128,133 @@ export function GanttView({
           No scheduled items this month.
         </div>
       ) : (
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div style={{ minWidth: RAIL_WIDTH + days.length * COL_WIDTH }}>
-          {/* Header: day columns */}
-          <div className="flex border-b border-border bg-muted/40">
-            <div
-              className="shrink-0 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              style={{ width: RAIL_WIDTH }}
-            >
-              Item
-            </div>
-            <div className="flex">
-              {days.map((day, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "shrink-0 border-l border-border py-2 text-center text-[10px] text-muted-foreground",
-                    isSameDay(day, today) && "bg-primary/10 font-semibold text-primary",
-                  )}
-                  style={{ width: COL_WIDTH }}
-                >
-                  {day.getDate()}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Rows */}
-          {rows.map((row, rowIndex) => {
-            const style = KIND_STYLES[row.item.kind]
-            return (
-              <div key={row.item.id} className="flex border-b border-border last:border-b-0">
-                <button
-                  type="button"
-                  onClick={() => onOpen(row.segments[0].occurrence)}
-                  title="Click to reschedule or edit"
-                  className={cn(
-                    "flex shrink-0 items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
-                    row.item.id === selectedId && "bg-muted",
-                  )}
-                  style={{ width: RAIL_WIDTH }}
-                >
-                  <KindDot kind={row.item.kind} />
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {row.item.title}
-                  </span>
-                </button>
-
-                <div className="relative flex min-h-[44px] flex-1">
-                  {/* Day grid background */}
-                  {days.map((day, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "shrink-0 border-l border-border",
-                        isSameDay(day, today) && "bg-primary/5",
-                      )}
-                      style={{ width: COL_WIDTH }}
-                    />
-                  ))}
-
-                  {/* Today marker line */}
-                  {showToday && (
-                    <span
-                      className="pointer-events-none absolute inset-y-0 z-10 w-px bg-primary/50"
-                      style={{ left: todayOffset * COL_WIDTH + COL_WIDTH / 2 }}
-                      aria-hidden
-                    />
-                  )}
-
-                  {/* Spanning bars */}
-                  {row.segments.map((segment, segIndex) => {
-                    const span = segment.endOffset - segment.startOffset + 1
-                    const left = segment.startOffset * COL_WIDTH + BAR_PAD
-                    const width = span * COL_WIDTH - BAR_PAD * 2
-                    const selected = row.item.id === selectedId
-                    const showLabel = width >= 56 && segment.count > 1
-                    const rangeText =
-                      span > 1
-                        ? `${segment.occurrence.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${days[segment.endOffset].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-                        : segment.occurrence.date.toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })
-                    return (
-                      <motion.button
-                        key={`${row.item.id}-${segment.startOffset}`}
-                        type="button"
-                        onClick={() => onOpen(segment.occurrence)}
-                        title={`${row.item.title} · ${rangeText} · click to reschedule or edit`}
-                        initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
-                        animate={{ scaleX: 1, opacity: 1 }}
-                        transition={{
-                          duration: 0.35,
-                          delay: Math.min(rowIndex * 0.04 + segIndex * 0.015, 0.4),
-                          ease: "easeOut",
-                        }}
-                        whileHover={{ scaleY: 1.12 }}
-                        className={cn(
-                          "absolute top-1/2 flex h-6 origin-left -translate-y-1/2 items-center overflow-hidden rounded-md px-2 shadow-sm transition-shadow hover:shadow-md",
-                          selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
-                        )}
-                        style={{ left, width, backgroundColor: style.color }}
-                      >
-                        {showLabel && (
-                          <span className="truncate text-[10px] font-semibold text-white/95">
-                            {segment.count} runs
-                          </span>
-                        )}
-                      </motion.button>
-                    )
-                  })}
-                </div>
+        <div
+          className="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto overscroll-x-contain"
+          aria-label="Gantt timeline — scroll horizontally to see all days"
+        >
+          <div style={{ width: boardWidth, minWidth: boardWidth }}>
+            {/* Header: day columns */}
+            <div className="sticky top-0 z-30 flex border-b border-border bg-muted/40">
+              <div
+                className="sticky left-0 z-40 shrink-0 border-r border-border bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                style={{ width: RAIL_WIDTH }}
+              >
+                Item
               </div>
-            )
-          })}
+              <div className="flex shrink-0" style={{ width: timelineWidth }}>
+                {days.map((day, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "shrink-0 border-l border-border py-2 text-center text-[10px] text-muted-foreground",
+                      isSameDay(day, today) && "bg-primary/10 font-semibold text-primary",
+                    )}
+                    style={{ width: COL_WIDTH }}
+                  >
+                    {day.getDate()}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rows */}
+            {rows.map((row, rowIndex) => {
+              const style = KIND_STYLES[row.item.kind]
+              return (
+                <div
+                  key={row.item.id}
+                  className="flex border-b border-border last:border-b-0"
+                  style={{ width: boardWidth }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpen(row.segments[0].occurrence)}
+                    title="Click to reschedule or edit"
+                    className={cn(
+                      "sticky left-0 z-20 flex shrink-0 items-center gap-2 border-r border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
+                      row.item.id === selectedId && "bg-muted",
+                    )}
+                    style={{ width: RAIL_WIDTH }}
+                  >
+                    <KindDot kind={row.item.kind} />
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {row.item.title}
+                    </span>
+                  </button>
+
+                  <div
+                    className="relative flex min-h-[44px] shrink-0"
+                    style={{ width: timelineWidth }}
+                  >
+                    {/* Day grid background */}
+                    {days.map((day, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "shrink-0 border-l border-border",
+                          isSameDay(day, today) && "bg-primary/5",
+                        )}
+                        style={{ width: COL_WIDTH }}
+                      />
+                    ))}
+
+                    {/* Today marker line */}
+                    {showToday && (
+                      <span
+                        className="pointer-events-none absolute inset-y-0 z-10 w-px bg-primary/50"
+                        style={{ left: todayOffset * COL_WIDTH + COL_WIDTH / 2 }}
+                        aria-hidden
+                      />
+                    )}
+
+                    {/* Spanning bars */}
+                    {row.segments.map((segment, segIndex) => {
+                      const span = segment.endOffset - segment.startOffset + 1
+                      const left = segment.startOffset * COL_WIDTH + BAR_PAD
+                      const width = span * COL_WIDTH - BAR_PAD * 2
+                      const selected = row.item.id === selectedId
+                      const showLabel = width >= 56 && segment.count > 1
+                      const rangeText =
+                        span > 1
+                          ? `${segment.occurrence.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${days[segment.endOffset].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                          : segment.occurrence.date.toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })
+                      return (
+                        <motion.button
+                          key={`${row.item.id}-${segment.startOffset}`}
+                          type="button"
+                          onClick={() => onOpen(segment.occurrence)}
+                          title={`${row.item.title} · ${rangeText} · click to reschedule or edit`}
+                          initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
+                          animate={{ scaleX: 1, opacity: 1 }}
+                          transition={{
+                            duration: 0.35,
+                            delay: Math.min(rowIndex * 0.04 + segIndex * 0.015, 0.4),
+                            ease: "easeOut",
+                          }}
+                          whileHover={{ scaleY: 1.12 }}
+                          className={cn(
+                            "absolute top-1/2 flex h-6 origin-left -translate-y-1/2 items-center overflow-hidden rounded-md px-2 shadow-sm transition-shadow hover:shadow-md",
+                            selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
+                          )}
+                          style={{ left, width, backgroundColor: style.color }}
+                        >
+                          {showLabel && (
+                            <span className="truncate text-[10px] font-semibold text-white/95">
+                              {segment.count} runs
+                            </span>
+                          )}
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
-      </div>
       )}
     </div>
   )

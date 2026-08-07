@@ -153,6 +153,7 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "marketo.campaigns.list": ["marketo:campaigns:read", "marketo:*"],
     "marketo.programs.status": ["marketo:programs:read", "marketo:*"],
     "marketo.lists.add_to_static_list": ["marketo:lists:write", "marketo:*"],
+    "marketo.lists.get_leads": ["marketo:lists:read", "marketo:lists:write", "marketo:*"],
     "segment.identify": ["segment:identify", "segment:write", "segment:*"],
     "segment.track": ["segment:track", "segment:write", "segment:*"],
     "segment.group": ["segment:group", "segment:write", "segment:*"],

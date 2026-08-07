@@ -190,7 +190,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Campaign Performance Digest",
                 "Compile weekly campaign metrics and publish a digest.",
                 [
-                    _agent_step("analyze", "Analyze campaigns", "marketing-analyst", "Summarize channel performance."),
+                    _agent_step("analyze", "Analyze campaigns", "marketing-analyst", "Summarize channel performance trends, call out anomalies, and recommend one weekly digest focus."),
                     _invoke("publish", "Publish digest", "slack.post_message", connector="slack"),
                 ],
             ),
@@ -212,7 +212,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Generate a QBR outline and account summary.",
                 [
                     _invoke("accounts", "Pull account data", "hubspot.contacts.search", connector="hubspot"),
-                    _agent_step("qbr", "Draft QBR outline", "customer-success-agent", "Prepare QBR talking points."),
+                    _agent_step("qbr", "Draft QBR outline", "customer-success-agent", "Prepare QBR talking points from CRM health signals with risks, upsides, and ask recommendations."),
                 ],
             ),
             required_connectors=[HUBSPOT],
@@ -232,7 +232,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Invoice Exception Review",
                 "Review invoice exceptions and notify finance approvers.",
                 [
-                    _agent_step("review", "Review exceptions", "cfo-agent", "Summarize invoice exceptions."),
+                    _agent_step("review", "Review exceptions", "cfo-agent", "Summarize invoice exceptions with amounts, aging, and recommended approver actions for finance."),
                     _invoke("notify", "Notify approvers", "slack.post_message", connector="slack"),
                 ],
             ),
@@ -253,7 +253,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "SLA Breach Escalation",
                 "Detect SLA risk and escalate to on-call.",
                 [
-                    _agent_step("triage", "Triage SLA risk", "it-incident-triage-agent", "Identify tickets at risk."),
+                    _agent_step("triage", "Triage SLA risk", "it-incident-triage-agent", "Identify tickets approaching SLA breach, rank urgency, and recommend on-call escalation targets."),
                     _invoke("escalate", "Escalate on-call", "slack.post_message", connector="slack"),
                 ],
             ),
@@ -274,7 +274,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "New Hire Onboarding Checklist",
                 "Run a structured onboarding checklist for new hires.",
                 [
-                    _agent_step("guide", "Onboarding guidance", "hr-coordinator", "Generate onboarding checklist."),
+                    _agent_step("guide", "Onboarding guidance", "hr-coordinator", "Generate a role-specific onboarding checklist with owners, due dates, and policy references for managers."),
                 ],
             ),
             business_outcome="Improve onboarding consistency and reduce manager prep time.",
@@ -294,7 +294,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Summarize deal exceptions and route for approval.",
                 [
                     _invoke("deal", "Pull deal context", "salesforce.query", connector="salesforce"),
-                    _agent_step("desk", "Deal desk summary", "revenue-operations-agent", "Summarize approval context."),
+                    _agent_step("desk", "Deal desk summary", "revenue-operations-agent", "Summarize deal-desk approval context including exceptions, discount rationale, and decision options."),
                 ],
             ),
             required_connectors=[SALESFORCE],
@@ -314,7 +314,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Product Feedback Synthesis",
                 "Synthesize customer feedback into product themes.",
                 [
-                    _agent_step("synthesize", "Synthesize feedback", "customer-success-agent", "Cluster feedback themes."),
+                    _agent_step("synthesize", "Synthesize feedback", "customer-success-agent", "Cluster customer feedback into product themes with frequency, severity, and suggested next research."),
                 ],
             ),
             business_outcome="Turn scattered feedback into actionable product themes faster.",
@@ -333,7 +333,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Security Access Review",
                 "Prepare quarterly access review summary.",
                 [
-                    _agent_step("review", "Access review summary", "it-incident-triage-agent", "Summarize access changes."),
+                    _agent_step("review", "Access review summary", "it-incident-triage-agent", "Summarize privileged access changes for quarterly review with owners, risk notes, and open questions."),
                 ],
             ),
             business_outcome="Reduce manual effort for quarterly access certifications.",
