@@ -654,6 +654,8 @@ def format_operator_message(
                 return "Orchestration run failed"
             if status == "cancelled":
                 return "Orchestration run cancelled"
+            if status == "flagged_for_review":
+                return "Orchestration run flagged for review"
             return "Orchestration run completed"
         if source == "browser_extension":
             if status == "failed":
@@ -662,6 +664,8 @@ def format_operator_message(
                 return "Extension write cancelled"
             if status == "partial_success":
                 return "Extension write finished with partial success"
+            if status == "flagged_for_review":
+                return "Extension write flagged for review"
             return "Extension write completed"
         if status == "failed":
             return "Workflow run failed"
@@ -669,6 +673,8 @@ def format_operator_message(
             return "Workflow run cancelled"
         if status == "partial_success":
             return "Workflow run finished with partial success"
+        if status == "flagged_for_review":
+            return "Workflow run flagged for review"
         return "Workflow run completed"
 
     if key == "notification_run_body":
@@ -764,16 +770,19 @@ def format_outcome_digest(
     completed = [i for i in normalized if i.status in {"completed", "partial_success"}]
     failed = [i for i in normalized if i.status == "failed"]
     cancelled = [i for i in normalized if i.status == "cancelled"]
+    flagged = [i for i in normalized if i.status == "flagged_for_review"]
     other = [
         i
         for i in normalized
-        if i.status not in {"completed", "partial_success", "failed", "cancelled"}
+        if i.status
+        not in {"completed", "partial_success", "failed", "cancelled", "flagged_for_review"}
     ]
 
     lines = list(header)
     lines.append("")
     lines.append(
         f"{len(completed)} completed · {len(failed)} failed · {len(cancelled)} cancelled"
+        + (f" · {len(flagged)} flagged for review" if flagged else "")
         + (f" · {len(other)} other" if other else "")
         + "."
     )
@@ -786,6 +795,17 @@ def format_outcome_digest(
             run = f" · run {item.run_id[:8]}" if item.run_id else ""
             lines.append(f"- {item.summary}{src}{run}")
         lines.append("Next: open the failed run, fix the blocker, then retry.")
+
+    if flagged:
+        lines.append("")
+        lines.append("Flagged for review (not verified — inspect before trusting):")
+        for item in flagged[:8]:
+            src = f" [{item.source}]" if item.source else ""
+            run = f" · run {item.run_id[:8]}" if item.run_id else ""
+            lines.append(f"- {item.summary}{src}{run}")
+        lines.append(
+            "Next: open Activity, read the concrete finding, review records, then retry if needed."
+        )
 
     if completed:
         lines.append("")

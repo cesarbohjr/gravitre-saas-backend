@@ -259,3 +259,92 @@ def test_business_outcome_dto_is_dataclass_projection():
     )
     assert outcome.kind == "failed_action"
     assert outcome.to_dict()["sections"]["verification"]["verified"] is False
+
+
+def test_flagged_for_review_phase4_finding_on_business_outcome():
+    """Phase 6 — flagged status carries Phase 4 finding + next actions (not verified)."""
+    deg = {
+        "flagged": True,
+        "batch_class": "enrichment",
+        "record_count": 6,
+        "reason": "identical_value_dominance",
+        "field": "industry",
+        "identical_ratio": 1.0,
+        "placeholder_ratio": 1.0,
+        "threshold_identical": 0.8,
+        "threshold_placeholder": 0.5,
+        "modal_value": "cannot tell",
+    }
+    outcome = project_business_outcome(
+        org_id="org-1",
+        run=_sample_run(
+            status="flagged_for_review",
+            parameters={
+                "invoke_action": "clay.enrich",
+                "integration": "clay",
+                "label": "Enrich batch",
+                "outcome_effect": "flagged_for_review",
+                "batch_degeneracy": deg,
+            },
+        ),
+        execution_result={
+            "success": False,
+            "title": "Enrich batch",
+            "body": "Enrichment returned.",
+            "result_url": "/runs/11111111-1111-1111-1111-111111111111",
+            "structured": {"batch_degeneracy": deg, "outcome_effect": "flagged_for_review"},
+        },
+        invoke_action="clay.enrich",
+    )
+    d = outcome.to_dict()
+    assert d["status"] == "flagged_for_review"
+    assert d["kind"] != "created_record"
+    ver = d["sections"]["verification"]
+    assert ver["verified"] is False
+    assert ver["reviewState"] == "flagged_for_review"
+    assert ver["checkFailed"] == "batch_degeneracy"
+    assert "6 of 6" in ver["finding"]
+    assert "cannot tell" in ver["finding"]
+    assert ver["nextActions"]
+    assert "verified" not in d["lifecycleStatesReached"]
+    # Finding becomes the customer-facing summary.
+    assert "6 of 6" in d["sections"]["summary"]
+    assert d["sections"]["recommendations"]
+
+
+def test_follow_up_proof_phase3_distinct_from_batch_degeneracy():
+    """Phase 3 missing follow-up is distinguishable from Phase 4 degeneracy."""
+    outcome = project_business_outcome(
+        org_id="org-1",
+        run=_sample_run(
+            status="partial_success",
+            parameters={
+                "invoke_action": "apollo.lists.add",
+                "outcome_effect": "accepted_async",
+                "population_verify": {
+                    "verified": False,
+                    "detail": "follow_up_empty_membership",
+                    "effect": "unknown",
+                },
+            },
+        ),
+        execution_result={
+            "success": True,
+            "title": "Add to list",
+            "body": "Accepted",
+            "result_url": "/runs/r",
+            "structured": {
+                "population_verify": {
+                    "verified": False,
+                    "detail": "follow_up_empty_membership",
+                }
+            },
+        },
+        invoke_action="apollo.lists.add",
+    )
+    ver = outcome.to_dict()["sections"]["verification"]
+    assert ver["verified"] is False
+    assert ver["checkFailed"] == "follow_up_proof"
+    assert ver.get("reviewState") in (None, "")
+    assert "Phase 3" in (ver.get("finding") or ver.get("detail") or "")
+    assert VIEW_PATH.read_text(encoding="utf-8").count("Flagged for review") >= 1

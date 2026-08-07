@@ -299,9 +299,17 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "outcome_effect",
             "step_results",
             "connector_output_refs",
+            "batch_degeneracy",
+            "population_verify",
         ):
             if key in meta and meta[key] is not None:
                 patch[key] = meta[key]
+        # Phase 6 — surface nested honesty payloads from structured onto run params
+        # so BusinessOutcome projection can distinguish Phase 3 vs Phase 4 findings.
+        structured_meta = meta.get("structured") if isinstance(meta.get("structured"), dict) else {}
+        for key in ("batch_degeneracy", "population_verify", "outcome_effect"):
+            if key not in patch and isinstance(structured_meta.get(key), (dict, str)):
+                patch[key] = structured_meta[key]
         try:
             merge_run_parameters(client, event.run_id, patch)
         except Exception as exc:  # noqa: BLE001

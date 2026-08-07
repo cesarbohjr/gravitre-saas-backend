@@ -142,7 +142,8 @@
 }
 
 .gvt-outcome-verified,
-.gvt-outcome-unverified {
+.gvt-outcome-unverified,
+.gvt-outcome-flagged {
   display: inline-block;
   margin-bottom: 8px;
   font-size: 11px;
@@ -157,8 +158,30 @@
 }
 
 .gvt-outcome-unverified {
-  background: rgba(245, 158, 11, 0.14);
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
+
+.gvt-outcome-flagged {
+  background: rgba(245, 158, 11, 0.16);
   color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.gvt-outcome-finding {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #0f172a;
+}
+
+.gvt-outcome-next {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #475569;
 }
 
 .gvt-outcome-links {

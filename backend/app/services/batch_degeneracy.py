@@ -130,6 +130,46 @@ class BatchDegeneracyResult:
         }
 
 
+def format_batch_degeneracy_finding(result: BatchDegeneracyResult | dict[str, Any]) -> str:
+    """Module D voice — concrete finding for Phase 4 flagged batches."""
+    if isinstance(result, BatchDegeneracyResult):
+        data = result.as_dict()
+    else:
+        data = dict(result or {})
+    n = int(data.get("record_count") or 0)
+    field = str(data.get("field") or "value").strip() or "value"
+    modal = str(data.get("modal_value") or "").strip()
+    reason = str(data.get("reason") or "").strip()
+    identical_ratio = float(data.get("identical_ratio") or 0.0)
+    placeholder_ratio = float(data.get("placeholder_ratio") or 0.0)
+    if reason == "identical_value_dominance" and n > 0:
+        matching = max(1, int(round(identical_ratio * n)))
+        quoted = repr(modal) if modal else "the same value"
+        return f"{matching} of {n} records returned the same {field}: {quoted}"
+    if reason == "placeholder_dominance" and n > 0:
+        matching = max(1, int(round(placeholder_ratio * n)))
+        example = f" (e.g. {modal!r})" if modal else ""
+        return (
+            f"{matching} of {n} records have placeholder or non-answer "
+            f"{field}{example}"
+        )
+    if n > 0:
+        return f"Batch of {n} records flagged for review ({reason or 'degenerate_output'})."
+    return "Batch output flagged for review — values look uniform or non-informative."
+
+
+def batch_degeneracy_next_actions(
+    result: BatchDegeneracyResult | dict[str, Any] | None = None,
+) -> list[str]:
+    """Specific next actions — never a vague 'something may have gone wrong'."""
+    _ = result
+    return [
+        "Review the specific records manually — do not treat this batch as verified work.",
+        "Open the source-system record from Evidence and confirm whether the values are real.",
+        "Retry the operation with better source data or a narrower batch once you know why the values collapsed.",
+    ]
+
+
 def batch_class_for_action(invoke_action: str | None) -> str:
     action = str(invoke_action or "").strip().lower()
     if action in _ENRICHMENT_ACTIONS or ".enrich" in action or "enrichment" in action:

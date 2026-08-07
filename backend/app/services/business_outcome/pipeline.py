@@ -63,7 +63,13 @@ def _stage_verify(ctx: PipelineContext) -> None:
     er = ctx.execution_result or {}
     status = str(ctx.run.get("status") or "")
     has_output = bool(er.get("body") or er.get("external_url") or er.get("result_url"))
-    ctx.verified = has_output or status in {"completed", "failed", "partial_success", "cancelled"}
+    ctx.verified = has_output or status in {
+        "completed",
+        "failed",
+        "partial_success",
+        "cancelled",
+        "flagged_for_review",
+    }
     if not ctx.verified:
         # Still continue — failed verifies become failed outcomes with explanation.
         ctx.verified = True

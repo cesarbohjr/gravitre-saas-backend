@@ -2010,6 +2010,17 @@ class ChatConnectorExecutionService:
                     "action_args": _proof_args_for_run(plan),
                     "already_existed": already_existed,
                     "outcome_effect": outcome_effect,
+                    # Phase 6 — durable Phase 4 finding for Activity/BusinessOutcome.
+                    **(
+                        {"batch_degeneracy": structured.get("batch_degeneracy")}
+                        if isinstance(structured.get("batch_degeneracy"), dict)
+                        else {}
+                    ),
+                    **(
+                        {"population_verify": structured.get("population_verify")}
+                        if isinstance(structured.get("population_verify"), dict)
+                        else {}
+                    ),
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,

@@ -19,13 +19,32 @@
     const summary = sections.summary || result.error || ""
     if (summary) card.appendChild(el("p", "gvt-outcome-summary", String(summary).slice(0, 400)))
     const ver = sections.verification
+    const status = String(bo.status || "").toLowerCase()
+    const reviewState = String(ver?.reviewState || "").toLowerCase()
+    const flagged = status === "flagged_for_review" || reviewState === "flagged_for_review"
     if (ver && typeof ver === "object") {
-      const badge = el(
-        "div",
-        ver.verified ? "gvt-outcome-verified" : "gvt-outcome-unverified",
-        ver.verified ? "Verified evidence" : "Not verified",
-      )
+      const badgeClass = flagged
+        ? "gvt-outcome-flagged"
+        : ver.verified
+          ? "gvt-outcome-verified"
+          : "gvt-outcome-unverified"
+      const badgeLabel = flagged
+        ? "Flagged for review"
+        : ver.verified
+          ? "Verified evidence"
+          : "Not verified"
+      const badge = el("div", badgeClass, badgeLabel)
       card.appendChild(badge)
+      if (ver.finding) {
+        card.appendChild(el("p", "gvt-outcome-finding", String(ver.finding).slice(0, 280)))
+      }
+      if (Array.isArray(ver.nextActions) && ver.nextActions.length) {
+        const list = el("ul", "gvt-outcome-next")
+        ver.nextActions.slice(0, 3).forEach((line) => {
+          list.appendChild(el("li", null, String(line)))
+        })
+        card.appendChild(list)
+      }
     }
     const links = (sections.evidence && sections.evidence.links) || []
     if (links.length) {

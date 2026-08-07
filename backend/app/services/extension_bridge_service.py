@@ -916,6 +916,11 @@ def _run_confirmed_extension_action(
                 "outcome_effect": outcome_effect,
                 "already_existed": already_existed,
                 "approval_id": approval_id,
+                **(
+                    {"batch_degeneracy": data.get("batch_degeneracy")}
+                    if isinstance(data.get("batch_degeneracy"), dict)
+                    else {}
+                ),
             },
             run_hash=f"ext-{uuid4().hex[:16]}",
             workflow_id=None,

@@ -32,6 +32,7 @@ import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/execut
 import { PackKpiPanel } from "@/components/marketplace/pack-kpi-panel"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+import { cn } from "@/lib/utils"
 
 const reportsCopy = SURFACE_COPY.pages.reports
 
@@ -141,9 +142,23 @@ export default function IntelligenceReportsPage() {
               <p className="text-sm text-muted-foreground">Loading ROI metrics…</p>
             ) : (
               <>
+                {roiCards.some((c) => c.note === "not_configured" || c.note === "insufficient_data") ? (
+                  <p className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+                    Some metrics are not correlated yet or lack enough evidence — shown as
+                    not_configured / insufficient_data, never as a confident invented number.
+                  </p>
+                ) : null}
                 <StatsGrid columns={3}>
                   {roiCards.map((card) => (
-                    <div key={card.label} className="rounded-lg border border-border/60 bg-card p-3">
+                    <div
+                      key={card.label}
+                      className={cn(
+                        "rounded-lg border bg-card p-3",
+                        card.note === "not_configured" || card.note === "insufficient_data"
+                          ? "border-warning/35"
+                          : "border-border/60",
+                      )}
+                    >
                       <StatCard label={card.label} value={card.value} />
                       <IntelligenceSparkline
                         data={sparkFromEvents(recentEvents, "confidence_score")}
