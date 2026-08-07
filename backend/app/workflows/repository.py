@@ -29,6 +29,7 @@ from app.workflows.constants import (
     RESOURCE_TYPE_WORKFLOW_RUN,
 )
 from app.workflows.schema import compute_run_hash, validate_definition, validate_parameters
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def get_supabase_client(settings: Settings) -> Client:
@@ -316,7 +317,7 @@ def patch_workflow_run(client: Client, run_id: str, payload: dict[str, Any]) -> 
 def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     """Merge keys into workflow_runs.parameters (read-modify-write)."""
     row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
-    current = dict((row.data or [{}])[0].get("parameters") or {})
+    current = safe_normalize_stored_dict((row.data or [{}])[0], key='parameters')
     current.update(patch)
     patch_workflow_run(client, run_id, {"parameters": current})
     return current

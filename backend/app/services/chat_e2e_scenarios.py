@@ -15,6 +15,7 @@ from app.services.chat_connector_execution_service import (
     get_chat_connector_execution_service,
 )
 from app.services.chat_connector_models import ConnectorActionPlan
+from app.core.safe_dict import safe_normalize_stored_dict
 
 ScenarioStatus = Literal["passed", "failed", "skipped", "blocked"]
 CheckName = Literal[
@@ -306,7 +307,7 @@ def _audit_capture():
 
 
 def _confirm_task_state(pre_turn: dict[str, Any]) -> dict[str, Any]:
-    state = dict(pre_turn.get("task_state") or {})
+    state = safe_normalize_stored_dict(pre_turn, key="task_state")
     pending = pre_turn.get("pending_task") or state.get("pending_task")
     if pending:
         state["pending_task"] = pending

@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import uuid
 from typing import Any, Literal
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ def _resolve_entity_ref(entity_ref: dict[str, Any] | None) -> dict[str, Any]:
         vendor = str(raw_entity_id).strip()
         if vendor:
             ref["external_entity_id"] = str(ref.get("external_entity_id") or vendor)
-            activity = dict(ref.get("activity_metadata") or {})
+            activity = safe_normalize_stored_dict(ref, key="activity_metadata")
             activity.setdefault("external_entity_id", vendor)
             ref["activity_metadata"] = activity
         ref.pop("entity_id", None)
@@ -166,7 +167,7 @@ def _record_connector_activity(
         status = "running" if event_type == "run_started" else "pending"
     else:
         status = "completed"
-    metadata = dict(entity_ref.get("activity_metadata") or {})
+    metadata = safe_normalize_stored_dict(entity_ref, key="activity_metadata")
     if notification_id:
         metadata["notification_id"] = notification_id
     record_activity_event(

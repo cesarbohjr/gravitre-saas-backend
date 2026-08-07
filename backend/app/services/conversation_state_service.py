@@ -12,6 +12,7 @@ from app.services.conversation_write_guard import (
     assert_conversation_create_allowed,
 )
 from app.workflows.repository import get_supabase_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -134,12 +135,12 @@ class ConversationStateService:
                         else {}
                     )
                     current_slots = (
-                        dict(current_ledger.get("slots") or {})
+                        safe_normalize_stored_dict(current_ledger, key="slots")
                         if isinstance(current_ledger.get("slots"), dict)
                         else {}
                     )
                     incoming_slots = (
-                        dict(value.get("slots") or {})
+                        safe_normalize_stored_dict(value, key="slots")
                         if isinstance(value.get("slots"), dict)
                         else {}
                     )

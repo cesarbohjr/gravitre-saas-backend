@@ -147,6 +147,7 @@ from app.connectors.platform import (
 )
 from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 logger = logging.getLogger(__name__)
@@ -614,7 +615,7 @@ async def start_oauth(
             .limit(1)
             .execute()
         )
-        connector_config = dict((connector_row.data or [{}])[0].get("config") or {})
+        connector_config = safe_normalize_stored_dict((connector_row.data or [{}])[0], key="config")
         account_id = (connector_config.get("account_id") or connector_config.get("accountId") or "").strip()
         if not account_id:
             raise HTTPException(
@@ -705,7 +706,7 @@ async def start_oauth(
                 .limit(1)
                 .execute()
             )
-            connector_config = dict((connector_row.data or [{}])[0].get("config") or {})
+            connector_config = safe_normalize_stored_dict((connector_row.data or [{}])[0], key="config")
             if not ctx_subdomain:
                 ctx_subdomain = str(connector_config.get("subdomain") or "").strip()
             if not ctx_instance:

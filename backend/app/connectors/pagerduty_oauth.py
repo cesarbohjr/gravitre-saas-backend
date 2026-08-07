@@ -19,6 +19,7 @@ from app.connectors.hubspot_oauth import (
     store_oauth_tokens,
     token_needs_refresh,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ def try_register_webhook_subscription(
     except httpx.HTTPError as exc:
         logger.warning("pagerduty_webhook_subscription_failed error=%s", exc)
         return None
-    subscription = dict(result.get("webhook_subscription") or result)
+    subscription = safe_normalize_stored_dict(result, key='webhook_subscription') or safe_normalize_stored_dict(result)
     delivery = subscription.get("delivery_method") or {}
     if isinstance(delivery, dict) and delivery.get("secret"):
         subscription["_signing_secret"] = delivery.get("secret")
@@ -273,7 +274,7 @@ def complete_pagerduty_oauth_connection(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "pagerduty"
     webhook_secret = (config.get("webhook_secret") or "").strip() or secrets.token_hex(32)
     config["webhook_secret"] = webhook_secret

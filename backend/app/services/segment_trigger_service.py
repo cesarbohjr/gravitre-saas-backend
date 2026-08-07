@@ -17,6 +17,7 @@ from app.services.execution_service import ExecutionService, get_execution_servi
 from app.services.marketo_workflow_service import webinar_followup_workflow_id
 from app.workflows.repository import create_execute_run, get_supabase_client
 from app.workflows.schema import compute_run_hash
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def set_segment_triggers(
     )
     if not row.data:
         raise ValueError("Connector not found")
-    config = dict(row.data[0].get("config") or {})
+    config = safe_normalize_stored_dict(row.data[0], key='config')
     config["segment_triggers"] = triggers
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
     return triggers
@@ -78,7 +79,7 @@ def ensure_connector_webhook_secret(
     )
     if not row.data:
         raise ValueError("Connector not found")
-    config = dict(row.data[0].get("config") or {})
+    config = safe_normalize_stored_dict(row.data[0], key='config')
     secret = (config.get("segment_webhook_secret") or config.get("webhook_secret") or "").strip()
     if not secret:
         secret = secrets.token_hex(32)

@@ -6,6 +6,7 @@ from typing import Any
 
 from app.services.data_residency_service import get_org_data_region
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 CURRENT_BAA_VERSION = "2026.1"
 REQUIRED_HIPAA_DATA_REGION = "us"
@@ -96,8 +97,8 @@ def accept_baa(
         raise ValueError(f"BAA version must be {CURRENT_BAA_VERSION}")
 
     org = _org_row(client, org_id)
-    org_settings = dict(org.get("settings") or {})
-    enterprise = dict(org_settings.get("enterprise") or {})
+    org_settings = safe_normalize_stored_dict(org, key="settings")
+    enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
     hipaa = dict(_hipaa_settings(org_settings))
     now = datetime.now(timezone.utc).isoformat()
     hipaa.update(
@@ -138,8 +139,8 @@ def set_hipaa_enabled(
     enabled: bool,
 ) -> dict[str, Any]:
     org = _org_row(client, org_id)
-    org_settings = dict(org.get("settings") or {})
-    enterprise = dict(org_settings.get("enterprise") or {})
+    org_settings = safe_normalize_stored_dict(org, key="settings")
+    enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
     hipaa = dict(_hipaa_settings(org_settings))
     data_region = get_org_data_region(org_settings, data_region=org.get("data_region"))
 

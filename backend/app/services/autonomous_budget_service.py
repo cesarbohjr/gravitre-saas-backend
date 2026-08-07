@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Literal
 
 from app.workflows.audit import write_audit_event
+from app.core.safe_dict import safe_normalize_stored_dict
 
 BudgetDimension = Literal["actions", "tokens", "spend_usd"]
 
@@ -370,8 +371,8 @@ def update_org_autonomous_budget_defaults(
 ) -> dict[str, float | int | None]:
     unset = unset or set()
     settings = _org_settings(client, org_id)
-    enterprise = dict(settings.get("enterprise") or {})
-    budgets = dict(enterprise.get("autonomousRunBudgets") or {})
+    enterprise = safe_normalize_stored_dict(settings, key="enterprise")
+    budgets = safe_normalize_stored_dict(enterprise, key="autonomousRunBudgets")
 
     if "maxActionsPerDay" in unset:
         budgets.pop("maxActionsPerDay", None)

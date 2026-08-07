@@ -14,6 +14,7 @@ from app.core.logging import get_logger
 from app.services.catalog_write_authority import invoke_action_requires_write_approval
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -687,7 +688,7 @@ def _load_extension_pending_confirm(
             "pending_type": "execute_workflow",
             "workflow_id": str(context.get("workflow_id") or ""),
             "workflow_name": context.get("workflow_name"),
-            "args": dict(context.get("args") or {}) if isinstance(context.get("args"), dict) else {},
+            "args": safe_normalize_stored_dict(context, key='args') if isinstance(context.get("args"), dict) else {},
             "page_url": context.get("page_url"),
             "progress_steps": list(context.get("progress_steps") or []),
             "approval_id": str(row["id"]),
@@ -1054,7 +1055,7 @@ def execute_extension_action(
                 org_id=org_id,
                 user_id=user_id,
                 workflow_id=str(pending.get("workflow_id") or ""),
-                parameters=dict(pending.get("args") or {}),
+                parameters=safe_normalize_stored_dict(pending, key='args'),
                 page_url=pending.get("page_url") or page_url,
                 approval_id=str(pending["approval_id"]),
                 progress_steps=list(pending.get("progress_steps") or []),
@@ -1064,7 +1065,7 @@ def execute_extension_action(
             org_id=org_id,
             user_id=user_id,
             action=str(pending["invoke_action"]),
-            params=dict(pending["args"] or {}),
+            params=safe_normalize_stored_dict(pending, key="args"),
             page_url=pending.get("page_url") or page_url,
             approval_id=str(pending["approval_id"]),
         )

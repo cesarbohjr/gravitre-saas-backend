@@ -26,6 +26,7 @@ from app.services.agent_tool_permissions import (
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_active_workflow_version, get_workflow_def, list_workflows
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +140,8 @@ def extract_step_requirements(definition: dict[str, Any]) -> list[dict[str, Any]
         step_id = str(step.get("id") or "")
         step_name = str(step.get("name") or step_id)
         step_type = str(step.get("type") or "")
-        config = dict(step.get("config") or {})
-        metadata = dict(step.get("metadata") or {})
+        config = safe_normalize_stored_dict(step, key='config')
+        metadata = safe_normalize_stored_dict(step, key='metadata')
         if isinstance(config.get("metadata"), dict):
             metadata = {**metadata, **config["metadata"]}
         action = str(config.get("action") or STEP_TYPE_TO_ACTION.get(step_type) or "").strip()
@@ -364,8 +365,9 @@ def _resolve_workflow_definition(
     environment_name: str,
 ) -> dict[str, Any]:
     active = get_active_workflow_version(client, org_id, workflow_id, environment_name)
-    if active and active.get("definition"):
-        return dict(active["definition"])
+    definition = safe_normalize_stored_dict(active, key="definition") if active else {}
+    if definition:
+        return definition
     workflow = get_workflow_def(client, org_id, workflow_id)
     if not workflow:
         raise FailurePredictionError("Workflow not found", code="WORKFLOW_NOT_FOUND")
@@ -684,7 +686,7 @@ def _resolve_failure_correlation_keys(
         for step in definition.get("steps") or []:
             if not isinstance(step, dict):
                 continue
-            config = dict(step.get("config") or {})
+            config = safe_normalize_stored_dict(step, key='config')
             step_type = str(step.get("type") or "").strip()
             action = str(
                 config.get("action") or STEP_TYPE_TO_ACTION.get(step_type) or step_type or ""
@@ -797,7 +799,7 @@ def correlate_observed_run_failure(
         if kind == "same_run":
             return True
         if kind in {"connector", "action", "workflow"}:
-            ev = dict(row.get("evidence") if isinstance(row.get("evidence"), dict) else {})
+            ev = safe_normalize_stored_dict(row, key='evidence')
             correlated_runs = [
                 str(x) for x in (ev.get("correlated_run_ids") or []) if str(x).strip()
             ]

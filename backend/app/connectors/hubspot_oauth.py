@@ -11,6 +11,7 @@ import httpx
 from app.config import Settings
 from app.public_urls import connector_oauth_callback_url
 from app.connectors.repository import get_decrypted_secret, set_secret
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,7 @@ def mark_connector_oauth_failure(
         .limit(1)
         .execute()
     )
-    config = dict((existing.data or [{}])[0].get("config") or {})
+    config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_error"] = error[:500]
     config["oauth_error_at"] = int(time.time())
     client.table("connectors").update({"status": "error", "config": config}).eq("id", connector_id).eq(
@@ -241,7 +242,7 @@ def mark_connector_oauth_success(
         .execute()
     )
     row = (existing.data or [{}])[0]
-    config = dict(row.get("config") or {})
+    config = safe_normalize_stored_dict(row, key="config")
     env = environment_name or row.get("environment") or "production"
     config.update(
         {

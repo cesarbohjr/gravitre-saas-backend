@@ -6,6 +6,7 @@ from typing import Any
 
 from app.workflows.audit import write_audit_event
 from app.workflows.constants import RESOURCE_TYPE_WORKFLOW_RUN
+from app.core.safe_dict import safe_normalize_stored_dict
 
 AUDIT_COMPENSATION_STARTED = "workflow.compensation.started"
 AUDIT_COMPENSATION_COMPLETED = "workflow.compensation.completed"
@@ -66,7 +67,7 @@ def prepare_forward_snapshot(ctx: Any, action: str, params: dict[str, Any]) -> d
                 if not contact_id:
                     return None
                 row = get_contact(token, contact_id=str(contact_id))
-                return {"connector_id": cid, "properties": dict((row.get("properties") or {}))}
+                return {"connector_id": cid, "properties": safe_normalize_stored_dict(row, key="properties")}
             if action in {"hubspot.deals.update", "hubspot.deals.update_stage"}:
                 deal_id = params.get("deal_id") or params.get("dealId")
                 if not deal_id:
@@ -74,7 +75,7 @@ def prepare_forward_snapshot(ctx: Any, action: str, params: dict[str, Any]) -> d
                 row = get_deal(token, str(deal_id))
                 return {
                     "connector_id": cid,
-                    "properties": dict((row.get("properties") or {})),
+                    "properties": safe_normalize_stored_dict(row, key="properties"),
                     "dealstage": (row.get("properties") or {}).get("dealstage"),
                 }
         if action == "zendesk.tickets.update":

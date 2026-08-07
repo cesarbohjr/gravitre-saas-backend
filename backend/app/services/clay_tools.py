@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.connectors.clay_api import (
     ClayAPIError,
     enrich_company,
@@ -117,7 +118,7 @@ def _normalize_records_param(params: dict[str, Any]) -> list[dict[str, Any]]:
     if record:
         return [dict(record)]
     if isinstance(params.get("payload"), dict):
-        return [dict(params["payload"])]
+        return [safe_normalize_stored_dict(params, key="payload")]
     return []
 
 

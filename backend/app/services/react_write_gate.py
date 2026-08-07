@@ -23,6 +23,7 @@ from app.services.catalog_write_authority import (
     matrix_entry_requires_write_approval,
 )
 from app.services.connector_action_workflows import format_write_approval_message
+from app.core.safe_dict import safe_normalize_stored_dict
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 
@@ -215,7 +216,7 @@ def pending_write_from_react(react_result: Any | None) -> dict[str, Any] | None:
         if result.get("pending_approval") and result.get("error_code") == WRITE_APPROVAL_REQUIRED:
             return {
                 "tool": str(call.get("tool") or call.get("name") or result.get("tool") or ""),
-                "args": dict(call.get("args") or result.get("args") or {}),
+                "args": safe_normalize_stored_dict(call, key='args') or safe_normalize_stored_dict(result, key='args'),
                 "result": result,
             }
     return None
@@ -264,7 +265,7 @@ def plan_from_react_tool_call(
 def plan_from_react_write(pending: dict[str, Any], registry: Any | None = None) -> ConnectorActionPlan | None:
     result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
     tool_name = str(pending.get("tool") or result.get("tool") or "").strip()
-    args = dict(pending.get("args") or result.get("args") or {})
+    args = safe_normalize_stored_dict(pending, key='args') or safe_normalize_stored_dict(result, key='args')
     if registry is not None:
         plan = plan_from_react_tool_call(tool_name, args, registry, requires_approval=True)
         if plan is not None:
@@ -325,7 +326,7 @@ def first_structured_connector_plan_from_react(
         args = call.get("args") if isinstance(call.get("args"), dict) else {}
         result = call.get("result") if isinstance(call.get("result"), dict) else {}
         if not args and isinstance(result.get("args"), dict):
-            args = dict(result["args"])
+            args = safe_normalize_stored_dict(result, key="args")
         if not args and not result.get("pending_approval"):
             # No structured args to reuse — leave to NL mapper.
             continue
@@ -391,10 +392,10 @@ async def materialize_react_platform_write_approval_turn(
     tool = str(pending.get("tool") or "").strip()
     if tool not in PLATFORM_WRITE_TOOLS:
         return None
-    args = dict(pending.get("args") or {})
+    args = safe_normalize_stored_dict(pending, key='args')
     result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
     if not args and isinstance(result.get("args"), dict):
-        args = dict(result["args"])
+        args = safe_normalize_stored_dict(result, key="args")
 
     from app.services.conversation_state_service import get_conversation_state_service
 
@@ -528,7 +529,7 @@ async def materialize_react_write_approval_turn(
         return None
 
     tool = str(pending.get("tool") or "").strip()
-    pending_args = dict(pending.get("args") or {})
+    pending_args = safe_normalize_stored_dict(pending, key='args')
     pending_result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
     pending_invoke = str(pending_result.get("action") or "").strip() or None
     from app.services.chat_write_intent import evaluate_connector_tool_proposal

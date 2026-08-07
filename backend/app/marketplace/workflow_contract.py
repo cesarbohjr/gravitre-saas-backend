@@ -7,6 +7,7 @@ Pack installs historically wrote thin ``{id, type, name}`` stubs into
 from __future__ import annotations
 
 from typing import Any
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def resolve_step_agent_seeds(
@@ -18,7 +19,7 @@ def resolve_step_agent_seeds(
     resolved: list[dict[str, Any]] = []
     for step in steps:
         row = dict(step)
-        metadata = dict(row.get("metadata") or {})
+        metadata = safe_normalize_stored_dict(row, key="metadata")
         seed = metadata.pop("agent_seed", None)
         if seed:
             agent_id = agent_ids_by_seed.get(str(seed))

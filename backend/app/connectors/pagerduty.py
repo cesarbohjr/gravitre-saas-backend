@@ -5,6 +5,7 @@ import time
 from typing import Any, Mapping, Sequence
 
 import httpx
+from app.core.safe_dict import safe_normalize_stored_dict
 
 PAGERDUTY_API_BASE = "https://api.pagerduty.com"
 TIMEOUT_SEC = 30.0
@@ -79,12 +80,12 @@ def api_request(
 
 def fetch_current_user(access_token: str) -> dict[str, Any]:
     data = api_request("GET", "/users/me", access_token)
-    return dict(data.get("user") or data)
+    return safe_normalize_stored_dict(data, key='user') or safe_normalize_stored_dict(data)
 
 
 def get_incident(access_token: str, incident_id: str) -> dict[str, Any]:
     data = api_request("GET", f"/incidents/{incident_id}", access_token)
-    return dict(data.get("incident") or data)
+    return safe_normalize_stored_dict(data, key='incident') or safe_normalize_stored_dict(data)
 
 
 def manage_incidents(

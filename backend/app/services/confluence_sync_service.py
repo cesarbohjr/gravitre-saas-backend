@@ -14,6 +14,7 @@ from app.connectors.confluence import (
 )
 from app.connectors.confluence_oauth import ensure_confluence_session
 from app.rag.ingest import create_ingest_job, create_source, get_source
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def set_confluence_sync_config(
     if not row.data:
         raise ValueError("Connector not found")
     connector = dict(row.data[0])
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     if targets is not None:
         normalized: list[dict[str, Any]] = []
         for item in targets:
@@ -108,7 +109,7 @@ def ensure_confluence_rag_source(
     created_by: str,
 ) -> str:
     _ = settings
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     existing = config.get("confluence_rag_source_id")
     environment = str(connector.get("environment") or "production")
     department_id = config.get("confluence_department_id")
@@ -253,7 +254,7 @@ def run_confluence_sync(
             except ConfluenceAPIError as exc:
                 errors.append(f"page {page_id}: {exc}")
 
-    config = dict(connector.get("config") or {})
+    config = safe_normalize_stored_dict(connector, key="config")
     config["confluence_last_synced_at"] = _now_iso()
     config["confluence_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()

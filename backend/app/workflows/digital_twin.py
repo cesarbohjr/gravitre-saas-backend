@@ -43,6 +43,7 @@ from app.workflows.schema import (
     validate_definition,
     validate_parameters,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 RUN_TYPE_DIGITAL_TWIN = "digital_twin"
 
@@ -72,7 +73,7 @@ async def _simulate_twin_step(
         )
         if fixture:
             stats["fixtureHits"] = stats.get("fixtureHits", 0) + 1
-            response = dict(fixture.get("response") or {})
+            response = safe_normalize_stored_dict(fixture, key='response')
             return _truncate_output_snapshot(
                 {
                     **response,
@@ -147,7 +148,7 @@ async def execute_digital_twin(
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
-        config = dict(sdef.get("config") or {})
+        config = safe_normalize_stored_dict(sdef, key='config')
         config["step_name"] = step_name
         if isinstance(sdef.get("metadata"), dict):
             config["metadata"] = sdef["metadata"]

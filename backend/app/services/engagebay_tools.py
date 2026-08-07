@@ -15,6 +15,7 @@ from app.connectors.engagebay_api import (
 )
 from app.connectors.rate_limit import enforce_rate_limit
 from app.services.tool_types import NormalizedResult, ToolAuthExpiredError, ToolContext, ToolRateLimitedError, ToolValidationError
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def _handle_error(exc: EngageBayAPIError) -> Exception:
@@ -68,7 +69,7 @@ def _exec_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
 
 def _exec_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, api_key = _session(ctx, params)
-    payload = dict(params.get("properties") or params)
+    payload = safe_normalize_stored_dict(params, key='properties') or safe_normalize_stored_dict(params)
     for key in ("connector_id", "connectorId", "properties"):
         payload.pop(key, None)
     if not payload.get("email") and not params.get("email"):
@@ -87,7 +88,7 @@ def _exec_contacts_update(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     contact_id = str(params.get("contact_id") or params.get("id") or "").strip()
     if not contact_id:
         raise ToolValidationError("engagebay.contacts.update requires contact_id")
-    payload = dict(params.get("properties") or params)
+    payload = safe_normalize_stored_dict(params, key='properties') or safe_normalize_stored_dict(params)
     for key in ("connector_id", "connectorId", "contact_id", "id", "properties"):
         payload.pop(key, None)
     try:

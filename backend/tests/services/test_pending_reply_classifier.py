@@ -1,6 +1,8 @@
 """Module B — shared 7-way pending-reply classifier."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.services.chat_connector_models import ConnectorActionPlan
@@ -153,3 +155,40 @@ def test_known_bug_phrasings_classified():
         classify_pending_reply_fast("What workflows have been ran?", snap2)
         == "unrelated"
     )
+
+
+def test_build_pending_snapshot_handles_legacy_non_json_params_string():
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_params",
+            "params": "to=legacy@example.com",
+        }
+    }
+    snap = build_pending_snapshot(state)
+    assert snap.status == "awaiting_params"
+    assert has_pending_family(state) is True
+    assert classify_pending_reply_fast("what connectors are Connected right now?", snap) == "unrelated"
+
+
+def test_build_pending_snapshot_parses_json_string_params_payload():
+    params_json = json.dumps(
+        {
+            "label": "Send Gmail message",
+            "invoke_action": "gmail.messages.send",
+            "integration": "gmail",
+            "args": {"to": "alex@acme.com", "subject": "Follow-up"},
+        }
+    )
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": params_json,
+        }
+    }
+    snap = build_pending_snapshot(state)
+    assert snap.integration == "gmail"
+    assert snap.action_label == "Send Gmail message"
+    assert snap.action_args.get("to") == "alex@acme.com"
+    assert snap.action_args.get("subject") == "Follow-up"

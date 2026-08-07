@@ -14,6 +14,8 @@ import logging
 import re
 from typing import Any, Mapping, Sequence
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 logger = logging.getLogger(__name__)
 
 # Categories where variation would hurt clarity / auditability.
@@ -405,8 +407,8 @@ def _persist_voice_expression_sync() -> None:
             .execute()
         )
         current = {}
-        if rows.data and isinstance(rows.data[0].get("task_state"), dict):
-            current = dict(rows.data[0]["task_state"])
+        if rows.data:
+            current = safe_normalize_stored_dict(rows.data[0], key="task_state")
         current[VOICE_EXPRESSION_STATE_KEY] = snap
         sb.table("conversations").update({"task_state": current}).eq(
             "id", conversation_id

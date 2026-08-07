@@ -6,6 +6,7 @@ from typing import Any
 from app.domain.loader import load_domain_profile
 from app.services.domain_intelligence_service import DOMAIN_CONFIDENCE_THRESHOLD
 from app.services.learning_strategy_keys import domain_segment_active
+from app.core.safe_dict import safe_normalize_stored_dict
 
 LLM_TIER_ORDER = ("fast", "standard", "reasoning")
 
@@ -79,7 +80,7 @@ def apply_agent_selection_policy(
         return agent_selection
     updated = dict(agent_selection)
     preferred = [str(item).lower() for item in (profile.get("connector_preferences") or [])]
-    persona = dict(updated.get("persona") or {})
+    persona = safe_normalize_stored_dict(updated, key="persona")
     existing = [str(item).lower() for item in (persona.get("preferred_connectors") or [])]
     merged = list(dict.fromkeys(preferred + existing))
     persona["preferred_connectors"] = merged

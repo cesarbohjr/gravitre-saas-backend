@@ -9,6 +9,7 @@ from app.intelligence_packs.shared.normalize import normalize_source_result
 from app.intelligence_packs.shared.provenance import write_external_entity_with_provenance
 from app.intelligence_packs.shared.schemas import SourceResult
 from app.intelligence_packs.shared.signals import evaluate_pack_signals, persist_external_signal
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _BOOTSTRAPPED = False
 
@@ -68,7 +69,7 @@ def run_shared_ingestion(
         cache_key=cache_key,
         payload=data_payload,
         ttl_seconds=ttl_seconds,
-        provenance=dict(raw.get("provenance") or {}),
+        provenance=safe_normalize_stored_dict(raw, key='provenance'),
     )
     # Prove cache_get reads the same shared function
     cached = cache_get(client, vendor=v, cache_key=cache_key)

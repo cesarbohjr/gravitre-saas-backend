@@ -23,6 +23,7 @@ from app.workflows.schema_sync import (
     contract_nodes_from_builder,
     sync_legacy_workflow_to_contract,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
 
@@ -519,8 +520,8 @@ def bind_agent_seeds_on_builder_nodes(
     hydrated: list[dict[str, Any]] = []
     for node in nodes:
         row = dict(node)
-        metadata = dict(row.get("metadata") or {})
-        config = dict(row.get("config") or {})
+        metadata = safe_normalize_stored_dict(row, key='metadata')
+        config = safe_normalize_stored_dict(row, key='config')
         seed = metadata.get("agent_seed") or config.get("agent_seed")
         if seed and not (metadata.get("agent_id") or config.get("agent_id")):
             seed_key = str(seed)
