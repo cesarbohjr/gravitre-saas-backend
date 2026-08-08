@@ -36,12 +36,20 @@ Date: 2026-08-08
 - Agent chat: labeled **Text | Voice** toggle; honest “Voice unavailable” + reason when org/seat blocked.
 - Main `/ai` composer: mic shows **Dictate** label + tooltip (dictation ≠ agent Voice modality); locked state when `/api/voice/status` is 403.
 
-## Verification checklist (deploy tip)
+## Verification evidence (deploy tip)
 
-- [ ] `GET https://api.gravitre.app/health` → `git_sha` matches this tip
-- [ ] `python scripts/prove-voice-plan-included-gate.py` → ok
-- [ ] Meson Addons: no $49 Voice Interface Enable card
-- [ ] Billing Usage nav gone; old route redirects
-- [ ] Manual top-up Checkout + prepaid minutes + Stripe charge
-- [ ] Auto-top-up fires in disposable org below threshold
-- [ ] Chat: Dictate label on `/ai`; Text|Voice on agent chat
+| Check | Result |
+|---|---|
+| API tip | **PASS** — `GET https://api.gravitre.app/health` → `git_sha=1225ce422953effd35e1ecb0682ec1dcc9b748c5` @ `2026-08-08T21:02:42Z` |
+| Vercel tip | **PASS** — production READY `dpl_2NaXgMWDAcPuLNj4Teuw22TvZy1U` sha `1225ce42…` → `gravitre.app` |
+| Voice plan-included gate | **PASS** — `railway run python scripts/prove-voice-plan-included-gate.py` → `ok:true`, status ON `200`, OFF `403` `voice_org_disabled`, meson codes exclude `voice_interface`, `voice.plan_included=true` |
+| Catalog retire | **PASS** — Supabase `meson_addon_catalog.voice_interface` → name retired, `monthly_price_usd=0.00` |
+| Billing Usage redirect | **PASS** — `curl -I https://gravitre.app/settings/billing-usage` → `308` `Location: /settings/billing` |
+| Top-up Checkout | **PASS (session)** — `railway run python scripts/prove-voice-topup-checkout.py` → `200`, `minutes=60`, `amount_cents=720`, `session_id_prefix=cs_live_a1iVSZjrnmg8` |
+| Top-up payment + prepaid credit | **NOT RUN** — requires completing the live Checkout with a real card (session created above) |
+| Auto-top-up threshold fire | **NOT RUN** — code path wired (`maybe_auto_topup_voice_minutes`); needs disposable org + PM + usage below threshold |
+| Chat discoverability | **SHIPPED on tip** — Dictate label on `/ai`; Text\|Voice + honest unavailable on agent chat (visual confirm in browser after tip) |
+
+### Sibling Meson addon audit (honest)
+
+Multi-language / Advanced Analytics / Compliance Pack / Custom Model Training remain **JSON toggles on `subscriptions.meson_addons`** with catalog prices — **not Stripe-invoiced / not COGS-enforced** today (same class as the retired voice purchase gate). UI now labels them as catalog-only.
