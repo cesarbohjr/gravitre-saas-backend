@@ -354,6 +354,46 @@ def require_full_seat(*, action: str = "build") -> Callable[..., Any]:
     return dependency
 
 
+def require_voice_configure() -> Callable[..., Any]:
+    """B1 voice: CONFIGURE (assign voice / design / turn-taking) — full or manager seat."""
+
+    async def dependency(
+        current_user: Annotated[dict, Depends(get_current_user)],
+        org_id: Annotated[str | None, Depends(get_org_context)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> dict[str, Any]:
+        from app.billing.seat_context import assert_voice_configure
+
+        if not org_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        client = get_supabase_client(settings)
+        seat = resolve_seat_context(
+            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+        )
+        assert_voice_configure(seat)
+        return seat
+
+    return dependency
+
+
+def require_seat_context() -> Callable[..., Any]:
+    """Resolve seat without asserting — for USE paths that branch on is_lite."""
+
+    async def dependency(
+        current_user: Annotated[dict, Depends(get_current_user)],
+        org_id: Annotated[str | None, Depends(get_org_context)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> dict[str, Any]:
+        if not org_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        client = get_supabase_client(settings)
+        return resolve_seat_context(
+            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+        )
+
+    return dependency
+
+
 def check_quota(resource_name: str, current_value_fn: Callable[[dict[str, Any]], int]) -> Callable[..., Any]:
     async def dependency(
         entitlements: Annotated[dict[str, Any], Depends(get_entitlements_dependency)],

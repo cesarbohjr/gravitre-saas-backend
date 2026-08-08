@@ -102,11 +102,15 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             "Honest end-to-end target ~700–900ms (feels human). Deepgram STT ~150–300ms; "
             "ElevenLabs Flash v2.5 first-byte ~75–255ms. Not a sub-300ms claim."
         ),
-        "entitlement_decision_needed": (
-            "Voice API is currently gated by Meson addon voice_interface. Confirm whether "
-            "live staff voice toggle should also require that addon, be plan-included, or "
-            "use a separate entitlement — do not assume."
-        ),
+        "entitlement": {
+            "addon": "voice_interface",
+            "addon_confirmed": True,
+            "use_vs_configure": (
+                "B1: with voice_interface enabled, Lite seats USE voice mode on agents "
+                "assigned to their department; CONFIGURE (assign/change voice, turn-taking, "
+                "Voice Design) requires full or department-manager seat."
+            ),
+        },
         "error_classes": ["billing", "auth", "rate_limit", "service_failure"],
     }
 

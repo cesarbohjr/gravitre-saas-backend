@@ -1,0 +1,40 @@
+{
+  "audited_at": "2026-08-08",
+  "source": "GET https://api.elevenlabs.io/v1/voices (+ /v1/voices/{id} fallback) via railway run + ELEVENLABS_API_KEY on gravitre-saas-backend",
+  "failed_prove_voice_id": "21m00Tcm4TlvDq8ikWAM",
+  "failed_prove_voice": {
+    "voice_id": "21m00Tcm4TlvDq8ikWAM",
+    "key": "rachel",
+    "name": "Janet",
+    "found": true,
+    "category": "professional",
+    "sharing_rate": 1.0,
+    "has_credit_multiplier": false,
+    "free_users_allowed": true
+  },
+  "counts": {
+    "curated": 12,
+    "with_multiplier": 0,
+    "without_multiplier": 12,
+    "unknown": 0
+  },
+  "voices": [
+    {"voice_id": "21m00Tcm4TlvDq8ikWAM", "key": "rachel", "name": "Janet", "category": "professional", "sharing_rate": 1.0, "has_credit_multiplier": false},
+    {"voice_id": "pNInz6obpgDQGcFmaJgB", "key": "adam", "name": "Adam - Dominant, Firm", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "TxGEqnHWrfWFTfGW9XjX", "key": "josh", "name": "Craig", "category": "professional", "sharing_rate": 1.0, "has_credit_multiplier": false},
+    {"voice_id": "EXAVITQu4vr4xnSDxMaL", "key": "sarah", "name": "Sarah - Mature, Reassuring, Confident", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "VR6AewLTigWG4xSOukaG", "key": "arnold", "name": "Adam - Dominant, Firm", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "ThT5KcBeYPX3keUQqHPh", "key": "dorothy", "name": "Evelyn", "category": "professional", "sharing_rate": 1.0, "has_credit_multiplier": false},
+    {"voice_id": "pqHfZKP75CvOlQylNhV4", "key": "bill", "name": "Bill - Wise, Mature, Balanced", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "XrExE9yKIg1WjnnlVkGX", "key": "matilda", "name": "Matilda - Knowledgable, Professional", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "key": "george", "name": "George - Warm, Captivating Storyteller", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "onwK4e9ZLuTAKqWW03F9", "key": "daniel", "name": "Daniel - Steady Broadcaster", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "cgSgspJ2msm6clMCkdW9", "key": "jessica", "name": "Jessica - Playful, Bright, Warm", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false},
+    {"voice_id": "cjVigY5qzO86Huf0OWal", "key": "eric", "name": "Eric - Smooth, Trustworthy", "category": "premade", "sharing_rate": null, "has_credit_multiplier": false}
+  ],
+  "recommendation": {
+    "tier": "starter",
+    "monthly": "$6/mo",
+    "note": "None of the currently-wired preset voices carry a credit multiplier (sharing.rate absent or 1.0). Starter is sufficient for API access; paid_plan_required on free tier is separate from multiplier."
+  }
+}

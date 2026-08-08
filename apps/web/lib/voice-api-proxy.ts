@@ -7,7 +7,10 @@ export function voiceFastApiBase(): string {
   return "http://localhost:8000"
 }
 
-export function forwardAuthHeaders(request: NextRequest, *, accept?: string): Headers {
+export function forwardAuthHeaders(
+  request: NextRequest,
+  options?: { accept?: string },
+): Headers {
   const headers = new Headers()
   const auth = request.headers.get("authorization")
   const org = request.headers.get("x-org-id")
@@ -15,7 +18,7 @@ export function forwardAuthHeaders(request: NextRequest, *, accept?: string): He
   if (auth) headers.set("authorization", auth)
   if (org) headers.set("x-org-id", org)
   if (env) headers.set("x-environment", env)
-  if (accept) headers.set("accept", accept)
+  if (options?.accept) headers.set("accept", options.accept)
   return headers
 }
 

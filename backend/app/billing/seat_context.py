@@ -141,3 +141,104 @@ def list_assigned_resource_ids(
         return {str(row.get("resource_id")) for row in (resp.data or []) if row.get("resource_id")}
     except Exception:
         return set()
+
+
+def assert_voice_configure(seat: dict[str, Any]) -> None:
+    """B1 voice CONFIGURE: full seats or department managers (not Lite members).
+
+    Mirrors Meson build-vs-run: Lite may USE assigned agents' voice mode; assigning
+    voices / turn-taking / Voice Design remains configure-side.
+    """
+    if seat.get("is_full_seat") or seat.get("is_org_admin"):
+        return
+    if seat.get("is_department_manager"):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=error_detail(
+            "Full or manager seat required for voice configuration",
+            "UNAUTHORIZED",
+            {"reason": "lite_seat_blocked", "action": "voice_configure"},
+        ),
+    )
+
+
+def assert_agent_voice_use(
+    client,
+    seat: dict[str, Any],
+    *,
+    org_id: str,
+    agent_id: str | None,
+) -> None:
+    """Lite USE: voice only on agents assigned to the member's department(s).
+
+    Full seats and org admins: unrestricted. Department managers: agents in managed
+    departments. Lite members: department_resource_assignments resource_type=agent.
+    """
+    if not agent_id:
+        # Session without agent_id (org assistant) — full/manager only for now.
+        if seat.get("is_full_seat") or seat.get("is_org_admin") or seat.get("is_department_manager"):
+            return
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail(
+                "Lite seats may use voice only on assigned department agents",
+                "UNAUTHORIZED",
+                {"reason": "lite_agent_assignment_required", "action": "voice_use"},
+            ),
+        )
+    if seat.get("is_full_seat") or seat.get("is_org_admin"):
+        return
+
+    agent_id = str(agent_id).strip()
+    # Department managers: allow agents belonging to managed departments by agent.department
+    # name/id match when present; also honor explicit agent assignments.
+    dept_ids = list(seat.get("member_department_ids") or [])
+    managed = list(seat.get("managed_department_ids") or [])
+    assigned = list_assigned_resource_ids(
+        client, org_id=org_id, department_ids=dept_ids, resource_type="agent"
+    )
+    if agent_id in assigned:
+        return
+
+    if seat.get("is_department_manager") and managed:
+        try:
+            rows = (
+                client.table("agents")
+                .select("id, department, department_id")
+                .eq("org_id", org_id)
+                .eq("id", agent_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if rows:
+                row = rows[0]
+                dept_id = str(row.get("department_id") or "").strip()
+                if dept_id and dept_id in {str(x) for x in managed}:
+                    return
+                # Name-based department match (agents.department is often a label).
+                dept_name = str(row.get("department") or "").strip().lower()
+                for d in seat.get("departments") or []:
+                    if (
+                        str(d.get("id")) in {str(x) for x in managed}
+                        and str(d.get("name") or "").strip().lower() == dept_name
+                        and dept_name
+                    ):
+                        return
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=error_detail(
+            "Outside department agent assignment scope",
+            "UNAUTHORIZED",
+            {
+                "reason": "cross_dept_blocked",
+                "action": "voice_use",
+                "agent_id": agent_id,
+            },
+        ),
+    )

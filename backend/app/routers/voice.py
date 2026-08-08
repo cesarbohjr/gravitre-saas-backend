@@ -11,8 +11,14 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.billing.seat_context import assert_agent_voice_use
+from app.billing.service import get_supabase_client
 from app.config import Settings, get_settings
-from app.middleware.entitlements import require_addon
+from app.middleware.entitlements import (
+    require_addon,
+    require_seat_context,
+    require_voice_configure,
+)
 from app.services.tier1_voice_service import (
     VoiceProviderError,
     synthesize_speech,
@@ -22,9 +28,9 @@ from app.services.tier1_voice_service import (
 )
 from app.services.voice_provider_errors import error_public_payload
 
-# C1: voice_interface Meson addon is a real access gate.
-# DECISION NEEDED (Phase 4.2): confirm whether live staff text⇄voice toggle should
-# also require this addon, be plan-included, or use a separate entitlement.
+# C1 confirmed: voice_interface remains its own Meson addon gate on this router.
+# B1: Lite USE (session/STT/TTS on assigned agents) vs full/manager CONFIGURE
+# (library assign, preview, design, turn-taking settings on voice_profile).
 router = APIRouter(
     prefix="/api/voice",
     tags=["voice"],
@@ -36,6 +42,9 @@ class TtsRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000)
     voice: str | None = Field(default=None, description="library key | raw voice id")
     model: str | None = None
+    agent_id: str | None = Field(
+        default=None, description="Required for Lite USE scoping (assigned agents)"
+    )
 
 
 class TurnEventRequest(BaseModel):
@@ -98,6 +107,10 @@ class AcousticAnalyzeRequest(BaseModel):
     agent_id: str | None = None
 
 
+class AgentVoiceProfileRequest(BaseModel):
+    voice_profile: dict[str, Any]
+
+
 def _http_error(exc: VoiceProviderError) -> HTTPException:
     payload = error_public_payload(exc)
     return HTTPException(
@@ -123,6 +136,7 @@ def get_voice_status(
 def get_voice_library(
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
     category: str | None = None,
     language: str | None = None,
@@ -147,6 +161,7 @@ def get_voice_library(
 def get_voice_recommendations(
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
     department: str | None = None,
     model: str | None = None,
@@ -165,13 +180,32 @@ def get_voice_recommendations(
     }
 
 
+@router.get("/library/multiplier-audit")
+def get_voice_multiplier_audit(
+    _user: Annotated[dict, Depends(get_current_user)],
+    _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Live GET /v1/voices audit for curated presets — credit multiplier flags."""
+    from app.services.voice_library_service import audit_curated_voice_multipliers
+
+    try:
+        return audit_curated_voice_multipliers(settings)
+    except VoiceProviderError as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post("/tts")
 def post_tts(
     body: TtsRequest,
     _user: Annotated[dict, Depends(get_current_user)],
-    _org: Annotated[str | None, Depends(get_org_context)],
+    org: Annotated[str | None, Depends(get_org_context)],
+    seat: Annotated[dict, Depends(require_seat_context())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
+    client = get_supabase_client(settings)
+    assert_agent_voice_use(client, seat, org_id=str(org or ""), agent_id=body.agent_id)
     started = time.perf_counter()
     try:
         audio, content_type, meta = synthesize_speech(
@@ -194,9 +228,12 @@ def post_tts(
 def post_tts_stream(
     body: TtsRequest,
     _user: Annotated[dict, Depends(get_current_user)],
-    _org: Annotated[str | None, Depends(get_org_context)],
+    org: Annotated[str | None, Depends(get_org_context)],
+    seat: Annotated[dict, Depends(require_seat_context())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
+    client = get_supabase_client(settings)
+    assert_agent_voice_use(client, seat, org_id=str(org or ""), agent_id=body.agent_id)
     def gen():
         try:
             for chunk in synthesize_speech_stream(
@@ -220,6 +257,7 @@ def post_voice_preview(
     body: PreviewRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
     """Mandatory live audio preview before confirming any voice assignment."""
@@ -247,12 +285,16 @@ def post_voice_preview(
 async def post_stt(
     user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
+    seat: Annotated[dict, Depends(require_seat_context())],
     settings: Annotated[Settings, Depends(get_settings)],
     file: UploadFile = File(...),
     conversation_id: str | None = None,
     agent_id: str | None = None,
     analyze_acoustic: bool = False,
 ) -> dict[str, Any]:
+    org_id = str(org or "")
+    client = get_supabase_client(settings)
+    assert_agent_voice_use(client, seat, org_id=org_id, agent_id=agent_id)
     started = time.perf_counter()
     raw = await file.read()
     try:
@@ -351,18 +393,19 @@ async def post_session_turn(
     body: SessionTurnRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
+    seat: Annotated[dict, Depends(require_seat_context())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
     """Streaming voice turn: unified-turn reasoning + progressive TTS (SSE JSON lines)."""
-    from app.billing.service import get_supabase_client
     from app.services.voice_session_service import stream_voice_turn_events
 
     org_id = str(org or "")
     user_id = str(user.get("id") or user.get("user_id") or "")
+    client = get_supabase_client(settings)
+    assert_agent_voice_use(client, seat, org_id=org_id, agent_id=body.agent_id)
     agent: dict[str, Any] | None = None
     if body.agent_id:
         try:
-            client = get_supabase_client(settings)
             rows = (
                 client.table("agents")
                 .select("*")
@@ -407,11 +450,50 @@ async def post_session_turn(
     )
 
 
+@router.put("/agents/{agent_id}/voice-profile")
+def put_agent_voice_profile(
+    agent_id: str,
+    body: AgentVoiceProfileRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """CONFIGURE: assign/change agent voice_profile (full or manager seat)."""
+    from app.services.voice_agent_profile import normalize_voice_profile
+
+    org_id = str(org or "")
+    profile = normalize_voice_profile(body.voice_profile)
+    client = get_supabase_client(settings)
+    try:
+        existing = (
+            client.table("agents")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("id", agent_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not existing:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        client.table("agents").update({"voice_profile": profile}).eq("org_id", org_id).eq(
+            "id", agent_id
+        ).execute()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)[:200]) from exc
+    return {"agent_id": agent_id, "voice_profile": profile}
+
+
 @router.post("/design")
 def post_design_voice(
     body: DesignVoiceRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     from app.services.voice_design_service import design_custom_voice
@@ -437,6 +519,7 @@ def post_design_voice(
 def get_design_examples(
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
 ) -> dict[str, Any]:
     from app.services.voice_design_service import design_examples
 
@@ -448,9 +531,9 @@ def post_save_custom_voice(
     body: SaveCustomVoiceRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
-    from app.billing.service import get_supabase_client
     from app.services.voice_design_service import create_voice_from_preview
 
     try:
@@ -488,10 +571,9 @@ def post_save_custom_voice(
 def list_custom_voices(
     _user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
+    _seat: Annotated[dict, Depends(require_voice_configure())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
-    from app.billing.service import get_supabase_client
-
     org_id = str(org or "")
     try:
         client = get_supabase_client(settings)

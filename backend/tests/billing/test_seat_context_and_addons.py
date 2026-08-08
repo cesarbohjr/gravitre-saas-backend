@@ -7,7 +7,13 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.billing.seat_context import assert_department_manager, assert_full_seat, resolve_seat_context
+from app.billing.seat_context import (
+    assert_agent_voice_use,
+    assert_department_manager,
+    assert_full_seat,
+    assert_voice_configure,
+    resolve_seat_context,
+)
 from app.middleware import entitlements as ent
 
 
@@ -98,6 +104,86 @@ def test_department_manager_scoped_not_cross_dept():
     assert_department_manager(seat, "d1")
     with pytest.raises(HTTPException):
         assert_department_manager(seat, "d-other")
+
+
+def test_lite_blocked_from_voice_configure_manager_allowed():
+    org = "org-1"
+    lite = "user-lite"
+    mgr = "user-mgr"
+    client = _FakeClient(
+        {
+            "organization_members": [
+                {"org_id": org, "user_id": lite, "role": "member"},
+                {"org_id": org, "user_id": mgr, "role": "member"},
+            ],
+            "department_members": [
+                {
+                    "id": "m1",
+                    "department_id": "d1",
+                    "user_id": lite,
+                    "role": "viewer",
+                    "departments": {"id": "d1", "name": "Sales", "org_id": org},
+                },
+                {
+                    "id": "m2",
+                    "department_id": "d1",
+                    "user_id": mgr,
+                    "role": "admin",
+                    "departments": {"id": "d1", "name": "Sales", "org_id": org},
+                },
+            ],
+        }
+    )
+    lite_seat = resolve_seat_context(client, org_id=org, user_id=lite)
+    mgr_seat = resolve_seat_context(client, org_id=org, user_id=mgr)
+    with pytest.raises(HTTPException) as exc:
+        assert_voice_configure(lite_seat)
+    assert exc.value.status_code == 403
+    detail = exc.value.detail
+    assert isinstance(detail, dict)
+    assert detail.get("details", {}).get("reason") == "lite_seat_blocked"
+    assert_voice_configure(mgr_seat)
+
+
+def test_lite_voice_use_assigned_ok_cross_dept_blocked():
+    org = "org-1"
+    user = "user-lite"
+    agent_ok = "agent-in-dept"
+    agent_other = "agent-other"
+    client = _FakeClient(
+        {
+            "organization_members": [{"org_id": org, "user_id": user, "role": "member"}],
+            "department_members": [
+                {
+                    "id": "m1",
+                    "department_id": "d1",
+                    "user_id": user,
+                    "role": "viewer",
+                    "departments": {"id": "d1", "name": "Sales", "org_id": org},
+                }
+            ],
+            "department_resource_assignments": [
+                {
+                    "org_id": org,
+                    "department_id": "d1",
+                    "resource_type": "agent",
+                    "resource_id": agent_ok,
+                }
+            ],
+            "agents": [
+                {"id": agent_ok, "org_id": org, "department": "Sales"},
+                {"id": agent_other, "org_id": org, "department": "Finance"},
+            ],
+        }
+    )
+    seat = resolve_seat_context(client, org_id=org, user_id=user)
+    assert_agent_voice_use(client, seat, org_id=org, agent_id=agent_ok)
+    with pytest.raises(HTTPException) as exc:
+        assert_agent_voice_use(client, seat, org_id=org, agent_id=agent_other)
+    assert exc.value.status_code == 403
+    detail = exc.value.detail
+    assert isinstance(detail, dict)
+    assert detail.get("details", {}).get("reason") == "cross_dept_blocked"
 
 
 def test_resolve_entitlements_lite_users_from_plan_and_addon_flags(monkeypatch):

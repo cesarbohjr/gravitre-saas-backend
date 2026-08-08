@@ -44,15 +44,18 @@ Gravitre stack is **ElevenAPI Flash TTS + Deepgram streaming STT**, not ElevenAg
 Seed script: `python backend/scripts/stripe_seed_voice_minutes_meter.py`  
 Env: `STRIPE_VOICE_MINUTES_METER_EVENT_NAME`, `STRIPE_VOICE_MINUTES_METERED_PRICE_ID`.
 
-## Entitlement decision needed (Phase 4.2)
+## Entitlement (Phase 4.2) — confirmed
 
-Voice API remains gated by Meson addon **`voice_interface`**. Confirm whether live staff text⇄voice should:
+1. **`voice_interface` stays its own Meson addon gate** on `/api/voice` (C1).
+2. **B1 use-vs-configure** (same Meson build-vs-run split):
+   - **USE** (Lite + addon): voice mode / session / STT / TTS on agents assigned to the member’s department (`department_resource_assignments` `resource_type=agent`).
+   - **CONFIGURE** (full or department-manager seat): assign/change `voice_profile`, library browse/preview, Voice Design, turn-taking settings on the profile.
+3. **Live proof (disposable org):** `python scripts/prove-voice-lite-use-vs-configure.py` → `configure_blocked=true`, `use_assigned_ok=true`, `cross_dept_blocked=true`, `pass=true` (org `4cb4bcf4-4572-43d3-9725-0c6318a14c1b`, cleaned).
+4. Unit: `backend/tests/billing/test_seat_context_and_addons.py` (voice configure + cross_dept USE).
 
-1. Keep requiring `voice_interface`, or  
-2. Be plan-included, or  
-3. Use a separate entitlement  
+## ElevenLabs plan recommendation (pre-purchase)
 
-Do not assume — surfaced on `GET /api/voice/status` as `entitlement_decision_needed`.
+Live `GET /v1/voices` audit of all 12 curated preset IDs (including failed-prove `21m00Tcm4TlvDq8ikWAM`): **0 with credit multiplier** → recommend **Starter ($6/mo)**. Evidence: `docs/delivery/elevenlabs-preset-multiplier-audit.json`. Creator not required for these presets; `paid_plan_required` on Free is the separate blocker Starter clears.
 
 ## Custom Voice reuse
 

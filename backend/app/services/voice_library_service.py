@@ -194,6 +194,33 @@ CATEGORY_LABELS = {
 }
 
 
+def curated_voice_ids() -> list[str]:
+    return list(CURATED_VOICE_META.keys())
+
+
+def _sharing_multiplier_fields(raw: dict[str, Any]) -> dict[str, Any]:
+    """Extract credit-multiplier / free-user flags from ElevenLabs voice payload."""
+    sharing = raw.get("sharing") if isinstance(raw.get("sharing"), dict) else {}
+    rate = sharing.get("rate")
+    try:
+        rate_f = float(rate) if rate is not None else None
+    except (TypeError, ValueError):
+        rate_f = None
+    # Multiplier present when sharing.rate is set and not the standard 1.0.
+    has_multiplier = bool(rate_f is not None and abs(rate_f - 1.0) > 1e-6)
+    free_allowed = sharing.get("free_users_allowed")
+    if free_allowed is None:
+        free_allowed = raw.get("free_users_allowed")
+    return {
+        "category": raw.get("category"),
+        "sharing_rate": rate_f,
+        "has_credit_multiplier": has_multiplier,
+        "free_users_allowed": free_allowed,
+        "fiat_rate": sharing.get("fiat_rate"),
+        "sharing_status": sharing.get("status"),
+    }
+
+
 def _fallback_library() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for voice_id, meta in CURATED_VOICE_META.items():
@@ -218,6 +245,10 @@ def _fallback_library() -> list[dict[str, Any]]:
                     "archetype": meta["archetype"],
                 },
                 "categories": list(meta["categories"]),
+                "has_credit_multiplier": None,
+                "sharing_rate": None,
+                "free_users_allowed": None,
+                "multiplier_status": "unknown_offline",
             }
         )
     return out
@@ -248,10 +279,15 @@ def fetch_elevenlabs_shared_voices(settings: Settings) -> list[dict[str, Any]]:
         if not vid:
             continue
         labels = raw.get("labels") or {}
+        mult = _sharing_multiplier_fields(raw if isinstance(raw, dict) else {})
         base = by_id.get(vid)
         if base:
             base["name"] = str(raw.get("name") or base["name"])
             base["preview_url"] = raw.get("preview_url")
+            base.update(mult)
+            base["multiplier_status"] = (
+                "has_multiplier" if mult["has_credit_multiplier"] else "no_multiplier"
+            )
             if labels.get("language"):
                 lang = str(labels["language"]).lower()[:8]
                 if lang not in base["languages"]:
@@ -282,10 +318,118 @@ def fetch_elevenlabs_shared_voices(settings: Settings) -> list[dict[str, Any]]:
                 "archetype": "general",
             },
             "categories": ["general"],
+            **mult,
+            "multiplier_status": (
+                "has_multiplier" if mult["has_credit_multiplier"] else "no_multiplier"
+            ),
         }
         by_id[vid] = entry
         curated.append(entry)
     return curated
+
+
+def audit_curated_voice_multipliers(settings: Settings) -> dict[str, Any]:
+    """GET /v1/voices for every curated preset id; report credit-multiplier flags.
+
+    Also fetches per-voice detail when the list payload omits a curated id.
+    """
+    api_key = (settings.elevenlabs_api_key or "").strip()
+    if not api_key:
+        raise VoiceProviderError(
+            "ElevenLabs TTS is not configured",
+            status_code=503,
+            error_class="not_configured",
+            provider="elevenlabs",
+        )
+    headers = {"xi-api-key": api_key}
+    by_id: dict[str, dict[str, Any]] = {}
+    with httpx.Client(timeout=45.0) as client:
+        resp = client.get("https://api.elevenlabs.io/v1/voices", headers=headers)
+        if resp.status_code >= 400:
+            _raise_upstream("ElevenLabs", resp)
+        for raw in (resp.json() or {}).get("voices") or []:
+            vid = str(raw.get("voice_id") or "")
+            if vid:
+                by_id[vid] = raw if isinstance(raw, dict) else {}
+
+        rows: list[dict[str, Any]] = []
+        for voice_id, meta in CURATED_VOICE_META.items():
+            raw = by_id.get(voice_id)
+            if raw is None:
+                detail = client.get(
+                    f"https://api.elevenlabs.io/v1/voices/{voice_id}", headers=headers
+                )
+                if detail.status_code < 400:
+                    raw = detail.json()
+                    by_id[voice_id] = raw if isinstance(raw, dict) else {}
+                else:
+                    rows.append(
+                        {
+                            "voice_id": voice_id,
+                            "key": meta["key"],
+                            "name": meta["key"].title(),
+                            "found": False,
+                            "has_credit_multiplier": None,
+                            "sharing_rate": None,
+                            "free_users_allowed": None,
+                            "category": None,
+                            "detail_http": detail.status_code,
+                            "is_default_shortcut": meta["key"] in {"rachel", "adam", "josh"},
+                        }
+                    )
+                    continue
+            mult = _sharing_multiplier_fields(raw)
+            rows.append(
+                {
+                    "voice_id": voice_id,
+                    "key": meta["key"],
+                    "name": str(raw.get("name") or meta["key"].title()),
+                    "found": True,
+                    "is_default_shortcut": meta["key"] in {"rachel", "adam", "josh"},
+                    "archetype": meta.get("archetype"),
+                    **mult,
+                }
+            )
+
+    with_mult = [r for r in rows if r.get("has_credit_multiplier") is True]
+    without = [r for r in rows if r.get("has_credit_multiplier") is False]
+    unknown = [r for r in rows if r.get("has_credit_multiplier") is None]
+    # Failed TTS prove used rachel / 21m00Tcm4TlvDq8ikWAM
+    rachel = next((r for r in rows if r.get("voice_id") == "21m00Tcm4TlvDq8ikWAM"), None)
+    if with_mult:
+        recommendation = {
+            "tier": "creator_or_swap",
+            "note": (
+                "One or more curated preset voices carry a credit multiplier. "
+                "Either upgrade to Creator (or higher) if keeping them, or swap those "
+                "voices for non-multiplier equivalents before purchasing Starter."
+            ),
+            "multiplier_voice_ids": [r["voice_id"] for r in with_mult],
+        }
+    else:
+        recommendation = {
+            "tier": "starter",
+            "note": (
+                "None of the currently-wired preset voices carry a credit multiplier "
+                "flag in GET /v1/voices. Starter ($6/mo) is sufficient for API access "
+                "to these voices; confirm paid_plan_required clears after Starter "
+                "upgrade (separate from multiplier)."
+            ),
+            "multiplier_voice_ids": [],
+        }
+    return {
+        "source": "GET https://api.elevenlabs.io/v1/voices (+ /v1/voices/{id} fallback)",
+        "failed_prove_voice_id": "21m00Tcm4TlvDq8ikWAM",
+        "failed_prove_voice": rachel,
+        "voices": rows,
+        "counts": {
+            "curated": len(rows),
+            "with_multiplier": len(with_mult),
+            "without_multiplier": len(without),
+            "unknown": len(unknown),
+        },
+        "recommendation": recommendation,
+    }
 
 
 def list_voice_library(

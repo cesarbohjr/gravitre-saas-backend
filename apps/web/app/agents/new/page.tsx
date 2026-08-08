@@ -43,6 +43,10 @@ import {
 } from "@/lib/agent-identity"
 import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
 import { LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { useViewModeSafe } from "@/lib/view-mode-context"
+import { canConfigureVoice } from "@/lib/seat-entitlements"
+import useSWR from "swr"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 import type { AgentVoiceProfile } from "@/types/api"
@@ -111,6 +115,19 @@ const DEPARTMENT_OPTIONS: AgentDepartment[] = [
 
 export default function NewAgentPage() {
   const router = useRouter()
+  const { isLite } = useViewModeSafe()
+  const { data: liteMembership } = useSWR<{
+    is_lite?: boolean
+    is_full_seat?: boolean
+    is_admin?: boolean
+    is_department_manager?: boolean
+  }>("/api/settings/lite-membership", apiFetcher, { revalidateOnFocus: false })
+  const showVoiceConfigure = canConfigureVoice({
+    is_lite: liteMembership?.is_lite ?? isLite,
+    is_full_seat: liteMembership?.is_full_seat,
+    is_admin: liteMembership?.is_admin,
+    is_department_manager: liteMembership?.is_department_manager,
+  })
   const [currentStep, setCurrentStep] = useState(1)
   const [isCreating, setIsCreating] = useState(false)
   
@@ -194,7 +211,7 @@ export default function NewAgentPage() {
         icon: selectedIcon,
         avatarColor: selectedColor,
         personality: personalityFromAvatarColor(selectedColor),
-        voiceProfile,
+        ...(showVoiceConfigure ? { voiceProfile } : {}),
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
@@ -324,11 +341,18 @@ export default function NewAgentPage() {
                     </p>
                   </div>
 
-                  <AgentVoiceAssignment
-                    value={voiceProfile}
-                    onChange={setVoiceProfile}
-                    department={selectedDepartment}
-                  />
+                  {showVoiceConfigure ? (
+                    <AgentVoiceAssignment
+                      value={voiceProfile}
+                      onChange={setVoiceProfile}
+                      department={selectedDepartment}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Voice assignment requires a full or manager seat. Lite seats can use
+                      voice mode on agents already assigned to their department.
+                    </p>
+                  )}
 
                   <AgentIdentityPicker
                     name={agentName.trim() || "New Agent"}

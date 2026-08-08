@@ -20,6 +20,10 @@ import {
 } from "@/lib/agent-identity"
 import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
+import {
+  assertCanConfigureVoice,
+  voiceProfileIsConfigured,
+} from "@/lib/voice-configure-gate"
 
 function mapAgentRow(
   input: Record<string, unknown>,
@@ -410,6 +414,20 @@ export async function POST(request: NextRequest) {
       (snake.voice_profile && typeof snake.voice_profile === "object"
         ? snake.voice_profile
         : {})
+
+    if (voiceProfileIsConfigured(voiceProfile)) {
+      const gate = await assertCanConfigureVoice(
+        supabase,
+        orgId,
+        userData.user?.id ?? null,
+      )
+      if (!gate.ok) {
+        return NextResponse.json(
+          { error: gate.error, reason: gate.reason, action: "voice_configure" },
+          { status: gate.status },
+        )
+      }
+    }
 
     const rawIcon = String(snake.icon ?? body.icon ?? "")
     const icon: AgentIconId = isAgentIconId(rawIcon)

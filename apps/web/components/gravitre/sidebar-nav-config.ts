@@ -223,7 +223,11 @@ export function countAdminSidebarItems(includeGettingStarted = true): number {
   return ADMIN_SIDEBAR_NAV.reduce((sum, group) => {
     return (
       sum +
-      group.items.filter((item) => includeGettingStarted || item.name !== "Getting Started").length
+      group.items.filter((item) => {
+        if (item.liteWork) return false
+        if (!includeGettingStarted && item.name === "Getting Started") return false
+        return true
+      }).length
     )
   }, 0)
 }

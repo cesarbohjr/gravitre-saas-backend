@@ -29,6 +29,20 @@ export const BUILD_NAV_HREFS = new Set([
   "/sources",
 ])
 
+/**
+ * B1 voice CONFIGURE: full seats or department managers (not Lite members).
+ * Lite may USE voice on assigned department agents when voice_interface is on.
+ */
+export function canConfigureVoice(membership: SeatMembership | null | undefined): boolean {
+  if (!membership) return false
+  if (membership.is_full_seat) return true
+  if (membership.is_admin && !membership.is_lite) return true
+  if (membership.is_department_manager) return true
+  if (membership.is_lite) return false
+  // Fail closed for unknown seat shape when Lite flag is absent but not full.
+  return Boolean(membership.is_full_seat || membership.is_department_manager)
+}
+
 export function buildNavLockedReason(flags: NavAccessFlags, href: string): string | null {
   if (!flags.isLite) return null
   if (BUILD_NAV_HREFS.has(href.split("?")[0])) {
