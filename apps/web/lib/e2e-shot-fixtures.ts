@@ -581,6 +581,54 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     count: businessOutcomes.length,
   },
 
+  // Preset voice library. Shape mirrors the live /api/voice/library response
+  // ({ voices: [...] }) so the assignment surface renders real preset cards
+  // instead of its empty state during capture. Capture-only: this fixture is
+  // never reachable in production because the shots layout 404s there.
+  "/api/voice/library": {
+    voices: [
+      // voice_id is required by LibraryVoice and is what the card keys and
+      // selection compare on — omitting it silently collapses every card onto
+      // an undefined key.
+      {
+        voice_id: "shot-voice-atlas",
+        key: "atlas",
+        name: "Atlas",
+        personality: { descriptor: "Steady and precise", tone: "Warm", energy: "Measured" },
+        categories: ["Operations", "Support"],
+        models: ["eleven_turbo_v2_5"],
+        languages: ["en-US"],
+      },
+      {
+        voice_id: "shot-voice-juno",
+        key: "juno",
+        name: "Juno",
+        personality: { descriptor: "Bright and quick", tone: "Friendly", energy: "Upbeat" },
+        categories: ["Sales"],
+        models: ["eleven_turbo_v2_5"],
+        languages: ["en-US", "en-GB"],
+      },
+      {
+        voice_id: "shot-voice-cormac",
+        key: "cormac",
+        name: "Cormac",
+        personality: { descriptor: "Low and deliberate", tone: "Authoritative", energy: "Calm" },
+        categories: ["Finance", "Legal"],
+        models: ["eleven_multilingual_v2"],
+        languages: ["en-US"],
+      },
+      {
+        voice_id: "shot-voice-sable",
+        key: "sable",
+        name: "Sable",
+        personality: { descriptor: "Clear and neutral", tone: "Professional", energy: "Even" },
+        categories: ["Operations"],
+        models: ["eleven_turbo_v2_5"],
+        languages: ["en-US"],
+      },
+    ],
+  },
+
   "/api/agents": { agents },
 
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
