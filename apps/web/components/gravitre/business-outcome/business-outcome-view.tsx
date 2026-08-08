@@ -132,7 +132,11 @@ const STATE_STYLES: Record<
     icon: Flag,
     iconClass: "text-warning",
     accent: "border-l-warning",
-    surface: "border-warning/30 bg-warning/[0.04]",
+    // Opaque tint mixed into the real card color (not bg-warning/[0.04] over
+    // transparent) — flagged carries the most text (finding + next actions)
+    // of any state, so it is the worst one to leave translucent over the
+    // mesh chat backgrounds. See card surface logic below.
+    surface: "border-warning/30 bg-[color-mix(in_oklch,var(--warning)_6%,var(--card))]",
     pillClass: "bg-warning/15 text-warning ring-1 ring-inset ring-warning/25",
     pillLabel: "Flagged for review",
   },
@@ -235,11 +239,20 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
     <div
       className={cn(
         // Solid card surface so the evidence receipt stays fully legible on top
-        // of the 8 translucent mesh chat backgrounds (previously semi-transparent
-        // and washed out against them).
+        // of the 8 translucent mesh chat backgrounds. `flagged`'s `style.surface`
+        // supplies its own OPAQUE color-mix('--warning' into '--card') background,
+        // so it must not also receive the plain `bg-card` utility below — two
+        // background-color utilities on one element race by CSS source order,
+        // not class-string order, which previously let a transparent
+        // `bg-warning/[0.04]` win and show the mesh straight through the
+        // flagged card's text.
         "rounded-lg border px-3.5 py-3 text-sm shadow-sm",
         style.surface,
-        density === "export" ? "bg-background border-l-0" : state === "flagged" ? "" : "bg-card",
+        density === "export"
+          ? "bg-background border-l-0"
+          : state === "flagged"
+            ? ""
+            : "bg-card",
         density === "chat" && "border-l-2",
         density === "chat" && style.accent,
         density === "timeline" && "rounded-md",
@@ -277,7 +290,10 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
             </span>
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {[outcome.kind, outcome.status, outcome.lifecycleState].filter(Boolean).join(" · ")}
+            {[outcome.kind, outcome.status, outcome.lifecycleState]
+              .filter(Boolean)
+              .map((raw) => String(raw).replace(/[_-]+/g, " ").trim())
+              .join(" · ")}
           </p>
 
           {/* Evidence — the real vendor link. Requirement #1 elevates this to the
@@ -288,12 +304,16 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
               <div className="flex flex-wrap gap-2">
                 {sections.evidence.links.map((link) => {
                   const external = isExternal(link.href)
+                  // Never render a filled/primary CTA on a Failed card — a
+                  // confident-looking button under "did not happen" reads as
+                  // success next to the red rail. Failed always gets outline.
+                  const filled = external && state !== "failed"
                   return (
                     <Button
                       key={`${link.href}-${link.label}`}
                       asChild
                       size="sm"
-                      variant={external ? "default" : "outline"}
+                      variant={filled ? "default" : "outline"}
                       className="h-8 text-xs"
                     >
                       {external ? (
