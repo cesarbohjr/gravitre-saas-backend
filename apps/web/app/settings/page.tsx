@@ -43,7 +43,7 @@ import {
   Trash2,
   DollarSign,
 } from "lucide-react"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi, ssoApi } from "@/lib/api"
 import { MemoryEntityEmbeddingsSettings } from "@/components/settings/memory-entity-embeddings-settings"
@@ -1368,6 +1368,9 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   const [newDeptName, setNewDeptName] = useState("")
   const [newDeptSeats, setNewDeptSeats] = useState(0)
   const [memberEmailByDept, setMemberEmailByDept] = useState<Record<string, string>>({})
+  const [assignByDept, setAssignByDept] = useState<
+    Record<string, { resource_type: "workflow" | "agent" | "council"; resource_id: string }>
+  >({})
   const [isSaving, setIsSaving] = useState(false)
 
   const handleAddDepartment = async () => {
@@ -1441,6 +1444,44 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
     }
   }
 
+  const handleAssignResource = async (departmentId: string) => {
+    const draft = assignByDept[departmentId] || { resource_type: "workflow" as const, resource_id: "" }
+    const resourceId = draft.resource_id.trim()
+    if (!resourceId) {
+      toast.error("Enter a workflow, agent, or council id")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const res = await apiFetch("/api/departments/assignments", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          department_id: departmentId,
+          resource_type: draft.resource_type,
+          resource_id: resourceId,
+        }),
+      })
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}))
+        throw new Error(
+          (payload as { detail?: string; error?: string }).detail ||
+            (payload as { error?: string }).error ||
+            `Assign failed (${res.status})`,
+        )
+      }
+      toast.success("Assigned to department")
+      setAssignByDept((prev) => ({
+        ...prev,
+        [departmentId]: { resource_type: draft.resource_type, resource_id: "" },
+      }))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign resource")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-secondary/30 p-4">
@@ -1508,6 +1549,54 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
               >
                 Assign seat
               </Button>
+            </div>
+            <div className="mt-3 space-y-2 border-t border-border pt-3">
+              <p className="text-xs font-medium text-foreground">Assign workflow / agent / council</p>
+              <p className="text-[11px] text-muted-foreground">
+                Lite seats in this department can run assigned workflows (Meson build still requires a full seat).
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  className="h-9 rounded-md border border-border bg-secondary px-2 text-sm"
+                  value={(assignByDept[department.id] || { resource_type: "workflow" }).resource_type}
+                  disabled={!isAdmin || isSaving}
+                  onChange={(event) =>
+                    setAssignByDept((prev) => ({
+                      ...prev,
+                      [department.id]: {
+                        resource_type: event.target.value as "workflow" | "agent" | "council",
+                        resource_id: prev[department.id]?.resource_id || "",
+                      },
+                    }))
+                  }
+                >
+                  <option value="workflow">Workflow</option>
+                  <option value="agent">Agent</option>
+                  <option value="council">Council</option>
+                </select>
+                <Input
+                  value={assignByDept[department.id]?.resource_id ?? ""}
+                  onChange={(event) =>
+                    setAssignByDept((prev) => ({
+                      ...prev,
+                      [department.id]: {
+                        resource_type: prev[department.id]?.resource_type || "workflow",
+                        resource_id: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Resource id"
+                  disabled={!isAdmin || isSaving}
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!isAdmin || isSaving}
+                  onClick={() => handleAssignResource(department.id)}
+                >
+                  Assign resource
+                </Button>
+              </div>
             </div>
           </div>
         ))}

@@ -15,10 +15,12 @@ import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import {
   ADMIN_SIDEBAR_NAV,
-  LITE_SIDEBAR_NAV,
+  LITE_WORK_NAV_ITEMS,
   SIDEBAR_SECTION_COLORS,
   isSidebarItemActive,
+  type SidebarNavItem,
 } from "@/components/gravitre/sidebar-nav-config"
+import { useEntitlements } from "@/lib/entitlements-context"
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +43,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const isMobile = useIsMobile()
   const { isLite } = useViewMode()
+  const { hasMesonBuilder } = useEntitlements()
   const { effectiveLogoUrl } = useEnterpriseBranding()
   const { user } = useAuth()
   const { progress, isComplete: onboardingComplete } = useOnboardingProgress()
@@ -52,26 +55,48 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
   const pendingApprovals =
     approvalsData?.approvals?.filter((entry) => entry.status === "pending").length ?? 0
 
+  // ONE shared nav shell — Lite gets progressive disclosure, not a second product tree.
   const navigation = useMemo(() => {
-    const base = isLite ? LITE_SIDEBAR_NAV : ADMIN_SIDEBAR_NAV
-    return base.map((group) => ({
-      ...group,
-      items: group.items
-        .filter((item) => {
-          if (item.name === "Getting Started" && onboardingComplete) return false
-          return true
-        })
-        .map((item) => {
-          if (item.name === "Getting Started" && !onboardingComplete) {
-            return { ...item, badge: `${progress}%` }
-          }
-          if (item.name === "Approvals" && pendingApprovals > 0) {
-            return { ...item, badge: String(pendingApprovals) }
-          }
-          return item
-        }),
-    }))
-  }, [isLite, onboardingComplete, progress, pendingApprovals])
+    return ADMIN_SIDEBAR_NAV.map((group) => {
+      let items: SidebarNavItem[] = [...group.items]
+      if (group.group === "WORK" && isLite) {
+        // Lite work surfaces live in the same WORK section (not a /lite-only sidebar).
+        const withoutAgentsGoals = items.filter(
+          (item) => !["Agents", "Assignments", "Goals"].includes(item.name),
+        )
+        items = [...withoutAgentsGoals, ...LITE_WORK_NAV_ITEMS]
+      }
+      return {
+        ...group,
+        items: items
+          .filter((item) => {
+            if (item.name === "Getting Started" && onboardingComplete) return false
+            if (item.liteWork && !isLite) return false
+            return true
+          })
+          .map((item) => {
+            let next = { ...item }
+            if (item.name === "Getting Started" && !onboardingComplete) {
+              next = { ...next, badge: `${progress}%` }
+            }
+            if (item.name === "Approvals" && pendingApprovals > 0) {
+              next = { ...next, badge: String(pendingApprovals) }
+            }
+            if (isLite && item.requiresFullSeat) {
+              next = {
+                ...next,
+                badge: "Full seat",
+                hint: item.hint || "Requires a full seat",
+              }
+            }
+            if (isLite && item.name === "Workflows" && !hasMesonBuilder) {
+              next = { ...next, hint: "Requires a full seat on Control+" }
+            }
+            return next
+          }),
+      }
+    })
+  }, [isLite, onboardingComplete, progress, pendingApprovals, hasMesonBuilder])
 
   const toggleSection = (group: string) => {
     setCollapsedSections(prev =>
@@ -242,42 +267,46 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                   <ul className="mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
                     {group.items.map((item) => {
                       const isActive = isSidebarItemActive(pathname, item.href)
+                      const lockedFullSeat = Boolean(isLite && item.requiresFullSeat)
                       // Only wrap with a tooltip on the collapsed desktop rail, where
                       // labels are hidden and the tooltip adds value. On mobile (and the
                       // expanded rail) the Radix tooltip trigger intercepts the tap and
                       // blocks navigation — the original "menu opens, items dead" bug —
                       // so we render a bare Link there instead.
                       const showTooltip = !isMobile && !navExpanded
-                      const linkEl = (
-                              <Link
-                                href={item.href}
-                                onClick={onClose}
-                                className={cn(
-                                  "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
-                                  navExpanded
-                                    ? "md:justify-start md:px-2.5 md:py-1.5"
-                                    : "md:justify-center md:px-0 md:py-2.5",
-                                  isActive
-                                    ? cn(
-                                        colors.activeBg,
-                                        "text-foreground",
-                                        navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                                        colors.activeBorder,
-                                      )
-                                    : cn(
-                                        "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                                        navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-                                      ),
-                                )}
-                              >
+                      const itemClassName = cn(
+                        "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+                        navExpanded
+                          ? "md:justify-start md:px-2.5 md:py-1.5"
+                          : "md:justify-center md:px-0 md:py-2.5",
+                        lockedFullSeat
+                          ? "cursor-not-allowed text-muted-foreground/50"
+                          : isActive
+                            ? cn(
+                                colors.activeBg,
+                                "text-foreground",
+                                navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
+                                colors.activeBorder,
+                              )
+                            : cn(
+                                "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                                navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
+                              ),
+                      )
+                      const inner = (
+                                <>
                                 <Icon
                                   name={item.icon}
                                   size="md"
-                                  emphasis={item.emphasis && isActive}
+                                  emphasis={item.emphasis && isActive && !lockedFullSeat}
                                   className={cn(
                                     "shrink-0 transition-colors md:h-5 md:w-5",
                                     navExpanded && "md:h-4 md:w-4",
-                                    isActive ? colors.activeIcon : "text-muted-foreground/70 group-hover:text-foreground",
+                                    lockedFullSeat
+                                      ? "text-muted-foreground/40"
+                                      : isActive
+                                        ? colors.activeIcon
+                                        : "text-muted-foreground/70 group-hover:text-foreground",
                                   )}
                                 />
                                 <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
@@ -288,7 +317,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                     className={cn(
                                       "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
                                       navExpanded ? "md:inline" : "md:hidden",
-                                      isActive
+                                      isActive && !lockedFullSeat
                                         ? "bg-primary/15 text-primary ring-1 ring-primary/20"
                                         : "bg-muted/60 text-muted-foreground/70",
                                     )}
@@ -296,6 +325,23 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                     {item.badge}
                                   </span>
                                 )}
+                                </>
+                      )
+                      const linkEl = lockedFullSeat ? (
+                              <div
+                                className={itemClassName}
+                                aria-disabled="true"
+                                title={item.hint || "Requires a full seat"}
+                              >
+                                {inner}
+                              </div>
+                      ) : (
+                              <Link
+                                href={item.href}
+                                onClick={onClose}
+                                className={itemClassName}
+                              >
+                                {inner}
                               </Link>
                       )
                       return (

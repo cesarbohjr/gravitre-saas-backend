@@ -9,7 +9,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
-from app.middleware.entitlements import require_tier
+from app.middleware.entitlements import require_full_seat, require_tier
 from app.services.meson_service import (
     MesonAlertsResponse,
     MesonDeployResult,
@@ -29,7 +29,9 @@ router = APIRouter(
     tags=["meson"],
 )
 
+# B1: Meson BUILD requires Control+ plan AND a full seat (Lite may only USE assigned workflows).
 _CONTROL_TIER = [Depends(require_tier("control"))]
+_MESON_BUILD = [Depends(require_tier("control")), Depends(require_full_seat(action="meson_build"))]
 
 
 class MesonInterpretRequest(BaseModel):
@@ -77,7 +79,7 @@ def _require_org(org_id: str | None) -> str:
     return org_id
 
 
-@router.post("/interpret", response_model=MesonInterpretResult, response_model_by_alias=True, dependencies=_CONTROL_TIER)
+@router.post("/interpret", response_model=MesonInterpretResult, response_model_by_alias=True, dependencies=_MESON_BUILD)
 async def interpret_build_request_route(
     body: MesonInterpretRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -100,7 +102,7 @@ async def interpret_build_request_route(
     )
 
 
-@router.post("/deploy", response_model=MesonDeployResult, response_model_by_alias=True, status_code=status.HTTP_201_CREATED, dependencies=_CONTROL_TIER)
+@router.post("/deploy", response_model=MesonDeployResult, response_model_by_alias=True, status_code=status.HTTP_201_CREATED, dependencies=_MESON_BUILD)
 async def deploy_build_route(
     body: MesonDeployRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -157,7 +159,7 @@ async def deploy_build_route(
         raise
 
 
-@router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
+@router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
 async def meson_suggestions_route(
     body: MesonSuggestionsRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -177,7 +179,7 @@ async def meson_suggestions_route(
     )
 
 
-@router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
+@router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
 async def meson_alerts_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -209,7 +211,7 @@ async def meson_alerts_route(
     )
 
 
-@router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
+@router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
 async def meson_insights_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -376,7 +378,7 @@ class MesonEditApplyRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-@router.post("/edit", dependencies=_CONTROL_TIER)
+@router.post("/edit", dependencies=_MESON_BUILD)
 async def meson_edit_propose_route(
     body: MesonEditRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -404,7 +406,7 @@ async def meson_edit_propose_route(
     return proposal.model_dump(by_alias=True)
 
 
-@router.post("/edit/apply", dependencies=_CONTROL_TIER)
+@router.post("/edit/apply", dependencies=_MESON_BUILD)
 async def meson_edit_apply_route(
     body: MesonEditApplyRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -432,7 +434,7 @@ async def meson_edit_apply_route(
     return result.model_dump(by_alias=True)
 
 
-@router.get("/edit/history/{workflow_id}", dependencies=_CONTROL_TIER)
+@router.get("/edit/history/{workflow_id}", dependencies=_MESON_BUILD)
 async def meson_edit_history_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -445,7 +447,7 @@ async def meson_edit_history_route(
     return {"proposals": list_edit_proposals(resolved_org, workflow_id)}
 
 
-@router.post("/explain/{workflow_id}", dependencies=_CONTROL_TIER)
+@router.post("/explain/{workflow_id}", dependencies=_MESON_BUILD)
 async def meson_explain_workflow_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -470,7 +472,7 @@ async def meson_explain_workflow_route(
     return result.model_dump(by_alias=True)
 
 
-@router.get("/node-reliability/{workflow_id}", dependencies=_CONTROL_TIER)
+@router.get("/node-reliability/{workflow_id}", dependencies=_MESON_BUILD)
 async def meson_node_reliability_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],

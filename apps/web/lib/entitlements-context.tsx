@@ -25,9 +25,12 @@ interface EntitlementsContextValue {
   status: string
   loading: boolean
   canAccess: (feature: string) => boolean
+  hasAddon: (code: string) => boolean
+  hasMesonBuilder: boolean
   quotaRemaining: (resource: string) => number | null
   isAtLimit: (resource: string) => boolean
   addons: Array<string | Record<string, unknown>>
+  limits: Record<string, number | null>
 }
 
 const EntitlementsContext = createContext<EntitlementsContextValue | undefined>(undefined)
@@ -59,11 +62,17 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
     const features = entitlements.features ?? {}
     const addons = entitlements.addons ?? []
 
+    const addonCodes = new Set(
+      addons.map((a) => (typeof a === "string" ? a : String((a as { code?: string }).code || ""))).filter(Boolean),
+    )
+
     return {
       tier,
       status,
       loading: isLoading,
       canAccess: (feature: string) => Boolean(features[feature]),
+      hasAddon: (code: string) => addonCodes.has(code) || Boolean(features[`meson_addon_${code}`]),
+      hasMesonBuilder: Boolean(features.meson_builder) || tier === "control" || tier === "command",
       quotaRemaining: (resource: string) => {
         const limit = limits[resource]
         if (limit === null || limit === undefined) return null
@@ -77,6 +86,7 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
         return consumed >= Number(limit)
       },
       addons,
+      limits,
     }
   }, [data, isLoading])
 

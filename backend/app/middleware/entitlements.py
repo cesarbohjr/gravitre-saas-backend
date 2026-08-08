@@ -5,12 +5,22 @@ from typing import Annotated, Any, Callable
 
 from fastapi import Depends, HTTPException, status
 
-from app.auth.dependencies import get_org_context
+from app.auth.dependencies import get_current_user, get_org_context
+from app.billing.seat_context import assert_full_seat, resolve_seat_context
 from app.billing.service import get_org_billing, get_plan_for_org, get_supabase_client
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
 
 TierName = str
+
+# Meson addon catalog codes → entitlement feature flags (decision C1).
+MESON_ADDON_FEATURE_FLAGS: dict[str, str] = {
+    "advanced_analytics": "meson_addon_advanced_analytics",
+    "custom_model_training": "meson_addon_custom_model_training",
+    "voice_interface": "meson_addon_voice_interface",
+    "multi_language": "meson_addon_multi_language",
+    "compliance_pack": "meson_addon_compliance_pack",
+}
 
 TIER_ORDER: dict[TierName, int] = {
     "free": 0,
@@ -186,21 +196,27 @@ def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
         or "inactive"
     )
     seat_count = int((subscription or {}).get("seat_count") or 1)
-    lite_seats = int((subscription or {}).get("lite_seats") or 0)
-    addons = (subscription or {}).get("meson_addons") or []
+    lite_seats_purchased = int((subscription or {}).get("lite_seats") or 0)
+    addons_raw = (subscription or {}).get("meson_addons") or []
+    addons = [str(a) for a in addons_raw] if isinstance(addons_raw, list) else []
 
     tier_defaults = dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
     plan_features = dict(plan.get("features") or {})
-    default_lite = tier_defaults.get("lite_seats_included")
+    # E1: plan features.lite_users is SoT for included Lite seats (−1 / None = unlimited).
+    plan_lite = plan_features.get("lite_users", tier_defaults.get("lite_seats_included"))
+    if plan_lite is None or plan_lite is False:
+        lite_seats_included: int | None = int(tier_defaults.get("lite_seats_included") or 0)
+    elif isinstance(plan_lite, (int, float)) and int(plan_lite) < 0:
+        lite_seats_included = None
+    else:
+        lite_seats_included = int(plan_lite)
     limits = {
         "workflows": plan.get("workflows_limit", tier_defaults.get("workflows")),
         "agents": plan.get("agents_limit", tier_defaults.get("agents")),
         "connectors": tier_defaults.get("connectors"),
         "runs_per_month": plan.get("workflow_runs_included", tier_defaults.get("runs_per_month")),
         "operator_sessions_concurrent": tier_defaults.get("operator_sessions_concurrent"),
-        "lite_seats_included": (
-            None if default_lite is None else max(int(default_lite or 0), lite_seats)
-        ),
+        "lite_seats_included": lite_seats_included,
         "environments": plan.get("environments_limit"),
         "ai_credits_included": plan.get("ai_credits_included"),
         "workflow_runs_included": plan.get("workflow_runs_included"),
@@ -218,16 +234,23 @@ def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
         "custom_webhooks": _as_bool(
             plan_features.get("advanced_connectors", features_source.get("custom_webhooks"))
         ),
+        # Builder Meson requires Control+ plan allotment (not seat type).
+        "meson_builder": bool(plan_features.get("meson"))
+        or TIER_ORDER.get(tier, 0) >= TIER_ORDER["control"],
     }
+    # C1: enabled Meson addon codes become real feature flags.
+    for code in addons:
+        flag = MESON_ADDON_FEATURE_FLAGS.get(code) or f"meson_addon_{code}"
+        features[flag] = True
     usage = _usage_totals(client, org_id)
     return {
         "tier": tier,
         "status": status,
         "seat_count": seat_count,
-        "lite_seats": lite_seats,
+        "lite_seats": lite_seats_purchased,
         "limits": limits,
         "features": features,
-        "addons": addons if isinstance(addons, list) else [],
+        "addons": addons,
         "usage": usage,
     }
 
@@ -286,6 +309,47 @@ def require_feature(feature_name: str) -> Callable[..., Any]:
     ) -> dict[str, Any]:
         _assert_feature(entitlements, feature_name)
         return entitlements
+
+    return dependency
+
+
+def require_addon(addon_code: str) -> Callable[..., Any]:
+    """C1: Meson addon catalog codes are real authorization gates."""
+
+    async def dependency(
+        entitlements: Annotated[dict[str, Any], Depends(get_entitlements_dependency)],
+    ) -> dict[str, Any]:
+        addons = {str(a) for a in (entitlements.get("addons") or [])}
+        if addon_code not in addons:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_detail(
+                    "Meson addon required",
+                    "UNAUTHORIZED",
+                    {"addon": addon_code},
+                ),
+            )
+        return entitlements
+
+    return dependency
+
+
+def require_full_seat(*, action: str = "build") -> Callable[..., Any]:
+    """A1: Lite seats cannot call BUILD / Meson-build surfaces."""
+
+    async def dependency(
+        current_user: Annotated[dict, Depends(get_current_user)],
+        org_id: Annotated[str | None, Depends(get_org_context)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> dict[str, Any]:
+        if not org_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        client = get_supabase_client(settings)
+        seat = resolve_seat_context(
+            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+        )
+        assert_full_seat(seat, action=action)
+        return seat
 
     return dependency
 

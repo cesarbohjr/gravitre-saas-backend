@@ -46,6 +46,7 @@ from app.routers import (
     conversations,
     meson,
     decisions,
+    departments,
     execution,
     entitlements,
     extension,
@@ -527,6 +528,7 @@ app.include_router(notifications.router)
 app.include_router(activity.router)
 app.include_router(onboarding.router)
 app.include_router(lite.router)
+app.include_router(departments.router)
 app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)

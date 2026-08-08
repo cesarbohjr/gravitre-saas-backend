@@ -254,16 +254,15 @@ async def get_lite_seats_route(
             if dept_id:
                 members_by_department[str(dept_id)] += 1
 
-    subscription_resp = (
-        client.table("subscriptions")
-        .select("lite_seats")
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-    )
-    included = 0
-    if not _is_missing_table_error(response_error(subscription_resp)):
-        included = int((subscription_resp.data or [{}])[0].get("lite_seats") or 0)
+    # E1: included Lite seats from plan features.lite_users (SoT), not subscriptions.lite_seats alone.
+    from app.middleware.entitlements import resolve_entitlements
+
+    entitlements = resolve_entitlements(settings, org_id)
+    included_limit = (entitlements.get("limits") or {}).get("lite_seats_included")
+    included = 0 if included_limit is None else int(included_limit)
+    # Unlimited plans surface as a large included pool for admin allocation UX.
+    if included_limit is None:
+        included = 10_000
 
     allocated = sum(int(d.get("lite_seat_allocation") or 0) for d in departments)
     used = sum(members_by_department.values())
@@ -448,7 +447,13 @@ async def get_lite_membership_route(
         .execute()
     )
     if _is_missing_table_error(getattr(member_resp, "error", None)):
-        return {"is_lite": False, "is_admin": True, "department": None}
+        return {
+            "is_lite": False,
+            "is_full_seat": True,
+            "is_admin": True,
+            "is_department_manager": False,
+            "department": None,
+        }
     rows = [
         row
         for row in (member_resp.data or [])
@@ -458,16 +463,31 @@ async def get_lite_membership_route(
     if not rows:
         if org_role is None:
             # Missing membership table/row — fail open for the org purchaser path.
-            return {"is_lite": False, "is_admin": True, "department": None}
-        return {"is_lite": False, "is_admin": org_is_admin, "department": None}
+            return {
+                "is_lite": False,
+                "is_full_seat": True,
+                "is_admin": True,
+                "is_department_manager": False,
+                "department": None,
+            }
+        return {
+            "is_lite": False,
+            "is_full_seat": True,
+            "is_admin": org_is_admin,
+            "is_department_manager": False,
+            "department": None,
+        }
 
     row = rows[0]
     dept = row.get("departments") or {}
     dept_is_admin = str(row.get("role") or "").strip().lower() == "admin"
     # Department seat alone is Lite UX; org owner/admin can still switch to Admin.
+    # D1: department_members.role=admin is department_manager (scoped), still a Lite seat.
     return {
         "is_lite": False if org_is_admin else True,
+        "is_full_seat": bool(org_is_admin) or not bool(rows),
         "is_admin": org_is_admin or dept_is_admin,
+        "is_department_manager": (not org_is_admin) and dept_is_admin,
         "department": {
             "id": str(dept.get("id") or row.get("department_id")),
             "name": dept.get("name") or "Department",

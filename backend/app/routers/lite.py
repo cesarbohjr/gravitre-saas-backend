@@ -268,6 +268,16 @@ async def get_lite_workflows(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    from app.billing.seat_context import list_assigned_resource_ids, resolve_seat_context
+
+    user_id = str(current_user.get("user_id") or "")
+    seat = resolve_seat_context(client, org_id=org_id, user_id=user_id)
+    assigned_ids = list_assigned_resource_ids(
+        client,
+        org_id=org_id,
+        department_ids=list(seat.get("member_department_ids") or []),
+        resource_type="workflow",
+    )
     response = (
         client.table("workflow_defs")
         .select("id, name, description, definition")
@@ -276,13 +286,19 @@ async def get_lite_workflows(
         .limit(100)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    resp_err = getattr(response, "error", None)
+    if _is_missing_table_error(resp_err):
         return {"workflows": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if resp_err:
+        raise HTTPException(status_code=500, detail=str(resp_err))
     rows = list(response.data or [])
-    scope = _user_department_name(client, org_id, str(current_user.get("user_id") or ""), department_name)
-    rows = _filter_workflows_for_department(rows, scope)
+    scope = _user_department_name(client, org_id, user_id, department_name)
+    # Prefer explicit department assignments (B1: Lite USE of assigned workflows).
+    # Fall back to soft name match only when no assignments exist yet.
+    if assigned_ids:
+        rows = [row for row in rows if str(row.get("id")) in assigned_ids]
+    else:
+        rows = _filter_workflows_for_department(rows, scope)
     return {
         "workflows": [
             {

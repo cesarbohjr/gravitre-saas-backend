@@ -4127,7 +4127,10 @@ async def list_workflows_route(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """List workflows for org."""
+    """List workflows for org.
+
+    Lite seats (A1/B1): only department-assigned workflows (run/use), never the full org catalog.
+    """
     if org_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -4135,6 +4138,19 @@ async def list_workflows_route(
         )
     client = get_supabase_client(settings)
     workflows = list_workflows(client, org_id)
+    from app.billing.seat_context import list_assigned_resource_ids, resolve_seat_context
+
+    seat = resolve_seat_context(
+        client, org_id=org_id, user_id=str(_user.get("user_id") or "")
+    )
+    if seat.get("is_lite"):
+        allowed = list_assigned_resource_ids(
+            client,
+            org_id=org_id,
+            department_ids=list(seat.get("member_department_ids") or []),
+            resource_type="workflow",
+        )
+        workflows = [w for w in workflows if str(w.get("id")) in allowed]
     workflow_ids = [str(w["id"]) for w in workflows if w.get("id")]
     counts: dict[str, int] = {}
     success_counts: dict[str, int] = {}

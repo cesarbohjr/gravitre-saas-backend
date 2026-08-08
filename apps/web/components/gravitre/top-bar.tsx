@@ -57,7 +57,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const pathname = usePathname()
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
-  const { mode, setMode } = useViewMode()
+  const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
 
   const switchMode = (next: "admin" | "lite") => {
@@ -335,7 +335,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {!compact ? <MesonToolbarTrigger /> : null}
+          {/* B1: Meson build chrome is full-seat only — Lite uses assigned workflows, not the builder. */}
+          {!compact && !isLite ? <MesonToolbarTrigger /> : null}
 
           {/* Notifications */}
           <NotificationCenter />

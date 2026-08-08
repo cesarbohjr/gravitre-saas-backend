@@ -37,6 +37,10 @@ export interface SidebarNavItem {
   badge?: string
   emphasis?: boolean
   hint?: string
+  /** A1: BUILD surfaces — full seat only; Lite sees locked affordance on shared nav. */
+  requiresFullSeat?: boolean
+  /** Shown for Lite seats (and admins previewing Lite) on the shared shell. */
+  liteWork?: boolean
 }
 
 export interface SidebarNavGroup {
@@ -75,10 +79,35 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
   {
     group: "BUILD",
     items: [
-      { name: "Marketplace", href: APP_ROUTES.marketplace, icon: "package", emphasis: true },
-      { name: "Workflows", href: APP_ROUTES.workflows, icon: "waypoints" },
-      { name: "Connectors", href: APP_ROUTES.connectors, icon: "blocks" },
-      { name: "Sources", href: "/sources", icon: "database" },
+      {
+        name: "Marketplace",
+        href: APP_ROUTES.marketplace,
+        icon: "package",
+        emphasis: true,
+        requiresFullSeat: true,
+        hint: "Requires a full seat",
+      },
+      {
+        name: "Workflows",
+        href: APP_ROUTES.workflows,
+        icon: "waypoints",
+        requiresFullSeat: true,
+        hint: "Requires a full seat — Lite can run department-assigned workflows",
+      },
+      {
+        name: "Connectors",
+        href: APP_ROUTES.connectors,
+        icon: "blocks",
+        requiresFullSeat: true,
+        hint: "Requires a full seat",
+      },
+      {
+        name: "Sources",
+        href: "/sources",
+        icon: "database",
+        requiresFullSeat: true,
+        hint: "Requires a full seat",
+      },
     ],
   },
   {
@@ -92,6 +121,13 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
       },
       { name: "Schedules", href: APP_ROUTES.schedules, icon: "calendar" },
       { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
+      {
+        name: "Deliverables",
+        href: "/lite/deliverables",
+        icon: "fileText",
+        liteWork: true,
+        hint: "Outputs from your assigned work",
+      },
     ],
   },
   {
@@ -103,6 +139,13 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
         icon: "sparkles",
         badge: "Explain",
         hint: "Operational health, ROI, learning, models, and memory",
+      },
+      {
+        name: "Results",
+        href: "/lite/results",
+        icon: "chartLine",
+        liteWork: true,
+        hint: "Your department results",
       },
     ],
   },
@@ -119,28 +162,13 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
   },
 ]
 
-/** Lite navigation for end-user roles */
-export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = [
-  {
-    group: "WORK",
-    items: [
-      { name: "Home", href: "/lite", icon: "home", emphasis: true },
-      { name: "Assign Work", href: "/lite/assign", icon: "send" },
-      { name: "My Tasks", href: "/lite/tasks", icon: "listTodo" },
-    ],
-  },
-  {
-    group: "ACTIVITY",
-    items: [
-      { name: "Deliverables", href: "/lite/deliverables", icon: "fileText" },
-      { name: "Schedules", href: APP_ROUTES.schedules, icon: "calendar" },
-      { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
-    ],
-  },
-  {
-    group: "INSIGHTS",
-    items: [{ name: "Results", href: "/lite/results", icon: "chartLine" }],
-  },
+/** @deprecated Use SHARED_SIDEBAR_NAV / ADMIN_SIDEBAR_NAV with progressive disclosure. */
+export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = ADMIN_SIDEBAR_NAV
+
+/** Lite-focused WORK items injected into the shared shell when seat is Lite. */
+export const LITE_WORK_NAV_ITEMS: SidebarNavItem[] = [
+  { name: "Assign Work", href: "/lite/assign", icon: "send", liteWork: true },
+  { name: "My Tasks", href: "/lite/tasks", icon: "listTodo", liteWork: true },
 ]
 
 export function sidebarItemPath(href: string): string {

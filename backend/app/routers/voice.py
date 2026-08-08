@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.middleware.entitlements import require_addon
 from app.services.tier1_voice_service import (
     VoiceProviderError,
     synthesize_speech,
@@ -17,7 +18,12 @@ from app.services.tier1_voice_service import (
     voice_status,
 )
 
-router = APIRouter(prefix="/api/voice", tags=["voice"])
+# C1: voice_interface Meson addon is a real access gate.
+router = APIRouter(
+    prefix="/api/voice",
+    tags=["voice"],
+    dependencies=[Depends(require_addon("voice_interface"))],
+)
 
 
 class TtsRequest(BaseModel):
