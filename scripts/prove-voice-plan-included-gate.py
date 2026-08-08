@@ -44,12 +44,26 @@ API = os.environ.get("API_PUBLIC_URL", "https://api.gravitre.app").rstrip("/")
 def _token() -> str:
     settings = get_settings()
     secret = settings.supabase_jwt_secret
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    users = client.auth.admin.get_user_by_id(UID)
+    email = (users.user.email if users and users.user else None) or f"{UID}@gravitre.local"
     now = int(time.time())
-    return jwt.encode(
-        {"sub": UID, "aud": "authenticated", "role": "authenticated", "iat": now, "exp": now + 3600},
+    token = jwt.encode(
+        {
+            "sub": UID,
+            "email": email,
+            "aud": "authenticated",
+            "iss": f"{settings.supabase_url.rstrip('/')}/auth/v1",
+            "iat": now,
+            "exp": now + 3600,
+            "role": "authenticated",
+        },
         secret,
         algorithm="HS256",
     )
+    if isinstance(token, bytes):
+        token = token.decode()
+    return token
 
 
 def _call(path: str, token: str, method: str = "GET", body: dict | None = None) -> tuple[int, dict]:
