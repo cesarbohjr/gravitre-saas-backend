@@ -12,6 +12,7 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
+import { useViewModeSafe } from "@/lib/view-mode-context"
 
 interface CommandItem {
   id: string
@@ -22,6 +23,8 @@ interface CommandItem {
   href?: string
   action?: () => void
   keywords?: string[]
+  /** A1: omit from command palette for Lite seats (BUILD surfaces). */
+  requiresFullSeat?: boolean
 }
 
 const navigationItems: CommandItem[] = [
@@ -52,10 +55,12 @@ const navigationItems: CommandItem[] = [
     href: "/search",
     keywords: ["search", "find", "query", "records"],
   },
-  { id: "nav-agents", type: "navigation", title: "Agents", subtitle: "AI agents", icon: "agents", href: "/agents", keywords: ["bot", "automation"] },
-  { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"] },
-  { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"] },
-  { id: "nav-sources", type: "navigation", title: "Sources", subtitle: "Data sources", icon: "data", href: "/sources", keywords: ["data", "database"] },
+  { id: "nav-agents", type: "navigation", title: "Agents", subtitle: "AI agents", icon: "agents", href: "/agents", keywords: ["bot", "automation"], requiresFullSeat: true },
+  { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"], requiresFullSeat: true },
+  { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"], requiresFullSeat: true },
+  { id: "nav-sources", type: "navigation", title: "Sources", subtitle: "Data sources", icon: "data", href: "/sources", keywords: ["data", "database"], requiresFullSeat: true },
+  { id: "nav-assign", type: "navigation", title: "Assign Work", subtitle: "Run department workflows", icon: "send", href: "/lite/assign", keywords: ["assign", "lite", "work"] },
+  { id: "nav-tasks", type: "navigation", title: "My Tasks", subtitle: "Assigned work", icon: "listTodo", href: "/lite/tasks", keywords: ["tasks", "lite"] },
   { id: "nav-activity", type: "navigation", title: "Activity", subtitle: "Completed work and failure alerts", icon: "run", href: "/activity", keywords: ["execute", "history", "runs", "outcomes"] },
   { id: "nav-approvals", type: "navigation", title: "Approvals", subtitle: "Pending reviews", icon: "approvals", href: "/approvals", keywords: ["review", "approve"] },
   { id: "nav-intelligence", type: "navigation", title: "Intelligence", subtitle: "Health, ROI, learning, models", icon: "dashboard", href: "/intelligence", keywords: ["monitor", "stats", "metrics", "insights"] },
@@ -81,17 +86,24 @@ export function GlobalCommandBar() {
   const [query, setQuery] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const router = useRouter()
+  const viewMode = useViewModeSafe()
+  const isLite = Boolean(viewMode?.isLite)
 
   // Filter items based on query
   const filteredItems = useCallback(() => {
     const q = query.toLowerCase().trim()
-    
+    const navForSeat = navigationItems.filter((item) => {
+      if (isLite && item.requiresFullSeat) return false
+      if (!isLite && (item.id === "nav-assign" || item.id === "nav-tasks")) return false
+      return true
+    })
+
     if (!q) {
       // Show recent + AI commands when empty
       return [
         { group: "Recent", items: recentItems },
-        { group: "AI Commands", items: aiCommands.slice(0, 3) },
-        { group: "Navigation", items: navigationItems.slice(0, 5) },
+        { group: "AI Commands", items: isLite ? [] : aiCommands.slice(0, 3) },
+        { group: "Navigation", items: navForSeat.slice(0, 5) },
       ]
     }
 
@@ -102,8 +114,8 @@ export function GlobalCommandBar() {
       return titleMatch || subtitleMatch || keywordMatch
     }
 
-    const matchedAI = aiCommands.filter(matchItem)
-    const matchedNav = navigationItems.filter(matchItem)
+    const matchedAI = isLite ? [] : aiCommands.filter(matchItem)
+    const matchedNav = navForSeat.filter(matchItem)
     const matchedRecent = recentItems.filter(matchItem)
 
     const groups = []
@@ -112,7 +124,7 @@ export function GlobalCommandBar() {
     if (matchedRecent.length > 0) groups.push({ group: "Recent", items: matchedRecent })
     
     return groups
-  }, [query])
+  }, [query, isLite])
 
   const groups = filteredItems()
   const allItems = groups.flatMap(g => g.items)

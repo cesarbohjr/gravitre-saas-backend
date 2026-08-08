@@ -162,10 +162,7 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
   },
 ]
 
-/** @deprecated Use SHARED_SIDEBAR_NAV / ADMIN_SIDEBAR_NAV with progressive disclosure. */
-export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = ADMIN_SIDEBAR_NAV
-
-/** Lite-focused WORK items injected into the shared shell when seat is Lite. */
+/** Seat-scoped WORK items injected into the shared shell when seat is Lite. */
 export const LITE_WORK_NAV_ITEMS: SidebarNavItem[] = [
   { name: "Assign Work", href: "/lite/assign", icon: "send", liteWork: true },
   { name: "My Tasks", href: "/lite/tasks", icon: "listTodo", liteWork: true },

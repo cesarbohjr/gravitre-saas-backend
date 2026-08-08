@@ -33,3 +33,25 @@
 
 ## Screenshot note
 Shared shell evidence: Lite and full seat use `ADMIN_SIDEBAR_NAV` with BUILD items locked (`requiresFullSeat`) for Lite; Meson toolbar hidden when `isLite`. Capture side-by-side after tip deploy by toggling Admin/Lite as org admin, or two accounts.
+
+## Follow-up verification (2026-08-08)
+
+### 1) C1 live addon authorization
+`python scripts/prove-meson-addon-gate.py` against prod tip:
+- without `voice_interface`: `GET /api/voice/status` → **403** `Meson addon required`
+- with addon enabled on Cesar org then restored: **200** then **403** again
+- `pass: true`
+
+### 2) Duplicated Lite tree — honest status
+Was **not** fully deleted in the first ship. Cleanup in this follow-up:
+- Removed dead `LITE_SIDEBAR_NAV` alias
+- Removed unused `liteApi.home`
+- Deleted simulated `/lite/tasks/executing`
+- Command bar now omits BUILD destinations for Lite seats
+Still present as the **one** progressive-disclosure implementation (shared `AppShell`, not a second sidebar): `/lite/assign|tasks|deliverables|results` + `liteApi` for those routes. `/lite` home redirects to shared `/home`.
+
+### 3) E1 live included numbers
+`python scripts/prove-lite-seats-included.py`:
+- Command org `cbbf993b-…`: resolver `lite_seats_included=null`, API `included_display=Unlimited`, `unlimited=true`
+- Disposable Node org: resolver `2`, API `included=2` / `included_display=2`
+- Fixed prior bug that mapped unlimited → fake `10000`

@@ -83,7 +83,6 @@ import type {
   OnboardingProgress,
   LiteTask,
   LiteDeliverable,
-  LiteHomeData,
   LiteResultsSummary,
   SSOConfiguration,
   SSOConfigurationCreate,
@@ -2605,11 +2604,8 @@ export const onboardingApi = {
     postJson<OnboardingProgress>(apiUrl("/api/onboarding/reset"), {}),
 }
 
-// ============ Lite Mode ============
+// ============ Seat-scoped work surfaces (shared shell; not a second product) ============
 export const liteApi = {
-  // Home
-  home: () => fetcher<LiteHomeData>(apiUrl("/api/lite/home")),
-
   // Assign Work
   getAvailableWorkflows: () =>
     fetcher<{ workflows: { id: string; name: string; description?: string; required_inputs: string[] }[] }>(

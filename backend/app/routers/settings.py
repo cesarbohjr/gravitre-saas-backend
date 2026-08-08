@@ -254,15 +254,14 @@ async def get_lite_seats_route(
             if dept_id:
                 members_by_department[str(dept_id)] += 1
 
-    # E1: included Lite seats from plan features.lite_users (SoT), not subscriptions.lite_seats alone.
+    # E1: included Lite seats from plan features.lite_users (SoT).
+    # None = unlimited (Command/Enterprise); never invent a fake large number.
     from app.middleware.entitlements import resolve_entitlements
 
     entitlements = resolve_entitlements(settings, org_id)
     included_limit = (entitlements.get("limits") or {}).get("lite_seats_included")
-    included = 0 if included_limit is None else int(included_limit)
-    # Unlimited plans surface as a large included pool for admin allocation UX.
-    if included_limit is None:
-        included = 10_000
+    unlimited = included_limit is None
+    included: int | None = None if unlimited else int(included_limit)
 
     allocated = sum(int(d.get("lite_seat_allocation") or 0) for d in departments)
     used = sum(members_by_department.values())
@@ -284,7 +283,17 @@ async def get_lite_seats_route(
             }
         )
 
-    return {"summary": {"included": included, "allocated": allocated, "used": used}, "departments": result}
+    return {
+        "summary": {
+            "included": included,
+            "included_display": "Unlimited" if unlimited else str(included),
+            "unlimited": unlimited,
+            "allocated": allocated,
+            "used": used,
+            "plan_code": entitlements.get("tier"),
+        },
+        "departments": result,
+    }
 
 
 @router.post("/lite-seats")

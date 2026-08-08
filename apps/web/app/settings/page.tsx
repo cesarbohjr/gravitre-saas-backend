@@ -1363,7 +1363,18 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   const { data, mutate } = useSWR(isAdmin ? "/api/settings/lite-seats" : null, apiFetcher, {
     revalidateOnFocus: false,
   })
-  const summary = (data as { summary?: { included: number; allocated: number; used: number } } | undefined)?.summary
+  const summary = (
+    data as {
+      summary?: {
+        included: number | null
+        included_display?: string
+        unlimited?: boolean
+        allocated: number
+        used: number
+        plan_code?: string
+      }
+    } | undefined
+  )?.summary
   const departments = ((data as { departments?: LiteSeatDepartment[] } | undefined)?.departments ?? []) as LiteSeatDepartment[]
   const [newDeptName, setNewDeptName] = useState("")
   const [newDeptSeats, setNewDeptSeats] = useState(0)
@@ -1487,7 +1498,10 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
       <div className="rounded-lg border border-border bg-secondary/30 p-4">
         <p className="text-sm font-medium text-foreground">Gravitre Lite Seats</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Included: {summary?.included ?? 0} | Allocated: {summary?.allocated ?? 0} | Used: {summary?.used ?? 0}
+          Included: {summary?.included_display ?? (summary?.unlimited ? "Unlimited" : String(summary?.included ?? 0))}
+          {" | "}Allocated: {summary?.allocated ?? 0}
+          {" | "}Used: {summary?.used ?? 0}
+          {summary?.plan_code ? ` · Plan ${summary.plan_code}` : ""}
         </p>
       </div>
 

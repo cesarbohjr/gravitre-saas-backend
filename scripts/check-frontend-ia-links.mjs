@@ -34,12 +34,15 @@ const MUST_HAVE_NAV = [
 const configPath = path.join(web, "components", "gravitre", "sidebar-nav-config.ts")
 const config = fs.readFileSync(configPath, "utf8")
 
+const failures = []
+
 const adminBlockMatch = config.match(
-  /export const ADMIN_SIDEBAR_NAV[\s\S]*?export const LITE_SIDEBAR_NAV/,
+  /export const ADMIN_SIDEBAR_NAV[\s\S]*?export const LITE_WORK_NAV_ITEMS/,
 )
 const adminBlock = adminBlockMatch ? adminBlockMatch[0] : config
-
-const failures = []
+if (config.includes("export const LITE_SIDEBAR_NAV")) {
+  failures.push("LITE_SIDEBAR_NAV still exists — use shared ADMIN_SIDEBAR_NAV only")
+}
 
 for (const needle of RETIRED_NAV_HREFS) {
   if (adminBlock.includes(needle)) {
@@ -54,8 +57,9 @@ for (const needle of MUST_HAVE_NAV) {
 }
 
 const itemCount = [...adminBlock.matchAll(/name:\s*"/g)].length
-if (itemCount > 16 || itemCount < 12) {
-  failures.push(`admin nav item count out of range: ${itemCount} (target ~14–16)`)
+// Shared shell includes seat-scoped liteWork items (Deliverables/Results) in the same config.
+if (itemCount > 18 || itemCount < 12) {
+  failures.push(`admin nav item count out of range: ${itemCount} (target ~12–18)`)
 }
 
 const out = {
