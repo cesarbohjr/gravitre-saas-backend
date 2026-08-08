@@ -435,7 +435,17 @@ function BillingPageInner() {
   })
 
   useEffect(() => {
-    // Animate usage values
+    // Animate usage values.
+    //
+    // With an empty dep array the timer fired once, 500ms after mount, while
+    // /api/billing was usually still in flight — so every card latched onto the
+    // placeholder 0 and never updated, printing "0 / 300 min" beneath a
+    // correctly-filled 73% bar. The bar reads straight from the metric, which is
+    // why only the number was wrong.
+    //
+    // Keyed on the serialized name/used pairs rather than resolvedUsageMetrics
+    // itself: that array is rebuilt by a bare ternary on every render, so
+    // depending on its identity would restart this timer in a loop.
     const timer = setTimeout(() => {
       const values: Record<string, number> = {}
       resolvedUsageMetrics.forEach(m => {
@@ -444,7 +454,8 @@ function BillingPageInner() {
       setAnimatedValues(values)
     }, 500)
     return () => clearTimeout(timer)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedUsageMetrics.map((m) => `${m.name}:${m.used}`).join("|")])
 
   useEffect(() => {
     if (searchParams.get("status") === "success") {

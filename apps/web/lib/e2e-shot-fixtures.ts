@@ -571,7 +571,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       tier: "control",
       totals: {
         workflow_runs: 1284,
-        ai_credits: 18_400,
+        // The AI Credits card reads totals.ai_tokens; a key named ai_credits is
+        // silently ignored and the card renders "0 / 5,000" at 0%.
+        ai_tokens: 18_400,
         outputs: 742,
         research_lookups: 96,
         voice_minutes: 218,
@@ -579,7 +581,10 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
       weekly_totals: [140, 210, 265, 240, 190, 155, 84],
       workflow_runs_included: 2000,
-      included_ai_credits: 25_000,
+      // ai_credits_included, not included_ai_credits — this one field inverts the
+      // naming used by included_outputs / included_voice_minutes / etc., and the
+      // wrong order silently falls back to the plan default limit.
+      ai_credits_included: 25_000,
       included_outputs: 1000,
       included_research_lookups: 150,
       included_voice_minutes: 300,

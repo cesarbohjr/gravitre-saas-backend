@@ -69,8 +69,45 @@ async function main() {
     }
 
     // Part C: auto top-up must state the real configured numbers and the cap.
-    for (const phrase of ["When Voice Minutes drop below", "Hard cap", "Prepaid balance"]) {
-      if (!body.includes(phrase)) failures.push(`${scheme}: auto top-up missing "${phrase}"`)
+    // Compared case-insensitively because innerText reflects CSS text-transform,
+    // so the uppercased dt labels come back as "PREPAID BALANCE".
+    const bodyLower = body.toLowerCase()
+    for (const phrase of ["when voice minutes drop below", "hard cap", "prepaid balance"]) {
+      if (!bodyLower.includes(phrase)) {
+        failures.push(`${scheme}: auto top-up missing "${phrase}"`)
+      }
+    }
+    // The configured values must be the fixture's, not defaults: 60 min at
+    // $0.12 = $7.20, threshold 15 min, cap $36.00.
+    for (const value of ["15 min", "$7.20", "$36.00"]) {
+      if (!body.includes(value)) {
+        failures.push(`${scheme}: auto top-up not showing configured value ${value}`)
+      }
+    }
+
+    // Regression guard for the count-up effect: it used an empty dep array, so
+    // every metric latched onto the placeholder 0 while /api/billing was in
+    // flight and printed "0 / 300 min" under a filled bar. Voice Minutes is 218
+    // in the fixture, so a literal "0 / 300" here means the bug is back.
+    if (body.includes("0 / 300 min") || body.includes("0\n/ 300 min")) {
+      failures.push(`${scheme}: usage counters stuck at 0 — count-up effect regressed`)
+    }
+
+    // Every metric must show its fixture value, not a fallback. A misnamed
+    // fixture key (ai_tokens vs ai_credits, ai_credits_included vs
+    // included_ai_credits) is ignored in silence and renders a plausible
+    // "0 / 5,000", so assert the numbers that only the fixture can produce.
+    for (const [label, value] of [
+      ["Workflow Runs", "1,284"],
+      ["AI Credits used", "18,400"],
+      ["AI Credits limit", "25,000"],
+      ["Outputs", "742"],
+      ["Voice Minutes", "218"],
+      ["API Calls", "41,930"],
+    ]) {
+      if (!body.includes(value)) {
+        failures.push(`${scheme}: ${label} not showing fixture value ${value}`)
+      }
     }
 
     await page.screenshot({ path: `${OUT}/billing-usage-${scheme}.png`, fullPage: true })
