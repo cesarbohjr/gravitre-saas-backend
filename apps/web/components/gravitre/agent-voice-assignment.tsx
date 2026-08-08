@@ -1,20 +1,29 @@
 "use client"
 
 /**
- * Functional voice assignment: preset library + Custom Voice Design v3.
- * Visual polish (waveform, card styling) is deferred to the v0 handoff.
+ * Voice assignment for the CONFIGURE seat: preset library + Custom Voice Design v3.
+ *
+ * This pass is presentation only. Every request path (/api/voice/library,
+ * /api/voice/preview, /api/voice/design, /api/voice/design/save), the
+ * AgentVoiceProfile payload shape, and the value/onChange contract are unchanged
+ * — only layout, hierarchy, and the preview affordance were reworked.
+ *
+ * Seat gating is intentionally absent: the host (/agents/new) decides via
+ * canConfigureVoice and renders short locked copy instead of this component, so
+ * a Lite seat never sees a non-functional picker.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
 import type { AgentVoiceProfile } from "@/types/api"
 import { toast } from "sonner"
-import { Loader2, Play } from "lucide-react"
+import { useReducedMotion } from "framer-motion"
+import { VoiceWaveform } from "@/components/gravitre/assistant/voice-session-presence"
+import { Check, Loader2, Play, Sparkles } from "lucide-react"
 
 type LibraryVoice = {
   voice_id: string
@@ -33,6 +42,15 @@ type Props = {
   className?: string
 }
 
+/** Quiet metadata chip for tone / energy. Never competes with the voice name. */
+function Trait({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
+      {children}
+    </span>
+  )
+}
+
 export function AgentVoiceAssignment({ value, onChange, department, className }: Props) {
   const [tab, setTab] = useState<"preset" | "custom">("preset")
   const [voices, setVoices] = useState<LibraryVoice[]>([])
@@ -43,6 +61,10 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
   const [previews, setPreviews] = useState<
     Array<{ generated_voice_id: string; audio_base_64?: string; media_type?: string }>
   >([])
+  // Which voices the operator has actually heard. Local presentation state only:
+  // it drives the "preview first" affordance and is never sent anywhere.
+  const [heard, setHeard] = useState<string[]>([])
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     let cancelled = false
@@ -87,6 +109,7 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       await audio.play()
+      setHeard((prev) => (prev.includes(voiceId) ? prev : [...prev, voiceId]))
       audio.onended = () => URL.revokeObjectURL(url)
     } finally {
       setPreviewing(null)
@@ -171,174 +194,275 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
     toast.success("Custom voice saved — reusable across agents in this org")
   }
 
+  const isCustom = value.voice_source === "custom_voice_v3"
+  // Human-readable identity for the footer. The raw voice_id stays out of the UI
+  // — it is an ElevenLabs handle, not information an operator can act on.
+  const selectedName = useMemo(() => {
+    if (!value.voice_id) return null
+    if (isCustom) return `Custom ${department || "agent"} voice`
+    return voices.find((v) => v.voice_id === value.voice_id)?.name ?? "Selected voice"
+  }, [value.voice_id, isCustom, department, voices])
+  const selectedHeard = value.voice_id ? heard.includes(value.voice_id) : false
+
   return (
-    <div className={cn("space-y-4", className)}>
-      <div>
+    <div className={cn("rounded-lg border border-border bg-card", className)}>
+      <div className="border-b border-border/70 px-4 py-3">
         <Label className="text-sm font-medium">Voice</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Preset library is the fast path. Custom Voice (Design v3) is a full equal path.
-          Live preview is required before confirming.
+        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+          Pick a library voice or design a custom one. Both are full paths — listen
+          before you confirm.
         </p>
       </div>
-      <div className="inline-flex rounded-lg border border-border/70 p-0.5">
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "preset" ? "secondary" : "ghost"}
-          onClick={() => setTab("preset")}
-        >
-          Preset library
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "custom" ? "secondary" : "ghost"}
-          onClick={() => setTab("custom")}
-        >
-          Custom Voice
-        </Button>
+
+      {/* Equal-weight paths: one segmented control, two same-width halves, so
+          Custom never reads as a buried advanced toggle. */}
+      <div className="px-4 pt-3">
+        <div className="grid grid-cols-2 gap-0.5 rounded-lg border border-border/70 bg-muted/40 p-0.5">
+          {(["preset", "custom"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              aria-pressed={tab === t}
+              className={cn(
+                "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+                tab === t
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t === "custom" ? <Sparkles className="h-3.5 w-3.5" /> : null}
+              {t === "preset" ? "Preset library" : "Custom voice"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {tab === "preset" ? (
-        <div className="space-y-2">
-          {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading library…
-            </div>
-          ) : (
-            <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
-              {voices.map((v) => {
-                const selected = value.voice_id === v.voice_id
-                return (
-                  <div
-                    key={v.voice_id}
-                    className={cn(
-                      "flex items-start justify-between gap-2 rounded-lg border p-3 text-left",
-                      selected ? "border-foreground/40 bg-muted/50" : "border-border/60",
-                    )}
-                  >
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => selectPreset(v)}>
-                      <p className="truncate text-sm font-medium">{v.name}</p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                        {v.personality?.descriptor || "Shared library voice"}
-                      </p>
-                    </button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      disabled={previewing === v.voice_id}
-                      onClick={() => previewVoice(v.voice_id)}
-                      aria-label={`Preview ${v.name}`}
-                    >
-                      {previewing === v.voice_id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Play className="h-3.5 w-3.5" />
+      <div className="p-4">
+        {tab === "preset" ? (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading library…
+              </div>
+            ) : (
+              <div className="grid max-h-72 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-2">
+                {voices.map((v) => {
+                  const selected = value.voice_id === v.voice_id
+                  const isPreviewing = previewing === v.voice_id
+                  return (
+                    <div
+                      key={v.voice_id}
+                      className={cn(
+                        "flex items-start gap-2 rounded-lg border p-3 transition-colors",
+                        selected
+                          ? "border-success/40 bg-success/[0.05]"
+                          : "border-border/60 hover:border-border hover:bg-muted/30",
                       )}
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div>
-              <Label className="text-xs">TTS model</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                value={value.tts_model || "eleven_flash_v2_5"}
-                onChange={(e) => onChange({ ...value, tts_model: e.target.value })}
-              >
-                <option value="eleven_flash_v2_5">Flash v2.5</option>
-                <option value="eleven_v3">Eleven v3</option>
-                <option value="eleven_multilingual_v2">Multilingual v2</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs">Turn-taking</Label>
-              <select
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                value={value.turn_sensitivity || "normal"}
-                onChange={(e) =>
-                  onChange({
-                    ...value,
-                    turn_sensitivity: e.target.value as AgentVoiceProfile["turn_sensitivity"],
-                  })
-                }
-              >
-                <option value="eager">Eager</option>
-                <option value="normal">Normal (default)</option>
-                <option value="patient">Patient</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Describe the voice</Label>
-            <Textarea
-              className="mt-1"
-              rows={3}
-              placeholder="A calm American woman in her 30s, clear and direct…"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <Button type="button" size="sm" disabled={designBusy} onClick={runDesign}>
-            {designBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-            Generate previews
-          </Button>
-          {previews.length > 0 ? (
-            <div className="space-y-2">
-              {previews.map((p) => (
-                <div
-                  key={p.generated_voice_id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-2"
-                >
-                  <Input readOnly value={p.generated_voice_id} className="h-8 text-xs" />
-                  <div className="flex gap-1">
-                    {p.audio_base_64 ? (
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => selectPreset(v)}
+                        aria-pressed={selected}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {selected ? (
+                            <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                          ) : null}
+                          <span className="truncate text-sm font-medium text-foreground">
+                            {v.name}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                          {v.personality?.descriptor || "Shared library voice"}
+                        </span>
+                        {v.personality?.tone || v.personality?.energy ? (
+                          <span className="mt-1.5 flex flex-wrap gap-1">
+                            {v.personality?.tone ? <Trait>{v.personality.tone}</Trait> : null}
+                            {v.personality?.energy ? <Trait>{v.personality.energy}</Trait> : null}
+                          </span>
+                        ) : null}
+                      </button>
                       <Button
                         type="button"
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        onClick={() => {
-                          const src = `data:${p.media_type || "audio/mpeg"};base64,${p.audio_base_64}`
-                          void new Audio(src).play()
-                        }}
+                        className={cn("h-8 w-8 shrink-0", isPreviewing && "text-success")}
+                        disabled={isPreviewing}
+                        onClick={() => previewVoice(v.voice_id)}
+                        aria-label={`Preview ${v.name}`}
                       >
-                        <Play className="h-3.5 w-3.5" />
+                        {isPreviewing ? (
+                          // Decorative: the same waveform motif as the chat
+                          // presence, standing in for a spinner while audio plays.
+                          <VoiceWaveform active travelling reduceMotion={reduceMotion} />
+                        ) : (
+                          <Play className="h-3.5 w-3.5" />
+                        )}
                       </Button>
-                    ) : null}
-                    <Button type="button" size="sm" onClick={() => saveCustom(p.generated_voice_id)}>
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
-      {value.voice_id ? (
-        <p className="text-xs text-muted-foreground">
-          Selected: {value.voice_source || "preset"} · {value.voice_id}
-          {" · "}
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={() => previewVoice(value.voice_id!)}
-          >
-            Preview again
-          </button>
-        </p>
-      ) : (
-        <p className="text-xs text-warning">Select and preview a voice before creating the agent.</p>
-      )}
+            {/* Secondary controls: smaller labels, quiet surface, placed after the
+                voice choice so they never outrank it. */}
+            <div className="grid gap-3 border-t border-border/60 pt-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
+                  TTS model
+                </Label>
+                <select
+                  className="mt-1 h-8 w-full rounded-md border border-border/70 bg-background px-2 text-xs text-foreground"
+                  value={value.tts_model || "eleven_flash_v2_5"}
+                  onChange={(e) => onChange({ ...value, tts_model: e.target.value })}
+                >
+                  <option value="eleven_flash_v2_5">Flash v2.5</option>
+                  <option value="eleven_v3">Eleven v3</option>
+                  <option value="eleven_multilingual_v2">Multilingual v2</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
+                  Turn-taking
+                </Label>
+                <select
+                  className="mt-1 h-8 w-full rounded-md border border-border/70 bg-background px-2 text-xs text-foreground"
+                  value={value.turn_sensitivity || "normal"}
+                  onChange={(e) =>
+                    onChange({
+                      ...value,
+                      turn_sensitivity: e.target.value as AgentVoiceProfile["turn_sensitivity"],
+                    })
+                  }
+                >
+                  <option value="eager">Eager</option>
+                  <option value="normal">Normal (default)</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Custom Voice Design keeps its shipped order: describe → generate →
+          // listen → save. The steps are numbered so the order is legible.
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] font-medium tabular-nums text-muted-foreground">01</span>
+                <Label className="text-xs font-medium">Describe the voice</Label>
+              </div>
+              <Textarea
+                className="mt-1.5 text-sm"
+                rows={3}
+                placeholder="A calm American woman in her 30s, clear and direct…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className="text-[11px] font-medium tabular-nums text-muted-foreground">02</span>
+              <Button type="button" size="sm" className="h-8" disabled={designBusy} onClick={runDesign}>
+                {designBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                Generate previews
+              </Button>
+            </div>
+
+            {previews.length > 0 ? (
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] font-medium tabular-nums text-muted-foreground">03</span>
+                  <Label className="text-xs font-medium">Listen, then save one</Label>
+                </div>
+                <div className="mt-1.5 grid gap-2">
+                  {previews.map((p, i) => {
+                    const listened = heard.includes(p.generated_voice_id)
+                    return (
+                      <div
+                        key={p.generated_voice_id}
+                        className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5"
+                      >
+                        {/* Take N, not the raw generated_voice_id. */}
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                          Take {i + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                          {listened ? "Previewed" : "Not previewed yet"}
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {p.audio_base_64 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 gap-1.5 px-2"
+                              onClick={() => {
+                                const src = `data:${p.media_type || "audio/mpeg"};base64,${p.audio_base_64}`
+                                void new Audio(src).play()
+                                setHeard((prev) =>
+                                  prev.includes(p.generated_voice_id)
+                                    ? prev
+                                    : [...prev, p.generated_voice_id],
+                                )
+                              }}
+                            >
+                              <Play className="h-3.5 w-3.5" />
+                              Listen
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={listened ? "default" : "outline"}
+                            className="h-8"
+                            onClick={() => saveCustom(p.generated_voice_id)}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* Footer: human identity + source, plus the calm preview requirement. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/70 bg-muted/20 px-4 py-2.5">
+        {value.voice_id ? (
+          <>
+            {selectedHeard ? (
+              <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+            ) : null}
+            <span className="text-xs font-medium text-foreground">{selectedName}</span>
+            <Trait>{isCustom ? "Custom" : "Preset"}</Trait>
+            {selectedHeard ? (
+              <span className="text-xs text-muted-foreground">Previewed</span>
+            ) : (
+              <>
+                <span className="text-xs text-muted-foreground">Preview before confirming</span>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-foreground underline underline-offset-2"
+                  onClick={() => previewVoice(value.voice_id!)}
+                >
+                  Play
+                </button>
+              </>
+            )}
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            No voice selected yet — pick one above and listen before confirming.
+          </span>
+        )}
+      </div>
     </div>
   )
 }

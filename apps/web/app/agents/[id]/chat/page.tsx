@@ -27,6 +27,11 @@ import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
 import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
 import {
+  VoiceSessionPresence,
+  type VoicePresenceState,
+} from "@/components/gravitre/assistant/voice-session-presence"
+import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
+import {
   VoiceModeToggle,
   type ChatModality,
 } from "@/components/gravitre/assistant/voice-mode-toggle"
@@ -108,6 +113,9 @@ export default function AgentChatPage({
   const [modality, setModality] = useState<ChatModality>("text")
   const modalityRef = useRef<ChatModality>("text")
   const [voiceEntitled, setVoiceEntitled] = useState(true)
+  // Mirrored from the mic button so the presence strip shows the real recognition
+  // state. Presentation only — the button remains the owner of the session.
+  const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(AGENT_CHAT_HEADER_COLLAPSED_KEY) === "1"
@@ -146,6 +154,7 @@ export default function AgentChatPage({
   useEffect(() => {
     modalityRef.current = modality
   }, [modality])
+
 
   useEffect(() => {
     if (!user) return
@@ -194,6 +203,18 @@ export default function AgentChatPage({
 
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+
+  // Derived from state this page already owns. `no-speech` stays idle — a pause
+  // in dictation is not a fault worth flagging. Streaming reads as "speaking"
+  // only because voice mode sends spoken_mode, so the reply is actually spoken.
+  const voicePresence: VoicePresenceState =
+    micStatus === "listening"
+      ? "listening"
+      : micStatus === "permission-denied" || micStatus === "audio-capture"
+        ? "error"
+        : isStreaming
+          ? "speaking"
+          : "idle"
   const hasSentMessage = messages.some((m) => m.role === "user")
 
   useEffect(() => {
@@ -422,6 +443,11 @@ export default function AgentChatPage({
                 "focus-within:border-success/35 focus-within:ring-success/20",
               )}
             >
+              {/* Voice-session presence. Only mounted in voice mode so text mode
+                  keeps its current chrome exactly. */}
+              {modality === "voice" && voiceEntitled ? (
+                <VoiceSessionPresence state={voicePresence} className="mb-2" />
+              ) : null}
               <textarea
                 ref={inputRef}
                 value={input}
@@ -460,6 +486,7 @@ export default function AgentChatPage({
                   value={input}
                   onChange={setInput}
                   disabled={!user || isLoading || (modality === "voice" && !voiceEntitled)}
+                  onStatusChange={setMicStatus}
                   onError={(message) => {
                     if (message) toast.error(message)
                   }}
