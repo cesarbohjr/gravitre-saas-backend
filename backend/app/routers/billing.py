@@ -388,6 +388,7 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
             "api_calls": int(totals.get("api_calls") or 0),
             "ai_tokens": int(totals.get("ai_tokens") or 0),
             "research_lookups": int(totals.get("research_lookups") or 0),
+            "voice_minutes": int(totals.get("voice_minutes") or 0),
         },
         "included_outputs": usage_payload.get("included_outputs"),
         "workflow_runs_included": int(
@@ -411,6 +412,12 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
         "research_lookup_overage_rate_usd": float(usage_payload.get("research_lookup_overage_rate_usd") or 0),
         "internet_research_enabled": bool(usage_payload.get("internet_research_enabled")),
         "research_lookups_billing_visible": bool(usage_payload.get("research_lookups_billing_visible")),
+        "included_voice_minutes": int(usage_payload.get("included_voice_minutes") or 0),
+        "remaining_voice_minutes": int(usage_payload.get("remaining_voice_minutes") or 0),
+        "overage_voice_minutes": int(usage_payload.get("overage_voice_minutes") or 0),
+        "overage_voice_cost_usd": float(usage_payload.get("overage_voice_cost_usd") or 0),
+        "voice_minute_overage_rate_usd": float(usage_payload.get("voice_minute_overage_rate_usd") or 0),
+        "voice_minutes_billing_visible": bool(usage_payload.get("voice_minutes_billing_visible")),
     }
     return mapped
 @router.get("/plans")

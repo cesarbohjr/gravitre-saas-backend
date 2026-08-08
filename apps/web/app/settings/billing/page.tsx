@@ -61,6 +61,7 @@ import {
   X,
   Loader2,
   Globe,
+  Mic,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -250,6 +251,7 @@ function BillingPageInner() {
   const usageFromApi = overview?.usage
   const planLimits = planLimitsFor(usageFromApi?.tier ?? currentTier ?? undefined)
   const showResearchBilling = Boolean(usageFromApi?.research_lookups_billing_visible)
+  const showVoiceBilling = Boolean(usageFromApi?.voice_minutes_billing_visible)
   const usageForecast = useMemo(
     () =>
       buildUsageForecast({
@@ -325,6 +327,25 @@ function BillingPageInner() {
                 hint: "Live internet research calls",
                 note: usageFromApi.overage_research_lookups
                   ? `${usageFromApi.overage_research_lookups} overage`
+                  : undefined,
+              },
+            ]
+          : []),
+        ...(showVoiceBilling
+          ? [
+              {
+                name: "Voice Minutes",
+                used: usageFromApi.totals.voice_minutes ?? 0,
+                limit: coalesceLimit(
+                  usageFromApi.included_voice_minutes,
+                  planLimits.voiceMinutes,
+                ),
+                icon: Mic,
+                color: "series1" as const,
+                unit: "min",
+                hint: "Live voice session minutes (STT + TTS)",
+                note: usageFromApi.overage_voice_minutes
+                  ? `${usageFromApi.overage_voice_minutes} overage @ $${(usageFromApi.voice_minute_overage_rate_usd ?? 0.12).toFixed(2)}/min`
                   : undefined,
               },
             ]

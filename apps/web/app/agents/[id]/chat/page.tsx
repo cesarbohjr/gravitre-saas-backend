@@ -26,6 +26,11 @@ import { Button } from "@/components/ui/button"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
 import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
+import {
+  VoiceModeToggle,
+  type ChatModality,
+} from "@/components/gravitre/assistant/voice-mode-toggle"
+import { getVoiceStatus } from "@/lib/tier1-voice-client"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
@@ -100,6 +105,9 @@ export default function AgentChatPage({
   })
   const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
   const [input, setInput] = useState("")
+  const [modality, setModality] = useState<ChatModality>("text")
+  const modalityRef = useRef<ChatModality>("text")
+  const [voiceEntitled, setVoiceEntitled] = useState(true)
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(AGENT_CHAT_HEADER_COLLAPSED_KEY) === "1"
@@ -135,6 +143,18 @@ export default function AgentChatPage({
     if (user) void ensureSelectedOrg(true)
   }, [user])
 
+  useEffect(() => {
+    modalityRef.current = modality
+  }, [modality])
+
+  useEffect(() => {
+    if (!user) return
+    void getVoiceStatus(true).then((status) => {
+      // 403 from addon gate surfaces as null / disabled — show gated toggle.
+      setVoiceEntitled(Boolean(status?.tts_enabled || status?.stt_enabled || status))
+    }).catch(() => setVoiceEntitled(false))
+  }, [user])
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -155,6 +175,9 @@ export default function AgentChatPage({
           // Phase 1: do not ship a hardcoded tool list — backend resolves agent
           // systems/tools via resolve_permitted_tools (same as unified LIVE).
           preferred_persona: preferredPersona,
+          // Same conversation + Module B memory; spoken_mode stacks SPOKEN register.
+          spoken_mode: modalityRef.current === "voice",
+          surface: modalityRef.current === "voice" ? "voice" : "agent_chat",
         }),
       }),
     [agentId, preferredPersona],
@@ -417,11 +440,26 @@ export default function AgentChatPage({
                   target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
                 }}
               />
-              <div className="flex shrink-0 items-center justify-end gap-2 px-1">
+              <div className="flex shrink-0 items-center justify-between gap-2 px-1">
+                <VoiceModeToggle
+                  mode={modality}
+                  onChange={(next) => {
+                    setModality(next)
+                    modalityRef.current = next
+                    toast.message(
+                      next === "voice"
+                        ? "Voice mode — same conversation context; speak or type"
+                        : "Text mode — transcript stays in this conversation",
+                    )
+                  }}
+                  voiceEntitled={voiceEntitled}
+                  disabled={!user || isLoading}
+                />
+                <div className="flex items-center gap-2">
                 <VoiceInputButton
                   value={input}
                   onChange={setInput}
-                  disabled={!user || isLoading}
+                  disabled={!user || isLoading || (modality === "voice" && !voiceEntitled)}
                   onError={(message) => {
                     if (message) toast.error(message)
                   }}
@@ -442,10 +480,14 @@ export default function AgentChatPage({
                     <ArrowUp className="h-4 w-4" />
                   </Button>
                 )}
+                </div>
               </div>
             </div>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {agent.name} uses your organization&apos;s knowledge base and connected systems.
+              {modality === "voice"
+                ? " Voice writes still require the same typed/spoken yes confirmation as text."
+                : ""}
             </p>
           </form>
         </div>

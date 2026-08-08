@@ -19,6 +19,7 @@ import asyncio
 from app.billing.service import get_current_period
 from app.billing.stripe_metering import report_usage_for_active_orgs
 from app.billing.stripe_research_lookup_metering import report_research_lookup_overage_for_active_orgs
+from app.billing.stripe_voice_minutes_metering import report_voice_minutes_overage_for_active_orgs
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 
@@ -30,10 +31,14 @@ _INITIAL_DELAY_S = 60  # report shortly after boot, then every interval
 def _sync_all_usage(period_start, period_end, settings: Settings) -> dict:
     ai_summary = report_usage_for_active_orgs(period_start, period_end, settings)
     research_summary = report_research_lookup_overage_for_active_orgs(period_start, period_end, settings)
+    voice_summary = report_voice_minutes_overage_for_active_orgs(period_start, period_end, settings)
     return {
         "ai_credits": ai_summary,
         "research_lookups": research_summary,
-        "error": ai_summary.get("error") or research_summary.get("error"),
+        "voice_minutes": voice_summary,
+        "error": ai_summary.get("error")
+        or research_summary.get("error")
+        or voice_summary.get("error"),
     }
 
 

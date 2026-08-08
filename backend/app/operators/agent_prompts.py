@@ -543,6 +543,10 @@ def build_agent_system_prompt(
 
     lines = [
         f"You are {name} — {persona.display_name}.",
+        (
+            f"Your assigned name is {name}. When asked your name, or when addressed as "
+            f"\"{name}\", respond as yourself — this is first-class identity, not a UI label."
+        ),
         persona.system_prompt,
         f"Expertise: {', '.join(persona.expertise)}.",
         f"Preferred tools: {', '.join(persona.preferred_tools)}.",
@@ -552,6 +556,19 @@ def build_agent_system_prompt(
         *[f"- {item}" for item in persona.constraints],
         f"Handoff output format: {persona.handoff_format}",
     ]
+    voice_profile = agent.get("voice_profile") or agent.get("voiceProfile")
+    if isinstance(voice_profile, dict) and (
+        voice_profile.get("voice_id") or voice_profile.get("voice_key")
+    ):
+        from app.services.voice_agent_profile import normalize_voice_profile
+
+        vp = normalize_voice_profile(voice_profile)
+        pers = vp.get("personality_attributes") or {}
+        lines.append(
+            "Voice profile: "
+            f"source={vp.get('voice_source')}, model={vp.get('tts_model')}, "
+            f"tone={pers.get('tone') or 'n/a'}, energy={pers.get('energy') or 'n/a'}."
+        )
     if purpose:
         lines.append(f"Primary purpose: {purpose}")
     if systems_text:

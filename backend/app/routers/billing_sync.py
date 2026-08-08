@@ -30,6 +30,12 @@ from app.billing.stripe_research_lookup_metering import (
     report_research_lookup_overage_to_stripe,
     research_lookup_metered_price_id,
 )
+from app.billing.stripe_voice_minutes_metering import (
+    attach_voice_minutes_metered_price_to_subscription,
+    report_voice_minutes_overage_for_active_orgs,
+    report_voice_minutes_overage_to_stripe,
+    voice_minutes_metered_price_id,
+)
 from app.billing.stripe_metering import (
     StripeAttachmentError,
     attach_metered_price_to_subscription,
@@ -148,6 +154,37 @@ def _attach_research_lookup_for_org(
         return {**base, "error": str(exc), "dry_run": False}
 
 
+def _attach_voice_minutes_for_org(
+    settings: Settings,
+    org_id: str,
+    subscription_id: str,
+    *,
+    dry_run: bool,
+) -> dict[str, Any]:
+    price_id = voice_minutes_metered_price_id(settings)
+    base = {
+        "org_id": org_id,
+        "subscription_id": subscription_id,
+        "metered_price_id": price_id or None,
+        "metric": "voice_minutes",
+        "dry_run": dry_run,
+    }
+    if not price_id:
+        return {**base, "error": "voice_minutes_metered_price_not_configured"}
+    if dry_run:
+        return {**base, "action": "would_attach"}
+    try:
+        result = attach_voice_minutes_metered_price_to_subscription(
+            org_id, subscription_id, settings
+        )
+        return {**base, **result, "dry_run": False}
+    except StripeAttachmentError as exc:
+        logger.warning(
+            "attach voice minutes meter failed org_id=%s error=%s", org_id, str(exc)
+        )
+        return {**base, "error": str(exc), "dry_run": False}
+
+
 def _attach_plan_for_org(settings: Settings, org_id: str, *, dry_run: bool) -> dict[str, Any]:
     """Dry-run or live metered-price attachment for one org (AI credits + research lookups)."""
     client = get_supabase_client(settings)
@@ -192,13 +229,19 @@ def _attach_plan_for_org(settings: Settings, org_id: str, *, dry_run: bool) -> d
     research_result = _attach_research_lookup_for_org(
         settings, org_id, subscription_id, dry_run=dry_run
     )
+    voice_result = _attach_voice_minutes_for_org(
+        settings, org_id, subscription_id, dry_run=dry_run
+    )
     combined_error = None
-    if ai_result.get("error") and research_result.get("error"):
-        combined_error = "ai_credits_and_research_attach_failed"
-    elif ai_result.get("error"):
-        combined_error = ai_result["error"]
-    elif research_result.get("error"):
-        combined_error = research_result["error"]
+    errors = [
+        e
+        for e in (ai_result.get("error"), research_result.get("error"), voice_result.get("error"))
+        if e
+    ]
+    if len(errors) >= 2:
+        combined_error = "multiple_meter_attach_failed"
+    elif errors:
+        combined_error = errors[0]
 
     return {
         "org_id": org_id,
@@ -207,6 +250,7 @@ def _attach_plan_for_org(settings: Settings, org_id: str, *, dry_run: bool) -> d
         "dry_run": dry_run,
         "ai_credits": ai_result,
         "research_lookups": research_result,
+        "voice_minutes": voice_result,
         **({"error": combined_error} if combined_error else {}),
     }
 
@@ -237,14 +281,21 @@ async def sync_usage_cron(
     period_start, period_end = get_current_period()
     ai_summary = report_usage_for_active_orgs(period_start, period_end, settings)
     research_summary = report_research_lookup_overage_for_active_orgs(period_start, period_end, settings)
+    voice_summary = report_voice_minutes_overage_for_active_orgs(period_start, period_end, settings)
     logger.info(
-        "billing usage sync ai_orgs=%s ai_rows=%s research_orgs=%s research_reported=%s",
+        "billing usage sync ai_orgs=%s ai_rows=%s research_orgs=%s research_reported=%s voice_orgs=%s voice_reported=%s",
         ai_summary.get("orgs"),
         ai_summary.get("reported_rows"),
         research_summary.get("orgs"),
         research_summary.get("reported_orgs"),
+        voice_summary.get("orgs"),
+        voice_summary.get("reported_orgs"),
     )
-    return {"ai_credits": ai_summary, "research_lookups": research_summary}
+    return {
+        "ai_credits": ai_summary,
+        "research_lookups": research_summary,
+        "voice_minutes": voice_summary,
+    }
 
 
 @admin_router.post("/sync-usage")
@@ -271,7 +322,14 @@ async def sync_usage_admin(
     research_result = report_research_lookup_overage_to_stripe(
         org_id, period_start, period_end, settings, dry_run=body.dry_run
     )
-    return {"ai_credits": ai_result, "research_lookups": research_result}
+    voice_result = report_voice_minutes_overage_to_stripe(
+        org_id, period_start, period_end, settings, dry_run=body.dry_run
+    )
+    return {
+        "ai_credits": ai_result,
+        "research_lookups": research_result,
+        "voice_minutes": voice_result,
+    }
 
 
 @admin_router.post("/budget-enforcement")
@@ -352,7 +410,7 @@ async def attach_all_metered_prices_admin(
         if res.get("error"):
             failed += 1
             continue
-        for metric in ("ai_credits", "research_lookups"):
+        for metric in ("ai_credits", "research_lookups", "voice_minutes"):
             part = res.get(metric) if isinstance(res.get(metric), dict) else {}
             if part.get("error"):
                 continue

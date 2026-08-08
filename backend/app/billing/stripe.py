@@ -112,6 +112,13 @@ def research_lookup_metered_price_for_subscription(settings: Settings) -> str | 
     return research_lookup_metered_price_id(settings) or None
 
 
+def voice_minutes_metered_price_for_subscription(settings: Settings) -> str | None:
+    """Global metered price for voice-minute overage (same price all tiers)."""
+    from app.billing.stripe_voice_minutes_metering import voice_minutes_metered_price_id
+
+    return voice_minutes_metered_price_id(settings) or None
+
+
 def _subscription_line_items(
     settings: Settings,
     price_id: str,
@@ -126,6 +133,10 @@ def _subscription_line_items(
     research_metered = research_lookup_metered_price_for_subscription(settings)
     if research_metered and research_metered not in attached_prices:
         items.append({"price": research_metered})
+        attached_prices.add(research_metered)
+    voice_metered = voice_minutes_metered_price_for_subscription(settings)
+    if voice_metered and voice_metered not in attached_prices:
+        items.append({"price": voice_metered})
     return items
 
 

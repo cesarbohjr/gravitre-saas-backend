@@ -139,6 +139,22 @@ export interface AgentStats {
   workflowsUsing: number
 }
 
+export interface AgentVoiceProfile {
+  voice_source?: "preset_library" | "custom_voice_v3" | null
+  voice_id?: string | null
+  voice_key?: string | null
+  tts_model?: string
+  personality_attributes?: {
+    descriptor?: string
+    tone?: string
+    energy?: string
+    formality?: string
+    archetype?: string
+  }
+  turn_sensitivity?: "eager" | "normal" | "patient"
+  language?: string
+}
+
 export interface Agent {
   id: string
   name: string
@@ -150,6 +166,7 @@ export interface Agent {
   avatarColor?: string | null
   avatarUrl?: string | null
   personality: AgentPersonality
+  voiceProfile?: AgentVoiceProfile
   stats: AgentStats
   capabilities: string[]
   permissions: string[]
@@ -974,6 +991,7 @@ export interface BillingUsageResponse {
     api_calls: number
     ai_tokens: number
     research_lookups?: number
+    voice_minutes?: number
   }
   included_outputs: number | null
   workflow_runs_included?: number | null
@@ -989,6 +1007,12 @@ export interface BillingUsageResponse {
   research_lookup_overage_rate_usd?: number
   internet_research_enabled?: boolean
   research_lookups_billing_visible?: boolean
+  included_voice_minutes?: number
+  remaining_voice_minutes?: number
+  overage_voice_minutes?: number
+  overage_voice_cost_usd?: number
+  voice_minute_overage_rate_usd?: number
+  voice_minutes_billing_visible?: boolean
 }
 
 // ============ API Requests ============
@@ -1149,6 +1173,7 @@ export interface CreateAgentRequest {
   icon?: string
   avatarColor?: string
   personality?: AgentPersonality
+  voiceProfile?: AgentVoiceProfile
   capabilities?: string[]
   permissions?: string[]
   systems?: string[]

@@ -17,6 +17,10 @@ from app.billing.research_lookup_plan_rates import (
     overage_usd_per_research_lookup,
 )
 from app.billing.service import get_plan_for_org
+from app.billing.voice_minutes_plan_rates import (
+    included_voice_minutes_for_plan,
+    overage_usd_per_voice_minute,
+)
 from app.config import Settings
 
 
@@ -57,6 +61,7 @@ def summarize_usage_records_billing(
         "api_calls": 0,
         "ai_tokens": 0,
         "research_lookups": 0,
+        "voice_minutes": 0,
     }
     for row in usage_resp.data or []:
         metric = str(row.get("metric_type") or "")
@@ -87,6 +92,15 @@ def summarize_usage_records_billing(
         settings and getattr(settings, "internet_research_enabled", True)
     )
 
+    included_voice = included_voice_minutes_for_plan(plan, plan_code=resolved_tier)
+    voice_rate = overage_usd_per_voice_minute(plan)
+    voice_total = totals["voice_minutes"]
+    overage_voice = max(voice_total - included_voice, 0)
+    overage_voice_usd = round(overage_voice * voice_rate, 2)
+    remaining_voice = max(included_voice - voice_total, 0)
+    # Visibility: Meson voice_interface addon (when entitlements available on settings caller).
+    voice_minutes_billing_visible = True
+
     return {
         "period_start": month_start,
         "tier": resolved_tier,
@@ -105,4 +119,10 @@ def summarize_usage_records_billing(
         "research_lookup_overage_rate_usd": research_rate,
         "internet_research_enabled": internet_research_enabled,
         "research_lookups_billing_visible": internet_research_enabled,
+        "included_voice_minutes": included_voice,
+        "remaining_voice_minutes": remaining_voice,
+        "overage_voice_minutes": overage_voice,
+        "overage_voice_cost_usd": overage_voice_usd,
+        "voice_minute_overage_rate_usd": voice_rate,
+        "voice_minutes_billing_visible": voice_minutes_billing_visible,
     }

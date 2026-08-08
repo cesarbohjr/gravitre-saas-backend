@@ -293,6 +293,7 @@ async def run_unified_turn_shadow(
     qa_force_outcome: str | None = None,
     agent: dict[str, Any] | None = None,
     permitted_tools: list[str] | None = None,
+    spoken_mode: bool = False,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -448,9 +449,12 @@ async def run_unified_turn_shadow(
         org_id=org_id,
     )
     # Full Module D spec is the system instruction (not a post-hoc phrase bank).
+    # spoken_mode stacks Register 5 (SPOKEN); agent injects self-recognition by name.
     system = apply_voice(
         build_module_d_unified_system_prompt(
             extra_operator_rules=voice_system_prompt_section(),
+            spoken_mode=bool(spoken_mode),
+            agent=agent,
         )
     )
     user_parts = []
@@ -1001,6 +1005,7 @@ async def apply_unified_turn_live(
     agent: dict[str, Any] | None = None,
     permitted_tools: list[str] | None = None,
     agent_id: str | None = None,
+    spoken_mode: bool = False,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1189,6 +1194,7 @@ async def apply_unified_turn_live(
         qa_force_outcome=qa_force_outcome,
         agent=agent,
         permitted_tools=permitted_tools,
+        spoken_mode=bool(spoken_mode),
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

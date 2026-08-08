@@ -447,7 +447,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ELEVENLABS_API_KEY", "elevenlabs_api_key"),
     )
     elevenlabs_tts_model: str = Field(
-        default="eleven_turbo_v2_5",
+        default="eleven_flash_v2_5",
         validation_alias=AliasChoices("ELEVENLABS_TTS_MODEL", "elevenlabs_tts_model"),
     )
     elevenlabs_default_voice: str = Field(
@@ -524,6 +524,20 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID",
             "stripe_research_lookup_metered_price_id",
+        ),
+    )
+    stripe_voice_minutes_meter_event_name: str = Field(
+        default="voice_minutes_used",
+        validation_alias=AliasChoices(
+            "STRIPE_VOICE_MINUTES_METER_EVENT_NAME",
+            "stripe_voice_minutes_meter_event_name",
+        ),
+    )
+    stripe_voice_minutes_metered_price_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "STRIPE_VOICE_MINUTES_METERED_PRICE_ID",
+            "stripe_voice_minutes_metered_price_id",
         ),
     )
     # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).

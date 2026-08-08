@@ -41,9 +41,11 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
+import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
 import { LoadingIndicator } from "@/components/gravitre/gravitree-loader"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
+import type { AgentVoiceProfile } from "@/types/api"
 
 const steps = [
   { id: 1, name: "Purpose", description: "What should this AI do?" },
@@ -124,6 +126,11 @@ export default function NewAgentPage() {
   const suggestedIdentity = useSuggestedAgentIdentity(agentName, agentPurpose)
   const [selectedIcon, setSelectedIcon] = useState<AgentIconId>(suggestedIdentity.icon)
   const [selectedColor, setSelectedColor] = useState<AgentAvatarColorId>(suggestedIdentity.avatarColor)
+  const [voiceProfile, setVoiceProfile] = useState<AgentVoiceProfile>({
+    tts_model: "eleven_flash_v2_5",
+    turn_sensitivity: "normal",
+    language: "en",
+  })
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -145,7 +152,12 @@ export default function NewAgentPage() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return agentPurpose.trim().length > 10 && agentName.trim().length > 0
+      case 1:
+        return (
+          agentPurpose.trim().length > 10 &&
+          agentName.trim().length > 0 &&
+          Boolean(voiceProfile.voice_id)
+        )
       case 2: return selectedCapabilities.length > 0
       case 3: return selectedSystems.length > 0
       case 4: return true
@@ -182,6 +194,7 @@ export default function NewAgentPage() {
         icon: selectedIcon,
         avatarColor: selectedColor,
         personality: personalityFromAvatarColor(selectedColor),
+        voiceProfile,
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
@@ -260,21 +273,22 @@ export default function NewAgentPage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">What should this agent do?</h2>
+                  <h2 className="text-xl font-semibold text-foreground">Name this agent</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Describe the role of this AI team member in plain language
+                    The name is first-class identity — the agent will know and respond to it in text and voice.
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Name</label>
+                    <label className="text-sm font-semibold text-foreground">Name <span className="text-destructive">*</span></label>
                     <input
                       type="text"
                       placeholder="e.g., Marketing Operator"
                       value={agentName}
                       onChange={(e) => setAgentName(e.target.value)}
-                      className="mt-1.5 w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      required
+                      className="mt-1.5 w-full rounded-md border border-border bg-secondary px-4 py-3 text-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
@@ -309,6 +323,12 @@ export default function NewAgentPage() {
                       Be specific about what tasks this agent should handle
                     </p>
                   </div>
+
+                  <AgentVoiceAssignment
+                    value={voiceProfile}
+                    onChange={setVoiceProfile}
+                    department={selectedDepartment}
+                  />
 
                   <AgentIdentityPicker
                     name={agentName.trim() || "New Agent"}

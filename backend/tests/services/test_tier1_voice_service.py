@@ -18,7 +18,7 @@ def _settings(**kwargs):
     base = dict(
         elevenlabs_api_key="",
         deepgram_api_key="",
-        elevenlabs_tts_model="eleven_turbo_v2_5",
+        elevenlabs_tts_model="eleven_flash_v2_5",
         elevenlabs_default_voice="rachel",
         elevenlabs_voice_rachel="",
         elevenlabs_voice_adam="",

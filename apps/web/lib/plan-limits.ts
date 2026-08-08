@@ -11,6 +11,7 @@ export const PLAN_LIMITS = {
     outputOverageUsd: 2.5,
     mesonOverageUsd: null as number | null,
     researchLookups: 10,
+    voiceMinutes: 60,
   },
   control: {
     aiCredits: 5000,
@@ -19,6 +20,7 @@ export const PLAN_LIMITS = {
     outputOverageUsd: 2.0,
     mesonOverageUsd: 3.0,
     researchLookups: 60,
+    voiceMinutes: 300,
   },
   command: {
     aiCredits: 15000,
@@ -27,6 +29,7 @@ export const PLAN_LIMITS = {
     outputOverageUsd: 1.5,
     mesonOverageUsd: 2.0,
     researchLookups: 200,
+    voiceMinutes: 1200,
   },
   enterprise: {
     aiCredits: 0,
@@ -35,6 +38,7 @@ export const PLAN_LIMITS = {
     outputOverageUsd: null as number | null,
     mesonOverageUsd: null as number | null,
     researchLookups: 200,
+    voiceMinutes: 1200,
   },
   free: {
     aiCredits: 0,
@@ -43,6 +47,7 @@ export const PLAN_LIMITS = {
     outputOverageUsd: 2.5,
     mesonOverageUsd: null as number | null,
     researchLookups: 0,
+    voiceMinutes: 0,
   },
 } as const
 

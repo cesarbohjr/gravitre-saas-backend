@@ -82,6 +82,12 @@ function mapAgentRow(
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
+    voiceProfile:
+      model.voiceProfile && typeof model.voiceProfile === "object"
+        ? model.voiceProfile
+        : model.voice_profile && typeof model.voice_profile === "object"
+          ? model.voice_profile
+          : {},
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
     recentTasks,
@@ -385,12 +391,25 @@ export async function POST(request: NextRequest) {
         ? snake.systems
         : []
 
-    const name = String(snake.name ?? "New Agent").trim()
+    const name = String(snake.name ?? body.name ?? "").trim()
+    if (!name) {
+      return NextResponse.json(
+        { error: "Agent name is required — set by admin at creation." },
+        { status: 400 },
+      )
+    }
     const purpose = (snake.purpose as string | undefined) ?? null
     const role = (snake.role as string | undefined) ?? name
     const department =
       (snake.department as string | undefined) ??
       inferAgentDepartment(name, purpose, role)
+    const voiceProfile =
+      (body.voiceProfile && typeof body.voiceProfile === "object"
+        ? body.voiceProfile
+        : null) ??
+      (snake.voice_profile && typeof snake.voice_profile === "object"
+        ? snake.voice_profile
+        : {})
 
     const rawIcon = String(snake.icon ?? body.icon ?? "")
     const icon: AgentIconId = isAgentIconId(rawIcon)
@@ -422,6 +441,7 @@ export async function POST(request: NextRequest) {
       description: (snake.description as string | undefined) ?? purpose ?? null,
       icon,
       avatar_color: avatarColor,
+      voice_profile: voiceProfile,
       personality:
         snake.personality && typeof snake.personality === "object"
           ? snake.personality

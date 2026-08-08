@@ -156,6 +156,10 @@ class AssistantChatRequest(BaseModel):
     cross_department: bool | None = None
     research_scope: str | None = None
     connected_file_refs: list[ConnectedFileRef] | None = None
+    # Voice session turns: stacks Module D SPOKEN register; same unified-turn path.
+    spoken_mode: bool = False
+    # Optional surface tag for GIBE/learning metadata ("voice" | "assistant" | …).
+    surface: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -620,6 +624,7 @@ def _build_stream(
     qa_force_tool: str | None = None,
     qa_force_outcome: str | None = None,
     department: str | None = None,
+    spoken_mode: bool = False,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -665,6 +670,7 @@ def _build_stream(
                 qa_force_tool=qa_force_tool,
                 qa_force_outcome=qa_force_outcome,
                 department=department,
+                spoken_mode=bool(spoken_mode),
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -783,7 +789,8 @@ def _build_stream(
                 category=classify_query(user_text),
                 model_used=complete.model if complete else "stream",
                 response_time_ms=elapsed_ms,
-                surface="assistant",
+                # Voice turns reuse the same GIBE ingest path with surface tag only.
+                surface="voice" if spoken_mode else ("agent_chat" if agent_id else "assistant"),
                 message_id=complete.message_id if complete else None,
                 rag_quality_score=((complete.confidence or {}) if complete else {}).get("rag_quality_score"),
             )
@@ -1119,6 +1126,7 @@ async def assistant_chat(
             qa_force_tool=qa_force_tool,
             qa_force_outcome=qa_force_outcome,
             department=department_scope,
+            spoken_mode=bool(getattr(body, "spoken_mode", False)),
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

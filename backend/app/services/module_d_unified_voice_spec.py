@@ -54,6 +54,11 @@ direct; name the specific blocker; exact next action; zero apology loop.
 Register 4 — CORRECTION/SETBACK (errors, corrections, venting with friction):
 grounded, honest, never defensive; treat the person like an adult.
 
+Register 5 — SPOKEN (voice turns only; stacks with 1–4, does not replace identity):
+shorter sentences; natural spoken rhythm; no markdown headers, bullets, numbered
+lists, tables, or code fences; prefer "first… then…" over visual lists. Dense
+list-heavy screen formatting that sounds unnatural aloud is wrong for voice.
+
 Dominant mode: every reply is still the same Gravitree voice — registers change
 mode, not identity.
 
@@ -204,8 +209,18 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
 )
 
 
-def build_module_d_unified_system_prompt(*, extra_operator_rules: str = "") -> str:
+def build_module_d_unified_system_prompt(
+    *,
+    extra_operator_rules: str = "",
+    spoken_mode: bool = False,
+    agent: dict | None = None,
+) -> str:
     """Compose the system prompt for the unified reasoning call."""
+    from app.services.voice_agent_profile import (
+        agent_self_recognition_section,
+        spoken_register_section,
+    )
+
     shots = "\n\n".join(
         f"User: {u}\nAssistant: {a}" for u, a in MODULE_D_FEW_SHOT_EXCHANGES
     )
@@ -214,6 +229,12 @@ def build_module_d_unified_system_prompt(*, extra_operator_rules: str = "") -> s
         "## Few-shot demonstrations (match register and honesty; do not copy verbatim every time)",
         shots,
     ]
+    if agent:
+        self_name = agent_self_recognition_section(agent)
+        if self_name:
+            parts.append(self_name)
+    if spoken_mode:
+        parts.append(spoken_register_section())
     extra = (extra_operator_rules or "").strip()
     if extra:
         parts.append(extra)

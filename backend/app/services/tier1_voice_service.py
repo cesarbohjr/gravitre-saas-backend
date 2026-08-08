@@ -1,17 +1,18 @@
-"""Tier 1 voice adapters — ElevenLabs TTS + Deepgram STT (bolted onto chat).
+"""Voice adapters — ElevenLabs TTS + Deepgram STT.
 
-No new reasoning path. STT returns plain text for the existing unified-turn
-pipeline. TTS returns audio bytes for read-aloud.
+HTTP batch paths remain for read-aloud / mic-stop. Streaming paths feed the
+realtime voice session (Deepgram live WS + ElevenLabs stream).
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
 
 from app.config import Settings
 
-# Scoped 3-voice set (ElevenLabs pre-made). Override via env.
+# Legacy 3-voice shortcuts (env-overridable). Full library is voice_library_service.
 DEFAULT_VOICES: dict[str, dict[str, str]] = {
     "rachel": {
         "id": "21m00Tcm4TlvDq8ikWAM",
@@ -30,11 +31,49 @@ DEFAULT_VOICES: dict[str, dict[str, str]] = {
     },
 }
 
+# Honest latency targets (not marketing sub-300ms claims).
+LATENCY_TARGETS_MS = {
+    "deepgram_stt_partial_ms": (150, 300),
+    "elevenlabs_flash_ttfb_ms": (75, 255),
+    "end_to_end_feels_human_ms": (700, 900),
+}
+
 
 class VoiceProviderError(Exception):
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        error_class: str | None = None,
+        provider: str | None = None,
+        upstream_status: int | None = None,
+        provider_detail: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.error_class = error_class or (
+            "billing"
+            if status_code == 402
+            else "auth"
+            if status_code == 401
+            else "rate_limit"
+            if status_code == 429
+            else "service_failure"
+        )
+        self.provider = provider
+        self.upstream_status = upstream_status
+        self.provider_detail = provider_detail
+
+
+def _raise_upstream(provider: str, resp: httpx.Response) -> None:
+    from app.services.voice_provider_errors import classify_upstream_http_error
+
+    raise classify_upstream_http_error(
+        provider=provider,
+        status_code=resp.status_code,
+        body_text=resp.text or "",
+    )
 
 
 def voice_status(settings: Settings) -> dict[str, Any]:
@@ -49,18 +88,26 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             for k, v in voices.items()
         ],
         "default_voice": settings.elevenlabs_default_voice or "rachel",
+        "default_tts_model": (settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip(),
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "write_confirm_note": (
             "Spoken confirmation becomes text and must hit the same awaiting_confirm "
             "classifier / execute endpoint as typed chat. Spoken yes alone does not "
             "bypass the write gate."
         ),
-        "architecture": "tier1_bolted_on",
+        "architecture": "streaming_voice_session_over_unified_turn",
         "realtime_bar_ms": 300,
+        "latency_targets_ms": LATENCY_TARGETS_MS,
         "honest_expectation": (
-            "Tier 1 is STT + model + TTS bolted onto text chat — not a sub-300ms "
-            "realtime conversational agent."
+            "Honest end-to-end target ~700–900ms (feels human). Deepgram STT ~150–300ms; "
+            "ElevenLabs Flash v2.5 first-byte ~75–255ms. Not a sub-300ms claim."
         ),
+        "entitlement_decision_needed": (
+            "Voice API is currently gated by Meson addon voice_interface. Confirm whether "
+            "live staff voice toggle should also require that addon, be plan-included, or "
+            "use a separate entitlement — do not assume."
+        ),
+        "error_classes": ["billing", "auth", "rate_limit", "service_failure"],
     }
 
 
@@ -81,7 +128,6 @@ def resolve_voice_id(settings: Settings, voice_key: str | None) -> tuple[str, st
     voices = _resolved_voices(settings)
     key = (voice_key or settings.elevenlabs_default_voice or "rachel").strip().lower()
     if key not in voices:
-        # Allow raw ElevenLabs voice id passthrough
         if len(key) >= 16:
             return key, key
         key = "rachel"
@@ -93,17 +139,26 @@ def synthesize_speech(
     *,
     text: str,
     voice_key: str | None = None,
+    model_id: str | None = None,
 ) -> tuple[bytes, str, dict[str, Any]]:
     api_key = (settings.elevenlabs_api_key or "").strip()
     if not api_key:
-        raise VoiceProviderError("ElevenLabs TTS is not configured", status_code=503)
+        raise VoiceProviderError(
+            "ElevenLabs TTS is not configured",
+            status_code=503,
+            error_class="not_configured",
+            provider="elevenlabs",
+        )
     clean = (text or "").strip()
     if not clean:
-        raise VoiceProviderError("text is required", status_code=400)
+        raise VoiceProviderError("text is required", status_code=400, error_class="validation")
     if len(clean) > 5000:
         clean = clean[:5000]
     key, voice_id = resolve_voice_id(settings, voice_key)
-    model = (settings.elevenlabs_tts_model or "eleven_turbo_v2_5").strip()
+    model = (model_id or settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip()
+    # Prefer Flash v2.5 naming; accept legacy turbo alias.
+    if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
+        model = "eleven_flash_v2_5"
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
         "xi-api-key": api_key,
@@ -118,10 +173,7 @@ def synthesize_speech(
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, headers=headers, json=body)
     if resp.status_code >= 400:
-        raise VoiceProviderError(
-            f"ElevenLabs TTS failed: {resp.status_code}",
-            status_code=502,
-        )
+        _raise_upstream("ElevenLabs", resp)
     meta = {
         "provider": "elevenlabs",
         "voice_key": key,
@@ -133,6 +185,54 @@ def synthesize_speech(
     return resp.content, "audio/mpeg", meta
 
 
+def synthesize_speech_stream(
+    settings: Settings,
+    *,
+    text: str,
+    voice_key: str | None = None,
+    model_id: str | None = None,
+) -> Iterator[bytes]:
+    """Stream MPEG chunks from ElevenLabs as soon as first byte is available."""
+    api_key = (settings.elevenlabs_api_key or "").strip()
+    if not api_key:
+        raise VoiceProviderError(
+            "ElevenLabs TTS is not configured",
+            status_code=503,
+            error_class="not_configured",
+            provider="elevenlabs",
+        )
+    clean = (text or "").strip()
+    if not clean:
+        raise VoiceProviderError("text is required", status_code=400, error_class="validation")
+    if len(clean) > 5000:
+        clean = clean[:5000]
+    _key, voice_id = resolve_voice_id(settings, voice_key)
+    model = (model_id or settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip()
+    if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
+        model = "eleven_flash_v2_5"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+    headers = {
+        "xi-api-key": api_key,
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "text": clean,
+        "model_id": model,
+        "voice_settings": {"stability": 0.4, "similarity_boost": 0.75},
+        "optimize_streaming_latency": 3,
+    }
+    with httpx.Client(timeout=60.0) as client:
+        with client.stream("POST", url, headers=headers, json=body) as resp:
+            if resp.status_code >= 400:
+                # Need body for classification
+                _ = resp.read()
+                _raise_upstream("ElevenLabs", resp)
+            for chunk in resp.iter_bytes(chunk_size=2048):
+                if chunk:
+                    yield chunk
+
+
 def transcribe_audio(
     settings: Settings,
     *,
@@ -142,11 +242,19 @@ def transcribe_audio(
 ) -> tuple[str, dict[str, Any]]:
     api_key = (settings.deepgram_api_key or "").strip()
     if not api_key:
-        raise VoiceProviderError("Deepgram STT is not configured", status_code=503)
+        raise VoiceProviderError(
+            "Deepgram STT is not configured",
+            status_code=503,
+            error_class="not_configured",
+            provider="deepgram",
+        )
     if not audio_bytes:
-        raise VoiceProviderError("audio is required", status_code=400)
+        raise VoiceProviderError("audio is required", status_code=400, error_class="validation")
     model = (settings.deepgram_stt_model or "nova-2").strip()
-    url = f"https://api.deepgram.com/v1/listen?model={model}&smart_format=true&punctuate=true"
+    url = (
+        f"https://api.deepgram.com/v1/listen?model={model}"
+        "&smart_format=true&punctuate=true&utterances=true&vad_events=true"
+    )
     headers = {
         "Authorization": f"Token {api_key}",
         "Content-Type": content_type or "application/octet-stream",
@@ -154,10 +262,7 @@ def transcribe_audio(
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, headers=headers, content=audio_bytes)
     if resp.status_code >= 400:
-        raise VoiceProviderError(
-            f"Deepgram STT failed: {resp.status_code}",
-            status_code=502,
-        )
+        _raise_upstream("Deepgram", resp)
     data = resp.json()
     transcript = ""
     try:
@@ -174,3 +279,14 @@ def transcribe_audio(
         "content_type": content_type,
     }
     return transcript, meta
+
+
+def deepgram_live_ws_url(settings: Settings) -> str:
+    """WebSocket URL for streaming STT with VAD events."""
+    model = (settings.deepgram_stt_model or "nova-2").strip()
+    return (
+        f"wss://api.deepgram.com/v1/listen?model={model}"
+        "&encoding=linear16&sample_rate=16000&channels=1"
+        "&interim_results=true&punctuate=true&smart_format=true"
+        "&vad_events=true&utterance_end_ms=1000&endpointing=300"
+    )

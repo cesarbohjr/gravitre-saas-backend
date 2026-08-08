@@ -1216,6 +1216,7 @@ class AgentIntelligence:
         qa_force_tool: str | None = None,
         qa_force_outcome: str | None = None,
         department: str | None = None,
+        spoken_mode: bool = False,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1664,6 +1665,7 @@ class AgentIntelligence:
                     None if early_agent else requested_tools,
                 ),
                 agent_id=agent_id,
+                spoken_mode=bool(spoken_mode),
             )
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state
