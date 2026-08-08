@@ -63,6 +63,9 @@ import {
   Globe,
   Mic,
   Activity,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -102,6 +105,12 @@ type UsageMetric = {
   hint?: string
   /** Optional overage / status chip. */
   note?: string
+  /**
+   * Informational meter with no plan cap. Its `limit` is a display floor, not a
+   * real allowance, so a percentage and a filling bar would both be fiction —
+   * these cards show a total and a flat track instead.
+   */
+  metered?: boolean
 }
 
 function emptyUsageMetrics(planCode: string): UsageMetric[] {
@@ -220,6 +229,10 @@ function BillingPageInner() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [autoTopupSaving, setAutoTopupSaving] = useState(false)
+  // Set when Stripe returns with ?topup=success. The query param is stripped
+  // immediately by router.replace, so the confirmation has to be held in state
+  // or it would flash for one frame and vanish.
+  const [topUpCredited, setTopUpCredited] = useState(false)
 
   // Live subscription — never invent Node while loading or on error (that regression
   // made Command orgs look like $49 Node when /api/billing failed or was slow).
@@ -381,7 +394,8 @@ function BillingPageInner() {
           icon: Activity,
           color: "series2" as const,
           unit: "calls",
-          hint: "Metered API invocations this billing period (informational — no hard plan cap)",
+          metered: true,
+          hint: "Metered API invocations this billing period — no plan cap",
         },
       ]
     : planKnown
@@ -440,6 +454,7 @@ function BillingPageInner() {
     const topup = searchParams.get("topup")
     if (topup === "success") {
       toast.success("Voice Minutes top-up completed. Minutes are available now.")
+      setTopUpCredited(true)
       void mutateOverview()
       void mutateVoiceAccess()
       router.replace("/settings/billing")
@@ -765,7 +780,13 @@ function BillingPageInner() {
                     metric.limit > 0 ? Math.min(100, (metric.used / metric.limit) * 100) : 0
                   const colors = colorClasses[metric.color]
                   const displayValue = animatedValues[metric.name] ?? 0
-                  const pctLabel = metric.limit > 0 ? `${Math.round(percentage)}%` : "—"
+                  // A metered card has no allowance to be a percentage of, so it
+                  // gets a plain "Metered" chip instead of a misleading 0%.
+                  const pctLabel = metric.metered
+                    ? "Metered"
+                    : metric.limit > 0
+                      ? `${Math.round(percentage)}%`
+                      : "—"
 
                   return (
                     <div
@@ -793,24 +814,32 @@ function BillingPageInner() {
                           {displayValue.toLocaleString()}
                         </p>
                         <p className="text-sm text-muted-foreground tabular-nums">
-                          / {metric.limit.toLocaleString()}
-                          {metric.unit ? ` ${metric.unit}` : ""}
+                          {/* No cap means no denominator to show — printing
+                              "/ 500,000" would invent an allowance. */}
+                          {metric.metered
+                            ? metric.unit ?? ""
+                            : `/ ${metric.limit.toLocaleString()}${metric.unit ? ` ${metric.unit}` : ""}`}
                         </p>
                       </div>
 
+                      {/* The track is kept in both cases so every card in the
+                          grid keeps the same height and baseline rhythm; on a
+                          metered card it reads as a neutral rule, not a fill. */}
                       <div className="mt-auto h-1.5 overflow-hidden rounded-full bg-muted/80">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-700 ease-out",
-                            // Near-quota is a genuine health signal, so it
-                            // overrides the categorical series color.
-                            percentage >= 90 ? "bg-warning" : colors.bar,
-                          )}
-                          style={{
-                            width: mounted ? `${Math.min(percentage, 100)}%` : "0%",
-                            transitionDelay: `${350 + i * 60}ms`,
-                          }}
-                        />
+                        {metric.metered ? null : (
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-700 ease-out",
+                              // Near-quota is a genuine health signal, so it
+                              // overrides the categorical series color.
+                              percentage >= 90 ? "bg-warning" : colors.bar,
+                            )}
+                            style={{
+                              width: mounted ? `${Math.min(percentage, 100)}%` : "0%",
+                              transitionDelay: `${350 + i * 60}ms`,
+                            }}
+                          />
+                        )}
                       </div>
 
                       {metric.note ? (
@@ -831,13 +860,9 @@ function BillingPageInner() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-semibold text-foreground">Voice Minutes top-up</p>
-                      <p className="text-xs text-muted-foreground max-w-xl">
-                        Plan-included allotment first; buy prepaid packs before you hit overage.
-                        Rate: ${voiceRateUsd.toFixed(2)}/min. Prepaid balance:{" "}
-                        {voiceSettings?.voice_minutes_prepaid ?? 0} min.
-                        {!voiceOrgEnabled
-                          ? " Voice is off for this org — turn it on in Meson Addons or Settings before topping up."
-                          : null}
+                      <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">
+                        Your plan allotment is used first. Prepaid packs are spent next, before
+                        any overage is billed.
                       </p>
                     </div>
                     <Button
@@ -848,23 +873,107 @@ function BillingPageInner() {
                       Add Minutes
                     </Button>
                   </div>
-                  <div className="mt-4 flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+                  {/* Prepaid balance and rate are the two numbers a buyer checks
+                      before topping up, so they are figures rather than prose
+                      buried in a sentence. */}
+                  <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Auto top-up</p>
-                      <p className="text-xs text-muted-foreground">
-                        Automatically add {voiceSettings?.voice_auto_topup_minutes ?? 60} min when
-                        remaining drops below {voiceSettings?.voice_auto_topup_threshold_minutes ?? 15}{" "}
-                        min (max ${(
-                          (voiceSettings?.voice_auto_topup_max_charge_cents ?? 3600) / 100
-                        ).toFixed(0)} per charge).
-                      </p>
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Prepaid balance
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+                        {(voiceSettings?.voice_minutes_prepaid ?? 0).toLocaleString()} min
+                      </dd>
                     </div>
-                    <Switch
-                      checked={Boolean(voiceSettings?.voice_auto_topup_enabled)}
-                      disabled={!voiceOrgEnabled || autoTopupSaving}
-                      onCheckedChange={(checked) => void handleAutoTopupToggle(checked)}
-                      aria-label="Enable voice minutes auto top-up"
-                    />
+                    <div>
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Rate
+                      </dt>
+                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+                        ${voiceRateUsd.toFixed(2)}/min
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {topUpCredited ? (
+                    <p className="mt-4 flex items-start gap-2 rounded-xl border border-success/30 bg-success/[0.06] px-3 py-2 text-xs text-foreground">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                      <span>
+                        Payment succeeded. Your prepaid balance is now{" "}
+                        <strong className="font-semibold tabular-nums">
+                          {(voiceSettings?.voice_minutes_prepaid ?? 0).toLocaleString()} min
+                        </strong>
+                        .
+                      </span>
+                    </p>
+                  ) : null}
+
+                  {!voiceOrgEnabled ? (
+                    <p className="mt-4 flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/[0.06] px-3 py-2 text-xs text-foreground">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
+                      <span>
+                        Voice is turned off for this organization. Turn it on under Meson Addons
+                        before topping up.
+                      </span>
+                    </p>
+                  ) : null}
+
+                  <div className="mt-4 border-t border-border/60 pt-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">Auto top-up</p>
+                        {/* One plain sentence stating exactly what will happen and
+                            when, rather than a settings row the admin has to
+                            decode. Reads as an honest "off" when disabled. */}
+                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                          {voiceSettings?.voice_auto_topup_enabled ? (
+                            <>
+                              When Voice Minutes drop below{" "}
+                              <strong className="font-semibold tabular-nums text-foreground">
+                                {voiceSettings?.voice_auto_topup_threshold_minutes ?? 15} min
+                              </strong>
+                              , we automatically charge{" "}
+                              <strong className="font-semibold tabular-nums text-foreground">
+                                $
+                                {(
+                                  (voiceSettings?.voice_auto_topup_minutes ?? 60) * voiceRateUsd
+                                ).toFixed(2)}
+                              </strong>{" "}
+                              for{" "}
+                              <strong className="font-semibold tabular-nums text-foreground">
+                                {voiceSettings?.voice_auto_topup_minutes ?? 60} min
+                              </strong>
+                              .
+                            </>
+                          ) : (
+                            "Not configured. Voice sessions stop when your balance runs out."
+                          )}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={Boolean(voiceSettings?.voice_auto_topup_enabled)}
+                        disabled={!voiceOrgEnabled || autoTopupSaving}
+                        onCheckedChange={(checked) => void handleAutoTopupToggle(checked)}
+                        aria-label="Enable voice minutes auto top-up"
+                      />
+                    </div>
+
+                    {/* The max-charge cap is a real safeguard, so it is stated on
+                        the surface as a trust signal instead of hidden away. */}
+                    {voiceSettings?.voice_auto_topup_enabled ? (
+                      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                        Hard cap: never more than{" "}
+                        <strong className="font-semibold tabular-nums text-foreground">
+                          $
+                          {(
+                            (voiceSettings?.voice_auto_topup_max_charge_cents ?? 3600) / 100
+                          ).toFixed(2)}
+                        </strong>{" "}
+                        per automatic charge.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -1153,10 +1262,11 @@ function BillingPageInner() {
           <DialogHeader>
             <DialogTitle>Add Voice Minutes</DialogTitle>
             <DialogDescription>
-              Immediate Stripe charge. Minutes credit as soon as payment succeeds.
+              Pick a pack. You&apos;ll confirm the payment on Stripe, and minutes credit as soon
+              as it succeeds.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-2 py-2">
             {([60, 300, 1200] as const).map((minutes) => {
               const cost = minutes * voiceRateUsd
               const selected = selectedTopUpMinutes === minutes
@@ -1164,34 +1274,67 @@ function BillingPageInner() {
                 <button
                   key={minutes}
                   type="button"
+                  role="radio"
+                  aria-checked={selected}
                   onClick={() => setSelectedTopUpMinutes(minutes)}
+                  disabled={isProcessing}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                    "flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-primary bg-primary/5"
                       : "border-border/70 bg-card hover:border-border",
+                    isProcessing && "opacity-60",
                   )}
                 >
-                  <span className="text-sm font-medium text-foreground">{minutes} minutes</span>
-                  <span className="text-sm tabular-nums text-muted-foreground">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium tabular-nums text-foreground">
+                      {minutes.toLocaleString()} minutes
+                    </span>
+                    <span className="mt-0.5 block text-[11px] tabular-nums text-muted-foreground">
+                      ${voiceRateUsd.toFixed(2)} per minute
+                    </span>
+                  </span>
+                  {/* The real dollar amount sits on the pack itself, so the price
+                      is visible before any confirmation step. */}
+                  <span className="shrink-0 text-base font-semibold tabular-nums text-foreground">
                     ${cost.toFixed(2)}
                   </span>
                 </button>
               )
             })}
-            <p className="text-xs text-muted-foreground">
-              Selected pack: {selectedTopUpMinutes} min · ${topUpCostUsd.toFixed(2)} at $
-              {voiceRateUsd.toFixed(2)}/min (capped at $120 per checkout).
-            </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTopUpModalOpen(false)} disabled={isProcessing}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleVoiceTopUp()} disabled={isProcessing || !voiceOrgEnabled}>
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Pay ${topUpCostUsd.toFixed(2)}
-            </Button>
+          <DialogFooter className="flex-col gap-3 sm:flex-col sm:items-stretch">
+            {/* Redirecting to Stripe unmounts this dialog, so an ambiguous
+                spinner is the exact state that stranded users before. Name the
+                step instead, and say plainly that a stale tab is safe to retry. */}
+            {isProcessing ? (
+              <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/[0.06] px-3 py-2 text-xs text-foreground">
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-info" aria-hidden />
+                <span>
+                  Creating a secure Stripe checkout, then redirecting you. If this tab is still
+                  here in a few seconds, close the dialog and try again — no charge is made until
+                  you confirm on Stripe.
+                </span>
+              </p>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Total charged today:{" "}
+                <strong className="font-semibold tabular-nums text-foreground">
+                  ${topUpCostUsd.toFixed(2)}
+                </strong>{" "}
+                for {selectedTopUpMinutes.toLocaleString()} minutes. Single charges are capped at
+                $120.
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTopUpModalOpen(false)} disabled={isProcessing}>
+                Cancel
+              </Button>
+              <Button onClick={() => void handleVoiceTopUp()} disabled={isProcessing || !voiceOrgEnabled}>
+                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isProcessing ? "Opening Stripe…" : `Continue · $${topUpCostUsd.toFixed(2)}`}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

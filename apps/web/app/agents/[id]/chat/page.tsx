@@ -505,6 +505,10 @@ export default function AgentChatPage({
                   onChange={setInput}
                   disabled={!user || isLoading || (modality === "voice" && !voiceEntitled)}
                   onStatusChange={setMicStatus}
+                  // showLabel matches the /ai landing and workspace composers.
+                  // Without it this surface was the only one where dictation was
+                  // a bare icon, which is the discoverability gap being closed.
+                  showLabel
                   onError={(message) => {
                     if (message) toast.error(message)
                   }}

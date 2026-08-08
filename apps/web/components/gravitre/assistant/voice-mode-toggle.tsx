@@ -8,6 +8,7 @@
  * widen access. CONFIGURE lives in the agent voice assignment surface.
  */
 
+import { useId } from "react"
 import { Mic, MessageSquareText, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -39,23 +40,41 @@ export function VoiceModeToggle({
   className,
   disabled,
 }: Props) {
+  // Stable id so the gated button can point at its own explanation.
+  const reasonId = useId()
+
   if (!voiceEntitled) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
+            {/*
+              aria-disabled rather than the `disabled` attribute on purpose: a
+              truly disabled button emits no pointer or focus events, so the
+              tooltip carrying the only explanation could never open — the
+              control read as inexplicably dead, especially on touch where
+              there is no hover at all. This stays focusable and hoverable so
+              the reason is always reachable, and onClick is not wired, so it
+              still cannot start a voice session.
+            */}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled
-              className={cn("h-9 gap-1.5 text-muted-foreground", className)}
+              aria-disabled
+              aria-describedby={reasonId}
+              className={cn(
+                "h-9 cursor-not-allowed gap-1.5 text-muted-foreground opacity-60",
+                className,
+              )}
             >
               <Lock className="h-3.5 w-3.5" />
               Voice unavailable
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs text-xs">{unavailableReason}</TooltipContent>
+          <TooltipContent id={reasonId} className="max-w-xs text-xs">
+            {unavailableReason}
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     )
