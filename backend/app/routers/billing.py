@@ -1164,6 +1164,54 @@ async def download_invoice_pdf(
     )
 
 
+class VoiceTopUpRequest(BaseModel):
+    minutes: int = Field(..., description="One of 60, 300, 1200")
+
+
+@router.post("/top-up/voice-minutes")
+async def create_voice_minutes_topup(
+    body: VoiceTopUpRequest,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Self-serve Voice Minutes pack — Stripe Checkout mode=payment, immediate credit on webhook."""
+    current_user, org_id, _role = member
+    if not settings.stripe_secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
+        )
+    from app.billing.voice_topup import create_voice_minutes_topup_checkout
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    billing = get_org_billing(client, org_id)
+    customer_id = (billing or {}).get("stripe_customer_id")
+    if not customer_id:
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(
+                "Add a payment method via an active plan subscription before topping up",
+                "VALIDATION_ERROR",
+            ),
+        )
+    app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
+    try:
+        return create_voice_minutes_topup_checkout(
+            client,
+            settings,
+            org_id=org_id,
+            minutes=body.minutes,
+            customer_id=str(customer_id),
+            success_url=f"{app_url}/settings/billing?topup=success",
+            cancel_url=f"{app_url}/settings/billing?topup=cancelled",
+            actor_user_id=str(current_user.get("user_id") or ""),
+        )
+    except HTTPException:
+        raise
+    except stripe.error.StripeError as exc:
+        _raise_stripe_http_error(exc)
+
+
 @router.post("/webhook")
 async def handle_webhook(
     request: Request,

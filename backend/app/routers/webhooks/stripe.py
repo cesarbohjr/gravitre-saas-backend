@@ -281,6 +281,7 @@ def _process_stripe_event(
 
     if event_type == "checkout.session.completed":
         from app.marketplace.entitlements import fulfill_entitlement_from_checkout
+        from app.billing.voice_topup import fulfill_voice_minutes_topup
 
         marketplace_entitlement = fulfill_entitlement_from_checkout(client, settings, session=data)
         if marketplace_entitlement:
@@ -289,6 +290,14 @@ def _process_stripe_event(
                 org_id,
                 "marketplace.checkout.completed",
                 {"entitlement": marketplace_entitlement, "sessionId": data.get("id")},
+            )
+        voice_topup = fulfill_voice_minutes_topup(client, session=data)
+        if voice_topup:
+            _write_event(
+                client,
+                org_id or voice_topup.get("org_id"),
+                "billing.voice_minutes_topup.completed",
+                {"topup": voice_topup, "sessionId": data.get("id")},
             )
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")

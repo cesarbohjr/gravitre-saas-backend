@@ -62,6 +62,7 @@ import {
   Loader2,
   Globe,
   Mic,
+  Activity,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -70,7 +71,9 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useSettingsSectionNav } from "@/lib/settings-nav"
 import { billingApi, ApiRequestError } from "@/lib/api"
+import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { ensureSelectedOrg } from "@/lib/org-context"
+import { Switch } from "@/components/ui/switch"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 import { buildUsageForecast } from "@/lib/billing-usage-forecast"
@@ -212,16 +215,35 @@ function BillingPageInner() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [updateCardModalOpen, setUpdateCardModalOpen] = useState(false)
   const [editAddressModalOpen, setEditAddressModalOpen] = useState(false)
+  const [topUpModalOpen, setTopUpModalOpen] = useState(false)
+  const [selectedTopUpMinutes, setSelectedTopUpMinutes] = useState<60 | 300 | 1200>(60)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [autoTopupSaving, setAutoTopupSaving] = useState(false)
 
   // Live subscription — never invent Node while loading or on error (that regression
   // made Command orgs look like $49 Node when /api/billing failed or was slow).
-  const { data: overview, error: overviewError, isLoading: overviewLoading } = useSWR(
+  const { data: overview, error: overviewError, isLoading: overviewLoading, mutate: mutateOverview } = useSWR(
     user ? "billing-overview" : null,
     () => billingApi.overview(),
     { revalidateOnFocus: false },
   )
+  const { data: voiceAccess, mutate: mutateVoiceAccess } = useSWR(
+    user ? "/api/settings/voice-access" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+  const voiceSettings = (voiceAccess as {
+    voice?: {
+      voice_enabled?: boolean
+      voice_minutes_prepaid?: number
+      voice_auto_topup_enabled?: boolean
+      voice_auto_topup_minutes?: number
+      voice_auto_topup_threshold_minutes?: number
+      voice_auto_topup_max_charge_cents?: number
+    }
+  } | undefined)?.voice
+  const voiceOrgEnabled = voiceSettings?.voice_enabled !== false
   const subscription = overview?.subscription
   const resolvedTierRaw = (overview?.usage?.tier || subscription?.tier || "").toString().trim().toLowerCase()
   const currentTier = (resolvedTierRaw || null) as PlanCode | null
@@ -252,6 +274,8 @@ function BillingPageInner() {
   const planLimits = planLimitsFor(usageFromApi?.tier ?? currentTier ?? undefined)
   const showResearchBilling = Boolean(usageFromApi?.research_lookups_billing_visible)
   const showVoiceBilling = Boolean(usageFromApi?.voice_minutes_billing_visible)
+  const voiceRateUsd = Number(usageFromApi?.voice_minute_overage_rate_usd ?? 0.12)
+  const topUpCostUsd = selectedTopUpMinutes * voiceRateUsd
   const usageForecast = useMemo(
     () =>
       buildUsageForecast({
@@ -350,6 +374,15 @@ function BillingPageInner() {
               },
             ]
           : []),
+        {
+          name: "API Calls",
+          used: usageFromApi.totals.api_calls ?? 0,
+          limit: Math.max(usageFromApi.totals.api_calls ?? 0, 500_000),
+          icon: Activity,
+          color: "series2" as const,
+          unit: "calls",
+          hint: "Metered API invocations this billing period (informational — no hard plan cap)",
+        },
       ]
     : planKnown
       ? emptyUsageMetrics(currentTier!)
@@ -404,7 +437,63 @@ function BillingPageInner() {
       toast.success("Subscription activated. Full access is being restored.")
       router.replace("/settings/billing")
     }
-  }, [router, searchParams])
+    const topup = searchParams.get("topup")
+    if (topup === "success") {
+      toast.success("Voice Minutes top-up completed. Minutes are available now.")
+      void mutateOverview()
+      void mutateVoiceAccess()
+      router.replace("/settings/billing")
+    } else if (topup === "cancelled") {
+      toast.message("Top-up cancelled — no charge was made.")
+      router.replace("/settings/billing")
+    }
+  }, [router, searchParams, mutateOverview, mutateVoiceAccess])
+
+  const handleVoiceTopUp = async () => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
+    setIsProcessing(true)
+    try {
+      const result = await billingApi.createVoiceMinutesTopUp(selectedTopUpMinutes)
+      if (!result.checkout_url) throw new Error("Missing checkout URL")
+      window.location.href = result.checkout_url
+    } catch (error) {
+      console.error("[billing] voice top-up failed:", error)
+      const msg =
+        error instanceof ApiRequestError
+          ? error.message
+          : "Could not start Voice Minutes top-up. Confirm a payment method on your plan first."
+      toast.error(msg)
+      setIsProcessing(false)
+    }
+  }
+
+  const handleAutoTopupToggle = async (enabled: boolean) => {
+    setAutoTopupSaving(true)
+    try {
+      const res = await apiFetch("/api/settings/voice-access", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          auto_topup_enabled: enabled,
+          auto_topup_minutes: voiceSettings?.voice_auto_topup_minutes ?? 60,
+          auto_topup_threshold_minutes: voiceSettings?.voice_auto_topup_threshold_minutes ?? 15,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.detail || "Failed to update auto top-up")
+      }
+      toast.success(enabled ? "Auto top-up enabled" : "Auto top-up disabled")
+      await mutateVoiceAccess()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update auto top-up")
+    } finally {
+      setAutoTopupSaving(false)
+    }
+  }
 
   // Handler functions
   const handleUpgrade = async (planCode: string) => {
@@ -670,7 +759,7 @@ function BillingPageInner() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {resolvedUsageMetrics.map((metric, i) => {
                   const percentage =
                     metric.limit > 0 ? Math.min(100, (metric.used / metric.limit) * 100) : 0
@@ -736,6 +825,49 @@ function BillingPageInner() {
                   )
                 })}
               </div>
+
+              {showVoiceBilling ? (
+                <div className="mt-4 rounded-2xl border border-border/70 bg-card/80 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Voice Minutes top-up</p>
+                      <p className="text-xs text-muted-foreground max-w-xl">
+                        Plan-included allotment first; buy prepaid packs before you hit overage.
+                        Rate: ${voiceRateUsd.toFixed(2)}/min. Prepaid balance:{" "}
+                        {voiceSettings?.voice_minutes_prepaid ?? 0} min.
+                        {!voiceOrgEnabled
+                          ? " Voice is off for this org — turn it on in Meson Addons or Settings before topping up."
+                          : null}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => setTopUpModalOpen(true)}
+                      disabled={!voiceOrgEnabled || isProcessing}
+                    >
+                      Add Minutes
+                    </Button>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Auto top-up</p>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically add {voiceSettings?.voice_auto_topup_minutes ?? 60} min when
+                        remaining drops below {voiceSettings?.voice_auto_topup_threshold_minutes ?? 15}{" "}
+                        min (max ${(
+                          (voiceSettings?.voice_auto_topup_max_charge_cents ?? 3600) / 100
+                        ).toFixed(0)} per charge).
+                      </p>
+                    </div>
+                    <Switch
+                      checked={Boolean(voiceSettings?.voice_auto_topup_enabled)}
+                      disabled={!voiceOrgEnabled || autoTopupSaving}
+                      onCheckedChange={(checked) => void handleAutoTopupToggle(checked)}
+                      aria-label="Enable voice minutes auto top-up"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             {/* Usage trajectory — projected against plan allowance */}
@@ -1015,6 +1147,54 @@ function BillingPageInner() {
             </div>
           </div>
         </div>
+
+      <Dialog open={topUpModalOpen} onOpenChange={setTopUpModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Voice Minutes</DialogTitle>
+            <DialogDescription>
+              Immediate Stripe charge. Minutes credit as soon as payment succeeds.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {([60, 300, 1200] as const).map((minutes) => {
+              const cost = minutes * voiceRateUsd
+              const selected = selectedTopUpMinutes === minutes
+              return (
+                <button
+                  key={minutes}
+                  type="button"
+                  onClick={() => setSelectedTopUpMinutes(minutes)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                    selected
+                      ? "border-primary bg-primary/5"
+                      : "border-border/70 bg-card hover:border-border",
+                  )}
+                >
+                  <span className="text-sm font-medium text-foreground">{minutes} minutes</span>
+                  <span className="text-sm tabular-nums text-muted-foreground">
+                    ${cost.toFixed(2)}
+                  </span>
+                </button>
+              )
+            })}
+            <p className="text-xs text-muted-foreground">
+              Selected pack: {selectedTopUpMinutes} min · ${topUpCostUsd.toFixed(2)} at $
+              {voiceRateUsd.toFixed(2)}/min (capped at $120 per checkout).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTopUpModalOpen(false)} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleVoiceTopUp()} disabled={isProcessing || !voiceOrgEnabled}>
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Pay ${topUpCostUsd.toFixed(2)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Upgrade Plan Modal */}
       <Dialog open={upgradeModalOpen} onOpenChange={setUpgradeModalOpen}>

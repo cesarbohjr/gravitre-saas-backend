@@ -35,7 +35,7 @@ import {
   VoiceModeToggle,
   type ChatModality,
 } from "@/components/gravitre/assistant/voice-mode-toggle"
-import { getVoiceStatus } from "@/lib/tier1-voice-client"
+import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
@@ -113,6 +113,7 @@ export default function AgentChatPage({
   const [modality, setModality] = useState<ChatModality>("text")
   const modalityRef = useRef<ChatModality>("text")
   const [voiceEntitled, setVoiceEntitled] = useState(true)
+  const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | undefined>(undefined)
   // Mirrored from the mic button so the presence strip shows the real recognition
   // state. Presentation only — the button remains the owner of the session.
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
@@ -158,10 +159,26 @@ export default function AgentChatPage({
 
   useEffect(() => {
     if (!user) return
-    void getVoiceStatus(true).then((status) => {
-      // 403 from addon gate surfaces as null / disabled — show gated toggle.
-      setVoiceEntitled(Boolean(status?.tts_enabled || status?.stt_enabled || status))
-    }).catch(() => setVoiceEntitled(false))
+    void getVoiceStatusDetailed(true)
+      .then((result) => {
+        if (result.blocked) {
+          setVoiceEntitled(false)
+          setVoiceUnavailableReason(result.reason)
+          return
+        }
+        if (!result.status) {
+          // Transient miss — plan-included default stays available; avoid false lock.
+          setVoiceEntitled(true)
+          setVoiceUnavailableReason(undefined)
+          return
+        }
+        setVoiceEntitled(true)
+        setVoiceUnavailableReason(undefined)
+      })
+      .catch(() => {
+        // Network blip: do not permanently hide Voice for plan-included orgs.
+        setVoiceEntitled(true)
+      })
   }, [user])
 
   const transport = useMemo(
@@ -479,6 +496,7 @@ export default function AgentChatPage({
                     )
                   }}
                   voiceEntitled={voiceEntitled}
+                  unavailableReason={voiceUnavailableReason}
                   disabled={!user || isLoading}
                 />
                 <div className="flex items-center gap-2">

@@ -92,6 +92,14 @@ def record_voice_minutes(
     plan_code = str(plan.get("code") or "node")
     included = included_voice_minutes_for_plan(plan, plan_code=plan_code)
     overage_rate = overage_usd_per_voice_minute(plan)
+    prepaid = 0
+    try:
+        from app.billing.voice_access import load_voice_org_settings
+
+        prepaid = int(load_voice_org_settings(client, org_id=org_id).get("voice_minutes_prepaid") or 0)
+    except Exception:  # noqa: BLE001
+        prepaid = 0
+    included_effective = included + max(prepaid, 0)
 
     month_total = 0
     try:
@@ -109,17 +117,35 @@ def record_voice_minutes(
     except Exception:  # noqa: BLE001
         pass
 
-    overage = max(month_total - included, 0)
+    remaining = max(included_effective - month_total, 0)
+    overage = max(month_total - included_effective, 0)
+
+    auto_topup: dict[str, Any] | None = None
+    try:
+        from app.config import get_settings
+        from app.billing.voice_topup import maybe_auto_topup_voice_minutes
+
+        auto_topup = maybe_auto_topup_voice_minutes(
+            client,
+            get_settings(),
+            org_id=org_id,
+            remaining_minutes=remaining,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("voice_auto_topup_hook_failed org_id=%s error=%s", org_id, str(exc)[:160])
+
     return {
         "recorded": inserted,
         "org_id": org_id,
         "plan_code": plan_code,
-        "included_minutes_per_month": included,
+        "included_minutes_per_month": included_effective,
         "month_total_minutes": month_total,
+        "remaining_minutes": remaining,
         "overage_minutes": overage,
         "overage_usd_estimate": round(overage * overage_rate, 2) if overage else 0.0,
         "overage_rate_usd": overage_rate,
         "quantity_recorded": qty,
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
+        "auto_topup": auto_topup,
     }

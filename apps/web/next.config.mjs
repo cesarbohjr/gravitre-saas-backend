@@ -126,6 +126,7 @@ const nextConfig = {
       { source: "/intelligence/models/:name", destination: "/models/built-in/:name", permanent: true },
       // Frontend IA consolidation — retired top-level destinations
       { source: "/outcomes", destination: "/activity", permanent: true },
+      { source: "/settings/billing-usage", destination: "/settings/billing", permanent: true },
       { source: "/runs", destination: "/activity", permanent: false },
       { source: "/workflows/failure-predictions", destination: "/activity?tab=failures", permanent: false },
       { source: "/intelligence/agents", destination: "/agents", permanent: true },

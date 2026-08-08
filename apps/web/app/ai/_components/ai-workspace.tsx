@@ -2221,6 +2221,7 @@ export function AiWorkspace({
                   value={input}
                   onChange={setInput}
                   disabled={routing || isChatBusy}
+                  showLabel
                   onError={(message) => {
                     if (message) toast.error(message)
                   }}

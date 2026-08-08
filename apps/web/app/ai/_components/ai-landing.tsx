@@ -114,6 +114,7 @@ export function AiLanding({
                 value={input}
                 onChange={onInputChange}
                 disabled={routing}
+                showLabel
                 onError={(message) => {
                   if (message) toast.error(message)
                 }}

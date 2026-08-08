@@ -17,18 +17,45 @@ export type VoiceStatus = {
 let cachedStatus: VoiceStatus | null = null
 let cachedAt = 0
 
+export type VoiceStatusResult = {
+  status: VoiceStatus | null
+  /** HTTP status from /api/voice/status when the request completed. */
+  httpStatus?: number
+  blocked?: boolean
+  reason?: string
+}
+
 export async function getVoiceStatus(force = false): Promise<VoiceStatus | null> {
+  const result = await getVoiceStatusDetailed(force)
+  return result.status
+}
+
+export async function getVoiceStatusDetailed(force = false): Promise<VoiceStatusResult> {
   const now = Date.now()
-  if (!force && cachedStatus && now - cachedAt < 60_000) return cachedStatus
+  if (!force && cachedStatus && now - cachedAt < 60_000) {
+    return { status: cachedStatus, blocked: false }
+  }
   try {
     const res = await apiFetch("/api/voice/status", { timeoutMs: 8_000 })
-    if (!res.ok) return cachedStatus
+    if (!res.ok) {
+      if (res.status === 403) {
+        cachedStatus = null
+        cachedAt = 0
+        return {
+          status: null,
+          httpStatus: 403,
+          blocked: true,
+          reason: "Voice is turned off for this organization or not available for your seat.",
+        }
+      }
+      return { status: force ? null : cachedStatus, httpStatus: res.status, blocked: false }
+    }
     const data = (await res.json()) as VoiceStatus
     cachedStatus = data
     cachedAt = now
-    return data
+    return { status: data, httpStatus: 200, blocked: false }
   } catch {
-    return cachedStatus
+    return { status: force ? null : cachedStatus, blocked: false }
   }
 }
 

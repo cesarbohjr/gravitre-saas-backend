@@ -103,10 +103,11 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             "ElevenLabs Flash v2.5 first-byte ~75–255ms. Not a sub-300ms claim."
         ),
         "entitlement": {
-            "addon": "voice_interface",
-            "addon_confirmed": True,
+            "model": "plan_included",
+            "org_toggle": "subscriptions.voice_enabled",
+            "meson_purchase_gate": False,
             "use_vs_configure": (
-                "B1: with voice_interface enabled, Lite seats USE voice mode on agents "
+                "B1: with org voice ON (default), Lite seats USE voice mode on agents "
                 "assigned to their department; CONFIGURE (assign/change voice, turn-taking, "
                 "Voice Design) requires full or department-manager seat."
             ),

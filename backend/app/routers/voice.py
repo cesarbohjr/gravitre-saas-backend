@@ -13,9 +13,9 @@ from pydantic import BaseModel, Field
 from app.auth.dependencies import get_current_user, get_org_context
 from app.billing.seat_context import assert_agent_voice_use
 from app.billing.service import get_supabase_client
+from app.billing.voice_access import assert_voice_org_enabled
 from app.config import Settings, get_settings
 from app.middleware.entitlements import (
-    require_addon,
     require_seat_context,
     require_voice_configure,
 )
@@ -28,13 +28,23 @@ from app.services.tier1_voice_service import (
 )
 from app.services.voice_provider_errors import error_public_payload
 
-# C1 confirmed: voice_interface remains its own Meson addon gate on this router.
-# B1: Lite USE (session/STT/TTS on assigned agents) vs full/manager CONFIGURE
-# (library assign, preview, design, turn-taking settings on voice_profile).
+# Plan-included voice (2026-08-08): no Meson $49 purchase gate.
+# Org admin may disable via subscriptions.voice_enabled.
+# B1: Lite USE vs full/manager CONFIGURE unchanged.
+async def _require_voice_org_enabled(
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    return assert_voice_org_enabled(client, org_id=org_id)
+
+
 router = APIRouter(
     prefix="/api/voice",
     tags=["voice"],
-    dependencies=[Depends(require_addon("voice_interface"))],
+    dependencies=[Depends(_require_voice_org_enabled)],
 )
 
 

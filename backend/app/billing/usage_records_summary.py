@@ -93,12 +93,20 @@ def summarize_usage_records_billing(
     )
 
     included_voice = included_voice_minutes_for_plan(plan, plan_code=resolved_tier)
+    prepaid_voice = 0
+    try:
+        from app.billing.voice_access import load_voice_org_settings
+
+        prepaid_voice = int(load_voice_org_settings(client, org_id=org_id).get("voice_minutes_prepaid") or 0)
+    except Exception:
+        prepaid_voice = 0
+    included_voice_effective = included_voice + max(prepaid_voice, 0)
     voice_rate = overage_usd_per_voice_minute(plan)
     voice_total = totals["voice_minutes"]
-    overage_voice = max(voice_total - included_voice, 0)
+    overage_voice = max(voice_total - included_voice_effective, 0)
     overage_voice_usd = round(overage_voice * voice_rate, 2)
-    remaining_voice = max(included_voice - voice_total, 0)
-    # Visibility: Meson voice_interface addon (when entitlements available on settings caller).
+    remaining_voice = max(included_voice_effective - voice_total, 0)
+    # Plan-included: always visible on Billing (org may still disable voice use).
     voice_minutes_billing_visible = True
 
     return {
@@ -119,10 +127,13 @@ def summarize_usage_records_billing(
         "research_lookup_overage_rate_usd": research_rate,
         "internet_research_enabled": internet_research_enabled,
         "research_lookups_billing_visible": internet_research_enabled,
-        "included_voice_minutes": included_voice,
+        "included_voice_minutes": included_voice_effective,
+        "voice_minutes_plan_included": included_voice,
+        "voice_minutes_prepaid": prepaid_voice,
         "remaining_voice_minutes": remaining_voice,
         "overage_voice_minutes": overage_voice,
         "overage_voice_cost_usd": overage_voice_usd,
         "voice_minute_overage_rate_usd": voice_rate,
         "voice_minutes_billing_visible": voice_minutes_billing_visible,
+        "api_calls": totals.get("api_calls", 0),
     }

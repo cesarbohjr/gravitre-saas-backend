@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -1654,6 +1655,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
   })
   const addons = ((data as { addons?: MesonAddon[] } | undefined)?.addons ?? []) as MesonAddon[]
   const monthlyTotal = Number((data as { monthly_total_usd?: number } | undefined)?.monthly_total_usd ?? 0)
+  const voice = (data as { voice?: { enabled?: boolean; note?: string; billing_href?: string } } | undefined)?.voice
   const [isSaving, setIsSaving] = useState(false)
 
   const handleToggle = async (addon: MesonAddon) => {
@@ -1670,11 +1672,64 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
     }
   }
 
+  const handleVoiceToggle = async () => {
+    if (!isAdmin) return
+    setIsSaving(true)
+    try {
+      const res = await apiFetch("/api/settings/voice-access", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: !voice?.enabled }),
+      })
+      if (!res.ok) throw new Error("voice toggle failed")
+      toast.success(`Voice ${voice?.enabled ? "disabled" : "enabled"} for this organization`)
+      await mutate()
+    } catch {
+      toast.error("Failed to update voice access")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Voice (plan included)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {voice?.note ||
+                "Included with your plan allotment. Not a Meson purchase. Top up minutes on Billing & Plan."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status: {voice?.enabled === false ? "Off for this org" : "On"}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Button
+              variant={voice?.enabled === false ? "default" : "outline"}
+              size="sm"
+              onClick={handleVoiceToggle}
+              disabled={!isAdmin || isSaving}
+            >
+              {voice?.enabled === false ? "Turn on" : "Turn off"}
+            </Button>
+            <Link
+              href={voice?.billing_href || "/settings/billing"}
+              className="text-xs text-muted-foreground underline underline-offset-2"
+            >
+              Voice Minutes top-up →
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg border border-border bg-secondary/30 p-4">
-        <p className="text-sm font-medium text-foreground">Monthly addon total</p>
+        <p className="text-sm font-medium text-foreground">Monthly addon total (catalog toggles)</p>
         <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Sibling addons below are capability flags stored on the subscription — they are not Stripe-charged today.
+        </p>
       </div>
       <div className="space-y-3">
         {addons.map((addon) => (
@@ -1683,7 +1738,9 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
               <div>
                 <p className="text-sm font-medium text-foreground">{addon.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{addon.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">${addon.monthly_price_usd}/mo</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${addon.monthly_price_usd}/mo catalog · not Stripe-invoiced yet
+                </p>
               </div>
               <Button
                 variant={addon.enabled ? "outline" : "default"}
@@ -1862,7 +1919,7 @@ function SettingsContent() {
       router.replace("/settings/organizations")
       return
     }
-    if (section === "billing") {
+    if (section === "billing" || section === "billing-usage") {
       router.replace("/settings/billing")
       return
     }
@@ -1966,9 +2023,8 @@ function SettingsContent() {
         return <LiteSeatsSettings isAdmin={isAdmin} />
       case "meson-addons":
         return <MesonAddonsSettings isAdmin={isAdmin} />
-      case "billing-usage":
-        return <BillingUsageSettings />
       case "webhooks": return <WebhooksSettings isAdmin={isAdmin} />
+      case "billing-usage":
       case "billing":
       case "approvals":
       case "permissions":

@@ -46,7 +46,7 @@ Env: `STRIPE_VOICE_MINUTES_METER_EVENT_NAME`, `STRIPE_VOICE_MINUTES_METERED_PRIC
 
 ## Entitlement (Phase 4.2) — confirmed
 
-1. **`voice_interface` stays its own Meson addon gate** on `/api/voice` (C1).
+1. **SUPERSEDED 2026-08-08:** Voice is plan-included (org ON/OFF + top-ups). See `docs/delivery/billing-addons-topup-voice-discoverability.md`. Meson `$49 voice_interface` purchase gate retired.
 2. **B1 use-vs-configure** (same Meson build-vs-run split):
    - **USE** (Lite + addon): voice mode / session / STT / TTS on agents assigned to the member’s department (`department_resource_assignments` `resource_type=agent`).
    - **CONFIGURE** (full or department-manager seat): assign/change `voice_profile`, library browse/preview, Voice Design, turn-taking settings on the profile.

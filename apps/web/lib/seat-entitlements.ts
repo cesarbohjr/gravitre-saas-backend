@@ -31,7 +31,8 @@ export const BUILD_NAV_HREFS = new Set([
 
 /**
  * B1 voice CONFIGURE: full seats or department managers (not Lite members).
- * Lite may USE voice on assigned department agents when voice_interface is on.
+ * Lite may USE voice on assigned department agents when org voice is enabled
+ * (plan-included; not a Meson purchase gate).
  */
 export function canConfigureVoice(membership: SeatMembership | null | undefined): boolean {
   if (!membership) return false

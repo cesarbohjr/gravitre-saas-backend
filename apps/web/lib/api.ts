@@ -1821,6 +1821,15 @@ export const billingApi = {
   listInvoices: () => fetcher<{ invoices: Invoice[] }>(apiUrl("/api/billing/invoices")),
   downloadInvoice: (invoiceId: string) =>
     apiFetch(apiUrl(`/api/billing/invoices/${invoiceId}/pdf`)),
+  createVoiceMinutesTopUp: (minutes: 60 | 300 | 1200) =>
+    postJson<{
+      checkout_url: string
+      session_id: string
+      minutes: number
+      amount_cents: number
+      rate_cents_per_minute: number
+      topup_event_id?: string
+    }>(apiUrl("/api/billing/top-up/voice-minutes"), { minutes }),
 }
 
 // ============ Metrics ============

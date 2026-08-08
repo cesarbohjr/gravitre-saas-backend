@@ -56,6 +56,14 @@ class MesonAddonUpdateRequest(BaseModel):
     enabled: bool
 
 
+class VoiceAccessUpdateRequest(BaseModel):
+    enabled: bool | None = None
+    auto_topup_enabled: bool | None = None
+    auto_topup_minutes: int | None = Field(default=None, ge=1, le=1200)
+    auto_topup_threshold_minutes: int | None = Field(default=None, ge=0, le=600)
+    auto_topup_max_charge_cents: int | None = Field(default=None, ge=100, le=12000)
+
+
 class ModelPolicyUpdateRequest(BaseModel):
     mode: str = "open"
     providers: list[str] = Field(default_factory=list)
@@ -650,6 +658,9 @@ async def get_meson_addons_route(
     monthly_total = 0.0
     for row in catalog_resp.data or []:
         code = str(row.get("code") or "")
+        # Voice is plan-included — never list as a priced Meson purchase.
+        if code == "voice_interface":
+            continue
         monthly_price = float(row.get("monthly_price_usd") or 0)
         enabled = code in enabled_codes
         if enabled:
@@ -662,9 +673,32 @@ async def get_meson_addons_route(
                 "description": row.get("description") or "",
                 "monthly_price_usd": monthly_price,
                 "enabled": enabled,
+                # Honest: Meson catalog Enable is JSON-only today (not Stripe).
+                "billing_mechanism": "subscription_json_toggle",
+                "stripe_charged": False,
             }
         )
-    return {"addons": addons, "monthly_total_usd": monthly_total}
+    from app.billing.voice_access import load_voice_org_settings
+
+    voice = load_voice_org_settings(client, org_id=org_id)
+    return {
+        "addons": addons,
+        "monthly_total_usd": monthly_total,
+        "voice": {
+            "plan_included": True,
+            "enabled": voice["voice_enabled"],
+            "minutes_prepaid": voice["voice_minutes_prepaid"],
+            "auto_topup_enabled": voice["voice_auto_topup_enabled"],
+            "auto_topup_minutes": voice["voice_auto_topup_minutes"],
+            "auto_topup_threshold_minutes": voice["voice_auto_topup_threshold_minutes"],
+            "billing_href": "/settings/billing",
+            "note": "Voice access is included with your plan. Toggle org ON/OFF and top up minutes on Billing & Plan.",
+        },
+        "addon_audit": {
+            "voice_interface": "retired_purchase_gate_plan_included",
+            "sibling_addons": "json_toggle_only_no_stripe_charge",
+        },
+    }
 
 
 @router.patch("/meson-addons")
@@ -674,6 +708,11 @@ async def update_meson_addons_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
+    if str(body.code or "") == "voice_interface":
+        raise HTTPException(
+            status_code=400,
+            detail="Voice is plan-included. Use PATCH /api/settings/voice-access instead of Meson addons.",
+        )
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     existing = (
         client.table("subscriptions").select("meson_addons").eq("org_id", org_id).limit(1).execute()
@@ -700,6 +739,54 @@ async def update_meson_addons_route(
     if response_error(updated):
         raise HTTPException(status_code=500, detail=str(response_error(updated)))
     return {"subscription": updated.data}
+
+
+@router.get("/voice-access")
+async def get_voice_access_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    from app.billing.voice_access import load_voice_org_settings
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    voice = load_voice_org_settings(client, org_id=org_id)
+    return {"voice": {**voice, "plan_included": True}, "topup_href": "/settings/billing"}
+
+
+@router.patch("/voice-access")
+async def update_voice_access_route(
+    body: VoiceAccessUpdateRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = _admin
+    from app.billing.voice_access import load_voice_org_settings, set_voice_org_enabled
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if body.enabled is not None:
+        set_voice_org_enabled(client, org_id=org_id, enabled=bool(body.enabled))
+    patch: dict[str, Any] = {"org_id": org_id}
+    if body.auto_topup_enabled is not None:
+        patch["voice_auto_topup_enabled"] = bool(body.auto_topup_enabled)
+    if body.auto_topup_minutes is not None:
+        patch["voice_auto_topup_minutes"] = int(body.auto_topup_minutes)
+    if body.auto_topup_threshold_minutes is not None:
+        patch["voice_auto_topup_threshold_minutes"] = int(body.auto_topup_threshold_minutes)
+    if body.auto_topup_max_charge_cents is not None:
+        patch["voice_auto_topup_max_charge_cents"] = int(body.auto_topup_max_charge_cents)
+    if len(patch) > 1:
+        # Refuse enabling auto-top-up while voice is org-disabled.
+        voice = load_voice_org_settings(client, org_id=org_id)
+        if patch.get("voice_auto_topup_enabled") and not voice["voice_enabled"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Enable org voice before turning on auto top-up",
+            )
+        client.table("subscriptions").upsert(patch, on_conflict="org_id").execute()
+    return {"voice": load_voice_org_settings(client, org_id=org_id)}
 
 
 @router.get("/billing-usage")

@@ -4,7 +4,6 @@ import {
   Brain,
   Building2,
   CreditCard,
-  DollarSign,
   FileText,
   Handshake,
   Key,
@@ -143,18 +142,10 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "billing",
     title: "Billing & Plan",
-    description: "Subscription, payment method, and invoices",
+    description: "Subscription, usage, top-ups, and invoices",
     icon: CreditCard,
     tier: "organization",
     href: "/settings/billing",
-  },
-  {
-    id: "billing-usage",
-    title: "Billing Usage",
-    description: "Review outputs and overage usage",
-    icon: DollarSign,
-    tier: "organization",
-    href: "/settings?section=billing-usage",
   },
   {
     id: "webhooks",
@@ -242,6 +233,7 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {
+  if (section === "billing-usage") return "/settings/billing"
   return SETTINGS_SECTIONS.find((row) => row.id === section)?.href || `/settings?section=${section}`
 }
 
