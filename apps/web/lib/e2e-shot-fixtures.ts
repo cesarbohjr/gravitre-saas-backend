@@ -548,6 +548,63 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     trialEndsAt: null,
     plan: "control",
   },
+  // Billing overview for /settings/billing. Shape mirrors BillingOverview from
+  // GET /api/billing. Capture-only; the shots layout 404s in production.
+  //
+  // Two fields are load-bearing and fail silently if omitted:
+  //   - usage.voice_minutes_billing_visible gates the ENTIRE Voice Minutes card
+  //     and the top-up / auto-top-up block behind showVoiceBilling.
+  //   - usage.tier must be a real plan code, or planKnown goes false and the
+  //     grid renders empty placeholders instead of the metric cards.
+  "/api/billing": {
+    billing_status: "active",
+    subscription: {
+      tier: "control",
+      status: "active",
+      // AGO, not T: T is pinned to a fixed anchor date, which would render this
+      // renewal as already past. A negative offset here means 18 days ahead of
+      // the real capture clock.
+      current_period_end: AGO(-18 * 24 * 60),
+      cancel_at_period_end: false,
+    },
+    usage: {
+      tier: "control",
+      totals: {
+        workflow_runs: 1284,
+        ai_credits: 18_400,
+        outputs: 742,
+        research_lookups: 96,
+        voice_minutes: 218,
+        api_calls: 41_930,
+      },
+      weekly_totals: [140, 210, 265, 240, 190, 155, 84],
+      workflow_runs_included: 2000,
+      included_ai_credits: 25_000,
+      included_outputs: 1000,
+      included_research_lookups: 150,
+      included_voice_minutes: 300,
+      research_lookups_billing_visible: true,
+      voice_minutes_billing_visible: true,
+      voice_minute_overage_rate_usd: 0.12,
+      output_overage_rate_usd: 0.4,
+      overage_voice_minutes: 0,
+      overage_outputs: 0,
+      overage_research_lookups: 0,
+    },
+    invoices: [],
+  },
+  // Voice settings for the top-up + auto-top-up block. voice_enabled must not be
+  // false or voiceOrgEnabled flips and the card captures its org-disabled state.
+  "/api/settings/voice-access": {
+    voice: {
+      voice_enabled: true,
+      voice_minutes_prepaid: 240,
+      voice_auto_topup_enabled: true,
+      voice_auto_topup_minutes: 60,
+      voice_auto_topup_threshold_minutes: 15,
+      voice_auto_topup_max_charge_cents: 3600,
+    },
+  },
   // AppShell gates the whole product on this: until welcome is completed or
   // skipped it replaces the route with /welcome, so an un-fixtured onboarding
   // response silently captures the onboarding flow instead of the surface.
