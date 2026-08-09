@@ -357,8 +357,6 @@ export default function AgentChatPage({
     )
   }
 
-  const agentAvatar = <AgentIdentityAvatar agent={agent} size="sm" />
-
   return (
     <AppShell title="Chat">
       <div className="ai-surface-shell flex h-full min-h-0 flex-col">
@@ -487,7 +485,10 @@ export default function AgentChatPage({
                 messages={messages}
                 showWaiting={isLoading && !isStreaming}
                 assistantLabel={agent.name}
-                assistantAvatar={agentAvatar}
+                // Identity as data, so the transcript renders this agent's real
+                // icon and color WITH the shared state animations. Passing a
+                // pre-rendered node here is exactly what disabled those states.
+                assistantAgent={agent}
                 waitingLabel={`${agent.name} is thinking…`}
                 onRegenerate={handleRegenerate}
                 onCopyText={(text) => {
