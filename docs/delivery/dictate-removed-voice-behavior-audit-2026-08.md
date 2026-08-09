@@ -41,9 +41,9 @@ Architecture fact on tip: live chat Voice is **modality + push-to-Speak STT into
 | API tip | PASS (unchanged; FE-only ship) | `GET https://api.gravitre.app/health` @ 2026-08-09T18:01:58Z → `git_sha=cba337441def633b3782f233edb086901e09366b` |
 | Drift CI | PASS | `node scripts/check-chat-surface-drift.mjs` → `chat-surface-drift PASS` (pre-commit on `ffe79feb`) |
 | Dictate gone from marketing | PASS | Live `https://gravitre.app/pricing` DOM: `dictateCount=0`; features show `Voice included — Text \| Voice in chat`; comparison `Voice in chat (Text \| Voice)`; FAQ: switch Text \| Voice (no Dictate) |
-| Composer Dictate gone | CODE PASS / UI auth-gated | Shared controls mount Speak only when `modality === "voice"`; zero `Dictate`/`onDictateError` in `apps/web` source. Authenticated `/ai` mic layout needs human confirm after login |
+| Composer Dictate gone | **PASS (live `/ai`)** | Authed as billing-e2e active fixture on `https://gravitre.app/ai` (2026-08-09): Text pressed → composer buttons `Text`/`Voice`/`Send` only (`speakInControls=false`, `dictate=false`). Voice pressed → `Speak` ×1 + presence `Voice mode on`; `dictateCount=0`. Tip `ffe79feb` / Vercel `dpl_BEWvcGd…` |
 | Continuous duplex vs ChatGPT | **GAP (named)** | Live path remains Speak → composer → Send → `spoken_mode` + auto-TTS; provisional turn-taking not FE-wired |
-| Minimum barge-in (Speak→stop TTS) | **BUILT on tip** | `VoiceInputButton.onListeningStart` → shared controls `onStop` when `ttsSpeaking` shipped in `ffe79feb`; acoustic AEC still **GAP** |
+| Minimum barge-in (Speak→stop TTS) | **BUILT on tip / live mid-reply NOT RUN** | Code on `ffe79feb`. Live interrupt blocked on e2e fixture: trial-ended banner + send surfaced `AI credit limit reached — check billing` (no TTS/`Stop` state to barge into). Needs paid Command workspace (e.g. Cesar SSO) for mid-reply Speak→stop TTS |
 | Spoken register | **BUILT** | FE sends `spoken_mode` when Voice; Module D Register 5 in backend |
 | Name self-recognition | **BUILT in stack / voice live NOT RUN** | Prompt injection present; needs human spoken exchange on tip |
 | Tier-1 voice probe (API) | **PARTIAL** | `railway run … probe-tier1-voice-live.py`: status OK; STT skipped (no canned audio); TTS HTTP **402** @ ~533ms → verdict `PASS_CODE_BROWSER_FALLBACK` (browser TTS path; server TTS credit/gate blocked for probe token) |
