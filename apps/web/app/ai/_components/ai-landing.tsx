@@ -171,12 +171,14 @@ export function AiLanding({
         <div className="mt-8 grid gap-2 sm:grid-cols-2">
           {AI_EXAMPLE_PROMPTS.map((prompt) => (
             <button
-              key={prompt}
+              key={prompt.text}
               type="button"
-              onClick={() => (onExampleSelect ? onExampleSelect(prompt) : onInputChange(prompt))}
+              onClick={() =>
+                onExampleSelect ? onExampleSelect(prompt.text) : onInputChange(prompt.text)
+              }
               className="rounded-xl border border-[color:var(--chat-surface-border)] bg-white/80 px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:border-[#16a374]/35 hover:text-foreground dark:bg-[#262626]/80"
             >
-              {prompt}
+              {prompt.text}
             </button>
           ))}
         </div>
