@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
-import type { AgentIdentity, AgentIdentityInput } from "@/lib/agent-identity"
+import { resolveAgentIdentity, type AgentIdentity, type AgentIdentityInput } from "@/lib/agent-identity"
 
 export type GravitreAvatarState = "idle" | "thinking" | "searching" | "speaking"
 
@@ -70,6 +70,13 @@ export function GravitreChatAvatar({
   const isBusy = isThinking || isSearching
   const hasIdentity = Boolean(identity || agent)
 
+  // Resolved only to reach `personality.gradient`, which is the agent's real
+  // assigned color. Needed because the speaking state replaces the inner
+  // AgentIdentityAvatar (which normally paints that gradient) with the bars, so
+  // the wrapper has to carry the color itself or the bars have no disc behind
+  // them. Identity therefore survives the speaking state as color.
+  const resolvedIdentity = identity ?? (agent ? resolveAgentIdentity(agent) : null)
+
   return (
     <div
       className={cn(
@@ -78,6 +85,13 @@ export function GravitreChatAvatar({
         // so only the default assistant paints its own background here.
         !hasIdentity && (isSpeaking ? "bg-primary" : "bg-assistant-avatar"),
         !hasIdentity && "text-assistant-avatar-foreground",
+        // Speaking: the inner identity avatar is swapped out for the bars, so the
+        // agent's own gradient is applied here to keep the disc filled and the
+        // white bars readable. An avatar-image agent falls back to its gradient
+        // for this state only — a photo behind 2.5px bars reads as mud.
+        hasIdentity &&
+          isSpeaking &&
+          cn("bg-gradient-to-br text-white", resolvedIdentity?.personality.gradient),
         "transition-colors duration-300",
         className,
       )}
@@ -174,7 +188,12 @@ export function GravitreChatAvatar({
               ? { duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
               : { duration: 0 }
           }
-          className="flex items-center justify-center"
+          // h-full w-full is required, not cosmetic: the identity avatar below is
+          // sized with `h-full w-full`, which resolves against THIS element. Left
+          // auto-sized, it collapsed to its intrinsic content and a named agent's
+          // disc rendered visibly smaller than the default assistant's — while a
+          // size assertion on the outer 36px wrapper still passed.
+          className="flex h-full w-full items-center justify-center"
         >
           {hasIdentity ? (
             // Reuses the shared identity avatar so there is exactly one

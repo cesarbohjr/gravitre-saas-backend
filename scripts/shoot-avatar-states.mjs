@@ -18,7 +18,9 @@ import { mkdirSync } from "node:fs"
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000"
 const URL = `${BASE}/e2e/shots/avatar-states`
-const OUT = "/tmp/agent-browser"
+// Written into the repo, matching capture-billing-states.mjs, so the evidence
+// survives the sandbox instead of vanishing from /tmp.
+const OUT = "docs/delivery/shots/avatar-states"
 mkdirSync(OUT, { recursive: true })
 
 const failures = []
@@ -43,6 +45,19 @@ for (const scheme of ["light", "dark"]) {
       deviceScaleFactor: 2,
     })
     const page = await context.newPage()
+
+    // Theme here is class-based (`@custom-variant dark (&:is(.dark *))`) AND
+    // owned by next-themes, which is a two-part trap:
+    //   1. Playwright's `colorScheme` alone changes nothing, so the first "dark"
+    //      screenshots were silently light.
+    //   2. Adding `.dark` to <html> by hand does not work either — next-themes
+    //      rewrites that attribute on mount and puts `light` straight back.
+    // Driving its own storage key is the only thing that actually sticks.
+    await page.addInitScript(
+      (value) => window.localStorage.setItem("theme", value),
+      scheme,
+    )
+
     const response = await page.goto(URL, { waitUntil: "networkidle" })
 
     // A 200 is not enough on its own: Next dev embeds the 404 template in every
@@ -50,6 +65,19 @@ for (const scheme of ["light", "dark"]) {
     check(`${scheme}/${vp.name} route status`, response?.status() === 200, `got ${response?.status()}`)
 
     await page.waitForSelector('[data-testid="avatar-states-root"]')
+
+    // Prove the theme took effect rather than trusting the filename. Asserting on
+    // the class next-themes actually wrote is exact; my first attempt at this
+    // computed a luminance from `getComputedStyle(...).backgroundColor` and was
+    // worthless — the value comes back as `lab(98.89 ...)`, so an rgb-shaped
+    // regex parsed the lightness channel as red and reported a light page as
+    // dark. Never regex a computed color; assert the state that drives it.
+    const htmlClass = await page.evaluate(() => document.documentElement.className)
+    check(
+      `${scheme}/${vp.name} theme actually applied`,
+      htmlClass.split(/\s+/).includes(scheme),
+      `<html class="${htmlClass}">`,
+    )
 
     // Let the keyframe loops reach a visible mid-phase before capture, otherwise
     // every animated state screenshots at its identical t=0 frame.
@@ -104,6 +132,26 @@ for (const scheme of ["light", "dark"]) {
         /purple/.test(namedHtml),
         "expected the agent's purple identity gradient inside the animating avatar",
       )
+      // Measure the VISIBLE gradient disc, not the outer wrapper. The wrapper is
+      // always 36px, so a wrapper-only size check passed while a named agent's
+      // actual disc rendered visibly smaller (its `h-full` resolved against an
+      // auto-height parent and collapsed to content). Assert what is on screen.
+      // Absolutely-positioned gradients are excluded: the identity avatar paints a
+      // decorative sheen at `inset-[10%]`, which is 29px by design and is not the
+      // disc. Without this filter the check reported a phantom 36,29,36,29 failure.
+      const discSizes = await page
+        .locator('[data-testid="states-named"] > div .bg-gradient-to-br')
+        .evaluateAll((els) =>
+          els
+            .filter((el) => getComputedStyle(el).position !== "absolute")
+            .map((el) => Math.round(el.getBoundingClientRect().width)),
+        )
+      check(
+        "named agent's visible identity disc fills the avatar in every state",
+        discSizes.length > 0 && discSizes.every((w) => w === 36),
+        `disc widths: ${discSizes.join(", ")}`,
+      )
+
       check(
         "named agent renders an identity icon (not the Gravitre mark)",
         namedHtml.includes("<svg") && !namedHtml.includes("gravitre-mark"),
