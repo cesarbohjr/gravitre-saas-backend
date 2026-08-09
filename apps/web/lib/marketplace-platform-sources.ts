@@ -12,7 +12,7 @@ import {
 } from "@/lib/connectors"
 import type { MarketplaceConnectorChecklistItem } from "@/types/api"
 
-/** Pack slug → gravitree-managed sources staged/activated with that pack. */
+/** Pack slug → gravitre-managed sources staged/activated with that pack. */
 export const PACK_PLATFORM_SOURCE_TYPES: Record<string, readonly string[]> = {
   "executive-intelligence-pack": ["fred", "sec_edgar", "world_bank", "oecd", "opencorporates"],
   "msp-intelligence-pack": ["nvd", "cisa_kev"],
@@ -52,7 +52,7 @@ function catalogLabel(vendorKey: string): string {
 }
 
 function catalogDescription(vendorKey: string): string {
-  return lookupCatalogEntry(vendorKey)?.description ?? "Gravitree-managed intelligence source"
+  return lookupCatalogEntry(vendorKey)?.description ?? "Gravitre-managed intelligence source"
 }
 
 function resolveStatus(
@@ -74,7 +74,7 @@ function statusLabel(status: PlatformSourceStatus): string {
 
 /**
  * Build the Platform sources list for a marketplace pack.
- * Prefers pack-known gravitree vendors; falls back to checklist platform items.
+ * Prefers pack-known gravitre vendors; falls back to checklist platform items.
  */
 export function resolvePlatformSources(args: {
   packSlug?: string | null
@@ -118,8 +118,8 @@ export function resolvePlatformSources(args: {
 }
 
 /** Catalog entries used only for platform-source discovery tests / docs. */
-export function listGravitreeManagedCatalogEntries(): CatalogConnectorEntry[] {
+export function listGravitreManagedCatalogEntries(): CatalogConnectorEntry[] {
   return CONNECTOR_CATALOG.filter(
-    (entry) => entry.authMode === "gravitree_managed" || entry.credentialModel === "platform_only",
+    (entry) => entry.authMode === "gravitre_managed" || entry.credentialModel === "platform_only",
   )
 }

@@ -25,7 +25,7 @@ Pack #11 closes the **12-pack guidance obligation** for Compliance. It does **no
 
 Help operators prepare **audit readiness** against **public framework guidance** (NIST-style control narratives, policy checklists, evidence *mapping* language) — not ingest patient, clinical, or other PHI systems.
 
-**Job to be done (v1, when/if built):** “What controls and evidence stubs do we still need for SOC2 / ISO-style readiness?” using **customer-uploaded or Gravitree-authored guidance documents**, never live PHI stores.
+**Job to be done (v1, when/if built):** “What controls and evidence stubs do we still need for SOC2 / ISO-style readiness?” using **customer-uploaded or Gravitre-authored guidance documents**, never live PHI stores.
 
 ---
 
@@ -52,7 +52,7 @@ Related existing catalog (not this pack): marketplace knowledge asset `complianc
 
 | Allowed (guidance only) | Forbidden without Cesar named clear |
 |-------------------------|-------------------------------------|
-| Public NIST / CSF / SP 800-53 *control family summaries* authored or curated by Gravitree | EHR / EMR / FHIR clinical APIs |
+| Public NIST / CSF / SP 800-53 *control family summaries* authored or curated by Gravitre | EHR / EMR / FHIR clinical APIs |
 | Customer-uploaded **policies**, **control matrices**, **SOC2 report PDFs** they already own (non-PHI) | Member/patient demographics, claims, clinical notes |
 | Mapping language: “control → evidence artifact type” | Any connector labeled healthcare / payer / clearinghouse |
 | Reuse of product `compliance_service` PII redaction / SOC2 *evidence export* (STA-81/82) as **platform** capability | Writing raw identity or health fields into Organizational Memory / KG |

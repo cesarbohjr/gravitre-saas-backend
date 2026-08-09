@@ -8,7 +8,7 @@ import {
 } from "@/lib/connectors"
 
 describe("isConnectorsHubHidden", () => {
-  it("hides gravitree_managed / platform_only catalog vendors", () => {
+  it("hides gravitre_managed / platform_only catalog vendors", () => {
     expect(isConnectorsHubHidden("fred")).toBe(true)
     expect(isConnectorsHubHidden("SEC EDGAR")).toBe(true)
     expect(isConnectorsHubHidden("nvd")).toBe(true)
@@ -25,7 +25,8 @@ describe("isConnectorsHubHidden", () => {
     expect(isConnectorsHubHidden("zoominfo")).toBe(false)
   })
 
-  it("hides rows flagged gravitree_managed in config even if catalog miss", () => {
+  it("hides rows flagged gravitre_managed in config even if catalog miss", () => {
+    expect(isConnectorsHubHidden("unknown_vendor", { auth_mode: "gravitre_managed" })).toBe(true)
     expect(isConnectorsHubHidden("unknown_vendor", { auth_mode: "gravitree_managed" })).toBe(true)
     expect(isConnectorsHubHidden("unknown_vendor", { authMode: "customer_owned" })).toBe(false)
   })

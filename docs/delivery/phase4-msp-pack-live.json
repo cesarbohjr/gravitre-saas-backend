@@ -13,7 +13,7 @@
       "id": "04b8051e-b815-4b98-b37e-c301ef6a97dd",
       "type": "nvd",
       "status": "active",
-      "authMode": "gravitree_managed"
+      "authMode": "gravitre_managed"
     },
     "stubCount": 0,
     "skippedCount": 2

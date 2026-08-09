@@ -52,7 +52,7 @@ def _supabase_client(env: dict[str, str]):
 def _resolve_org(env: dict[str, str], client) -> tuple[str, str]:
     """Isolated conversation test org only — never inherit OAUTH_SMOKE_ORG_ID."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from gravitree_test_client import require_isolated_org, resolve_test_actor
+    from gravitre_test_client import require_isolated_org, resolve_test_actor
 
     org_id, user_id, _email = resolve_test_actor(env, client)
     override = (env.get("CHAT_E2E_ORG_ID") or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or "").strip()

@@ -40,7 +40,7 @@
     "gmail.messages.send": {
       "available": false,
       "compensating_action": null,
-      "honest_unavailable_reason": "No catalog compensating action exists for this write. Undo is not available \u2014 the vendor change cannot be reversed through Gravitree."
+      "honest_unavailable_reason": "No catalog compensating action exists for this write. Undo is not available \u2014 the vendor change cannot be reversed through Gravitre."
     },
     "hubspot.contacts.create": {
       "available": true,

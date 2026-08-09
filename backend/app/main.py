@@ -457,7 +457,11 @@ async def request_tracing(request: Request, call_next):
 
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request_id_ctx.set(request_id)
-    smoke_header = (request.headers.get("x-gravitree-smoke-run") or "").strip().lower()
+    smoke_header = (
+        request.headers.get("x-gravitre-smoke-run")
+        or request.headers.get("x-gravitree-smoke-run")
+        or ""
+    ).strip().lower()
     set_smoke_run_context(smoke_header in {"1", "true", "yes", "on"})
     start = time.perf_counter()
     try:

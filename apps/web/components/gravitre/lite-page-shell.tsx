@@ -8,7 +8,7 @@
 import type { LucideIcon } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 
 interface LitePageShellProps {
   title: string

@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT / "scripts"))
 from app.config import get_settings
 from app.workflows.repository import get_supabase_client
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     ISOLATED_ORG_ID,
     mark_smoke_run,
     resolve_test_actor,

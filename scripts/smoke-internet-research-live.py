@@ -62,7 +62,7 @@ async def _main() -> int:
         org_hourly_circuit_limit,
     )
     sys.path.insert(0, str(ROOT / "scripts"))
-    from gravitree_test_client import require_isolated_org, resolve_test_actor
+    from gravitre_test_client import require_isolated_org, resolve_test_actor
 
     settings = get_settings()
     client = get_supabase_client(settings)

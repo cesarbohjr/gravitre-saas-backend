@@ -23,12 +23,13 @@ FORBIDDEN_OPERATOR_ORG_ID = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 DEFAULT_ISOLATED_CONVERSATION_TEST_USER_ID = "a9f1240f-910a-42ca-aebf-38caeac288c3"
 DEFAULT_ISOLATED_CONVERSATION_TEST_EMAIL = "conversation-smoke-sa@gravitre.app"
 
-SMOKE_RUN_HEADER = "x-gravitree-smoke-run"
+SMOKE_RUN_HEADER = "x-gravitre-smoke-run"
+LEGACY_SMOKE_RUN_HEADER = "x-gravitree-smoke-run"
 
-_smoke_run_ctx: ContextVar[bool] = ContextVar("gravitree_smoke_run", default=False)
-_request_actor_id_ctx: ContextVar[str | None] = ContextVar("gravitree_request_actor_id", default=None)
+_smoke_run_ctx: ContextVar[bool] = ContextVar("gravitre_smoke_run", default=False)
+_request_actor_id_ctx: ContextVar[str | None] = ContextVar("gravitre_request_actor_id", default=None)
 _request_actor_email_ctx: ContextVar[str | None] = ContextVar(
-    "gravitree_request_actor_email", default=None
+    "gravitre_request_actor_email", default=None
 )
 
 _SMOKE_EMAIL_RE = re.compile(
@@ -48,6 +49,8 @@ def set_smoke_run_context(enabled: bool) -> None:
 
 def mark_smoke_run() -> None:
     """Flag the current process as a smoke/test/CI conversation writer."""
+    os.environ["GRAVITRE_SMOKE_RUN"] = "1"
+    # Legacy spelling kept for older smoke scripts still reading GRAVITREE_*.
     os.environ["GRAVITREE_SMOKE_RUN"] = "1"
     set_smoke_run_context(True)
 
@@ -136,9 +139,9 @@ def is_smoke_test_ci_context() -> bool:
     """
     if _smoke_run_ctx.get():
         return True
-    if _env_truthy("GRAVITREE_SMOKE_RUN"):
+    if _env_truthy("GRAVITRE_SMOKE_RUN") or _env_truthy("GRAVITREE_SMOKE_RUN"):
         return True
-    if _env_truthy("GRAVITREE_CONVERSATION_SMOKE"):
+    if _env_truthy("GRAVITRE_CONVERSATION_SMOKE") or _env_truthy("GRAVITREE_CONVERSATION_SMOKE"):
         return True
     return False
 
@@ -204,4 +207,9 @@ def assert_conversation_create_allowed(
 
 def smoke_http_headers() -> dict[str, str]:
     """Headers smoke HTTP clients should send (second belt; credential check is primary)."""
-    return {SMOKE_RUN_HEADER: "1", "X-Gravitree-Smoke-Run": "1"}
+    return {
+        SMOKE_RUN_HEADER: "1",
+        "X-Gravitre-Smoke-Run": "1",
+        LEGACY_SMOKE_RUN_HEADER: "1",
+        "X-Gravitree-Smoke-Run": "1",
+    }

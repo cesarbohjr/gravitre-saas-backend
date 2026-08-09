@@ -10,7 +10,7 @@ Security review issue: [STA-340](https://linear.app/staqbot/issue/STA-340/extens
 v6 requires **all** of:
 
 1. A specific named surface in a real non-API category  
-2. A documented **real Gravitree operator need** (not hypothetical industry existence)  
+2. A documented **real Gravitre operator need** (not hypothetical industry existence)  
 3. STA-340 security review **passed**
 
 No agentic DOM code until all three. Empty search ⇒ close roadmap at v5 (legitimate complete outcome).
@@ -22,11 +22,11 @@ The prior usage-signal mine looked at tip `extension.usage_signal` rows (LinkedI
 - Allowlisted CRM/mail hosts are **catalog territory by definition**  
 - Smoke fixtures are not operator demand  
 
-This pass searches the **right** territory: industry computer-use categories × Gravitree’s **actual** product/customer evidence.
+This pass searches the **right** territory: industry computer-use categories × Gravitre’s **actual** product/customer evidence.
 
 ## What was ruled OUT (catalog / buildable API)
 
-Anything already reachable via an existing **or buildable** governed catalog connector — CRM, marketing, ticketing with documented public APIs — is **out of scope for v6** even if Gravitree has not shipped the connector yet.
+Anything already reachable via an existing **or buildable** governed catalog connector — CRM, marketing, ticketing with documented public APIs — is **out of scope for v6** even if Gravitre has not shipped the connector yet.
 
 Examples explicitly ruled out for v6:
 
@@ -36,11 +36,11 @@ Examples explicitly ruled out for v6:
 | Zendesk, Jira, QuickBooks, NetSuite, Asana, Monday, etc. | Documented APIs → connector/catalog backlog |
 | **ConnectWise, Datto** | Named in `backend/app/domain/profiles/msp.yaml` as `connector_preferences` only; both have public/partner APIs → **catalog backlog if prioritized**, not DOM |
 
-## Category search × Gravitree evidence
+## Category search × Gravitre evidence
 
 Industry computer-use categories checked against repo + Linear (not “does such a site exist on the internet”).
 
-| Category | What we looked for | Finding in Gravitree evidence |
+| Category | What we looked for | Finding in Gravitre evidence |
 |----------|-------------------|-------------------------------|
 | 1. Legacy enterprise / ERP / accounting (no API) | Named customer workflow blocked by portal-only UI | **None.** Financial tools in roadmap (QuickBooks, NetSuite) are API connectors (Tier 2). |
 | 2. Government / municipal / utility portals | Permit, license, compliance filings named by operators | **None** in docs, Linear, or packs. |
@@ -83,7 +83,7 @@ No exact site/system + exact operator need + evidence of real (not hypothetical)
 
 **CLOSE THE EXTENSION ROADMAP AT v5.**
 
-This is a thorough, correctly scoped search. Re-open only with **new information**: a named non-API surface **and** documented Gravitree operator need (ticket, sales note, or signed operator statement). Do not re-litigate from industry category lists alone.
+This is a thorough, correctly scoped search. Re-open only with **new information**: a named non-API surface **and** documented Gravitre operator need (ticket, sales note, or signed operator statement). Do not re-litigate from industry category lists alone.
 
 STA-340 remains the security-review vehicle **if/when** a surface is named; it is **not** the next build step. No agentic DOM code.
 
@@ -91,6 +91,6 @@ STA-340 remains the security-review vehicle **if/when** a surface is named; it i
 
 - [ ] Exact host/product UI named  
 - [ ] Proof no governed API exists (or cannot be productized)  
-- [ ] Documented Gravitree operator need (who, how often, which workflow)  
+- [ ] Documented Gravitre operator need (who, how often, which workflow)  
 - [ ] STA-340 threat model + sign-off for that surface  
 - [ ] Only then: design / build / live Outcomes proof  

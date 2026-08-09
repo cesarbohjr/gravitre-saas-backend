@@ -28,7 +28,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     get_service_client,
     load_env,
     require_isolated_org,
@@ -223,7 +223,7 @@ def http_json(
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("X-Org-Id", org_id)
     req.add_header("X-Environment", ENV_NAME)
-    req.add_header("X-Gravitree-Smoke-Run", "1")
+    req.add_header("X-Gravitre-Smoke-Run", "1")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     try:

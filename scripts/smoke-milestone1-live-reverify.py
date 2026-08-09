@@ -72,10 +72,10 @@ def main() -> int:
     env = dict(__import__("os").environ)
     env.setdefault("BACKEND_URL", args.base_url)
     env.setdefault("ROUTING_WAVE_ALLOW_ANY_SHA", "1")
-    env["GRAVITREE_SMOKE_RUN"] = "1"
+    env["GRAVITRE_SMOKE_RUN"] = "1"
     # Conversation smokes must not inherit operator-org OAUTH_SMOKE_ORG_ID.
     sys.path.insert(0, str(REPO / "scripts"))
-    from gravitree_test_client import ISOLATED_ORG_ID, require_isolated_org  # noqa: E402
+    from gravitre_test_client import ISOLATED_ORG_ID, require_isolated_org  # noqa: E402
 
     env.setdefault("ISOLATED_CONVERSATION_TEST_ORG_ID", ISOLATED_ORG_ID)
     require_isolated_org(env.get("ISOLATED_CONVERSATION_TEST_ORG_ID"))

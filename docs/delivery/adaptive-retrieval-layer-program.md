@@ -94,7 +94,7 @@ Standard Tavily API tier: governance insufficient (training/retention); Enterpri
 - **Same GCP project** as GSC OAuth / Gravitre OAuth client (not just “same vendor”).
 - **Governance win:** Training Restriction on standard paid GCP; **caveat preserved:** no-training ≠ zero-retention (~30-day debug retention; zero-retention via DPA add-on).
 - **List pricing (verified 2026-07-18):** $0/1k for first **10k grounding counts/day/account**; **$35/1k** above that (+ Gemini tokens). Source: [Google pricing — Example #2](https://cloud.google.com/generative-ai-app-builder/pricing).
-- **Volume cost model at Gravitree scale:** **NOT RUN** — owner go/no-go still required before enablement.
+- **Volume cost model at Gravitre scale:** **NOT RUN** — owner go/no-go still required before enablement.
 
 **Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until all enablement gates below are satisfied.
 
@@ -106,13 +106,13 @@ Governance (“safe to use”) and economics (“safe to offer”) are **differe
 |---|------|--------|-------|
 | 1 | **Governance sign-off** | **CLOSED** | Grounding with Google Search recommended; no-training ≠ zero-retention caveat preserved. This close ≠ authorization to flip the flag. |
 | 2 | **Volume estimate for cost forecasting** | **NOT RUN** | Owner must forecast daily grounding counts + token spend before go/no-go. |
-| 3 | **Metering / credit pass-through with margin** | **NOT BUILT — named precondition** | Grounding + token costs scale with customer usage; must not be absorbed on Gravitree’s books without a revenue lever. See below. |
+| 3 | **Metering / credit pass-through with margin** | **NOT BUILT — named precondition** | Grounding + token costs scale with customer usage; must not be absorbed on Gravitre’s books without a revenue lever. See below. |
 
 **Sequencing (2026-07-18):** Gate 3 is a **real, named blocker** on the canvas but **not built now** — same discipline as not building capability before it is needed. Pick up metering work only when seriously considering flipping the flag (after gate 2).
 
 #### Why metering is required (not optional)
 
-Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per account**, plus **Gemini tokens** on top. If internet research becomes popular, Gravitree’s cloud bill scales linearly with customer demand. Without pass-through (with margin), that is unbounded demand-driven cost with no corresponding revenue — fine in a pilot, problematic at scale.
+Google bills Gravitre **~$35/1k grounding counts/day above 10k free tier per account**, plus **Gemini tokens** on top. If internet research becomes popular, Gravitre’s cloud bill scales linearly with customer demand. Without pass-through (with margin), that is unbounded demand-driven cost with no corresponding revenue — fine in a pilot, problematic at scale.
 
 #### Existing usage-billing primitives (repo audit, 2026-07-18)
 
@@ -122,7 +122,7 @@ Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per ac
 | **`ai_credits` + Node/Control/Command plans** | **Live** — token-derived credits from `model_calls`; included quotas per plan; Stripe Billing Meter reporting via `backend/app/billing/stripe_metering.py` when metered price IDs configured | **Partial** — grounded-generation **Gemini tokens** might map to existing `ai_credits`; **Google Search grounding surcharge** ($35/1k above free tier) is a **separate cost line** not represented in token math |
 | **`intelligence_usage_logs`** (Intelligence Pack per-request cost logging) | **Not built** — proposed in Phase 0 MSP docs; **absent from repo** (`docs/delivery/phase0-executive-sales-msp-intelligence-packs.md`) | N/A — pack-specific future table; would need **extension or parallel path** for non-pack actions like internet research |
 
-**Conclusion:** Gravitree has a **general org-level metering spine** (`usage_tracking` → Stripe meter for `ai_credits`), but **nothing today meters or bills internet-research / grounding calls**. Enabling the flag for customers requires extending that spine — not just adding a Google provider.
+**Conclusion:** Gravitre has a **general org-level metering spine** (`usage_tracking` → Stripe meter for `ai_credits`), but **nothing today meters or bills internet-research / grounding calls**. Enabling the flag for customers requires extending that spine — not just adding a Google provider.
 
 #### Two decisions — do not collapse them
 
@@ -139,7 +139,7 @@ Decision A (which primitive) and Decision B (how plans price it) are related but
 
 - Assumes uniform usage across customers on a tier — breaks when usage is skewed (internal-only shops vs MSP pack customers hammering CVE/advisory lookups).
 - Light users subsidize heavy users; research/lookup features tend toward heavy skew.
-- **Margin risk in the wrong direction:** Google’s $35/1k is overage-tier pricing; if Gravitree eats a flat monthly cost regardless of actual grounding volume, one heavy customer past Google’s free tier can cost more than the flat fee recovers, while low-use customers are pure margin — inverted vs how variable cloud costs should be priced.
+- **Margin risk in the wrong direction:** Google’s $35/1k is overage-tier pricing; if Gravitre eats a flat monthly cost regardless of actual grounding volume, one heavy customer past Google’s free tier can cost more than the flat fee recovers, while low-use customers are pure margin — inverted vs how variable cloud costs should be priced.
 - Architecturally mismatched: variable-cost feature priced as fixed fee.
 
 **Better fit: usage-based via `ai_credits` (matches existing stack)**
@@ -162,11 +162,11 @@ Tie research to **plan tier**, not signup. One **included allotment** per tier; 
 | Perplexity Pro ($20/mo) | bundled fair-use | effectively unlimited within cap |
 | Perplexity Enterprise Pro ($40/seat/mo) | ~1,733 searches/mo bundled | ~$23 all-in |
 | Perplexity Enterprise Max ($325/seat/mo) | ~17,320/mo bundled | ~$18.8 all-in |
-| **Google Grounded Generation** (Gravitree path) | $0 to 10k/day/account; $35/1k above | **$0–35** depending on volume |
+| **Google Grounded Generation** (Gravitre path) | $0 to 10k/day/account; $35/1k above | **$0–35** depending on volume |
 
 Market per-query economics sit roughly **$5–23/1k**; Google’s **$35/1k is the high end**, offset by **10k/day/account free tier**. Size allotments assuming most usage stays under Google’s free line — not that every query costs $35.
 
-#### Gravitree scale vs Google free tier (reframes COGS)
+#### Gravitre scale vs Google free tier (reframes COGS)
 
 **Verified list prices** @ [gravitre.app/pricing](https://gravitre.app/pricing) (fetched 2026-07-18): Node **$49**, Control **$129**, Command **$299**; output caps **10 / 40 / 120** per month. Pay-as-you-go precedent: Additional Outputs **$2–3**, Additional Mesons **$2–4**.
 

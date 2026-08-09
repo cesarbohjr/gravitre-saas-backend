@@ -1,4 +1,4 @@
-/** Gmail thread context → Gravitree overlay (user-invoked via action). */
+/** Gmail thread context → Gravitre overlay (user-invoked via action). */
 (function () {
   function extractGmail() {
     const email =
@@ -19,8 +19,8 @@
   }
 
   function open() {
-    if (!window.__gravitreeOverlay) return
-    window.__gravitreeOverlay.renderOverlay({
+    if (!window.__gravitreOverlay) return
+    window.__gravitreOverlay.renderOverlay({
       pageUrl: location.href,
       pageContext: extractGmail(),
     })

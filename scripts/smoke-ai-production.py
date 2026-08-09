@@ -158,7 +158,7 @@ def _request(
     if org_id:
         req.add_header("X-Org-Id", org_id)
     req.add_header("X-Environment", ENV_NAME)
-    req.add_header("X-Gravitree-Smoke-Run", "1")
+    req.add_header("X-Gravitre-Smoke-Run", "1")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -182,7 +182,7 @@ def _request_text(
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("X-Org-Id", org_id)
     req.add_header("X-Environment", ENV_NAME)
-    req.add_header("X-Gravitree-Smoke-Run", "1")
+    req.add_header("X-Gravitre-Smoke-Run", "1")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=timeout) as resp:

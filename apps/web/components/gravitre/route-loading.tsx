@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { CenteredLoader, type CenteredLoaderFill } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader, type CenteredLoaderFill } from "@/components/gravitre/gravitre-loader"
 
 /**
  * Layout hint kept for backwards compatibility: all `loading.tsx` files pass a

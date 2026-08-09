@@ -112,7 +112,7 @@ async def resolve_unified_live_channel_override_reply(
     settings: Settings | None = None,
 ) -> "UnifiedTurnShadowResult | None":
     """Deterministic channel correction (e.g. 'No use Gmail' after wrong connector proposal)."""
-    from app.services.gravitree_voice import detect_channel_override_integration
+    from app.services.gravitre_voice import detect_channel_override_integration
     from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
 
     override = detect_channel_override_integration(message)

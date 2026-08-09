@@ -18,7 +18,7 @@ from app.marketplace.workflows.msp_prospecting_list_workflow import (
     WORKFLOW_SLUG,
 )
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
-from app.services.gravitree_connector_activation import activate_gravitree_connector
+from app.services.gravitre_connector_activation import activate_gravitre_connector
 from app.workflows.constants import SCHEMA_VERSION
 
 logger = get_logger(__name__)
@@ -65,7 +65,7 @@ def _activate_connector_type(
     if not connector_id:
         return None
     try:
-        return activate_gravitree_connector(
+        return activate_gravitre_connector(
             client,
             org_id=org_id,
             connector_id=connector_id,
@@ -324,7 +324,7 @@ def install_msp_pack_demo_bundle(
         org_id=org_id,
         agent_id=vuln_id,
         name="MSP Vulnerability Analyst",
-        purpose="Reads Gravitree-managed vulnerability feeds (NVD / CISA KEV) for MSP ops.",
+        purpose="Reads Gravitre-managed vulnerability feeds (NVD / CISA KEV) for MSP ops.",
         role="analyst",
         department="msp",
         capabilities=["vulnerability_intelligence", "nvd_lookup"],

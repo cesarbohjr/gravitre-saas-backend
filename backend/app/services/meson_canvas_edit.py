@@ -244,7 +244,7 @@ async def _llm_edit(
             task_type=TaskType.WORKFLOW_PLANNING,
             prompt=prompt,
             system_prompt=(
-                "You are Meson, Gravitree's workflow editor. Propose the smallest correct "
+                "You are Meson, Gravitre's workflow editor. Propose the smallest correct "
                 "graph change. Never execute writes — structure only."
             ),
             org_id=org_id,
@@ -454,7 +454,7 @@ async def explain_workflow(
     model_router: ModelRouter | None = None,
 ) -> MesonExplainResult:
     """Plain-language explanation of the real node graph (Module D voice, Phase 5.1)."""
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     wf = get_workflow_def(client, org_id, workflow_id)
     if not wf:
@@ -494,7 +494,7 @@ async def explain_workflow(
             task_type=TaskType.SUMMARIZATION,
             prompt=prompt,
             system_prompt=(
-                "You are Gravitree's operator voice: clear, direct, no hype. "
+                "You are Gravitre's operator voice: clear, direct, no hype. "
                 "Explain the workflow graph honestly."
             ),
             org_id=org_id,

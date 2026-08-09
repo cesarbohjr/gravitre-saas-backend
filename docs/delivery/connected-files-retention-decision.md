@@ -5,7 +5,7 @@
 
 ## Decision
 
-Fetched connected-file content is **not** persisted in Gravitree storage (`rag_documents`, Supabase Storage, or any durable org datastore).
+Fetched connected-file content is **not** persisted in Gravitre storage (`rag_documents`, Supabase Storage, or any durable org datastore).
 
 | Layer | Retention | Rationale |
 |-------|-----------|-----------|

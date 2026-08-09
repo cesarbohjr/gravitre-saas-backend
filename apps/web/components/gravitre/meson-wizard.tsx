@@ -33,7 +33,7 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
-import { GravitreeLoader } from "@/components/gravitre/gravitree-loader"
+import { GravitreLoader } from "@/components/gravitre/gravitre-loader"
 import { formatPlanPrice, getPlan } from "@/lib/plans"
 
 interface MesonWizardProps {
@@ -666,7 +666,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 className="py-12 text-center"
               >
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
-                  <GravitreeLoader size="md" />
+                  <GravitreLoader size="md" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   Meson is building your system...

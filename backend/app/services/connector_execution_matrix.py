@@ -252,7 +252,7 @@ def skip_reason_for_entry(
     *,
     connected: bool,
 ) -> str | None:
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     if entry is None:
         return format_operator_message(

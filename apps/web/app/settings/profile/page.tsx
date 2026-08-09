@@ -34,7 +34,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 import { mutate as globalMutate } from "swr"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 

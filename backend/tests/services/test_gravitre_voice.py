@@ -1,11 +1,11 @@
-"""Module D — Gravitree Voice Layer unit tests."""
+"""Module D — Gravitre Voice Layer unit tests."""
 from __future__ import annotations
 
 import pytest
 
-from app.services.gravitree_voice import (
+from app.services.gravitre_voice import (
     CHEV_TERMS,
-    GRAVITREE_VOICE_RULES,
+    GRAVITRE_VOICE_RULES,
     HOUSE_PHRASING,
     VOICE_SECTION_HEADER,
     anti_repeat_prompt_section,
@@ -67,7 +67,7 @@ def test_voice_section_contains_chev_and_core_traits():
     assert "Confidence register" in section
     assert "Humor budget" in section
     assert HOUSE_PHRASING["insufficient_info"] in section
-    assert len(GRAVITREE_VOICE_RULES) >= 8
+    assert len(GRAVITRE_VOICE_RULES) >= 8
 
 
 def test_apply_voice_idempotent():
@@ -143,7 +143,7 @@ def test_notification_failure_body_uses_blocked_register():
 
 
 def test_format_confidence_for_voice_labels_estimates():
-    from app.services.gravitree_voice import format_confidence_for_voice
+    from app.services.gravitre_voice import format_confidence_for_voice
 
     text = format_confidence_for_voice(0.72, is_estimate=True)
     assert text.startswith("Estimate —")

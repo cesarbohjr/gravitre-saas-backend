@@ -8,7 +8,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "apps" / "extension"
 OUT_DIR = SRC / "dist"
-OUT = OUT_DIR / "gravitree-extension-chrome.zip"
+OUT = OUT_DIR / "gravitre-extension-chrome.zip"
 SKIP_DIRS = {".git", "node_modules", "dist", "store", "__pycache__"}
 SKIP_SUFFIXES = {".map", ".md"}
 

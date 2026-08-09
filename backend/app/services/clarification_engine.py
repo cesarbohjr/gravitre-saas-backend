@@ -295,7 +295,7 @@ class ClarificationEngine:
 
         # Generic catalog write clarification — live ledger read every turn.
         # Replaces Slack/Gmail-specific staging helpers (deleted).
-        from app.services.gravitree_voice import detect_channel_override_integration
+        from app.services.gravitre_voice import detect_channel_override_integration
 
         channel_override = detect_channel_override_integration(request)
         if classification.get("requires_action") and (
@@ -340,7 +340,7 @@ class ClarificationEngine:
             if not clarified.get("resolved_entity"):
                 # Phase 5 — user corrections ("actually / I meant / use X instead")
                 # are not platform-item asks.
-                from app.services.gravitree_voice import detect_correction_phrase
+                from app.services.gravitre_voice import detect_correction_phrase
 
                 if detect_correction_phrase(request):
                     return None
@@ -717,7 +717,7 @@ class ClarificationEngine:
     def _infer_catalog_write_plan(self, request: str) -> Any | None:
         """Map NL write intent to a catalog action for generic clarify/stage."""
         from app.services.chat_connector_models import ConnectorActionPlan
-        from app.services.gravitree_voice import detect_channel_override_integration
+        from app.services.gravitre_voice import detect_channel_override_integration
 
         override = detect_channel_override_integration(request)
         if override == "gmail" or self.EMAIL_SEND_PATTERN.search(request):

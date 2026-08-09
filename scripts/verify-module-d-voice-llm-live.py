@@ -76,7 +76,7 @@ def main() -> int:
     for k, v in env.items():
         os.environ.setdefault(k, v)
 
-    from app.services.gravitree_voice import HOUSE_PHRASING, voice_system_prompt_section
+    from app.services.gravitre_voice import HOUSE_PHRASING, voice_system_prompt_section
     from supabase import create_client
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])

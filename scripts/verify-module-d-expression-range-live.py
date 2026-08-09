@@ -145,7 +145,7 @@ async def main() -> int:
         "Content-Type": "application/json",
     }
 
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
     from app.services.voice_expression_range import (
         all_expressions,
         assert_fact_tokens_consistent,

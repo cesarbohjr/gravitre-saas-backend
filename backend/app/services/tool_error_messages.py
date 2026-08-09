@@ -1,13 +1,13 @@
 """Map tool/connector error_code values to actionable user-facing copy.
 
 Wave 3 — stop LLM-narrated generic failures when a structured error_code exists.
-Copy is owned by Module D gravitree_voice; this module is the adapter.
+Copy is owned by Module D gravitre_voice; this module is the adapter.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from app.services.gravitree_voice import format_operator_message
+from app.services.gravitre_voice import format_operator_message
 
 # Codes that should short-circuit ReAct instead of letting the model paraphrase.
 REACT_SHORT_CIRCUIT_ERROR_CODES = frozenset(

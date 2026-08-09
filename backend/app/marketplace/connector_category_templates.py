@@ -150,13 +150,13 @@ def connector_stub_coverage(
 CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
     "executive-intelligence-sources": {
         "name": "Executive Intelligence Sources",
-        "description": "Gravitree-managed public/aggregate sources (FRED, SEC, World Bank, OECD).",
+        "description": "Gravitre-managed public/aggregate sources (FRED, SEC, World Bank, OECD).",
         "connectors": ["fred", "sec_edgar", "world_bank", "oecd", "opencorporates"],
     },
     "msp-intelligence-sources": {
         "name": "MSP Intelligence Sources",
         "description": (
-            "MSP prospecting stubs (Apollo + HubSpot) plus Gravitree-managed "
+            "MSP prospecting stubs (Apollo + HubSpot) plus Gravitre-managed "
             "vulnerability feeds (NVD, CISA KEV)."
         ),
         "connectors": ["apollo", "hubspot", "nvd", "cisa_kev"],

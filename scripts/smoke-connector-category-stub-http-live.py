@@ -47,11 +47,11 @@ REQUIRED_TEMPLATE_IDS = frozenset(TEMPLATES)
 OUT = REPO / "docs" / "delivery" / "phase1-needs-connection-stub-http-live.json"
 FORBIDDEN_STATUSES = frozenset({"active", "connected", "healthy"})
 EXPECTED_AUTH = {
-    "fred": "gravitree_managed",
-    "sec_edgar": "gravitree_managed",
-    "world_bank": "gravitree_managed",
-    "oecd": "gravitree_managed",
-    "opencorporates": "gravitree_managed",
+    "fred": "gravitre_managed",
+    "sec_edgar": "gravitre_managed",
+    "world_bank": "gravitre_managed",
+    "oecd": "gravitre_managed",
+    "opencorporates": "gravitre_managed",
     "zoominfo": "byo_required",
     "linkedin_sales_navigator": "byo_required",
 }

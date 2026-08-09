@@ -11,7 +11,7 @@ Standing gates unchanged: live evidence for every claim; findings report before 
 ## Cursor Prompt — Full QA and System Optimization Sweep
 
 GOAL
-Run a comprehensive QA and performance audit across Gravitree's entire
+Run a comprehensive QA and performance audit across Gravitre's entire
 web platform (marketing site + app) and backend, covering functional
 correctness, performance, and code hygiene. This is an AUDIT — findings
 first, fixes batched and reviewed, not a blind "fix everything you find"

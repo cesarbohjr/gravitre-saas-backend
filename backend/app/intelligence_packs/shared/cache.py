@@ -1,4 +1,4 @@
-"""In-memory TTL cache for gravitree-managed intelligence sources (Phase 1)."""
+"""In-memory TTL cache for gravitre-managed intelligence sources (Phase 1)."""
 from __future__ import annotations
 
 import time

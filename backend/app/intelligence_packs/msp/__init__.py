@@ -1,4 +1,4 @@
-"""MSP gravitree sources — NVD + CISA KEV (graceful degrade)."""
+"""MSP gravitre sources — NVD + CISA KEV (graceful degrade)."""
 from __future__ import annotations
 
 import os

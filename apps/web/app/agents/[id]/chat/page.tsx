@@ -17,7 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
 import { CHAT_COMPOSER_CLASS } from "@/lib/chat-typography"

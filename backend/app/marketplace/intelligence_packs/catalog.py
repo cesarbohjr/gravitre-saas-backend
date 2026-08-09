@@ -62,7 +62,7 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 "Brand, campaign, HubSpot, GA4, Google Search Console, and creative knowledge. "
                 "GSC page/URL aggregates may feed pack signals; raw search-query strings are "
                 "gated from Memory/KG (STA-312 pattern). SEMrush/Ahrefs/People Data Labs are BYO "
-                "API keys only (no shared Gravitree key)."
+                "API keys only (no shared Gravitre key)."
             ),
             marketplace_tags=["marketing", "starter", "intelligence-pack", "seo"],
             assignments=[
@@ -581,10 +581,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             default_subdomain="outbound_prospecting",
             description=(
                 "MSP company prospecting + list building (Apollo/HubSpot agents & tasks), plus "
-                "Gravitree-managed vulnerability knowledge assignments (NVD / CISA KEV) for the "
+                "Gravitre-managed vulnerability knowledge assignments (NVD / CISA KEV) for the "
                 "MSP Vulnerability Analyst. CIS Controls deferred."
             ),
-            marketplace_tags=["msp", "starter", "intelligence-pack", "gravitree", "prospecting"],
+            marketplace_tags=["msp", "starter", "intelligence-pack", "gravitre", "prospecting"],
             assignments=[
                 IntelligencePackAssignment(
                     "knowledge_pack",
@@ -652,10 +652,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             department="executive",
             default_subdomain="macro_intelligence",
             description=(
-                "Gravitree-managed macro intelligence: FRED/SEC/World Bank/OECD sources, "
+                "Gravitre-managed macro intelligence: FRED/SEC/World Bank/OECD sources, "
                 "executive analyst agent, and a read-only FRED signal workflow."
             ),
-            marketplace_tags=["executive", "starter", "intelligence-pack", "gravitree"],
+            marketplace_tags=["executive", "starter", "intelligence-pack", "gravitre"],
             assignments=[
                 IntelligencePackAssignment(
                     "knowledge_pack",
@@ -671,7 +671,7 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "SEC EDGAR Filings",
                     "executive",
                     "regulatory",
-                    reference_summary="SEC company filings lookup (Gravitree-managed; activation may require SEC_USER_AGENT).",
+                    reference_summary="SEC company filings lookup (Gravitre-managed; activation may require SEC_USER_AGENT).",
                 ),
                 IntelligencePackAssignment(
                     "knowledge_pack",

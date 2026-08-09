@@ -230,7 +230,7 @@ def load_audits(client, org_id: str, conversation_id: str, since_iso: str) -> li
 
 
 def analyze_correction_thread(thread: list[dict[str, Any]], task_state: dict | None) -> dict[str, Any]:
-    from app.services.gravitree_voice import detect_correction_phrase
+    from app.services.gravitre_voice import detect_correction_phrase
     from app.services.pending_reply_classifier import (
         build_pending_snapshot,
         classify_pending_reply_fast,

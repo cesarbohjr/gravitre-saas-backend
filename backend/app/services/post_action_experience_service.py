@@ -4,7 +4,7 @@ recommendation-on-completion, and failure-to-action bridges.
 Hard rules:
 - Recommendations are suggest-only (advisoryOnly). Never invoke tools or stage writes.
 - Preview uses existing catalog *read* actions only.
-- All user-facing copy goes through Module D gravitree_voice patterns where applicable.
+- All user-facing copy goes through Module D gravitre_voice patterns where applicable.
 - Module C honesty: heuristic confidence is always labeled as estimate.
 """
 from __future__ import annotations

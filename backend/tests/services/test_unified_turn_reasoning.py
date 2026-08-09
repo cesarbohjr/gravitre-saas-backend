@@ -472,7 +472,7 @@ async def test_apply_unified_live_channel_override_no_use_gmail():
 async def test_apply_unified_live_meta_capability_uses_expression_path(message: str):
     settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
     meta_text = (
-        "I am Gravitree — a calm operator for your Connected tools. Connected for this org right now: Apollo."
+        "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo."
     )
 
     with patch(

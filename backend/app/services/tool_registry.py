@@ -527,7 +527,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
         AgentToolSpec(
             name="fred_get_series",
             description=(
-                "Fetch a FRED macro time-series observation (Gravitree-managed). "
+                "Fetch a FRED macro time-series observation (Gravitre-managed). "
                 "Use for US GDP, unemployment, inflation, and other FRED series_id values."
             ),
             parameters={
@@ -546,7 +546,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
         AgentToolSpec(
             name="nvd_get_cve",
             description=(
-                "Look up a CVE in the NIST NVD catalog (Gravitree-managed). "
+                "Look up a CVE in the NIST NVD catalog (Gravitre-managed). "
                 "Use when the agent needs vulnerability details for a CVE id."
             ),
             parameters={
@@ -566,7 +566,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             name="cisa_kev_get_feed",
             description=(
                 "Fetch a sample of the CISA Known Exploited Vulnerabilities catalog "
-                "(Gravitree-managed public feed)."
+                "(Gravitre-managed public feed)."
             ),
             parameters={
                 "type": "object",
@@ -580,7 +580,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             name="sec_edgar_search_filings",
             description=(
                 "Search SEC EDGAR for recent company filings (10-K/10-Q/8-K). "
-                "Gravitree-managed; requires SEC_USER_AGENT on the platform."
+                "Gravitre-managed; requires SEC_USER_AGENT on the platform."
             ),
             parameters={
                 "type": "object",
@@ -900,7 +900,7 @@ class ToolRegistry:
     def _connected(self, spec: AgentToolSpec, connected_integrations: list[str]) -> bool:
         if spec.always_available:
             return True
-        # Phase 3: gravitree-managed sources use platform keys — available without tenant OAuth
+        # Phase 3: gravitre-managed sources use platform keys — available without tenant OAuth
         if spec.integration in {"fred", "nvd"}:
             return True
         connected = {str(c).strip().lower() for c in connected_integrations}

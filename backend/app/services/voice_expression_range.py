@@ -43,7 +43,7 @@ EXPRESSION_BANKS: dict[str, tuple[str, ...]] = {
         "Hello. Tell me what you want to run or review.",
         "Hey there. I'm around for Connected tools, plans, or a status check.",
         "Morning. What are we working on?",
-        "Hi — what do you need from Gravitree right now?",
+        "Hi — what do you need from Gravitre right now?",
     ),
     "conversational.small_talk": (
         "Doing well — here when you need a connector run, a plan, or a quick check.",
@@ -88,10 +88,10 @@ EXPRESSION_BANKS: dict[str, tuple[str, ...]] = {
         "Got it. Empathy first: that setup pain is real. Dig in at /connectors when you want.",
     ),
     "conversational.meta_capability": (
-        "I am Gravitree — a calm operator for your Connected tools. {capability}",
-        "I'm Gravitree: I run Connected connectors with write-authority and approval when needed. {capability}",
-        "Gravitree here — operator for your Connected stack, not a generic chatbot. {capability}",
-        "I'm the Gravitree operator for this org's Connected tools. {capability}",
+        "I am Gravitre — a calm operator for your Connected tools. {capability}",
+        "I'm Gravitre: I run Connected connectors with write-authority and approval when needed. {capability}",
+        "Gravitre here — operator for your Connected stack, not a generic chatbot. {capability}",
+        "I'm the Gravitre operator for this org's Connected tools. {capability}",
         "Think of me as a calm operator over Connected connectors and packs. {capability}",
         "I help you run real Connected tools with explicit approval on writes. {capability}",
     ),
@@ -307,16 +307,16 @@ EXPRESSION_BANKS: dict[str, tuple[str, ...]] = {
 VOICE_EXPRESSION_STATE_KEY = "voice_expression_last"
 
 _voice_last_indices: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
-    "gravitree_voice_expression_last", default=None
+    "gravitre_voice_expression_last", default=None
 )
 # Category → index chosen this turn (same category must not rotate mid-turn).
 _voice_chosen_this_turn: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
-    "gravitree_voice_expression_chosen", default=None
+    "gravitre_voice_expression_chosen", default=None
 )
 # Optional (conversation_id, org_id, client, settings) for persist after rotation.
 _voice_persist_target: contextvars.ContextVar[
     tuple[str, str, Any, Any] | None
-] = contextvars.ContextVar("gravitree_voice_expression_persist", default=None)
+] = contextvars.ContextVar("gravitre_voice_expression_persist", default=None)
 
 
 def next_variant_index(count: int, last_index: int | None) -> int:

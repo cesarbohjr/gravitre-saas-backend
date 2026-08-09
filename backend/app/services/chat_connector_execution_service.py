@@ -1072,7 +1072,7 @@ class ChatConnectorExecutionService:
                 )
             except Exception:  # noqa: BLE001
                 pass
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             return {
                 "stop_pipeline": True,
@@ -1243,7 +1243,7 @@ class ChatConnectorExecutionService:
         if blocked:
             # Module A + D: terminal blocked write still fans out (Runs/Notify/Audit/Learning)
             # and uses voice SoT — do not soft-return outside finalize_execution_outcome.
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             voiced = format_operator_message(
                 "connector_connect_to_run",
@@ -2592,8 +2592,8 @@ class ChatConnectorExecutionService:
         result_url = (
             f"/approvals?id={approval_id}" if approval_id else "/approvals"
         )
-        # Requester acknowledgment — titles/bodies from Module D gravitree_voice
-        from app.services.gravitree_voice import format_operator_message
+        # Requester acknowledgment — titles/bodies from Module D gravitre_voice
+        from app.services.gravitre_voice import format_operator_message
 
         try:
             emit_notification(

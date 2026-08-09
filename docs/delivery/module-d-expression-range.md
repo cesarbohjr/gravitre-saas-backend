@@ -1,10 +1,10 @@
 # Module D — Expression range (phrase variety)
 
-Expands **how many ways** Gravitree can say the same category of thing.
+Expands **how many ways** Gravitre can say the same category of thing.
 Does **not** change classification, turn-controller intent, or Module B range-expansion logic.
 
 SoT: [`voice_expression_range.py`](../../backend/app/services/voice_expression_range.py) +
-[`gravitree_voice.py`](../../backend/app/services/gravitree_voice.py).
+[`gravitre_voice.py`](../../backend/app/services/gravitre_voice.py).
 
 ## Part 1 — Recurring response categories
 
@@ -44,7 +44,7 @@ SoT: [`voice_expression_range.py`](../../backend/app/services/voice_expression_r
 
 ```bash
 pytest backend/tests/services/test_voice_expression_range.py \
-  backend/tests/services/test_gravitree_voice.py -q
+  backend/tests/services/test_gravitre_voice.py -q
 python scripts/verify-module-d-expression-range-live.py
 ```
 

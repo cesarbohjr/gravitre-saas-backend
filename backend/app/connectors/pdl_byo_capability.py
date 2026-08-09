@@ -1,4 +1,4 @@
-"""People Data Labs BYO labeling — catalog honesty (no shared Gravitree key).
+"""People Data Labs BYO labeling — catalog honesty (no shared Gravitre key).
 
 Tenant connects their own API key from https://dashboard.peopledatalabs.com/
 Live enrich tools may run with that key; contact-level Memory/KG persistence
@@ -15,7 +15,7 @@ PDL_REQUIREMENT_NOTE = (
 
 PDL_CAPABILITY_NOTES = (
     "Can enrich people/companies? requires: your own People Data Labs API plan "
-    "(BYO — no shared Gravitree key)",
+    "(BYO — no shared Gravitre key)",
     "Executor status: v1 live — person.enrich + company.enrich (session/cache only; no Memory/KG)",
 )
 

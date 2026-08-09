@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify Gravitree tests by pyramid layer (unit / integration / live-prod battery).
+"""Classify Gravitre tests by pyramid layer (unit / integration / live-prod battery).
 
 Writes JSON for delivery tracking — does not run tests.
 """

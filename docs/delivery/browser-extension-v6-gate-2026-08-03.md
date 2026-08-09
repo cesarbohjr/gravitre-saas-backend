@@ -41,7 +41,7 @@ Path: mine `extension.usage_signal` → classify → commission security review 
 
 ## Correct-scope search (2026-08-04) — CLOSE AT v5
 
-Scoping correction (not a re-run of tip usage-signal smoke): searched industry computer-use categories (legacy/no-API enterprise, government portals, vendor/MSP/supplier portals, internal admin panels) against Gravitree’s **actual** MSP pack scope, ICP/positioning, and VOC sources.
+Scoping correction (not a re-run of tip usage-signal smoke): searched industry computer-use categories (legacy/no-API enterprise, government portals, vendor/MSP/supplier portals, internal admin panels) against Gravitre’s **actual** MSP pack scope, ICP/positioning, and VOC sources.
 
 | Check | Result |
 |-------|--------|

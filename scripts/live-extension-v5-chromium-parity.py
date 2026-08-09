@@ -213,7 +213,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
     ws_url = version.get("webSocketDebuggerUrl")
     try:
         async with CdpClient(ws_url) as cdp:
-            # Discover Gravitree MV3 service worker (prefer background.js).
+            # Discover Gravitre MV3 service worker (prefer background.js).
             sw_target = None
             candidates: list[dict] = []
             for _ in range(40):
@@ -257,7 +257,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                                 session_id=sess_try,
                             )
                             meta = ((name_eval.get("result") or {}).get("value")) or {}
-                            if str(meta.get("name") or "").lower() == "gravitree":
+                            if str(meta.get("name") or "").lower() == "gravitre":
                                 sw_target = cand
                                 session = sess_try
                                 cases["extensionManifest"] = meta
@@ -366,7 +366,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                     "pageUrl": "https://www.linkedin.com/in/v5-parity-edge-brave",
                     "pageContext": {
                         "fullName": "Casey Operator",
-                        "company": "Gravitree Smoke Co",
+                        "company": "Gravitre Smoke Co",
                         "title": "Head of Revenue Ops",
                         "source": "linkedin",
                     },
@@ -449,7 +449,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                     "pageUrl": "https://www.linkedin.com/in/v5-parity-edge-brave",
                     "pageContext": {
                         "fullName": "Casey Operator",
-                        "company": "Gravitree Smoke Co",
+                        "company": "Gravitre Smoke Co",
                         "title": "Head of Revenue Ops",
                         "source": "linkedin",
                     },
@@ -464,7 +464,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                 cases["chat_page_context"] = {
                     "status": "PASS"
                     if chat.get("ok")
-                    and (("casey" in ans) or ("gravitree smoke" in ans) or ("revenue" in ans))
+                    and (("casey" in ans) or ("gravitre smoke" in ans) or ("revenue" in ans))
                     else "FAIL",
                     "http": chat.get("status"),
                     "conversationId": chat_j.get("conversationId"),
@@ -479,7 +479,7 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                         "pageUrl": "https://www.linkedin.com/in/v5-parity-edge-brave",
                         "pageContext": {
                             "fullName": "Casey Operator",
-                            "company": "Gravitree Smoke Co",
+                            "company": "Gravitre Smoke Co",
                             "source": "linkedin",
                         },
                         "conversationId": chat_j.get("conversationId"),
@@ -492,11 +492,11 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                     "status": "PASS"
                     if handoff.get("ok")
                     and hj.get("needsHandoff")
-                    and "/ai?c=" in str(hj.get("openInGravitreeUrl") or "")
+                    and "/ai?c=" in str(hj.get("openInGravitreUrl") or "")
                     else "FAIL",
                     "http": handoff.get("status"),
                     "needsHandoff": hj.get("needsHandoff"),
-                    "openInGravitreeUrl": hj.get("openInGravitreeUrl"),
+                    "openInGravitreUrl": hj.get("openInGravitreUrl"),
                     "sameConversation": hj.get("conversationId") == chat_j.get("conversationId"),
                 }
 
@@ -520,10 +520,10 @@ async def _browser_functional(browser: Path, label: str, port: int, token: str) 
                   style.textContent = {css_literal};
                   document.documentElement.appendChild(style);
                   const root = document.createElement("div");
-                  root.id = "gravitree-overlay-root";
+                  root.id = "gravitre-overlay-root";
                   root.innerHTML = `
                     <div class="gvt-card">
-                      <div class="gvt-header"><div class="gvt-brand">Gravitree</div></div>
+                      <div class="gvt-header"><div class="gvt-brand">Gravitre</div></div>
                       <div class="gvt-step gvt-step-pending">1. List HubSpot Pipelines</div>
                       <div class="gvt-step gvt-step-running">2. List HubSpot Deals</div>
                       <div class="gvt-outcome"><div class="gvt-outcome-title">Done</div></div>

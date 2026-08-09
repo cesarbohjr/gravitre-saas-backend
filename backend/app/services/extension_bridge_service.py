@@ -237,7 +237,7 @@ def assert_extension_action(action: str) -> str:
     if normalized not in EXTENSION_ALLOWED_ACTIONS:
         raise ValueError(
             f"Action '{normalized}' is not allowed from the browser extension. "
-            "Use a governed catalog action from the v1 allowlist, or open Gravitree chat."
+            "Use a governed catalog action from the v1 allowlist, or open Gravitre chat."
         )
     registered = set(list_registered_actions())
     if normalized not in registered:
@@ -553,7 +553,7 @@ def enrich_from_page_context(
         # AI page reads `prompt` (not `q`) — keep handoff draftable in full chat.
         open_in_app = f"/ai?prompt={quote(full_name or company)}"
 
-    voice = "Enrichment from connected Gravitree connectors — approve before any write."
+    voice = "Enrichment from connected Gravitre connectors — approve before any write."
     if surface == "careers_about":
         voice = "Careers/about page — firmographic enrich via catalog, not job-board scraping."
     elif surface == "salesforce":
@@ -575,7 +575,8 @@ def enrich_from_page_context(
         },
         "matches": matches,
         "suggestions": suggestions,
-        "openInGravitreeUrl": open_in_app,
+        "openInGravitreUrl": open_in_app,
+        "openInGravitreeUrl": open_in_app,  # legacy dual-read alias
         "connectedIntegrations": connected,
         "voiceNote": voice,
     }
@@ -630,7 +631,7 @@ def _stage_extension_write_confirmation(
     )
     if not row or not row.get("id"):
         raise ValueError(
-            "Could not stage write confirmation. Retry from the overlay, or open Gravitree chat."
+            "Could not stage write confirmation. Retry from the overlay, or open Gravitre chat."
         )
     return {
         "status": "needs_confirmation",
@@ -1424,7 +1425,7 @@ def build_extension_chat_system_prompt(
     )
     return (
         f"{(base_prompt or '').rstrip()}\n\n"
-        "You are answering from the Gravitree browser overlay.\n"
+        "You are answering from the Gravitre browser overlay.\n"
         "<page_context>\n"
         f"{page_block}\n"
         "</page_context>\n"
@@ -1432,7 +1433,7 @@ def build_extension_chat_system_prompt(
         "Answer briefly using those facts when relevant. "
         "Do not invent connector orchestration for a simple fact question. "
         "If the operator needs multi-step confirmation, writes, or a longer thread, "
-        "say so and recommend continuing in full Gravitree chat."
+        "say so and recommend continuing in full Gravitre chat."
     )
 
 
@@ -1519,7 +1520,7 @@ def should_handoff_extension_chat(
     tool_results: list[Any] | None = None,
     pending_task: Any | None = None,
 ) -> tuple[bool, str]:
-    """Decide when overlay should open full Gravitree chat (same conversation).
+    """Decide when overlay should open full Gravitre chat (same conversation).
 
     Multi-step work (≥ EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD) hands off so the
     main-chat TaskSidePanel owns progress — overlay does not duplicate that panel.
@@ -1545,7 +1546,7 @@ def should_handoff_extension_chat(
         if status in {"needs_confirmation", "awaiting_confirm", "pending_approval"}:
             return True, "approval_required"
     ans = (answer or "").lower()
-    if "continue in gravitree" in ans or "open full chat" in ans:
+    if "continue in gravitre" in ans or "open full chat" in ans:
         return True, "model_requested_handoff"
     if "needs confirmation" in ans or "awaiting confirm" in ans:
         return True, "approval_required"
@@ -1601,7 +1602,7 @@ async def chat_from_extension(
         # Very long prompts stay in full chat for UX; still no connector short-circuit
         # for action_or_write_intent (that path must run LIVE governance).
         answer = (
-            "That needs full Gravitree chat for governed writes, approvals, and "
+            "That needs full Gravitre chat for governed writes, approvals, and "
             "multi-step work. Continue in the app — same conversation thread."
         )
         handoff_url = f"{handoff_url}&prompt={quote(user_msg[:500])}"
@@ -1646,7 +1647,8 @@ async def chat_from_extension(
             "conversationId": conv_id,
             "needsHandoff": True,
             "handoffReason": early_reason,
-            "openInGravitreeUrl": handoff_url,
+            "openInGravitreUrl": handoff_url,
+            "openInGravitreeUrl": handoff_url,  # legacy dual-read alias
             "source": "browser_extension",
             "path": "handoff_short_circuit",
             "success": True,
@@ -1773,7 +1775,7 @@ async def chat_from_extension(
     if needs_handoff and handoff_reason == "multi_step_progress":
         answer = (
             (answer + "\n\n" if answer else "")
-            + "Continue in Gravitree for the multi-step progress panel — same conversation thread."
+            + "Continue in Gravitre for the multi-step progress panel — same conversation thread."
         ).strip()
 
     # Lightweight audit for live proof / prioritization.
@@ -1805,7 +1807,8 @@ async def chat_from_extension(
         "conversationId": conv_id,
         "needsHandoff": needs_handoff,
         "handoffReason": handoff_reason,
-        "openInGravitreeUrl": handoff_url,
+        "openInGravitreUrl": handoff_url,
+        "openInGravitreeUrl": handoff_url,  # legacy dual-read alias
         "source": "browser_extension",
         "path": path,
         "success": bool(answer),

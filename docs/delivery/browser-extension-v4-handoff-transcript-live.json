@@ -7,8 +7,8 @@
       "conversationId": "cc618049-0d01-481a-95f7-7b87ad045ae9",
       "needsHandoff": false,
       "path": "execute_task_streaming+page_context_answer",
-      "answerPreview": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitree Smoke Co.",
-      "openInGravitreeUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
+      "answerPreview": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitre Smoke Co.",
+      "openInGravitreUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
     },
     "overlay_handoff": {
       "status": "PASS",
@@ -17,8 +17,8 @@
       "needsHandoff": true,
       "handoffReason": "action_or_write_intent",
       "path": "handoff_short_circuit",
-      "openInGravitreeUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
-      "answerPreview": "That needs full Gravitree chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
+      "openInGravitreUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+      "answerPreview": "That needs full Gravitre chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
     },
     "transcript_both_sides": {
       "status": "PASS",
@@ -40,7 +40,7 @@
         },
         {
           "role": "assistant",
-          "content": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitree Smoke Co."
+          "content": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitre Smoke Co."
         },
         {
           "role": "user",
@@ -48,7 +48,7 @@
         },
         {
           "role": "assistant",
-          "content": "That needs full Gravitree chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
+          "content": "That needs full Gravitre chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
         }
       ],
       "fullAppUrl": "https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"

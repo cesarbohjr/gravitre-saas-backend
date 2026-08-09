@@ -13,13 +13,13 @@
       "id": "b213fffb-f43a-4dba-af6f-812b8f9f253f",
       "type": "cisa_kev",
       "status": "active",
-      "authMode": "gravitree_managed"
+      "authMode": "gravitre_managed"
     },
     "sec_edgar": {
       "id": "9ba9f202-f44c-4b83-88d4-5725bc6ce6e2",
       "type": "sec_edgar",
       "status": "active",
-      "authMode": "gravitree_managed"
+      "authMode": "gravitre_managed"
     }
   },
   "cisa_kev_feed_get": {

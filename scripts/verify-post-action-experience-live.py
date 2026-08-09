@@ -19,7 +19,7 @@ import jwt
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     get_service_client,
     load_env,
     require_isolated_org,

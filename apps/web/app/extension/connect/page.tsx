@@ -30,10 +30,10 @@ function ExtensionConnectInner() {
   )
 
   useEffect(() => {
-    if (loading) setStatus("Checking your Gravitree session…")
-    else if (!session) setStatus("Sign in to Gravitree, then return here to connect the extension.")
+    if (loading) setStatus("Checking your Gravitre session…")
+    else if (!session) setStatus("Sign in to Gravitre, then return here to connect the extension.")
     else if (!orgId) setStatus("Select an organization in the app, then connect the extension.")
-    else if (!extId) setStatus("Open this page from the Gravitree Chrome extension.")
+    else if (!extId) setStatus("Open this page from the Gravitre Chrome extension.")
     else setStatus("Ready to authorize the extension with your current session.")
   }, [loading, session, orgId, extId])
 
@@ -55,7 +55,7 @@ function ExtensionConnectInner() {
       chromeApi.runtime.sendMessage(
         extId,
         {
-          type: "GRAVITREE_AUTH",
+          type: "GRAVITRE_AUTH",
           accessToken: session.access_token,
           orgId,
           environment: "production",
@@ -80,9 +80,9 @@ function ExtensionConnectInner() {
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-4 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Connect Gravitree extension</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Connect Gravitre extension</h1>
       <p className="text-sm text-muted-foreground">
-        The extension uses your existing Gravitree login and organization — no separate
+        The extension uses your existing Gravitre login and organization — no separate
         identity. Overlay actions go through the same write-authority gate and Outcomes as
         chat.
       </p>

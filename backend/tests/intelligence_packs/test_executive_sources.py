@@ -13,7 +13,7 @@ async def test_fred_unavailable_without_key(monkeypatch):
     monkeypatch.delenv("FRED_API_KEY", raising=False)
     result = await fetch_fred_series("GDP", settings=SimpleNamespace(fred_api_key=""))
     assert result["ok"] is False
-    assert result["error_code"] == "GRAVITREE_SOURCE_UNAVAILABLE"
+    assert result["error_code"] == "GRAVITRE_SOURCE_UNAVAILABLE"
 
 
 @pytest.mark.asyncio

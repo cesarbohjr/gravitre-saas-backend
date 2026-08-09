@@ -23,7 +23,7 @@ PAGE_CONTEXT = {
     "fullName": "Casey Operator",
     "firstName": "Casey",
     "lastName": "Operator",
-    "company": "Gravitree Smoke Co",
+    "company": "Gravitre Smoke Co",
     "title": "Head of Revenue Ops",
     "email": "casey.operator@example.com",
     "source": "linkedin",
@@ -91,7 +91,7 @@ async def _run() -> dict:
         environment_name="production",
     )
     answer = (quick.get("answer") or "").lower()
-    uses_context = ("casey" in answer) or ("gravitree smoke" in answer) or ("revenue" in answer)
+    uses_context = ("casey" in answer) or ("gravitre smoke" in answer) or ("revenue" in answer)
     conv_id = str(quick.get("conversationId") or "")
     evidence["cases"]["overlay_quick"] = {
         "status": "PASS"
@@ -101,7 +101,7 @@ async def _run() -> dict:
         "needsHandoff": quick.get("needsHandoff"),
         "path": quick.get("path"),
         "answerPreview": (quick.get("answer") or "")[:400],
-        "openInGravitreeUrl": quick.get("openInGravitreeUrl"),
+        "openInGravitreUrl": quick.get("openInGravitreUrl"),
     }
 
     handoff_msg = "Create a HubSpot list for Casey Operator from this page."
@@ -115,7 +115,7 @@ async def _run() -> dict:
         conversation_id=conv_id,
         environment_name="production",
     )
-    url = str(handoff.get("openInGravitreeUrl") or "")
+    url = str(handoff.get("openInGravitreUrl") or "")
     same_id = str(handoff.get("conversationId") or "") == conv_id and bool(conv_id)
     evidence["cases"]["overlay_handoff"] = {
         "status": "PASS"
@@ -132,7 +132,7 @@ async def _run() -> dict:
         "needsHandoff": handoff.get("needsHandoff"),
         "handoffReason": handoff.get("handoffReason"),
         "path": handoff.get("path"),
-        "openInGravitreeUrl": url,
+        "openInGravitreUrl": url,
         "answerPreview": (handoff.get("answer") or "")[:400],
     }
 
@@ -140,9 +140,9 @@ async def _run() -> dict:
     roles = [str(m.get("role") or "") for m in messages]
     blob = "\n".join(str(m.get("content") or "") for m in messages).lower()
     has_quick_user = "full name" in blob and "title" in blob
-    has_quick_assistant = ("casey" in blob) or ("gravitree smoke" in blob)
+    has_quick_assistant = ("casey" in blob) or ("gravitre smoke" in blob)
     has_handoff_user = "hubspot list" in blob
-    has_handoff_assistant = "same conversation" in blob or "full gravitree chat" in blob
+    has_handoff_assistant = "same conversation" in blob or "full gravitre chat" in blob
     evidence["cases"]["transcript_both_sides"] = {
         "status": "PASS"
         if (

@@ -24,7 +24,7 @@ import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-b
 import { HubTabs, type HubTabItem } from "@/components/gravitre/hub-tabs"
 import { AutoStatusBadge } from "@/components/gravitre/status-badge"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
 import { Button } from "@/components/ui/button"
 import {

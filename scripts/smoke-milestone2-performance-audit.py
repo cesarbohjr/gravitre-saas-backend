@@ -44,7 +44,7 @@ from scripts.milestone2_perf_common import (  # noqa: E402
     fetch_health,
     latency_summary,
 )
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     get_service_client,
     require_isolated_org,
     resolve_test_actor,

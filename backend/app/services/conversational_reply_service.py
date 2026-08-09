@@ -12,7 +12,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.conversational_turn_gate import ConversationalGateDecision
-from app.services.gravitree_voice import (
+from app.services.gravitre_voice import (
     format_operator_message,
     humor_permitted,
 )
@@ -112,7 +112,7 @@ def phrase_for_conversational_category(
             "at /connectors (Connected / Healthy / Authenticated) and retry the action."
         ),
         "conversational.meta_capability": (
-            f"I am Gravitree — a calm operator for your Connected tools. {ctx.get('capability', '')}"
+            f"I am Gravitre — a calm operator for your Connected tools. {ctx.get('capability', '')}"
         ).strip(),
     }
     return defaults.get(key, defaults["conversational.small_talk"])

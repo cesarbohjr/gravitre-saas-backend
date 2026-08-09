@@ -7,7 +7,7 @@
 export type ConnectorAuthType = "oauth" | "apiKey" | "webhook"
 
 /** Catalog credential ownership — enforced server-side via auth_mode. */
-export type ConnectorAuthMode = "customer_owned" | "gravitree_managed" | "byo_required"
+export type ConnectorAuthMode = "customer_owned" | "gravitre_managed" | "byo_required"
 
 /** How credentials are collected — orthogonal to UI authType label. */
 export type ConnectorCredentialModel =
@@ -29,7 +29,7 @@ export interface CatalogConnectorEntry {
   authType: ConnectorAuthType
   category: string
   credentialModel: ConnectorCredentialModel
-  /** customer_owned | gravitree_managed | byo_required — Phase 1 */
+  /** customer_owned | gravitre_managed | byo_required — Phase 1 */
   authMode?: ConnectorAuthMode
   /** Backend agent tools implemented */
   shipped?: boolean
@@ -266,9 +266,9 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Mixpanel", vendorKey: "mixpanel", description: "Product analytics", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   { type: "Constant Contact", vendorKey: "constant_contact", description: "Email and marketing automation", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", oauthReady: true },
   { type: "Hootsuite", vendorKey: "hootsuite", description: "Social media management", authType: "oauth", credentialModel: "partner_oauth", category: "CRM / Marketing", requiresPartnerApproval: true, setupComplexity: "enterprise" },
-  { type: "SEMrush", vendorKey: "semrush", description: "BYO SEMrush API — domain overview, organic keywords, and backlinks; never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
-  { type: "Ahrefs", vendorKey: "ahrefs", description: "BYO Ahrefs API — domain rating, organic keywords, backlinks, and Brand Radar AI visibility; never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
-  { type: "Finseo", vendorKey: "finseo", description: "BYO Finseo API — AI search visibility metrics, prompts, and competitors; never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
+  { type: "SEMrush", vendorKey: "semrush", description: "BYO SEMrush API — domain overview, organic keywords, and backlinks; never uses a shared Gravitre key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
+  { type: "Ahrefs", vendorKey: "ahrefs", description: "BYO Ahrefs API — domain rating, organic keywords, backlinks, and Brand Radar AI visibility; never uses a shared Gravitre key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
+  { type: "Finseo", vendorKey: "finseo", description: "BYO Finseo API — AI search visibility metrics, prompts, and competitors; never uses a shared Gravitre key", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
   { type: "AI Visibility UI", vendorKey: "ai_visibility_ui", description: "S2 consumer-UI scrape (ChatGPT / Perplexity / Gemini / Copilot / Claude) — v1–v3 actions; LinkedIn scrape forbidden; raw answers Memory/KG gated", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true, authMode: "byo_required" },
   { type: "StackAdapt", vendorKey: "stackadapt", description: "Programmatic advertising", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   // Sales / Prospecting
@@ -277,14 +277,14 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Clay", vendorKey: "clay", description: "Data enrichment, tables, and workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "customer_owned" },
   { type: "ZoomInfo", vendorKey: "zoominfo", description: "BYO premium B2B data — connect your own subscription", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
   { type: "People Data Labs", vendorKey: "pdl", description: "BYO People Data Labs API — person/company enrich from your dashboard.peopledatalabs.com key; contact Memory/KG writes remain gated", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "byo_required" },
-  { type: "LinkedIn Sales Navigator", vendorKey: "linkedin_sales_navigator", description: "BYO Sales Navigator — never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
-  { type: "FRED", vendorKey: "fred", description: "Federal Reserve economic data (Gravitree-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
-  { type: "SEC EDGAR", vendorKey: "sec_edgar", description: "SEC filings search (Gravitree-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
-  { type: "World Bank", vendorKey: "world_bank", description: "World Bank indicators (Gravitree-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
-  { type: "OECD", vendorKey: "oecd", description: "OECD statistics (Gravitree-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
-  { type: "OpenCorporates", vendorKey: "opencorporates", description: "Company registry lookup — activation pending commercial license", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed", activationBlocked: true },
-  { type: "NVD", vendorKey: "nvd", description: "National Vulnerability Database (Gravitree-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
-  { type: "CISA KEV", vendorKey: "cisa_kev", description: "CISA Known Exploited Vulnerabilities feed (knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitree_managed" },
+  { type: "LinkedIn Sales Navigator", vendorKey: "linkedin_sales_navigator", description: "BYO Sales Navigator — never uses a shared Gravitre key", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
+  { type: "FRED", vendorKey: "fred", description: "Federal Reserve economic data (Gravitre-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
+  { type: "SEC EDGAR", vendorKey: "sec_edgar", description: "SEC filings search (Gravitre-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
+  { type: "World Bank", vendorKey: "world_bank", description: "World Bank indicators (Gravitre-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
+  { type: "OECD", vendorKey: "oecd", description: "OECD statistics (Gravitre-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
+  { type: "OpenCorporates", vendorKey: "opencorporates", description: "Company registry lookup — activation pending commercial license", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed", activationBlocked: true },
+  { type: "NVD", vendorKey: "nvd", description: "National Vulnerability Database (Gravitre-managed knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
+  { type: "CISA KEV", vendorKey: "cisa_kev", description: "CISA Known Exploited Vulnerabilities feed (knowledge base)", authType: "apiKey", credentialModel: "platform_only", category: "Knowledge Base", authMode: "gravitre_managed" },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
@@ -494,19 +494,20 @@ export function resolveConnectorVendorSlug(
   return raw ? connectorVendorKey(raw) : ""
 }
 
-/** Gravitree-managed / platform-only sources stay off the Connectors hub (Marketplace instead). */
+/** Gravitre-managed / platform-only sources stay off the Connectors hub (Marketplace instead). */
 export function isConnectorsHubHidden(
   typeOrVendorKey: string,
   config?: Record<string, unknown> | null,
 ): boolean {
   const entry = lookupCatalogEntry(typeOrVendorKey)
-  if (entry?.authMode === "gravitree_managed" || entry?.credentialModel === "platform_only") {
+  if (entry?.authMode === "gravitre_managed" || entry?.credentialModel === "platform_only") {
     return true
   }
   const mode = String(config?.auth_mode ?? config?.authMode ?? "")
     .trim()
     .toLowerCase()
-  if (mode === "gravitree_managed") return true
+  // Dual-read: accept legacy gravitree_managed persisted in connector config.
+  if (mode === "gravitre_managed" || mode === "gravitree_managed") return true
   const model = String(config?.credential_model ?? config?.credentialModel ?? "")
     .trim()
     .toLowerCase()

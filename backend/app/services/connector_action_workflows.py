@@ -98,8 +98,8 @@ def missing_params_stage_patch(
 
 
 def format_write_approval_message(plan: ConnectorActionPlan) -> str:
-    """Chat-native approval prompt — copy owned by Module D gravitree_voice."""
-    from app.services.gravitree_voice import format_operator_message
+    """Chat-native approval prompt — copy owned by Module D gravitre_voice."""
+    from app.services.gravitre_voice import format_operator_message
 
     plan = scrub_gmail_write_plan(plan)
     vendor = (plan.integration or "").replace("_", " ").title() or "the connected app"

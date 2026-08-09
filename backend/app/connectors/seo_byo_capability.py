@@ -1,4 +1,4 @@
-"""SEMrush / Ahrefs BYO labeling — catalog honesty (no shared Gravitree key).
+"""SEMrush / Ahrefs BYO labeling — catalog honesty (no shared Gravitre key).
 
 v1 read executors are live when the org connects its own API key.
 Labeling stays BYO-tier (same transparency bar as ZoomInfo / LinkedIn Sales Navigator).
@@ -18,12 +18,12 @@ AHREFS_REQUIREMENT_NOTE = (
 )
 
 SEMRUSH_CAPABILITY_NOTES = (
-    "Can run SEO reports? requires: your own SEMrush API plan (BYO — no shared Gravitree key)",
+    "Can run SEO reports? requires: your own SEMrush API plan (BYO — no shared Gravitre key)",
     "Executor status: v1–v3 live — domain/keywords/backlinks + projects/tracking + competitors/exports",
 )
 
 AHREFS_CAPABILITY_NOTES = (
-    "Can run SEO reports? requires: your own Ahrefs API plan (BYO — no shared Gravitree key)",
+    "Can run SEO reports? requires: your own Ahrefs API plan (BYO — no shared Gravitre key)",
     "Executor status: v1–v3 live — DR/keywords/backlinks + projects/rank tracker + competitors/top pages",
 )
 

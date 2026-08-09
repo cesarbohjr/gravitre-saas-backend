@@ -146,11 +146,11 @@ def evaluate_connector_availability(
     token_valid = auth_status == "connected"
     scopes_valid = True
 
-    # Phase 3: gravitree_managed uses platform credentials (no tenant OAuth)
+    # Phase 3: gravitre_managed uses platform credentials (no tenant OAuth)
     from app.intelligence_packs.shared.auth_mode import AuthMode, get_auth_mode, resolve_credential_source
-    from app.services.gravitree_connector_activation import _platform_env_present
+    from app.services.gravitre_connector_activation import _platform_env_present
 
-    if get_auth_mode(vendor) == AuthMode.GRAVITREE_MANAGED:
+    if get_auth_mode(vendor) == AuthMode.GRAVITRE_MANAGED:
         present = _platform_env_present(vendor, settings)
         resolved = resolve_credential_source(
             vendor,
@@ -172,7 +172,7 @@ def evaluate_connector_availability(
             mapped_status = "needs_connection"
             display_status = "disconnected"
             blocking_reason = "pending_auth"
-            recovery_action = f"Activate {vendor} (Gravitree-managed) — no customer credentials required."
+            recovery_action = f"Activate {vendor} (Gravitre-managed) — no customer credentials required."
             action_registered = True
             if action_key:
                 action_registered = action_key in set(list_registered_actions())
@@ -198,7 +198,7 @@ def evaluate_connector_availability(
                 "raw_status": raw_status,
                 "environment": env,
                 "name": str(row.get("name") or vendor or "connector"),
-                "auth_mode": AuthMode.GRAVITREE_MANAGED.value,
+                "auth_mode": AuthMode.GRAVITRE_MANAGED.value,
             }
         else:
             authenticated = False
@@ -328,7 +328,7 @@ def evaluate_connector_availability(
             if not authenticated:
                 out["recovery_action"] = (
                     out.get("recovery_action")
-                    or f"Connect your own {normalized_vendor} API key (BYO — no shared Gravitree key)."
+                    or f"Connect your own {normalized_vendor} API key (BYO — no shared Gravitre key)."
                 )
         except Exception:  # noqa: BLE001
             pass

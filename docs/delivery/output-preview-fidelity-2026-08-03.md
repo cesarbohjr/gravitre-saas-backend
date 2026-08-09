@@ -6,7 +6,7 @@ Related: `docs/delivery/chat-progress-ux-phase0-2026-08-03.md`
 
 ## Principle
 
-Preview fidelity must match **what is technically renderable** and **what Gravitree actually produces**. Claude’s live Preview/Code pane fits web-native code; Cowork/Manus file chips fit Office blobs. Gravitree’s dominant outputs are **connector writes / BusinessOutcomes** — verified vendor evidence, not generated code or hosted Office files.
+Preview fidelity must match **what is technically renderable** and **what Gravitre actually produces**. Claude’s live Preview/Code pane fits web-native code; Cowork/Manus file chips fit Office blobs. Gravitre’s dominant outputs are **connector writes / BusinessOutcomes** — verified vendor evidence, not generated code or hosted Office files.
 
 ## Phase 0 — Real inventory
 

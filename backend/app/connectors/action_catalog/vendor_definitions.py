@@ -2149,7 +2149,7 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="read",
                 scope_suffix="series:read",
                 idempotent=True,
-                description="Fetch a FRED economic time series by series_id (gravitree-managed).",
+                description="Fetch a FRED economic time series by series_id (gravitre-managed).",
             ),
         ),
         v2=(
@@ -2191,7 +2191,7 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="read",
                 scope_suffix="cve:read",
                 idempotent=True,
-                description="Fetch a CVE record from NVD by cve_id (gravitree-managed).",
+                description="Fetch a CVE record from NVD by cve_id (gravitre-managed).",
             ),
         ),
         v2=(
@@ -2233,7 +2233,7 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="read",
                 scope_suffix="feed:read",
                 idempotent=True,
-                description="Fetch CISA Known Exploited Vulnerabilities catalog sample (gravitree-managed).",
+                description="Fetch CISA Known Exploited Vulnerabilities catalog sample (gravitre-managed).",
             ),
         ),
         v2=(
@@ -2275,7 +2275,7 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="read",
                 scope_suffix="filings:read",
                 idempotent=True,
-                description="Search SEC EDGAR company filings (gravitree-managed; requires SEC_USER_AGENT).",
+                description="Search SEC EDGAR company filings (gravitre-managed; requires SEC_USER_AGENT).",
             ),
         ),
         v2=(

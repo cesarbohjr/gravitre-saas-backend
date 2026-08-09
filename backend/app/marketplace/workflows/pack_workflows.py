@@ -91,7 +91,7 @@ def build_ai_search_workflow_steps() -> list[dict[str, Any]]:
         open_id="ai-search-brief",
         open_name="Agent: AI visibility brief",
         open_task=(
-            "Assignment: open an AI search / Brand Radar brief for brand 'Gravitree' (US). "
+            "Assignment: open an AI search / Brand Radar brief for brand 'Gravitre' (US). "
             "Confirm Ahrefs Brand Radar as the primary read; note Finseo / UI scrape as optional "
             "when connected. Do not store raw AI answer text in Memory/KG. Notify start."
         ),
@@ -101,7 +101,7 @@ def build_ai_search_workflow_steps() -> list[dict[str, Any]]:
                 "Brand Radar Overview",
                 "ahrefs.brand_radar.overview",
                 connector="ahrefs",
-                params={"brand": "Gravitree", "country": "us"},
+                params={"brand": "Gravitre", "country": "us"},
             ),
         ],
         close_id="ai-search-summarize",
@@ -297,7 +297,7 @@ def build_executive_workflow_steps() -> list[dict[str, Any]]:
         open_name="Agent: Macro brief",
         open_task=(
             "Assignment: open an executive macro brief. Plan to read FRED GDP and a SEC EDGAR "
-            "search for context. Gravitree-managed sources — no customer OAuth. Notify start."
+            "search for context. Gravitre-managed sources — no customer OAuth. Notify start."
         ),
         tool_steps=[
             invoke_step(

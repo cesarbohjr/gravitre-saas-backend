@@ -1,9 +1,9 @@
 """Connector auth_mode catalog — single enum, framework-enforced.
 
 customer_owned: tenant credentials only (never use platform keys).
-gravitree_managed: platform env keys; tenant never sees the secret.
+gravitre_managed: platform env keys; tenant never sees the secret.
 byo_required: customer must bring their own subscription; fail closed —
-  NEVER substitute a Gravitree-managed key or shared cache approximation.
+  NEVER substitute a Gravitre-managed key or shared cache approximation.
 """
 from __future__ import annotations
 
@@ -13,8 +13,40 @@ from typing import Any
 
 class AuthMode(StrEnum):
     CUSTOMER_OWNED = "customer_owned"
-    GRAVITREE_MANAGED = "gravitree_managed"
+    GRAVITRE_MANAGED = "gravitre_managed"
     BYO_REQUIRED = "byo_required"
+
+
+# Persisted connector config may still store the pre-rename spelling.
+LEGACY_AUTH_MODE_GRAVITREE_MANAGED = "gravitree_managed"
+
+GRAVITRE_SOURCE_UNAVAILABLE = "GRAVITRE_SOURCE_UNAVAILABLE"
+LEGACY_GRAVITREE_SOURCE_UNAVAILABLE = "GRAVITREE_SOURCE_UNAVAILABLE"
+
+
+def is_gravitre_managed_mode(value: Any) -> bool:
+    """True for canonical gravitre_managed and legacy gravitree_managed."""
+    normalized = str(value or "").strip().lower()
+    return normalized in {
+        AuthMode.GRAVITRE_MANAGED.value,
+        LEGACY_AUTH_MODE_GRAVITREE_MANAGED,
+    }
+
+
+def normalize_auth_mode_value(value: Any) -> str | None:
+    """Map legacy gravitree_managed → gravitre_managed; pass through other modes."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    if is_gravitre_managed_mode(raw):
+        return AuthMode.GRAVITRE_MANAGED.value
+    return raw.lower()
+
+
+def is_gravitre_source_unavailable_code(value: Any) -> bool:
+    """Accept canonical and legacy SOURCE_UNAVAILABLE error codes when parsing."""
+    code = str(value or "").strip().upper()
+    return code in {GRAVITRE_SOURCE_UNAVAILABLE, LEGACY_GRAVITREE_SOURCE_UNAVAILABLE}
 
 
 class ActivationGate(StrEnum):
@@ -72,16 +104,16 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "bamboohr": AuthMode.CUSTOMER_OWNED,
     "greenhouse": AuthMode.CUSTOMER_OWNED,
     "gusto": AuthMode.CUSTOMER_OWNED,
-    # Gravitree intelligence sources (public / aggregate first)
-    "fred": AuthMode.GRAVITREE_MANAGED,
-    "sec_edgar": AuthMode.GRAVITREE_MANAGED,
-    "world_bank": AuthMode.GRAVITREE_MANAGED,
-    "oecd": AuthMode.GRAVITREE_MANAGED,
-    "opencorporates": AuthMode.GRAVITREE_MANAGED,
-    "nvd": AuthMode.GRAVITREE_MANAGED,
-    "cisa_kev": AuthMode.GRAVITREE_MANAGED,
-    # Contact-level gravitree sources — activation gated
-    "crunchbase": AuthMode.GRAVITREE_MANAGED,
+    # Gravitre intelligence sources (public / aggregate first)
+    "fred": AuthMode.GRAVITRE_MANAGED,
+    "sec_edgar": AuthMode.GRAVITRE_MANAGED,
+    "world_bank": AuthMode.GRAVITRE_MANAGED,
+    "oecd": AuthMode.GRAVITRE_MANAGED,
+    "opencorporates": AuthMode.GRAVITRE_MANAGED,
+    "nvd": AuthMode.GRAVITRE_MANAGED,
+    "cisa_kev": AuthMode.GRAVITRE_MANAGED,
+    # Contact-level gravitre sources — activation gated
+    "crunchbase": AuthMode.GRAVITRE_MANAGED,
     # BYO premium — fail closed, no shared key path
     "pdl": AuthMode.BYO_REQUIRED,  # Cesar clear 2026-07-15: tenant API key (dashboard.peopledatalabs.com)
     "zoominfo": AuthMode.BYO_REQUIRED,
@@ -98,8 +130,8 @@ ACTIVATION_GATES: dict[str, ActivationGate] = {
     # PDL: BYO connector allowed; Memory/KG contact persistence remains pack-guardrailed.
 }
 
-# Platform env var names for gravitree_managed sources (never used for BYO).
-GRAVITREE_ENV_KEYS: dict[str, tuple[str, ...]] = {
+# Platform env var names for gravitre_managed sources (never used for BYO).
+GRAVITRE_ENV_KEYS: dict[str, tuple[str, ...]] = {
     "fred": ("FRED_API_KEY",),
     "sec_edgar": ("SEC_USER_AGENT",),
     "world_bank": (),  # no key required
@@ -150,17 +182,17 @@ def get_auth_mode(vendor: str) -> AuthMode:
 
 
 def is_knowledge_base_source(vendor: str) -> bool:
-    """Gravitree-managed packs (FRED, NVD, …) — Marketplace knowledge base, not Connectors hub."""
-    return get_auth_mode(vendor) == AuthMode.GRAVITREE_MANAGED
+    """Gravitre-managed packs (FRED, NVD, …) — Marketplace knowledge base, not Connectors hub."""
+    return get_auth_mode(vendor) == AuthMode.GRAVITRE_MANAGED
 
 
 def requires_tenant_connector(vendor: str) -> bool:
     """True when a tenant must connect credentials in Connectors (OAuth / BYO API key).
 
-    Knowledge-base / gravitree_managed sources use platform env keys and must never
+    Knowledge-base / gravitre_managed sources use platform env keys and must never
     raise 'Missing {vendor} connector' alerts or link to the Connectors hub.
     """
-    return get_auth_mode(vendor) != AuthMode.GRAVITREE_MANAGED
+    return get_auth_mode(vendor) != AuthMode.GRAVITRE_MANAGED
 
 
 def get_activation_gate(vendor: str) -> ActivationGate:
@@ -190,10 +222,16 @@ def assert_byo_never_uses_platform_key(
     """Hard rule: BYO resolution must never come from platform env / shared key."""
     if get_auth_mode(vendor) != AuthMode.BYO_REQUIRED:
         return
-    forbidden = {"platform_env", "gravitree_managed", "shared_cache", "platform"}
+    forbidden = {
+        "platform_env",
+        AuthMode.GRAVITRE_MANAGED.value,
+        LEGACY_AUTH_MODE_GRAVITREE_MANAGED,
+        "shared_cache",
+        "platform",
+    }
     if str(resolved_from or "").strip().lower() in forbidden:
         raise AuthModeError(
-            f"BYO connector {vendor} cannot use a Gravitree-managed or shared credential path",
+            f"BYO connector {vendor} cannot use a Gravitre-managed or shared credential path",
             code="BYO_SHARED_KEY_FORBIDDEN",
         )
 
@@ -228,7 +266,7 @@ def resolve_credential_source(
                 "source": None,
                 "ok": False,
                 "error_code": "BYO_CREDENTIAL_REQUIRED",
-                "message": f"Connect your {vendor} account — Gravitree does not supply a shared key",
+                "message": f"Connect your {vendor} account — Gravitre does not supply a shared key",
                 "activation_gate": ActivationGate.NONE.value,
             }
         assert_byo_never_uses_platform_key(vendor, resolved_from="org_secret")
@@ -241,14 +279,14 @@ def resolve_credential_source(
             "activation_gate": ActivationGate.NONE.value,
         }
 
-    if mode == AuthMode.GRAVITREE_MANAGED:
-        required = GRAVITREE_ENV_KEYS.get(vendor, ())
+    if mode == AuthMode.GRAVITRE_MANAGED:
+        required = GRAVITRE_ENV_KEYS.get(vendor, ())
         if required and not platform_env_present:
             return {
                 "auth_mode": mode.value,
                 "source": None,
                 "ok": False,
-                "error_code": "GRAVITREE_SOURCE_UNAVAILABLE",
+                "error_code": GRAVITRE_SOURCE_UNAVAILABLE,
                 "message": f"{vendor} is not yet available (platform credentials missing)",
                 "activation_gate": get_activation_gate(vendor).value,
             }

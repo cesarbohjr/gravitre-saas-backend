@@ -21,7 +21,7 @@ import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { StatusBadge, formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import {
   ArrowRight,
   Brain,

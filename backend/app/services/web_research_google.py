@@ -1,6 +1,6 @@
 """Google Grounded Generation — grounding on Google Search (Tavily-equivalent).
 
-Uses a single Gravitree GCP/API account (GEMINI_API_KEY or Vertex via GOOGLE_CLOUD_PROJECT).
+Uses a single Gravitre GCP/API account (GEMINI_API_KEY or Vertex via GOOGLE_CLOUD_PROJECT).
 Only the user search query is sent — not full conversation context.
 """
 from __future__ import annotations

@@ -17,7 +17,7 @@ Functional baselines are CLOSED — do not re-litigate correctness:
 2. **Chat window redesign** — message actions (Copy Text, Regenerate, Copy Link/Share, Save Question) + **8 light/dark background themes**.
 3. **BusinessOutcome in chat** — same `BusinessOutcomeView` card, styled so it belongs in the redesigned transcript (no DTO / projection / undo logic changes).
 
-Personality: **Module D calm-expert** — operator console, not consumer chat skin. Read `docs/delivery/module-d-gravitree-voice.md`.
+Personality: **Module D calm-expert** — operator console, not consumer chat skin. Read `docs/delivery/module-d-gravitre-voice.md`.
 
 ---
 
@@ -58,7 +58,7 @@ Slightly more paper/ink contrast in light mode; assistant turns as open prose wi
 
 ### Direction C — Focus Stage
 
-Dark-first default; transcript centered with generous max-width; sidebar collapses to icon+pin density. Themes are subtle stage backdrops (grid / gradient wash — keep Gravitree, avoid purple glow). Message actions in a single overflow menu to reduce chrome.
+Dark-first default; transcript centered with generous max-width; sidebar collapses to icon+pin density. Themes are subtle stage backdrops (grid / gradient wash — keep Gravitre, avoid purple glow). Message actions in a single overflow menu to reduce chrome.
 
 **Default recommendation if no preference stated: Direction A.**
 

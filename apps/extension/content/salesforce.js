@@ -42,8 +42,8 @@
   }
 
   function open() {
-    if (!window.__gravitreeOverlay) return
-    window.__gravitreeOverlay.renderOverlay({
+    if (!window.__gravitreOverlay) return
+    window.__gravitreOverlay.renderOverlay({
       pageUrl: location.href,
       pageContext: extractSalesforce(),
     })

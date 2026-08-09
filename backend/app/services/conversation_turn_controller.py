@@ -4,7 +4,7 @@ One shared entry before connector-specific logic: ledger ingest, awaiting_params
 resume, schema extraction, and pending-plan recovery. Governed chat, ReAct, and
 canvas NL→args enter here. Meson UI stays separate; Meson reasoning migrates later.
 
-Module D (gravitree_voice): this controller is the ownership point for
+Module D (gravitre_voice): this controller is the ownership point for
 connector-turn user-facing strings. Surfaces must not invent per-connector tone.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.chat_connector_models import ConnectorActionPlan
-from app.services.gravitree_voice import (
+from app.services.gravitre_voice import (
     bind_voice_expression_state,
     format_operator_message,
     reset_voice_expression_state,

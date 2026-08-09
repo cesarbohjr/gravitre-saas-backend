@@ -17,7 +17,7 @@ import jwt
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     get_service_client,
     load_env,
     require_isolated_org,
@@ -124,7 +124,7 @@ def chat(token, org_id, messages, conversation_id, serial=False):
         "mode": "agent",
         "conversation_id": conversation_id,
     }
-    extra = {"X-Gravitree-React-Serial": "1"} if serial else None
+    extra = {"X-Gravitre-React-Serial": "1"} if serial else None
     t0 = time.perf_counter()
     status, raw = http_json("POST", "/api/assistant/chat", token, org_id, body, extra=extra)
     wall = int((time.perf_counter() - t0) * 1000)

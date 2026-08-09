@@ -1,4 +1,4 @@
-# Gravitree Chrome extension (v1)
+# Gravitre Chrome extension (v1)
 
 Overlay-and-approve enrichment on LinkedIn, Gmail, Outlook, and company sites (activeTab). Writes use the same catalog + Module A path as the web app.
 
@@ -6,7 +6,7 @@ Overlay-and-approve enrichment on LinkedIn, Gmail, Outlook, and company sites (a
 
 1. Ensure backend includes `/api/extension/*` and web has `/extension/connect`.
 2. Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → this folder.
-3. Click the extension → **Connect Gravitree** → authorize with your logged-in org.
+3. Click the extension → **Connect Gravitre** → authorize with your logged-in org.
 4. Open a LinkedIn `/in/...` profile (overlay opens) or use **Enrich this page**.
 
 ## Permissions

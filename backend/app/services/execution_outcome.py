@@ -214,7 +214,7 @@ def _learning_event_for(status: TerminalStatus) -> str:
 
 
 def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     return format_operator_message(
         "notification_run_title",
@@ -224,7 +224,7 @@ def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
 
 
 def _default_body(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str:
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     verified_summary = (
         event.verified_output.summary if event.verified_output else None
@@ -249,7 +249,7 @@ def _audit_summary(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str 
         return event.error_summary
     if status != "failed":
         return event.error_summary
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     return format_operator_message(
         "audit_failure_summary",

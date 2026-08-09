@@ -1,13 +1,13 @@
-# Module D — Gravitree Voice Layer
+# Module D — Gravitre Voice Layer
 
-One persona SoT: [`backend/app/services/gravitree_voice.py`](../../backend/app/services/gravitree_voice.py).
+One persona SoT: [`backend/app/services/gravitre_voice.py`](../../backend/app/services/gravitre_voice.py).
 
 ## Exports
 
 | Export | Role |
 |--------|------|
-| `GRAVITREE_VOICE_RULES` | Canonical trait list |
-| `HOUSE_PHRASING` | Curated Gravitree lines |
+| `GRAVITRE_VOICE_RULES` | Canonical trait list |
+| `HOUSE_PHRASING` | Curated Gravitre lines |
 | `voice_system_prompt_section()` | The one `## Voice` block (confidence register + humor budget) |
 | `apply_voice(system_prompt)` | Idempotent inject / strip legacy `VOICE:` |
 | `format_operator_message(...)` | Approvals, errors, notifications, canvas, skip reasons |
@@ -48,7 +48,7 @@ Depends on Module A `finalize_execution_outcome` → `intelligence_outcome_event
 ## Verification
 
 ```bash
-pytest backend/tests/services/test_gravitree_voice.py \
+pytest backend/tests/services/test_gravitre_voice.py \
   backend/tests/services/test_canvas_write_gate.py -q
 ```
 

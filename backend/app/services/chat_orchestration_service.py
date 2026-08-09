@@ -17,7 +17,7 @@ from app.services.chat_connector_execution_service import (
 )
 from app.services.connector_execution_matrix import skip_reason_for_entry
 from app.services.conversation_state_service import get_conversation_state_service
-from app.services.gravitree_voice import format_operator_message
+from app.services.gravitre_voice import format_operator_message
 from app.services.conversational_execution_service import (
     CONFIRM_PATTERN,
     DECLINE_PATTERN,
@@ -1342,7 +1342,7 @@ class ChatOrchestrationService:
                 own_terminal_outcome=False,
             )
 
-        # Phase 2 A/B — honor X-Gravitree-React-Serial / GRAVITREE_REACT_SERIAL_TOOLS
+        # Phase 2 A/B — honor X-Gravitre-React-Serial / GRAVITRE_REACT_SERIAL_TOOLS
         # so orchestration multi-read batches share the same baseline as ReAct.
         from app.operators.react_engine import _serial_tools_forced
 

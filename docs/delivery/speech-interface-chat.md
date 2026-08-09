@@ -1,4 +1,4 @@
-# Speech interface — Gravitree chat (STT/TTS adapter)
+# Speech interface — Gravitre chat (STT/TTS adapter)
 
 Input/output adapter in front of the existing chat pipeline. Voice input becomes text and enters Module B's turn controller exactly like a typed message.
 

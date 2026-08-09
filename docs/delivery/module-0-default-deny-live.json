@@ -39,7 +39,7 @@
       "note": "With FASTAPI unset, isDemoRuntimeFallbackAllowed() is still false in Vercel production (VERCEL_ENV=production), so shouldUseDemoRuntimeFallback() cannot open demo-runtime-store."
     },
     "harness": {
-      "module": "scripts/gravitree_test_client.py",
+      "module": "scripts/gravitre_test_client.py",
       "ci_lint": "scripts/lint-smoke-harness.py (wired in .github/workflows/ci.yml)",
       "leak_monitor": "scripts/report-conversation-write-leak-24h.py",
       "leak_monitor_pass": true

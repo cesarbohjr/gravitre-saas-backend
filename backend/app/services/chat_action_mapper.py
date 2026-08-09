@@ -282,7 +282,7 @@ class ChatActionMapper:
         if not mentioned:
             return None
         connected = {c.lower() for c in connected_integrations}
-        from app.services.gravitree_voice import format_operator_message
+        from app.services.gravitre_voice import format_operator_message
 
         for vendor in mentioned:
             if vendor not in connected:

@@ -143,7 +143,7 @@ def main() -> int:
         "firstName": "Extension",
         "lastName": "Smoke",
         "title": "Operator QA",
-        "company": "Gravitree Smoke Co",
+        "company": "Gravitre Smoke Co",
         "linkedinUrl": page_url,
         "source": "linkedin",
     }

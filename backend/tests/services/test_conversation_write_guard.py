@@ -23,14 +23,18 @@ from app.services.conversation_write_guard import (
 
 @pytest.fixture(autouse=True)
 def _clear_smoke_flags(monkeypatch):
+    monkeypatch.delenv("GRAVITRE_SMOKE_RUN", raising=False)
     monkeypatch.delenv("GRAVITREE_SMOKE_RUN", raising=False)
+    monkeypatch.delenv("GRAVITRE_CONVERSATION_SMOKE", raising=False)
     monkeypatch.delenv("GRAVITREE_CONVERSATION_SMOKE", raising=False)
     set_smoke_run_context(False)
     clear_request_actor()
     yield
     set_smoke_run_context(False)
     clear_request_actor()
+    monkeypatch.delenv("GRAVITRE_SMOKE_RUN", raising=False)
     monkeypatch.delenv("GRAVITREE_SMOKE_RUN", raising=False)
+    monkeypatch.delenv("GRAVITRE_CONVERSATION_SMOKE", raising=False)
     monkeypatch.delenv("GRAVITREE_CONVERSATION_SMOKE", raising=False)
 
 
@@ -73,6 +77,20 @@ def test_smoke_flag_refuses_even_with_real_user_jwt():
             FORBIDDEN_OPERATOR_ORG_ID,
             actor_id="f7e32f06-49df-4e73-8962-f41c21850762",
         )
+
+
+def test_mark_smoke_run_sets_legacy_and_canonical_env(monkeypatch):
+    mark_smoke_run()
+    assert is_smoke_test_ci_context() is True
+    import os
+
+    assert os.environ.get("GRAVITRE_SMOKE_RUN") == "1"
+    assert os.environ.get("GRAVITREE_SMOKE_RUN") == "1"
+
+
+def test_legacy_gravitree_smoke_env_triggers_context(monkeypatch):
+    monkeypatch.setenv("GRAVITREE_CONVERSATION_SMOKE", "1")
+    assert is_smoke_test_ci_context() is True
 
 
 def test_smoke_context_allows_isolated_org_only():

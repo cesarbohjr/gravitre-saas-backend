@@ -16,7 +16,7 @@ from typing import Any, Literal
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.agent_platform_optimizer import narrow_tools_for_turn
-from app.services.gravitree_voice import apply_voice, voice_system_prompt_section
+from app.services.gravitre_voice import apply_voice, voice_system_prompt_section
 from app.services.model_router import get_model_router
 from app.services.module_d_unified_voice_spec import build_module_d_unified_system_prompt
 from app.services.providers.openai_adapter import _supports_custom_temperature
@@ -1057,7 +1057,7 @@ async def apply_unified_turn_live(
         )
         updated_state = dict(task_state or {})
         clarified = safe_normalize_stored_dict(updated_state, key='clarified_params')
-        from app.services.gravitree_voice import detect_channel_override_integration
+        from app.services.gravitre_voice import detect_channel_override_integration
 
         override = detect_channel_override_integration(message)
         if override:

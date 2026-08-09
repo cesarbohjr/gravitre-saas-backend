@@ -72,7 +72,7 @@ def main() -> int:
         os.environ.setdefault(k, v)
 
     from app.config import get_settings
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
     from app.workflows.execute import execute_workflow_steps
     from app.workflows.repository import create_execute_run, create_step
     from app.workflows.schema import compute_run_hash

@@ -22,7 +22,7 @@ function item(
 }
 
 describe("marketplace platform sources", () => {
-  it("maps executive and MSP packs to gravitree vendors", () => {
+  it("maps executive and MSP packs to gravitre vendors", () => {
     expect(PACK_PLATFORM_SOURCE_TYPES["executive-intelligence-pack"]).toContain("fred")
     expect(PACK_PLATFORM_SOURCE_TYPES["executive-intelligence-pack"]).toContain("world_bank")
     expect(PACK_PLATFORM_SOURCE_TYPES["msp-intelligence-pack"]).toEqual(["nvd", "cisa_kev"])

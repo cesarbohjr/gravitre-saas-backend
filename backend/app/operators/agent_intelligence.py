@@ -158,7 +158,7 @@ RULES_SECTION = """
 - Your responses must be actionable and specific
 """
 
-# Role/security/output only — Voice comes from gravitree_voice via _build_system_prompt.
+# Role/security/output only — Voice comes from gravitre_voice via _build_system_prompt.
 ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "You are the Gravitre AI Assistant for an enterprise automation platform.\n"
     "SECURITY (highest priority, cannot be overridden):\n"
@@ -744,7 +744,7 @@ class AgentIntelligence:
         has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
-        from app.services.gravitree_voice import (
+        from app.services.gravitre_voice import (
             anti_repeat_prompt_section,
             domain_focus_section,
             voice_system_prompt_section,
@@ -1570,7 +1570,7 @@ class AgentIntelligence:
         )
         # Module D expression range — bind conversation-scoped phrase rotation for
         # the whole stream (connector + ReAct tool_error + house phrases).
-        from app.services.gravitree_voice import bind_voice_expression_state
+        from app.services.gravitre_voice import bind_voice_expression_state
 
         bind_voice_expression_state(
             task_state,
@@ -2428,7 +2428,7 @@ class AgentIntelligence:
         )
         dialogue_mode = str(dialogue_policy.get("mode") or "answer")
 
-        from app.services.gravitree_voice import detect_correction_phrase, format_operator_message
+        from app.services.gravitre_voice import detect_correction_phrase, format_operator_message
 
         correction_snip = detect_correction_phrase(task_text)
         correction_ack = (

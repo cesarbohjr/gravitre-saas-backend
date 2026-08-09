@@ -215,7 +215,7 @@ class MesonService:
             prefs = self.load_user_preferences(client, org_id, user_id)
             preference_context = self.format_preferences_for_prompt(prefs)
 
-        from app.services.gravitree_voice import apply_voice, confidence_register_hint
+        from app.services.gravitre_voice import apply_voice, confidence_register_hint
 
         # Same voice SoT as chat/ReAct (confidence register + humor budget included).
         # Meson→Module B planner unification is deferred.
@@ -935,7 +935,7 @@ class MesonService:
             if scoped_workflow_id:
                 failed_q = failed_q.eq("workflow_id", scoped_workflow_id)
             failed_runs = failed_q.execute()
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             for run in failed_runs.data or []:
                 run_id = str(run.get("id") or "")
@@ -2631,7 +2631,7 @@ class MesonService:
                 .execute()
             )
             if failed_run.data:
-                from app.services.gravitree_voice import format_operator_message
+                from app.services.gravitre_voice import format_operator_message
 
                 row = failed_run.data[0]
                 run_id = str(row.get("id") or "")
@@ -2673,7 +2673,7 @@ class MesonService:
             insight_pool = [i for i in insight_pool if i.id not in acknowledged]
 
         if not tip_pool and not insight_pool and "meson-workflow-ready" not in acknowledged:
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             insight_pool.append(
                 MesonInsight(

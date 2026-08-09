@@ -25,7 +25,7 @@ const activationSteps = [
   {
     n: "1",
     title: "Install",
-    body: "Add the Gravitree extension in Chrome (store listing when published, or load-unpacked beta).",
+    body: "Add the Gravitre extension in Chrome (store listing when published, or load-unpacked beta).",
   },
   {
     n: "2",
@@ -89,7 +89,7 @@ export function ExtensionPage() {
               </span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-zinc-600">
-              Gravitree on LinkedIn, Gmail, Outlook, and company sites — catalog
+              Gravitre on LinkedIn, Gmail, Outlook, and company sites — catalog
               actions only, human approval before writes, full audit in Outcomes.
               Not a parallel CRM bot.
             </p>
@@ -131,7 +131,7 @@ export function ExtensionPage() {
             priority
             panel={{
               src: "/product/extension-popup.png",
-              alt: "Gravitree extension popup showing a connected org session, three active connectors (HubSpot, Apollo, Slack), and an Enrich this LinkedIn page button.",
+              alt: "Gravitre extension popup showing a connected org session, three active connectors (HubSpot, Apollo, Slack), and an Enrich this LinkedIn page button.",
               width: 720,
               height: 714,
             }}
@@ -198,7 +198,7 @@ export function ExtensionPage() {
                 tabTitle="LinkedIn"
                 panel={{
                   src: "/product/extension-overlay-enrich.png",
-                  alt: "Gravitree overlay panel open on a LinkedIn profile, showing enriched company and contact fields pulled from catalog reads.",
+                  alt: "Gravitre overlay panel open on a LinkedIn profile, showing enriched company and contact fields pulled from catalog reads.",
                   width: 760,
                   height: 1802,
                 }}
@@ -227,7 +227,7 @@ export function ExtensionPage() {
                 panelAlign="bottom"
                 panel={{
                   src: "/product/extension-approval.png",
-                  alt: "Gravitree overlay panel showing a staged HubSpot contact create awaiting confirmation, with the catalog action and target fields listed.",
+                  alt: "Gravitre overlay panel showing a staged HubSpot contact create awaiting confirmation, with the catalog action and target fields listed.",
                   width: 760,
                   height: 2358,
                 }}
@@ -351,7 +351,7 @@ export function ExtensionPage() {
               <h3 className="font-semibold text-zinc-900">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-zinc-600">
                 Ask a short, page-contextual question in the overlay — same
-                unified-turn path as Gravitree chat. Writes and multi-step work
+                unified-turn path as Gravitre chat. Writes and multi-step work
                 hand off to the full app on the same conversation thread (where
                 the progress panel lives). Proven thread:{" "}
                 <a
@@ -426,7 +426,7 @@ export function ExtensionPage() {
               className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
               <Link2 className="h-4 w-4" />
-              Create a Gravitree account
+              Create a Gravitre account
             </Link>
           </div>
         </div>

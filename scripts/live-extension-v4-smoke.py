@@ -24,7 +24,7 @@ PAGE_CONTEXT = {
     "fullName": "Casey Operator",
     "firstName": "Casey",
     "lastName": "Operator",
-    "company": "Gravitree Smoke Co",
+    "company": "Gravitre Smoke Co",
     "title": "Head of Revenue Ops",
     "email": "casey.operator@example.com",
     "source": "linkedin",
@@ -74,14 +74,14 @@ async def _run() -> dict:
         environment_name="production",
     )
     answer = (quick.get("answer") or "").lower()
-    uses_context = ("casey" in answer) or ("gravitree smoke" in answer) or ("revenue" in answer)
+    uses_context = ("casey" in answer) or ("gravitre smoke" in answer) or ("revenue" in answer)
     evidence["cases"]["quick_page_context"] = {
         "status": "PASS" if quick.get("success") and uses_context else "FAIL",
         "conversationId": quick.get("conversationId"),
         "needsHandoff": quick.get("needsHandoff"),
         "handoffReason": quick.get("handoffReason"),
         "answerPreview": (quick.get("answer") or "")[:400],
-        "openInGravitreeUrl": quick.get("openInGravitreeUrl"),
+        "openInGravitreUrl": quick.get("openInGravitreUrl"),
         "path": quick.get("path"),
         "usesPageContext": uses_context,
         "acceptedPaths": [
@@ -106,7 +106,7 @@ async def _run() -> dict:
         conversation_id=quick.get("conversationId"),
         environment_name="production",
     )
-    url = str(handoff.get("openInGravitreeUrl") or "")
+    url = str(handoff.get("openInGravitreUrl") or "")
     evidence["cases"]["handoff"] = {
         "status": "PASS"
         if handoff.get("needsHandoff")
@@ -118,7 +118,7 @@ async def _run() -> dict:
         "needsHandoff": handoff.get("needsHandoff"),
         "handoffReason": handoff.get("handoffReason"),
         "path": handoff.get("path"),
-        "openInGravitreeUrl": url,
+        "openInGravitreUrl": url,
         "answerPreview": (handoff.get("answer") or "")[:400],
     }
 

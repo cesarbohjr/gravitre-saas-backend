@@ -11,7 +11,9 @@ from app.services.conversation_write_guard import set_smoke_run_context
 
 @pytest.fixture(autouse=True)
 def _clear_smoke_flags(monkeypatch):
+    monkeypatch.delenv("GRAVITRE_SMOKE_RUN", raising=False)
     monkeypatch.delenv("GRAVITREE_SMOKE_RUN", raising=False)
+    monkeypatch.delenv("GRAVITRE_CONVERSATION_SMOKE", raising=False)
     monkeypatch.delenv("GRAVITREE_CONVERSATION_SMOKE", raising=False)
     set_smoke_run_context(False)
     yield

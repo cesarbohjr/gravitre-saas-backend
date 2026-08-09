@@ -42,7 +42,7 @@ import {
   type AgentIconId,
 } from "@/lib/agent-identity"
 import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
-import { LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { LoadingIndicator } from "@/components/gravitre/gravitre-loader"
 import { useViewModeSafe } from "@/lib/view-mode-context"
 import { canConfigureVoice } from "@/lib/seat-entitlements"
 import useSWR from "swr"

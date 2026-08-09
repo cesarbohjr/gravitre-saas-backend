@@ -104,7 +104,7 @@ export function buildQueryClusterClaim(live?: LiveIntelSnapshot | null): Marketi
   }
   return {
     eyebrow: "Query clusters",
-    primary: "Gravitree learns themes and gaps from your verified org queries",
+    primary: "Gravitre learns themes and gaps from your verified org queries",
     provenance: "directional",
     note: "Hard theme/gap counts appear only after real org clustering data exists.",
   }
@@ -144,7 +144,7 @@ export function buildMemoryLearningClaim(live?: LiveIntelSnapshot | null): Marke
   }
   return {
     eyebrow: "Org memory",
-    primary: "Gravitree learns from every approved action",
+    primary: "Gravitre learns from every approved action",
     provenance: "directional",
     note: "Precise memory confidence appears in-product once your org has real signals — never invented for marketing.",
   }

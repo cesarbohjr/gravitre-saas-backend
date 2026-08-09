@@ -49,18 +49,22 @@ def _set_required_env_vars():
 
 @pytest.fixture(autouse=True)
 def _clear_conversation_write_guard_smoke_flags():
-    """Prevent GRAVITREE_SMOKE_RUN / ContextVar leaks from blocking unit tests on org-1."""
+    """Prevent GRAVITRE_SMOKE_RUN / ContextVar leaks from blocking unit tests on org-1."""
     from app.services.conversation_write_guard import (
         clear_request_actor,
         set_smoke_run_context,
     )
 
+    os.environ.pop("GRAVITRE_SMOKE_RUN", None)
     os.environ.pop("GRAVITREE_SMOKE_RUN", None)
+    os.environ.pop("GRAVITRE_CONVERSATION_SMOKE", None)
     os.environ.pop("GRAVITREE_CONVERSATION_SMOKE", None)
     set_smoke_run_context(False)
     clear_request_actor()
     yield
+    os.environ.pop("GRAVITRE_SMOKE_RUN", None)
     os.environ.pop("GRAVITREE_SMOKE_RUN", None)
+    os.environ.pop("GRAVITRE_CONVERSATION_SMOKE", None)
     os.environ.pop("GRAVITREE_CONVERSATION_SMOKE", None)
     set_smoke_run_context(False)
     clear_request_actor()

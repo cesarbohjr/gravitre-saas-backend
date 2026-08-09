@@ -47,13 +47,13 @@ def test_fred_and_nvd_are_registrations_not_copies():
     # Same dispatcher function object for both
     fred_raw = ok_result(
         "fred",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data=[{"date": "2024-01-01", "value": "100"}],
         provenance={"series_id": "GDP"},
     )
     nvd_raw = ok_result(
         "nvd",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data={"vulnerabilities": [{"cve": {"id": "CVE-2024-21762", "descriptions": [{"value": "test"}]}}]},
         provenance={"cve": "CVE-2024-21762"},
     )
@@ -71,7 +71,7 @@ def test_world_bank_third_source_is_mapper_registration_only():
     assert "world_bank.indicator_observation" in registered_signals()
     raw = ok_result(
         "world_bank",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data=[{"date": "2023", "value": 1.0}],
         provenance={"country": "US", "indicator": "NY.GDP.MKTP.CD"},
     )
@@ -83,7 +83,7 @@ def test_world_bank_third_source_is_mapper_registration_only():
 
 def test_unregistered_vendor_raises():
     with pytest.raises(KeyError):
-        normalize_source_result("not_a_real_vendor", ok_result("x", auth_mode="gravitree_managed", data={}))
+        normalize_source_result("not_a_real_vendor", ok_result("x", auth_mode="gravitre_managed", data={}))
 
 
 def test_run_shared_ingestion_uses_shared_tables(monkeypatch):
@@ -145,7 +145,7 @@ def test_run_shared_ingestion_uses_shared_tables(monkeypatch):
 
     raw = ok_result(
         "fred",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data=[{"date": "2024-01-01", "value": "27.5"}],
         provenance={"series_id": "GDP", "source": "fred"},
     )
@@ -169,12 +169,12 @@ def test_run_shared_ingestion_uses_shared_tables(monkeypatch):
 
 def test_mappers_produce_expected_shapes():
     fred = map_fred(
-        ok_result("fred", auth_mode="gravitree_managed", data=[{"date": "2020", "value": "1"}], provenance={"series_id": "GDP"})
+        ok_result("fred", auth_mode="gravitre_managed", data=[{"date": "2020", "value": "1"}], provenance={"series_id": "GDP"})
     )
     nvd = map_nvd(
         ok_result(
             "nvd",
-            auth_mode="gravitree_managed",
+            auth_mode="gravitre_managed",
             data={"vulnerabilities": [{"cve": {"id": "CVE-1", "descriptions": [{"value": "x"}]}}]},
             provenance={"cve": "CVE-1"},
         )
@@ -182,7 +182,7 @@ def test_mappers_produce_expected_shapes():
     wb = map_world_bank(
         ok_result(
             "world_bank",
-            auth_mode="gravitree_managed",
+            auth_mode="gravitre_managed",
             data=[{"date": "2022", "value": 9}],
             provenance={"country": "US", "indicator": "NY.GDP.MKTP.CD"},
         )

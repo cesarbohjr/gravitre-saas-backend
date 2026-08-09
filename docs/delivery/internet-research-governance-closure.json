@@ -64,7 +64,7 @@
     },
     "additional_costs": "Gemini model input/output tokens billed separately",
     "example_2_total_above_free_tier_usd_per_1k_requests": 35.1375,
-    "gravitree_volume_cost_model": {
+    "gravitre_volume_cost_model": {
       "status": "NOT_RUN",
       "note": "List price verified; owner must forecast daily internet_research/search_web volume before enablement go/no-go. Qualitative: early prod likely under 10k grounding counts/day → $0 grounding surcharge but token costs still apply."
     }

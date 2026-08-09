@@ -44,7 +44,7 @@ def format_operator_response(
     planned: dict[str, Any] | None = None,
 ) -> str:
     """Conversational operator reply — Module D voice; never expose catalog action ids."""
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
     from app.services.user_facing_copy_guard import (
         finalize_user_facing_message,
         user_facing_available_action_labels,
@@ -155,7 +155,7 @@ def format_not_executable_message(payload: dict[str, Any]) -> str:
         )
         return finalize_user_facing_message(text, context="format_not_executable_message")
 
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     reason = str(payload.get("reason") or "not_implemented")
     next_step = str(payload.get("next_step") or "").strip()

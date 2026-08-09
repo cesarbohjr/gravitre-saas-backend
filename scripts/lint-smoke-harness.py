@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""CI lint: conversation-writing smoke scripts must use gravitree_test_client.
+"""CI lint: conversation-writing smoke scripts must use gravitre_test_client.
 
 Fails when a scripts/smoke-*.py:
   1) Touches conversations / ensure_owned / conversation_id minting without importing
-     gravitree_test_client (or isolated_conversation_org during transition), OR
+     gravitre_test_client (or isolated_conversation_org during transition), OR
   2) Prefers OAUTH_SMOKE_ORG_ID / SMOKE_ORG_ID ahead of the isolated org for defaults.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ REPO = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO / "scripts"
 
 HARNESS_IMPORT = re.compile(
-    r"gravitree_test_client|isolated_conversation_org",
+    r"gravitre_test_client|isolated_conversation_org",
     re.IGNORECASE,
 )
 CONVERSATION_WRITE = re.compile(
@@ -49,10 +49,10 @@ def main() -> int:
         bad_pref = bool(BAD_PREF.search(text))
 
         if touches_conv and not has_harness:
-            failures.append(f"{name}: conversation-write patterns without gravitree_test_client import")
+            failures.append(f"{name}: conversation-write patterns without gravitre_test_client import")
         if bad_pref and name not in EXEMPT_PREF:
             failures.append(
-                f"{name}: prefers OAUTH_SMOKE_ORG_ID/SMOKE_ORG_ID — use gravitree_test_client.require_isolated_org"
+                f"{name}: prefers OAUTH_SMOKE_ORG_ID/SMOKE_ORG_ID — use gravitre_test_client.require_isolated_org"
             )
 
     if failures:

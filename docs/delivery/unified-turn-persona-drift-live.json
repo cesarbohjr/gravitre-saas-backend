@@ -86,12 +86,12 @@
       "user": "remind me what you are",
       "ok": true,
       "failures": [],
-      "assistant_preview": "I\u2019m Gravitree \u2014 the operator that helps you run connected work and keeps it plain.",
+      "assistant_preview": "I\u2019m Gravitre \u2014 the operator that helps you run connected work and keeps it plain.",
       "audit_action": "unified_turn.live.completed",
       "audit_outcome": "conversational_reply",
-      "model_preview": "I\u2019m Gravitree \u2014 the operator that helps you run connected work and keeps it plain.",
+      "model_preview": "I\u2019m Gravitre \u2014 the operator that helps you run connected work and keeps it plain.",
       "shadow_outcome": "conversational_reply",
-      "shadow_preview": "I\u2019m Gravitree \u2014 the operator that helps you run connected work and keeps it plain."
+      "shadow_preview": "I\u2019m Gravitre \u2014 the operator that helps you run connected work and keeps it plain."
     },
     {
       "turn": 8,
@@ -326,12 +326,12 @@
       "user": "remind me what you are",
       "ok": true,
       "failures": [],
-      "assistant_preview": "I\u2019m Gravitree \u2014 the operator that helps manage workflows, connectors, and automation here.",
+      "assistant_preview": "I\u2019m Gravitre \u2014 the operator that helps manage workflows, connectors, and automation here.",
       "audit_action": "unified_turn.live.completed",
       "audit_outcome": "conversational_reply",
-      "model_preview": "I\u2019m Gravitree \u2014 the operator that helps manage workflows, connectors, and automation here.",
+      "model_preview": "I\u2019m Gravitre \u2014 the operator that helps manage workflows, connectors, and automation here.",
       "shadow_outcome": "conversational_reply",
-      "shadow_preview": "I\u2019m Gravitree \u2014 the operator that helps manage workflows, connectors, and automation here."
+      "shadow_preview": "I\u2019m Gravitre \u2014 the operator that helps manage workflows, connectors, and automation here."
     },
     {
       "turn": 28,

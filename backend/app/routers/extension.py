@@ -174,8 +174,9 @@ async def extension_enrich(
             "matches": [],
             "suggestions": [],
             "connectedIntegrations": [],
-            "voiceNote": "Connect Apollo or HubSpot in Gravitree to enrich this page.",
-            "openInGravitreeUrl": "/connectors",
+            "voiceNote": "Connect Apollo or HubSpot in Gravitre to enrich this page.",
+            "openInGravitreUrl": "/connectors",
+            "openInGravitreeUrl": "/connectors",  # legacy dual-read alias
         }
     return enrich_from_page_context(
         ctx,

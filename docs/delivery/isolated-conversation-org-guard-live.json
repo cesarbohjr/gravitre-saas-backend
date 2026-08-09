@@ -37,5 +37,5 @@
   ],
   "verify_script": "python scripts/verify-isolated-conversation-org-guard.py",
   "provision_script": "python scripts/isolated_conversation_org.py",
-  "deploy_note": "API middleware X-Gravitree-Smoke-Run engages only after Railway redeploy of conversation_write_guard; in-process ensure_owned_conversation guard verified live against prod Supabase without deploy."
+  "deploy_note": "API middleware X-Gravitre-Smoke-Run engages only after Railway redeploy of conversation_write_guard; in-process ensure_owned_conversation guard verified live against prod Supabase without deploy."
 }

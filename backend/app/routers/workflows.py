@@ -1865,7 +1865,7 @@ async def execute_workflow(
             required_approvals=required_approvals,
         )
         try:
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
             from app.services.notification_emitter import emit_notification
 
             emit_notification(

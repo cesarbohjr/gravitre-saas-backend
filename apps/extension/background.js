@@ -1,4 +1,4 @@
-/** Gravitree extension service worker — API calls + auth storage. */
+/** Gravitre extension service worker — API calls + auth storage. */
 
 const DEFAULT_API =
   "https://gravitre-saas-backend-production.up.railway.app"
@@ -24,7 +24,7 @@ async function getSettings() {
 async function apiFetch(path, { method = "GET", body } = {}) {
   const cfg = await getSettings()
   if (!cfg.accessToken || !cfg.orgId) {
-    const err = new Error("Not signed in. Open the extension and connect Gravitree.")
+    const err = new Error("Not signed in. Open the extension and connect Gravitre.")
     err.code = "not_authenticated"
     throw err
   }
@@ -207,7 +207,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // Auth handoff from gravitre.app /extension/connect
 chrome.runtime.onMessageExternal.addListener((message, _sender, sendResponse) => {
   ;(async () => {
-    if (message?.type !== "GRAVITREE_AUTH") {
+    if (message?.type !== "GRAVITRE_AUTH" && message?.type !== "GRAVITREE_AUTH") {
       sendResponse({ ok: false })
       return
     }

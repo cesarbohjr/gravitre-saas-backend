@@ -5,21 +5,21 @@ import type { ReactNode } from "react"
 import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { cn } from "@/lib/utils"
 
-export type GravitreeLoaderSize = "xs" | "sm" | "md" | "lg"
+export type GravitreLoaderSize = "xs" | "sm" | "md" | "lg"
 
 /** How the loader shell fills space — viewport = full screen; parent = AppShell main. */
 export type CenteredLoaderFill = "viewport" | "parent"
 
 /** Pixel sizes for the shared 200×200 brand SVG (square, not the old wide bars). */
-const sizeMap: Record<GravitreeLoaderSize, number> = {
+const sizeMap: Record<GravitreLoaderSize, number> = {
   xs: 28,
   sm: 36,
   md: 48,
   lg: 72,
 }
 
-export interface GravitreeLoaderProps {
-  size?: GravitreeLoaderSize
+export interface GravitreLoaderProps {
+  size?: GravitreLoaderSize
   className?: string
   label?: string
 }
@@ -28,11 +28,11 @@ export interface GravitreeLoaderProps {
  * Single Gravitre page/async loader — the gooey two-bar mark with the morphing
  * ellipse (`ry`/`rx` SMIL animation). Same artwork as chat “thinking”.
  */
-export function GravitreeLoader({
+export function GravitreLoader({
   size = "md",
   className,
   label = "Loading",
-}: GravitreeLoaderProps) {
+}: GravitreLoaderProps) {
   return (
     <GravitreThinkingLoader
       size={sizeMap[size]}
@@ -48,11 +48,11 @@ export function LoadingIndicator({
   className,
   label,
 }: {
-  size?: GravitreeLoaderSize
+  size?: GravitreLoaderSize
   className?: string
   label?: string
 }) {
-  return <GravitreeLoader size={size} className={className} label={label ?? "Loading"} />
+  return <GravitreLoader size={size} className={className} label={label ?? "Loading"} />
 }
 
 const centeredLoaderFillClasses: Record<CenteredLoaderFill, string> = {
@@ -73,7 +73,7 @@ export function CenteredLoader({
   showLabel = false,
   children,
 }: {
-  size?: GravitreeLoaderSize
+  size?: GravitreLoaderSize
   label?: string
   fill?: CenteredLoaderFill
   className?: string
@@ -92,7 +92,7 @@ export function CenteredLoader({
         className,
       )}
     >
-      {children ?? <GravitreeLoader size={size} label={label} />}
+      {children ?? <GravitreLoader size={size} label={label} />}
       {showLabel && label ? (
         <p className="animate-pulse text-sm font-medium text-muted-foreground">{label}</p>
       ) : null}

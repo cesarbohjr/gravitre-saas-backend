@@ -10,10 +10,15 @@ from app.intelligence_packs.shared.auth_mode import (
     AuthMode,
     AuthModeError,
     ActivationGate,
+    GRAVITRE_SOURCE_UNAVAILABLE,
+    LEGACY_AUTH_MODE_GRAVITREE_MANAGED,
     assert_byo_never_uses_platform_key,
     get_auth_mode,
     get_activation_gate,
     is_activation_allowed,
+    is_gravitre_managed_mode,
+    is_gravitre_source_unavailable_code,
+    normalize_auth_mode_value,
     resolve_credential_source,
 )
 from app.marketplace.connector_category_templates import (
@@ -27,8 +32,25 @@ def test_apollo_is_customer_owned():
     assert get_auth_mode("apollo") == AuthMode.CUSTOMER_OWNED
 
 
-def test_fred_is_gravitree_managed():
-    assert get_auth_mode("fred") == AuthMode.GRAVITREE_MANAGED
+def test_fred_is_gravitre_managed():
+    assert get_auth_mode("fred") == AuthMode.GRAVITRE_MANAGED
+
+
+def test_dual_read_auth_mode_helpers_accept_legacy_spelling():
+    assert is_gravitre_managed_mode(AuthMode.GRAVITRE_MANAGED.value) is True
+    assert is_gravitre_managed_mode(LEGACY_AUTH_MODE_GRAVITREE_MANAGED) is True
+    assert is_gravitre_managed_mode("customer_owned") is False
+    assert normalize_auth_mode_value(LEGACY_AUTH_MODE_GRAVITREE_MANAGED) == AuthMode.GRAVITRE_MANAGED.value
+    assert normalize_auth_mode_value("byo_required") == "byo_required"
+    assert is_gravitre_source_unavailable_code(GRAVITRE_SOURCE_UNAVAILABLE) is True
+    assert is_gravitre_source_unavailable_code("GRAVITREE_SOURCE_UNAVAILABLE") is True
+    assert is_gravitre_source_unavailable_code("OTHER") is False
+
+
+def test_byo_forbidden_set_includes_legacy_gravitree_managed():
+    with pytest.raises(AuthModeError) as exc:
+        assert_byo_never_uses_platform_key("pdl", resolved_from=LEGACY_AUTH_MODE_GRAVITREE_MANAGED)
+    assert exc.value.code == "BYO_SHARED_KEY_FORBIDDEN"
 
 
 def test_knowledge_base_sources_skip_tenant_connector_requirement():
@@ -143,7 +165,7 @@ def test_stage_connector_stubs_creates_needs_connection_only(monkeypatch):
     assert result["stagedCount"] == 2
     assert all(r["status"] == "needs_connection" for r in result["created"])
     assert all(r["status"] == "needs_connection" for r in created_rows)
-    assert created_rows[0]["config"]["auth_mode"] == "gravitree_managed"
+    assert created_rows[0]["config"]["auth_mode"] == "gravitre_managed"
     assert created_rows[1]["config"]["auth_mode"] == "byo_required"
 
 

@@ -1,6 +1,6 @@
 # Unified turn reasoning — Phase 0 map
 
-Reference: program brief `gravitree-conversational-ai-technical-brief.md` (not present in-repo at audit time; requirements captured in the unified-turn program prompt).
+Reference: program brief `gravitre-conversational-ai-technical-brief.md` (not present in-repo at audit time; requirements captured in the unified-turn program prompt).
 
 Goal: one reasoning call per turn (conversation + pending context + native tool schemas) **before** any tool execution. Write governance unchanged.
 
@@ -16,7 +16,7 @@ Goal: one reasoning call per turn (conversation + pending context + native tool 
 | 3 | **Conversational turn gate** | `backend/app/services/conversational_turn_gate.py` | `heuristic_turn_shape`, `classify_turn_shape`, `should_offer_conversational_path` | conversational vs task vs mixed; social `category` | Early exit or trimmed `task_text` |
 | 4 | **Module D phrase path** | `backend/app/services/conversational_reply_service.py` | `generate_conversational_reply`, `generate_social_ack` | User-visible non-task copy | SSE complete (no tools) |
 | 4b | Expression banks | `backend/app/services/voice_expression_range.py` | `pick_expression`, `EXPRESSION_BANKS` | Deterministic phrase rotation | Used by conversational + some operator copy |
-| 4c | Operator voice | `backend/app/services/gravitree_voice.py` | `format_operator_message`, `voice_system_prompt_section` | Persona/register for LLM + static operator strings | System prompts + blocked-path copy |
+| 4c | Operator voice | `backend/app/services/gravitre_voice.py` | `format_operator_message`, `voice_system_prompt_section` | Persona/register for LLM + static operator strings | System prompts + blocked-path copy |
 | 5 | Platform tasks | `backend/app/services/conversational_execution_service.py` | `process_turn` | Create agent/workflow intents | Pending confirm / collecting |
 | 6 | Connector routing | `backend/app/services/connector_chat_routing.py` | `should_run_connector_preflight`, `run_connector_fallback_turn` | Orch vs governed connector vs defer ReAct | Orch or turn controller |
 | 7 | **Pending-reply classifier** | `backend/app/services/pending_reply_classifier.py` | `has_pending_family`, `build_pending_snapshot`, `classify_pending_reply`, formatters | 7-way intent when pending | Hold/clarify/cancel/resume handlers |

@@ -24,7 +24,7 @@ import {
 } from "@/lib/agent-identity"
 import { agentsApi } from "@/lib/api"
 import type { Agent } from "@/types/api"
-import { LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { LoadingIndicator } from "@/components/gravitre/gravitre-loader"
 import { ImagePlus, Pencil, Trash2 } from "lucide-react"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 

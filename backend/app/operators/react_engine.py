@@ -31,11 +31,10 @@ def reset_serial_react_tools(token: contextvars.Token[bool]) -> None:
 def _serial_tools_forced() -> bool:
     if _FORCE_SERIAL_TOOLS.get():
         return True
-    return os.environ.get("GRAVITREE_REACT_SERIAL_TOOLS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    for env_name in ("GRAVITRE_REACT_SERIAL_TOOLS", "GRAVITREE_REACT_SERIAL_TOOLS"):
+        if os.environ.get(env_name, "").strip().lower() in {"1", "true", "yes"}:
+            return True
+    return False
 
 from app.config import MODEL_TIERS, Settings, get_settings
 from app.core.logging import get_logger
@@ -291,7 +290,7 @@ class ReActEngine:
             or MODEL_TIERS["high"]["openai"]
         )
         messages: list[dict[str, Any]] = []
-        from app.services.gravitree_voice import apply_voice
+        from app.services.gravitre_voice import apply_voice
 
         hardened = harden_system_prompt(
             apply_voice(system_prompt or _default_react_system_prompt())
@@ -679,7 +678,7 @@ class ReActEngine:
                 load_run_for_write_gate,
                 run_allows_catalog_write_execution,
             )
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             run_row = load_run_for_write_gate(ctx.client, ctx.org_id, ctx.run_id)
             if run_row is not None:

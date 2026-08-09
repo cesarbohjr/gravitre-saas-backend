@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "backend"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     get_service_client,
     load_env,
     require_isolated_org,

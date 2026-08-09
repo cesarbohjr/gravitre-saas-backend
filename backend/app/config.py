@@ -579,7 +579,7 @@ class Settings(BaseSettings):
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
     voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
-    # Intelligence packs — Gravitree-managed sources (Phase 1). Humans provision on Railway.
+    # Intelligence packs — Gravitre-managed sources (Phase 1). Humans provision on Railway.
     fred_api_key: str = ""
     fred_base_url: str = "https://api.stlouisfed.org/fred"
     sec_user_agent: str = ""  # Must identify Gravitre + contact email

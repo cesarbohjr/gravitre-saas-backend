@@ -10,14 +10,14 @@
     "governance_owner": "Cesar Bohorquez Jr. (STA-312 scope extended to licensing)"
   },
   "delivered": [
-    "auth_mode enum + resolve_credential_source (customer_owned / gravitree_managed / byo_required)",
+    "auth_mode enum + resolve_credential_source (customer_owned / gravitre_managed / byo_required)",
     "BYO fail-closed tests (ZoomInfo, LinkedIn Sales Navigator) — no shared-key path",
     "needs_connection status migration + create_connector(status=...)",
     "connector category template install staging stubs (API + service)",
     "Executive clients: FRED, SEC (hard SEC_USER_AGENT), World Bank, OECD; OpenCorporates gated",
     "MSP clients: NVD, CISA KEV",
     "Frontend catalog authMode + Intelligence Sources / BYO entries",
-    "Settings env hooks for gravitree-managed keys"
+    "Settings env hooks for gravitre-managed keys"
   ],
   "activation_blocked": ["opencorporates", "crunchbase", "pdl"],
   "not_done_this_slice": [

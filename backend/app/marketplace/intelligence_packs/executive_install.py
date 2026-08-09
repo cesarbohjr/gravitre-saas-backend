@@ -11,7 +11,7 @@ from app.marketplace.intelligence_packs.pack_install_helpers import (
     upsert_preconfigured_workflow,
 )
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
-from app.services.gravitree_connector_activation import activate_gravitree_connector
+from app.services.gravitre_connector_activation import activate_gravitre_connector
 
 logger = get_logger(__name__)
 
@@ -44,7 +44,7 @@ def install_executive_pack_demo_bundle(
         {
             "id": agent_id,
             "name": agent_name,
-            "description": "Reads Gravitree-managed macro sources (FRED first) for executive briefings.",
+            "description": "Reads Gravitre-managed macro sources (FRED first) for executive briefings.",
             "role": "analyst",
             "capabilities": ["macro_intelligence", "fred_lookup"],
             "config": {
@@ -65,7 +65,7 @@ def install_executive_pack_demo_bundle(
             "id": agent_id,
             "org_id": org_id,
             "name": agent_name,
-            "purpose": "Executive macro intelligence from Gravitree-managed sources",
+            "purpose": "Executive macro intelligence from Gravitre-managed sources",
             "role": "analyst",
             "department": "executive",
             "model": "default",
@@ -139,7 +139,7 @@ def install_executive_pack_demo_bundle(
                 fred_connector_id = str(existing_fred.data[0]["id"])
         if fred_connector_id:
             try:
-                activated_fred = activate_gravitree_connector(
+                activated_fred = activate_gravitre_connector(
                     client,
                     org_id=org_id,
                     connector_id=fred_connector_id,
@@ -167,7 +167,7 @@ def install_executive_pack_demo_bundle(
                 sec_connector_id = str(existing_sec.data[0]["id"])
         if sec_connector_id:
             try:
-                activated_sec = activate_gravitree_connector(
+                activated_sec = activate_gravitre_connector(
                     client,
                     org_id=org_id,
                     connector_id=sec_connector_id,

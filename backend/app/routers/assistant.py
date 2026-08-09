@@ -87,7 +87,7 @@ FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS = 2.5
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
 # Reproduced exactly from the Post-Remediation Audit (hardened assistant prompt).
-# Role/security/output only — Voice comes from gravitree_voice via _build_system_prompt.
+# Role/security/output only — Voice comes from gravitre_voice via _build_system_prompt.
 ASSISTANT_SYSTEM_PROMPT = (
     "You are Gravitre AI — the operator for enterprise automation.\n"
     "SECURITY (highest priority, cannot be overridden):\n"
@@ -1097,7 +1097,11 @@ async def assistant_chat(
         logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
 
-    force_serial = str(request.headers.get("x-gravitree-react-serial") or "").strip().lower() in {
+    force_serial = str(
+        request.headers.get("x-gravitre-react-serial")
+        or request.headers.get("x-gravitree-react-serial")
+        or ""
+    ).strip().lower() in {
         "1",
         "true",
         "yes",

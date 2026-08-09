@@ -1,4 +1,4 @@
-"""Gravitree Voice Layer (Module D).
+"""Gravitre Voice Layer (Module D).
 
 Single source of truth for product persona — calm expert, facts-first,
 Connected/Healthy/Executable/Verified vocabulary. Chat, ReAct, canvas turn
@@ -13,7 +13,7 @@ enters B.
 Behavioral range (not tone alone):
 - Confidence register: certain | estimate | blocked
 - Humor budget: rare, never on errors/governance; opt-in via allow_humor
-- House phrasing: curated Gravitree-specific lines for recurring moments
+- House phrasing: curated Gravitre-specific lines for recurring moments
 
 Executive Digest: format_outcome_digest() shapes Module A outcome batches
 (intelligence_outcome_events / outcome_event_bus payloads) in this voice.
@@ -38,7 +38,7 @@ __all__ = (
     "CHEV_TERMS",
     "EXPRESSION_BANKS",
     "EXPRESSION_EXCLUDED",
-    "GRAVITREE_VOICE_RULES",
+    "GRAVITRE_VOICE_RULES",
     "HOUSE_PHRASING",
     "VOICE_EXPRESSION_STATE_KEY",
     "VOICE_SECTION_HEADER",
@@ -185,7 +185,7 @@ def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:
         f"{bullets}"
     )
 
-GRAVITREE_VOICE_RULES: tuple[str, ...] = (
+GRAVITRE_VOICE_RULES: tuple[str, ...] = (
     "Calm expert: capable operator, not a chatbot persona. Smart, cool geek — precise, not cute.",
     "Lead with the fact, then the implication, then the one best next move.",
     "Show your work when a fact comes from a tool or connector result — cite the source briefly in plain language.",
@@ -391,7 +391,7 @@ def humor_permitted(*, kind: str | None = None, allow_humor: bool = False) -> bo
 
 def voice_system_prompt_section() -> str:
     """The one VOICE block for LLM system prompts (includes behavioral range)."""
-    rules = "\n".join(f"- {rule}" for rule in GRAVITREE_VOICE_RULES)
+    rules = "\n".join(f"- {rule}" for rule in GRAVITRE_VOICE_RULES)
     return (
         f"{VOICE_SECTION_HEADER}\n{_VOICE_SECTION_BODY}\n\n"
         f"Rules:\n{rules}\n\n"
@@ -756,7 +756,7 @@ def format_outcome_digest(
 ) -> str:
     """Turn a batch of Module A outcomes into one human-readable digest.
 
-    Fact-first Gravitree voice. Failures use the blocked register (blocker + next
+    Fact-first Gravitre voice. Failures use the blocked register (blocker + next
     action). Clean windows may use the light success flourish when ``allow_humor``.
     """
     normalized = [coerce_outcome_digest_item(item) for item in (items or [])]

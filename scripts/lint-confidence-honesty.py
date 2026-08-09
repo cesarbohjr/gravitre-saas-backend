@@ -12,7 +12,7 @@ Catches unlabeled confidence presentation in backend/app:
    confidence-shaped argument without nearby estimate/source provenance
    (``confidence_is_estimate`` / ``confidence_source`` / ``annotate_confidence`` /
    ``label_confidence``)
-4. Module D voice surface: ``gravitree_voice.py`` must keep
+4. Module D voice surface: ``gravitre_voice.py`` must keep
    ``format_confidence_for_voice`` (Module C → D bridge). Emitting a numeric
    confidence through ``format_operator_message`` without that helper is a lint
    failure — nice phrasing does not exempt honesty labeling.
@@ -115,24 +115,24 @@ def _wrap_block_has_confidence(lines: list[str], start: int) -> tuple[bool, int]
 
 def _voice_module_findings() -> list[str]:
     """Module C envelope lint covers Module D formatter — unlabeled voiced confidence is debt."""
-    voice = APP / "services" / "gravitree_voice.py"
+    voice = APP / "services" / "gravitre_voice.py"
     if not voice.is_file():
-        return ["backend/app/services/gravitree_voice.py: missing Module D voice SoT"]
+        return ["backend/app/services/gravitre_voice.py: missing Module D voice SoT"]
     text = voice.read_text(encoding="utf-8", errors="replace")
     out: list[str] = []
     if "def format_confidence_for_voice" not in text:
         out.append(
-            "backend/app/services/gravitree_voice.py: missing format_confidence_for_voice "
+            "backend/app/services/gravitre_voice.py: missing format_confidence_for_voice "
             "(Module C honesty must gate numeric confidence before voice emission)"
         )
     if "label_confidence" not in text:
         out.append(
-            "backend/app/services/gravitree_voice.py: format_confidence_for_voice must call "
+            "backend/app/services/gravitre_voice.py: format_confidence_for_voice must call "
             "confidence_honesty.label_confidence"
         )
     if 'if "confidence" in ctx' not in text and "if 'confidence' in ctx" not in text:
         out.append(
-            "backend/app/services/gravitree_voice.py: format_operator_message must intercept "
+            "backend/app/services/gravitre_voice.py: format_operator_message must intercept "
             "numeric confidence kwargs (voiced numbers are not exempt from Module C)"
         )
     return out

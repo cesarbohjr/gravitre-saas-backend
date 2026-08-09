@@ -1,7 +1,7 @@
 """Platform grounding volume monitor — gate 2 replacement via live telemetry.
 
 Tracks aggregate daily grounding counts against Google's 10k/day/account free tier.
-One Gravitree GCP account serves all customers — do not shard per org at Google layer.
+One Gravitre GCP account serves all customers — do not shard per org at Google layer.
 
 Also enforces a hard per-org hourly circuit breaker (default 500/hour) independent of
 the 75% platform alert — alerts are post-facto; the circuit breaker blocks runaway cost.

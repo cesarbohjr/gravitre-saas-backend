@@ -36,7 +36,7 @@
         "webSocketDebuggerUrl": "ws://127.0.0.1:9331/devtools/browser/ee1a6fa1-2606-4e5f-af3a-d8b0b81e4188"
       },
       "extensionManifest": {
-        "name": "Gravitree",
+        "name": "Gravitre",
         "version": "0.5.0"
       },
       "extensionTargetUrl": "chrome-extension://iegkidilloajngolbpgfkaeglblnklol/background.js",
@@ -78,14 +78,14 @@
         "status": "PASS",
         "http": 200,
         "conversationId": "d7625307-c573-4bed-9788-52824ea0692c",
-        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co.",
+        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitre Smoke Co.",
         "detail": null
       },
       "chat_handoff": {
         "status": "PASS",
         "http": 200,
         "needsHandoff": true,
-        "openInGravitreeUrl": "/ai?c=d7625307-c573-4bed-9788-52824ea0692c&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+        "openInGravitreUrl": "/ai?c=d7625307-c573-4bed-9788-52824ea0692c&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
         "sameConversation": true
       },
       "overlay_visual": {
@@ -112,7 +112,7 @@
         "webSocketDebuggerUrl": "ws://127.0.0.1:9332/devtools/browser/67764814-758a-4b11-8e50-25625eee43a8"
       },
       "extensionManifest": {
-        "name": "Gravitree",
+        "name": "Gravitre",
         "version": "0.5.0"
       },
       "extensionTargetUrl": "chrome-extension://iegkidilloajngolbpgfkaeglblnklol/background.js",
@@ -154,14 +154,14 @@
         "status": "PASS",
         "http": 200,
         "conversationId": "3a43c98a-53cc-4743-8562-67a4bdaaabb3",
-        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co.",
+        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitre Smoke Co.",
         "detail": null
       },
       "chat_handoff": {
         "status": "PASS",
         "http": 200,
         "needsHandoff": true,
-        "openInGravitreeUrl": "/ai?c=3a43c98a-53cc-4743-8562-67a4bdaaabb3&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+        "openInGravitreUrl": "/ai?c=3a43c98a-53cc-4743-8562-67a4bdaaabb3&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
         "sameConversation": true
       },
       "overlay_visual": {

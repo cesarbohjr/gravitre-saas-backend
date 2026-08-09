@@ -1,6 +1,6 @@
 ---
 title: Browser extension (Chrome, Edge, Brave)
-description: Install the Gravitree Chromium extension, connect your org, enrich a page, approve a write, and see it in Outcomes.
+description: Install the Gravitre Chromium extension, connect your org, enrich a page, approve a write, and see it in Outcomes.
 audience: public
 depth: mid
 tier: all
@@ -15,7 +15,7 @@ next:
   href: /docs/guides/how-to/runs
 ---
 
-The **Gravitree browser extension** is a front door onto the same catalog, approvals, and Outcomes as the web app. It reads page context from supported sites and runs **governed catalog actions** — never DOM automation as a substitute for a CRM write.
+The **Gravitre browser extension** is a front door onto the same catalog, approvals, and Outcomes as the web app. It reads page context from supported sites and runs **governed catalog actions** — never DOM automation as a substitute for a CRM write.
 
 **Activation milestone (aha in minutes):** install → connect org → one real enrich → one approved write → see it in Outcomes.
 
@@ -41,14 +41,14 @@ When a public or unlisted listing is available, open the store link from [Browse
 
 ### Option B — Load unpacked (developer / private beta)
 
-1. Get the `apps/extension` pack from your Gravitree deployment or engineering contact.
+1. Get the `apps/extension` pack from your Gravitre deployment or engineering contact.
 2. Chrome / Edge / Brave → **Extensions** → enable **Developer mode**.
 3. **Load unpacked** → select the extension folder.
-4. Pin the Gravitree icon.
+4. Pin the Gravitre icon.
 
 ## Connect your org
 
-1. Open the extension popup → **Connect Gravitree**.
+1. Open the extension popup → **Connect Gravitre**.
 2. Sign in at `gravitre.app` if needed and select the org.
 3. On `/extension/connect`, authorize — the page sends your session to the extension (same JWT + org as the web app).
 
@@ -69,7 +69,7 @@ If connect fails: confirm you opened Connect **from the extension** (so `ext_id`
 
 1. Connect **Apollo** and/or **HubSpot** under **BUILD → Connectors** (`/connectors`) in the active Environment.
 2. Open a **LinkedIn profile** (or Gmail / Outlook / a company page).
-3. Use the overlay (or popup → Enrich) — Gravitree runs catalog reads from page context.
+3. Use the overlay (or popup → Enrich) — Gravitre runs catalog reads from page context.
 4. Choose a suggested write (e.g. create contact / create list) → **Approve**.
 5. Open **Outcomes** / **Runs** — the run should show `source=browser_extension` and a completed notification fanout.
 
@@ -115,7 +115,7 @@ different engine.
 
 | Permission | Why |
 |------------|-----|
-| Host allowlist (LinkedIn, Gmail, Outlook, Salesforce, Slack, Gravitree) | Overlay + API only on named hosts — each host added explicitly |
+| Host allowlist (LinkedIn, Gmail, Outlook, Salesforce, Slack, Gravitre) | Overlay + API only on named hosts — each host added explicitly |
 | `activeTab` | Company-site overlay when you invoke it |
 | `storage` | Session token + org id |
 | `scripting` / `sidePanel` | Inject overlay / optional side panel |
@@ -156,12 +156,12 @@ you approve, so “3 steps” is auditable rather than opaque:
 
 ## Ask about this page (v4 overlay chat)
 
-The overlay includes a short **Ask about this page** box. It calls the **same** unified-turn / `execute_task_streaming` path as main Gravitree chat, with page context passed in as data.
+The overlay includes a short **Ask about this page** box. It calls the **same** unified-turn / `execute_task_streaming` path as main Gravitre chat, with page context passed in as data.
 
 **Inline (quick):** fact questions grounded in the page (name, title, company).  
-**Handoff:** write intents, long threads, or multi-step plans (≥3 steps — same threshold as the main-chat progress panel) open full Gravitree chat at `/ai?c={conversationId}` (same conversation). The overlay does **not** duplicate that progress panel.
+**Handoff:** write intents, long threads, or multi-step plans (≥3 steps — same threshold as the main-chat progress panel) open full Gravitre chat at `/ai?c={conversationId}` (same conversation). The overlay does **not** duplicate that progress panel.
 
-It is **not** a second reasoning stack and **not** a place to approve complex connector plans — use Continue in Gravitree when the overlay says the request needs the full app.
+It is **not** a second reasoning stack and **not** a place to approve complex connector plans — use Continue in Gravitre when the overlay says the request needs the full app.
 
 **Live transcript proof:** conversation [`cc618049-…`](https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9) — overlay page-context answer + write handoff stub, both persisted before opening the full app.
 
@@ -169,7 +169,7 @@ It is **not** a second reasoning stack and **not** a place to approve complex co
 
 | Symptom | Check |
 |---------|--------|
-| “Not signed in” | Popup → Connect Gravitree; complete `/extension/connect` |
+| “Not signed in” | Popup → Connect Gravitre; complete `/extension/connect` |
 | Enrich empty / no suggestions | Connector connected + healthy in the same Environment |
 | Write blocked / no token | Approve only after the server returns `needs_confirmation` + token |
 | Wrong org data | Confirm `X-Org-Id` org in the web app matches the one you authorized |

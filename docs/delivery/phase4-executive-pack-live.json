@@ -13,7 +13,7 @@
       "id": "5add8bd8-7f3f-4b85-9158-f45028fcb572",
       "type": "fred",
       "status": "active",
-      "authMode": "gravitree_managed"
+      "authMode": "gravitre_managed"
     },
     "stubCount": 0
   },

@@ -282,7 +282,7 @@ Snapshot source: `HEAD` (pre-refactor baseline before this pass).
 | `backend/app/services/federated_connector_service.py` | 316 | `dict-subscript` | `likely-safe-row-copy` | `(updated.data or [grant])[0]` | row-copy/index conversion from query response structures |
 | `backend/app/services/federated_connector_service.py` | 350 | `dict-subscript` | `likely-safe-row-copy` | `(updated.data or [grant])[0]` | row-copy/index conversion from query response structures |
 | `backend/app/services/federated_connector_service.py` | 382 | `dict-subscript` | `likely-safe-row-copy` | `result.data[0]` | row-copy/index conversion from query response structures |
-| `backend/app/services/gravitree_connector_activation.py` | 84 | `dict-get` | `legacy-shape-reachable` | `conn.get("config") or {}` | stored/serialized field via .get may be str/list/None in legacy rows |
+| `backend/app/services/gravitre_connector_activation.py` | 84 | `dict-get` | `legacy-shape-reachable` | `conn.get("config") or {}` | stored/serialized field via .get may be str/list/None in legacy rows |
 | `backend/app/services/handoff_service.py` | 58 | `dict-subscript` | `reviewed-safe-or-local` | `parameters["decision"]` | string-key subscript not on persisted-shape field |
 | `backend/app/services/handoff_service.py` | 60 | `dict-subscript` | `reviewed-safe-or-local` | `source_output["decision"]` | string-key subscript not on persisted-shape field |
 | `backend/app/services/handoff_service.py` | 102 | `dict-subscript` | `likely-safe-row-copy` | `result.data[0]` | row-copy/index conversion from query response structures |

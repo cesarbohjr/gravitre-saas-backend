@@ -1,4 +1,4 @@
-"""Read-only connected vendor file search/content (no Gravitree-side storage).
+"""Read-only connected vendor file search/content (no Gravitre-side storage).
 
 Fetched content is held in-memory only for the duration of a query/response cycle,
 with an optional short-lived process-local cache for repeated reads within one turn.

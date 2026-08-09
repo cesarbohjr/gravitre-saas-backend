@@ -4,6 +4,6 @@
   "quickConversationId": "3b701377-5029-4dc4-a56a-8a3d77315aca",
   "handoffConversationId": "3b701377-5029-4dc4-a56a-8a3d77315aca",
   "handoffReason": "action_or_write_intent",
-  "openInGravitreeUrl": "/ai?c=3b701377-5029-4dc4-a56a-8a3d77315aca&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
-  "quickAnswerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co."
+  "openInGravitreUrl": "/ai?c=3b701377-5029-4dc4-a56a-8a3d77315aca&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+  "quickAnswerPreview": "Casey Operator is Head of Revenue Ops at Gravitre Smoke Co."
 }

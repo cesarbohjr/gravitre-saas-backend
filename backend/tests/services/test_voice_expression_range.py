@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.gravitree_voice import format_operator_message
+from app.services.gravitre_voice import format_operator_message
 from app.services.voice_expression_range import (
     EXPRESSION_BANKS,
     EXPRESSION_EXCLUDED,

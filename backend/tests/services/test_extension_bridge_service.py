@@ -80,12 +80,12 @@ def test_extension_chat_page_context_fenced_and_handoff_heuristics():
         page_context={
             "fullName": "Casey Operator",
             "title": "Head of Revenue Ops",
-            "company": "Gravitree Smoke Co",
+            "company": "Gravitre Smoke Co",
         },
     )
     assert page_answer is not None
     assert "Casey Operator" in page_answer
-    assert "Gravitree Smoke Co" in page_answer
+    assert "Gravitre Smoke Co" in page_answer
 
 
 def test_assert_extension_action_blocks_unknown():

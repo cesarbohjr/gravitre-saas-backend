@@ -57,7 +57,7 @@ Criteria from product review: Option A may proceed only if (1) social replies us
 | **Classical conversational / proposed Option A short-circuit** | `generate_conversational_reply` → `phrase_for_conversational_category` → `pick_expression` (`voice_expression_last` rotation) | **No** — bank-first; doc’d as classical until cutover |
 
 Evidence:
-- `module_d_unified_voice_spec.py` header: *“not a post-hoc phrase bank. Classical … continue to use gravitree_voice / voice_expression_range until cutover.”*
+- `module_d_unified_voice_spec.py` header: *“not a post-hoc phrase bank. Classical … continue to use gravitre_voice / voice_expression_range until cutover.”*
 - `conversational_reply_service.py`: priority categories are **bank-first**; model path reserved for rare `other`.
 - Phrase-variety pass fixed identical “Hey” / “Doing well” **inside the bank** ([`conversational-phrase-variety.md`](conversational-phrase-variety.md)) — that is rotation, not the unified register/drift system.
 
@@ -87,11 +87,11 @@ Mixed battery cases already built (`verify-conversational-path-live.py`): e.g. `
 | Source | Finding |
 |--------|---------|
 | Brief / Phase 2–3 docs | TTFT &lt;200ms cited as streaming target; general perceived-intelligence threshold language |
-| Gravitree user complaints / subjective study | **None found** in delivery docs tying greeting latency to reported UX pain |
+| Gravitre user complaints / subjective study | **None found** in delivery docs tying greeting latency to reported UX pain |
 | Instrumented cost | Social turns: `model_ttft_ms` ~492–746ms; assembly ~0ms — honest cost of one tool-aware Module D call |
 | What unified correctly buys vs bank | Memory/pending context, disambiguation, imperfect-input rule, honest knowledge boundary, write proposal staging — same call |
 
-**Answer:** Treat **200ms as a brief-cited research threshold, not a Gravitree-measured greeting pain point.** No evidence that ~500–750ms for “hey” is costing real users enough to justify reintroducing classify-then-route or phrase-bank social. For **task-shaped** turns (user waiting on a real action), latency has a clearer product cost → prefer **C/D** there.
+**Answer:** Treat **200ms as a brief-cited research threshold, not a Gravitre-measured greeting pain point.** No evidence that ~500–750ms for “hey” is costing real users enough to justify reintroducing classify-then-route or phrase-bank social. For **task-shaped** turns (user waiting on a real action), latency has a clearer product cost → prefer **C/D** there.
 
 ### 4.4 Decision
 

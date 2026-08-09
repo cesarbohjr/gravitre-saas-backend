@@ -456,7 +456,7 @@ def main() -> int:
     client = _supabase(env)
     # Conversation / probe titles must not land in operator org via OAUTH_SMOKE_ORG_ID.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from gravitree_test_client import require_isolated_org, resolve_test_actor
+    from gravitre_test_client import require_isolated_org, resolve_test_actor
 
     org_id, actor, email = resolve_test_actor(env, client)
     override = (env.get("CANVAS_SMOKE_ORG_ID") or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or "").strip()

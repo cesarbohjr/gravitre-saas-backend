@@ -3,7 +3,7 @@
 Docs: https://developer.semrush.com/api/
 - Domain / keyword reports: https://api.semrush.com/
 - Backlinks reports: https://api.semrush.com/analytics/v1/
-Auth: query param `key` (never a shared Gravitree key).
+Auth: query param `key` (never a shared Gravitre key).
 """
 from __future__ import annotations
 

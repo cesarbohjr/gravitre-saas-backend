@@ -73,7 +73,7 @@ def main() -> int:
                 "email": email,
                 "password": password,
                 "email_confirm": True,
-                "user_metadata": {"full_name": "Gravitree Conversation Smoke SA"},
+                "user_metadata": {"full_name": "Gravitre Conversation Smoke SA"},
             },
             timeout=60,
         )

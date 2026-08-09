@@ -4,7 +4,7 @@
 **Status:** **CLOSED (governance track)** — recommendation recorded; **`INTERNET_RESEARCH_ENABLED` stays OFF** until owner go/no-go + integration  
 **Program context:** [`adaptive-retrieval-layer-program.md`](./adaptive-retrieval-layer-program.md)
 
-This document captures the cost-effective governance path for live internet research in Gravitree assistant retrieval. It supersedes “wait for Tavily Enterprise only” as the sole viable option, without authorizing enablement in production.
+This document captures the cost-effective governance path for live internet research in Gravitre assistant retrieval. It supersedes “wait for Tavily Enterprise only” as the sole viable option, without authorizing enablement in production.
 
 **Closure artifact:** [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
 
@@ -47,7 +47,7 @@ Do **not** wire the deprecated Custom Search JSON API.
 
 ## Which Google product replaces Tavily? (read this before pricing)
 
-Gravitree’s internet-research use case is **“answer using current web information”** — live retrieval from the public web, like Tavily today. That is **not** the same as querying a Vertex AI Search **data store** you indexed yourself.
+Gravitre’s internet-research use case is **“answer using current web information”** — live retrieval from the public web, like Tavily today. That is **not** the same as querying a Vertex AI Search **data store** you indexed yourself.
 
 | Google product | What it does | Replaces Tavily? |
 |----------------|--------------|------------------|
@@ -85,15 +85,15 @@ The due-diligence question for any vendor is unchanged:
 
 ---
 
-## Practical path for Gravitree
+## Practical path for Gravitre
 
 1. **Reuse GCP footprint — same project, not just same vendor.**
 
-   Gravitree uses **one Google Cloud project** hosting the **“Gravitre OAuth”** OAuth 2.0 client (`GOOGLE_OAUTH_CLIENT_ID` / `SECRET`) for login (Supabase) and all Google connectors — see [`docs/integration/GOOGLE_OAUTH.md`](../integration/GOOGLE_OAUTH.md) and [`CONNECTOR_IMPLEMENTATION_MATRIX.md`](../CONNECTOR_IMPLEMENTATION_MATRIX.md) (“One Google Cloud project → one OAuth 2.0 Client ID”).
+   Gravitre uses **one Google Cloud project** hosting the **“Gravitre OAuth”** OAuth 2.0 client (`GOOGLE_OAUTH_CLIENT_ID` / `SECRET`) for login (Supabase) and all Google connectors — see [`docs/integration/GOOGLE_OAUTH.md`](../integration/GOOGLE_OAUTH.md) and [`CONNECTOR_IMPLEMENTATION_MATRIX.md`](../CONNECTOR_IMPLEMENTATION_MATRIX.md) (“One Google Cloud project → one OAuth 2.0 Client ID”).
 
    GSC OAuth (Search Console API, `webmasters.readonly`, redirect on that client) was enabled on **that same project/client** — [`marketing-phase0-gsc-oauth.md`](./marketing-phase0-gsc-oauth.md).
 
-   Vertex / Discovery Engine / Grounding with Google Search should be provisioned in **the same GCP project** (identify via OAuth client ID → APIs & Services → Credentials in console). That is literally the same project and billing account, not a separate GCP org — unless Gravitree deliberately chooses a second project later (not the current architecture).
+   Vertex / Discovery Engine / Grounding with Google Search should be provisioned in **the same GCP project** (identify via OAuth client ID → APIs & Services → Credentials in console). That is literally the same project and billing account, not a separate GCP org — unless Gravitre deliberately chooses a second project later (not the current architecture).
 
    Additional work in that project: enable Vertex AI / Discovery Engine / grounding APIs + service account or workload identity for server-side calls (distinct from user OAuth tokens used for GSC connector reads).
 
@@ -118,7 +118,7 @@ The due-diligence question for any vendor is unchanged:
 
    **Free tier (verified):** First **10,000** grounding-on-Google-Search **counts per day per account** are **$0** for the grounding surcharge. This is **per day**, not per month.
 
-   **Volume calculus at Gravitree expected query volume: NOT RUN.** No documented forecast of daily `internet_research` / `search_web` invocations when the flag is enabled. Qualitative note only: early prod with `INTERNET_RESEARCH_ENABLED` off and internet stage gated would likely sit **under 10k grounding counts/day** initially → **$0 grounding surcharge** on that line item, but Gemini token costs still apply. Above 10k/day/account, marginal grounding cost is **$35 per additional 1,000 counts per day**. Owner should model volume before go/no-go.
+   **Volume calculus at Gravitre expected query volume: NOT RUN.** No documented forecast of daily `internet_research` / `search_web` invocations when the flag is enabled. Qualitative note only: early prod with `INTERNET_RESEARCH_ENABLED` off and internet stage gated would likely sit **under 10k grounding counts/day** initially → **$0 grounding surcharge** on that line item, but Gemini token costs still apply. Above 10k/day/account, marginal grounding cost is **$35 per additional 1,000 counts per day**. Owner should model volume before go/no-go.
 
    **Pricing go/no-go:** List price for the **correct** product is verified; **cost PASS for enablement** still requires owner volume estimate — explicitly **NOT RUN** here.
 
@@ -128,7 +128,7 @@ The due-diligence question for any vendor is unchanged:
 
 ## Decision matrix (where this leaves options)
 
-| Option | Governance (standard tier) | Cost shape | Status for Gravitree |
+| Option | Governance (standard tier) | Cost shape | Status for Gravitre |
 |--------|---------------------------|------------|----------------------|
 | **Tavily default API** | Weak (training/retention concerns) | Low per-query self-serve | **Current code path; stay OFF** |
 | **Tavily Enterprise** | Stronger (zero-retention marketed) | High flat enterprise | **Out of budget** — not pursued |
@@ -175,7 +175,7 @@ Plan-tier **included research lookups** (not signup bonus). **Launch: no tier pr
 
 Design allotments for usage **under Google’s free line**, not assuming $35/1k for every query.
 
-#### COGS reframe — Gravitree scale vs Google free tier
+#### COGS reframe — Gravitre scale vs Google free tier
 
 Verified pricing page (2026-07-18): Node **$49** / Control **$129** / Command **$299**; outputs **10 / 40 / 120** per month. Google: **10k grounding counts/day/account** free.
 
@@ -213,7 +213,7 @@ Overage priced for **worst-case $35/1k** as dormant safety valve; **expected COG
 | Recommended path | Grounding with Google Search on existing Gravitre GCP project |
 | Training / retention posture | Documented; no-training ≠ zero-retention caveat preserved |
 | Tavily-equivalent list pricing | **VERIFIED** @ 2026-07-18 from Google pricing page (see §4) |
-| Gravitree volume cost model | **NOT RUN** |
+| Gravitre volume cost model | **NOT RUN** |
 | Metering / credit pass-through | **NOT BUILT** — named enablement precondition (see Metering section) |
 | `INTERNET_RESEARCH_ENABLED` | **OFF** |
 | Retrieval-layer program | **Separate; closed** — does not block this governance close |
@@ -232,7 +232,7 @@ Overage priced for **worst-case $35/1k** as dormant safety valve; **expected COG
 
 ## References
 
-- Gravitree Tavily integration: `backend/app/services/web_research.py`
+- Gravitre Tavily integration: `backend/app/services/web_research.py`
 - Config gate: `INTERNET_RESEARCH_ENABLED` in `backend/app/config.py`
 - [Google Cloud Generative AI App Builder / Agent Search pricing](https://cloud.google.com/generative-ai-app-builder/pricing)
 - [Grounding with Google Search (Gemini API)](https://ai.google.dev/gemini-api/docs/google-search)

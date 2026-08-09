@@ -16,7 +16,7 @@ No parallel action/identity/outcomes systems. Same Module A/B/C/D front doors.
 For each of Edge and Brave:
 
 1. Unpacked `--load-extension` launch (debug port ready).
-2. CDP → Gravitree service worker (`background.js`).
+2. CDP → Gravitre service worker (`background.js`).
 3. Seed `chrome.storage.local` (JWT + org + apiBase).
 4. In-browser functional: enrich → approve HubSpot write → workflows list → chat + handoff.
 5. Overlay visual: inject `overlay.css` + named-step markup (`gvt-card` / `gvt-step` / `gvt-outcome`).

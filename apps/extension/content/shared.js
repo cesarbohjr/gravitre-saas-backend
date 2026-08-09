@@ -1,6 +1,6 @@
-/** Shared overlay renderer for Gravitree content scripts. */
+/** Shared overlay renderer for Gravitre content scripts. */
 (function () {
-  if (window.__gravitreeOverlay) return
+  if (window.__gravitreOverlay) return
 
   function el(tag, className, text) {
     const node = document.createElement(tag)
@@ -88,15 +88,15 @@
       return
     }
     statusEl.textContent = r.success
-      ? `Done — ${r.invokeAction || "action"}. Open Activity in Gravitree.`
+      ? `Done — ${r.invokeAction || "action"}. Open Activity in Gravitre.`
       : r.error || "Action did not succeed"
   }
 
   function ensureRoot() {
-    let root = document.getElementById("gravitree-overlay-root")
+    let root = document.getElementById("gravitre-overlay-root")
     if (root) return root
     root = el("div")
-    root.id = "gravitree-overlay-root"
+    root.id = "gravitre-overlay-root"
     document.documentElement.appendChild(root)
     return root
   }
@@ -106,7 +106,7 @@
     root.innerHTML = ""
     const card = el("div", "gvt-card")
     const header = el("div", "gvt-header")
-    header.appendChild(el("div", "gvt-brand", "Gravitree"))
+    header.appendChild(el("div", "gvt-brand", "Gravitre"))
     const close = el("button", "gvt-close", "×")
     close.type = "button"
     close.addEventListener("click", () => root.remove())
@@ -448,10 +448,10 @@
         const chatActions = el("div", "gvt-actions")
         const askBtn = el("button", "gvt-btn", "Ask")
         askBtn.type = "button"
-        const continueBtn = el("button", "gvt-btn secondary", "Continue in Gravitree")
+        const continueBtn = el("button", "gvt-btn secondary", "Continue in Gravitre")
         continueBtn.type = "button"
         continueBtn.style.display = "none"
-        let lastHandoffUrl = result.openInGravitreeUrl || "/ai"
+        let lastHandoffUrl = result.openInGravitreUrl || result.openInGravitreeUrl || "/ai"
         let conversationId = null
         askBtn.addEventListener("click", () => {
           const message = (chatInput.value || "").trim()
@@ -481,31 +481,33 @@
               if (r.businessOutcome) {
                 renderBusinessOutcomeCard(card, r)
               }
-              if (r.openInGravitreeUrl) lastHandoffUrl = r.openInGravitreeUrl
+              if (r.openInGravitreUrl || r.openInGravitreeUrl) {
+                lastHandoffUrl = r.openInGravitreUrl || r.openInGravitreeUrl
+              }
               continueBtn.style.display = ""
               if (r.needsHandoff) {
                 const reason = String(r.handoffReason || "")
                 if (reason === "multi_step_progress") {
                   status.textContent =
-                    "Multi-step work — continue in Gravitree for the progress panel (same thread)."
-                  continueBtn.textContent = "Open progress in Gravitree"
+                    "Multi-step work — continue in Gravitre for the progress panel (same thread)."
+                  continueBtn.textContent = "Open progress in Gravitre"
                 } else if (
                   reason === "action_or_write_intent" ||
                   reason === "tool_write_path" ||
                   reason === "approval_required"
                 ) {
                   status.textContent =
-                    "Writes/approvals need full Gravitree chat — same conversation thread."
-                  continueBtn.textContent = "Continue in Gravitree"
+                    "Writes/approvals need full Gravitre chat — same conversation thread."
+                  continueBtn.textContent = "Continue in Gravitre"
                 } else {
                   status.textContent =
-                    "Continue in Gravitree — same conversation thread."
-                  continueBtn.textContent = "Continue in Gravitree"
+                    "Continue in Gravitre — same conversation thread."
+                  continueBtn.textContent = "Continue in Gravitre"
                 }
               } else {
-                continueBtn.textContent = "Open thread in Gravitree"
+                continueBtn.textContent = "Open thread in Gravitre"
                 status.textContent =
-                  "Answered here — open the same thread in Gravitree anytime."
+                  "Answered here — open the same thread in Gravitre anytime."
               }
             },
           )
@@ -528,10 +530,11 @@
         chatBox.appendChild(chatActions)
         body.appendChild(chatBox)
 
-        const openApp = el("button", "gvt-btn secondary", "Open in Gravitree")
+        const openApp = el("button", "gvt-btn secondary", "Open in Gravitre")
         openApp.type = "button"
         openApp.addEventListener("click", () => {
-          const path = lastHandoffUrl || result.openInGravitreeUrl || "/ai"
+          const path =
+            lastHandoffUrl || result.openInGravitreUrl || result.openInGravitreeUrl || "/ai"
           window.open(`https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`, "_blank")
         })
         actions.appendChild(openApp)
@@ -604,10 +607,12 @@
     return {}
   }
 
-  window.__gravitreeOverlay = {
+  window.__gravitreOverlay = {
     renderOverlay,
     ensureRoot,
     renderBusinessOutcomeCard,
     showExecuteResult,
   }
+  // Legacy alias for content scripts still reading __gravitreeOverlay.
+  window.__gravitreeOverlay = window.__gravitreOverlay
 })()

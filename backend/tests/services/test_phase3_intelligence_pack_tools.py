@@ -40,7 +40,7 @@ def test_fred_missing_key_fail_closed(monkeypatch):
     ctx = _ctx(fred_api_key="")
     with pytest.raises(ToolValidationError) as exc:
         _exec_fred_series_get(ctx, {"series_id": "GDP"})
-    assert exc.value.code == "GRAVITREE_SOURCE_UNAVAILABLE"
+    assert exc.value.code == "GRAVITRE_SOURCE_UNAVAILABLE"
 
 
 def test_fred_happy_path(monkeypatch):
@@ -48,7 +48,7 @@ def test_fred_happy_path(monkeypatch):
     raw = {
         "ok": True,
         "vendor": "fred",
-        "auth_mode": "gravitree_managed",
+        "auth_mode": "gravitre_managed",
         "data": [{"date": "2024-01-01", "value": "100"}],
         "provenance": {"series_id": "GDP", "source": "fred"},
     }
@@ -84,7 +84,7 @@ def test_nvd_happy_path():
     raw = {
         "ok": True,
         "vendor": "nvd",
-        "auth_mode": "gravitree_managed",
+        "auth_mode": "gravitre_managed",
         "data": {"vulnerabilities": [{"cve": {"id": "CVE-2024-21762"}}]},
         "provenance": {"cve": "CVE-2024-21762", "source": "nvd"},
     }

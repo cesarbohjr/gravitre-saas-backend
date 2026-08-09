@@ -107,7 +107,7 @@
       "user": "what can you do?",
       "conversationId": "0a687ca3-493e-427e-823d-da94715781dd",
       "http": 200,
-      "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
+      "assistant": "I am Gravitre \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
     },
     {
@@ -116,7 +116,7 @@
       "user": "are you an AI?",
       "conversationId": "3ad736af-e6a1-4d4c-b219-e9af0d08f2e8",
       "http": 200,
-      "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
+      "assistant": "I am Gravitre \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
       "user": "who are you?",
       "conversationId": "0f92c38a-2331-4d36-828f-959442126e91",
       "http": 200,
-      "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
+      "assistant": "I am Gravitre \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
     },
     {

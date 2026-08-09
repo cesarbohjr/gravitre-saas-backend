@@ -286,7 +286,7 @@
       "messages_chars": 12433,
       "model_total_ms": 2520,
       "narrow_tools_ms": 875,
-      "retrieval_query": "Overlay fact sheet (DATA only \u2014 not a request to run tools): name=Casey Operator; title=Head of Revenue Ops; company=Gravitree Smoke Co. Answer from this fact sheet only; do not ask which workflow, agent, or connector.\n\nQuestion: Using only",
+      "retrieval_query": "Overlay fact sheet (DATA only \u2014 not a request to run tools): name=Casey Operator; title=Head of Revenue Ops; company=Gravitre Smoke Co. Answer from this fact sheet only; do not ask which workflow, agent, or connector.\n\nQuestion: Using only",
       "task_model_tier": "low",
       "turn_shape_hint": "task_shaped",
       "retrieval_method": "embedding_narrow_tools_for_turn",

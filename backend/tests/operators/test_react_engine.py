@@ -450,7 +450,7 @@ async def test_parallel_independent_reads_share_one_batch(engine: ReActEngine, t
 
 @pytest.mark.asyncio
 async def test_serial_force_runs_reads_sequentially(engine: ReActEngine, tool_ctx: ToolContext):
-    """Phase 2 A/B — X-Gravitree-React-Serial / contextvar disables gather."""
+    """Phase 2 A/B — X-Gravitre-React-Serial / contextvar disables gather."""
     import asyncio
 
     from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools

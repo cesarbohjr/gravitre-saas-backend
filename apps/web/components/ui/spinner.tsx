@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils"
-import { GravitreeLoader, type GravitreeLoaderSize } from "@/components/gravitre/gravitree-loader"
+import { GravitreLoader, type GravitreLoaderSize } from "@/components/gravitre/gravitre-loader"
 
 function Spinner({
   className,
   size = "sm",
   ...props
-}: React.ComponentProps<"div"> & { size?: GravitreeLoaderSize }) {
+}: React.ComponentProps<"div"> & { size?: GravitreLoaderSize }) {
   return (
     <div role="status" aria-label="Loading" className={cn("inline-flex shrink-0 items-center justify-center", className)} {...props}>
-      <GravitreeLoader size={size} />
+      <GravitreLoader size={size} />
     </div>
   )
 }

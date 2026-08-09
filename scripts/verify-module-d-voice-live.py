@@ -113,7 +113,7 @@ def main() -> int:
     for k, v in env.items():
         os.environ.setdefault(k, v)
 
-    from app.services.gravitree_voice import (  # noqa: WPS433
+    from app.services.gravitre_voice import (  # noqa: WPS433
         HOUSE_PHRASING,
         format_operator_message,
         voice_system_prompt_section,

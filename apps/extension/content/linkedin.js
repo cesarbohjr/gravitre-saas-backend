@@ -1,4 +1,4 @@
-/** LinkedIn profile page context → Gravitree overlay. */
+/** LinkedIn profile page context → Gravitre overlay. */
 (function () {
   function textOf(sel) {
     const node = document.querySelector(sel)
@@ -29,8 +29,8 @@
 
   function maybeOpen() {
     if (!/linkedin\.com\/in\//i.test(location.href)) return
-    if (!window.__gravitreeOverlay) return
-    window.__gravitreeOverlay.renderOverlay({
+    if (!window.__gravitreOverlay) return
+    window.__gravitreOverlay.renderOverlay({
       pageUrl: location.href,
       pageContext: extractLinkedInProfile(),
     })

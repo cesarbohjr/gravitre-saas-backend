@@ -10,14 +10,14 @@ logger = logging.getLogger(__name__)
 PACK_VENDOR_MAP: dict[str, tuple[str, ...]] = {
     "executive-intelligence-pack": ("fred", "sec_edgar", "world_bank", "oecd"),
     "msp-intelligence-pack": ("nvd", "cisa_kev"),
-    "sales-intelligence-pack": (),  # CRM-backed; no gravitree shared vendors yet
-    "customer-success-intelligence-pack": (),  # CRM/support-backed; no gravitree shared vendors
-    "prospecting-intelligence-pack": (),  # Apollo/HubSpot outbound; no gravitree shared vendors
+    "sales-intelligence-pack": (),  # CRM-backed; no gravitre shared vendors yet
+    "customer-success-intelligence-pack": (),  # CRM/support-backed; no gravitre shared vendors
+    "prospecting-intelligence-pack": (),  # Apollo/HubSpot outbound; no gravitre shared vendors
     "marketing-intelligence-pack": ("google_search_console",),
-    "revops-intelligence-pack": (),  # CRM rollup (HubSpot); no gravitree shared vendors
+    "revops-intelligence-pack": (),  # CRM rollup (HubSpot); no gravitre shared vendors
     "ai-search-intelligence-pack": ("ahrefs", "finseo", "ai_visibility_ui"),
-    "finance-intelligence-pack": (),  # customer-owned QB/Xero/NetSuite/Plaid; no gravitree shared vendors
-    "hr-talent-intelligence-pack": (),  # customer-owned HRIS/ATS/payroll; no gravitree shared vendors
+    "finance-intelligence-pack": (),  # customer-owned QB/Xero/NetSuite/Plaid; no gravitre shared vendors
+    "hr-talent-intelligence-pack": (),  # customer-owned HRIS/ATS/payroll; no gravitre shared vendors
     "support-intelligence-pack": (),
     "platform-health-intelligence-pack": ("gravitre_platform",),
 }

@@ -14,9 +14,9 @@ async function refresh() {
   chrome.runtime.sendMessage({ type: "GET_SESSION" }, (res) => {
     if (!res?.ok || !res.signedIn) {
       statusEl.textContent =
-        "Not connected. Sign in with your Gravitree account (same org session)."
+        "Not connected. Sign in with your Gravitre account (same org session)."
       actionsEl.appendChild(
-        btn("Connect Gravitree", null, () => {
+        btn("Connect Gravitre", null, () => {
           chrome.runtime.sendMessage({ type: "OPEN_CONNECT" })
         }),
       )

@@ -29,7 +29,7 @@ from app.services.conversation_write_guard import (  # noqa: E402
 )
 
 SA_EMAIL = "conversation-smoke-sa@gravitre.app"
-SA_FULL_NAME = "Gravitree Conversation Smoke SA"
+SA_FULL_NAME = "Gravitre Conversation Smoke SA"
 # Provisioned 2026-07-19 against prod Supabase (smyeexlrqdpymwjmgzqu).
 DEFAULT_ISOLATED_CONVERSATION_TEST_USER_ID = "a9f1240f-910a-42ca-aebf-38caeac288c3"
 

@@ -39,7 +39,7 @@
 | legal | 1 |
 | real_estate | 1 |
 
-> **Note:** HR vendors (`workday`, `bamboohr`, `greenhouse`, `gusto`, `adp`) are catalogued under `department=operations`, not a separate `hr` key. Finance F3 vendors share `department=finance` with gravitree macro sources (`fred`, `sec_edgar`).
+> **Note:** HR vendors (`workday`, `bamboohr`, `greenhouse`, `gusto`, `adp`) are catalogued under `department=operations`, not a separate `hr` key. Finance F3 vendors share `department=finance` with gravitre macro sources (`fred`, `sec_edgar`).
 
 ### Out-of-catalog intelligence sources
 
@@ -1087,13 +1087,13 @@ Action verb counts are derived from the **last segment** of each action id (e.g.
 - **Category:** Economic Data
 - **Catalog docs URL:** https://fred.stlouisfed.org/docs/api/fred/
 - **Code / profile API base:** https://api.stlouisfed.org/fred (executive/sources.py)
-- **Version / governance note:** Catalog department=finance but auth gravitree_managed -- not Finance F3
+- **Version / governance note:** Catalog department=finance but auth gravitre_managed -- not Finance F3
 - **Action count:** 3
 - **By kind:** read=2, write=0, advanced=1
 - **By verb:** list=0, get=2, create=0, update=0, delete=0, search=1, other=0
 - **Action ids:** `series.get`, `series.search`, `series.observations.get`
 - **Pack / seed:** demo_systems: executive-intelligence-pack; workflow/assignment refs: executive-intelligence-pack; templates: executive-intelligence-sources
-- **Flags:** Note: catalog dept=finance but NOT Finance F3 (gravitree macro)
+- **Flags:** Note: catalog dept=finance but NOT Finance F3 (gravitre macro)
 
 ### 73. `nvd` -- NVD
 
@@ -1134,7 +1134,7 @@ Action verb counts are derived from the **last segment** of each action id (e.g.
 - **By verb:** list=0, get=1, create=0, update=0, delete=0, search=1, other=1
 - **Action ids:** `filings.search`, `company.get`, `filings.recent`
 - **Pack / seed:** demo_systems: executive-intelligence-pack; workflow/assignment refs: executive-intelligence-pack; templates: executive-intelligence-sources
-- **Flags:** Note: catalog dept=finance but NOT Finance F3 (gravitree regulatory)
+- **Flags:** Note: catalog dept=finance but NOT Finance F3 (gravitre regulatory)
 
 ---
 
@@ -1142,21 +1142,21 @@ Action verb counts are derived from the **last segment** of each action id (e.g.
 
 ### `crunchbase`
 
-- **Status:** NOT in vendor_definitions.py. AuthMode GRAVITREE_MANAGED + ActivationGate GOVERNANCE_STOP_LINE (auth_mode.py). Config has crunchbase_api_key; docs mention CRUNCHBASE_BASE_URL but no connector module and no hardcoded api.crunchbase.com URL. v3->v4 migration NOT confirmed in this repo -- candidate Batch 1 only if product confirms API version + lifts governance stop-line. Contact-PII / Memory-KG STA-312.
+- **Status:** NOT in vendor_definitions.py. AuthMode GRAVITRE_MANAGED + ActivationGate GOVERNANCE_STOP_LINE (auth_mode.py). Config has crunchbase_api_key; docs mention CRUNCHBASE_BASE_URL but no connector module and no hardcoded api.crunchbase.com URL. v3->v4 migration NOT confirmed in this repo -- candidate Batch 1 only if product confirms API version + lifts governance stop-line. Contact-PII / Memory-KG STA-312.
 - **API:** Unknown in code (no module). Industry default would be Crunchbase API v4 (api.crunchbase.com/v4) if/when implemented.
 - **Packs:** Referenced as stop-line in sales/prospecting/CS installs; NOT in demo_systems or templates
 - **Flag:** CONTACT_PII + GOVERNANCE_STOP_LINE
 
 ### `world_bank`
 
-- **Status:** NOT in vendor_definitions.py. Gravitree-managed executive source.
+- **Status:** NOT in vendor_definitions.py. Gravitre-managed executive source.
 - **API:** https://api.worldbank.org/v2 (WORLDBANK_BASE_URL / config)
 - **Packs:** executive-intelligence-sources template; assignment in executive-intelligence-pack; NOT in demo_systems (demo is fred+sec_edgar only)
 - **Flag:** LOW_GOVERNANCE public aggregate -- expansion candidate
 
 ### `oecd`
 
-- **Status:** NOT in vendor_definitions.py. Gravitree-managed executive source.
+- **Status:** NOT in vendor_definitions.py. Gravitre-managed executive source.
 - **API:** https://sdmx.oecd.org/public/rest/data (OECD_BASE_URL / config)
 - **Packs:** executive-intelligence-sources template; assignment in executive-intelligence-pack; NOT in demo_systems
 - **Flag:** LOW_GOVERNANCE public aggregate -- expansion candidate
@@ -1193,9 +1193,9 @@ Action verb counts are derived from the **last segment** of each action id (e.g.
 | 7 | `asana` | Shipped project tool; api/1.0 profile; expand tasks/projects after CRM/chat/dev. |
 | 8 | `pipedrive` | Shipped CRM alternate; api/v1 aligned with docs; smaller action set -> clear expansion surface. |
 | 9 | `engagebay` | Shipped lighter CRM; small action surface (6); good quick win after Pipedrive. |
-| 10 | `nvd` | Gravitree-managed MSP; only 3 catalog actions -- expand search/recent with live evidence. |
+| 10 | `nvd` | Gravitre-managed MSP; only 3 catalog actions -- expand search/recent with live evidence. |
 | 11 | `cisa_kev` | Paired MSP feed; expand lookup/diff after NVD pattern proven. |
-| 12 | `fred` | Executive macro; gravitree-managed (not F3); expand search/observations. |
+| 12 | `fred` | Executive macro; gravitre-managed (not F3); expand search/observations. |
 | 13 | `sec_edgar` | Executive regulatory; requires SEC_USER_AGENT; expand company index / recent. |
 | 14 | `world_bank` | Out-of-catalog today -- add `build_vendor` + actions on api.worldbank.org/v2 (already in executive template). |
 | 15 | `oecd` | Out-of-catalog today -- add catalog + SDMX actions after World Bank pattern. |

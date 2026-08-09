@@ -1,4 +1,4 @@
-"""Phase 3 — gravitree-managed intelligence pack tool executors.
+"""Phase 3 — gravitre-managed intelligence pack tool executors.
 
 Thin wrappers over fetch_* + run_shared_ingestion. No parallel cache/normalize/KG stack.
 """
@@ -30,7 +30,7 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:
 
 def _platform_key_present(vendor: str, settings: Any) -> bool:
     mode = get_auth_mode(vendor)
-    if mode != AuthMode.GRAVITREE_MANAGED:
+    if mode != AuthMode.GRAVITRE_MANAGED:
         return False
     if vendor == "fred":
         return bool(
@@ -49,7 +49,7 @@ def _platform_key_present(vendor: str, settings: Any) -> bool:
     return False
 
 
-def _assert_gravitree_ready(vendor: str, ctx: ToolContext) -> None:
+def _assert_gravitre_ready(vendor: str, ctx: ToolContext) -> None:
     present = _platform_key_present(vendor, ctx.settings)
     resolved = resolve_credential_source(
         vendor,
@@ -60,7 +60,7 @@ def _assert_gravitree_ready(vendor: str, ctx: ToolContext) -> None:
     if not resolved.get("ok"):
         raise ToolValidationError(
             str(resolved.get("message") or f"{vendor} is not available"),
-            code=str(resolved.get("error_code") or "GRAVITREE_SOURCE_UNAVAILABLE"),
+            code=str(resolved.get("error_code") or "GRAVITRE_SOURCE_UNAVAILABLE"),
         )
 
 
@@ -108,7 +108,7 @@ _emit_pack_source_notification = emit_pack_source_notification
 def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.intelligence_packs.executive.sources import fetch_fred_series
 
-    _assert_gravitree_ready("fred", ctx)
+    _assert_gravitre_ready("fred", ctx)
     series_id = str(params.get("series_id") or "GDP").strip() or "GDP"
     raw = _run_async(fetch_fred_series(series_id, settings=ctx.settings))
     if not raw.get("ok"):
@@ -154,7 +154,7 @@ def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
 def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.intelligence_packs.msp import fetch_nvd_cve
 
-    _assert_gravitree_ready("nvd", ctx)
+    _assert_gravitre_ready("nvd", ctx)
     cve_id = str(params.get("cve_id") or "").strip().upper()
     if not cve_id:
         raise ToolValidationError("nvd.cve.get requires cve_id", code="NVD_CVE_REQUIRED")
@@ -205,7 +205,7 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
 def _exec_cisa_kev_feed_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.intelligence_packs.msp import fetch_cisa_kev
 
-    _assert_gravitree_ready("cisa_kev", ctx)
+    _assert_gravitre_ready("cisa_kev", ctx)
     _ = params  # full feed sample; optional filters can follow
     raw = _run_async(fetch_cisa_kev(settings=ctx.settings))
     if not raw.get("ok"):
@@ -241,7 +241,7 @@ def _exec_cisa_kev_feed_get(ctx: ToolContext, params: dict[str, Any]) -> Normali
 def _exec_sec_edgar_filings_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.intelligence_packs.executive.sources import fetch_sec_company_filings
 
-    _assert_gravitree_ready("sec_edgar", ctx)
+    _assert_gravitre_ready("sec_edgar", ctx)
     query = str(params.get("query") or params.get("company") or params.get("q") or "").strip()
     if not query:
         raise ToolValidationError(

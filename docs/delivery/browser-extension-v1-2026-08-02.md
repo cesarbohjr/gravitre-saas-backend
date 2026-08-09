@@ -20,7 +20,7 @@ Overlay-and-approve only. No agentic browser control. Extension is a **front doo
 | `storage` | Session token + org id |
 | `sidePanel` | Optional side panel |
 | `scripting` | Inject company-site overlay under activeTab |
-| Host allowlist | LinkedIn, Gmail, Outlook web, Gravitree/API origins |
+| Host allowlist | LinkedIn, Gmail, Outlook web, Gravitre/API origins |
 
 **Not requested:** `debugger`, `<all_urls>`, `webNavigation`, background crawl.
 
@@ -54,7 +54,7 @@ Allowlist in `extension_bridge_service.py` — unknown actions rejected.
 
 ## Auth
 
-`apps/web/app/extension/connect` → `chrome.runtime.sendMessage(extId, { type: GRAVITREE_AUTH, ... })`.
+`apps/web/app/extension/connect` → `chrome.runtime.sendMessage(extId, { type: GRAVITRE_AUTH, ... })`.
 
 ## Non-duplication
 
@@ -65,7 +65,7 @@ DOM is for **page context only**. Creates/list membership use Apollo/HubSpot cat
 1. Deploy/restart API with `extension` router.
 2. Deploy web with `/extension/connect`.
 3. Chrome → Extensions → Load unpacked → `apps/extension`.
-4. Popup → Connect Gravitree → Authorize.
+4. Popup → Connect Gravitre → Authorize.
 5. Open a LinkedIn profile → overlay enrich → approve a write → check `/runs` / Outcomes.
 
 ## Live smoke (2026-08-03)

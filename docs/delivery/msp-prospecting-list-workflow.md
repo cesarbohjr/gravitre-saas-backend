@@ -32,4 +32,4 @@ NVD / CISA KEV remain **knowledge assignments** for the MSP Vulnerability Analys
 - **Apollo** (customer-owned)
 - **HubSpot** (customer-owned)
 - **Clay** optional for enrichment path inside the final agent assignment
-- NVD / CISA KEV still staged as Gravitree-managed knowledge sources
+- NVD / CISA KEV still staged as Gravitre-managed knowledge sources

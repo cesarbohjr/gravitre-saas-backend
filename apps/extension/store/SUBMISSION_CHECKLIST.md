@@ -1,10 +1,10 @@
-# CWS first publish checklist (Gravitree)
+# CWS first publish checklist (Gravitre)
 
 First-time publish **cannot** be completed by API alone: Google requires Store listing + Privacy tabs filled in the Developer Dashboard, then Submit for review.
 
 ## Package
 
-- Zip: `apps/extension/dist/gravitree-extension-chrome.zip`
+- Zip: `apps/extension/dist/gravitre-extension-chrome.zip`
 - Rebuild: `python scripts/package-extension-chrome-store.py`
 - Manifest version: `0.5.0` (MV3)
 
@@ -23,7 +23,7 @@ First-time publish **cannot** be completed by API alone: Google requires Store l
 
 Listing URL shape:
 
-`https://chromewebstore.google.com/detail/gravitree/<EXTENSION_ID>`
+`https://chromewebstore.google.com/detail/gravitre/<EXTENSION_ID>`
 
 1. Set Vercel env `NEXT_PUBLIC_CHROME_WEB_STORE_URL` to that URL (Production + Preview as needed).
 2. Redeploy `apps/web`.

@@ -42,6 +42,10 @@ jobs:
         working-directory: .
         run: node scripts/check-chat-surface-drift.mjs
 
+      - name: Gravitre brand rename guard
+        working-directory: .
+        run: node scripts/check-gravitre-brand.mjs
+
       - name: Lint
         run: pnpm lint
 
@@ -150,7 +154,9 @@ jobs:
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
           # Unit tests use synthetic org-1; never inherit smoke isolation flags.
+          GRAVITRE_SMOKE_RUN: ""
           GRAVITREE_SMOKE_RUN: ""
+          GRAVITRE_CONVERSATION_SMOKE: ""
           GRAVITREE_CONVERSATION_SMOKE: ""
 
       - name: Marketplace QA (schemas, install, RLS)

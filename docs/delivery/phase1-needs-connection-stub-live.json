@@ -11,35 +11,35 @@
       "connectorType": "fred",
       "id": "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3",
       "status": "needs_connection",
-      "authMode": "gravitree_managed",
+      "authMode": "gravitre_managed",
       "templateId": "executive-intelligence-sources"
     },
     {
       "connectorType": "sec_edgar",
       "id": "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7",
       "status": "needs_connection",
-      "authMode": "gravitree_managed",
+      "authMode": "gravitre_managed",
       "templateId": "executive-intelligence-sources"
     },
     {
       "connectorType": "world_bank",
       "id": "b82cf82f-8ecf-49f4-80f7-c085a61c0487",
       "status": "needs_connection",
-      "authMode": "gravitree_managed",
+      "authMode": "gravitre_managed",
       "templateId": "executive-intelligence-sources"
     },
     {
       "connectorType": "oecd",
       "id": "f1319ddb-1596-4d64-b657-700e72caabe4",
       "status": "needs_connection",
-      "authMode": "gravitree_managed",
+      "authMode": "gravitre_managed",
       "templateId": "executive-intelligence-sources"
     },
     {
       "connectorType": "opencorporates",
       "id": "ae44b7be-9225-4697-86cd-85c0af27259d",
       "status": "needs_connection",
-      "authMode": "gravitree_managed",
+      "authMode": "gravitre_managed",
       "templateId": "executive-intelligence-sources"
     },
     {
@@ -67,11 +67,11 @@
     "6e61ed74-117d-4224-9287-7fc194b35ecb": "needs_connection"
   },
   "auth_modes": {
-    "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3": "gravitree_managed",
-    "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7": "gravitree_managed",
-    "b82cf82f-8ecf-49f4-80f7-c085a61c0487": "gravitree_managed",
-    "f1319ddb-1596-4d64-b657-700e72caabe4": "gravitree_managed",
-    "ae44b7be-9225-4697-86cd-85c0af27259d": "gravitree_managed",
+    "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3": "gravitre_managed",
+    "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7": "gravitre_managed",
+    "b82cf82f-8ecf-49f4-80f7-c085a61c0487": "gravitre_managed",
+    "f1319ddb-1596-4d64-b657-700e72caabe4": "gravitre_managed",
+    "ae44b7be-9225-4697-86cd-85c0af27259d": "gravitre_managed",
     "bdf2585f-0e96-4001-86a7-5757f73cf346": "byo_required",
     "6e61ed74-117d-4224-9287-7fc194b35ecb": "byo_required"
   },
@@ -80,21 +80,21 @@
       "id": "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3",
       "type": "fred",
       "status": "needs_connection",
-      "auth_mode": "gravitree_managed",
+      "auth_mode": "gravitre_managed",
       "deleted_at": null
     },
     {
       "id": "b82cf82f-8ecf-49f4-80f7-c085a61c0487",
       "type": "world_bank",
       "status": "needs_connection",
-      "auth_mode": "gravitree_managed",
+      "auth_mode": "gravitre_managed",
       "deleted_at": null
     },
     {
       "id": "ae44b7be-9225-4697-86cd-85c0af27259d",
       "type": "opencorporates",
       "status": "needs_connection",
-      "auth_mode": "gravitree_managed",
+      "auth_mode": "gravitre_managed",
       "deleted_at": null
     },
     {
@@ -108,14 +108,14 @@
       "id": "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7",
       "type": "sec_edgar",
       "status": "needs_connection",
-      "auth_mode": "gravitree_managed",
+      "auth_mode": "gravitre_managed",
       "deleted_at": null
     },
     {
       "id": "f1319ddb-1596-4d64-b657-700e72caabe4",
       "type": "oecd",
       "status": "needs_connection",
-      "auth_mode": "gravitree_managed",
+      "auth_mode": "gravitre_managed",
       "deleted_at": null
     },
     {

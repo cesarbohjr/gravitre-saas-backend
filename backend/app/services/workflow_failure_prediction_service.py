@@ -840,7 +840,7 @@ def correlate_observed_run_failure(
                 }
             )
             label = resolved_integration or resolved_action_type or "workflow"
-            from app.services.gravitree_voice import format_operator_message
+            from app.services.gravitre_voice import format_operator_message
 
             title = format_operator_message(
                 "failure_alert_title",
@@ -901,7 +901,7 @@ def correlate_observed_run_failure(
         ),
     }
     label = resolved_integration or resolved_action_type or "workflow"
-    from app.services.gravitree_voice import format_operator_message
+    from app.services.gravitre_voice import format_operator_message
 
     alert = _alert_row(
         org_id=org_id,

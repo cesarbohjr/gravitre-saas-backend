@@ -60,7 +60,7 @@ if EXPECTED:
 
 page_context = {
     "fullName": "Casey Operator",
-    "company": "Gravitree Smoke Co",
+    "company": "Gravitre Smoke Co",
     "title": "Head of Revenue Ops",
     "source": "linkedin",
 }
@@ -82,7 +82,7 @@ qj = quick.json()
 print(json.dumps(qj, indent=2)[:1500])
 assert quick.status_code == 200 and qj.get("answer"), qj
 ans = (qj.get("answer") or "").lower()
-assert ("casey" in ans) or ("gravitree smoke" in ans) or ("revenue" in ans), qj
+assert ("casey" in ans) or ("gravitre smoke" in ans) or ("revenue" in ans), qj
 assert qj.get("path") in {
     "execute_task_streaming",
     "execute_task_streaming+page_context_answer",
@@ -105,7 +105,7 @@ hj = handoff.json()
 print(json.dumps(hj, indent=2)[:1500])
 assert handoff.status_code == 200, hj
 assert hj.get("needsHandoff") is True, hj
-assert "/ai?c=" in str(hj.get("openInGravitreeUrl") or ""), hj
+assert "/ai?c=" in str(hj.get("openInGravitreUrl") or ""), hj
 
 out = {
     "overall": "PASS",
@@ -113,7 +113,7 @@ out = {
     "quickConversationId": qj.get("conversationId"),
     "handoffConversationId": hj.get("conversationId"),
     "handoffReason": hj.get("handoffReason"),
-    "openInGravitreeUrl": hj.get("openInGravitreeUrl"),
+    "openInGravitreUrl": hj.get("openInGravitreUrl"),
     "quickAnswerPreview": (qj.get("answer") or "")[:300],
 }
 Path("docs/delivery/browser-extension-v4-tip-verify.json").write_text(

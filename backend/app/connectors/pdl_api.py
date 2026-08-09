@@ -2,7 +2,7 @@
 
 Docs: https://docs.peopledatalabs.com/
 Base: https://api.peopledatalabs.com/v5/
-Auth: X-Api-Key header (tenant key only — never a shared Gravitree key).
+Auth: X-Api-Key header (tenant key only — never a shared Gravitre key).
 """
 from __future__ import annotations
 

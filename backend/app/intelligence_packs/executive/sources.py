@@ -1,4 +1,4 @@
-"""Executive / shared gravitree-managed source clients (graceful degrade)."""
+"""Executive / shared gravitre-managed source clients (graceful degrade)."""
 from __future__ import annotations
 
 import os
@@ -41,7 +41,7 @@ async def fetch_fred_series(
         return unavailable(
             vendor,
             auth_mode=mode,
-            error_code="GRAVITREE_SOURCE_UNAVAILABLE",
+            error_code="GRAVITRE_SOURCE_UNAVAILABLE",
             message="FRED is not yet available",
         )
     cache_key = f"fred:{sid}"
@@ -251,7 +251,7 @@ async def fetch_opencorporates_search(
         return unavailable(
             vendor,
             auth_mode=mode,
-            error_code="GRAVITREE_SOURCE_UNAVAILABLE",
+            error_code="GRAVITRE_SOURCE_UNAVAILABLE",
             message="OpenCorporates is not yet available",
         )
     q = (query or "").strip()

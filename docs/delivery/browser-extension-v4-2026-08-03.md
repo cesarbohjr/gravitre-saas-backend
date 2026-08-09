@@ -5,7 +5,7 @@ Baseline: v3 tip `ab5ce40b`
 
 ## Model
 
-Overlay asks a quick, page-contextual question through the **same** `execute_task_streaming` / unified-turn path as main chat. Page facts are injected as DATA (system prompt + compact fact sheet). Write / longer intents set `needsHandoff` and open `/ai?c={conversationId}` so the thread continues in full Gravitree chat. No parallel reasoner.
+Overlay asks a quick, page-contextual question through the **same** `execute_task_streaming` / unified-turn path as main chat. Page facts are injected as DATA (system prompt + compact fact sheet). Write / longer intents set `needsHandoff` and open `/ai?c={conversationId}` so the thread continues in full Gravitre chat. No parallel reasoner.
 
 ## API
 
@@ -17,12 +17,12 @@ Overlay asks a quick, page-contextual question through the **same** `execute_tas
 
 - Manifest `0.4.0`
 - Background message `CHAT`
-- Overlay input “Ask about this page” + Continue in Gravitree
+- Overlay input “Ask about this page” + Continue in Gravitre
 
 ## Live proof — local PASS
 
 - Quick page-context Q: conversation `a5d8df4f-c32b-4d32-90e1-3995d6bd7adf`
-  - Answer: “Casey Operator — Head of Revenue Ops at Gravitree Smoke Co.”
+  - Answer: “Casey Operator — Head of Revenue Ops at Gravitre Smoke Co.”
   - Path: `execute_task_streaming+page_context_answer` (same unified-turn entrypoint; LIVE often returns an unusable connector plan for fact questions, so overlay prefers page-context facts over that plan)
 - Handoff: HubSpot list create intent → `needsHandoff=true`, `/ai?c=…&prompt=…`, path `handoff_short_circuit`
 

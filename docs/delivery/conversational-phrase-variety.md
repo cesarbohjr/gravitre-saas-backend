@@ -1,6 +1,6 @@
 # Conversational phrase variety (Module D expression range — pass 2)
 
-Expands **how many ways** Gravitree can say the same conversational category.
+Expands **how many ways** Gravitre can say the same conversational category.
 Does **not** change `conversational_turn_gate`, pending-reply classifier, or write-authority.
 
 SoT: [`voice_expression_range.py`](../../backend/app/services/voice_expression_range.py) +
@@ -22,7 +22,7 @@ SoT: [`voice_expression_range.py`](../../backend/app/services/voice_expression_r
 | 10 | `tool_error.*` failure banks | adapter | already varied | **confirmed** (+ fact sample) |
 | 11 | `conversational.meta_capability` | meta conversational path | mostly one template | **varied** (6, `{capability}` fact slot) |
 | 12 | task completed + recommendation | Meson success + guidance | success banks vary; recs data-driven | no new bank |
-| 13 | Other recurring: `insufficient_info`, `assumption_flag`, `correction_ack`, `blocked_generic`, `pending_plan_cancelled`, `skipped_*`, `estimate_prefix` | gravitree_voice | already varied in pass 1 | **confirmed** |
+| 13 | Other recurring: `insufficient_info`, `assumption_flag`, `correction_ack`, `blocked_generic`, `pending_plan_cancelled`, `skipped_*`, `estimate_prefix` | gravitre_voice | already varied in pass 1 | **confirmed** |
 
 ### Excluded (precision / governance)
 

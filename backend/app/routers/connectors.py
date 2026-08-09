@@ -1108,19 +1108,19 @@ async def create_connector_route(
     return {"id": connector_id}
 
 
-@connectors_router.post("/{connector_id}/activate-gravitree")
-async def activate_gravitree_connector_route(
+@connectors_router.post("/{connector_id}/activate-gravitre")
+async def activate_gravitre_connector_route(
     connector_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Activate a gravitree_managed stub (needs_connection → active) using platform credentials."""
-    from app.services.gravitree_connector_activation import activate_gravitree_connector
+    """Activate a gravitre_managed stub (needs_connection → active) using platform credentials."""
+    from app.services.gravitre_connector_activation import activate_gravitre_connector
 
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
-        result = activate_gravitree_connector(
+        result = activate_gravitre_connector(
             client,
             org_id=org_id,
             connector_id=str(connector_id),
@@ -1133,6 +1133,20 @@ async def activate_gravitree_connector_route(
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return {"activated": True, **result}
+
+
+@connectors_router.post(
+    "/{connector_id}/activate-gravitree",
+    deprecated=True,
+    include_in_schema=True,
+)
+async def activate_gravitree_connector_route_alias(
+    connector_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Deprecated alias for POST /activate-gravitre (legacy spelling)."""
+    return await activate_gravitre_connector_route(connector_id, _admin, settings)
 
 
 @connectors_router.patch("/{connector_id}")

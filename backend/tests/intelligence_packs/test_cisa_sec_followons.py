@@ -39,7 +39,7 @@ def test_cisa_and_sec_actions_registered():
 def test_map_cisa_kev():
     raw = ok_result(
         "cisa_kev",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data={"count": 2, "sample": [{"cveID": "CVE-2024-1", "vulnerabilityName": "Example"}]},
     )
     rows = map_cisa_kev(raw)
@@ -50,7 +50,7 @@ def test_map_cisa_kev():
 def test_map_sec_edgar():
     raw = ok_result(
         "sec_edgar",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data=[{"title": "Microsoft 10-K", "form": "10-K"}],
         provenance={"query": "Microsoft"},
     )
@@ -64,7 +64,7 @@ def test_map_sec_edgar():
 def test_exec_cisa_kev_feed_get(mock_async, mock_ingest):
     mock_async.return_value = ok_result(
         "cisa_kev",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data={"count": 1, "sample": [{"cveID": "CVE-2024-1"}]},
     )
     mock_ingest.return_value = {"cache": {"id": "c1"}, "entities": [], "signals": []}
@@ -78,7 +78,7 @@ def test_exec_cisa_kev_feed_get(mock_async, mock_ingest):
 def test_exec_sec_edgar_filings_search(mock_async, mock_ingest):
     mock_async.return_value = ok_result(
         "sec_edgar",
-        auth_mode="gravitree_managed",
+        auth_mode="gravitre_managed",
         data=[{"title": "MSFT 10-K", "form": "10-K"}],
         provenance={"query": "Microsoft"},
     )

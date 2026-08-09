@@ -25,7 +25,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gravitree_test_client import load_env, smoke_http_headers  # noqa: E402
+from gravitre_test_client import load_env, smoke_http_headers  # noqa: E402
 from isolated_conversation_org import resolve_isolated_conversation_actor  # noqa: E402
 
 BASE = os.environ.get("MODULE_B_AUDIT_BASE", "https://api.gravitre.app").rstrip("/")

@@ -57,7 +57,7 @@ async def main() -> int:
     # --- A) Unflagged smoke SA → Cesar org must refuse (default-deny) ---
     set_smoke_run_context(False)
     clear_request_actor()
-    os.environ.pop("GRAVITREE_SMOKE_RUN", None)
+    os.environ.pop("GRAVITRE_SMOKE_RUN", None)
     try:
         assert_conversation_create_allowed(
             FORBIDDEN_OPERATOR_ORG_ID,

@@ -35,7 +35,7 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     FORBIDDEN_OPERATOR_ORG_ID,
     ConversationWriteBlockedError,
     assert_conversation_create_allowed,

@@ -46,7 +46,7 @@ def _load_env() -> None:
 
 
 def _activate_if_present(client, org_id: str, ctype: str, settings) -> dict | None:
-    from app.services.gravitree_connector_activation import activate_gravitree_connector
+    from app.services.gravitre_connector_activation import activate_gravitre_connector
 
     rows = (
         client.table("connectors")
@@ -60,7 +60,7 @@ def _activate_if_present(client, org_id: str, ctype: str, settings) -> dict | No
     if not rows.data:
         return None
     try:
-        return activate_gravitree_connector(
+        return activate_gravitre_connector(
             client, org_id=org_id, connector_id=str(rows.data[0]["id"]), settings=settings
         )
     except Exception as exc:  # noqa: BLE001
@@ -94,7 +94,17 @@ def main() -> int:
     cisa_ok = bool(cisa.success) and "cisa_kev.feed.get" in registered
     sec_ok = bool(sec.success) and "sec_edgar.filings.search" in registered
     # SEC may fail closed if SEC_USER_AGENT missing — record honestly
-    passed = cisa_ok and (sec_ok or (sec.error_code in {"SEC_USER_AGENT_REQUIRED", "GRAVITREE_SOURCE_UNAVAILABLE"}))
+    passed = cisa_ok and (
+        sec_ok
+        or (
+            sec.error_code
+            in {
+                "SEC_USER_AGENT_REQUIRED",
+                "GRAVITRE_SOURCE_UNAVAILABLE",
+                "GRAVITREE_SOURCE_UNAVAILABLE",
+            }
+        )
+    )
 
     artifact = {
         "pass": bool(cisa_ok and sec_ok),

@@ -1,4 +1,4 @@
-"""Activate gravitree_managed connector stubs without tenant secrets."""
+"""Activate gravitre_managed connector stubs without tenant secrets."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ from typing import Any
 from app.config import Settings
 from app.intelligence_packs.shared.auth_mode import (
     AuthMode,
-    GRAVITREE_ENV_KEYS,
+    GRAVITRE_ENV_KEYS,
     get_auth_mode,
     resolve_credential_source,
 )
@@ -15,7 +15,7 @@ from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def _platform_env_present(vendor: str, settings: Settings) -> bool:
-    keys = GRAVITREE_ENV_KEYS.get(vendor, ())
+    keys = GRAVITRE_ENV_KEYS.get(vendor, ())
     if not keys:
         return True
     for key in keys:
@@ -47,14 +47,14 @@ def _platform_env_present(vendor: str, settings: Settings) -> bool:
     return False
 
 
-def activate_gravitree_connector(
+def activate_gravitre_connector(
     client: Any,
     *,
     org_id: str,
     connector_id: str,
     settings: Settings,
 ) -> dict[str, Any]:
-    """Flip needs_connection → active for gravitree_managed when platform creds OK."""
+    """Flip needs_connection → active for gravitre_managed when platform creds OK."""
     row = (
         client.table("connectors")
         .select("id, org_id, type, status, config, deleted_at")
@@ -69,8 +69,8 @@ def activate_gravitree_connector(
         raise ValueError("Connector not found")
     conn = rows[0]
     vendor = str(conn.get("type") or "").strip().lower()
-    if get_auth_mode(vendor) != AuthMode.GRAVITREE_MANAGED:
-        raise PermissionError(f"{vendor} is not gravitree_managed")
+    if get_auth_mode(vendor) != AuthMode.GRAVITRE_MANAGED:
+        raise PermissionError(f"{vendor} is not gravitre_managed")
 
     present = _platform_env_present(vendor, settings)
     resolved = resolve_credential_source(
@@ -83,8 +83,8 @@ def activate_gravitree_connector(
         raise RuntimeError(str(resolved.get("message") or f"{vendor} platform credentials unavailable"))
 
     config = safe_normalize_stored_dict(conn, key="config")
-    config["auth_mode"] = AuthMode.GRAVITREE_MANAGED.value
-    config["activated_via"] = "activate_gravitree_connector"
+    config["auth_mode"] = AuthMode.GRAVITRE_MANAGED.value
+    config["activated_via"] = "activate_gravitre_connector"
     client.table("connectors").update({"status": "active", "config": config}).eq("id", connector_id).eq(
         "org_id", org_id
     ).execute()
@@ -92,5 +92,5 @@ def activate_gravitree_connector(
         "id": connector_id,
         "type": vendor,
         "status": "active",
-        "authMode": AuthMode.GRAVITREE_MANAGED.value,
+        "authMode": AuthMode.GRAVITRE_MANAGED.value,
     }

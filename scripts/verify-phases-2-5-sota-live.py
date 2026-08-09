@@ -30,7 +30,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "backend"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from gravitree_test_client import (  # noqa: E402
+from gravitre_test_client import (  # noqa: E402
     FORBIDDEN_OPERATOR_ORG_ID,
     get_service_client,
     load_env,
@@ -242,7 +242,7 @@ def chat(
     }
     if conversation_id:
         body["conversation_id"] = conversation_id
-    headers = {"X-Gravitree-React-Serial": "1"} if serial else None
+    headers = {"X-Gravitre-React-Serial": "1"} if serial else None
     t0 = time.perf_counter()
     status, payload, raw = http_json(
         "POST",

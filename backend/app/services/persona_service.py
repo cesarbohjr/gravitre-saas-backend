@@ -1,6 +1,6 @@
 """Department domain-focus overlays — distinct from capability-based AGENT_PERSONAS.
 
-Module D: product Voice is owned by gravitree_voice. These personas only choose
+Module D: product Voice is owned by gravitre_voice. These personas only choose
 what to emphasize (pipeline vs campaigns). They must not redefine tone, humor,
 or formality — base Voice always wins.
 """

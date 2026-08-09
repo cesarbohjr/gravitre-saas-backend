@@ -50,12 +50,12 @@ def install_sales_pack_demo_bundle(
 ) -> dict[str, Any]:
     """Create Sales analyst + assignments + HubSpot read workflow + stage CRM stubs.
 
-    HubSpot/Apollo are customer_owned — stubs only; no gravitree activation.
+    HubSpot/Apollo are customer_owned — stubs only; no gravitre activation.
     Crunchbase/PDL/BYO premium not staged here.
     """
     from app.operators.repository import create_operator
 
-    _ = settings  # reserved for future gravitree Sales sources (e.g. SEC) after invoke wiring
+    _ = settings  # reserved for future gravitre Sales sources (e.g. SEC) after invoke wiring
     asset_id = str(asset["id"])
     agent_id = _marketplace_entity_id(org_id, asset_id, "sales-pipeline-analyst")
     agent_name = spec.demo_agent_name or "Sales Pipeline Analyst"

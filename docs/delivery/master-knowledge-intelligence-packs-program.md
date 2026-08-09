@@ -6,7 +6,7 @@
 
 `source → connector → normalization/cache → Business Knowledge Graph → Signal Engine → Organizational Memory → department agent → workflow + outcome tracking`
 
-Every category (customer-owned / Gravitree-managed / BYO) enters at **source** and differs only in **source ownership** and **auth_mode**. No shortcuts past KG, Memory opt-in, or write approval gates.
+Every category (customer-owned / Gravitre-managed / BYO) enters at **source** and differs only in **source ownership** and **auth_mode**. No shortcuts past KG, Memory opt-in, or write approval gates.
 
 ---
 
@@ -40,10 +40,10 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 ## Phase 1 commitments (2026-07-13)
 
 - **`needs_connection` stubs are in Phase 1** — not deferred. Template install must show staged connectors before OAuth/API-key; Phase 1 is not Done without this.
-- **OpenCorporates:** build shared `gravitree_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase stop-line: code may exist, **live tenant enablement may not**.
+- **OpenCorporates:** build shared `gravitre_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase stop-line: code may exist, **live tenant enablement may not**.
 - **Contact-level stop-line:** Crunchbase stays behind governance/activation gates. **PDL (2026-07-15 Cesar clear):** BYO tenant API key allowed on Sales/Prospecting/Marketing packs (`auth_mode=byo_required`); **no** contact-level Memory/KG writes without a separate clear.
 - **GSC query stop-line (Marketing #6):** raw Search Console query strings (`searchAnalytics.query` row-level query text) must **not** be written to Organizational Memory / Knowledge Graph without Cesar governance sign-off (STA-312 pattern, applied preemptively). Aggregate/rollup metrics (clicks, impressions, position by URL) are **not** gated and may flow through the pack signal pipeline. See `docs/delivery/marketing-phase0-gsc-oauth.md`.
-- **Scope this pass:** public gravitree sources (FRED, SEC, World Bank, OECD) + `auth_mode` + BYO fail-closed tests + stub template install + gated OC/NVD/CISA scaffolding.
+- **Scope this pass:** public gravitre sources (FRED, SEC, World Bank, OECD) + `auth_mode` + BYO fail-closed tests + stub template install + gated OC/NVD/CISA scaffolding.
 
 ### PDL BYO packaging (2026-07-15)
 
@@ -96,7 +96,7 @@ Cesar authorized People Data Labs as **BYO** on Sales, Prospecting, and Marketin
 | `fred.series.get` | `67b1129a-…` | `1e80b973-…` | `016360df-…` |
 | `nvd.cve.get` | `1fe8c30b-…` | `a58a867d-…` | `d2a2837c-…` |
 
-Tools registered in `_TOOL_REGISTRY` + ToolRegistry curated specs (`fred_get_series`, `nvd_get_cve`). Executors call Phase 1.5 `run_shared_ingestion` only. Gravitree activate: `POST /api/connectors/{id}/activate-gravitree`.
+Tools registered in `_TOOL_REGISTRY` + ToolRegistry curated specs (`fred_get_series`, `nvd_get_cve`). Executors call Phase 1.5 `run_shared_ingestion` only. Gravitre activate: `POST /api/connectors/{id}/activate-gravitre`.
 
 ### Phase 5 — UNHELD (v1 scope filed 2026-07-14)
 
@@ -126,8 +126,8 @@ Three modes as **one** `auth_mode` enum on catalog metadata — not three codeba
 | `auth_mode` | Meaning | Examples |
 |-------------|---------|----------|
 | `customer_owned` | Tenant credentials only | HubSpot, Apollo (default) |
-| `gravitree_managed` | Platform keys; tenant never sees secret | FRED, SEC, World Bank, OECD, NVD, CISA KEV, OpenCorporates (if commercial) |
-| `byo_required` | Customer must bring their own subscription; **fail closed**; **never** substitute Gravitree key | ZoomInfo, LinkedIn Sales Navigator |
+| `gravitre_managed` | Platform keys; tenant never sees secret | FRED, SEC, World Bank, OECD, NVD, CISA KEV, OpenCorporates (if commercial) |
+| `byo_required` | Customer must bring their own subscription; **fail closed**; **never** substitute Gravitre key | ZoomInfo, LinkedIn Sales Navigator |
 
 **Hard rule (test-enforced):** BYO connectors have no shared-key path.
 
@@ -186,7 +186,7 @@ ML stack Phase 0 (`docs/delivery/ml-stack-phase0-findings.json`): Recommendation
 
 ## Sequenced delivery plan
 
-### Phase 1 — Catalog `auth_mode` + BYO fail-closed + gravitree sources (public first) — DONE
+### Phase 1 — Catalog `auth_mode` + BYO fail-closed + gravitre sources (public first) — DONE
 Order: FRED/SEC/WB/OECD → OpenCorporates/NVD/CISA → confirm Apollo `customer_owned` → ZoomInfo/LI Sales Nav **tests first** → PDL/Crunchbase last (stop at cache until governance owner clears).  
 Marketplace category template: Install pre-stages connectors as needs-connection; **no** auto-auth.  
 Evidence: DB + HTTP stub artifacts above.

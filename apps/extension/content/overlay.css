@@ -1,4 +1,4 @@
-#gravitree-overlay-root {
+#gravitre-overlay-root {
   all: initial;
   position: fixed;
   top: 72px;
@@ -9,7 +9,7 @@
   color: #0f172a;
 }
 
-#gravitree-overlay-root * {
+#gravitre-overlay-root * {
   box-sizing: border-box;
 }
 

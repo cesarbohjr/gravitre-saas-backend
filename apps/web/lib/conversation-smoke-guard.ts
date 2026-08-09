@@ -16,6 +16,7 @@ export const ISOLATED_CONVERSATION_TEST_EMAIL = "conversation-smoke-sa@gravitre.
 
 declare global {
   interface Window {
+    __GRAVITRE_SMOKE_RUN__?: boolean | string
     __GRAVITREE_SMOKE_RUN__?: boolean | string
   }
 }
@@ -23,12 +24,23 @@ declare global {
 const SMOKE_EMAIL_RE =
   /(^conversation-smoke-sa@)|(^ci\+)|(^smoke[-+.]|[-+. ]smoke@)|(@.*\.smoke\.gravitre\.app$)/i
 
+function _truthyFlag(flag: unknown): boolean {
+  return flag === true || flag === "1" || flag === "true"
+}
+
 export function isBrowserSmokeRun(): boolean {
   if (typeof window !== "undefined") {
-    const flag = window.__GRAVITREE_SMOKE_RUN__
-    if (flag === true || flag === "1" || flag === "true") return true
+    if (_truthyFlag(window.__GRAVITRE_SMOKE_RUN__) || _truthyFlag(window.__GRAVITREE_SMOKE_RUN__)) {
+      return true
+    }
   }
-  const envFlag = process.env.NEXT_PUBLIC_GRAVITREE_SMOKE_RUN?.trim().toLowerCase()
+  const envFlag = (
+    process.env.NEXT_PUBLIC_GRAVITRE_SMOKE_RUN ||
+    process.env.NEXT_PUBLIC_GRAVITREE_SMOKE_RUN ||
+    ""
+  )
+    .trim()
+    .toLowerCase()
   return envFlag === "1" || envFlag === "true" || envFlag === "yes"
 }
 

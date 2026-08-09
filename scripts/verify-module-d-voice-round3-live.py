@@ -108,7 +108,7 @@ def main() -> int:
 
     from app.services.canvas_write_gate import block_canvas_write_step
     from app.services.chat_action_mapper import get_chat_action_mapper
-    from app.services.gravitree_voice import (
+    from app.services.gravitre_voice import (
         HOUSE_PHRASING,
         format_operator_message,
         format_outcome_digest,

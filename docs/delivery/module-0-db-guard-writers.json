@@ -47,6 +47,6 @@
   "must_keep_working": [
     "Smoke SA inserts into f07e57c0-1501-4000-8000-c04e57a00001",
     "Real operators (e.g. Cesar) inserting into cbbf993b-… with their own user_id",
-    "SET LOCAL gravitree.bypass_test_credential_org_guard=on for emergency ops"
+    "SET LOCAL gravitre.bypass_test_credential_org_guard=on for emergency ops"
   ]
 }

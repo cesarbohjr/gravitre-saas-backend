@@ -117,7 +117,7 @@ def executive_digest_last_24h(
     limit: int = 80,
 ) -> dict[str, Any]:
     """Build a Module D Executive Digest from real Module A outcome rows."""
-    from app.services.gravitree_voice import format_outcome_digest
+    from app.services.gravitre_voice import format_outcome_digest
 
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     rows = _load_outcome_event_rows(client, org_id=org_id, since=since, limit=limit)

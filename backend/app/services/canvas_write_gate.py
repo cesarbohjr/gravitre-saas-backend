@@ -107,8 +107,8 @@ def block_canvas_write_step(
         return None
     if run_allows_catalog_write_execution(run_row):
         return None
-    # User-facing copy owned by Module D gravitree_voice (same SoT as chat/ReAct).
-    from app.services.gravitree_voice import format_operator_message
+    # User-facing copy owned by Module D gravitre_voice (same SoT as chat/ReAct).
+    from app.services.gravitre_voice import format_operator_message
 
     return {
         "success": False,

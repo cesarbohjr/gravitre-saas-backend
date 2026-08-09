@@ -18,7 +18,7 @@ import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { AgentIdentityEditor } from "@/components/gravitre/agent-identity-editor"
-import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 

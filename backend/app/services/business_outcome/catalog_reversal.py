@@ -96,6 +96,6 @@ def undo_availability(invoke_action: str) -> dict[str, Any]:
         "compensating_action": None,
         "honest_unavailable_reason": (
             "No catalog compensating action exists for this write. "
-            "Undo is not available — the vendor change cannot be reversed through Gravitree."
+            "Undo is not available — the vendor change cannot be reversed through Gravitre."
         ),
     }

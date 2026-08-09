@@ -39,7 +39,7 @@ Linear **[STA-321](https://linear.app/staqbot/issue/STA-321)** — Cross-cutting
 
 ## Verdict (one paragraph)
 
-Gravitree already has the Marketplace Pack Framework, `auth_mode` catalog, Phase 1.5 shared ingestion/KG/signals, department-agent scoping, approval gate, and `emit_notification` taxonomy. The 12-pack vision is mostly **EXTEND** (rename/wire existing agents + orchestrate existing actions) plus a small set of **NEW** surfaces: Account Intelligence agent, AI Visibility agent, Compliance Agent, Google Search Console, compliance-doc sources, shared Pack KPI dashboard / Settings→Intelligence Packs / `intelligence_usage_logs`, and Churn Prediction as ML (held). Finance/HR/Compliance **live** connectors are governance-gated even where code stubs exist.
+Gravitre already has the Marketplace Pack Framework, `auth_mode` catalog, Phase 1.5 shared ingestion/KG/signals, department-agent scoping, approval gate, and `emit_notification` taxonomy. The 12-pack vision is mostly **EXTEND** (rename/wire existing agents + orchestrate existing actions) plus a small set of **NEW** surfaces: Account Intelligence agent, AI Visibility agent, Compliance Agent, Google Search Console, compliance-doc sources, shared Pack KPI dashboard / Settings→Intelligence Packs / `intelligence_usage_logs`, and Churn Prediction as ML (held). Finance/HR/Compliance **live** connectors are governance-gated even where code stubs exist.
 
 ---
 
@@ -101,10 +101,10 @@ Gravitree already has the Marketplace Pack Framework, `auth_mode` catalog, Phase
 | SOC2 / ISO / HIPAA / CMMC **documents** | **No** | — | NEW + Compliance scope = guidance docs only |
 | ChatGPT / Perplexity / Bing Copilot visibility | **No** | — | **Research spike** — no scrape |
 | Google Search Console | **No** (GA4 exists) | OAuth TBD | NEW for Marketing |
-| FRED / NVD / CISA / SEC | Yes | `gravitree_managed` | LIVE |
+| FRED / NVD / CISA / SEC | Yes | `gravitre_managed` | LIVE |
 | HubSpot / Apollo / Zendesk | Yes | `customer_owned` | LIVE / Apollo BYO |
 | ZoomInfo / LI Sales Nav | Catalog | `byo_required` | Fail-closed |
-| Crunchbase / PDL / OpenCorporates | Scaffold | `gravitree_managed` | Existing stop-lines |
+| Crunchbase / PDL / OpenCorporates | Scaffold | `gravitre_managed` | Existing stop-lines |
 
 Catalog: `backend/app/intelligence_packs/shared/auth_mode.py`.
 
