@@ -12,7 +12,7 @@ from app.billing.service import (
     resolve_org_id_from_checkout_metadata,
     resolve_org_id_from_stripe_customer,
 )
-from app.billing.stripe import verify_webhook
+from app.billing.stripe import plan_code_for_price, verify_webhook
 from app.billing.webhook_idempotency import (
     claim_webhook_event,
     is_webhook_event_processed,
@@ -84,23 +84,12 @@ def _normalize_tier(raw_tier: str | None) -> str:
 
 
 def _plan_from_price(settings: Settings, price_id: str | None) -> str | None:
-    """Map a Stripe price id to a plan code. None when unknown (do not invent free/node)."""
-    if not price_id:
-        return None
-    price_to_plan = {
-        settings.stripe_price_id_node_monthly: "node",
-        settings.stripe_price_id_node_annual: "node",
-        settings.stripe_price_id_control_monthly: "control",
-        settings.stripe_price_id_control_annual: "control",
-        settings.stripe_price_id_command_monthly: "command",
-        settings.stripe_price_id_command_annual: "command",
-        settings.stripe_price_id_starter: "node",
-        settings.stripe_price_id_growth: "control",
-        settings.stripe_price_id_scale: "command",
-    }
-    # Ignore blank env mappings so "" keys cannot collide and swallow real price ids.
-    cleaned = {str(k): v for k, v in price_to_plan.items() if str(k or "").strip()}
-    plan = cleaned.get(price_id)
+    """Map a Stripe price id to a plan code. None when unknown (do not invent free/node).
+
+    Includes grandfathered (pre–2026-08) Price ids so existing subscriptions keep
+    resolving after checkout env vars point at the new list Prices.
+    """
+    plan = plan_code_for_price(settings, price_id)
     if not plan:
         return None
     return _normalize_tier(plan)

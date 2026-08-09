@@ -676,6 +676,11 @@ export interface Subscription {
   current_period_end: string
   cancel_at_period_end: boolean
   meson_addons: string[]
+  /** Live Stripe Price id on the subscription (grandfathered prices stay here). */
+  stripe_price_id?: string | null
+  /** Stripe unit_amount for that Price — use for Billing UI, not marketing list price. */
+  plan_unit_amount_cents?: number | null
+  plan_billing_interval?: "month" | "year" | string | null
 }
 
 export interface Invoice {

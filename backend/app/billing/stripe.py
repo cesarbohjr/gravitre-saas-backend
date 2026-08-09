@@ -6,9 +6,57 @@ import stripe
 
 from app.config import Settings
 
+# Pre–2026-08 voice-included list prices. Existing subscriptions keep these
+# Price objects indefinitely; checkout env vars point at the new Prices.
+LEGACY_STRIPE_PLAN_PRICE_IDS: dict[str, str] = {
+    "price_1TbcngGkcGZTLqrPy3N5B60J": "node",  # $49/mo
+    "price_1TbcnhGkcGZTLqrPienI3Lyl": "node",  # $492/yr
+    "price_1TbcnhGkcGZTLqrP0jEnqsWk": "control",  # $129/mo
+    "price_1TbcnhGkcGZTLqrPklUxFvRc": "control",  # $1284/yr
+    "price_1TbcniGkcGZTLqrPGRwaFxgZ": "command",  # $299/mo
+    "price_1TbcniGkcGZTLqrPhzsyjkTj": "command",  # $2988/yr
+}
+
+# unit_amount cents + interval for every known platform plan Price (legacy + current).
+STRIPE_PLAN_PRICE_AMOUNTS: dict[str, dict[str, Any]] = {
+    # Legacy (grandfathered)
+    "price_1TbcngGkcGZTLqrPy3N5B60J": {"plan": "node", "unit_amount": 4900, "interval": "month"},
+    "price_1TbcnhGkcGZTLqrPienI3Lyl": {"plan": "node", "unit_amount": 49200, "interval": "year"},
+    "price_1TbcnhGkcGZTLqrP0jEnqsWk": {"plan": "control", "unit_amount": 12900, "interval": "month"},
+    "price_1TbcnhGkcGZTLqrPklUxFvRc": {"plan": "control", "unit_amount": 128400, "interval": "year"},
+    "price_1TbcniGkcGZTLqrPGRwaFxgZ": {"plan": "command", "unit_amount": 29900, "interval": "month"},
+    "price_1TbcniGkcGZTLqrPhzsyjkTj": {"plan": "command", "unit_amount": 298800, "interval": "year"},
+    # 2026-08 voice-included list (new signups)
+    "price_1U2SQDGkcGZTLqrP1ZTTdpgJ": {"plan": "node", "unit_amount": 5900, "interval": "month"},
+    "price_1U2SQtGkcGZTLqrPylFQGJMm": {"plan": "node", "unit_amount": 58800, "interval": "year"},
+    "price_1U2SQOGkcGZTLqrPssKHr0bX": {"plan": "control", "unit_amount": 14900, "interval": "month"},
+    "price_1U2SQtGkcGZTLqrPE2cE8JIo": {"plan": "control", "unit_amount": 148800, "interval": "year"},
+    "price_1U2SQtGkcGZTLqrPRHfZZSEm": {"plan": "command", "unit_amount": 34900, "interval": "month"},
+    "price_1U2SQtGkcGZTLqrPKAoonF7g": {"plan": "command", "unit_amount": 349200, "interval": "year"},
+}
+
 
 def init_stripe(settings: Settings) -> None:
     stripe.api_key = settings.stripe_secret_key
+
+
+def unit_amount_cents_for_plan_price(price_id: str | None) -> int | None:
+    """Return Stripe unit_amount cents for a known platform plan Price id."""
+    if not price_id:
+        return None
+    info = STRIPE_PLAN_PRICE_AMOUNTS.get(str(price_id).strip())
+    if not info:
+        return None
+    return int(info["unit_amount"])
+
+
+def billing_interval_for_plan_price(price_id: str | None) -> str | None:
+    if not price_id:
+        return None
+    info = STRIPE_PLAN_PRICE_AMOUNTS.get(str(price_id).strip())
+    if not info:
+        return None
+    return str(info["interval"])
 
 
 def _normalize_plan_code(plan_code: str | None) -> str | None:
@@ -87,10 +135,17 @@ def plan_code_for_price(settings: Settings, price_id: str | None) -> str | None:
         settings.stripe_price_id_starter: "node",
         settings.stripe_price_id_growth: "control",
         settings.stripe_price_id_scale: "command",
+        **LEGACY_STRIPE_PLAN_PRICE_IDS,
     }
-    mapped = price_to_plan.get(price_id)
+    # Ignore blank env mappings so "" keys cannot collide and swallow real price ids.
+    cleaned = {str(k): v for k, v in price_to_plan.items() if str(k or "").strip()}
+    mapped = cleaned.get(price_id)
     if mapped:
         return mapped
+    # Amount catalog covers current + legacy even if env drifts.
+    catalog = STRIPE_PLAN_PRICE_AMOUNTS.get(str(price_id).strip())
+    if catalog:
+        return str(catalog["plan"])
     return None
 
 

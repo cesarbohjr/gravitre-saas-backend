@@ -262,6 +262,15 @@ function BillingPageInner() {
   const currentTier = (resolvedTierRaw || null) as PlanCode | null
   const currentPlan = currentTier ? getPlan(currentTier) : null
   const planKnown = Boolean(currentPlan)
+  // Prefer the live Stripe Price amount so grandfathered customers do not see the new list price.
+  const chargedAmountCents = subscription?.plan_unit_amount_cents
+  const chargedInterval = (subscription?.plan_billing_interval || "month").toString().toLowerCase()
+  const chargedDisplay =
+    typeof chargedAmountCents === "number" && chargedAmountCents > 0
+      ? chargedInterval === "year"
+        ? `$${Math.round(chargedAmountCents / 100 / 12)}`
+        : `$${Math.round(chargedAmountCents / 100)}`
+      : null
   // Never invent Active when status is missing — that left cancelled orgs looking live
   // after subscription.deleted wrote only a partial cancel. Prefer overview.billing_status.
   const rawStatus = (subscription?.status || overview?.billing_status || "unknown")
@@ -733,9 +742,13 @@ function BillingPageInner() {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-4xl font-bold text-foreground tracking-tight">
-                      {planKnown ? formatPlanPrice(currentPlan!) : "—"}
+                      {planKnown
+                        ? chargedDisplay ?? formatPlanPrice(currentPlan!)
+                        : "—"}
                     </p>
-                    {planKnown && currentPlan!.price !== null && currentPlan!.price > 0 && (
+                    {planKnown &&
+                      ((chargedDisplay != null) ||
+                        (currentPlan!.price !== null && currentPlan!.price > 0)) && (
                       <p className="text-sm text-muted-foreground">/month</p>
                     )}
                   </div>

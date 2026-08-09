@@ -22,12 +22,12 @@ def _parse_args() -> argparse.Namespace:
         description="Create or reuse Stripe products/prices and print env vars."
     )
     parser.add_argument("--currency", default="usd", help="ISO currency code (default: usd)")
-    parser.add_argument("--node-monthly", type=int, default=4900, help="Node monthly amount in cents")
-    parser.add_argument("--node-annual", type=int, default=49200, help="Node annual amount in cents")
-    parser.add_argument("--control-monthly", type=int, default=12900, help="Control monthly amount in cents")
-    parser.add_argument("--control-annual", type=int, default=128400, help="Control annual amount in cents")
-    parser.add_argument("--command-monthly", type=int, default=29900, help="Command monthly amount in cents")
-    parser.add_argument("--command-annual", type=int, default=298800, help="Command annual amount in cents")
+    parser.add_argument("--node-monthly", type=int, default=5900, help="Node monthly amount in cents")
+    parser.add_argument("--node-annual", type=int, default=58800, help="Node annual amount in cents")
+    parser.add_argument("--control-monthly", type=int, default=14900, help="Control monthly amount in cents")
+    parser.add_argument("--control-annual", type=int, default=148800, help="Control annual amount in cents")
+    parser.add_argument("--command-monthly", type=int, default=34900, help="Command monthly amount in cents")
+    parser.add_argument("--command-annual", type=int, default=349200, help="Command annual amount in cents")
     return parser.parse_args()
 
 

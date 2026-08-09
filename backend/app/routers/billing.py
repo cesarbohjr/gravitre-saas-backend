@@ -25,12 +25,14 @@ from app.billing.service import (
     usage_warning,
 )
 from app.billing.stripe import (
+    billing_interval_for_plan_price,
     create_checkout_session,
     create_customer_portal,
     create_subscription_for_payment_element,
     init_stripe,
     plan_code_for_price,
     price_id_for_plan,
+    unit_amount_cents_for_plan_price,
 )
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
@@ -211,6 +213,9 @@ def _normalize_subscription(row: dict | None, org_id: str, *, tier: str | None =
         "current_period_end": (row.get("current_period_end") or datetime.now(timezone.utc).isoformat()),
         "cancel_at_period_end": bool(row.get("cancel_at_period_end") or False),
         "meson_addons": meson_addons,
+        "stripe_price_id": row.get("stripe_price_id"),
+        "plan_unit_amount_cents": row.get("plan_unit_amount_cents"),
+        "plan_billing_interval": row.get("plan_billing_interval"),
     }
 
 
@@ -646,7 +651,19 @@ async def billing_overview(
                 pass
             subscription_row = {**(subscription_row or {}), "status": "canceled"}
 
-    subscription = _normalize_subscription(subscription_row, org_id, tier=canonical_tier)
+    stripe_price_id = str(billing_row.get("stripe_price_id") or "").strip() or None
+    plan_unit_amount_cents = unit_amount_cents_for_plan_price(stripe_price_id)
+    plan_billing_interval = billing_interval_for_plan_price(stripe_price_id)
+    subscription = _normalize_subscription(
+        {
+            **(subscription_row or {}),
+            "stripe_price_id": stripe_price_id,
+            "plan_unit_amount_cents": plan_unit_amount_cents,
+            "plan_billing_interval": plan_billing_interval,
+        },
+        org_id,
+        tier=canonical_tier,
+    )
     if billing_status == "cancelled":
         subscription["status"] = "canceled"
         subscription["cancel_at_period_end"] = False

@@ -40,24 +40,32 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
   node: {
     code: "node",
     name: "Node",
-    price: 49,
-    annualPrice: 41,
+    price: 59,
+    annualPrice: 49,
     tagline: "For individual operators",
-    features: ["1 core user", "10 workflows", "Essential connectors", researchLookupsIncludedLabel("node")].filter(
-      Boolean
-    ),
+    features: [
+      "1 core user",
+      "10 workflows",
+      "Voice included (Text & Dictate)",
+      "Essential connectors",
+      researchLookupsIncludedLabel("node"),
+    ].filter(Boolean),
     icon: Zap,
     selectable: true,
   },
   control: {
     code: "control",
     name: "Control",
-    price: 129,
-    annualPrice: 107,
+    price: 149,
+    annualPrice: 124,
     tagline: "For growing teams",
-    features: ["5 lite seats", "Meson builder", "Advanced connectors", researchLookupsIncludedLabel("control")].filter(
-      Boolean
-    ),
+    features: [
+      "5 lite seats",
+      "Meson builder",
+      "Voice included (Text & Dictate)",
+      "Advanced connectors",
+      researchLookupsIncludedLabel("control"),
+    ].filter(Boolean),
     icon: Sliders,
     selectable: true,
     popular: true,
@@ -65,12 +73,16 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
   command: {
     code: "command",
     name: "Command",
-    price: 299,
-    annualPrice: 249,
+    price: 349,
+    annualPrice: 291,
     tagline: "For scaling organizations",
-    features: ["Unlimited lite seats", "SSO & API access", "120 workflows", researchLookupsIncludedLabel("command")].filter(
-      Boolean
-    ),
+    features: [
+      "Unlimited lite seats",
+      "SSO & API access",
+      "120 workflows",
+      "Voice included (Text & Dictate)",
+      researchLookupsIncludedLabel("command"),
+    ].filter(Boolean),
     icon: Crown,
     selectable: true,
   },

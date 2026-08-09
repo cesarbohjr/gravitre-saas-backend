@@ -284,7 +284,11 @@ def _billing_plan_price_drift(client: Any, settings: Any) -> dict[str, Any]:
 
     Catches the Command-upgrade / stale-Node-price class of drift without a Stripe API call.
     """
-    price_to_plan: dict[str, str] = {}
+    from app.billing.stripe import LEGACY_STRIPE_PLAN_PRICE_IDS, STRIPE_PLAN_PRICE_AMOUNTS
+
+    price_to_plan: dict[str, str] = dict(LEGACY_STRIPE_PLAN_PRICE_IDS)
+    for price_id, info in STRIPE_PLAN_PRICE_AMOUNTS.items():
+        price_to_plan[price_id] = str(info["plan"])
     for attr, plan in (
         ("stripe_price_id_node_monthly", "node"),
         ("stripe_price_id_node_annual", "node"),

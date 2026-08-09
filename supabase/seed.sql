@@ -15,7 +15,7 @@ INSERT INTO public.billing_plans (
   (
     'node',
     'Node',
-    49,
+    59,
     1,
     10,
     1,
@@ -27,7 +27,7 @@ INSERT INTO public.billing_plans (
   (
     'control',
     'Control',
-    129,
+    149,
     3,
     40,
     2,
@@ -39,7 +39,7 @@ INSERT INTO public.billing_plans (
   (
     'command',
     'Command',
-    299,
+    349,
     8,
     120,
     5,
