@@ -45,9 +45,9 @@ Date: 2026-08-08
 | Voice plan-included gate | **PASS** — `railway run python scripts/prove-voice-plan-included-gate.py` → `ok:true`, status ON `200`, OFF `403` `voice_org_disabled`, meson codes exclude `voice_interface`, `voice.plan_included=true` |
 | Catalog retire | **PASS** — Supabase `meson_addon_catalog.voice_interface` → name retired, `monthly_price_usd=0.00` |
 | Billing Usage redirect | **PASS** — `curl -I https://gravitre.app/settings/billing-usage` → `308` `Location: /settings/billing` |
-| Top-up Checkout | **PASS (session)** — `railway run python scripts/prove-voice-topup-checkout.py` → `200`, `minutes=60`, `amount_cents=720`, `session_id_prefix=cs_live_a1iVSZjrnmg8` |
-| Top-up payment + prepaid credit | **NOT RUN** — requires completing the live Checkout with a real card (session created above) |
-| Auto-top-up threshold fire | **NOT RUN** — code path wired (`maybe_auto_topup_voice_minutes`); needs disposable org + PM + usage below threshold |
+| Top-up Checkout | **PASS (session)** — fresh verified session `cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd` |
+| Top-up payment + prepaid credit | **PASS** — watcher @ `2026-08-08T21:43:57Z`: Stripe `complete`/`paid`, PI `pi_3U2I1aGkcGZTLqrP1bgDLmwa`, `billing_topup_events.status=completed`, prepaid `0→60` (+60 min) |
+| Auto-top-up threshold fire | **PASS** — disposable org `47060f8d-…` / `cus_V2MXWRiXBrLILB`; remaining=10 ≤ threshold 15; off-session PI `pi_3U2IJEGkcGZTLqrP0z5DwH4a` charged `$7.20` (`amount_cents=720`); event `766b448d-…` `completed`; prepaid → 60 |
 | Chat discoverability | **SHIPPED on tip** — Dictate label on `/ai`; Text\|Voice + honest unavailable on agent chat (visual confirm in browser after tip) |
 
 ### Sibling Meson addon audit (honest)
