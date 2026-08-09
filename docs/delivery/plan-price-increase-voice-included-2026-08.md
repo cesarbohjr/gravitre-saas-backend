@@ -61,3 +61,17 @@ Railway env (pre-change): `STRIPE_PRICE_ID_{NODE,CONTROL,COMMAND}_{MONTHLY,ANNUA
 | `command_annual` | `price_1U2SQtGkcGZTLqrPKAoonF7g` | $3492/yr ($291/mo) |
 
 Legacy Prices remain active on existing subscriptions (lookup keys transferred to new Prices).
+
+## Live verification (tip `cba33744`)
+
+| Check | Result | Evidence |
+|---|---|---|
+| API tip | PASS | `GET https://api.gravitre.app/health` → `git_sha=cba337441def633b3782f233edb086901e09366b` |
+| Runtime price wiring | PASS | `GET /api/billing/health` tails `node_monthly_tail=1ZTTdpgJ`, `control_monthly_tail=ssKHr0bX`, `command_monthly_tail=RHfZZSEm` |
+| New Node checkout | PASS | `cs_live_b1CR0Dc8…` → `price_1U2SQD…` **$59** (`amount_total=5900`) |
+| New Command checkout | PASS | `cs_live_b17eG6tv…` → `price_1U2SQt…RHfZZSEm` **$349** (`amount_total=34900`) |
+| Existing Cesar Command | PASS (unaffected) | `sub_1TtIK9…` still `price_1Tbcni…PGRwaFxgZ` **$299** |
+| DB list prices | PASS | `billing_plans.price_usd` node=59 / control=149 / command=349 |
+| Marketing pricing page | PASS | Live `https://gravitre.app/pricing` shows **$59 / $149 / $349** + “Voice included — Text & Dictate in chat” + FAQ “Is voice included, or is it an add-on?” |
+
+**Grandfather policy (final):** indefinite — existing Stripe Price objects unchanged; new Prices only for new checkouts.
