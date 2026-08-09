@@ -69,7 +69,7 @@ export const tiers = [
     },
     meson: null,
     features: [
-      "Voice included — Text & Dictate in chat",
+      "Voice included — Text | Voice in chat",
       "Email delivery",
       "Basic campaign outputs",
       "3 app integrations",
@@ -100,7 +100,7 @@ export const tiers = [
     },
     meson: { count: 10, label: "10 Mesons / month" },
     features: [
-      "Voice included — Text & Dictate in chat",
+      "Voice included — Text | Voice in chat",
       "CRM + Outlook integrations",
       "Multi-step execution",
       "Learning admin (GIBE)",
@@ -134,7 +134,7 @@ export const tiers = [
     },
     meson: { count: 40, label: "40 Mesons / month" },
     features: [
-      "Voice included — Text & Dictate in chat",
+      "Voice included — Text | Voice in chat",
       "Approvals + workflows",
       "Predictive ops packs",
       "Advanced integrations",
@@ -203,7 +203,7 @@ export const faqs = [
   {
     question: "Is voice included, or is it an add-on?",
     answer:
-      "Voice is included on every plan — Text and Dictate in chat are part of Gravitre, not a separate AI/voice bolt-on. Comparable automation platforms often sell voice or AI agents as paid add-ons; we include the capability in Node, Control, and Command.",
+      "Voice is included on every plan — switch Text | Voice in chat for spoken replies. Comparable automation platforms often sell voice or AI agents as paid add-ons; we include the capability in Node, Control, and Command.",
   },
   {
     question: "What counts as an output?",
@@ -278,7 +278,7 @@ export const howItWorks = [
 
 export const aiCapabilityRows: PlanComparisonRow[] = [
   {
-    feature: "Voice in chat (Text & Dictate)",
+    feature: "Voice in chat (Text | Voice)",
     node: "Included",
     control: "Included",
     command: "Included",

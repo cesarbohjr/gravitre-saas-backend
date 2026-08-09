@@ -3,10 +3,10 @@
 /**
  * Design-review comp for the voice UI surfaces.
  *
- * Renders the real shipped components — VoiceSessionPresence, VoiceInputButton,
- * VoiceModeToggle and AgentVoiceAssignment — so the review judges production
- * code, not a mock of it. State is driven by local fixtures because the four
- * presence states cannot all coexist in one live session.
+ * Renders the real shipped components — VoiceSessionPresence, VoiceModeToggle,
+ * and AgentVoiceAssignment — so the review judges production code, not a mock.
+ * State is driven by local fixtures because the four presence states cannot all
+ * coexist in one live session. (Composer speech-to-text-only control is gone.)
  *
  * Capture-only: the parent /e2e/shots layout 404s this in production.
  */

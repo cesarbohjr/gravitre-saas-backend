@@ -558,7 +558,7 @@ export default function AgentChatPage({
                 voicePresence={voicePresence}
                 voiceBilling={voiceBilling}
                 voicePresenceDetail={voicePresenceDetail}
-                onDictateError={(message) => {
+                onVoiceInputError={(message) => {
                   if (message) toast.error(message)
                 }}
               />

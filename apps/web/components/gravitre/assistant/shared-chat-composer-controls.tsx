@@ -1,8 +1,9 @@
 "use client"
 
 /**
- * SHARED_CHAT_COMPOSER_CONTROLS — sole Text|Voice + Dictate control row.
+ * SHARED_CHAT_COMPOSER_CONTROLS — sole Text|Voice control row.
  * Main `/ai` and agent chat must import this; do not duplicate markup.
+ * Speak mic mounts only in Voice modality (no separate speech-to-text-only control).
  */
 
 import type { ReactNode } from "react"
@@ -39,9 +40,9 @@ export type SharedChatComposerControlsProps = {
   voicePresence?: VoicePresenceState
   voiceBilling?: boolean
   voicePresenceDetail?: string
-  onDictateError?: (message: string) => void
+  onVoiceInputError?: (message: string) => void
   className?: string
-  /** Extra controls between Voice toggle and Dictate (e.g. Browse files). */
+  /** Extra controls between Voice toggle and Speak mic (e.g. Browse files). */
   leadingExtras?: ReactNode
 }
 
@@ -63,13 +64,15 @@ export function SharedChatComposerControls({
   voicePresence = "idle",
   voiceBilling = false,
   voicePresenceDetail,
-  onDictateError,
+  onVoiceInputError,
   className,
   leadingExtras,
 }: SharedChatComposerControlsProps) {
+  const showVoiceMic = modality === "voice" && voiceEntitled
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)} data-shared-chat-composer-controls="">
-      {modality === "voice" && voiceEntitled ? (
+      {showVoiceMic ? (
         <VoiceSessionPresence
           state={voicePresence}
           billing={voiceBilling}
@@ -89,14 +92,16 @@ export function SharedChatComposerControls({
           {leadingExtras}
         </div>
         <div className="flex items-center gap-2">
-          <VoiceInputButton
-            value={input}
-            onChange={onInputChange}
-            disabled={disabled || (modality === "voice" && !voiceEntitled)}
-            onStatusChange={onMicStatusChange}
-            showLabel
-            onError={onDictateError}
-          />
+          {showVoiceMic ? (
+            <VoiceInputButton
+              value={input}
+              onChange={onInputChange}
+              disabled={disabled}
+              onStatusChange={onMicStatusChange}
+              showLabel
+              onError={onVoiceInputError}
+            />
+          ) : null}
           {showSubmit ? (
             isStreaming || ttsSpeaking ? (
               <Button variant="outline" size="sm" className="h-8" type="button" onClick={onStop}>

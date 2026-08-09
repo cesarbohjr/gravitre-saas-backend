@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Fail CI when a chat surface re-implements VoiceModeToggle / Dictate / presence
+ * Fail CI when a chat surface re-implements VoiceModeToggle / Speak mic / presence
  * chrome instead of importing SharedChatComposerControls.
+ * Also fail if a separate "Dictate" affordance is reintroduced.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative, dirname } from "node:path"
@@ -17,15 +18,6 @@ const ALLOWED_DEFINITIONS = new Set([
   "components/gravitre/assistant/voice-session-presence.tsx",
   "app/e2e/shots/voice-states/page.tsx",
 ])
-
-const FORBIDDEN_PATTERNS = [
-  {
-    id: "inline-VoiceModeToggle-jsx",
-    re: /<VoiceModeToggle\b/,
-    requireImport: "shared-chat-composer-controls",
-    allowDirectImportOf: "voice-mode-toggle", // only via shared controls except allowed
-  },
-]
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -48,19 +40,26 @@ for (const file of files) {
   const src = readFileSync(file, "utf8")
 
   // Surfaces that mount VoiceModeToggle must go through SharedChatComposerControls
-  // (or be the shared component itself — already excluded).
   if (/<VoiceModeToggle\b/.test(src) && !src.includes("SharedChatComposerControls")) {
     failures.push(`${rel}: mounts <VoiceModeToggle> without SharedChatComposerControls`)
   }
 
+  // Speak mic only via shared controls
+  if (/<VoiceInputButton\b/.test(src) && !src.includes("SharedChatComposerControls")) {
+    failures.push(`${rel}: mounts <VoiceInputButton> without SharedChatComposerControls`)
+  }
+
+  // Dictate product must stay gone from customer chat UI
+  if (/\bDictate\b/.test(src) && !rel.includes("docs/")) {
+    failures.push(`${rel}: contains Dictate label/copy — Voice modality Speak only`)
+  }
+
   // Duplicate composer chrome: local Text|Voice label clusters outside shared path
   if (
-    /Text\s*\|\s*Voice|aria-label=\{[^}]*Dictate/.test(src) &&
+    /Text\s*\|\s*Voice/.test(src) &&
     !src.includes("shared-chat-composer-controls") &&
-    !rel.includes("voice-mode-toggle") &&
-    !rel.includes("voice-input-button")
+    !rel.includes("voice-mode-toggle")
   ) {
-    // Only flag if they also define a custom modality toggle button cluster
     if (/setModality|modality === ["']voice["']/.test(src) && /<button[^>]*Voice/.test(src)) {
       failures.push(`${rel}: custom Text|Voice markup — use SharedChatComposerControls`)
     }
@@ -86,6 +85,9 @@ for (const rel of requiredImporters) {
   }
   if (!src.includes("spoken_mode")) {
     failures.push(`${rel}: must send spoken_mode on chat transport when Voice modality is active`)
+  }
+  if (/\bDictate\b|\bonDictateError\b/.test(src)) {
+    failures.push(`${rel}: Dictate affordance must remain removed`)
   }
 }
 

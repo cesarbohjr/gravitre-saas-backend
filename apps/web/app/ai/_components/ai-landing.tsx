@@ -124,7 +124,7 @@ export function AiLanding({
                 canSubmit={Boolean(input.trim()) && !routing}
                 showSubmit
                 onSubmit={onSubmit}
-                onDictateError={(message) => {
+                onVoiceInputError={(message) => {
                   if (message) toast.error(message)
                 }}
               />

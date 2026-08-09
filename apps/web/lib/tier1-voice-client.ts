@@ -156,7 +156,7 @@ export type SttTranscribeError = {
 
 export type SttTranscribeResult = SttTranscribeOk | SttTranscribeError
 
-/** Same Deepgram path as agent voice STT — structured errors for Dictate. */
+/** Deepgram STT via backend — structured errors for Voice modality Speak. */
 export async function transcribeViaDeepgramDetailed(blob: Blob): Promise<SttTranscribeResult> {
   const status = await getVoiceStatus()
   if (!status?.stt_enabled) {

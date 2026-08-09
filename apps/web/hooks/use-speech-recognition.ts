@@ -113,7 +113,7 @@ export function useSpeechRecognition({
           listeningRef.current = false
           setStatus("idle")
           if (!blob.size) {
-            onErrorRef.current?.("No audio captured. Hold Dictate a moment longer, then stop.")
+            onErrorRef.current?.("No audio captured. Hold Speak a moment longer, then stop.")
             return
           }
           const result = await transcribeViaDeepgramDetailed(blob)

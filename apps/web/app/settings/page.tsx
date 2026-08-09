@@ -1697,7 +1697,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           <div>
             <p className="text-sm font-medium text-foreground">Internal voice (staff chat)</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Policy control for Text|Voice and Dictate in Gravitre chat. On by default. This is
+              Policy control for Text|Voice in Gravitre chat. On by default. This is
               staff speaking to your org AI — not outbound phone calls (Twilio/Vapi connectors).
             </p>
             <p className="text-xs text-muted-foreground mt-1">

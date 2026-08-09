@@ -2275,7 +2275,7 @@ export function AiWorkspace({
                   ))}
                 </div>
               ) : null}
-              {/* SHARED_CHAT_COMPOSER_CONTROLS — Text|Voice + Dictate + send (same as agent chat). */}
+              {/* SHARED_CHAT_COMPOSER_CONTROLS — Text|Voice + Speak (Voice only) + send. */}
               <div className="flex flex-col gap-2">
                 <textarea
                   ref={inputRef}
@@ -2319,7 +2319,7 @@ export function AiWorkspace({
                   voicePresence={voicePresence}
                   voiceBilling={voiceBilling}
                   voicePresenceDetail={voicePresenceDetail}
-                  onDictateError={(message) => {
+                  onVoiceInputError={(message) => {
                     if (message) toast.error(message)
                   }}
                   leadingExtras={

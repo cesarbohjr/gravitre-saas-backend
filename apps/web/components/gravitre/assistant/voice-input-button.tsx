@@ -19,20 +19,18 @@ type VoiceInputButtonProps = {
   onError?: (message: string) => void
   /**
    * Optional mirror of the recognition status, so a sibling presence indicator
-   * can render the real mic state instead of inferring one. Additive and
-   * behaviour-free: the button works identically when this is omitted.
+   * can render the real mic state instead of inferring one.
    */
   onStatusChange?: (status: SpeechRecognitionStatus) => void
   disabled?: boolean
   className?: string
-  /** Show a visible "Dictate" label beside the mic (discoverability). */
+  /** Visible label beside the mic (Voice modality only). */
   showLabel?: boolean
 }
 
 /**
- * Mic button for chat composers. Tap to start/stop; streams partial
- * transcription into the input field for review before send.
- * This is dictation into the composer — not the agent Voice modality toggle.
+ * Mic for Voice modality: capture speech for the Text|Voice conversation path.
+ * Not a separate speech-to-text-only product — only mounted when Text|Voice is Voice.
  */
 export function VoiceInputButton({
   value,
@@ -78,20 +76,18 @@ export function VoiceInputButton({
             <button
               type="button"
               disabled
-              aria-label="Voice dictation unavailable"
               className={cn(
-                "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background/80 px-2.5 text-muted-foreground opacity-70",
-                showLabel ? "min-w-[5.5rem]" : "w-9",
+                "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/70 px-2 text-muted-foreground opacity-60",
                 className,
               )}
+              aria-label="Voice input unavailable"
             >
-              <Lock className="h-4 w-4" aria-hidden />
-              {showLabel ? <span className="text-xs font-medium">Dictate</span> : null}
+              <Lock className="h-3.5 w-3.5" />
+              {showLabel ? <span className="text-xs font-medium">Speak</span> : null}
             </button>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs text-xs">
-            Voice is unavailable — turned off for this organization or not entitled for your seat.
-            An admin can enable voice under Meson Addons / Billing & Plan.
+            Voice is turned off for this organization, or your seat cannot use voice here.
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -99,10 +95,10 @@ export function VoiceInputButton({
   }
 
   const label = isListening
-    ? "Stop dictation"
-    : value.trim()
-      ? "Continue dictation"
-      : "Dictate with voice"
+    ? "Stop listening"
+    : status === "permission-denied"
+      ? "Microphone blocked"
+      : "Speak"
 
   return (
     <TooltipProvider>
@@ -110,42 +106,29 @@ export function VoiceInputButton({
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={toggleListening}
+            onClick={() => toggleListening()}
             disabled={disabled}
-            aria-label={label}
-            aria-pressed={isListening}
             className={cn(
-              "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border transition-all",
-              showLabel ? "min-w-[5.5rem] px-2.5" : "w-9",
+              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 transition-colors",
               isListening
-                ? "border-success/40 bg-success/10 text-success hover:bg-success/15"
-                : "border-border/70 bg-background/80 text-muted-foreground hover:border-success/30 hover:bg-success/5 hover:text-foreground",
-              disabled && "cursor-not-allowed opacity-40",
+                ? "border-[#16a374]/50 bg-[#16a374]/10 text-[#16a374]"
+                : "border-border/70 bg-background text-muted-foreground hover:text-foreground",
+              disabled && "opacity-40",
               className,
             )}
+            aria-label={label}
+            aria-pressed={isListening}
           >
-            {status === "listening" ? (
-              <span className="relative inline-flex">
-                <Mic className="h-4 w-4" aria-hidden />
-                <span
-                  aria-hidden
-                  className="status-live absolute -right-0.5 -top-0.5 h-1.5 w-1.5 text-success"
-                />
-              </span>
-            ) : status === "error" || status === "permission-denied" ? (
-              <MicOff className="h-4 w-4" aria-hidden />
-            ) : (
-              <Mic className="h-4 w-4" aria-hidden />
-            )}
+            {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
             {showLabel ? (
-              <span className="text-xs font-medium">{isListening ? "Listening" : "Dictate"}</span>
+              <span className="text-xs font-medium">{isListening ? "Listening" : "Speak"}</span>
             ) : null}
           </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">
           {isListening
-            ? "Listening — tap to stop. Transcript fills the message box."
-            : "Dictate into the message box. For speak-and-hear replies, switch Text | Voice on this chat (internal staff voice — not phone calls)."}
+            ? "Tap to finish speaking. Your words become the next Voice turn."
+            : "Speak your message. Replies play aloud while Text | Voice is set to Voice."}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

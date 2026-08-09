@@ -46,7 +46,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     features: [
       "1 core user",
       "10 workflows",
-      "Voice included (Text & Dictate)",
+      "Voice included (Text | Voice)",
       "Essential connectors",
       researchLookupsIncludedLabel("node"),
     ].filter(Boolean),
@@ -62,7 +62,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     features: [
       "5 lite seats",
       "Meson builder",
-      "Voice included (Text & Dictate)",
+      "Voice included (Text | Voice)",
       "Advanced connectors",
       researchLookupsIncludedLabel("control"),
     ].filter(Boolean),
@@ -80,7 +80,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
       "Unlimited lite seats",
       "SSO & API access",
       "120 workflows",
-      "Voice included (Text & Dictate)",
+      "Voice included (Text | Voice)",
       researchLookupsIncludedLabel("command"),
     ].filter(Boolean),
     icon: Crown,
