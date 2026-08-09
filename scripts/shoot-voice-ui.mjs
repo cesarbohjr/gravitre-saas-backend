@@ -124,6 +124,16 @@ for (const theme of THEMES) {
       check(`orb label "${wantLabel}"`, text.includes(wantLabel))
       check("exit-to-text control present", text.includes("Tap to switch to text"))
 
+      // The collapse gesture is invisible, so the hint naming it is the only thing
+      // stopping "Tap to switch to text" from reading as applying to any tap.
+      check("minimise gesture is discoverable", /tap anywhere to minimise/i.test(text))
+
+      // aria-modal="true" promises focus is inside the overlay; verify, don't trust.
+      check(
+        "focus moved into the modal overlay",
+        await page.evaluate(() => !!document.activeElement?.closest("[data-voice-orb]")),
+      )
+
       await page.screenshot({ path: `${OUT}/orb-${speaker}-${theme}-${vp.name}.png` })
 
       // Centre tap must collapse (stay in voice), never exit.
@@ -169,6 +179,18 @@ for (const theme of THEMES) {
     `heights=[${state.heights.join(",")}]`,
   )
   await page.screenshot({ path: `${OUT}/wave-reduced-motion.png` })
+
+  // The orb is a separate cascade path from the bars, so it needs its own
+  // assertion. Reasoning that "the specificity works out" is exactly what failed
+  // for the waveform, where a build-time CSS optimisation removed the fix.
+  await page.getByRole("button", { name: /Open orb — Gravitre speaking/i }).click()
+  await page.waitForTimeout(200)
+  const orbAnim = await page.evaluate(() => {
+    const orb = document.querySelector(".gv-orb-agent")
+    return orb ? getComputedStyle(orb).animationName : "MISSING"
+  })
+  check("orb animation disabled", orbAnim === "none", orbAnim)
+  await page.screenshot({ path: `${OUT}/orb-reduced-motion.png` })
   await context.close()
 }
 

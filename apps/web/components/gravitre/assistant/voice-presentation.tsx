@@ -24,7 +24,7 @@
  * absence, because it would read as wired.
  */
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -119,6 +119,18 @@ export function VoiceOrbTakeover({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [onCollapse])
 
+  // `aria-modal="true"` asserts that everything behind this overlay is
+  // unreachable, so focus has to actually move inside it — otherwise a keyboard or
+  // screen-reader user stays parked on the composer underneath, tabbing through
+  // controls the overlay claims are gone. Focus lands on collapse (the least
+  // destructive control) and is restored to the opener on unmount.
+  const collapseRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    collapseRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [])
+
   const isUser = speaker === "user"
   const label = isUser ? "You're speaking…" : `${agentLabel} is speaking…`
 
@@ -138,14 +150,24 @@ export function VoiceOrbTakeover({
           because a full-surface button is otherwise unannounced.
         */}
         <button
+          ref={collapseRef}
           type="button"
           onClick={onCollapse}
           aria-label="Return to inline waveform, stay in voice mode"
           className="absolute inset-0 z-0 cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
         />
 
-        <span className="pointer-events-none absolute left-5 top-5 z-10 text-[13px] text-[rgba(255,255,255,0.5)]">
+        <span className="pointer-events-none absolute left-5 top-5 z-10 flex flex-col gap-1 text-[13px] text-[rgba(255,255,255,0.5)]">
           {label}
+          {/*
+            The centre-tap gesture is invisible, and the bottom control reads
+            "Tap to switch to text" — so without this hint the most natural
+            reading is that tapping anywhere switches to text, when it actually
+            minimises. Naming the gesture is what separates the two outcomes.
+          */}
+          <span className="text-[11px] text-[rgba(255,255,255,0.35)]">
+            Tap anywhere to minimise
+          </span>
         </span>
 
         <button

@@ -421,13 +421,36 @@
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }
-  .gv-wave-bar:nth-child(1) { height: 6px;  animation-name: gv-wave1; animation-delay: 0s; }
-  .gv-wave-bar:nth-child(2) { height: 20px; animation-name: gv-wave2; animation-delay: 0.08s; }
-  .gv-wave-bar:nth-child(3) { height: 10px; animation-name: gv-wave3; animation-delay: 0.16s; }
-  .gv-wave-bar:nth-child(4) { height: 16px; animation-name: gv-wave4; animation-delay: 0.24s; }
-  .gv-wave-bar:nth-child(5) { height: 8px;  animation-name: gv-wave5; animation-delay: 0.32s; }
-  .gv-wave-bar:nth-child(6) { height: 18px; animation-name: gv-wave6; animation-delay: 0.4s; }
-  .gv-wave-bar:nth-child(7) { height: 12px; animation-name: gv-wave7; animation-delay: 0.48s; }
+  /* Resting heights are unconditional, so a frozen waveform still reads as a
+     waveform rather than seven identical stubs. */
+  .gv-wave-bar:nth-child(1) { height: 6px; }
+  .gv-wave-bar:nth-child(2) { height: 20px; }
+  .gv-wave-bar:nth-child(3) { height: 10px; }
+  .gv-wave-bar:nth-child(4) { height: 16px; }
+  .gv-wave-bar:nth-child(5) { height: 8px; }
+  .gv-wave-bar:nth-child(6) { height: 18px; }
+  .gv-wave-bar:nth-child(7) { height: 12px; }
+
+  /* Motion is OPT-IN via `no-preference` rather than switched off later under
+     `reduce`. Two reasons, the second learned the hard way:
+       1. Nothing needs to win a cascade fight — under `reduce` no animation-name
+          is ever assigned, so there is no override to lose.
+       2. The override approach genuinely did lose. Per-bar rules carry
+          `:nth-child(N)` (0,2,0) and a media query adds no specificity, so a
+          plain `.gv-wave-bar { animation: none }` (0,1,0) never applied. Raising
+          the override to `.gv-wave-bar:nth-child(n)` did not survive either:
+          Lightning CSS correctly simplifies `:nth-child(n)` to `.gv-wave-bar`,
+          silently deleting the specificity bump at build time. Verified in the
+          SERVED css, not the source. */
+  @media (prefers-reduced-motion: no-preference) {
+    .gv-wave-bar:nth-child(1) { animation-name: gv-wave1; animation-delay: 0s; }
+    .gv-wave-bar:nth-child(2) { animation-name: gv-wave2; animation-delay: 0.08s; }
+    .gv-wave-bar:nth-child(3) { animation-name: gv-wave3; animation-delay: 0.16s; }
+    .gv-wave-bar:nth-child(4) { animation-name: gv-wave4; animation-delay: 0.24s; }
+    .gv-wave-bar:nth-child(5) { animation-name: gv-wave5; animation-delay: 0.32s; }
+    .gv-wave-bar:nth-child(6) { animation-name: gv-wave6; animation-delay: 0.4s; }
+    .gv-wave-bar:nth-child(7) { animation-name: gv-wave7; animation-delay: 0.48s; }
+  }
 
   @keyframes gv-orb-pulse-user {
     0%, 100% { transform: scale(1);    box-shadow: 0 0 70px rgba(22, 163, 116, 0.5); }
@@ -443,10 +466,11 @@
   @media (prefers-reduced-motion: reduce) {
     .hover-lift:hover { transform: none; }
     .status-live { animation: none; }
-    /* Voice UI falls back to a static mark. The bars keep their per-bar resting
-       height above, so the waveform still reads as a waveform when frozen
-       instead of collapsing into seven identical stubs. */
-    .gv-wave-bar,
+    /* The orbs are safe to switch off here: their base rules are plain classes
+       (0,1,0), so an equal-specificity override later in source order wins. The
+       waveform bars are NOT listed — they never receive an animation under
+       `reduce` in the first place (see the no-preference block above), which is
+       why they need no override. */
     .gv-orb-user,
     .gv-orb-agent { animation: none; }
   }
