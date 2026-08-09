@@ -123,6 +123,12 @@ async def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
     
     mode = "test" if settings.stripe_secret_key and "test" in settings.stripe_secret_key else "live"
     
+    def _price_tail(value: str | None) -> str | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        return text[-8:]
+
     return {
         "status": "healthy" if not issues else "unhealthy",
         "stripe_connected": stripe_connected,
@@ -137,6 +143,10 @@ async def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
             "control_annual_set": bool(settings.stripe_price_id_control_annual),
             "command_monthly_set": bool(settings.stripe_price_id_command_monthly),
             "command_annual_set": bool(settings.stripe_price_id_command_annual),
+            # Last 8 chars only — enough to confirm which Price objects are wired.
+            "node_monthly_tail": _price_tail(settings.stripe_price_id_node_monthly),
+            "control_monthly_tail": _price_tail(settings.stripe_price_id_control_monthly),
+            "command_monthly_tail": _price_tail(settings.stripe_price_id_command_monthly),
         }
     }
 
