@@ -63,3 +63,15 @@ Path renames completed (old paths removed; git records rename pairs). Dual-read 
 | Postgres GUC | (prefer `gravitre.bypass_…` in new docs) | historical migration left as `gravitree.bypass_…`; no runtime SET helper found to dual-set |
 
 CI: `scripts/check-gravitre-brand.mjs` (+ `--self-test`) wired next to chat-surface drift in `.github/workflows/ci.yml`. Dual-read files are an explicit allowlist beside inventory / migrations.
+
+## Live tip verification (2026-08-09)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Git tip | PASS | `93bac82e534ac110343c828a435bf26588b2cffa` on `main` |
+| Vercel | PASS | `dpl_EYZ16qGvEZUFfkv3U8BsgDKvSLrh` READY · aliases include `gravitre.app` |
+| API | PASS | `GET https://api.gravitre.app/health` @ 2026-08-09T21:59:45Z → `git_sha=93bac82e534ac110343c828a435bf26588b2cffa` |
+| Marketing home | PASS | `https://gravitre.app/` HTML: `Gravitree=0`, `Gravitre=26` |
+| Extension marketing | PASS | `https://gravitre.app/features/extension` HTML: `Gravitree=0` |
+| CI brand guard | PASS | `node scripts/check-gravitre-brand.mjs` + `--self-test` → PASS |
+| Focused pytest | PASS | 57 passed (`test_auth_mode_and_stubs`, `test_conversation_write_guard`, `test_gravitre_voice`) |
