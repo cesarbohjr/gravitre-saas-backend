@@ -48,3 +48,15 @@ Standing scope distinction:
 
 - Internal: Text\|Voice / Dictate = staff talking to org AI
 - External: Twilio / Vapi connector actions = real phone/SMS to people outside the org (approval-gated)
+
+## Live verification (tip `733f641b`)
+
+| Check | Result |
+|---|---|
+| API tip | **PASS** — `GET /health` `git_sha=733f641bde2946e941dafc754caaa91a31a1dc0a` |
+| Dictate STT | **PASS** — `POST /api/voice/stt` **200** (was 500 `UnboundLocalError`); Deepgram path alive |
+| Internal Voice Minutes UI flag | **PASS** — `voice_minutes_billing_visible=false` on billing-usage |
+| Drift CI guard | **PASS** — clean tree exit 0; deliberate `<VoiceModeToggle>` probe exit 1 |
+| Unit | **PASS** — STT unboundlocal + Twilio/Vapi catalog + schema lint (12) |
+
+Browser UI Text\|Voice on `/ai` and agent-chat visual match: confirm after Vercel READY on tip (login required).
