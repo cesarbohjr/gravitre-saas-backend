@@ -21,12 +21,12 @@ Streaming session `POST /api/voice/session/turn` (NDJSON + progressive TTS) rema
 3. **Agent chat page** — after stream completes in Voice modality, speak last assistant text via `/api/voice/tts` with `agent_id`; drive `<VoiceSessionPresence billing={…} />` from real TTS errors.
 4. **QA force** — `X-Gravitre-QA-Force-Voice-Error: billing` (gated by `unified_turn_qa_hooks_enabled`), same pattern as unified-turn QA headers. UI trigger: `?qaForceVoiceError=billing`.
 
-## Phase 3 — Verification evidence (tip `1378ca16`)
+## Phase 3 — Verification evidence
 
 | Check | Result |
 |---|---|
-| Railway tip | **PASS** — `GET /health` `git_sha=1378ca16cd2a1ba5c2bb00c780ac677cb6031d04` |
-| Vercel tip | **PASS** — production READY `dpl_G3iTT6LCq3WtsLJ2jjVqNmwhaZhb` on `1378ca16` (`gravitre.app`) |
+| Railway tip (voice QA hook) | **PASS** — `GET /health` `git_sha=1378ca16cd2a1ba5c2bb00c780ac677cb6031d04` (backend voice QA force). Follow-up `f2e7dac6` Railway **SKIPPED** (web/docs-only). |
+| Vercel tip | **PASS** — production READY `dpl_7uPqrB9L4oiJVwzEyfdRAzCJ2KjS` on `f2e7dac6` (`gravitre.app`) |
 | Unit (voice QA hooks) | **PASS** — 5 passed |
 | Unit (FE TTS error parse) | **PASS** — 4 passed |
 | QA-force 402 API | **PASS** — `railway run python scripts/prove-agent-chat-voice-402-qa-force.py` → `pass:true`, HTTP 402, `error_class=billing`, `billing_issue=true`, detail contains `qa_force_voice_error=billing` (evidence: `docs/delivery/agent-chat-voice-402-qa-force.json` @ `2026-08-09T04:15:28Z`) |
