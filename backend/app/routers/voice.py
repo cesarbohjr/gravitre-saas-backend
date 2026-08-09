@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Annotated, Any, AsyncIterator
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,11 @@ from app.services.tier1_voice_service import (
     voice_status,
 )
 from app.services.voice_provider_errors import error_public_payload
+from app.services.voice_qa_hooks import (
+    QA_FORCE_VOICE_ERROR_HEADER,
+    forced_voice_provider_error,
+    resolve_qa_force_voice_error,
+)
 
 # Plan-included voice (2026-08-08): no Meson $49 purchase gate.
 # Org admin may disable via subscriptions.voice_enabled.
@@ -206,9 +211,23 @@ def get_voice_multiplier_audit(
         raise _http_error(exc) from exc
 
 
+def _maybe_qa_force_voice_error(request: Request, settings: Settings) -> None:
+    """Raise a synthetic VoiceProviderError when QA force header is active."""
+    try:
+        forced = resolve_qa_force_voice_error(
+            settings,
+            header_value=request.headers.get(QA_FORCE_VOICE_ERROR_HEADER),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if forced:
+        raise forced_voice_provider_error(forced)
+
+
 @router.post("/tts")
 def post_tts(
     body: TtsRequest,
+    request: Request,
     _user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
     seat: Annotated[dict, Depends(require_seat_context())],
@@ -216,6 +235,10 @@ def post_tts(
 ) -> Response:
     client = get_supabase_client(settings)
     assert_agent_voice_use(client, seat, org_id=str(org or ""), agent_id=body.agent_id)
+    try:
+        _maybe_qa_force_voice_error(request, settings)
+    except VoiceProviderError as exc:
+        raise _http_error(exc) from exc
     started = time.perf_counter()
     try:
         audio, content_type, meta = synthesize_speech(
@@ -237,6 +260,7 @@ def post_tts(
 @router.post("/tts/stream")
 def post_tts_stream(
     body: TtsRequest,
+    request: Request,
     _user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
     seat: Annotated[dict, Depends(require_seat_context())],
@@ -244,6 +268,11 @@ def post_tts_stream(
 ) -> StreamingResponse:
     client = get_supabase_client(settings)
     assert_agent_voice_use(client, seat, org_id=str(org or ""), agent_id=body.agent_id)
+    try:
+        _maybe_qa_force_voice_error(request, settings)
+    except VoiceProviderError as exc:
+        raise _http_error(exc) from exc
+
     def gen():
         try:
             for chunk in synthesize_speech_stream(
@@ -401,6 +430,7 @@ def post_turn_taking_event(
 @router.post("/session/turn")
 async def post_session_turn(
     body: SessionTurnRequest,
+    request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
     seat: Annotated[dict, Depends(require_seat_context())],
@@ -430,8 +460,13 @@ async def post_session_turn(
         except Exception:  # noqa: BLE001
             agent = {"id": body.agent_id}
 
+    qa_force_header = request.headers.get(QA_FORCE_VOICE_ERROR_HEADER)
+
     async def gen() -> AsyncIterator[bytes]:
         try:
+            forced = resolve_qa_force_voice_error(settings, header_value=qa_force_header)
+            if forced:
+                raise forced_voice_provider_error(forced)
             async for event in stream_voice_turn_events(
                 settings=settings,
                 org_id=org_id,
@@ -448,6 +483,18 @@ async def post_session_turn(
             yield (json.dumps({"type": "voice.error", **error_public_payload(exc)}) + "\n").encode(
                 "utf-8"
             )
+        except ValueError as exc:
+            yield (
+                json.dumps(
+                    {
+                        "type": "voice.error",
+                        "detail": str(exc),
+                        "error_class": "service_failure",
+                        "billing_issue": False,
+                    }
+                )
+                + "\n"
+            ).encode("utf-8")
 
     return StreamingResponse(
         gen(),

@@ -15,9 +15,12 @@ export function forwardAuthHeaders(
   const auth = request.headers.get("authorization")
   const org = request.headers.get("x-org-id")
   const env = request.headers.get("x-environment")
+  // QA-only voice force (X-Gravitre-QA-Force-Voice-Error) — backend-gated.
+  const qaVoice = request.headers.get("x-gravitre-qa-force-voice-error")
   if (auth) headers.set("authorization", auth)
   if (org) headers.set("x-org-id", org)
   if (env) headers.set("x-environment", env)
+  if (qaVoice) headers.set("X-Gravitre-QA-Force-Voice-Error", qaVoice)
   if (options?.accept) headers.set("accept", options.accept)
   return headers
 }

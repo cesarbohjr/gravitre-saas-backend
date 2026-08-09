@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, use, useMemo, useCallback } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
@@ -40,6 +41,7 @@ import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
+import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
@@ -104,6 +106,9 @@ export default function AgentChatPage({
   params: Promise<{ id: string }>
 }) {
   const { id: agentId } = use(params)
+  const searchParams = useSearchParams()
+  // QA-only: ?qaForceVoiceError=billing — backend ignores unless QA hooks enabled.
+  const qaForceVoiceError = (searchParams.get("qaForceVoiceError") || "").trim() || null
   const { user } = useAuth()
   const { preferredPersona, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
@@ -123,6 +128,17 @@ export default function AgentChatPage({
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const lastSpokenMessageIdRef = useRef<string | null>(null)
+  const {
+    isSpeaking: ttsSpeaking,
+    billingIssue: voiceBilling,
+    billingDetail: voiceBillingDetail,
+    serviceError: voiceServiceError,
+    serviceDetail: voiceServiceDetail,
+    speak: speakAgentVoice,
+    stop: stopAgentVoice,
+    clearErrors: clearVoiceErrors,
+  } = useAgentVoicePlayback()
 
   const { data: agent, isLoading: agentLoading } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
@@ -221,17 +237,57 @@ export default function AgentChatPage({
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
 
-  // Derived from state this page already owns. `no-speech` stays idle — a pause
-  // in dictation is not a fault worth flagging. Streaming reads as "speaking"
-  // only because voice mode sends spoken_mode, so the reply is actually spoken.
+  // Auto-TTS after assistant reply completes — same /api/voice/tts pipeline as /ai Read aloud.
+  // Chat still uses execute_task_streaming(spoken_mode=True) via /api/chat body.
+  useEffect(() => {
+    if (modality !== "voice" || !voiceEntitled) return
+    if (isLoading || isStreaming) return
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
+    if (!lastAssistant) return
+    if (lastSpokenMessageIdRef.current === lastAssistant.id) return
+    const text = uiMessageText(lastAssistant).trim()
+    if (!text) return
+    lastSpokenMessageIdRef.current = lastAssistant.id
+    void speakAgentVoice(text, {
+      messageId: lastAssistant.id,
+      agentId,
+      qaForceError: qaForceVoiceError,
+    })
+  }, [
+    modality,
+    voiceEntitled,
+    isLoading,
+    isStreaming,
+    messages,
+    agentId,
+    qaForceVoiceError,
+    speakAgentVoice,
+  ])
+
+  useEffect(() => {
+    if (modality !== "voice") {
+      stopAgentVoice()
+      clearVoiceErrors()
+      lastSpokenMessageIdRef.current = null
+    }
+  }, [modality, stopAgentVoice, clearVoiceErrors])
+
+  // Presence: real TTS playback + real 402 billing (not inferred from stream alone).
   const voicePresence: VoicePresenceState =
-    micStatus === "listening"
-      ? "listening"
-      : micStatus === "permission-denied" || micStatus === "audio-capture"
-        ? "error"
-        : isStreaming
-          ? "speaking"
-          : "idle"
+    voiceBilling || voiceServiceError
+      ? "error"
+      : micStatus === "listening"
+        ? "listening"
+        : micStatus === "permission-denied" || micStatus === "audio-capture"
+          ? "error"
+          : ttsSpeaking || isStreaming
+            ? "speaking"
+            : "idle"
+  const voicePresenceDetail = voiceBilling
+    ? voiceBillingDetail
+    : voiceServiceError
+      ? voiceServiceDetail
+      : undefined
   const hasSentMessage = messages.some((m) => m.role === "user")
 
   useEffect(() => {
@@ -463,7 +519,12 @@ export default function AgentChatPage({
               {/* Voice-session presence. Only mounted in voice mode so text mode
                   keeps its current chrome exactly. */}
               {modality === "voice" && voiceEntitled ? (
-                <VoiceSessionPresence state={voicePresence} className="mb-2" />
+                <VoiceSessionPresence
+                  state={voicePresence}
+                  billing={voiceBilling}
+                  detail={voicePresenceDetail}
+                  className="mb-2"
+                />
               ) : null}
               <textarea
                 ref={inputRef}
@@ -489,6 +550,10 @@ export default function AgentChatPage({
                   onChange={(next) => {
                     setModality(next)
                     modalityRef.current = next
+                    if (next === "text") {
+                      stopAgentVoice()
+                      clearVoiceErrors()
+                    }
                     toast.message(
                       next === "voice"
                         ? "Voice mode — same conversation context; speak or type"
@@ -513,8 +578,16 @@ export default function AgentChatPage({
                     if (message) toast.error(message)
                   }}
                 />
-                {isStreaming ? (
-                  <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
+                {isStreaming || ttsSpeaking ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      stop()
+                      stopAgentVoice()
+                    }}
+                  >
                     <Square className="mr-1 h-3 w-3" />
                     Stop
                   </Button>
