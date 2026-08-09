@@ -1724,36 +1724,45 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-secondary/30 p-4">
-        <p className="text-sm font-medium text-foreground">Monthly addon total (catalog toggles)</p>
-        <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Sibling addons below are capability flags stored on the subscription — they are not Stripe-charged today.
-        </p>
-      </div>
-      <div className="space-y-3">
-        {addons.map((addon) => (
-          <div key={addon.code} className="rounded-lg border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">{addon.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{addon.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ${addon.monthly_price_usd}/mo catalog · not Stripe-invoiced yet
-                </p>
-              </div>
-              <Button
-                variant={addon.enabled ? "outline" : "default"}
-                size="sm"
-                onClick={() => handleToggle(addon)}
-                disabled={!isAdmin || isSaving}
-              >
-                {addon.enabled ? "Disable" : "Enable"}
-              </Button>
-            </div>
+      {addons.length > 0 ? (
+        <>
+          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+            <p className="text-sm font-medium text-foreground">Monthly addon total</p>
+            <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Sum of enabled Stripe-wired Meson addons only.
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="space-y-3">
+            {addons.map((addon) => (
+              <div key={addon.code} className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{addon.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{addon.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">${addon.monthly_price_usd}/mo</p>
+                  </div>
+                  <Button
+                    variant={addon.enabled ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => handleToggle(addon)}
+                    disabled={!isAdmin || isSaving}
+                  >
+                    {addon.enabled ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm font-medium text-foreground">No billable Meson addons</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            There are no Stripe-wired Meson addons available for purchase. Voice is plan-included above.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

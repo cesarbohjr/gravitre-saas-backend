@@ -52,4 +52,4 @@ Date: 2026-08-08
 
 ### Sibling Meson addon audit (honest)
 
-Multi-language / Advanced Analytics / Compliance Pack / Custom Model Training remain **JSON toggles on `subscriptions.meson_addons`** with catalog prices — **not Stripe-invoiced / not COGS-enforced** today (same class as the retired voice purchase gate). UI now labels them as catalog-only.
+**RESOLVED 2026-08-09:** Multi-language / Advanced Analytics / Compliance Pack / Custom Model Training were scaffolding SKUs (never product-authorized, never Stripe-wired, never gated). They are **archived** (`archived_at` set, price zeroed) and **hidden** from `GET /api/settings/meson-addons` and Settings → Meson Addons. Customer-facing list/total now requires `stripe_price_id` + not archived. See `docs/delivery/meson-scaffolding-addons-archived.md`.

@@ -627,16 +627,27 @@ async def get_meson_addons_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
+    from app.billing.meson_addon_catalog import is_customer_facing_billable_addon
+    from app.billing.voice_access import load_voice_org_settings
+
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     catalog_resp = (
         client.table("meson_addon_catalog")
-        .select("id, code, name, description, monthly_price_usd")
+        .select("id, code, name, description, monthly_price_usd, stripe_price_id, archived_at")
         .order("monthly_price_usd", desc=False)
         .execute()
     )
     catalog_err = response_error(catalog_resp)
     if _is_missing_table_error(catalog_err):
-        return {"addons": [], "monthly_total_usd": 0}
+        return {
+            "addons": [],
+            "monthly_total_usd": 0,
+            "voice": None,
+            "addon_audit": {
+                "customer_facing_rule": "stripe_price_id_required_and_not_archived",
+                "scaffolding_skus": "archived_hidden",
+            },
+        }
     if catalog_err:
         raise HTTPException(status_code=500, detail=str(catalog_err))
 
@@ -657,10 +668,12 @@ async def get_meson_addons_route(
     addons = []
     monthly_total = 0.0
     for row in catalog_resp.data or []:
-        code = str(row.get("code") or "")
-        # Voice is plan-included — never list as a priced Meson purchase.
-        if code == "voice_interface":
+        # Honesty: only Stripe-wired, non-archived addons are customer-facing.
+        # Scaffolding SKUs (multi_language, advanced_analytics, compliance_pack,
+        # custom_model_training) and retired voice_interface are archived/hidden.
+        if not is_customer_facing_billable_addon(row):
             continue
+        code = str(row.get("code") or "")
         monthly_price = float(row.get("monthly_price_usd") or 0)
         enabled = code in enabled_codes
         if enabled:
@@ -673,12 +686,11 @@ async def get_meson_addons_route(
                 "description": row.get("description") or "",
                 "monthly_price_usd": monthly_price,
                 "enabled": enabled,
-                # Honest: Meson catalog Enable is JSON-only today (not Stripe).
-                "billing_mechanism": "subscription_json_toggle",
-                "stripe_charged": False,
+                "billing_mechanism": "stripe_price",
+                "stripe_charged": True,
+                "stripe_price_id": row.get("stripe_price_id"),
             }
         )
-    from app.billing.voice_access import load_voice_org_settings
 
     voice = load_voice_org_settings(client, org_id=org_id)
     return {
@@ -695,8 +707,9 @@ async def get_meson_addons_route(
             "note": "Voice access is included with your plan. Toggle org ON/OFF and top up minutes on Billing & Plan.",
         },
         "addon_audit": {
+            "customer_facing_rule": "stripe_price_id_required_and_not_archived",
+            "scaffolding_skus": "archived_hidden",
             "voice_interface": "retired_purchase_gate_plan_included",
-            "sibling_addons": "json_toggle_only_no_stripe_charge",
         },
     }
 
@@ -707,13 +720,34 @@ async def update_meson_addons_route(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    from app.billing.meson_addon_catalog import ARCHIVED_MESON_ADDON_CODES
+
     _user, org_id = _admin
-    if str(body.code or "") == "voice_interface":
+    code = str(body.code or "").strip()
+    if code in ARCHIVED_MESON_ADDON_CODES or code == "voice_interface":
         raise HTTPException(
             status_code=400,
-            detail="Voice is plan-included. Use PATCH /api/settings/voice-access instead of Meson addons.",
+            detail=(
+                "This Meson catalog entry is archived and cannot be enabled. "
+                "Voice is plan-included via PATCH /api/settings/voice-access."
+            ),
         )
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    catalog = (
+        client.table("meson_addon_catalog")
+        .select("code, stripe_price_id, archived_at")
+        .eq("code", code)
+        .limit(1)
+        .execute()
+    )
+    if response_error(catalog):
+        raise HTTPException(status_code=500, detail=str(response_error(catalog)))
+    row = (catalog.data or [None])[0]
+    if not row or row.get("archived_at") is not None or not str(row.get("stripe_price_id") or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Only active, Stripe-wired Meson addons can be enabled.",
+        )
     existing = (
         client.table("subscriptions").select("meson_addons").eq("org_id", org_id).limit(1).execute()
     )
