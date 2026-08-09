@@ -24,11 +24,26 @@ Architecture fact on tip: live chat Voice is **modality + push-to-Speak STT into
 | Turn-taking (hesitations / um / pauses) | **PARTIAL / not live on chat FE** | Eager/Normal/Patient logic unit-tested in backend; FE still push-to-speak + manual/send — does not stream provisional partials into turn-taking state during chat Voice |
 | E2E latency (stop speaking → agent audio starts) | **NOT RUN as continuous session** | Prior honest target ~700–900ms (STT+TTS). Current path adds user Send + full chat turn before TTS — wall-clock will exceed Flash-only first-byte. Measure STT/TTS legs separately if needed; do not claim ChatGPT-class continuous latency |
 | Spoken register (Module D) | **BUILT** | `spoken_mode=True` → Register 5 in `module_d_unified_voice_spec.py` / unified turn; FE sends `spoken_mode` when Voice modality active |
-| Barge-in | **GAP** | Starting Speak while TTS plays does **not** auto-`stopAgentVoice`; acoustic AEC listed as not-built (`voice_acoustic_signal.other_missing_ml_capabilities_report`). User must hit Stop |
+| Barge-in | **PARTIAL** | Minimum: Speak-start while TTS calls `onStop` → `stopAgentVoice` (shared composer). Acoustic AEC / true duplex interrupt still **GAP** (`voice_acoustic_signal.other_missing_ml_capabilities_report`) |
 | Self-recognition by name | **BUILT in prompt stack** | Voice agent profile + Module D inject name; live spoken exchange still requires human mic confirm on tip after Vercel READY |
 
 ## Closing gaps (named)
 
 1. Wire FE Voice modality to continuous STT partials + `voice_turn_taking` finalize (or `stream_voice_turn_events`) instead of push-to-Speak → textbox → Send.  
-2. On Speak-start while `ttsSpeaking`, call `stopAgentVoice()` (minimum barge-in).  
+2. ~~On Speak-start while `ttsSpeaking`, call `stopAgentVoice()`~~ — shipped as minimum barge-in in shared composer; AEC / acoustic interrupt still open.  
 3. Instrument TTFA on the live Voice path and publish real p50/p95 against 700–900ms.  
+
+## Live verification (2026-08-09)
+
+| Check | Result | Evidence |
+|---|---|---|
+| Git tip (web) | PASS (Dictate ship) | Vercel production `dpl_GYitjhsGfYzy7awwdgmgcDysMKnx` READY · commit `c2fe6c70b46d8756f64b02a15903a789d47bf450` · aliases include `gravitre.app` |
+| API tip | PASS (unchanged; FE-only ship) | `GET https://api.gravitre.app/health` → `git_sha=cba337441def633b3782f233edb086901e09366b` |
+| Drift CI | PASS | `node scripts/check-chat-surface-drift.mjs` → `chat-surface-drift PASS` |
+| Dictate gone from marketing | PASS | Live `https://gravitre.app/pricing` DOM: `dictateCount=0`; features show `Voice included — Text \| Voice in chat`; comparison `Voice in chat (Text \| Voice)`; FAQ: switch Text \| Voice (no Dictate) |
+| Composer Dictate gone | CODE PASS / UI auth-gated | Shared controls mount Speak only when `modality === "voice"`; zero `Dictate`/`onDictateError` in `apps/web` source. Authenticated `/ai` mic layout needs human confirm after login |
+| Continuous duplex vs ChatGPT | **GAP (named)** | Live path remains Speak → composer → Send → `spoken_mode` + auto-TTS; provisional turn-taking not FE-wired |
+| Minimum barge-in (Speak→stop TTS) | **BUILT (code)** | `VoiceInputButton.onListeningStart` → shared controls `onStop` when `ttsSpeaking`; acoustic AEC still **GAP** |
+| Spoken register | **BUILT** | FE sends `spoken_mode` when Voice; Module D Register 5 in backend |
+| Name self-recognition | **BUILT in stack / voice live NOT RUN** | Prompt injection present; needs human spoken exchange on tip |
+| Tier-1 voice probe (API) | **PARTIAL** | `railway run … probe-tier1-voice-live.py`: status OK; STT skipped (no canned audio); TTS HTTP **402** @ ~533ms → verdict `PASS_CODE_BROWSER_FALLBACK` (browser TTS path; server TTS credit/gate blocked for probe token) |

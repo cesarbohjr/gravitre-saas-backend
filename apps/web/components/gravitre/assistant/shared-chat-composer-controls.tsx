@@ -100,6 +100,10 @@ export function SharedChatComposerControls({
               onStatusChange={onMicStatusChange}
               showLabel
               onError={onVoiceInputError}
+              onListeningStart={() => {
+                // Minimum barge-in: stop agent TTS when the user starts speaking.
+                if (ttsSpeaking) onStop?.()
+              }}
             />
           ) : null}
           {showSubmit ? (

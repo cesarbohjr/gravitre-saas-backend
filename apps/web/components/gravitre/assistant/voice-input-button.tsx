@@ -22,6 +22,8 @@ type VoiceInputButtonProps = {
    * can render the real mic state instead of inferring one.
    */
   onStatusChange?: (status: SpeechRecognitionStatus) => void
+  /** Fired when the user starts listening (not when stopping). Use to barge-in on TTS. */
+  onListeningStart?: () => void
   disabled?: boolean
   className?: string
   /** Visible label beside the mic (Voice modality only). */
@@ -37,6 +39,7 @@ export function VoiceInputButton({
   onChange,
   onError,
   onStatusChange,
+  onListeningStart,
   disabled = false,
   className,
   showLabel = false,
@@ -106,7 +109,10 @@ export function VoiceInputButton({
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={() => toggleListening()}
+            onClick={() => {
+              if (!isListening) onListeningStart?.()
+              toggleListening()
+            }}
             disabled={disabled}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 transition-colors",
