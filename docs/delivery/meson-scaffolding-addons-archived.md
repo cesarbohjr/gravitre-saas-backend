@@ -29,12 +29,15 @@ Never product-authorized, never Stripe-wired (`stripe_price_id` null), never gat
 | Adjacent Apr 2026 migrations (`billing_events_demo`, SSO, training entities, etc.) | **No** other customer-facing priced catalog seeds of the same shape found. |
 | `billing_plans` seeds | Real platform plans (Node/Control/Command) — different class; not scaffolding Meson SKUs. |
 
-## Verification (fill after deploy)
+## Verification (deploy tip `34006e15`)
 
 | Check | Result |
 |---|---|
-| API tip | _(git_sha)_ |
-| `GET /api/settings/meson-addons` codes | must be `[]` (or only future Stripe-wired) |
-| Catalog archived | four codes + voice_interface have `archived_at` |
-| Orgs with scaffolding flags | 0 |
-| UI | Meson Addons shows Voice + “No billable Meson addons” |
+| API tip | **PASS** — `GET /health` `git_sha=34006e15136390ad8ccded0f0e2292a5e3f160f1` |
+| Railway | **PASS** — SUCCESS deploy at tip |
+| Vercel | **PASS** — production READY `dpl_8EusyKUHeGGBy6hkbrnocshN5agV` on `34006e15` |
+| `GET /api/settings/meson-addons` | **PASS** — `addons=[]`, `monthly_total_usd=0`, `addon_audit.scaffolding_skus=archived_hidden` @ `2026-08-09T06:52:32Z` |
+| Catalog archived | **PASS** — all five codes `archived_at` set, price `$0` |
+| Orgs with scaffolding flags | **PASS** — `0` |
+| Unit | **PASS** — `test_meson_addon_catalog_honesty.py` 4 passed |
+| Evidence JSON | `docs/delivery/meson-scaffolding-addons-archived-live.json` |

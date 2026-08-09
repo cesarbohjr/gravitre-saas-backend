@@ -1,0 +1,43 @@
+{
+  "at": "2026-08-09T06:52:32.207346+00:00",
+  "api": "https://api.gravitre.app",
+  "health_git_sha": "34006e15136390ad8ccded0f0e2292a5e3f160f1",
+  "meson_addons_http": 200,
+  "api_addon_codes": [],
+  "leaked_scaffolding_codes": [],
+  "monthly_total_usd": 0.0,
+  "catalog_archived": {
+    "advanced_analytics": {
+      "archived_at": "2026-08-09T04:48:16.817278+00:00",
+      "monthly_price_usd": 0.0,
+      "name": "Advanced Analytics (archived \u2014 scaffolding)"
+    },
+    "compliance_pack": {
+      "archived_at": "2026-08-09T04:48:16.817278+00:00",
+      "monthly_price_usd": 0.0,
+      "name": "Compliance Pack (archived \u2014 scaffolding)"
+    },
+    "custom_model_training": {
+      "archived_at": "2026-08-09T04:48:16.817278+00:00",
+      "monthly_price_usd": 0.0,
+      "name": "Custom Model Training (archived \u2014 scaffolding)"
+    },
+    "multi_language": {
+      "archived_at": "2026-08-09T04:48:16.817278+00:00",
+      "monthly_price_usd": 0.0,
+      "name": "Multi-language (archived \u2014 scaffolding)"
+    },
+    "voice_interface": {
+      "archived_at": "2026-08-09T04:48:16.817278+00:00",
+      "monthly_price_usd": 0.0,
+      "name": "Voice Interface (retired \u2014 plan included)"
+    }
+  },
+  "orgs_with_scaffolding_flags": [],
+  "addon_audit": {
+    "customer_facing_rule": "stripe_price_id_required_and_not_archived",
+    "scaffolding_skus": "archived_hidden",
+    "voice_interface": "retired_purchase_gate_plan_included"
+  },
+  "pass": true
+}
