@@ -1,0 +1,17 @@
+{
+  "at": "2026-08-09T04:15:28.536543+00:00",
+  "api": "https://api.gravitre.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "health_status": 200,
+  "health_git_sha": "1378ca16cd2a1ba5c2bb00c780ac677cb6031d04",
+  "tip_matches_1378ca16": true,
+  "unified_turn_qa_hooks_enabled": true,
+  "control_status": 402,
+  "control_body_snippet": "{\"success\":false,\"error\":\"ElevenLabs voice service unavailable: billing issue (insufficient credits or payment required). Upstream 402. Detail: {\\\"detail\\\":{\\\"type\\\":\\\"payment_required\\\",\\\"code\\\":\\\"pa",
+  "force_status": 402,
+  "force_error_class": "billing",
+  "force_billing_issue": true,
+  "force_detail_snippet": "ElevenLabs voice service unavailable: billing issue (insufficient credits or payment required). Upstream 402. Detail: qa_force_voice_error=billing",
+  "pass": true,
+  "ui_amber_path": "Open agent chat with ?qaForceVoiceError=billing, switch to Voice, send a short message; presence strip should show amber 'Voice paused \u2014 credits needed'. Remove query param / toggle Text to clear."
+}

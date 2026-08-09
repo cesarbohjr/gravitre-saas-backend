@@ -23,6 +23,16 @@ export function parseTtsErrorBody(raw: unknown, status: number): TtsSynthesizeEr
     const obj = node as Record<string, unknown>
     if (typeof obj.error_class === "string") errorClass = obj.error_class
     if (typeof obj.billing_issue === "boolean") billingIssue = obj.billing_issue
+    // App http_exception_handler: { success:false, error, details, detail:{message,…} }
+    if (typeof obj.error === "string" && obj.error.trim()) {
+      detail = obj.error.trim()
+    }
+    if (typeof obj.message === "string" && obj.message.trim()) {
+      detail = obj.message.trim()
+    }
+    if (obj.details && typeof obj.details === "object") {
+      dig(obj.details)
+    }
     if (typeof obj.detail === "string" && obj.detail.trim()) {
       const rawDetail = obj.detail.trim()
       if (rawDetail.startsWith("{") || rawDetail.startsWith("[")) {

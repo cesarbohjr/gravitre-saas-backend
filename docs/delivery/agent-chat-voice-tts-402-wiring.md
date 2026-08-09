@@ -16,30 +16,36 @@ Streaming session `POST /api/voice/session/turn` (NDJSON + progressive TTS) rema
 
 ## Phase 2 — Wiring (this change)
 
-1. **`synthesizeViaElevenLabsDetailed`** — structured ok/error; parses `error_class` / `billing_issue`.
+1. **`synthesizeViaElevenLabsDetailed`** — structured ok/error; parses `error_class` / `billing_issue` (incl. live `http_exception_handler` envelope).
 2. **`useAgentVoicePlayback`** — auto-play helper; **no** browser fallback on billing 402.
 3. **Agent chat page** — after stream completes in Voice modality, speak last assistant text via `/api/voice/tts` with `agent_id`; drive `<VoiceSessionPresence billing={…} />` from real TTS errors.
 4. **QA force** — `X-Gravitre-QA-Force-Voice-Error: billing` (gated by `unified_turn_qa_hooks_enabled`), same pattern as unified-turn QA headers. UI trigger: `?qaForceVoiceError=billing`.
 
-## Phase 3 — Verification commands
+## Phase 3 — Verification evidence (tip `1378ca16`)
+
+| Check | Result |
+|---|---|
+| Railway tip | **PASS** — `GET /health` `git_sha=1378ca16cd2a1ba5c2bb00c780ac677cb6031d04` |
+| Vercel tip | **PASS** — production READY `dpl_G3iTT6LCq3WtsLJ2jjVqNmwhaZhb` on `1378ca16` (`gravitre.app`) |
+| Unit (voice QA hooks) | **PASS** — 5 passed |
+| Unit (FE TTS error parse) | **PASS** — 4 passed |
+| QA-force 402 API | **PASS** — `railway run python scripts/prove-agent-chat-voice-402-qa-force.py` → `pass:true`, HTTP 402, `error_class=billing`, `billing_issue=true`, detail contains `qa_force_voice_error=billing` (evidence: `docs/delivery/agent-chat-voice-402-qa-force.json` @ `2026-08-09T04:15:28Z`) |
+| Amber presence (agent chat) | Wired to real TTS billing signal; trigger via `?qaForceVoiceError=billing` or natural ElevenLabs 402 |
+| Successful TTS audio bytes | **PENDING FUNDED-ACCOUNT** — live `/api/voice/tts` still returns natural 402 `paid_plan_required` (ElevenLabs Free cannot use library voices). Same blocker as Phase 0. Wiring path identical; audio prove waits for paid ElevenLabs plan. |
+| Main-chat `/ai` regression | Read aloud still uses `synthesizeViaElevenLabs` compatibility wrapper (null on failure → browser fallback). No transport change. |
 
 ```bash
 # Unit
-cd backend && python -m pytest tests/services/test_voice_qa_hooks.py tests/services/test_voice_provider_errors.py -q
+cd backend && python -m pytest tests/services/test_voice_qa_hooks.py -q
 cd apps/web && npx vitest run __tests__/lib/tier1-voice-client-tts-error.test.ts
 
-# Live API (after deploy tip matches)
-set GRAVITRE_ACCESS_TOKEN=…
-set GRAVITRE_ORG_ID=…
-python scripts/prove-agent-chat-voice-402-qa-force.py
+# Live API
+railway run python scripts/prove-agent-chat-voice-402-qa-force.py
 
 # Live UI amber
 # https://gravitre.app/agents/<id>/chat?qaForceVoiceError=billing
 # → Voice toggle → send message → amber "Voice paused — credits needed"
 # → remove query / Text mode → amber clears
-
-# Live TTS success (no QA force)
-# Voice mode → short reply → audible MPEG from same /api/voice/tts path
 ```
 
 ## Non-goals
