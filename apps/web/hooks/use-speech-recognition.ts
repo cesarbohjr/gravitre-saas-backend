@@ -40,11 +40,21 @@ export function useSpeechRecognition({
   lang = "en-US",
   disabled = false,
 }: UseSpeechRecognitionOptions): UseSpeechRecognitionResult {
-  const [status, setStatus] = useState<SpeechRecognitionStatus>(() => {
-    if (isSpeechRecognitionSupported()) return "idle"
-    if (typeof window !== "undefined" && typeof MediaRecorder !== "undefined") return "idle"
-    return "unsupported"
-  })
+  // Same hydration hazard as useSpeechSynthesis: a lazy useState initializer still
+  // runs on the server, so this resolved "unsupported" there and "idle" on the
+  // client, and VoiceInputButton's `if (!isSupported) return null` made the two
+  // trees disagree. Start "unsupported" on both, then detect after mount.
+  const [status, setStatus] = useState<SpeechRecognitionStatus>("unsupported")
+
+  useEffect(() => {
+    setStatus((current) => {
+      // Never clobber a live session: by the time this runs the user may already
+      // be recording, and resetting to "idle" would silently drop that state.
+      if (current !== "unsupported") return current
+      if (isSpeechRecognitionSupported() || typeof MediaRecorder !== "undefined") return "idle"
+      return "unsupported"
+    })
+  }, [])
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const mediaChunksRef = useRef<Blob[]>([])

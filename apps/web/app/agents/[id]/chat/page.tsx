@@ -544,6 +544,9 @@ export default function AgentChatPage({
                 }}
                 voiceEntitled={voiceEntitled}
                 unavailableReason={voiceUnavailableReason}
+                // Real agent name, so the orb reads "Sales is speaking…" rather
+                // than the generic Gravitre default used by main chat.
+                agentLabel={agent?.name || "Gravitre"}
                 input={input}
                 onInputChange={setInput}
                 disabled={!user || isLoading}

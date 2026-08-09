@@ -397,9 +397,58 @@
     animation: status-breathe 2s ease-in-out infinite;
   }
 
+  /* ── Voice UI: inline waveform + full-screen orb ───────────────────────────
+     Verbatim from the design handoff. Each bar gets its own keyframe so the
+     seven bars never move in lockstep; a single shared keyframe plus delays
+     reads as a travelling ripple rather than live speech.
+
+     Height is animated (not scaleY) to match the handoff exactly. The bars are
+     3px, so the compositing cost is negligible, and scaleY on a 6px bar with
+     border-radius smears the rounding. */
+  @keyframes gv-wave1 { 0%, 100% { height: 6px; }  50% { height: 20px; } }
+  @keyframes gv-wave2 { 0%, 100% { height: 20px; } 50% { height: 8px; } }
+  @keyframes gv-wave3 { 0%, 100% { height: 10px; } 50% { height: 22px; } }
+  @keyframes gv-wave4 { 0%, 100% { height: 16px; } 50% { height: 6px; } }
+  @keyframes gv-wave5 { 0%, 100% { height: 8px; }  50% { height: 18px; } }
+  @keyframes gv-wave6 { 0%, 100% { height: 18px; } 50% { height: 9px; } }
+  @keyframes gv-wave7 { 0%, 100% { height: 12px; } 50% { height: 20px; } }
+
+  .gv-wave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background-color: currentColor;
+    animation-duration: var(--gv-wave-duration, 0.6s);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .gv-wave-bar:nth-child(1) { height: 6px;  animation-name: gv-wave1; animation-delay: 0s; }
+  .gv-wave-bar:nth-child(2) { height: 20px; animation-name: gv-wave2; animation-delay: 0.08s; }
+  .gv-wave-bar:nth-child(3) { height: 10px; animation-name: gv-wave3; animation-delay: 0.16s; }
+  .gv-wave-bar:nth-child(4) { height: 16px; animation-name: gv-wave4; animation-delay: 0.24s; }
+  .gv-wave-bar:nth-child(5) { height: 8px;  animation-name: gv-wave5; animation-delay: 0.32s; }
+  .gv-wave-bar:nth-child(6) { height: 18px; animation-name: gv-wave6; animation-delay: 0.4s; }
+  .gv-wave-bar:nth-child(7) { height: 12px; animation-name: gv-wave7; animation-delay: 0.48s; }
+
+  @keyframes gv-orb-pulse-user {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 70px rgba(22, 163, 116, 0.5); }
+    50%      { transform: scale(1.1);  box-shadow: 0 0 100px rgba(22, 163, 116, 0.7); }
+  }
+  @keyframes gv-orb-pulse-agent {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 60px rgba(255, 255, 255, 0.25); }
+    50%      { transform: scale(1.04); box-shadow: 0 0 90px rgba(255, 255, 255, 0.4); }
+  }
+  .gv-orb-user  { animation: gv-orb-pulse-user 1s ease-in-out infinite; }
+  .gv-orb-agent { animation: gv-orb-pulse-agent 2s ease-in-out infinite; }
+
   @media (prefers-reduced-motion: reduce) {
     .hover-lift:hover { transform: none; }
     .status-live { animation: none; }
+    /* Voice UI falls back to a static mark. The bars keep their per-bar resting
+       height above, so the waveform still reads as a waveform when frozen
+       instead of collapsing into seven identical stubs. */
+    .gv-wave-bar,
+    .gv-orb-user,
+    .gv-orb-agent { animation: none; }
   }
 
   /* Sonner — keep brand unstyled toasts above dialogs; neutralize library defaults */

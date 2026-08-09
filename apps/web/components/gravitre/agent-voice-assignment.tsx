@@ -21,8 +21,7 @@ import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
 import type { AgentVoiceProfile } from "@/types/api"
 import { toast } from "sonner"
-import { useReducedMotion } from "framer-motion"
-import { VoiceWaveform } from "@/components/gravitre/assistant/voice-session-presence"
+import { GravitreVoiceWaveform } from "@/components/gravitre/assistant/voice-presentation"
 import { Check, Loader2, Play, Sparkles } from "lucide-react"
 
 type LibraryVoice = {
@@ -64,7 +63,6 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
   // Which voices the operator has actually heard. Local presentation state only:
   // it drives the "preview first" affordance and is never sent anywhere.
   const [heard, setHeard] = useState<string[]>([])
-  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     let cancelled = false
@@ -296,7 +294,7 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                         {isPreviewing ? (
                           // Decorative: the same waveform motif as the chat
                           // presence, standing in for a spinner while audio plays.
-                          <VoiceWaveform active travelling reduceMotion={reduceMotion} />
+                          <GravitreVoiceWaveform speaker="agent" compact />
                         ) : (
                           <Play className="h-3.5 w-3.5" />
                         )}
