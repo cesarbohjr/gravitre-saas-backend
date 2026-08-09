@@ -12,5 +12,6 @@ Before claiming Done, shipping governance-adjacent work, or closing a “looks f
 3. **Dual paths** — ReAct vs governed chat (etc.) need independent verification until they share one gate.
 4. **Schema-gate ≠ authorization** — PII / third-party ML purpose needs a named owner + written option (see STA-312 / Memory Option B).
 5. **Class-level** — check structural/shared-path bugs before closing an isolated case.
+6. **No invented customer surfaces** — never seed prices/claims/badges/Enable toggles as scaffold filler; see §11 and `.cursor/rules/no-invented-customer-surfaces.mdc`. Declare (a) authorized vs (b) scaffold in the delivery message.
 
 Memory Phase 1 caveat: opaque-alias vectors are **exact HMAC match** of normalized mentions — not fuzzy `"Sarah"`↔`"Sarah Smith"`.

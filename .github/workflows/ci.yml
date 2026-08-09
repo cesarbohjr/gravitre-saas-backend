@@ -38,6 +38,10 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
+      - name: Chat surface drift guard
+        working-directory: .
+        run: node scripts/check-chat-surface-drift.mjs
+
       - name: Lint
         run: pnpm lint
 

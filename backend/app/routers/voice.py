@@ -347,10 +347,11 @@ async def post_stt(
         raise _http_error(exc) from exc
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     if analyze_acoustic and raw:
-        from app.billing.service import get_supabase_client
+        # Do NOT re-import get_supabase_client here — a local import makes the
+        # name local for the whole function and raises UnboundLocalError on the
+        # earlier client = get_supabase_client(settings) call (Dictate 500).
         from app.services.voice_acoustic_signal import schedule_acoustic_analysis
 
-        client = get_supabase_client(settings)
         schedule_acoustic_analysis(
             client=client,
             org_id=str(org or ""),

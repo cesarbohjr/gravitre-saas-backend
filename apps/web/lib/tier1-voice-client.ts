@@ -142,23 +142,63 @@ export async function synthesizeViaElevenLabs(
   return null
 }
 
-export async function transcribeViaDeepgram(blob: Blob): Promise<{
+export type SttTranscribeOk = {
+  ok: true
   transcript: string
   latencyMs: number | null
-} | null> {
+}
+
+export type SttTranscribeError = {
+  ok: false
+  status: number
+  detail: string
+}
+
+export type SttTranscribeResult = SttTranscribeOk | SttTranscribeError
+
+/** Same Deepgram path as agent voice STT — structured errors for Dictate. */
+export async function transcribeViaDeepgramDetailed(blob: Blob): Promise<SttTranscribeResult> {
   const status = await getVoiceStatus()
-  if (!status?.stt_enabled) return null
+  if (!status?.stt_enabled) {
+    return { ok: false, status: 0, detail: "Speech-to-text is not configured for this environment." }
+  }
   const form = new FormData()
-  form.append("file", blob, "audio.webm")
+  const mime = blob.type || "audio/webm"
+  const filename = mime.includes("wav") ? "audio.wav" : "audio.webm"
+  form.append("file", new File([blob], filename, { type: mime }))
   const res = await apiFetch("/api/voice/stt", {
     method: "POST",
     body: form,
     timeoutMs: 45_000,
   })
-  if (!res.ok) return null
-  const data = (await res.json()) as { transcript?: string; latency_ms?: number }
-  return {
-    transcript: String(data.transcript || "").trim(),
-    latencyMs: typeof data.latency_ms === "number" ? data.latency_ms : null,
+  let payload: Record<string, unknown> = {}
+  try {
+    payload = (await res.json()) as Record<string, unknown>
+  } catch {
+    payload = {}
   }
+  if (!res.ok) {
+    const detail =
+      (typeof payload.error === "string" && payload.error) ||
+      (typeof payload.detail === "string" && payload.detail) ||
+      (typeof (payload.detail as { error?: string } | undefined)?.error === "string"
+        ? (payload.detail as { error: string }).error
+        : null) ||
+      `Transcription failed (HTTP ${res.status})`
+    return { ok: false, status: res.status, detail: String(detail) }
+  }
+  return {
+    ok: true,
+    transcript: String(payload.transcript || "").trim(),
+    latencyMs: typeof payload.latency_ms === "number" ? payload.latency_ms : null,
+  }
+}
+
+export async function transcribeViaDeepgram(blob: Blob): Promise<{
+  transcript: string
+  latencyMs: number | null
+} | null> {
+  const result = await transcribeViaDeepgramDetailed(blob)
+  if (!result.ok) return null
+  return { transcript: result.transcript, latencyMs: result.latencyMs }
 }

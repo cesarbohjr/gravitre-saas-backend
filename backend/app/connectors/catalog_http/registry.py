@@ -4,6 +4,8 @@ from __future__ import annotations
 from app.connectors.action_catalog.registry import all_catalog_action_specs, get_vendor_catalog
 from app.connectors.action_catalog.tool_aliases import registry_keys_for_catalog_tool
 from app.connectors.catalog_http.executor import make_catalog_http_executor
+from app.connectors.twilio_api import _ROUTES as TWILIO_ROUTES
+from app.connectors.twilio_api import make_twilio_executor
 
 
 def _catalog_tool_keys() -> set[str]:
@@ -36,5 +38,12 @@ def build_catalog_http_executors(*, skip: set[str] | None = None) -> dict[str, o
         if vendor in {"email", "webhook"}:
             continue
         if tool not in executors:
-            executors[tool] = make_catalog_http_executor(tool)
+            # Twilio uses Account SID paths + Basic auth + form bodies — not generic JSON HTTP.
+            if vendor == "twilio" and tool in TWILIO_ROUTES:
+                executors[tool] = make_twilio_executor(tool)
+            elif vendor == "twilio":
+                # Remaining advanced Studio/Verify actions stay on generic stub until wired.
+                executors[tool] = make_catalog_http_executor(tool)
+            else:
+                executors[tool] = make_catalog_http_executor(tool)
     return executors

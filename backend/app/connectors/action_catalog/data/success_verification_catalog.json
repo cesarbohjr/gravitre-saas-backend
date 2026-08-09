@@ -1411,16 +1411,20 @@
       "reason": "Sibling GET must return the written entity id/field"
     },
     "twilio.calls.create": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      "assert_field": "sid",
+      "mode": "follow_up_entity_get",
+      "read_action": "twilio.calls.get",
+      "reason": "Confirm Call SID via twilio.calls.get after outbound dial"
     },
     "twilio.conversations.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "twilio.messages.create": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      "assert_field": "sid",
+      "mode": "follow_up_entity_get",
+      "read_action": "twilio.messages.get",
+      "reason": "Confirm Message SID via twilio.messages.get after SMS send"
     },
     "twilio.studio.flows.execute": {
       "mode": "accepted_async",
@@ -1429,6 +1433,12 @@
     "twilio.verify.check": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "vapi.calls.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "vapi.calls.get",
+      "reason": "Sibling GET must return the written entity id/field"
     },
     "webhook.post": {
       "mode": "accepted_async",
@@ -1524,6 +1534,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 344,
+  "mutating_action_count": 345,
   "version": 1
 }

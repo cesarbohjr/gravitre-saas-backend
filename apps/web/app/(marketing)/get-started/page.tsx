@@ -207,7 +207,7 @@ export default function GetStartedPage() {
               No credit card required.
             </p>
             <p className="mt-4 text-xs text-zinc-400">
-              7-day free trial · Cancel anytime · SOC2-ready infrastructure
+              7-day free trial · Cancel anytime · Encrypted by default
             </p>
           </div>
 

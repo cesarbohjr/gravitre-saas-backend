@@ -1,0 +1,42 @@
+---
+description: Never invent customer-visible prices, claims, badges, or toggles as scaffold filler
+alwaysApply: true
+---
+
+# No invented customer-facing product surfaces
+
+Standing rule for this entire program (not scoped to one prompt).
+
+## Never invent
+
+Do **not** invent, seed, or fill in as plausible-looking example data any:
+
+- customer-visible **price**
+- **claim** (compliance, capability, certification, “live” status)
+- **badge** (TRAINED, certified, included, etc.)
+- **capability toggle** (Enable / Disable that looks billable or entitlement-real)
+- other **product surface** that a real customer could mistake for authorized product
+
+…unless the user **explicitly, separately requested** it and **confirmed it as real** in that conversation.
+
+## If placeholder is genuinely required
+
+Demo / scaffold / visual mockup data must be **structurally impossible** to ship to a real customer:
+
+1. Kept entirely out of any customer-facing route, **or**
+2. Visibly, unmistakably labeled **placeholder** in the UI itself (not only a code comment)
+
+Never give placeholders a **real-looking price** or a **working Enable** action.
+
+## Before commit — declare in the delivery report
+
+For any commit that adds a new customer-facing price, feature claim, or toggle, state explicitly in the **same delivery message**:
+
+- **(a)** Explicitly requested and authorized in this specific conversation, **or**
+- **(b)** Generated to fill out a broader scaffold
+
+Anything under **(b)** must be flagged as exactly that, honestly, when delivered — not discovered months later.
+
+## Proven failure class (do not repeat)
+
+Five instances from the 2026-04 monetization / integration period: Meson scaffolding SKUs, environment mock fallback, SOC 2 marketing overclaims, fake TRAINED / silent confidence, ROI placeholders presented as live. Same class: AI-assisted build invents plausible product surface without product authorization.

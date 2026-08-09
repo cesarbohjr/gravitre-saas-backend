@@ -75,6 +75,8 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "snowflake": VendorHttpProfile("snowflake", "snowflake", "https://{account}.snowflakecomputing.com", "api_token"),
     "shopify": VendorHttpProfile("shopify", "shopify", "https://{shop}.myshopify.com/admin/api/2024-01", "generic_oauth"),
     "twilio": VendorHttpProfile("twilio", "twilio", "https://api.twilio.com/2010-04-01", "api_token"),
+    # External AI phone agents (Vapi) — distinct from internal staff chat voice.
+    "vapi": VendorHttpProfile("vapi", "vapi", "https://api.vapi.ai", "api_token"),
     "typeform": VendorHttpProfile("typeform", "typeform", "https://api.typeform.com", "generic_oauth"),
     "zapier": VendorHttpProfile("zapier", "zapier", "https://hooks.zapier.com", "none"),
 }

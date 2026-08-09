@@ -8,7 +8,7 @@ import {
   speechRecognitionErrorMessage,
   type SpeechRecognitionStatus,
 } from "@/lib/speech-recognition"
-import { getVoiceStatus, transcribeViaDeepgram } from "@/lib/tier1-voice-client"
+import { getVoiceStatus, transcribeViaDeepgramDetailed } from "@/lib/tier1-voice-client"
 
 type UseSpeechRecognitionOptions = {
   /** Current composer value — preserved as prefix when dictation starts. */
@@ -89,7 +89,14 @@ export function useSpeechRecognition({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
       mediaChunksRef.current = []
-      const recorder = new MediaRecorder(stream)
+      const preferredMime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : ""
+      const recorder = preferredMime
+        ? new MediaRecorder(stream, { mimeType: preferredMime })
+        : new MediaRecorder(stream)
       mediaRecorderRef.current = recorder
       deepgramModeRef.current = true
       prefixRef.current = value.trim() ? `${value.trim()} ` : ""
@@ -98,19 +105,26 @@ export function useSpeechRecognition({
       }
       recorder.onstop = () => {
         void (async () => {
-          const blob = new Blob(mediaChunksRef.current, { type: "audio/webm" })
+          const blobType = recorder.mimeType || "audio/webm"
+          const blob = new Blob(mediaChunksRef.current, { type: blobType })
           mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
           mediaStreamRef.current = null
           deepgramModeRef.current = false
           listeningRef.current = false
           setStatus("idle")
-          if (!blob.size) return
-          const result = await transcribeViaDeepgram(blob)
-          if (result?.transcript) {
+          if (!blob.size) {
+            onErrorRef.current?.("No audio captured. Hold Dictate a moment longer, then stop.")
+            return
+          }
+          const result = await transcribeViaDeepgramDetailed(blob)
+          if (result.ok && result.transcript) {
             const combined = `${prefixRef.current}${result.transcript}`.trim()
             onTranscriptRef.current(combined, { isFinal: true })
+          } else if (result.ok) {
+            onErrorRef.current?.("No speech detected. Try again or type instead.")
           } else {
-            onErrorRef.current?.("Could not transcribe audio. Try again or type instead.")
+            onErrorRef.current?.(result.detail || "Could not transcribe audio. Try again or type instead.")
+            setStatus("error")
           }
         })()
       }

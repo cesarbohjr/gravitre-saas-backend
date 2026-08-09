@@ -1,8 +1,8 @@
 {
   "generated_at": "2026-08-06T09:28:07.053677+00:00",
-  "catalog_action_count": 690,
+  "catalog_action_count": 696,
   "vendor_count": 77,
-  "enriched_action_count": 690,
+  "enriched_action_count": 696,
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
@@ -12852,6 +12852,100 @@
         "api",
         "lookup",
         "get"
+      ]
+    },
+    "twilio.calls.get": {
+      "examples": [
+        "Check status of Twilio call CA123",
+        "Did that outbound Twilio call complete?",
+        "Get Twilio call SID details and duration",
+        "lookup Twilio call status",
+        "verify external phone call result in Twilio"
+      ],
+      "tags": [
+        "twilio",
+        "calls",
+        "read",
+        "status",
+        "telephony",
+        "external",
+        "lookup",
+        "get"
+      ]
+    },
+    "twilio.messages.get": {
+      "examples": [
+        "Get Twilio SMS delivery status for SM123",
+        "Did that Twilio text message send?",
+        "Lookup Twilio message SID status",
+        "verify SMS delivery via Twilio",
+        "fetch Twilio message details"
+      ],
+      "tags": [
+        "twilio",
+        "messages",
+        "read",
+        "sms",
+        "status",
+        "external",
+        "lookup",
+        "get"
+      ]
+    },
+    "vapi.calls.get": {
+      "examples": [
+        "Get Vapi call result and transcript",
+        "Did the Vapi AI phone call finish?",
+        "Lookup Vapi call status by id",
+        "verify external Vapi call outcome",
+        "fetch Vapi call details"
+      ],
+      "tags": [
+        "vapi",
+        "calls",
+        "read",
+        "voice-agent",
+        "external",
+        "telephony",
+        "lookup",
+        "get"
+      ]
+    },
+    "vapi.calls.list": {
+      "examples": [
+        "List recent Vapi AI phone calls",
+        "Show outbound Vapi call history",
+        "Audit inbound Vapi calls this week",
+        "list Vapi calls",
+        "show me Vapi call-center activity"
+      ],
+      "tags": [
+        "vapi",
+        "calls",
+        "read",
+        "voice-agent",
+        "external",
+        "telephony",
+        "list"
+      ]
+    },
+    "vapi.calls.create": {
+      "examples": [
+        "Start an outbound Vapi AI phone call to the customer",
+        "Trigger Vapi agent call after approval",
+        "Dial an external number with Vapi",
+        "create Vapi outbound call",
+        "place approved call-center call via Vapi"
+      ],
+      "tags": [
+        "vapi",
+        "calls",
+        "write",
+        "voice-agent",
+        "external",
+        "telephony",
+        "mutate",
+        "create"
       ]
     }
   }

@@ -51,7 +51,12 @@ import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
 import { messageCreatedAt } from "@/lib/chat-message-time"
-import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
+import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
+import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
+import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
+import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
+import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
   serializeInlineTurn,
   splitConversationMessages,
@@ -231,6 +236,23 @@ export function AiWorkspace({
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
+  // Internal staff voice modality (same pipeline as agent chat) — not Twilio/Vapi telephony.
+  const [modality, setModality] = useState<ChatModality>("text")
+  const modalityRef = useRef<ChatModality>("text")
+  const [voiceEntitled, setVoiceEntitled] = useState(true)
+  const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | undefined>()
+  const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
+  const lastSpokenMessageIdRef = useRef<string | null>(null)
+  const {
+    isSpeaking: ttsSpeaking,
+    billingIssue: voiceBilling,
+    billingDetail: voiceBillingDetail,
+    serviceError: voiceServiceError,
+    serviceDetail: voiceServiceDetail,
+    speak: speakAgentVoice,
+    stop: stopAgentVoice,
+    clearErrors: clearVoiceErrors,
+  } = useAgentVoicePlayback()
 
   const operatorContextRef = useRef<string | null>(null)
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
@@ -360,10 +382,35 @@ export function AiWorkspace({
           research_scope: researchScopeRef.current ?? undefined,
           connected_file_refs:
             connectedFileRefsRef.current.length > 0 ? connectedFileRefsRef.current : undefined,
+          // Same spoken_mode path as agent chat → execute_task_streaming(spoken_mode=True).
+          spoken_mode: modalityRef.current === "voice",
+          surface: modalityRef.current === "voice" ? "voice" : "ai_chat",
         }),
       }),
     [chatMode, selectedDepartment],
   )
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    void getVoiceStatusDetailed(true)
+      .then((result) => {
+        if (cancelled) return
+        if (result.blocked) {
+          setVoiceEntitled(false)
+          setVoiceUnavailableReason(result.reason)
+          return
+        }
+        setVoiceEntitled(true)
+        setVoiceUnavailableReason(undefined)
+      })
+      .catch(() => {
+        if (!cancelled) setVoiceEntitled(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
     transport,
@@ -1576,6 +1623,61 @@ export function AiWorkspace({
   )
 
   const isChatBusy = status === "submitted" || status === "streaming"
+  const isStreaming = status === "streaming"
+
+  // Auto-TTS after assistant reply in Voice modality — same /api/voice/tts as agent chat.
+  useEffect(() => {
+    if (modality !== "voice" || !voiceEntitled) return
+    if (isChatBusy) return
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
+    if (!lastAssistant) return
+    if (lastSpokenMessageIdRef.current === lastAssistant.id) return
+    const text = uiMessageText(lastAssistant).trim()
+    if (!text) return
+    lastSpokenMessageIdRef.current = lastAssistant.id
+    void speakAgentVoice(text, { messageId: lastAssistant.id })
+  }, [modality, voiceEntitled, isChatBusy, messages, speakAgentVoice])
+
+  useEffect(() => {
+    if (modality !== "voice") {
+      stopAgentVoice()
+      clearVoiceErrors()
+      lastSpokenMessageIdRef.current = null
+    }
+  }, [modality, stopAgentVoice, clearVoiceErrors])
+
+  const voicePresence: VoicePresenceState =
+    voiceBilling || voiceServiceError
+      ? "error"
+      : micStatus === "listening"
+        ? "listening"
+        : micStatus === "permission-denied" || micStatus === "audio-capture"
+          ? "error"
+          : ttsSpeaking || isStreaming
+            ? "speaking"
+            : "idle"
+  const voicePresenceDetail = voiceBilling
+    ? voiceBillingDetail
+    : voiceServiceError
+      ? voiceServiceDetail
+      : undefined
+
+  const handleModalityChange = useCallback(
+    (next: ChatModality) => {
+      setModality(next)
+      modalityRef.current = next
+      if (next === "text") {
+        stopAgentVoice()
+        clearVoiceErrors()
+      }
+      toast.message(
+        next === "voice"
+          ? "Voice mode — speak or type; replies play aloud (internal staff voice, not phone calls)"
+          : "Text mode",
+      )
+    },
+    [stopAgentVoice, clearVoiceErrors],
+  )
   const showConversationsSkeleton = Boolean(user) && conversationsLoading && !conversationsData
   const showConversationsError = Boolean(user) && Boolean(conversationsError) && !conversationsLoading
   const activeConversation = useMemo(
@@ -1965,6 +2067,10 @@ export function AiWorkspace({
                 routedTo={routedTo}
                 onSubmit={() => void submitPrompt(input)}
                 onExampleSelect={(text) => void submitPrompt(text)}
+                modality={modality}
+                onModalityChange={handleModalityChange}
+                voiceEntitled={voiceEntitled}
+                voiceUnavailableReason={voiceUnavailableReason}
               />
             ) : null}
 
@@ -2169,8 +2275,8 @@ export function AiWorkspace({
                   ))}
                 </div>
               ) : null}
-              {/* Handoff composer row — open input + attachments + send (Shape of AI: Open input / Attachments) */}
-              <div className="flex items-end gap-2.5">
+              {/* SHARED_CHAT_COMPOSER_CONTROLS — Text|Voice + Dictate + send (same as agent chat). */}
+              <div className="flex flex-col gap-2">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -2178,9 +2284,13 @@ export function AiWorkspace({
                   onKeyDown={onKeyDown}
                   rows={1}
                   disabled={routing}
-                  placeholder="Ask, delegate, or search…"
+                  placeholder={
+                    modality === "voice"
+                      ? "Speak or type — replies play aloud…"
+                      : "Ask, delegate, or search…"
+                  }
                   className={cn(
-                    "max-h-[120px] min-h-[40px] flex-1 resize-none rounded-lg border border-[color:var(--chat-surface-border)] bg-white px-3 py-2.5 outline-none placeholder:text-[color:var(--chat-surface-muted)] focus:border-[#16a374]/50 dark:bg-[#262626] dark:text-[#f2f2f0]",
+                    "max-h-[120px] min-h-[40px] w-full resize-none rounded-lg border border-[color:var(--chat-surface-border)] bg-white px-3 py-2.5 outline-none placeholder:text-[color:var(--chat-surface-muted)] focus:border-[#16a374]/50 dark:bg-[#262626] dark:text-[#f2f2f0]",
                     CHAT_COMPOSER_CLASS,
                   )}
                   onInput={(event) => {
@@ -2189,51 +2299,44 @@ export function AiWorkspace({
                     target.style.height = `${Math.min(Math.max(target.scrollHeight, 40), 120)}px`
                   }}
                 />
-                {isChatBusy ? (
-                  <Button variant="outline" size="sm" className="h-10 shrink-0" onClick={() => stop()}>
-                    <Square className="mr-1 h-3 w-3" />
-                    Stop
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="hidden h-10 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
+                <SharedChatComposerControls
+                  modality={modality}
+                  onModalityChange={handleModalityChange}
+                  voiceEntitled={voiceEntitled}
+                  unavailableReason={voiceUnavailableReason}
+                  input={input}
+                  onInputChange={setInput}
                   disabled={routing || isChatBusy}
-                  title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
-                  onClick={() => setConnectedFilePickerOpen(true)}
-                >
-                  <FolderOpen className="h-3.5 w-3.5" />
-                  Browse files
-                </Button>
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--chat-surface-border)] bg-white text-[color:var(--chat-surface-muted)] sm:hidden dark:bg-[#262626]"
-                  disabled={routing || isChatBusy}
-                  title="Browse files"
-                  aria-label="Browse files"
-                  onClick={() => setConnectedFilePickerOpen(true)}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                </button>
-                <VoiceInputButton
-                  value={input}
-                  onChange={setInput}
-                  disabled={routing || isChatBusy}
-                  showLabel
-                  onError={(message) => {
+                  isStreaming={isStreaming || ttsSpeaking}
+                  ttsSpeaking={ttsSpeaking}
+                  onStop={() => {
+                    stop()
+                    stopAgentVoice()
+                  }}
+                  canSubmit={Boolean(input.trim() || connectedFileAttachments.length > 0) && !routing && !isChatBusy}
+                  showSubmit
+                  onMicStatusChange={setMicStatus}
+                  voicePresence={voicePresence}
+                  voiceBilling={voiceBilling}
+                  voicePresenceDetail={voicePresenceDetail}
+                  onDictateError={(message) => {
                     if (message) toast.error(message)
                   }}
+                  leadingExtras={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="hidden h-8 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
+                      disabled={routing || isChatBusy}
+                      title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                      onClick={() => setConnectedFilePickerOpen(true)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      Browse files
+                    </Button>
+                  }
                 />
-                <button
-                  type="submit"
-                  disabled={(!input.trim() && connectedFileAttachments.length === 0) || routing || isChatBusy}
-                  className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center self-center rounded-full bg-[#16a374] text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40 sm:h-8 sm:w-8"
-                  aria-label="Send"
-                >
-                  <ArrowUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </button>
               </div>
             </form>
           </div>

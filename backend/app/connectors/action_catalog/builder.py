@@ -199,8 +199,8 @@ def build_vendor(
 ) -> VendorCatalogSpec:
     read_primary = v1[0].id.split(".", 1)[-1]
     read_secondary = v1[1].id.split(".", 1)[-1] if len(v1) > 1 else read_primary
-    write_primary = v2[0].id.split(".", 1)[-1]
-    advanced_primary = v3[0].id.split(".", 1)[-1]
+    write_primary = v2[0].id.split(".", 1)[-1] if v2 else read_primary
+    advanced_primary = v3[0].id.split(".", 1)[-1] if v3 else write_primary
     return VendorCatalogSpec(
         vendor=vendor,
         display_name=display,

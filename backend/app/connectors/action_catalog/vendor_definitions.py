@@ -1023,22 +1023,227 @@ VENDOR_DEFINITIONS: tuple = (
         "Twilio",
         "Communication",
         "https://www.twilio.com/docs/usage/api",
+        # External telephony / SMS — NOT internal staff voice mode (Deepgram/ElevenLabs).
+        shipped=True,
+        department="operations",
+        v1=(
+            action(
+                "twilio",
+                "messages.list",
+                "List SMS messages",
+                tier="v1",
+                kind="read",
+                scope_suffix="messages:read",
+                idempotent=True,
+                description=(
+                    "List recent Twilio SMS messages. Use when auditing outbound/inbound "
+                    "SMS history for an external telephony connector (not internal chat voice)."
+                ),
+            ),
+            action(
+                "twilio",
+                "calls.list",
+                "List calls",
+                tier="v1",
+                kind="read",
+                scope_suffix="calls:read",
+                idempotent=True,
+                description=(
+                    "List recent Twilio voice calls. Use when reviewing inbound/outbound "
+                    "call-center activity on the Twilio connector."
+                ),
+            ),
+            action(
+                "twilio",
+                "calls.get",
+                "Get call status",
+                tier="v1",
+                kind="read",
+                scope_suffix="calls:read",
+                idempotent=True,
+                description=(
+                    "Fetch a Twilio Call by SID (status, duration, to/from). Use when "
+                    "verifying that an initiated external call actually completed or failed."
+                ),
+            ),
+            action(
+                "twilio",
+                "messages.get",
+                "Get SMS status",
+                tier="v1",
+                kind="read",
+                scope_suffix="messages:read",
+                idempotent=True,
+                description=(
+                    "Fetch a Twilio Message by SID. Use when verifying SMS delivery status "
+                    "after twilio.messages.create."
+                ),
+            ),
+            action(
+                "twilio",
+                "accounts.get",
+                "Get account",
+                tier="v1",
+                kind="read",
+                scope_suffix="accounts:read",
+                idempotent=True,
+                description=(
+                    "Get the Twilio account resource. Use when confirming the connected "
+                    "Account SID is healthy before placing calls or sending SMS."
+                ),
+            ),
+        ),
+        v2=(
+            action(
+                "twilio",
+                "messages.create",
+                "Send SMS",
+                tier="v2",
+                kind="write",
+                scope_suffix="messages:write",
+                destructive=True,
+                requires_approval=True,
+                description=(
+                    "Send a real SMS via Twilio to an external phone number. Use when an "
+                    "approved workflow must message a person outside the org — routes through "
+                    "catalog write authority (not internal chat Dictate)."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "to": {"type": "string", "description": "E.164 destination"},
+                        "from": {"type": "string", "description": "E.164 Twilio number"},
+                        "body": {"type": "string"},
+                    },
+                    "required": ["to", "from", "body"],
+                },
+            ),
+            action(
+                "twilio",
+                "calls.create",
+                "Initiate call",
+                tier="v2",
+                kind="write",
+                scope_suffix="calls:write",
+                destructive=True,
+                requires_approval=True,
+                description=(
+                    "Place a real outbound phone call via Twilio. Use when an approved "
+                    "call-center / voice-agent workflow must dial an external person — "
+                    "requires approval; verify completion with twilio.calls.get (Call SID)."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "to": {"type": "string"},
+                        "from": {"type": "string"},
+                        "url": {"type": "string", "description": "TwiML URL for the call"},
+                        "twiml": {"type": "string", "description": "Inline TwiML alternative to url"},
+                        "status_callback": {"type": "string"},
+                    },
+                    "required": ["to", "from"],
+                },
+            ),
+        ),
+        v3=(
+            action(
+                "twilio",
+                "verify.check",
+                "Check verification code",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="verify:write",
+                description="Check a Twilio Verify code. Use when confirming OTP for external identity flows.",
+            ),
+            action(
+                "twilio",
+                "conversations.create",
+                "Create conversation",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="conversations:write",
+                requires_approval=True,
+                description="Create a Twilio Conversation. Use when starting a multi-party messaging thread outside chat voice mode.",
+            ),
+            action(
+                "twilio",
+                "studio.flows.execute",
+                "Execute Studio flow",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="studio:write",
+                requires_approval=True,
+                description="Execute a Twilio Studio flow. Use when triggering an external IVR/automation flow after approval.",
+            ),
+        ),
+    ),
+    build_vendor(
+        "vapi",
+        "Vapi",
+        "Communication",
+        "https://docs.vapi.ai/api-reference",
+        # External voice-agent platform (inbound/outbound AI phone agents).
+        # Distinct from internal Gravitre Text|Voice chat modality.
         shipped=False,
         department="operations",
         v1=(
-            action("twilio", "messages.list", "List SMS messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
-            action("twilio", "calls.list", "List calls", tier="v1", kind="read", scope_suffix="calls:read", idempotent=True),
-            action("twilio", "accounts.get", "Get account", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
+            action(
+                "vapi",
+                "calls.get",
+                "Get call result",
+                tier="v1",
+                kind="read",
+                scope_suffix="calls:read",
+                idempotent=True,
+                description=(
+                    "Retrieve a Vapi call by id (status, transcript, ended reason). Use when "
+                    "verifying an external AI phone call completed — not for internal chat voice."
+                ),
+            ),
+            action(
+                "vapi",
+                "calls.list",
+                "List calls",
+                tier="v1",
+                kind="read",
+                scope_suffix="calls:read",
+                idempotent=True,
+                description=(
+                    "List recent Vapi external voice-agent calls. Use when auditing "
+                    "inbound/outbound AI phone activity."
+                ),
+            ),
         ),
         v2=(
-            action("twilio", "messages.create", "Send SMS", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
-            action("twilio", "calls.create", "Initiate call", tier="v2", kind="write", scope_suffix="calls:write", destructive=True),
+            action(
+                "vapi",
+                "calls.create",
+                "Trigger outbound agent call",
+                tier="v2",
+                kind="write",
+                scope_suffix="calls:write",
+                destructive=True,
+                requires_approval=True,
+                description=(
+                    "Start a real outbound Vapi AI phone call to an external number. Use when "
+                    "an approved call-center workflow must dial a person outside the org — "
+                    "requires catalog write authority; verify with vapi.calls.get."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "assistant_id": {"type": "string"},
+                        "phone_number_id": {"type": "string"},
+                        "customer": {
+                            "type": "object",
+                            "properties": {"number": {"type": "string"}},
+                        },
+                    },
+                    "required": ["assistant_id", "customer"],
+                },
+            ),
         ),
-        v3=(
-            action("twilio", "verify.check", "Check verification code", tier="v3", kind="advanced", scope_suffix="verify:write"),
-            action("twilio", "conversations.create", "Create conversation", tier="v3", kind="advanced", scope_suffix="conversations:write"),
-            action("twilio", "studio.flows.execute", "Execute Studio flow", tier="v3", kind="advanced", scope_suffix="studio:write"),
-        ),
+        v3=(),
     ),
     build_vendor(
         "sendgrid",

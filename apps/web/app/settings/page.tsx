@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -1696,10 +1695,10 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-foreground">Voice (plan included)</p>
+            <p className="text-sm font-medium text-foreground">Internal voice (staff chat)</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {voice?.note ||
-                "Included with your plan allotment. Not a Meson purchase. Top up minutes on Billing & Plan."}
+              Policy control for Text|Voice and Dictate in Gravitre chat. On by default. This is
+              staff speaking to your org AI — not outbound phone calls (Twilio/Vapi connectors).
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Status: {voice?.enabled === false ? "Off for this org" : "On"}
@@ -1712,14 +1711,8 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
               onClick={handleVoiceToggle}
               disabled={!isAdmin || isSaving}
             >
-              {voice?.enabled === false ? "Turn on" : "Turn off"}
+              {voice?.enabled === false ? "Allow voice" : "Disable voice"}
             </Button>
-            <Link
-              href={voice?.billing_href || "/settings/billing"}
-              className="text-xs text-muted-foreground underline underline-offset-2"
-            >
-              Voice Minutes top-up →
-            </Link>
           </div>
         </div>
       </div>

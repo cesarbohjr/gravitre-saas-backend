@@ -106,8 +106,10 @@ def summarize_usage_records_billing(
     overage_voice = max(voice_total - included_voice_effective, 0)
     overage_voice_usd = round(overage_voice * voice_rate, 2)
     remaining_voice = max(included_voice_effective - voice_total, 0)
-    # Plan-included: always visible on Billing (org may still disable voice use).
-    voice_minutes_billing_visible = True
+    # Internal staff voice is plan-included infrastructure — not a customer-facing
+    # purchase/meter line item (Phase 6). Tracking + top-up remain server-side for
+    # extreme outliers; UI hides Voice Minutes from the default Billing grid.
+    voice_minutes_billing_visible = False
 
     return {
         "period_start": month_start,

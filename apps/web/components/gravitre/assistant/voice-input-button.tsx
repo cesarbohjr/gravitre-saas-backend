@@ -145,7 +145,7 @@ export function VoiceInputButton({
         <TooltipContent className="max-w-xs text-xs">
           {isListening
             ? "Listening — tap to stop. Transcript fills the message box."
-            : "Dictate into the message box. For live agent voice (speak + hear), open an agent chat and use Text | Voice."}
+            : "Dictate into the message box. For speak-and-hear replies, switch Text | Voice on this chat (internal staff voice — not phone calls)."}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

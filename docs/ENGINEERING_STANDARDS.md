@@ -117,6 +117,25 @@ Any newly introduced direct coercion on stored fields must fail review.
 
 ---
 
+## 11. No invented customer-facing product surfaces
+
+Do **not** invent, seed, or fill in as plausible-looking example data any customer-visible **price**, **claim**, **badge**, **capability toggle**, or other **product surface**, unless the user **explicitly, separately requested** it and **confirmed it as real**.
+
+If demo/scaffold/mockup data is genuinely required:
+
+1. Keep it entirely out of any customer-facing route, **or**
+2. Label it unmistakably as **placeholder in the UI** (not only a code comment)
+
+Never give placeholders a real-looking price or a working **Enable** action.
+
+**Before any commit** that adds a customer-facing price, feature claim, or toggle: state in the delivery report whether it was **(a)** explicitly requested and authorized in that conversation, or **(b)** generated to fill a broader scaffold. Anything under **(b)** must be flagged in the same delivery message.
+
+Canonical failure class (2026-04 era): Meson scaffolding SKUs, environment mock fallback, SOC 2 marketing overclaims, fake TRAINED / silent confidence, ROI placeholders presented as live.
+
+Cursor always-on rule: `.cursor/rules/no-invented-customer-surfaces.mdc`.
+
+---
+
 ## How to cite
 
 When closing tickets, prefer: *“PASS against [artifact] on prod SHA [sha]”*

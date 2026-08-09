@@ -12,9 +12,7 @@ import { motion } from "framer-motion"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
-  ArrowUp,
   MessageSquarePlus,
-  Square,
   Database,
   ChevronDown,
   ChevronUp,
@@ -26,16 +24,10 @@ import { CHAT_COMPOSER_CLASS } from "@/lib/chat-typography"
 import { Button } from "@/components/ui/button"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
-import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
-import {
-  VoiceSessionPresence,
-  type VoicePresenceState,
-} from "@/components/gravitre/assistant/voice-session-presence"
+import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
-import {
-  VoiceModeToggle,
-  type ChatModality,
-} from "@/components/gravitre/assistant/voice-mode-toggle"
+import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
 import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
@@ -508,24 +500,14 @@ export default function AgentChatPage({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-success/10 bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
+        <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-[920px]">
             <div
               className={cn(
-                "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-success/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
-                "focus-within:border-success/35 focus-within:ring-success/20",
+                "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[10px] border border-[color:var(--chat-surface-border)] bg-white p-2.5 shadow-sm dark:bg-[#262626]",
+                "focus-within:border-[#16a374]/50 focus-within:ring-2 focus-within:ring-[#16a374]/15",
               )}
             >
-              {/* Voice-session presence. Only mounted in voice mode so text mode
-                  keeps its current chrome exactly. */}
-              {modality === "voice" && voiceEntitled ? (
-                <VoiceSessionPresence
-                  state={voicePresence}
-                  billing={voiceBilling}
-                  detail={voicePresenceDetail}
-                  className="mb-2"
-                />
-              ) : null}
               <textarea
                 ref={inputRef}
                 value={input}
@@ -544,66 +526,42 @@ export default function AgentChatPage({
                   target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
                 }}
               />
-              <div className="flex shrink-0 items-center justify-between gap-2 px-1">
-                <VoiceModeToggle
-                  mode={modality}
-                  onChange={(next) => {
-                    setModality(next)
-                    modalityRef.current = next
-                    if (next === "text") {
-                      stopAgentVoice()
-                      clearVoiceErrors()
-                    }
-                    toast.message(
-                      next === "voice"
-                        ? "Voice mode — same conversation context; speak or type"
-                        : "Text mode — transcript stays in this conversation",
-                    )
-                  }}
-                  voiceEntitled={voiceEntitled}
-                  unavailableReason={voiceUnavailableReason}
-                  disabled={!user || isLoading}
-                />
-                <div className="flex items-center gap-2">
-                <VoiceInputButton
-                  value={input}
-                  onChange={setInput}
-                  disabled={!user || isLoading || (modality === "voice" && !voiceEntitled)}
-                  onStatusChange={setMicStatus}
-                  // showLabel matches the /ai landing and workspace composers.
-                  // Without it this surface was the only one where dictation was
-                  // a bare icon, which is the discoverability gap being closed.
-                  showLabel
-                  onError={(message) => {
-                    if (message) toast.error(message)
-                  }}
-                />
-                {isStreaming || ttsSpeaking ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                      stop()
-                      stopAgentVoice()
-                    }}
-                  >
-                    <Square className="mr-1 h-3 w-3" />
-                    Stop
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={!user || !input.trim() || isLoading}
-                    className="h-8 w-8 rounded-full disabled:opacity-40"
-                    aria-label="Send message"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                )}
-                </div>
-              </div>
+              <SharedChatComposerControls
+                modality={modality}
+                onModalityChange={(next) => {
+                  setModality(next)
+                  modalityRef.current = next
+                  if (next === "text") {
+                    stopAgentVoice()
+                    clearVoiceErrors()
+                  }
+                  toast.message(
+                    next === "voice"
+                      ? "Voice mode — same conversation context; speak or type (internal staff voice, not phone calls)"
+                      : "Text mode — transcript stays in this conversation",
+                  )
+                }}
+                voiceEntitled={voiceEntitled}
+                unavailableReason={voiceUnavailableReason}
+                input={input}
+                onInputChange={setInput}
+                disabled={!user || isLoading}
+                isStreaming={isStreaming}
+                ttsSpeaking={ttsSpeaking}
+                onStop={() => {
+                  stop()
+                  stopAgentVoice()
+                }}
+                canSubmit={Boolean(user && input.trim() && !isLoading)}
+                showSubmit
+                onMicStatusChange={setMicStatus}
+                voicePresence={voicePresence}
+                voiceBilling={voiceBilling}
+                voicePresenceDetail={voicePresenceDetail}
+                onDictateError={(message) => {
+                  if (message) toast.error(message)
+                }}
+              />
             </div>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {agent.name} uses your organization&apos;s knowledge base and connected systems.
