@@ -102,7 +102,7 @@ export default function AgentChatPage({
   // QA-only: ?qaForceVoiceError=billing — backend ignores unless QA hooks enabled.
   const qaForceVoiceError = (searchParams.get("qaForceVoiceError") || "").trim() || null
   const { user } = useAuth()
-  const { preferredPersona, handlePersonaChange } = usePreferredPersona({
+  const { preferredPersona, handlePersonaChange, syncPersona } = usePreferredPersona({
     enabled: Boolean(user),
   })
   const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
@@ -136,6 +136,12 @@ export default function AgentChatPage({
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
   )
+
+  // Agent profile response style wins for this chat surface when configured.
+  useEffect(() => {
+    if (!agent?.responseStyle) return
+    syncPersona(agent.responseStyle)
+  }, [agent?.id, agent?.responseStyle, syncPersona])
 
   const toggleHeaderCollapsed = () => {
     setHeaderCollapsed((collapsed) => {
@@ -208,13 +214,13 @@ export default function AgentChatPage({
           mode: "agent",
           // Phase 1: do not ship a hardcoded tool list — backend resolves agent
           // systems/tools via resolve_permitted_tools (same as unified LIVE).
-          preferred_persona: preferredPersona,
+          preferred_persona: agent?.responseStyle || preferredPersona,
           // Same conversation + Module B memory; spoken_mode stacks SPOKEN register.
           spoken_mode: modalityRef.current === "voice",
           surface: modalityRef.current === "voice" ? "voice" : "agent_chat",
         }),
       }),
-    [agentId, preferredPersona],
+    [agentId, preferredPersona, agent?.responseStyle],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({

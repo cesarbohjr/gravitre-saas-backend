@@ -162,14 +162,18 @@ export interface Agent {
   department: AgentDepartment
   description: string
   status: AgentStatus
+  model?: string
   icon?: string | null
   avatarColor?: string | null
   avatarUrl?: string | null
   personality: AgentPersonality
   voiceProfile?: AgentVoiceProfile
+  /** Chat text persona key (Friendly Assistant, etc.) — stored in config.response_style */
+  responseStyle?: string
   stats: AgentStats
   capabilities: string[]
   permissions: string[]
+  guardrails?: string[]
   referenceFolders?: AgentReferenceFolder[]
   lastAction: string
   lastActionTime: string
@@ -1179,6 +1183,7 @@ export interface CreateAgentRequest {
   avatarColor?: string
   personality?: AgentPersonality
   voiceProfile?: AgentVoiceProfile
+  responseStyle?: string
   capabilities?: string[]
   permissions?: string[]
   systems?: string[]

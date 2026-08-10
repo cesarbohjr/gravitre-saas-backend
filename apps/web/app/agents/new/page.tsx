@@ -12,11 +12,6 @@ import {
   Database,
   Shield,
   Check,
-  MessageSquare,
-  BarChart3,
-  FileText,
-  Zap,
-  Users,
   AlertTriangle,
   Megaphone,
   TrendingUp,
@@ -41,7 +36,7 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
-import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
+import { AgentPersonalitySection } from "@/components/gravitre/agent-personality-section"
 import { LoadingIndicator } from "@/components/gravitre/gravitre-loader"
 import { useViewModeSafe } from "@/lib/view-mode-context"
 import { canConfigureVoice } from "@/lib/seat-entitlements"
@@ -50,6 +45,19 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 import type { AgentVoiceProfile } from "@/types/api"
+import {
+  AGENT_CAPABILITY_OPTIONS,
+  AGENT_GUARDRAIL_OPTIONS,
+  AGENT_SYSTEM_OPTIONS,
+  capabilityNamesFromIds,
+  guardrailNamesFromIds,
+  systemNamesFromIds,
+} from "@/lib/agent-config-catalog"
+import {
+  DEFAULT_AGENT_RESPONSE_STYLE,
+  responseStyleLabel,
+} from "@/lib/agent-response-style"
+import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 
 const steps = [
   { id: 1, name: "Purpose", description: "What should this AI do?" },
@@ -59,30 +67,12 @@ const steps = [
   { id: 5, name: "Review", description: "Review and create" },
 ]
 
-const suggestedCapabilities = [
-  { id: "analyze", name: "Analyze data", description: "Look through your data and find insights", icon: BarChart3 },
-  { id: "generate", name: "Create reports", description: "Write reports and summaries for you", icon: FileText },
-  { id: "suggest", name: "Give suggestions", description: "Recommend ways to improve based on what it sees", icon: Sparkles },
-  { id: "sync", name: "Sync data", description: "Keep your apps up to date with each other", icon: Zap },
-  { id: "communicate", name: "Send messages", description: "Send updates and alerts to your team", icon: MessageSquare },
-  { id: "coordinate", name: "Manage tasks", description: "Assign tasks and follow up on them", icon: Users },
-]
-
-const availableSystems = [
-  { id: "hubspot", name: "HubSpot", type: "Marketing", connected: true },
-  { id: "salesforce", name: "Salesforce", type: "CRM", connected: true },
-  { id: "slack", name: "Slack", type: "Communication", connected: true },
-  { id: "google-analytics", name: "Google Analytics", type: "Analytics", connected: true },
-  { id: "postgresql", name: "PostgreSQL", type: "Database", connected: false },
-  { id: "microsoft365", name: "Microsoft 365", type: "Productivity", connected: false },
-]
-
-const guardrailOptions = [
-  { id: "approval-changes", name: "Ask before making changes", description: "Get approval before the AI makes any changes", recommended: true },
-  { id: "admin-delete", name: "Only admins can delete", description: "Only admins can delete or remove things", recommended: true },
-  { id: "env-restrict", name: "Workspace limits", description: "Different rules for live vs test workspaces", recommended: false },
-  { id: "rate-limit", name: "Slow down", description: "Limit how many things it can do per hour", recommended: false },
-]
+const suggestedCapabilities = AGENT_CAPABILITY_OPTIONS
+const availableSystems = AGENT_SYSTEM_OPTIONS.map((system) => ({
+  ...system,
+  connected: !["postgresql", "microsoft365"].includes(system.id),
+}))
+const guardrailOptions = AGENT_GUARDRAIL_OPTIONS
 
 // Map agent names to icons
 const agentIconMap: Record<string, LucideIcon> = {
@@ -148,6 +138,8 @@ export default function NewAgentPage() {
     turn_sensitivity: "normal",
     language: "en",
   })
+  const [responseStyle, setResponseStyle] = useState(DEFAULT_AGENT_RESPONSE_STYLE)
+  const [customCapabilities, setCustomCapabilities] = useState<string[]>([])
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -173,9 +165,9 @@ export default function NewAgentPage() {
         return (
           agentPurpose.trim().length > 10 &&
           agentName.trim().length > 0 &&
-          Boolean(voiceProfile.voice_id)
+          (!showVoiceConfigure || voiceProfileIsConfigured(voiceProfile))
         )
-      case 2: return selectedCapabilities.length > 0
+      case 2: return selectedCapabilities.length > 0 || customCapabilities.length > 0
       case 3: return selectedSystems.length > 0
       case 4: return true
       case 5: return true
@@ -186,17 +178,12 @@ export default function NewAgentPage() {
   const handleCreate = async () => {
     setIsCreating(true)
     try {
-      const selectedSystemNames = selectedSystems
-        .map((id) => availableSystems.find((system) => system.id === id)?.name)
-        .filter((value): value is string => Boolean(value))
-
-      const selectedCapabilityNames = selectedCapabilities
-        .map((id) => suggestedCapabilities.find((capability) => capability.id === id)?.name)
-        .filter((value): value is string => Boolean(value))
-
-      const selectedGuardrailNames = selectedGuardrails
-        .map((id) => guardrailOptions.find((guardrail) => guardrail.id === id)?.name)
-        .filter((value): value is string => Boolean(value))
+      const selectedSystemNames = systemNamesFromIds(selectedSystems)
+      const selectedCapabilityNames = capabilityNamesFromIds(
+        selectedCapabilities,
+        customCapabilities,
+      )
+      const selectedGuardrailNames = guardrailNamesFromIds(selectedGuardrails)
 
       const trimmedName = agentName.trim()
       const trimmedPurpose = agentPurpose.trim()
@@ -212,6 +199,7 @@ export default function NewAgentPage() {
         avatarColor: selectedColor,
         personality: personalityFromAvatarColor(selectedColor),
         ...(showVoiceConfigure ? { voiceProfile } : {}),
+        responseStyle,
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
@@ -341,18 +329,16 @@ export default function NewAgentPage() {
                     </p>
                   </div>
 
-                  {showVoiceConfigure ? (
-                    <AgentVoiceAssignment
-                      value={voiceProfile}
-                      onChange={setVoiceProfile}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <AgentPersonalitySection
+                      voiceProfile={voiceProfile}
+                      onVoiceProfileChange={setVoiceProfile}
+                      responseStyle={responseStyle}
+                      onResponseStyleChange={setResponseStyle}
                       department={selectedDepartment}
+                      showVoiceConfigure={showVoiceConfigure}
                     />
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Voice assignment requires a full or manager seat. Lite seats can use
-                      voice mode on agents already assigned to their department.
-                    </p>
-                  )}
+                  </div>
 
                   <AgentIdentityPicker
                     name={agentName.trim() || "New Agent"}
@@ -595,19 +581,29 @@ export default function NewAgentPage() {
                     </div>
                   </div>
 
+                  <div className="p-5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Personality</p>
+                    <ul className="mt-2 space-y-1 text-sm text-foreground">
+                      <li>
+                        Spoken voice:{" "}
+                        {voiceProfileIsConfigured(voiceProfile)
+                          ? voiceProfile.voice_key || voiceProfile.voice_id || "Configured"
+                          : "Org default (not assigned)"}
+                      </li>
+                      <li>Response style: {responseStyleLabel(responseStyle)}</li>
+                    </ul>
+                  </div>
+
                   {/* Capabilities */}
                   <div className="p-5">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Capabilities</p>
                     <ul className="mt-2 space-y-1">
-                      {selectedCapabilities.map(id => {
-                        const cap = suggestedCapabilities.find(c => c.id === id)
-                        return cap ? (
-                          <li key={id} className="flex items-center gap-2 text-sm text-foreground">
+                      {capabilityNamesFromIds(selectedCapabilities, customCapabilities).map((name) => (
+                          <li key={name} className="flex items-center gap-2 text-sm text-foreground">
                             <Check className="h-3.5 w-3.5 text-success" />
-                            {cap.name}
+                            {name}
                           </li>
-                        ) : null
-                      })}
+                      ))}
                     </ul>
                   </div>
 

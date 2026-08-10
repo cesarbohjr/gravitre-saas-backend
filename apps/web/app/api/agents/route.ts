@@ -24,6 +24,11 @@ import {
   assertCanConfigureVoice,
   voiceProfileIsConfigured,
 } from "@/lib/voice-configure-gate"
+import {
+  DEFAULT_AGENT_RESPONSE_STYLE,
+  normalizeAgentResponseStyle,
+  readResponseStyleFromConfig,
+} from "@/lib/agent-response-style"
 
 function mapAgentRow(
   input: Record<string, unknown>,
@@ -85,7 +90,9 @@ function mapAgentRow(
     })(),
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
+    guardrails: Array.isArray(model.guardrails) ? model.guardrails : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
+    responseStyle: readResponseStyleFromConfig(model.config),
     voiceProfile:
       model.voiceProfile && typeof model.voiceProfile === "object"
         ? model.voiceProfile
@@ -448,6 +455,13 @@ export async function POST(request: NextRequest) {
       snake.config && typeof snake.config === "object"
         ? (snake.config as Record<string, unknown>)
         : {}
+    const responseStyle = normalizeAgentResponseStyle(
+      typeof body.responseStyle === "string"
+        ? body.responseStyle
+        : typeof snake.response_style === "string"
+          ? snake.response_style
+          : DEFAULT_AGENT_RESPONSE_STYLE,
+    )
 
     const insertPayload = {
       org_id: orgId,
@@ -479,6 +493,7 @@ export async function POST(request: NextRequest) {
       config: {
         ...existingConfig,
         reference_folders: referenceFolders,
+        response_style: responseStyle,
       },
       status: String(snake.status ?? "active"),
       last_action:

@@ -16,6 +16,14 @@ import {
 import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 import { snakeToCamel, camelToSnake } from "@/lib/supabase/transforms"
+import {
+  normalizeAgentResponseStyle,
+  readResponseStyleFromConfig,
+} from "@/lib/agent-response-style"
+import {
+  assertCanConfigureVoice,
+  voiceProfileIsConfigured,
+} from "@/lib/voice-configure-gate"
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -76,7 +84,15 @@ function mapAgentRow(input: Record<string, unknown>) {
     })(),
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
+    guardrails: Array.isArray(model.guardrails) ? model.guardrails : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
+    responseStyle: readResponseStyleFromConfig(model.config),
+    voiceProfile:
+      model.voiceProfile && typeof model.voiceProfile === "object"
+        ? model.voiceProfile
+        : model.voice_profile && typeof model.voice_profile === "object"
+          ? model.voice_profile
+          : {},
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
     recentTasks: [],
@@ -131,6 +147,9 @@ function mapOperatorRow(input: Record<string, unknown>) {
     },
     capabilities: Array.isArray(input.capabilities) ? input.capabilities : [],
     permissions: [],
+    guardrails: [],
+    responseStyle: readResponseStyleFromConfig(null),
+    voiceProfile: {},
     lastAction: "No recent activity",
     lastActionTime: "recently",
     recentTasks: [],
@@ -207,174 +226,198 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const referenceFolders = (body as Record<string, unknown>).referenceFolders
-
-  if (Array.isArray(referenceFolders)) {
-    const { data: existing, error: loadError } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .maybeSingle()
-
-    if (loadError) {
-      return NextResponse.json({ error: loadError.message }, { status: 500 })
-    }
-    if (!existing) {
-      return proxyToFastApi(request, `/api/agents/${id}`)
-    }
-
-    const currentConfig =
-      existing.config && typeof existing.config === "object"
-        ? (existing.config as Record<string, unknown>)
-        : {}
-
-    const { data, error } = await supabase
-      .from("agents")
-      .update({
-        config: {
-          ...currentConfig,
-          reference_folders: referenceFolders,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .select("*")
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
-  }
-
-  const snakeBody = camelToSnake(body as Record<string, unknown>)
-  if (Array.isArray(snakeBody.reference_folders)) {
-    const { data: existing, error: loadError } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .maybeSingle()
-
-    if (loadError) {
-      return NextResponse.json({ error: loadError.message }, { status: 500 })
-    }
-    if (!existing) {
-      return proxyToFastApi(request, `/api/agents/${id}`)
-    }
-
-    const currentConfig =
-      existing.config && typeof existing.config === "object"
-        ? (existing.config as Record<string, unknown>)
-        : {}
-
-    const { data, error } = await supabase
-      .from("agents")
-      .update({
-        config: {
-          ...currentConfig,
-          reference_folders: snakeBody.reference_folders,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .select("*")
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
-  }
-
-  const identityKeys = ["name", "icon", "avatarColor", "avatar_color", "avatarUrl", "avatar_url", "personality", "description", "role", "department"]
   const bodyRecord = body as Record<string, unknown>
-  const hasIdentityPatch = identityKeys.some((key) => key in bodyRecord)
+  const snakeBody = camelToSnake(bodyRecord)
 
-  if (hasIdentityPatch) {
-    const { data: existing, error: loadError } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .maybeSingle()
-
-    if (loadError) {
-      return NextResponse.json({ error: loadError.message }, { status: 500 })
-    }
-    if (!existing) {
-      return proxyToFastApi(request, `/api/agents/${id}`)
-    }
-
-    const snakeBody = camelToSnake(bodyRecord)
-    const updatePayload: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    }
-
-    if (typeof snakeBody.name === "string" && snakeBody.name.trim()) {
-      updatePayload.name = snakeBody.name.trim()
-    }
-    if (typeof snakeBody.description === "string") {
-      updatePayload.description = snakeBody.description
-    }
-    if (typeof snakeBody.role === "string") {
-      updatePayload.role = snakeBody.role
-    }
-    if (typeof snakeBody.department === "string") {
-      updatePayload.department = snakeBody.department
-    }
-    if (snakeBody.icon !== undefined) {
-      if (snakeBody.icon !== null && !isAgentIconId(String(snakeBody.icon))) {
-        return NextResponse.json({ error: "Invalid icon value" }, { status: 400 })
-      }
-      updatePayload.icon = snakeBody.icon
-    }
-    const incomingColor = snakeBody.avatar_color ?? snakeBody.avatarColor
-    if (incomingColor !== undefined) {
-      if (incomingColor !== null && !isAgentAvatarColorId(String(incomingColor))) {
-        return NextResponse.json({ error: "Invalid avatarColor value" }, { status: 400 })
-      }
-      updatePayload.avatar_color = incomingColor
-    }
-    if (snakeBody.avatar_url !== undefined || snakeBody.avatarUrl !== undefined) {
-      const incomingUrl = snakeBody.avatar_url ?? snakeBody.avatarUrl
-      updatePayload.avatar_url = incomingUrl === null || incomingUrl === "" ? null : String(incomingUrl)
-    }
-    if (snakeBody.personality && typeof snakeBody.personality === "object") {
-      updatePayload.personality = snakeBody.personality
-    } else if (isAgentAvatarColorId(String(updatePayload.avatar_color ?? ""))) {
-      updatePayload.personality = personalityFromAvatarColor(updatePayload.avatar_color as AgentAvatarColorId)
-    }
-
-    const { data, error } = await supabase
-      .from("agents")
-      .update(updatePayload)
-      .eq("org_id", orgId)
-      .eq("id", id)
-      .select("*")
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    const { data: userData } = await supabase.auth.getUser()
-    await syncOperatorMirror(
-      supabase,
-      orgId,
-      data as Record<string, unknown>,
-      userData.user?.id ?? null,
-    )
-
-    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
+  const handledKeys = [
+    "name",
+    "icon",
+    "avatarColor",
+    "avatar_color",
+    "avatarUrl",
+    "avatar_url",
+    "personality",
+    "description",
+    "role",
+    "department",
+    "model",
+    "voiceProfile",
+    "voice_profile",
+    "capabilities",
+    "systems",
+    "permissions",
+    "guardrails",
+    "responseStyle",
+    "response_style",
+    "referenceFolders",
+    "reference_folders",
+  ]
+  const hasHandledPatch = handledKeys.some((key) => key in bodyRecord || key in snakeBody)
+  if (!hasHandledPatch) {
+    return proxyToFastApi(request, `/api/agents/${id}`)
   }
 
-  return proxyToFastApi(request, `/api/agents/${id}`)
+  const { data: existing, error: loadError } = await supabase
+    .from("agents")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .maybeSingle()
+
+  if (loadError) {
+    return NextResponse.json({ error: loadError.message }, { status: 500 })
+  }
+  if (!existing) {
+    return proxyToFastApi(request, `/api/agents/${id}`)
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (typeof snakeBody.name === "string" && snakeBody.name.trim()) {
+    updatePayload.name = snakeBody.name.trim()
+  }
+  if (typeof snakeBody.description === "string") {
+    updatePayload.description = snakeBody.description
+  }
+  if (typeof snakeBody.role === "string") {
+    updatePayload.role = snakeBody.role
+  }
+  if (typeof snakeBody.department === "string") {
+    updatePayload.department = snakeBody.department
+  }
+  if (typeof snakeBody.model === "string" && snakeBody.model.trim()) {
+    updatePayload.model = snakeBody.model.trim()
+  }
+  if (snakeBody.icon !== undefined) {
+    if (snakeBody.icon !== null && !isAgentIconId(String(snakeBody.icon))) {
+      return NextResponse.json({ error: "Invalid icon value" }, { status: 400 })
+    }
+    updatePayload.icon = snakeBody.icon
+  }
+  const incomingColor = snakeBody.avatar_color ?? snakeBody.avatarColor
+  if (incomingColor !== undefined) {
+    if (incomingColor !== null && !isAgentAvatarColorId(String(incomingColor))) {
+      return NextResponse.json({ error: "Invalid avatarColor value" }, { status: 400 })
+    }
+    updatePayload.avatar_color = incomingColor
+  }
+  if (snakeBody.avatar_url !== undefined || snakeBody.avatarUrl !== undefined) {
+    const incomingUrl = snakeBody.avatar_url ?? snakeBody.avatarUrl
+    updatePayload.avatar_url = incomingUrl === null || incomingUrl === "" ? null : String(incomingUrl)
+  }
+  if (snakeBody.personality && typeof snakeBody.personality === "object") {
+    updatePayload.personality = snakeBody.personality
+  } else if (isAgentAvatarColorId(String(updatePayload.avatar_color ?? ""))) {
+    updatePayload.personality = personalityFromAvatarColor(updatePayload.avatar_color as AgentAvatarColorId)
+  }
+
+  if (Array.isArray(bodyRecord.capabilities) || Array.isArray(snakeBody.capabilities)) {
+    updatePayload.capabilities = Array.isArray(bodyRecord.capabilities)
+      ? bodyRecord.capabilities
+      : snakeBody.capabilities
+  }
+  if (
+    Array.isArray(bodyRecord.systems) ||
+    Array.isArray(snakeBody.systems) ||
+    Array.isArray(bodyRecord.permissions) ||
+    Array.isArray(snakeBody.permissions)
+  ) {
+    updatePayload.systems =
+      (Array.isArray(bodyRecord.systems) && bodyRecord.systems) ||
+      (Array.isArray(snakeBody.systems) && snakeBody.systems) ||
+      (Array.isArray(bodyRecord.permissions) && bodyRecord.permissions) ||
+      snakeBody.permissions
+  }
+  if (Array.isArray(bodyRecord.guardrails) || Array.isArray(snakeBody.guardrails)) {
+    updatePayload.guardrails = Array.isArray(bodyRecord.guardrails)
+      ? bodyRecord.guardrails
+      : snakeBody.guardrails
+  }
+
+  const voiceProfile =
+    (bodyRecord.voiceProfile && typeof bodyRecord.voiceProfile === "object"
+      ? bodyRecord.voiceProfile
+      : null) ??
+    (snakeBody.voice_profile && typeof snakeBody.voice_profile === "object"
+      ? snakeBody.voice_profile
+      : null)
+  if (voiceProfile) {
+    if (voiceProfileIsConfigured(voiceProfile)) {
+      const { data: userData } = await supabase.auth.getUser()
+      const gate = await assertCanConfigureVoice(
+        supabase,
+        orgId,
+        userData.user?.id ?? null,
+      )
+      if (!gate.ok) {
+        return NextResponse.json(
+          { error: gate.error, reason: gate.reason, action: "voice_configure" },
+          { status: gate.status },
+        )
+      }
+    }
+    updatePayload.voice_profile = voiceProfile
+  }
+
+  const currentConfig =
+    existing.config && typeof existing.config === "object"
+      ? (existing.config as Record<string, unknown>)
+      : {}
+  let nextConfig: Record<string, unknown> | null = null
+
+  const referenceFolders =
+    (Array.isArray(bodyRecord.referenceFolders) && bodyRecord.referenceFolders) ||
+    (Array.isArray(snakeBody.reference_folders) && snakeBody.reference_folders) ||
+    null
+  if (referenceFolders) {
+    nextConfig = {
+      ...(nextConfig ?? currentConfig),
+      reference_folders: referenceFolders,
+    }
+  }
+
+  if (
+    typeof bodyRecord.responseStyle === "string" ||
+    typeof snakeBody.response_style === "string"
+  ) {
+    const style = normalizeAgentResponseStyle(
+      typeof bodyRecord.responseStyle === "string"
+        ? bodyRecord.responseStyle
+        : String(snakeBody.response_style),
+    )
+    nextConfig = {
+      ...(nextConfig ?? currentConfig),
+      response_style: style,
+    }
+  }
+
+  if (nextConfig) {
+    updatePayload.config = nextConfig
+  }
+
+  const { data, error } = await supabase
+    .from("agents")
+    .update(updatePayload)
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const { data: userData } = await supabase.auth.getUser()
+  await syncOperatorMirror(
+    supabase,
+    orgId,
+    data as Record<string, unknown>,
+    userData.user?.id ?? null,
+  )
+
+  return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {

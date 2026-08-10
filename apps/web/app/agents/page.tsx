@@ -800,7 +800,7 @@ function AgentDetailPanel({
         </div>
         <Button variant="outline" className="w-full justify-between" asChild>
           <a href={`/agents/${agent.id}`}>
-            View Full Profile
+            View/ Edit Profile
             <ChevronRight className="h-4 w-4" />
           </a>
         </Button>
@@ -913,7 +913,7 @@ function AgentPreviewSheet({
               </a>
             </Button>
             <Button variant="ghost" className="w-full" onClick={onOpenProfile}>
-              View full profile
+              View/ Edit Profile
             </Button>
           </div>
         </div>

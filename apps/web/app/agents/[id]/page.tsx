@@ -18,9 +18,15 @@ import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { AgentIdentityEditor } from "@/components/gravitre/agent-identity-editor"
+import {
+  AgentCapabilitiesEditorCard,
+  AgentPersonalityEditorCard,
+} from "@/components/gravitre/agent-profile-editors"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
+import { responseStyleLabel } from "@/lib/agent-response-style"
+import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 
 // Types
 interface Agent {
@@ -263,9 +269,11 @@ export default function AgentProfilePage({
   const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "skills" | "history">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "personality" | "skills" | "history">(
+    "overview",
+  )
 
-  const { data: apiAgent, isLoading, error } = useSWR(
+  const { data: apiAgent, isLoading, error, mutate: mutateAgent } = useSWR(
     user && id ? `agent-profile/${id}` : null,
     () => agentsApi.get(id),
     { revalidateOnFocus: false },
@@ -468,10 +476,11 @@ export default function AgentProfilePage({
         {/* Content Tabs */}
         <div className="flex-1 px-4 py-6 sm:px-8">
           {/* Tab Navigation */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/50 w-fit mb-6">
+          <div className="flex flex-wrap items-center gap-1 p-1 rounded-xl bg-secondary/50 w-fit mb-6">
             {[
               { id: "overview", label: "Overview", icon: "info" },
-              { id: "skills", label: "Skills", icon: "sparkles" },
+              { id: "personality", label: "Personality", icon: "sparkles" },
+              { id: "skills", label: "Capabilities", icon: "settings" },
               { id: "history", label: "Work History", icon: "history" },
             ].map((tab) => (
               <button
@@ -533,9 +542,14 @@ export default function AgentProfilePage({
                 <div className="rounded-xl border border-border bg-card/50 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-foreground">Connected Systems</h3>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 text-xs"
+                      onClick={() => setActiveTab("skills")}
+                    >
                       <Icon name="add" size="xs" />
-                      Add
+                      Edit
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -551,26 +565,51 @@ export default function AgentProfilePage({
               </motion.div>
             )}
 
+            {activeTab === "personality" && (
+              <motion.div
+                key="personality"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-3xl space-y-4"
+              >
+                <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  Current: spoken voice{" "}
+                  {voiceProfileIsConfigured(apiAgent.voiceProfile)
+                    ? "configured"
+                    : "org default"}
+                  {" · "}
+                  response style {responseStyleLabel(apiAgent.responseStyle)}
+                </div>
+                <AgentPersonalityEditorCard
+                  agent={apiAgent}
+                  onSaved={(next) => void mutateAgent(next, { revalidate: false })}
+                />
+              </motion.div>
+            )}
+
             {activeTab === "skills" && (
               <motion.div
                 key="skills"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="max-w-2xl"
+                className="max-w-3xl space-y-6"
               >
-                <div className="rounded-xl border border-border bg-card/50 p-6">
-                  <h3 className="font-semibold text-foreground mb-6">Skill Proficiency</h3>
-                  <div className="space-y-5">
-                    {agent.skills.length > 0 ? (
-                      agent.skills.map((skill, i) => (
+                <AgentCapabilitiesEditorCard
+                  agent={apiAgent}
+                  onSaved={(next) => void mutateAgent(next, { revalidate: false })}
+                />
+                {agent.skills.length > 0 ? (
+                  <div className="rounded-xl border border-border bg-card/50 p-6">
+                    <h3 className="font-semibold text-foreground mb-6">Skill overview</h3>
+                    <div className="space-y-5">
+                      {agent.skills.map((skill, i) => (
                         <SkillBar key={skill.name} skill={skill} index={i} />
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No capability profile yet.</p>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </motion.div>
             )}
 
