@@ -39,9 +39,27 @@ export const metadata: Metadata = {
   },
   description: 'Enterprise AI operator console for managing workflows, runs, approvals, and AI-assisted operations',
   generator: 'v0.app',
+  // Favicon set is the green-background mark. The previous icon was the BLACK
+  // logo, which disappeared against dark browser chrome — the common case, since
+  // the tab strip is dark in dark mode on every major browser. The green tile
+  // reads at 16px on light and dark chrome alike.
+  //
+  // Sizes are explicit rather than pointing every slot at one 1024px PNG: that
+  // made the browser download ~139KB to paint a 16px tab icon. Real sizes are
+  // 501b–1.6KB.
   icons: {
-    icon: '/images/gravitre-icon-black.png',
-    apple: '/images/gravitre-icon-black.png',
+    icon: [
+      // .ico first for legacy/bookmark surfaces that ignore <link> sizes.
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/icon-16x16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/icon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-192x192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512x512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    // Opaque: the artwork has transparent rounded corners, and iOS composites
+    // touch icons on black before applying its own mask, so an unflattened
+    // version shows black wedges in the corners.
+    apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
   },
 }
 
