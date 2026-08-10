@@ -31,6 +31,9 @@ export async function proxy(request: NextRequest) {
     "/guides",
     "/roadmap",
     "/support",
+    // Desktop companion marketing + release manifest (anonymous downloads)
+    "/download",
+    "/desktop",
     "/api",
     "/forgot-password",
     "/privacy",
