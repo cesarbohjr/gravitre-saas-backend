@@ -130,6 +130,7 @@ True Alt+Space (after freeing the hotkey): hide then show twice; read the same l
 | Install Rust locally | **PASS** — rustc 1.97.1 |
 | Local Windows MSI/NSIS | **PASS** — built on this host |
 | CI Linux / Windows / macOS | **PASS** — runs `31409015268`, `31409546855` |
-| Signed macOS/Windows | **NOT RUN** — certs not in secrets |
+| Published unsigned `desktop-v0.1.0` | **PASS** — https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0 @ 2026-08-10T22:16:55Z |
+| Signed macOS/Windows | **NOT RUN** — separate follow-up after certs |
 | Summon ≤150ms (warm) | **PASS** — median 34ms, max 55ms @ 2026-08-10 (bench path; see caveats) |
 | Cold start | **NOT RUN** |
