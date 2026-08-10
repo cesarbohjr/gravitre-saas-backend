@@ -1,0 +1,274 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1412;
+  --panel: #171c19;
+  --border: #2a332e;
+  --text: #e8eee9;
+  --muted: #8b968f;
+  --accent: #16a374;
+  --accent-dim: #0f6b4d;
+  --danger: #c45c5c;
+  --warn: #c9a227;
+  font-family: "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.brand {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-size: 0.95rem;
+}
+
+.pill {
+  margin-left: auto;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.pill.ok {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 12rem;
+}
+
+.bubble {
+  max-width: 92%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 28%, var(--panel));
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.composer {
+  border-top: 1px solid var(--border);
+  padding: 0.65rem;
+  background: var(--panel);
+}
+
+.composer-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  min-height: 2.6rem;
+  max-height: 7rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
+}
+
+.composer button,
+.btn {
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--accent);
+  color: white;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn.warn {
+  background: var(--warn);
+  color: #1a1400;
+}
+
+.btn.danger {
+  background: var(--danger);
+}
+
+.modality {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.modality button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.modality button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 1.25rem;
+  margin-bottom: 0.4rem;
+  opacity: 0.7;
+}
+
+.wave span {
+  width: 3px;
+  background: var(--muted);
+  border-radius: 2px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.wave.live span {
+  background: var(--accent);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    height: 20%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.75rem;
+}
+
+.card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.auth {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 1.25rem;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.auth h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}

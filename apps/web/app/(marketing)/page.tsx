@@ -37,6 +37,11 @@ const TestimonialsCarousel = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.TestimonialsCarousel),
   { ssr: true }
 )
+const DesktopDownloadSection = dynamic(
+  () =>
+    import("@/components/marketing/desktop-download-section").then((m) => m.DesktopDownloadSection),
+  { ssr: true }
+)
 
 /**
  * Home stays a short pitch + proof + CTA.
@@ -119,9 +124,18 @@ export default function HomePage() {
               Browser extension
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
+            <Link
+              href="/download"
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            >
+              Desktop download
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </section>
+
+      <DesktopDownloadSection />
 
       <section className="relative py-32 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-7xl px-6">
