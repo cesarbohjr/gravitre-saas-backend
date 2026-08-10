@@ -1,7 +1,11 @@
 /**
  * Desktop release manifest — single source for marketing download version + URLs.
  * Served from /desktop/latest.json (copied from public/ or rewritten by CI on release).
+ *
+ * Import the public JSON via a path relative to this file (not `@/../public/...`),
+ * which Turbopack cannot resolve outside the `@/` alias root.
  */
+import latestJson from "../public/desktop/latest.json"
 
 export type DesktopPlatformKey = "macos" | "windows" | "linux"
 
@@ -17,27 +21,13 @@ export type DesktopReleaseManifest = {
   downloads: Record<DesktopPlatformKey, DesktopDownload>
 }
 
-export const DESKTOP_RELEASE_FALLBACK: DesktopReleaseManifest = {
-  version: "0.1.0",
-  publishedAt: "2026-08-10T00:00:00.000Z",
-  downloads: {
-    macos: {
-      url: "https://github.com/cesarbohjr/gravitre-saas-backend/releases/latest/download/Gravitre_0.1.0_aarch64.dmg",
-      label: "macOS",
-      filename: "Gravitre_0.1.0_aarch64.dmg",
-    },
-    windows: {
-      url: "https://github.com/cesarbohjr/gravitre-saas-backend/releases/latest/download/Gravitre_0.1.0_x64_en-US.msi",
-      label: "Windows",
-      filename: "Gravitre_0.1.0_x64_en-US.msi",
-    },
-    linux: {
-      url: "https://github.com/cesarbohjr/gravitre-saas-backend/releases/latest/download/Gravitre_0.1.0_amd64.AppImage",
-      label: "Linux",
-      filename: "Gravitre_0.1.0_amd64.AppImage",
-    },
-  },
-}
+/** Bundled at build time from `public/desktop/latest.json`. */
+export const DESKTOP_RELEASE_MANIFEST =
+  latestJson as DesktopReleaseManifest
+
+/** Same as the public file when present; kept for callers that expect a named fallback. */
+export const DESKTOP_RELEASE_FALLBACK: DesktopReleaseManifest =
+  DESKTOP_RELEASE_MANIFEST
 
 export async function fetchDesktopReleaseManifest(
   origin?: string,
