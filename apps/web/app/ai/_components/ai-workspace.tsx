@@ -1678,6 +1678,8 @@ export function AiWorkspace({
       ? voiceServiceDetail
       : undefined
 
+  // Armed by the in-input waveform (no Text|Voice toggle). Once voice is used,
+  // spoken_mode + auto-TTS stay on for the session; orb is presentation only.
   const handleModalityChange = useCallback(
     (next: ChatModality) => {
       setModality(next)
@@ -1686,11 +1688,6 @@ export function AiWorkspace({
         stopAgentVoice()
         clearVoiceErrors()
       }
-      toast.message(
-        next === "voice"
-          ? "Voice mode — speak or type; replies play aloud (internal staff voice, not phone calls)"
-          : "Text mode",
-      )
     },
     [stopAgentVoice, clearVoiceErrors],
   )
@@ -2293,70 +2290,54 @@ export function AiWorkspace({
                   ))}
                 </div>
               ) : null}
-              {/* SHARED_CHAT_COMPOSER_CONTROLS — Text|Voice + Speak (Voice only) + send. */}
-              <div className="flex flex-col gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  rows={1}
-                  disabled={routing}
-                  placeholder={
-                    modality === "voice"
-                      ? "Speak or type — replies play aloud…"
-                      : "Ask, delegate, or search…"
-                  }
-                  className={cn(
-                    "max-h-[120px] min-h-[40px] w-full resize-none rounded-lg border border-[color:var(--chat-surface-border)] bg-white px-3 py-2.5 outline-none placeholder:text-[color:var(--chat-surface-muted)] focus:border-[#16a374]/50 dark:bg-[#262626] dark:text-[#f2f2f0]",
-                    CHAT_COMPOSER_CLASS,
-                  )}
-                  onInput={(event) => {
-                    const target = event.target as HTMLTextAreaElement
-                    target.style.height = "40px"
-                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 40), 120)}px`
-                  }}
-                />
-                <SharedChatComposerControls
-                  modality={modality}
-                  onModalityChange={handleModalityChange}
-                  voiceEntitled={voiceEntitled}
-                  unavailableReason={voiceUnavailableReason}
-                  input={input}
-                  onInputChange={setInput}
-                  disabled={routing || isChatBusy}
-                  isStreaming={isStreaming || ttsSpeaking}
-                  ttsSpeaking={ttsSpeaking}
-                  onStop={() => {
-                    stop()
-                    stopAgentVoice()
-                  }}
-                  canSubmit={Boolean(input.trim() || connectedFileAttachments.length > 0) && !routing && !isChatBusy}
-                  showSubmit
-                  onMicStatusChange={setMicStatus}
-                  voicePresence={voicePresence}
-                  voiceBilling={voiceBilling}
-                  voicePresenceDetail={voicePresenceDetail}
-                  agentLabel={assistantLabel}
-                  onVoiceInputError={(message) => {
-                    if (message) toast.error(message)
-                  }}
-                  leadingExtras={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="hidden h-8 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
-                      disabled={routing || isChatBusy}
-                      title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
-                      onClick={() => setConnectedFilePickerOpen(true)}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                      Browse files
-                    </Button>
-                  }
-                />
-              </div>
+              {/* SHARED_CHAT_COMPOSER_CONTROLS — in-input waveform + Browse + send. */}
+              <SharedChatComposerControls
+                modality={modality}
+                onModalityChange={handleModalityChange}
+                voiceEntitled={voiceEntitled}
+                unavailableReason={voiceUnavailableReason}
+                input={input}
+                onInputChange={setInput}
+                inputRef={inputRef}
+                onKeyDown={onKeyDown}
+                placeholder={
+                  modality === "voice"
+                    ? "Speak or type — replies play aloud…"
+                    : "Ask, delegate, or search…"
+                }
+                textareaClassName={CHAT_COMPOSER_CLASS}
+                disabled={routing || isChatBusy}
+                isStreaming={isStreaming || ttsSpeaking}
+                ttsSpeaking={ttsSpeaking}
+                onStop={() => {
+                  stop()
+                  stopAgentVoice()
+                }}
+                canSubmit={Boolean(input.trim() || connectedFileAttachments.length > 0) && !routing && !isChatBusy}
+                showSubmit
+                onMicStatusChange={setMicStatus}
+                voicePresence={voicePresence}
+                voiceBilling={voiceBilling}
+                voicePresenceDetail={voicePresenceDetail}
+                agentLabel={assistantLabel}
+                onVoiceInputError={(message) => {
+                  if (message) toast.error(message)
+                }}
+                trailingExtras={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="hidden h-8 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
+                    disabled={routing || isChatBusy}
+                    title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                    onClick={() => setConnectedFilePickerOpen(true)}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Browse files
+                  </Button>
+                }
+              />
             </form>
           </div>
         </div>

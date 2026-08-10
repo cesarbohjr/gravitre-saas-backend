@@ -503,70 +503,47 @@ export default function AgentChatPage({
 
         <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-[920px]">
-            <div
-              className={cn(
-                "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[10px] border border-[color:var(--chat-surface-border)] bg-white p-2.5 shadow-sm dark:bg-[#262626]",
-                "focus-within:border-[#16a374]/50 focus-within:ring-2 focus-within:ring-[#16a374]/15",
-              )}
-            >
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={user ? `Message ${agent.name}…` : "Sign in to chat"}
-                disabled={!user || isLoading}
-                rows={1}
-                className={cn(
-                  "max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 outline-none placeholder:text-muted-foreground/70",
-                  CHAT_COMPOSER_CLASS,
-                )}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement
-                  target.style.height = "44px"
-                  target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
-                }}
-              />
-              <SharedChatComposerControls
-                modality={modality}
-                onModalityChange={(next) => {
-                  setModality(next)
-                  modalityRef.current = next
-                  if (next === "text") {
-                    stopAgentVoice()
-                    clearVoiceErrors()
-                  }
-                  toast.message(
-                    next === "voice"
-                      ? "Voice mode — same conversation context; speak or type (internal staff voice, not phone calls)"
-                      : "Text mode — transcript stays in this conversation",
-                  )
-                }}
-                voiceEntitled={voiceEntitled}
-                unavailableReason={voiceUnavailableReason}
-                // Real agent name, so the orb reads "Sales is speaking…" rather
-                // than the generic Gravitre default used by main chat.
-                agentLabel={agent?.name || "Gravitre"}
-                input={input}
-                onInputChange={setInput}
-                disabled={!user || isLoading}
-                isStreaming={isStreaming}
-                ttsSpeaking={ttsSpeaking}
-                onStop={() => {
-                  stop()
+            <SharedChatComposerControls
+              modality={modality}
+              onModalityChange={(next) => {
+                setModality(next)
+                modalityRef.current = next
+                if (next === "text") {
                   stopAgentVoice()
-                }}
-                canSubmit={Boolean(user && input.trim() && !isLoading)}
-                showSubmit
-                onMicStatusChange={setMicStatus}
-                voicePresence={voicePresence}
-                voiceBilling={voiceBilling}
-                voicePresenceDetail={voicePresenceDetail}
-                onVoiceInputError={(message) => {
-                  if (message) toast.error(message)
-                }}
-              />
-            </div>
+                  clearVoiceErrors()
+                }
+              }}
+              voiceEntitled={voiceEntitled}
+              unavailableReason={voiceUnavailableReason}
+              // Real agent name, so the orb / pill read the agent rather than
+              // the generic Gravitre default used by main chat.
+              agentLabel={agent?.name || "Gravitre"}
+              input={input}
+              onInputChange={setInput}
+              inputRef={inputRef}
+              onKeyDown={handleKeyDown}
+              placeholder={user ? `Message ${agent.name}…` : "Sign in to chat"}
+              textareaClassName={cn(
+                "max-h-[160px] min-h-[44px] placeholder:text-muted-foreground/70",
+                CHAT_COMPOSER_CLASS,
+              )}
+              disabled={!user || isLoading}
+              isStreaming={isStreaming}
+              ttsSpeaking={ttsSpeaking}
+              onStop={() => {
+                stop()
+                stopAgentVoice()
+              }}
+              canSubmit={Boolean(user && input.trim() && !isLoading)}
+              showSubmit
+              onMicStatusChange={setMicStatus}
+              voicePresence={voicePresence}
+              voiceBilling={voiceBilling}
+              voicePresenceDetail={voicePresenceDetail}
+              onVoiceInputError={(message) => {
+                if (message) toast.error(message)
+              }}
+            />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {agent.name} uses your organization&apos;s knowledge base and connected systems.
               {modality === "voice"

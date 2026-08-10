@@ -3,22 +3,14 @@
 /**
  * Design-review comp for the voice UI surfaces.
  *
- * Renders the real shipped components — VoiceSessionPresence, VoiceModeToggle,
- * and AgentVoiceAssignment — so the review judges production code, not a mock.
- * State is driven by local fixtures because the four presence states cannot all
- * coexist in one live session. (Composer speech-to-text-only control is gone.)
- *
- * Capture-only: the parent /e2e/shots layout 404s this in production.
+ * Renders the real shipped waveform + orb components with fixtured speaker
+ * state. Text|Voice toggle and Speak mic are gone — the in-input waveform is
+ * the control. Capture-only: the parent /e2e/shots layout 404s this in production.
  */
 
 import { useState } from "react"
 
 import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
-import { VoiceModeToggle } from "@/components/gravitre/assistant/voice-mode-toggle"
-import {
-  VoiceSessionPresence,
-  type VoicePresenceState,
-} from "@/components/gravitre/assistant/voice-session-presence"
 import {
   GravitreVoiceWaveform,
   VoiceOrbTakeover,
@@ -46,23 +38,38 @@ function Panel({
   )
 }
 
-const PRESENCE: { state: VoicePresenceState; label: string; billing?: boolean; detail?: string }[] =
-  [
-    { state: "idle", label: "Idle — voice open, no motion" },
-    { state: "listening", label: "You — mic open", detail: "Speak when ready" },
-    { state: "speaking", label: "Agent name — TTS playing (11b)" },
-    {
-      state: "error",
-      label: "Billing — credits needed",
-      billing: true,
-      detail: "Add credits to resume spoken replies",
-    },
-    { state: "error", label: "Fault — device or transport" },
-  ]
+function InputPill({
+  speaker,
+  active,
+  label,
+}: {
+  speaker: VoiceSpeaker
+  active: boolean
+  label?: string
+}) {
+  return (
+    <div
+      className="flex h-11 w-full max-w-xl items-center gap-2 rounded-full border border-border/70 bg-white px-3 dark:bg-[#262626]"
+      data-shot={active ? `wave-${speaker}` : "wave-idle"}
+    >
+      <GravitreVoiceWaveform speaker={speaker} active={active} compact />
+      <span className="flex-1 text-xs text-muted-foreground">Ask, delegate, or search…</span>
+      {label ? (
+        <span
+          className={
+            speaker === "user" && active
+              ? "text-xs font-medium text-[#16a374]"
+              : "text-xs font-medium text-[#3f5b52] dark:text-[#e9e9e6]"
+          }
+        >
+          {label}
+        </span>
+      ) : null}
+    </div>
+  )
+}
 
 export default function VoiceStatesShot() {
-  // voice_id must match a fixture voice: card selection compares on voice_id, so
-  // seeding only voice_key would render every card unselected.
   const [profile, setProfile] = useState<AgentVoiceProfile>({
     voice_source: "preset_library",
     voice_id: "shot-voice-atlas",
@@ -70,9 +77,6 @@ export default function VoiceStatesShot() {
     tts_model: "eleven_turbo_v2_5",
     turn_sensitivity: "normal",
   })
-  // Which orb (if any) is open. Both presentation modes are exercised from the
-  // real components; only the speaker is fixtured, since one session cannot show
-  // the user and the agent holding the floor simultaneously.
   const [orb, setOrb] = useState<VoiceSpeaker | null>(null)
 
   return (
@@ -83,54 +87,33 @@ export default function VoiceStatesShot() {
             Voice UI — design review
           </h1>
           <p className="text-sm text-muted-foreground">
-            Real components. Presentation-only pass; entitlements, voice routes and
-            voice_profile are untouched.
+            In-input waveform (11a/11b) and orb voice view. No Text|Voice toggle.
           </p>
         </header>
 
         <Panel
-          title="Session presence"
-          note="Motion budget is three states; idle is deliberately still so an open session never animates in an operator's periphery."
-        >
-          <div className="flex flex-col gap-2.5">
-            {PRESENCE.map((p) => (
-              <div key={p.label} className="flex items-center gap-4">
-                <span className="w-56 shrink-0 text-xs text-muted-foreground">{p.label}</span>
-                <VoiceSessionPresence
-                  state={p.state}
-                  billing={p.billing}
-                  detail={p.detail}
-                  agentLabel="Gravitre"
-                  className="w-72"
-                />
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel
-          title="Inline waveform — both speakers"
-          note="Seven 3px bars, per-bar keyframes. User is #16a374 at 0.6s; the agent is slower (1.1s) and uses #3f5b52 on light / #e9e9e6 on dark."
+          title="Composer input pill"
+          note="Grey/still when idle; emerald + You while you speak; graphite + agent name while TTS plays."
         >
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-4" data-shot="wave-user">
-              <span className="w-56 shrink-0 text-xs text-muted-foreground">You speaking</span>
-              <div className="flex h-11 items-center rounded-lg border border-border/70 bg-card px-3">
-                <GravitreVoiceWaveform speaker="user" />
-              </div>
+            <div className="flex items-center gap-4">
+              <span className="w-40 shrink-0 text-xs text-muted-foreground">Idle</span>
+              <InputPill speaker="user" active={false} />
             </div>
-            <div className="flex items-center gap-4" data-shot="wave-agent">
-              <span className="w-56 shrink-0 text-xs text-muted-foreground">Gravitre speaking</span>
-              <div className="flex h-11 items-center rounded-lg border border-border/70 bg-card px-3">
-                <GravitreVoiceWaveform speaker="agent" />
-              </div>
+            <div className="flex items-center gap-4">
+              <span className="w-40 shrink-0 text-xs text-muted-foreground">You (11a)</span>
+              <InputPill speaker="user" active label="You" />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="w-40 shrink-0 text-xs text-muted-foreground">Gravitre (11b)</span>
+              <InputPill speaker="agent" active label="Gravitre" />
             </div>
           </div>
         </Panel>
 
         <Panel
-          title="Orb takeover"
-          note="Peer presentation of the same session, not an escape hatch. Centre tap collapses back to the waveform and stays in voice mode; ✕ and the bottom control exit voice mode."
+          title="Orb — voice view"
+          note="Peer presentation of the same session. Tap for text view returns to the composer without ending audio."
         >
           <div className="flex flex-wrap gap-3">
             <button
@@ -158,37 +141,8 @@ export default function VoiceStatesShot() {
           ) : null}
         </Panel>
 
-        <Panel
-          title="Modality toggle"
-          note="Gated and live variants share one height so swapping never reflows the composer row."
-        >
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Text</span>
-              <VoiceModeToggle mode="text" onChange={() => {}} voiceEntitled />
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Voice</span>
-              <VoiceModeToggle mode="voice" onChange={() => {}} voiceEntitled />
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Not entitled</span>
-              <VoiceModeToggle mode="text" onChange={() => {}} voiceEntitled={false} />
-            </div>
-          </div>
-        </Panel>
-
-        <Panel
-          title="Agent voice assignment"
-          note="Preset and custom are equal-weight paths. Voice identity reads as a name and source, not a raw voice_id."
-        >
-          <div className="rounded-xl border border-border/70 bg-card p-5">
-            <AgentVoiceAssignment
-              value={profile}
-              onChange={setProfile}
-              department="operations"
-            />
-          </div>
+        <Panel title="Voice assignment" note="Unchanged configure surface.">
+          <AgentVoiceAssignment value={profile} onChange={setProfile} className="max-w-xl" />
         </Panel>
       </div>
     </main>

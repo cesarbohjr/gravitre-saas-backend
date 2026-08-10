@@ -86,50 +86,36 @@ export function AiLanding({
         </div>
 
         <div className="relative mt-8">
-          <div
-            className={cn(
-              "rounded-[10px] border border-[color:var(--chat-surface-border,#dcd9d4)] bg-white p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors dark:bg-[#262626]",
-              "focus-within:border-[#16a374]/50 focus-within:ring-2 focus-within:ring-[#16a374]/15",
-            )}
-          >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={onKeyDown}
-              rows={3}
-              disabled={routing}
-              placeholder={
-                modality === "voice"
-                  ? "Speak or type — replies play aloud…"
-                  : activeMode.id === "find"
-                    ? "Find a run, workflow, agent, connector, or document…"
-                    : activeMode.id === "execute"
-                      ? "Describe the work to delegate — Gravitre will plan and run it…"
-                      : activeMode.id === "chat"
-                        ? "Ask a question or start a conversation…"
-                        : "Ask, delegate, or search — results appear here…"
-              }
-              className="w-full min-h-[88px] resize-none bg-transparent px-3 py-3 text-left text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70"
-            />
-            <div className="px-2 pb-1">
-              <SharedChatComposerControls
-                modality={modality}
-                onModalityChange={onModalityChange}
-                voiceEntitled={voiceEntitled}
-                unavailableReason={voiceUnavailableReason}
-                input={input}
-                onInputChange={onInputChange}
-                disabled={routing}
-                canSubmit={Boolean(input.trim()) && !routing}
-                showSubmit
-                onSubmit={onSubmit}
-                onVoiceInputError={(message) => {
-                  if (message) toast.error(message)
-                }}
-              />
-            </div>
-          </div>
+          <SharedChatComposerControls
+            modality={modality}
+            onModalityChange={onModalityChange}
+            voiceEntitled={voiceEntitled}
+            unavailableReason={voiceUnavailableReason}
+            input={input}
+            onInputChange={onInputChange}
+            inputRef={inputRef}
+            onKeyDown={onKeyDown}
+            disabled={routing}
+            canSubmit={Boolean(input.trim()) && !routing}
+            showSubmit
+            onSubmit={onSubmit}
+            textareaRows={3}
+            placeholder={
+              modality === "voice"
+                ? "Speak or type — replies play aloud…"
+                : activeMode.id === "find"
+                  ? "Find a run, workflow, agent, connector, or document…"
+                  : activeMode.id === "execute"
+                    ? "Describe the work to delegate — Gravitre will plan and run it…"
+                    : activeMode.id === "chat"
+                      ? "Ask a question or start a conversation…"
+                      : "Ask, delegate, or search — results appear here…"
+            }
+            textareaClassName="min-h-[88px] text-sm leading-relaxed"
+            onVoiceInputError={(message) => {
+              if (message) toast.error(message)
+            }}
+          />
 
           <AnimatePresence>
             {routing && routedMode ? (

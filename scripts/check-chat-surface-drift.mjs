@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Fail CI when a chat surface re-implements VoiceModeToggle / Speak mic / presence
- * chrome instead of importing SharedChatComposerControls.
- * Also fail if a separate "Dictate" affordance is reintroduced.
+ * Fail CI when a chat surface re-implements composer voice chrome instead of
+ * importing SharedChatComposerControls (in-input waveform + orb).
+ * Also fail if Text|Voice toggle, Speak mic, or Dictate is reintroduced on surfaces.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative, dirname } from "node:path"
@@ -79,19 +79,25 @@ for (const file of files) {
 
   if (ALLOWED_DEFINITIONS.has(rel)) continue
 
-  // Surfaces that mount VoiceModeToggle must go through SharedChatComposerControls
-  if (/<VoiceModeToggle\b/.test(src) && !src.includes("SharedChatComposerControls")) {
-    failures.push(`${rel}: mounts <VoiceModeToggle> without SharedChatComposerControls`)
+  // Text|Voice toggle is retired — waveform inside SharedChatComposerControls is the control.
+  if (
+    /<VoiceModeToggle\b/.test(src) &&
+    rel !== "components/gravitre/assistant/voice-mode-toggle.tsx"
+  ) {
+    failures.push(`${rel}: mounts retired <VoiceModeToggle> — use in-input waveform via SharedChatComposerControls`)
   }
 
-  // Speak mic only via shared controls
-  if (/<VoiceInputButton\b/.test(src) && !src.includes("SharedChatComposerControls")) {
-    failures.push(`${rel}: mounts <VoiceInputButton> without SharedChatComposerControls`)
+  // Speak mic button is retired — same path as waveform.
+  if (
+    /<VoiceInputButton\b/.test(src) &&
+    rel !== "components/gravitre/assistant/voice-input-button.tsx"
+  ) {
+    failures.push(`${rel}: mounts retired <VoiceInputButton> — use in-input waveform via SharedChatComposerControls`)
   }
 
   // Dictate product must stay gone from customer chat UI
   if (/\bDictate\b/.test(src) && !rel.includes("docs/")) {
-    failures.push(`${rel}: contains Dictate label/copy — Voice modality Speak only`)
+    failures.push(`${rel}: contains Dictate label/copy — in-input waveform is the only mic path`)
   }
 
   // Duplicate composer chrome: local Text|Voice label clusters outside shared path

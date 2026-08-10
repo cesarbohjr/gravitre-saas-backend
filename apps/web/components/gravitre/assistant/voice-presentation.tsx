@@ -55,11 +55,17 @@ const WAVE_DURATION: Record<VoiceSpeaker, string> = {
 export function GravitreVoiceWaveform({
   speaker,
   compact = false,
+  active = true,
   className,
 }: {
   speaker: VoiceSpeaker
   /** Icon-scale rendering for the compact session strip. Same bars, same keyframes. */
   compact?: boolean
+  /**
+   * When false, bars stay grey and still (composer idle affordance). Animation
+   * and speaker color only apply while someone holds the floor.
+   */
+  active?: boolean
   className?: string
 }) {
   return (
@@ -69,7 +75,13 @@ export function GravitreVoiceWaveform({
         "flex items-center gap-[3px]",
         // Bars are `background-color: currentColor`, so speaker color is set here
         // once rather than on each of the seven.
-        speaker === "user" ? "text-[#16a374]" : "text-[#3f5b52] dark:text-[#e9e9e6]",
+        !active
+          ? "text-[#9a9a96] dark:text-[#6b6b68]"
+          : speaker === "user"
+            ? "text-[#16a374]"
+            : "text-[#3f5b52] dark:text-[#e9e9e6]",
+        // Animation is opt-in via this class — see globals.css `.gv-wave-active`.
+        active && "gv-wave-active",
         // Scaled, not re-declared at a second set of sizes: one waveform
         // implementation serves both the composer and the compact strip.
         compact && "scale-[0.55]",
@@ -153,7 +165,7 @@ export function VoiceOrbTakeover({
           ref={collapseRef}
           type="button"
           onClick={onCollapse}
-          aria-label="Return to inline waveform, stay in voice mode"
+          aria-label="Return to text view"
           className="absolute inset-0 z-0 cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
         />
 
@@ -166,14 +178,14 @@ export function VoiceOrbTakeover({
             minimises. Naming the gesture is what separates the two outcomes.
           */}
           <span className="text-[11px] text-[rgba(255,255,255,0.35)]">
-            Tap anywhere to minimise
+            Tap anywhere for text view
           </span>
         </span>
 
         <button
           type="button"
           onClick={onExitVoice}
-          aria-label="Exit voice mode"
+          aria-label="Return to text view"
           className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
           <X className="h-5 w-5" aria-hidden />
@@ -205,7 +217,7 @@ export function VoiceOrbTakeover({
           onClick={onExitVoice}
           className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-full px-4 py-2 text-[14px] text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
-          Tap to switch to text
+          Tap for text view
         </button>
       </div>
     </div>

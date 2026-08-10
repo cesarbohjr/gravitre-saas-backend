@@ -442,14 +442,16 @@
           Lightning CSS correctly simplifies `:nth-child(n)` to `.gv-wave-bar`,
           silently deleting the specificity bump at build time. Verified in the
           SERVED css, not the source. */
+  /* Animation is also opt-in via `.gv-wave-active` so an idle (grey) waveform in
+     the composer stays still — same cascade lesson as reduced-motion. */
   @media (prefers-reduced-motion: no-preference) {
-    .gv-wave-bar:nth-child(1) { animation-name: gv-wave1; animation-delay: 0s; }
-    .gv-wave-bar:nth-child(2) { animation-name: gv-wave2; animation-delay: 0.08s; }
-    .gv-wave-bar:nth-child(3) { animation-name: gv-wave3; animation-delay: 0.16s; }
-    .gv-wave-bar:nth-child(4) { animation-name: gv-wave4; animation-delay: 0.24s; }
-    .gv-wave-bar:nth-child(5) { animation-name: gv-wave5; animation-delay: 0.32s; }
-    .gv-wave-bar:nth-child(6) { animation-name: gv-wave6; animation-delay: 0.4s; }
-    .gv-wave-bar:nth-child(7) { animation-name: gv-wave7; animation-delay: 0.48s; }
+    .gv-wave-active .gv-wave-bar:nth-child(1) { animation-name: gv-wave1; animation-delay: 0s; }
+    .gv-wave-active .gv-wave-bar:nth-child(2) { animation-name: gv-wave2; animation-delay: 0.08s; }
+    .gv-wave-active .gv-wave-bar:nth-child(3) { animation-name: gv-wave3; animation-delay: 0.16s; }
+    .gv-wave-active .gv-wave-bar:nth-child(4) { animation-name: gv-wave4; animation-delay: 0.24s; }
+    .gv-wave-active .gv-wave-bar:nth-child(5) { animation-name: gv-wave5; animation-delay: 0.32s; }
+    .gv-wave-active .gv-wave-bar:nth-child(6) { animation-name: gv-wave6; animation-delay: 0.4s; }
+    .gv-wave-active .gv-wave-bar:nth-child(7) { animation-name: gv-wave7; animation-delay: 0.48s; }
   }
 
   @keyframes gv-orb-pulse-user {
