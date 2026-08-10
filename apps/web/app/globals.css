@@ -397,9 +397,82 @@
     animation: status-breathe 2s ease-in-out infinite;
   }
 
+  /* ── Voice UI: inline waveform + full-screen orb ───────────────────────────
+     Verbatim from the design handoff. Each bar gets its own keyframe so the
+     seven bars never move in lockstep; a single shared keyframe plus delays
+     reads as a travelling ripple rather than live speech.
+
+     Height is animated (not scaleY) to match the handoff exactly. The bars are
+     3px, so the compositing cost is negligible, and scaleY on a 6px bar with
+     border-radius smears the rounding. */
+  @keyframes gv-wave1 { 0%, 100% { height: 6px; }  50% { height: 20px; } }
+  @keyframes gv-wave2 { 0%, 100% { height: 20px; } 50% { height: 8px; } }
+  @keyframes gv-wave3 { 0%, 100% { height: 10px; } 50% { height: 22px; } }
+  @keyframes gv-wave4 { 0%, 100% { height: 16px; } 50% { height: 6px; } }
+  @keyframes gv-wave5 { 0%, 100% { height: 8px; }  50% { height: 18px; } }
+  @keyframes gv-wave6 { 0%, 100% { height: 18px; } 50% { height: 9px; } }
+  @keyframes gv-wave7 { 0%, 100% { height: 12px; } 50% { height: 20px; } }
+
+  .gv-wave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background-color: currentColor;
+    animation-duration: var(--gv-wave-duration, 0.6s);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  /* Resting heights are unconditional, so a frozen waveform still reads as a
+     waveform rather than seven identical stubs. */
+  .gv-wave-bar:nth-child(1) { height: 6px; }
+  .gv-wave-bar:nth-child(2) { height: 20px; }
+  .gv-wave-bar:nth-child(3) { height: 10px; }
+  .gv-wave-bar:nth-child(4) { height: 16px; }
+  .gv-wave-bar:nth-child(5) { height: 8px; }
+  .gv-wave-bar:nth-child(6) { height: 18px; }
+  .gv-wave-bar:nth-child(7) { height: 12px; }
+
+  /* Motion is OPT-IN via `no-preference` rather than switched off later under
+     `reduce`. Two reasons, the second learned the hard way:
+       1. Nothing needs to win a cascade fight — under `reduce` no animation-name
+          is ever assigned, so there is no override to lose.
+       2. The override approach genuinely did lose. Per-bar rules carry
+          `:nth-child(N)` (0,2,0) and a media query adds no specificity, so a
+          plain `.gv-wave-bar { animation: none }` (0,1,0) never applied. Raising
+          the override to `.gv-wave-bar:nth-child(n)` did not survive either:
+          Lightning CSS correctly simplifies `:nth-child(n)` to `.gv-wave-bar`,
+          silently deleting the specificity bump at build time. Verified in the
+          SERVED css, not the source. */
+  @media (prefers-reduced-motion: no-preference) {
+    .gv-wave-bar:nth-child(1) { animation-name: gv-wave1; animation-delay: 0s; }
+    .gv-wave-bar:nth-child(2) { animation-name: gv-wave2; animation-delay: 0.08s; }
+    .gv-wave-bar:nth-child(3) { animation-name: gv-wave3; animation-delay: 0.16s; }
+    .gv-wave-bar:nth-child(4) { animation-name: gv-wave4; animation-delay: 0.24s; }
+    .gv-wave-bar:nth-child(5) { animation-name: gv-wave5; animation-delay: 0.32s; }
+    .gv-wave-bar:nth-child(6) { animation-name: gv-wave6; animation-delay: 0.4s; }
+    .gv-wave-bar:nth-child(7) { animation-name: gv-wave7; animation-delay: 0.48s; }
+  }
+
+  @keyframes gv-orb-pulse-user {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 70px rgba(22, 163, 116, 0.5); }
+    50%      { transform: scale(1.1);  box-shadow: 0 0 100px rgba(22, 163, 116, 0.7); }
+  }
+  @keyframes gv-orb-pulse-agent {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 60px rgba(255, 255, 255, 0.25); }
+    50%      { transform: scale(1.04); box-shadow: 0 0 90px rgba(255, 255, 255, 0.4); }
+  }
+  .gv-orb-user  { animation: gv-orb-pulse-user 1s ease-in-out infinite; }
+  .gv-orb-agent { animation: gv-orb-pulse-agent 2s ease-in-out infinite; }
+
   @media (prefers-reduced-motion: reduce) {
     .hover-lift:hover { transform: none; }
     .status-live { animation: none; }
+    /* The orbs are safe to switch off here: their base rules are plain classes
+       (0,1,0), so an equal-specificity override later in source order wins. The
+       waveform bars are NOT listed — they never receive an animation under
+       `reduce` in the first place (see the no-preference block above), which is
+       why they need no override. */
+    .gv-orb-user,
+    .gv-orb-agent { animation: none; }
   }
 
   /* Sonner — keep brand unstyled toasts above dialogs; neutralize library defaults */

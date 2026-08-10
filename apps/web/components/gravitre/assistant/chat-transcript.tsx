@@ -51,6 +51,7 @@ import {
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 import { GravitreChatAvatar } from "@/components/gravitre/assistant/gravitre-chat-avatar"
+import type { AgentIdentityInput } from "@/lib/agent-identity"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -110,7 +111,16 @@ type ChatTranscriptProps = {
   onSaveQuestion?: (userMessageId: string, text: string) => void
   /** Override assistant identity (department / specialized agents). */
   assistantLabel?: string
-  assistantAvatar?: ReactNode
+  /**
+   * Agent identity as DATA, not a rendered node.
+   *
+   * This was `assistantAvatar?: ReactNode`, which let a caller substitute its own
+   * avatar and silently lose every animated state — department chat carried
+   * identity but never animated, main chat animated but looked generic. Passing
+   * the agent record instead lets GravitreChatAvatar render identity AND state
+   * together, and removes the escape hatch that allowed the two to drift.
+   */
+  assistantAgent?: AgentIdentityInput
   waitingLabel?: string
 }
 
@@ -160,7 +170,7 @@ export function ChatTranscript({
   onCopyLink,
   onSaveQuestion,
   assistantLabel = "Gravitre",
-  assistantAvatar,
+  assistantAgent,
   waitingLabel,
 }: ChatTranscriptProps) {
   // Which assistant message is currently being read aloud, so that message's
@@ -223,11 +233,24 @@ export function ChatTranscript({
               {isUser ? (
                 <UserAccountAvatar useCurrentUser size="md" />
               ) : (
-                assistantAvatar ?? (
-                  <GravitreChatAvatar
-                    state={speakingMessageId === message.id ? "speaking" : "idle"}
-                  />
-                )
+                <GravitreChatAvatar
+                  // One component for every surface. A department agent supplies
+                  // identity; main chat passes none and gets the Gravitre mark.
+                  // Both animate through the same states.
+                  agent={assistantAgent}
+                  state={
+                    speakingMessageId === message.id
+                      ? "speaking"
+                      : // A tool invocation still in "call" (no output yet) is
+                        // the already-proven in-flight signal that drives the
+                        // existing tool chips, so searching reuses it rather
+                        // than inventing new detection.
+                        toolInvocations.some((invocation) => invocation.state === "call")
+                        ? "searching"
+                        : "idle"
+                  }
+                  title={`${assistantLabel} is working`}
+                />
               )}
 
               <div
@@ -405,7 +428,11 @@ export function ChatTranscript({
                 filled circle the avatar would have appeared to morph into a
                 different shape mid-thread. That loader is untouched and still
                 used for route transitions. */}
-            {assistantAvatar ?? <GravitreChatAvatar state="thinking" title={resolvedWaiting} />}
+            {/* Previously `assistantAvatar ?? <GravitreChatAvatar state="thinking">`,
+                so any surface supplying its own avatar silently dropped the
+                thinking state — department chat never breathed at all. Identity
+                now rides along as data and the state always applies. */}
+            <GravitreChatAvatar agent={assistantAgent} state="thinking" title={resolvedWaiting} />
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>
               <div

@@ -19,6 +19,11 @@ import {
   VoiceSessionPresence,
   type VoicePresenceState,
 } from "@/components/gravitre/assistant/voice-session-presence"
+import {
+  GravitreVoiceWaveform,
+  VoiceOrbTakeover,
+  type VoiceSpeaker,
+} from "@/components/gravitre/assistant/voice-presentation"
 import type { AgentVoiceProfile } from "@/types/api"
 
 function Panel({
@@ -65,6 +70,10 @@ export default function VoiceStatesShot() {
     tts_model: "eleven_turbo_v2_5",
     turn_sensitivity: "normal",
   })
+  // Which orb (if any) is open. Both presentation modes are exercised from the
+  // real components; only the speaker is fixtured, since one session cannot show
+  // the user and the agent holding the floor simultaneously.
+  const [orb, setOrb] = useState<VoiceSpeaker | null>(null)
 
   return (
     <main className="min-h-screen bg-background px-8 py-10">
@@ -96,6 +105,56 @@ export default function VoiceStatesShot() {
               </div>
             ))}
           </div>
+        </Panel>
+
+        <Panel
+          title="Inline waveform — both speakers"
+          note="Seven 3px bars, per-bar keyframes. User is #16a374 at 0.6s; the agent is slower (1.1s) and uses #3f5b52 on light / #e9e9e6 on dark."
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-4" data-shot="wave-user">
+              <span className="w-56 shrink-0 text-xs text-muted-foreground">You speaking</span>
+              <div className="flex h-11 items-center rounded-lg border border-border/70 bg-card px-3">
+                <GravitreVoiceWaveform speaker="user" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4" data-shot="wave-agent">
+              <span className="w-56 shrink-0 text-xs text-muted-foreground">Gravitre speaking</span>
+              <div className="flex h-11 items-center rounded-lg border border-border/70 bg-card px-3">
+                <GravitreVoiceWaveform speaker="agent" />
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Orb takeover"
+          note="Peer presentation of the same session, not an escape hatch. Centre tap collapses back to the waveform and stays in voice mode; ✕ and the bottom control exit voice mode."
+        >
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setOrb("user")}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+            >
+              Open orb — you speaking
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrb("agent")}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+            >
+              Open orb — Gravitre speaking
+            </button>
+          </div>
+          {orb ? (
+            <VoiceOrbTakeover
+              speaker={orb}
+              agentLabel="Gravitre"
+              onCollapse={() => setOrb(null)}
+              onExitVoice={() => setOrb(null)}
+            />
+          ) : null}
         </Panel>
 
         <Panel

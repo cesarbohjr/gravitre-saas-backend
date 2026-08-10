@@ -40,9 +40,17 @@ export function useSpeechSynthesis({
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const objectUrlRef = useRef<string | null>(null)
 
-  const isSupported =
-    typeof window !== "undefined" &&
-    ("speechSynthesis" in window || typeof Audio !== "undefined")
+  // Capability is detected AFTER mount, not during render. Reading `window` while
+  // rendering makes the server resolve false and the client true, and since the
+  // consumer (ReadAloudButton) does `if (!isSupported) return null`, the server
+  // sent no button where the client expected one — a hydration mismatch logged on
+  // every page carrying a transcript. Starting false means the first client render
+  // matches the server exactly, then the effect reveals the control.
+  const [isSupported, setIsSupported] = useState(false)
+
+  useEffect(() => {
+    setIsSupported("speechSynthesis" in window || typeof Audio !== "undefined")
+  }, [])
 
   const stop = useCallback(() => {
     const synth = getSpeechSynthesis()
