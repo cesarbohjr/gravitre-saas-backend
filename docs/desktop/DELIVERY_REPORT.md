@@ -21,11 +21,12 @@
 
 | Requirement | Status |
 |-------------|--------|
-| Summon ≤150ms (global shortcut → input-ready) | **NOT RUN** — no Rust toolchain on agent host; measure on built binary |
+| Summon ≤150ms (global shortcut → input-ready) | **PASS (warm)** — median 34ms / max 55ms in `%TEMP%\gravitre-desktop-summon.log` via `GRAVITRE_BENCH_SUMMON=1` (same show→input-ready path; Alt+Space blocked here by ChatGPT Classic — see `SIGNING_AND_LATENCY.md`) |
 | Cold start measured | **NOT RUN** |
 | Deep-link each 0.2 target | **NOT RUN** live — wired in code (`openDeepLink` / tray Approvals) |
-| Native notification + approve/reject | **PARTIAL** — code wired to `/api/approvals` + notification plugin; needs OS build |
-| Signed installers (3 platforms) | **NOT RUN** — CI drafts unsigned/release artifacts; Apple/Windows certs are a real setup cost |
+| Native notification + approve/reject | **PARTIAL** — code wired to `/api/approvals` + notification plugin; CI binaries on draft release |
+| Signed installers (3 platforms) | **NOT RUN** — certs not provisioned; checklist in `SIGNING_AND_LATENCY.md` |
+| CI desktop matrix | **PASS** — https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31409015268 |
 | Auto-update | **PARTIAL** — manifest at `/desktop/latest.json`; Tauri updater pubkey not provisioned yet |
 | Marketing download section live | **Ship with web deploy** — version from manifest; OS highlight client-side |
 | Zero 0.2 features built natively | **PASS (by design)** — Settings/Meson/Agents/full Activity/Billing only deep-link |

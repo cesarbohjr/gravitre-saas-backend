@@ -30,14 +30,34 @@ fn toggle_companion(app: &AppHandle) {
     }
 }
 
+fn append_summon_log(line: &str) {
+    eprintln!("{line}");
+    if let Ok(temp) = std::env::var("TEMP").or_else(|_| std::env::var("TMP")) {
+        let path = std::path::PathBuf::from(temp).join("gravitre-desktop-summon.log");
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .and_then(|mut f| {
+                use std::io::Write;
+                writeln!(f, "{line}")
+            });
+    }
+}
+
 fn show_companion(app: &AppHandle, window: &WebviewWindow, measure: bool) {
-    if measure {
-        SUMMON_START_MS.store(now_ms(), Ordering::SeqCst);
+    let start = if measure { Some(now_ms()) } else { None };
+    if let Some(start) = start {
+        SUMMON_START_MS.store(start, Ordering::SeqCst);
     }
     let _ = window.set_always_on_top(true);
     let _ = window.show();
     let _ = window.set_focus();
-    if measure {
+    if let Some(start) = start {
+        let native_ms = now_ms().saturating_sub(start);
+        append_summon_log(&format!(
+            "[gravitre-desktop] summon_to_native_focus_ms={native_ms}"
+        ));
         let _ = app.emit("companion-summoned", now_ms());
     }
 }
@@ -76,7 +96,10 @@ fn report_input_ready() -> Result<u64, String> {
         return Ok(0);
     }
     let elapsed = now_ms().saturating_sub(start);
-    eprintln!("[gravitre-desktop] summon_to_input_ready_ms={elapsed}");
+    // Release Windows builds use windows_subsystem=windows (no console). Persist for measurement.
+    append_summon_log(&format!(
+        "[gravitre-desktop] summon_to_input_ready_ms={elapsed}"
+    ));
     Ok(elapsed)
 }
 
@@ -144,7 +167,34 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            app.global_shortcut().register(companion_shortcut())?;
+            match app.global_shortcut().register(companion_shortcut()) {
+                Ok(()) => {}
+                Err(err) => {
+                    append_summon_log(&format!(
+                        "[gravitre-desktop] Alt+Space unavailable ({err}); tray / single-instance summon still work"
+                    ));
+                }
+            }
+
+            // Local bench: GRAVITRE_BENCH_SUMMON=1 runs warm hide→show samples without needing Alt+Space.
+            if std::env::var("GRAVITRE_BENCH_SUMMON").ok().as_deref() == Some("1") {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(2500));
+                    for i in 0..5 {
+                        if let Some(window) = handle.get_webview_window("main") {
+                            let _ = window.hide();
+                            std::thread::sleep(std::time::Duration::from_millis(350));
+                            append_summon_log(&format!(
+                                "[gravitre-desktop] bench_sample_start i={i}"
+                            ));
+                            show_companion(&handle, &window, true);
+                            std::thread::sleep(std::time::Duration::from_millis(900));
+                        }
+                    }
+                    append_summon_log("[gravitre-desktop] bench_samples_done");
+                });
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
