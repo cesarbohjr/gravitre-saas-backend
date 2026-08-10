@@ -116,6 +116,7 @@ import {
   AI_VOICE_AGENT_DEFAULT,
   AiVoiceAgentPicker,
 } from "./ai-voice-agent-picker"
+import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import { ConnectedFilePickerDialog } from "./connected-file-picker-dialog"
 import type { ConnectedFileAttachment } from "@/lib/connected-files-api"
@@ -215,14 +216,16 @@ export function AiWorkspace({
     { revalidateOnFocus: false },
   )
   const voiceAgents = agentsData?.agents ?? []
-  const selectedVoiceAgent = useMemo(
-    () => voiceAgents.find((agent) => agent.id === voiceAgentId) ?? null,
-    [voiceAgents, voiceAgentId],
-  )
-  // Label: selected voice agent name, else session persona. Avatar stays Gravitre mark.
+  // Spoken-voice pick only — must have a configured ElevenLabs profile.
+  // Response style / transcript identity stay on preferredPersona.
+  const selectedVoiceAgent = useMemo(() => {
+    const match = voiceAgents.find((agent) => agent.id === voiceAgentId) ?? null
+    if (!match || (match.status && match.status !== "active")) return null
+    return voiceProfileIsConfigured(match.voiceProfile) ? match : null
+  }, [voiceAgents, voiceAgentId])
   const assistantLabel = useMemo(
-    () => selectedVoiceAgent?.name ?? resolveChatPersonaLabel(preferredPersona),
-    [selectedVoiceAgent?.name, preferredPersona],
+    () => resolveChatPersonaLabel(preferredPersona),
+    [preferredPersona],
   )
   const handleVoiceAgentChange = useCallback((next: string) => {
     setVoiceAgentId(next)
@@ -230,6 +233,13 @@ export function AiWorkspace({
       localStorage.setItem("gravitre_ai_voice_agent_id", next)
     }
   }, [])
+  // Drop stale localStorage picks that are not voice-ready.
+  useEffect(() => {
+    if (voiceAgentId === AI_VOICE_AGENT_DEFAULT) return
+    if (agentsLoading) return
+    if (selectedVoiceAgent) return
+    handleVoiceAgentChange(AI_VOICE_AGENT_DEFAULT)
+  }, [voiceAgentId, agentsLoading, selectedVoiceAgent, handleVoiceAgentChange])
   const [conversationLoading, setConversationLoading] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   // Seed from localStorage so conversation list/messages can start without waiting on orgs list().
