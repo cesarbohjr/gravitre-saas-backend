@@ -49,8 +49,8 @@ function Panel({
 const PRESENCE: { state: VoicePresenceState; label: string; billing?: boolean; detail?: string }[] =
   [
     { state: "idle", label: "Idle — voice open, no motion" },
-    { state: "listening", label: "Listening — mic open", detail: "Speak when ready" },
-    { state: "speaking", label: "Speaking — agent talking" },
+    { state: "listening", label: "You — mic open", detail: "Speak when ready" },
+    { state: "speaking", label: "Agent name — TTS playing (11b)" },
     {
       state: "error",
       label: "Billing — credits needed",
@@ -100,6 +100,7 @@ export default function VoiceStatesShot() {
                   state={p.state}
                   billing={p.billing}
                   detail={p.detail}
+                  agentLabel="Gravitre"
                   className="w-72"
                 />
               </div>

@@ -113,6 +113,7 @@ export function SharedChatComposerControls({
           state={voicePresence}
           billing={voiceBilling}
           detail={voicePresenceDetail}
+          agentLabel={agentLabel}
           className="mb-1"
           // Expanding is only offered while someone actually holds the floor.
           // Opening a full-screen orb over an idle or errored session would show a

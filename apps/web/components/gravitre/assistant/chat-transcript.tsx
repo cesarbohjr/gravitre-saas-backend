@@ -234,9 +234,9 @@ export function ChatTranscript({
                 <UserAccountAvatar useCurrentUser size="md" />
               ) : (
                 <GravitreChatAvatar
-                  // One component for every surface. A department agent supplies
-                  // identity; main chat passes none and gets the Gravitre mark.
-                  // Both animate through the same states.
+                  // One component for every surface. Department chat passes the
+                  // agent record; main `/ai` passes the active persona as identity
+                  // data. Both animate through the same states.
                   agent={assistantAgent}
                   state={
                     speakingMessageId === message.id

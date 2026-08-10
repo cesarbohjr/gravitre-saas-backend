@@ -13,6 +13,10 @@
  * duplicate-component failure this program keeps hitting. There is now one
  * waveform, scaled, not two sets of bars to keep in sync.
  *
+ * Live-floor copy matches the handoff pills (11a / 11b): waveform + **You**
+ * (emerald) while the mic is open, waveform + agent name (graphite) while TTS
+ * plays. Idle / error keep status language — they are not speaker pills.
+ *
  * Motion budget is three intentional motions, and idle deliberately has none so
  * a voice session that is merely open never animates in an operator's periphery:
  *   1. listening  — bars react (mic is open)
@@ -38,6 +42,11 @@ type Props = {
   /** Optional short detail line, e.g. a transcript hint or failure reason. */
   detail?: string
   /**
+   * Display name for the agent speaker pill (11b). Defaults to Gravitre when the
+   * surface has no named agent / persona.
+   */
+  agentLabel?: string
+  /**
    * Expand to the full-screen orb, staying in voice mode. Omitted (not disabled)
    * when there is no live speaker, so the strip renders as plain status text with
    * no dead control — an inert-looking button that does nothing is worse than no
@@ -51,29 +60,37 @@ export function VoiceSessionPresence({
   state,
   billing = false,
   detail,
+  agentLabel = "Gravitre",
   onExpand,
   className,
 }: Props) {
   const reduceMotion = useReducedMotion()
 
   const isError = state === "error"
-  // Billing is a wait-for-credits condition, not a fault: amber, never red.
+  const isListening = state === "listening"
+  const isSpeaking = state === "speaking"
+  const isLiveFloor = isListening || isSpeaking
+
+  // Speaker pills (11a/11b): emerald for You, graphite for the agent. Idle/error
+  // keep the quieter status treatment so an open-but-silent session stays calm.
   const tone = isError
     ? billing
       ? "text-warning"
       : "text-muted-foreground"
-    : state === "idle"
-      ? "text-muted-foreground"
-      : "text-success"
+    : isListening
+      ? "text-[#16a374]"
+      : isSpeaking
+        ? "text-[#3f5b52] dark:text-[#e9e9e6]"
+        : "text-muted-foreground"
 
   const label = isError
     ? billing
       ? "Voice paused — credits needed"
       : "Voice unavailable right now"
-    : state === "listening"
-      ? "Listening"
-      : state === "speaking"
-        ? "Agent speaking"
+    : isListening
+      ? "You"
+      : isSpeaking
+        ? agentLabel
         : "Voice mode on"
 
   return (
@@ -86,14 +103,16 @@ export function VoiceSessionPresence({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
+        "flex items-center gap-2 rounded-full border px-3 py-1.5",
         isError && billing
           ? "border-warning/30 bg-warning/[0.06]"
           : isError
             ? "border-border/70 bg-muted/40"
-            : state === "idle"
-              ? "border-border/70 bg-muted/30"
-              : "border-success/25 bg-success/[0.06]",
+            : isListening
+              ? "border-[#16a374]/30 bg-[#16a374]/[0.08]"
+              : isSpeaking
+                ? "border-[#3f5b52]/25 bg-[#3f5b52]/[0.06] dark:border-[#e9e9e6]/20 dark:bg-[#e9e9e6]/[0.06]"
+                : "border-border/70 bg-muted/30",
         className,
       )}
     >
@@ -111,15 +130,17 @@ export function VoiceSessionPresence({
             // Same seven-bar component the composer and orb use, rendered at icon
             // scale. Previously this was a separate five-bar implementation, which
             // is precisely the second-waveform drift this pass exists to remove.
-            speaker={state === "speaking" ? "agent" : "user"}
+            speaker={isSpeaking ? "agent" : "user"}
             compact
           />
         )}
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-xs font-medium leading-tight", tone)}>{label}</span>
-        {detail ? (
+        <span className={cn("block truncate text-xs font-medium leading-tight", tone)}>
+          {label}
+        </span>
+        {detail && !isLiveFloor ? (
           <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
             {detail}
           </span>

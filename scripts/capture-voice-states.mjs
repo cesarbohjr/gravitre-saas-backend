@@ -45,7 +45,10 @@ for (const scheme of ["light", "dark"]) {
     }, scheme)
 
     // Assert on text only the real components can produce.
-    await page.getByText("Agent speaking").first().waitFor({ timeout: 20000 })
+    // Live-floor pills use speaker names (11a/11b): You / agentLabel — not
+    // "Listening" / "Agent speaking".
+    await page.getByText("You", { exact: true }).first().waitFor({ timeout: 20000 })
+    await page.getByText("Gravitre", { exact: true }).first().waitFor({ timeout: 20000 })
     await page.getByText("Voice paused — credits needed").first().waitFor({ timeout: 20000 })
     // Preset cards prove the /api/voice/library fixture resolved.
     await page.getByText("Atlas").first().waitFor({ timeout: 20000 })
@@ -78,13 +81,16 @@ for (const scheme of ["light", "dark"]) {
       const probe = await page.evaluate(() => {
         const read = (text) => {
           const el = [...document.querySelectorAll("div")].find(
-            (d) => d.textContent?.trim().startsWith(text) && d.className.includes("rounded-lg"),
+            (d) =>
+              d.getAttribute("role") === "status" &&
+              d.textContent?.trim().startsWith(text) &&
+              (d.className.includes("rounded-full") || d.className.includes("rounded-lg")),
           )
           return el ? getComputedStyle(el).borderColor : null
         }
         return {
           billing: read("Voice paused"),
-          listening: read("Listening"),
+          listening: read("You"),
         }
       })
       console.log(`  tokens ${scheme}:`, JSON.stringify(probe))
