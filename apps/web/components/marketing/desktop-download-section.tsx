@@ -16,12 +16,12 @@ const PLATFORM_META: Record<
 > = {
   macos: {
     label: "macOS",
-    blurb: "Apple Silicon & Intel · .dmg",
+    blurb: "Apple Silicon · .dmg",
     Icon: Apple,
   },
   windows: {
     label: "Windows",
-    blurb: "Windows 10/11 · .msi",
+    blurb: "Windows 10/11 · setup.exe",
     Icon: Monitor,
   },
   linux: {
@@ -30,6 +30,11 @@ const PLATFORM_META: Record<
     Icon: Terminal,
   },
 }
+
+const RELEASE_PAGE =
+  "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0"
+const MAC_INTEL_DMG =
+  "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_x64.dmg"
 
 type Props = {
   initialManifest?: DesktopReleaseManifest
@@ -66,13 +71,18 @@ export function DesktopDownloadSection({
   }, [])
 
   const platforms = useMemo(
-    () => (["macos", "windows", "linux"] as const).map((key) => ({
-      key,
-      ...PLATFORM_META[key],
-      href: manifest.downloads[key]?.url || "#",
-    })),
+    () =>
+      (["macos", "windows", "linux"] as const).map((key) => ({
+        key,
+        ...PLATFORM_META[key],
+        href: manifest.downloads[key]?.url || "#",
+      })),
     [manifest],
   )
+
+  const releaseUrl = manifest.releaseUrl || RELEASE_PAGE
+  const intelUrl = manifest.alsoAvailable?.macosIntel?.url || MAC_INTEL_DMG
+  const isUnsigned = manifest.signed !== true
 
   return (
     <section className={className ?? "relative py-24 sm:py-32 bg-white border-t border-zinc-200"}>
@@ -97,8 +107,69 @@ export function DesktopDownloadSection({
                 · {new Date(manifest.publishedAt).toLocaleDateString()}
               </span>
             ) : null}
+            {isUnsigned ? (
+              <span className="text-amber-700"> · unsigned early builds</span>
+            ) : null}
           </p>
         </div>
+
+        {isUnsigned ? (
+          <div
+            role="note"
+            aria-label="Unsigned build security warnings"
+            className="mx-auto mb-10 max-w-3xl border border-amber-300 bg-amber-50 px-5 py-5 text-left sm:px-6"
+          >
+            <p className="text-sm font-semibold text-amber-950">
+              These are early, unsigned builds
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-amber-950/90">
+              We have not yet provisioned Apple or Windows code-signing certificates. On first
+              launch, Windows and macOS will show a real security warning. That is expected for
+              this release — not malware, and not something we are hiding. Signed installers are a
+              separate follow-up once credentials are in place.
+            </p>
+            <div className="mt-4 space-y-3 text-sm leading-relaxed text-amber-950/90">
+              <div>
+                <p className="font-semibold text-amber-950">Windows — “Windows protected your PC”</p>
+                <p className="mt-1">
+                  SmartScreen may block the installer. Click <strong>More info</strong>, then{" "}
+                  <strong>Run anyway</strong>. Only do this if you downloaded from this page or the
+                  official GitHub release linked below.
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold text-amber-950">
+                  macOS — “Apple could not verify…” / cannot be opened
+                </p>
+                <p className="mt-1">
+                  Gatekeeper blocks unsigned apps. In Finder, <strong>right-click</strong> (or
+                  Control-click) the app → <strong>Open</strong> → confirm{" "}
+                  <strong>Open</strong> again. Or: System Settings → Privacy &amp; Security → scroll
+                  to the blocked app → <strong>Open Anyway</strong>.
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-amber-900/80">
+              Release assets:{" "}
+              <a
+                href={releaseUrl}
+                className="font-medium underline underline-offset-2 hover:text-amber-950"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                desktop-v0.1.0 on GitHub
+              </a>
+              . Intel Macs: use{" "}
+              <a
+                href={intelUrl}
+                className="font-medium underline underline-offset-2 hover:text-amber-950"
+              >
+                Gravitre_0.1.0_x64.dmg
+              </a>
+              .
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-3">
           {platforms.map((platform, index) => {
@@ -139,9 +210,8 @@ export function DesktopDownloadSection({
         </div>
 
         <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-zinc-500">
-          Installers publish from the desktop CI pipeline. Signed macOS/Windows builds require
-          Apple Developer and Windows code-signing certificates (setup cost outside the app
-          repo). Browser enrichment stays in the Chrome extension — not in Desktop.
+          Browser enrichment stays in the Chrome extension — not in Desktop. Full Settings, Meson,
+          Agents, and Billing open in the browser from the companion.
         </p>
       </div>
     </section>

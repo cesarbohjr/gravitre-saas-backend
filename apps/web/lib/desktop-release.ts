@@ -18,7 +18,14 @@ export type DesktopDownload = {
 export type DesktopReleaseManifest = {
   version: string
   publishedAt?: string
+  /** false for early unsigned CI builds; omit/true once signing is wired. */
+  signed?: boolean
+  releaseUrl?: string
   downloads: Record<DesktopPlatformKey, DesktopDownload>
+  alsoAvailable?: {
+    macosIntel?: DesktopDownload
+    windowsMsi?: DesktopDownload
+  }
 }
 
 /** Bundled at build time from `public/desktop/latest.json`. */

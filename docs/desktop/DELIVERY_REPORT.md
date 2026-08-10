@@ -25,7 +25,8 @@
 | Cold start measured | **NOT RUN** |
 | Deep-link each 0.2 target | **NOT RUN** live — wired in code (`openDeepLink` / tray Approvals) |
 | Native notification + approve/reject | **PARTIAL** — code wired to `/api/approvals` + notification plugin; CI binaries on draft release |
-| Signed installers (3 platforms) | **NOT RUN** — certs not provisioned; checklist in `SIGNING_AND_LATENCY.md` |
+| Signed installers (3 platforms) | **NOT RUN** — deferred; unsigned v0.1.0 published by choice; signing = separate milestone |
+| Published release `desktop-v0.1.0` | **PASS** — https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0 @ 2026-08-10T22:16:55Z (incl. `Gravitre_0.1.0_aarch64.dmg`) |
 | CI desktop matrix | **PASS** — https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31409015268 |
 | Auto-update | **PARTIAL** — manifest at `/desktop/latest.json`; Tauri updater pubkey not provisioned yet |
 | Marketing download section live | **Ship with web deploy** — version from manifest; OS highlight client-side |

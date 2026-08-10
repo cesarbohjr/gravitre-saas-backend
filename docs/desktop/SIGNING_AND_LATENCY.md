@@ -23,28 +23,28 @@ Local Windows release build produced:
 …/bundle/nsis/Gravitre_0.1.0_x64-setup.exe
 ```
 
-## CI artifacts — PASS (draft release)
+## CI artifacts — PASS (published unsigned)
 
 Evidence:
 
 - Icon-fix run: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31409015268 — **success** (Windows + macOS aarch64/x64 + Linux)
 - Cargo.lock run: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31409546855 — **success**
+- Published: https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0 @ `2026-08-10T22:16:55Z` (unsigned, intentional)
 
-Draft release `desktop-v0.1.0` assets (unsigned):
+Published `desktop-v0.1.0` assets:
 
 | Asset | Present |
 |-------|---------|
 | `Gravitre_0.1.0_amd64.AppImage` / `.deb` / `.rpm` | yes |
 | `Gravitre_0.1.0_x64-setup.exe` / `_en-US.msi` | yes |
 | `Gravitre_0.1.0_x64.dmg` + `Gravitre_x64.app.tar.gz` | yes |
-| `Gravitre_0.1.0_aarch64.dmg` (marketing `latest.json`) | confirm on draft after aarch64 upload |
+| `Gravitre_0.1.0_aarch64.dmg` + `Gravitre_aarch64.app.tar.gz` | **yes** (confirmed on publish) |
 
-Publish path: GitHub → Releases → draft **Gravitre Desktop v0.1.0** → Publish when ready.  
-Then rewrite `apps/web/public/desktop/latest.json` URLs to the published asset names (tag `desktop-v0.1.0`).
+Marketing `apps/web/public/desktop/latest.json` points at these real filenames on tag `desktop-v0.1.0`. Download UI states unsigned + SmartScreen/Gatekeeper steps.
 
-## Code signing — BLOCKED on secrets (you must provision)
+## Code signing — follow-up milestone (not blocking v0.1.0)
 
-These cannot be invented in-repo. Until set, installers remain **unsigned** (SmartScreen / Gatekeeper warnings).
+Proceeding **without** signing for this initial release (explicit product choice). Installers remain **unsigned** until certs are provisioned — SmartScreen / Gatekeeper warnings are expected and disclosed on `/download`.
 
 ### macOS (Apple Developer Program)
 

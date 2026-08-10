@@ -1,10 +1,12 @@
 {
   "version": "0.1.0",
-  "publishedAt": "2026-08-10T15:49:58.000Z",
+  "publishedAt": "2026-08-10T22:16:55.000Z",
+  "signed": false,
+  "releaseUrl": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0",
   "downloads": {
     "macos": {
       "url": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_aarch64.dmg",
-      "label": "macOS",
+      "label": "macOS (Apple Silicon)",
       "filename": "Gravitre_0.1.0_aarch64.dmg"
     },
     "windows": {
@@ -16,6 +18,18 @@
       "url": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_amd64.AppImage",
       "label": "Linux",
       "filename": "Gravitre_0.1.0_amd64.AppImage"
+    }
+  },
+  "alsoAvailable": {
+    "macosIntel": {
+      "url": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_x64.dmg",
+      "label": "macOS (Intel)",
+      "filename": "Gravitre_0.1.0_x64.dmg"
+    },
+    "windowsMsi": {
+      "url": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_x64_en-US.msi",
+      "label": "Windows (.msi)",
+      "filename": "Gravitre_0.1.0_x64_en-US.msi"
     }
   }
 }
