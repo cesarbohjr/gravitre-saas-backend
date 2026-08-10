@@ -46,22 +46,42 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined
+    const cleanups: Array<() => void> = []
     ;(async () => {
       try {
         const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link")
-        unlisten = await onOpenUrl((urls) => {
+        const unlistenAuth = await onOpenUrl((urls) => {
           for (const url of urls) {
             const parsed = parseAuthDeepLink(url)
             if (parsed) applySession(parsed)
           }
         })
+        cleanups.push(unlistenAuth)
       } catch {
         // Browser/dev preview — deep links unavailable.
       }
+
+      try {
+        const { listen } = await import("@tauri-apps/api/event")
+        const { invoke } = await import("@tauri-apps/api/core")
+        const unlistenSummon = await listen("companion-summoned", async () => {
+          // Yield to paint, then focus the composer and report input-ready latency.
+          await new Promise((r) => requestAnimationFrame(() => r(null)))
+          const el = document.querySelector<HTMLTextAreaElement>("textarea")
+          el?.focus()
+          const ms = await invoke<number>("report_input_ready")
+          if (ms > 0) {
+            console.info(`[gravitre-desktop] summon_to_input_ready_ms=${ms}`)
+            ;(window as unknown as { __gravitreSummonMs?: number }).__gravitreSummonMs = ms
+          }
+        })
+        cleanups.push(unlistenSummon)
+      } catch {
+        // Native shell only.
+      }
     })()
     return () => {
-      unlisten?.()
+      for (const stop of cleanups) stop()
     }
   }, [applySession])
 

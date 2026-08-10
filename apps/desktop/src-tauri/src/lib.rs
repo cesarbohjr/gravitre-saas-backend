@@ -1,9 +1,20 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WebviewWindow,
+    AppHandle, Emitter, Manager, WebviewWindow,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+static SUMMON_START_MS: AtomicU64 = AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
 
 fn companion_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::ALT), Code::Space)
@@ -14,15 +25,21 @@ fn toggle_companion(app: &AppHandle) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            show_companion(&window);
+            show_companion(app, &window, true);
         }
     }
 }
 
-fn show_companion(window: &WebviewWindow) {
+fn show_companion(app: &AppHandle, window: &WebviewWindow, measure: bool) {
+    if measure {
+        SUMMON_START_MS.store(now_ms(), Ordering::SeqCst);
+    }
     let _ = window.set_always_on_top(true);
     let _ = window.show();
     let _ = window.set_focus();
+    if measure {
+        let _ = app.emit("companion-summoned", now_ms());
+    }
 }
 
 #[tauri::command]
@@ -47,8 +64,20 @@ fn show_companion_window(app: AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "main window missing".to_string())?;
-    show_companion(&window);
+    show_companion(&app, &window, false);
     Ok(())
+}
+
+/// Frontend calls this when the composer is focused / input-ready after a summon.
+#[tauri::command]
+fn report_input_ready() -> Result<u64, String> {
+    let start = SUMMON_START_MS.swap(0, Ordering::SeqCst);
+    if start == 0 {
+        return Ok(0);
+    }
+    let elapsed = now_ms().saturating_sub(start);
+    eprintln!("[gravitre-desktop] summon_to_input_ready_ms={elapsed}");
+    Ok(elapsed)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -60,7 +89,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
-                show_companion(&window);
+                show_companion(app, &window, true);
             }
         }))
         .plugin(
@@ -74,7 +103,8 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             open_web_deep_link,
-            show_companion_window
+            show_companion_window,
+            report_input_ready
         ])
         .setup(|app| {
             let show_i = MenuItem::with_id(app, "show", "Open Gravitre", true, None::<&str>)?;
@@ -91,7 +121,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" | "chat" => {
                         if let Some(window) = app.get_webview_window("main") {
-                            show_companion(&window);
+                            show_companion(app, &window, true);
                         }
                     }
                     "approvals" => {
