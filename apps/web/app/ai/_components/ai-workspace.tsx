@@ -97,7 +97,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { resolveChatPersonaLabel } from "@/lib/chat-personas"
-import { suggestAgentIcon } from "@/lib/agent-identity"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
   buildOperatorJobPayload,
@@ -210,19 +209,11 @@ export function AiWorkspace({
   const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
   })
-  // Identity parity with agent chat: persona is the `/ai` session "who", so the
-  // transcript avatar/label and voice presence pills use the same name rather
-  // than hardcoding GRAVITRE when Friendly Assistant (etc.) is selected.
+  // Persona/agent *name* for labels + voice pills. Avatar disc is always the
+  // shared Gravitre mark (see GravitreChatAvatar) — not a per-persona icon.
   const assistantLabel = useMemo(
     () => resolveChatPersonaLabel(preferredPersona),
     [preferredPersona],
-  )
-  const assistantAgent = useMemo(
-    () => ({
-      name: assistantLabel,
-      icon: suggestAgentIcon(assistantLabel),
-    }),
-    [assistantLabel],
   )
   const [mode, setMode] = useState<ModeId>(initialMode)
   const [input, setInput] = useState("")
@@ -2132,7 +2123,6 @@ export function AiWorkspace({
                     onRegenerate={handleRegenerateAssistant}
                     onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
                     assistantLabel={assistantLabel}
-                    assistantAgent={assistantAgent}
                   />
                 </div>
                 {shouldShowTaskSidePanel(researchProgressSteps, pendingTask) ? (

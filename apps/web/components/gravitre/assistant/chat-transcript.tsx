@@ -51,7 +51,6 @@ import {
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 import { GravitreChatAvatar } from "@/components/gravitre/assistant/gravitre-chat-avatar"
-import type { AgentIdentityInput } from "@/lib/agent-identity"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -109,18 +108,11 @@ type ChatTranscriptProps = {
   onCopyLink?: (messageId: string) => void
   /** Honest no-op reporter when Save Question has no backend — parent shows toast. */
   onSaveQuestion?: (userMessageId: string, text: string) => void
-  /** Override assistant identity (department / specialized agents). */
-  assistantLabel?: string
   /**
-   * Agent identity as DATA, not a rendered node.
-   *
-   * This was `assistantAvatar?: ReactNode`, which let a caller substitute its own
-   * avatar and silently lose every animated state — department chat carried
-   * identity but never animated, main chat animated but looked generic. Passing
-   * the agent record instead lets GravitreChatAvatar render identity AND state
-   * together, and removes the escape hatch that allowed the two to drift.
+   * Display name above the bubble (persona / department agent name).
+   * Does not change the avatar disc — that is always the Gravitre mark.
    */
-  assistantAgent?: AgentIdentityInput
+  assistantLabel?: string
   waitingLabel?: string
 }
 
@@ -170,7 +162,6 @@ export function ChatTranscript({
   onCopyLink,
   onSaveQuestion,
   assistantLabel = "Gravitre",
-  assistantAgent,
   waitingLabel,
 }: ChatTranscriptProps) {
   // Which assistant message is currently being read aloud, so that message's
@@ -234,10 +225,8 @@ export function ChatTranscript({
                 <UserAccountAvatar useCurrentUser size="md" />
               ) : (
                 <GravitreChatAvatar
-                  // One component for every surface. Department chat passes the
-                  // agent record; main `/ai` passes the active persona as identity
-                  // data. Both animate through the same states.
-                  agent={assistantAgent}
+                  // Same Gravitre mark + states on every surface. Only the label
+                  // (persona / agent name) differs — not a per-agent icon disc.
                   state={
                     speakingMessageId === message.id
                       ? "speaking"
@@ -428,11 +417,7 @@ export function ChatTranscript({
                 filled circle the avatar would have appeared to morph into a
                 different shape mid-thread. That loader is untouched and still
                 used for route transitions. */}
-            {/* Previously `assistantAvatar ?? <GravitreChatAvatar state="thinking">`,
-                so any surface supplying its own avatar silently dropped the
-                thinking state — department chat never breathed at all. Identity
-                now rides along as data and the state always applies. */}
-            <GravitreChatAvatar agent={assistantAgent} state="thinking" title={resolvedWaiting} />
+            <GravitreChatAvatar state="thinking" title={resolvedWaiting} />
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>
               <div

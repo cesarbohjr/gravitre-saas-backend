@@ -111,30 +111,22 @@ for (const file of files) {
     }
   }
 
-  // ── Avatar drift (the gap that let this regression ship) ────────────────────
-  // The guard covered composer chrome but said nothing about avatars, so main
-  // chat's assistant avatar could regress to a static mark while department chat
-  // kept its rich one, and CI stayed green. These three rules close that.
+  // ── Avatar drift ───────────────────────────────────────────────────────────
+  // Chat threads always use GravitreChatAvatar (mark + states). Per-agent icons
+  // belong on hub/cards, not in the transcript. Labels carry the agent name.
 
-  // 1. The `assistantAvatar` prop was the escape hatch: passing a pre-rendered
-  //    node replaced the stateful avatar wholesale and silently dropped every
-  //    animated state. Identity must travel as data (`assistantAgent`) instead.
+  // 1. Pre-rendered avatar nodes are banned — they drop animated states.
   if (/\bassistantAvatar\s*[=:]/.test(src) && !AVATAR_DEFINITIONS.has(rel)) {
     failures.push(
-      `${rel}: passes assistantAvatar (pre-rendered node) — use assistantAgent so identity and state compose`,
+      `${rel}: passes assistantAvatar (pre-rendered node) — use GravitreChatAvatar via ChatTranscript`,
     )
   }
 
-  // 2. A chat transcript surface must not hand-roll an assistant avatar. Anything
-  //    rendering AgentIdentityAvatar as the *transcript* avatar bypasses the
-  //    state layer; the identity avatar is still fine for headers and hub cards.
-  if (
-    /<ChatTranscript\b/.test(src) &&
-    /<AgentIdentityAvatar\b/.test(src) &&
-    !src.includes("assistantAgent")
-  ) {
+  // 2. Do not pass per-agent icon identity into the transcript avatar path.
+  //    (Headers/hub cards may still use AgentIdentityAvatar in the same file.)
+  if (/\bassistantAgent\s*=/.test(src) && !AVATAR_DEFINITIONS.has(rel)) {
     failures.push(
-      `${rel}: renders <ChatTranscript> with a local <AgentIdentityAvatar> avatar — pass assistantAgent instead`,
+      `${rel}: passes assistantAgent — chat avatar is always Gravitre mark; use assistantLabel for the name only`,
     )
   }
 }
@@ -157,10 +149,14 @@ for (const file of files) {
         failures.push(`${rel}: no longer supports the "${state}" avatar state`)
       }
     }
-    // Identity must compose, not be replaced: this component has to keep
-    // delegating to the shared identity avatar rather than reimplementing it.
-    if (!src.includes("AgentIdentityAvatar")) {
-      failures.push(`${rel}: must render AgentIdentityAvatar for named agents (one identity implementation)`)
+    // Chat avatar is always the Gravitre mark — not a per-agent identity disc.
+    if (/<AgentIdentityAvatar\b/.test(src)) {
+      failures.push(
+        `${rel}: must not render AgentIdentityAvatar — chat discs are always the Gravitre mark`,
+      )
+    }
+    if (!src.includes("gravitre-mark-white.png")) {
+      failures.push(`${rel}: must render the Gravitre mark asset`)
     }
     if (!src.includes("useReducedMotion")) {
       failures.push(`${rel}: must honour prefers-reduced-motion`)
