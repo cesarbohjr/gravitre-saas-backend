@@ -19,7 +19,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   PanelRight,
-  Square,
   FolderOpen,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -62,7 +61,7 @@ import {
   splitConversationMessages,
   type PersistedInlineTurn,
 } from "@/lib/ai-inline-turn-persistence"
-import { conversationsApi, searchApi, assistantApi, authApi } from "@/lib/api"
+import { agentsApi, conversationsApi, searchApi, assistantApi, authApi } from "@/lib/api"
 import {
   deriveConversationTitle,
   shouldRefreshConversationTitle,
@@ -113,7 +112,10 @@ import {
 import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
-import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
+import {
+  AI_VOICE_AGENT_DEFAULT,
+  AiVoiceAgentPicker,
+} from "./ai-voice-agent-picker"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import { ConnectedFilePickerDialog } from "./connected-file-picker-dialog"
 import type { ConnectedFileAttachment } from "@/lib/connected-files-api"
@@ -137,19 +139,6 @@ import {
 } from "@/lib/active-conversation-recovery"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
-import {
-  DEFAULT_RESULT_BLOCK_ORDER,
-  type LayoutColumn,
-  type ResultBlockId,
-} from "./draggable-result-stack"
-import {
-  loadLayoutColumns,
-  loadLayoutEnabled,
-  loadLayoutOrder,
-  persistLayoutColumns,
-  persistLayoutEnabled,
-  persistLayoutOrder,
-} from "./ai-layout-storage"
 
 const LiveActivityRail = dynamic(
   () => import("./live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
@@ -209,12 +198,6 @@ export function AiWorkspace({
   const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
   })
-  // Persona/agent *name* for labels + voice pills. Avatar disc is always the
-  // shared Gravitre mark (see GravitreChatAvatar) — not a per-persona icon.
-  const assistantLabel = useMemo(
-    () => resolveChatPersonaLabel(preferredPersona),
-    [preferredPersona],
-  )
   const [mode, setMode] = useState<ModeId>(initialMode)
   const [input, setInput] = useState("")
   const [routing, setRouting] = useState(false)
@@ -222,9 +205,31 @@ export function AiWorkspace({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activityRailOpen, setActivityRailOpen] = useState(false)
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
-  const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
-  const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
-  const [layoutBlockColumns, setLayoutBlockColumns] = useState<Partial<Record<ResultBlockId, LayoutColumn>>>({})
+  const [voiceAgentId, setVoiceAgentId] = useState<string>(() => {
+    if (typeof window === "undefined") return AI_VOICE_AGENT_DEFAULT
+    return localStorage.getItem("gravitre_ai_voice_agent_id") || AI_VOICE_AGENT_DEFAULT
+  })
+  const { data: agentsData, isLoading: agentsLoading } = useSWR(
+    user ? "ai-voice-agents" : null,
+    () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const voiceAgents = agentsData?.agents ?? []
+  const selectedVoiceAgent = useMemo(
+    () => voiceAgents.find((agent) => agent.id === voiceAgentId) ?? null,
+    [voiceAgents, voiceAgentId],
+  )
+  // Label: selected voice agent name, else session persona. Avatar stays Gravitre mark.
+  const assistantLabel = useMemo(
+    () => selectedVoiceAgent?.name ?? resolveChatPersonaLabel(preferredPersona),
+    [selectedVoiceAgent?.name, preferredPersona],
+  )
+  const handleVoiceAgentChange = useCallback((next: string) => {
+    setVoiceAgentId(next)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gravitre_ai_voice_agent_id", next)
+    }
+  }, [])
   const [conversationLoading, setConversationLoading] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   // Seed from localStorage so conversation list/messages can start without waiting on orgs list().
@@ -806,12 +811,6 @@ export function AiWorkspace({
     mutateConversations,
     setMessages,
   ])
-
-  useEffect(() => {
-    setLayoutBlockOrder(loadLayoutOrder())
-    setLayoutEnabledBlocks(loadLayoutEnabled())
-    setLayoutBlockColumns(loadLayoutColumns())
-  }, [])
 
   useEffect(() => {
     // Keep auto-scroll inside the chat canvas so the history sidebar is not yanked.
@@ -1642,8 +1641,22 @@ export function AiWorkspace({
     const text = uiMessageText(lastAssistant).trim()
     if (!text) return
     lastSpokenMessageIdRef.current = lastAssistant.id
-    void speakAgentVoice(text, { messageId: lastAssistant.id })
-  }, [modality, voiceEntitled, isChatBusy, messages, speakAgentVoice])
+    void speakAgentVoice(text, {
+      messageId: lastAssistant.id,
+      agentId:
+        voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
+          ? selectedVoiceAgent.id
+          : undefined,
+    })
+  }, [
+    modality,
+    voiceEntitled,
+    isChatBusy,
+    messages,
+    speakAgentVoice,
+    voiceAgentId,
+    selectedVoiceAgent,
+  ])
 
   useEffect(() => {
     if (modality !== "voice") {
@@ -1785,54 +1798,6 @@ export function AiWorkspace({
     writeCachedInlineTurns(activeConversationId, inlineTurns)
   }, [activeConversationId, inlineTurns])
 
-  const handleToggleLayoutBlock = useCallback((blockId: ResultBlockId, enabled: boolean) => {
-    setLayoutEnabledBlocks((current) => {
-      const next = enabled
-        ? current.includes(blockId)
-          ? current
-          : [...current, blockId]
-        : current.filter((id) => id !== blockId)
-      persistLayoutEnabled(next)
-      return next
-    })
-    if (enabled) {
-      setLayoutBlockOrder((current) => {
-        const next = current.includes(blockId) ? current : [...current, blockId]
-        persistLayoutOrder(next)
-        return next
-      })
-    }
-  }, [])
-
-  const handleReorderLayoutBlocks = useCallback((next: ResultBlockId[]) => {
-    setLayoutBlockOrder(next)
-    persistLayoutOrder(next)
-  }, [])
-
-  const handleMoveLayoutBlockToColumn = useCallback((blockId: ResultBlockId, target: LayoutColumn) => {
-    setLayoutBlockColumns((current) => {
-      const next = { ...current, [blockId]: target }
-      persistLayoutColumns(next)
-      return next
-    })
-    setLayoutEnabledBlocks((current) => {
-      if (current.includes(blockId)) return current
-      const next = [...current, blockId]
-      persistLayoutEnabled(next)
-      return next
-    })
-    setLayoutBlockOrder((current) => {
-      const next = current.includes(blockId) ? current : [...current, blockId]
-      persistLayoutOrder(next)
-      return next
-    })
-  }, [])
-
-  const latestExecuteTurn = useMemo(
-    () => [...inlineTurns].reverse().find((turn) => turn.engine === "execute") ?? null,
-    [inlineTurns],
-  )
-
   const showLanding =
     !activeConversationId &&
     messages.length === 0 &&
@@ -1841,9 +1806,6 @@ export function AiWorkspace({
     !routing &&
     !initialPrompt.trim() &&
     !conversationLoading
-
-  const showPinnedLayout =
-    layoutEnabledBlocks.length > 0 && latestExecuteTurn == null && inlineTurns.length === 0
 
   const showEmptyThreadHint =
     !showLanding &&
@@ -1966,13 +1928,14 @@ export function AiWorkspace({
                 />
               </div>
 
-              {!showLanding ? (
-                <AiLayoutPanelPicker
-                  enabledBlocks={layoutEnabledBlocks}
-                  onToggleBlock={handleToggleLayoutBlock}
-                  className="hidden h-8 gap-1 px-2.5 text-[11px] sm:inline-flex"
-                />
-              ) : null}
+              <AiVoiceAgentPicker
+                agents={voiceAgents}
+                value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
+                onChange={handleVoiceAgentChange}
+                disabled={!user}
+                loading={Boolean(user) && agentsLoading}
+                className="hidden h-8 gap-1 px-2.5 text-[11px] sm:inline-flex"
+              />
 
               <Button
                 variant="ghost"
@@ -1993,7 +1956,7 @@ export function AiWorkspace({
                 <PanelRight className={cn(activityRailOpen && "text-primary")} />
               </Button>
 
-              {/* Mobile overflow — theme / help / layout / activity */}
+              {/* Mobile overflow — theme / help / activity */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -2044,6 +2007,14 @@ export function AiWorkspace({
               personaDisabled={!user}
               chatMode={chatMode}
               onChatModeChange={setChatMode}
+            />
+            <AiVoiceAgentPicker
+              agents={voiceAgents}
+              value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
+              onChange={handleVoiceAgentChange}
+              disabled={!user}
+              loading={Boolean(user) && agentsLoading}
+              className="h-8 shrink-0 px-2.5 text-[11px]"
             />
             <div className="ml-auto shrink-0">
               <ChatThemePicker
@@ -2176,12 +2147,6 @@ export function AiWorkspace({
                     isProcessing={turn.status === "running" && executeWorking}
                     error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
                     sourcePrompt={turn.prompt}
-                    blockOrder={layoutBlockOrder}
-                    enabledBlocks={layoutEnabledBlocks}
-                    onReorderBlocks={handleReorderLayoutBlocks}
-                    blockColumns={layoutBlockColumns}
-                    onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
-                    column="main"
                   />
                 ) : null}
 
@@ -2200,21 +2165,6 @@ export function AiWorkspace({
               </div>
             ))
               : null}
-
-            {showPinnedLayout ? (
-              <AiExecuteResults
-                plan={null}
-                job={null}
-                isProcessing={false}
-                error={null}
-                blockOrder={layoutBlockOrder}
-                enabledBlocks={layoutEnabledBlocks}
-                onReorderBlocks={handleReorderLayoutBlocks}
-                blockColumns={layoutBlockColumns}
-                onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
-                column="main"
-              />
-            ) : null}
 
             {routing ? (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -2345,15 +2295,6 @@ export function AiWorkspace({
         />
         <LiveActivityRail
           advisorBrief={advisorBrief}
-          layoutPlan={latestExecuteTurn?.executePlan ?? null}
-          layoutJob={latestExecuteTurn?.executeJob ?? null}
-          layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
-          layoutError={latestExecuteTurn?.executeError ?? null}
-          layoutBlockOrder={layoutBlockOrder}
-          layoutEnabledBlocks={layoutEnabledBlocks}
-          layoutBlockColumns={layoutBlockColumns}
-          onReorderLayoutBlocks={handleReorderLayoutBlocks}
-          onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
           onClose={() => setActivityRailOpen(false)}
         />
       </>

@@ -12,10 +12,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type { Run, RunStatus } from "@/types/api"
 import { Activity, CheckCircle2, Loader2, PlayCircle, X } from "lucide-react"
-import { AiExecuteResults } from "./ai-execute-results"
-import type { AgentJob } from "@/hooks/use-async-job"
-import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
-import type { LayoutColumn, ResultBlockId } from "./draggable-result-stack"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
 
@@ -50,27 +46,9 @@ function runName(run: Run): string {
 /** Right-hand rail summarizing live org activity for the unified AI surface. */
 export function LiveActivityRail({
   advisorBrief = null,
-  layoutPlan = null,
-  layoutJob = null,
-  layoutProcessing = false,
-  layoutError = null,
-  layoutBlockOrder = [],
-  layoutEnabledBlocks = [],
-  layoutBlockColumns = {},
-  onReorderLayoutBlocks,
-  onMoveLayoutBlockToColumn,
   onClose,
 }: {
   advisorBrief?: AdvisorBrief | null
-  layoutPlan?: InlineExecutePlan | null
-  layoutJob?: AgentJob | null
-  layoutProcessing?: boolean
-  layoutError?: string | null
-  layoutBlockOrder?: ResultBlockId[]
-  layoutEnabledBlocks?: ResultBlockId[]
-  layoutBlockColumns?: Partial<Record<ResultBlockId, LayoutColumn>>
-  onReorderLayoutBlocks?: (next: ResultBlockId[]) => void
-  onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
   onClose?: () => void
 } = {}) {
   const { user } = useAuth()
@@ -240,27 +218,6 @@ export function LiveActivityRail({
                 </motion.li>
               ))}
             </ul>
-          </div>
-        ) : null}
-
-        {layoutEnabledBlocks.length > 0 ? (
-          <div className="border-t border-border/70 pt-4">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Workspace panels
-            </p>
-            <AiExecuteResults
-              plan={layoutPlan}
-              job={layoutJob}
-              isProcessing={layoutProcessing}
-              error={layoutError}
-              blockOrder={layoutBlockOrder}
-              enabledBlocks={layoutEnabledBlocks}
-              onReorderBlocks={onReorderLayoutBlocks}
-              blockColumns={layoutBlockColumns}
-              onMoveBlockToColumn={onMoveLayoutBlockToColumn}
-              column="rail"
-              compact
-            />
           </div>
         ) : null}
 
