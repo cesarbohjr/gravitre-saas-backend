@@ -2316,15 +2316,15 @@ export function AiWorkspace({
                 trailingExtras={
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="hidden h-8 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
+                    variant="ghost"
+                    size="icon"
+                    className="mb-0.5 hidden h-8 w-8 shrink-0 rounded-full text-[color:var(--chat-surface-muted)] hover:bg-muted/60 hover:text-foreground sm:inline-flex"
                     disabled={routing || isChatBusy}
                     title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                    aria-label="Browse files"
                     onClick={() => setConnectedFilePickerOpen(true)}
                   >
-                    <FolderOpen className="h-3.5 w-3.5" />
-                    Browse files
+                    <FolderOpen className="h-4 w-4" />
                   </Button>
                 }
               />

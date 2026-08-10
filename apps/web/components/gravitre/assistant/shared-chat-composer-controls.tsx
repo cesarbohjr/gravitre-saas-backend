@@ -4,14 +4,16 @@
  * SHARED_CHAT_COMPOSER_CONTROLS — sole chat composer chrome for `/ai` and agent chat.
  *
  * Layout (text view):
- *   [ waveform | textarea | You/agent ]   ← input pill
- *                    [Browse files] [↑]   ← actions row, right-aligned
+ *   [ waveform | textarea | Browse | ↑/■ ]   ← everything inside the input pill
  *
  * There is no Text|Voice toggle and no separate Speak mic. The in-input waveform
  * is the voice control: grey/still when idle, emerald + animated when you hold
  * the floor, graphite when the agent is speaking. Clicking it toggles the mic
  * while staying in text view; when the floor is live, the speaker label opens
  * the full-page orb (voice view). Orb returns via "Tap for text view".
+ *
+ * Submit: green ArrowUp when ready; yellow Square (stop) while streaming,
+ * listening, or TTS speaking — one button, no separate Stop row.
  */
 
 import {
@@ -58,12 +60,13 @@ export type SharedChatComposerControlsProps = {
   onMicStatusChange?: (status: SpeechRecognitionStatus) => void
   voicePresence?: VoicePresenceState
   voiceBilling?: boolean
+  /** @deprecated Technical upstream detail — ignored in customer UI. */
   voicePresenceDetail?: string
   onVoiceInputError?: (message: string) => void
   /** Display name for the speaking agent (orb + in-input pill). */
   agentLabel?: string
   className?: string
-  /** Right-side extras next to submit (e.g. Browse files). */
+  /** Right-side extras inside the pill, before submit (e.g. Browse files icon). */
   trailingExtras?: ReactNode
   /** @deprecated Prefer trailingExtras — leading slot removed with Text|Voice toggle. */
   leadingExtras?: ReactNode
@@ -92,7 +95,6 @@ export function SharedChatComposerControls({
   onMicStatusChange,
   voicePresence = "idle",
   voiceBilling = false,
-  voicePresenceDetail,
   onVoiceInputError,
   agentLabel = "Gravitre",
   className,
@@ -127,6 +129,8 @@ export function SharedChatComposerControls({
   const waveActive = isLiveVoice
   const speakerLabel =
     voicePresence === "listening" ? "You" : voicePresence === "speaking" ? agentLabel : null
+
+  const isBusy = isStreaming || ttsSpeaking || isListening
 
   // Orb cannot outlive a live floor — collapse when mic/TTS ends.
   useEffect(() => {
@@ -208,7 +212,7 @@ export function SharedChatComposerControls({
           {!voiceEntitled
             ? unavailableReason
             : isListening
-              ? "Tap again for voice view (full-page orb). Use Stop to finish speaking."
+              ? "Tap again for voice view (full-page orb). Use the stop button to finish speaking."
               : "Tap to speak. Waveform turns green while you talk; graphite when the agent replies."}
         </TooltipContent>
       </Tooltip>
@@ -217,13 +221,14 @@ export function SharedChatComposerControls({
 
   return (
     <div className={cn("flex flex-col gap-2", className)} data-shared-chat-composer-controls="">
-      {voiceBilling && voicePresence === "error" ? (
-        <p className="text-xs text-warning" role="status">
-          {voicePresenceDetail || "Voice paused — credits needed"}
-        </p>
-      ) : voicePresence === "error" && voicePresenceDetail ? (
-        <p className="text-xs text-muted-foreground" role="status">
-          {voicePresenceDetail}
+      {voicePresence === "error" ? (
+        <p
+          className={cn("text-xs", voiceBilling ? "text-warning" : "text-muted-foreground")}
+          role="status"
+        >
+          {voiceBilling
+            ? "Voice paused — credits or payment needed"
+            : "Voice unavailable right now. Try again in a moment."}
         </p>
       ) : null}
 
@@ -273,31 +278,34 @@ export function SharedChatComposerControls({
             {speakerLabel}
           </button>
         ) : null}
-      </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2">
         {actions}
+
         {showSubmit ? (
-          isStreaming || ttsSpeaking || isListening ? (
+          isBusy ? (
             <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
               type="button"
+              size="icon"
+              className="mb-0.5 h-8 w-8 shrink-0 rounded-full bg-amber-400 text-amber-950 hover:bg-amber-300"
+              aria-label="Stop"
               onClick={() => {
                 if (isListening) toggleListening()
                 onStop?.()
               }}
             >
-              <Square className="mr-1 h-3 w-3" />
-              Stop
+              <Square className="h-3.5 w-3.5 fill-current" />
             </Button>
           ) : (
             <Button
               type={onSubmit ? "button" : "submit"}
               size="icon"
               disabled={disabled || !canSubmit}
-              className="h-8 w-8 rounded-full disabled:opacity-40"
+              className={cn(
+                "mb-0.5 h-8 w-8 shrink-0 rounded-full",
+                canSubmit && !disabled
+                  ? "bg-[#16a374] text-white hover:bg-[#128a63]"
+                  : "disabled:opacity-40",
+              )}
               aria-label="Send message"
               onClick={onSubmit}
             >

@@ -76,13 +76,14 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
   const applyFailure = useCallback((err: TtsSynthesizeError) => {
     if (err.billingIssue || err.errorClass === "billing" || err.status === 402) {
       setBillingIssue(true)
-      setBillingDetail(err.detail || "Voice paused — credits needed")
+      // parseTtsErrorBody already returns customer-safe copy — never surface JSON blobs.
+      setBillingDetail(err.detail || "Voice paused — credits or payment needed")
       setServiceError(false)
       setServiceDetail(undefined)
       return
     }
     setServiceError(true)
-    setServiceDetail(err.detail || "Voice unavailable right now")
+    setServiceDetail(err.detail || "Voice unavailable right now. Try again in a moment.")
     setBillingIssue(false)
     setBillingDetail(undefined)
   }, [])

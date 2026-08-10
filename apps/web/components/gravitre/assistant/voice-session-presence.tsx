@@ -85,7 +85,7 @@ export function VoiceSessionPresence({
 
   const label = isError
     ? billing
-      ? "Voice paused — credits needed"
+      ? "Voice paused — credits or payment needed"
       : "Voice unavailable right now"
     : isListening
       ? "You"
@@ -140,7 +140,12 @@ export function VoiceSessionPresence({
         <span className={cn("block truncate text-xs font-medium leading-tight", tone)}>
           {label}
         </span>
-        {detail && !isLiveFloor ? (
+        {/* Never surface upstream JSON / provider blobs under the status label. */}
+        {detail &&
+        !isLiveFloor &&
+        !isError &&
+        !detail.trim().startsWith("{") &&
+        !/payment_required|error_class|ElevenLabs/i.test(detail) ? (
           <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
             {detail}
           </span>
