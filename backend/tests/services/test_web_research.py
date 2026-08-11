@@ -44,9 +44,13 @@ async def test_search_web_parses_tavily_response():
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
     with patch("app.services.web_research.httpx.AsyncClient", return_value=mock_client):
-        output = await search_web("latest AI news", settings=_settings(tavily_api_key="tvly-test"))
+        output = await search_web(
+            "latest AI news",
+            settings=_settings(tavily_api_key="tvly-test", web_research_provider="tavily"),
+        )
 
     assert output["totalResults"] == 1
+    assert output["provider"] == "tavily"
 @pytest.mark.asyncio
 async def test_search_web_blocks_when_org_hourly_circuit_open():
     from app.services.web_research import search_web

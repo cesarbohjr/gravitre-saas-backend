@@ -438,8 +438,13 @@ class Settings(BaseSettings):
     # AI governance / safety (chokepoint-enforced in ModelRouter)
     # Global LLM killswitch — when true, all model_router completions are refused.
     disable_ai: bool = False
-    # Optional Tavily API key for assistant search_web tool (STA-148).
+    # Optional Tavily API key for assistant search_web tool (STA-148) / research fallback.
     tavily_api_key: str = ""
+    # Serper (google.serper.dev) — preferred low-COGS research primary when selected.
+    serper_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SERPER_API_KEY", "serper_api_key"),
+    )
 
     # Prompt 3 Tier 1 voice — ElevenLabs TTS + Deepgram STT (optional; browser fallback).
     elevenlabs_api_key: str = Field(
@@ -478,7 +483,7 @@ class Settings(BaseSettings):
         default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
     )
-    # Internet research provider: google (Grounded Generation) | tavily
+    # Internet research provider: serper | tavily | google (Grounded Generation)
     web_research_provider: str = Field(
         default="google",
         validation_alias=AliasChoices("WEB_RESEARCH_PROVIDER", "web_research_provider"),

@@ -1,0 +1,12 @@
+{
+  "record": "sta341_pricing_unchanged",
+  "checked_at": "2026-08-11T18:30:00Z",
+  "note": "Customer-facing Research Lookups allotments/overage unchanged by Serper provider work",
+  "billing_plans": {
+    "node": {"research_lookups_per_month": 10, "research_lookup_overage": 0.35},
+    "control": {"research_lookups_per_month": 60, "research_lookup_overage": 0.35},
+    "command": {"research_lookups_per_month": 200, "research_lookup_overage": 0.35},
+    "enterprise": {"research_lookups_per_month": 200, "research_lookup_overage": 0.35}
+  },
+  "verdict": "PASS — allotments 10/60/200 and $0.35 overage unchanged (provider-agnostic metering)"
+}

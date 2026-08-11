@@ -26,3 +26,7 @@ Published ballpark (verify): Serper ~$0.0003â€“$0.001/query vs Tavily ~$0.008 â†
 ## Out of scope
 
 Changing Research Lookups pricing model, allotments, or $0.35 overage.
+
+## Shipped (2026-08-11)
+
+Phase 0 widen sample **GO** (18/18). Serper primary + Tavily fallback integrated; customer allotments/overage unchanged. See `sta341-serper-primary-ship.md`.

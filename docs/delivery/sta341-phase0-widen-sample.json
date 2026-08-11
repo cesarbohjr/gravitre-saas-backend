@@ -1,0 +1,1173 @@
+{
+  "record": "sta341_phase0_widen_sample",
+  "started_at": "2026-08-11T19:41:30.401607+00:00",
+  "n_queries": 18,
+  "serper_configured": true,
+  "tavily_configured": true,
+  "queries": [
+    {
+      "category": "factual",
+      "query": "What is the current US federal funds rate target range?",
+      "comparison": {
+        "overlap_domains": [
+          "federalreserve.gov",
+          "nerdwallet.com",
+          "newyorkfed.org",
+          "tradingeconomics.com"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://tradingeconomics.com/united-states/interest-rate",
+          "https://www.federalreserve.gov/aboutthefed/fedexplained/accessible-version.htm",
+          "https://www.nerdwallet.com/banking/news/what-is-the-fed-rate",
+          "https://www.newyorkfed.org/markets/reference-rates/effr"
+        ],
+        "num_token_overlap": [
+          "1",
+          "3.75"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "FOMC's target range for the federal funds rate",
+            "url": "https://www.federalreserve.gov/aboutthefed/fedexplained/accessible-version.htm",
+            "snippet": "FOMC's target range for the federal funds rate ; 1.5 \u00b7 1.5 \u00b7 1.5 \u00b7 1 ; 1.75 \u00b7 1.75 \u00b7 1.75 \u00b7 1.25."
+          },
+          {
+            "title": "Effective Federal Funds Rate - Federal Reserve Bank of New York",
+            "url": "https://www.newyorkfed.org/markets/reference-rates/effr",
+            "snippet": "establishes the target rate, or range, TARGET RATE/RANGE (%) 08/06 3.63 3.60 3.62 3.63 3.65 113 3.50 - 3.75 08/05 3.63 3.60 3.62 3.63 3.65 114 3.50 -"
+          },
+          {
+            "title": "Federal Funds Target Range - Upper Limit (DFEDTARU) - FRED",
+            "url": "https://fred.stlouisfed.org/series/DFEDTARU",
+            "snippet": "Federal Funds Target Range - Upper Limit (DFEDTARU) Observations 2026-08-11: 3.75 | Percent, Not Seasonally Adjusted | Daily, 7-Day"
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "What Is the Federal Funds Rate?",
+            "url": "https://www.nerdwallet.com/banking/news/what-is-the-fed-rate",
+            "snippet": "| FOMC meeting dates | Rate change | Fed rate (as a target range) |\n --- \n| Dec. 12-13, 2023. | None. | 5.25% - 5.50%. |\n| Oct. 31-Nov. 1, 2023. | None. | 5.25%"
+          },
+          {
+            "title": "FOMC's target range for the federal funds rate",
+            "url": "https://www.federalreserve.gov/aboutthefed/fedexplained/accessible-version.htm",
+            "snippet": "to borrow for purchases, which influences employment, inflation, and output. [...] interest on reserve balances (IORB) rate. Arrow points down to BANKS Banks co"
+          },
+          {
+            "title": "United States Fed Funds Interest Rate - Trading Economics",
+            "url": "https://tradingeconomics.com/united-states/interest-rate",
+            "snippet": "### The benchmark interest rate in the United States was last recorded at 3.75 percent. Interest Rate in the United States is expected to be 3.75 percent by the"
+          }
+        ],
+        "serper_latency_ms": 798,
+        "tavily_latency_ms": 2436
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "factual",
+      "query": "What is the capital of New Zealand?",
+      "comparison": {
+        "overlap_domains": [
+          "en.wikipedia.org",
+          "science.nasa.gov"
+        ],
+        "overlap_domain_count": 2,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/Capital_of_New_Zealand",
+          "https://en.wikipedia.org/wiki/Wellington"
+        ],
+        "num_token_overlap": [],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Wellington - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Wellington",
+            "snippet": "Wellington is the capital city of New Zealand. It is located at the southwestern tip of the North Island, between Cook Strait and the Remutaka Range."
+          },
+          {
+            "title": "Wellington | 100% Pure New Zealand",
+            "url": "https://www.newzealand.com/us/wellington/",
+            "snippet": "Wellington is the capital city of New Zealand and is at the heart of New Zealand's Movie experiences \u00b7 Celebrated as New Zealand's creative capital ..."
+          },
+          {
+            "title": "Wellington | New Zealand, Map, Population, & Facts - Britannica",
+            "url": "https://www.britannica.com/place/Wellington-New-Zealand",
+            "snippet": "The capital city is Wellington and the largest urban area Auckland; both are located on the North Island."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Capital of New Zealand - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Capital_of_New_Zealand",
+            "snippet": "The capital of New Zealand has been Wellington since 1865. New Zealand's first capital was Old Russell (Okiato), in 1840\u20131841. Auckland was the second capital, "
+          },
+          {
+            "title": "Wellington",
+            "url": "https://en.wikipedia.org/wiki/Wellington",
+            "snippet": "Appearance\n\nCoordinates: 41\u00b017\u203220\u2033S 174\u00b046\u203238\u2033E\ufeff / \ufeff41.28889\u00b0S 174.77722\u00b0E\ufeff / -41.28889; 174.77722_region:NZ-WGN)\n\nFrom Wikipedia, the free encyclopedia\n\nCapita"
+          },
+          {
+            "title": "Wellington NZ : The Capital of New Zealand | 4K",
+            "url": "https://www.youtube.com/watch?v=zWzEVnTc1JU",
+            "snippet": "# Wellington NZ : The Capital of New Zealand | 4K\n## Driving and Filming\n21600 subscribers\n2559 likes\n\n### Description\n223197 views\nPosted: 27 Sep 2025\nWellingt"
+          }
+        ],
+        "serper_latency_ms": 791,
+        "tavily_latency_ms": 808
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "factual",
+      "query": "How many bits are in an IPv6 address?",
+      "comparison": {
+        "overlap_domains": [
+          "docs.oracle.com",
+          "en.wikipedia.org",
+          "testbook.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "https://docs.oracle.com/cd/E19253-01/816-4554/ipv6-overview-10/index.html",
+          "https://en.wikipedia.org/wiki/IPv6_address",
+          "https://testbook.com/question-answer/the-number-of-bits-in-ipv6-addressing-are--621e106d6a4e32615ec76b0c"
+        ],
+        "num_token_overlap": [
+          "128",
+          "16",
+          "64",
+          "8"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "IPv6 number of bits confusion! : r/ipv6",
+            "url": "https://www.reddit.com/r/ipv6/comments/4x9z0f/ipv6_number_of_bits_confusion/",
+            "snippet": "Why does each block of an ipv6 address 16 bits and has 4 characters, while each block of a ipv4 address has 8 bits and 8 characters? I don't ..."
+          },
+          {
+            "title": "IPv6 address",
+            "url": "https://en.wikipedia.org/wiki/IPv6_address",
+            "snippet": "IPv6 addresses have a size of 128 bits. An IPv6 address consists of 128 bits."
+          },
+          {
+            "title": "what is ipv6 and how many bits in ipv6 and addresses are ...",
+            "url": "https://bunny.net/academy/network/what-is-an-ipv6-address/",
+            "snippet": "IPv6 uses 128-bit addresses, Addressing IPv6 addresses are represented as eight groups of 16 bits. The most significant 64 bits serve as a network identifier,"
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "[Solved] The number of bits in IPv6 addressing are",
+            "url": "https://testbook.com/question-answer/the-number-of-bits-in-ipv6-addressing-are--621e106d6a4e32615ec76b0c",
+            "snippet": "IPv6 addresses have a size of 128 bits. As a result, compared to IPv4, IPv6 has a much larger address space. [...] All IPv6 addresses are 128 bits long, written"
+          },
+          {
+            "title": "IPv6 Addressing Overview",
+            "url": "https://docs.oracle.com/cd/E19253-01/816-4554/ipv6-overview-10/index.html",
+            "snippet": "An IPv6 address is 128 bits in length and consists of eight, 16-bit\nfields, with each field bounded by a colon. Each field must contain a hexadecimal\nnumber, in"
+          },
+          {
+            "title": "How many bits are in an IPv6 address?  | CompTIA A+",
+            "url": "https://www.youtube.com/watch?v=jCz7dzpIMLo",
+            "snippet": "how many bits are in an IP V6 address so we have possible options as 32 64 128 and 256 an IPv6 address has 128 bits unlike its predecessor ipv4 or ip4 if you've"
+          }
+        ],
+        "serper_latency_ms": 1027,
+        "tavily_latency_ms": 2298
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "current_event",
+      "query": "Latest US CPI inflation reading year over year",
+      "comparison": {
+        "overlap_domains": [
+          "bls.gov",
+          "tradingeconomics.com"
+        ],
+        "overlap_domain_count": 2,
+        "overlap_urls": [
+          "https://tradingeconomics.com/united-states/inflation-cpi",
+          "https://www.bls.gov/charts/consumer-price-index/consumer-price-index-by-category-line-chart.htm"
+        ],
+        "num_token_overlap": [
+          "12",
+          "2.1",
+          "2.9",
+          "2018",
+          "2023",
+          "2025",
+          "2026",
+          "4.1",
+          "4.2"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "12-month percentage change, Consumer Price Index, ...",
+            "url": "https://www.bls.gov/charts/consumer-price-index/consumer-price-index-by-category-line-chart.htm",
+            "snippet": "Consumer Price Index, over-the-year and over-the-month percent change. Data ranges from -2.1 to 9.1. Source: U.S. Bureau of Labor Statistics."
+          },
+          {
+            "title": "Consumer Price Index, 1913",
+            "url": "https://www.minneapolisfed.org/about-us/monetary-policy/inflation-calculator/consumer-price-index-1913-",
+            "snippet": "Year Annual Average CPI(-U) 1913 2018 251.1 2.4% 2019 255.7 1.8% 2020 \u2026 8.0% 2023 304.7 4.1% 2024 313.7 2.9% 2025 321.9 2.6% 2026* 334.4 3.9% second quarter ..."
+          },
+          {
+            "title": "United States Inflation Rate",
+            "url": "https://tradingeconomics.com/united-states/inflation-cpi",
+            "snippet": "Inflation Rate in the United States decreased to 3.50 percent in June from 4.20 percent in May of 2026. easing further from the 2023 high of 4.2% reached in ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "United States Consumer Price Index (CPI) YoY - Investing.com",
+            "url": "https://www.investing.com/economic-calendar/cpi-733",
+            "snippet": "| Dec 18, 2025 (Nov) | 13:30 | 2.7% | 3.1% | 3.0% |\n| Oct 24, 2025 (Sep) | 12:30 | 3.0% | 3.1% | 2.9% | [...] | Release date | Time | Actual | Forecast | Previo"
+          },
+          {
+            "title": "Current U.S. Inflation Rates: 2000-2026",
+            "url": "https://www.usinflationcalculator.com/inflation/current-inflation-rates",
+            "snippet": "| February 2018 | 0.3 | 2.2 |\n| January 2018 | 0.4 | 2.1 |\n| December 2017 | 0.2 | 2.1 |\n| November 2017 | 0.3 | 2.2 |\n| October 2017 | 0.1 | 2.0 |\n| September "
+          },
+          {
+            "title": "12-month percentage change, Consumer Price Index, ...",
+            "url": "https://www.bls.gov/charts/consumer-price-index/consumer-price-index-by-category-line-chart.htm",
+            "snippet": "| Dec 2022 | 6.5% | 10.4% | 11.8% | 8.3% | 7.3% | -1.5% | 14.3% | 19.3% | 5.7% | 2.1% | 2.9% | 5.9% | 3.2% | 7.0% | 7.5% | 4.1% | 0.7% |\n| Jan 2023 | 6.4% | 10."
+          }
+        ],
+        "serper_latency_ms": 3417,
+        "tavily_latency_ms": 1270
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "current_event",
+      "query": "Who won the most recent Super Bowl?",
+      "comparison": {
+        "overlap_domains": [
+          "en.wikipedia.org",
+          "espn.com",
+          "foxsports.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "http://www.espn.com/nfl/superbowl/history/winners",
+          "https://en.wikipedia.org/wiki/List_of_Super_Bowl_champions",
+          "https://en.wikipedia.org/wiki/Super_Bowl",
+          "https://www.foxsports.com/nfl-super-bowl-winners-and-results"
+        ],
+        "num_token_overlap": [
+          "10",
+          "2017",
+          "24",
+          "28",
+          "34",
+          "5",
+          "6"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "NFL History - Super Bowl Winners",
+            "url": "http://www.espn.com/nfl/superbowl/history/winners",
+            "snippet": "Baltimore 34, San Francisco 31 XLVIII Feb. 2, 2014 MetLife. New England 28, Seattle 24. Denver 24, Carolina 10 LI Feb. 5, 2017"
+          },
+          {
+            "title": "List of Super Bowl champions",
+            "url": "https://en.wikipedia.org/wiki/List_of_Super_Bowl_champions",
+            "snippet": "The Pittsburgh Steelers won two consecutive Super Bowls. This is the most recent Super Bowl where both teams had their first Super Bowl appearance."
+          },
+          {
+            "title": "Super Bowl Winners and Results",
+            "url": "https://www.foxsports.com/nfl-super-bowl-winners-and-results",
+            "snippet": "The Pittsburgh Steelers and New England Patriots are tied at 6 Super Bowl victories each. They are followed by the Dallas Cowboys and San Francisco 49ers at 5 ."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "List of Super Bowl champions - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/List_of_Super_Bowl_champions",
+            "snippet": "The New England Patriots played their first championship game in Super Bowl XX (_pictured_) where they lost to the Bears. This is the most recent Super Bowl whe"
+          },
+          {
+            "title": "Super Bowl - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Super_Bowl",
+            "snippet": "To date only two teams have qualified for a Super Bowl at their home stadiums: the 2020 Tampa Bay Buccaneers, who won Super Bowl LV hosted at Raymond James Stad"
+          },
+          {
+            "title": "NFL History - Super Bowl Winners",
+            "url": "http://www.espn.com/nfl/superbowl/history/winners",
+            "snippet": "| L | Feb. 7, 2016 | Levi's Stadium (Santa Clara, Calif.) | Denver 24, Carolina 10 |\n| LI | Feb. 5, 2017 | NRG Stadium (Houston) | New England 34, Atlanta 28 |\n"
+          }
+        ],
+        "serper_latency_ms": 901,
+        "tavily_latency_ms": 2361
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "current_event",
+      "query": "Current OpenAI CEO name",
+      "comparison": {
+        "overlap_domains": [
+          "businessinsider.com",
+          "en.wikipedia.org",
+          "forbes.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/OpenAI",
+          "https://en.wikipedia.org/wiki/Sam_Altman",
+          "https://www.businessinsider.com/sam-altman"
+        ],
+        "num_token_overlap": [
+          "1985",
+          "2019",
+          "2023",
+          "22"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Sam Altman - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Sam_Altman",
+            "snippet": "Samuel Harris Altman (born April 22, 1985) is an has been the chief executive officer (CEO) of the artificial intelligence company OpenAI since 2019."
+          },
+          {
+            "title": "OpenAI - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/OpenAI",
+            "snippet": "Key people Bret Taylor (chairman) Sam Altman (CEO) Greg Brockman (president and CEO of Applications) [3] Sarah Friar ( OpenAI Foundation (26%) Sam Altman as ..."
+          },
+          {
+            "title": "Sam Altman - Forbes",
+            "url": "https://www.forbes.com/profile/sam-altman/",
+            "snippet": "Sam Altman is the CEO of OpenAI. Altman left YC to become CEO of OpenAI, now worth some $500 billion, although he was briefly fired and rehired in 2023."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Sam Altman",
+            "url": "https://en.wikipedia.org/wiki/Sam_Altman",
+            "snippet": "Samuel Harris Altman (born April 22, 1985) is an American entrepreneur and investor who has been the chief executive officer (CEO) of the artificial intelligenc"
+          },
+          {
+            "title": "OpenAI - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/OpenAI",
+            "snippet": "On November 17, 2023, Sam Altman was removed as CEO when OpenAI's board of directors (composed of Helen Toner, Ilya Sutskever, Adam D'Angelo and Tasha McCauley)"
+          },
+          {
+            "title": "Sam Altman",
+            "url": "https://www.forbes.com/profile/sam-altman",
+            "snippet": "Sam Altman is the CEO of OpenAI and a prolific venture investor.\n In 2005, he dropped out of Stanford to found social mapping company Loopt, which sold in 2012 "
+          }
+        ],
+        "serper_latency_ms": 1206,
+        "tavily_latency_ms": 4585
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "entity",
+      "query": "What does Stripe do as a company?",
+      "comparison": {
+        "overlap_domains": [
+          "en.wikipedia.org",
+          "linkedin.com",
+          "stripe.com",
+          "wise.com"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/Stripe,_Inc.",
+          "https://wise.com/us/blog/what-is-stripe",
+          "https://www.linkedin.com/company/stripe"
+        ],
+        "num_token_overlap": [],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Stripe",
+            "url": "https://stripe.com/",
+            "snippet": "Stripe is a financial services platform that helps all types of businesses accept payments, build flexible billing models, and manage money movement."
+          },
+          {
+            "title": "Stripe, Inc. - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Stripe,_Inc.",
+            "snippet": "The company primarily offers payment-processing software and application programming interfaces for e-commerce websites and mobile applications."
+          },
+          {
+            "title": "Understanding Stripe : r/fintech - Reddit",
+            "url": "https://www.reddit.com/r/fintech/comments/r4jao6/understanding_stripe/",
+            "snippet": "It's great for merchants for ease of use and great for banks since more volume. Only downside is that stripe is on the hook for any fraud, but ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Stripe, Inc.",
+            "url": "https://en.wikipedia.org/wiki/Stripe,_Inc.",
+            "snippet": "Stripe, Inc. is an American multinational financial services and software as a service (SaaS) company dual-headquartered in South San Francisco, California, Uni"
+          },
+          {
+            "title": "What does Stripe do?",
+            "url": "https://technically.dev/posts/what-does-stripe-do",
+            "snippet": "### Explore learning tracks\n\n# What does Stripe do?\n\nStripe sells payments infrastructure for internet businesses: primarily, they help you bill your customers,"
+          },
+          {
+            "title": "Stripe | LinkedIn",
+            "url": "https://www.linkedin.com/company/stripe",
+            "snippet": "## Overview\nStripe builds programmable financial services. Millions of companies\u2014from the world\u2019s largest enterprises to the most ambitious startups\u2014use Stripe "
+          }
+        ],
+        "serper_latency_ms": 581,
+        "tavily_latency_ms": 2057
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "entity",
+      "query": "Headquarters city of Salesforce",
+      "comparison": {
+        "overlap_domains": [
+          "en.wikipedia.org",
+          "help.salesforce.com"
+        ],
+        "overlap_domain_count": 2,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/Salesforce",
+          "https://help.salesforce.com/s/articleView?id=000372320&language=en_US&type=3"
+        ],
+        "num_token_overlap": [
+          "1",
+          "415"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Global Offices",
+            "url": "https://www.salesforce.com/company/locations/",
+            "snippet": "Corporate Headquarters Salesforce, Inc. Salesforce Tower 415 Mission Street, 3rd Floor San Francisco, CA 94105 Main: 1-800-664-9073 Fax: 415-901-7040. Sales@ .."
+          },
+          {
+            "title": "Where are the salesforce offices?",
+            "url": "https://help.salesforce.com/s/articleView?id=000372320&language=en_US&type=3",
+            "snippet": "San Francisco, California: Global headquarters located at Salesforce Tower. New York City, New York: Salesforce offices in the East Coast hub."
+          },
+          {
+            "title": "Join Salesforce in North America | U.S. & Canada",
+            "url": "https://www.salesforce.com/company/careers/locations/north-america/",
+            "snippet": "With roles in everything from AI to account management, we're hiring in major cities and emerging hubs alike. No matter where you sit, you'll be part of shaping"
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Where is Salesforce Headquartered? HQ Address, Map & Offices",
+            "url": "https://derrick-app.com/company/salesforce/headquarters",
+            "snippet": "Salesforce's headquarters is located at 415 Mission Street, San Francisco, California 94105, United States, as of August 2026. This is the registered head offic"
+          },
+          {
+            "title": "Salesforce Headquarters & Office Locations: Full 2026 Directory \u2014 Stealery",
+            "url": "https://www.getstealery.com/blog/hq-locations/salesforce-headquarters-office-locations",
+            "snippet": "Salesforce is headquartered in San Francisco, California. The company consolidated its primary executive offices and San Francisco-area employees into Salesforc"
+          },
+          {
+            "title": "160+ Salesforce Headquarters Stock Photos, Pictures & Royalty-Free Images - iStock",
+            "url": "https://www.istockphoto.com/photos/salesforce-headquarters",
+            "snippet": "Salesforce headquarters in San Francisco, California, USA\n\nSalesforce headquarters in San Francisco, California, USA - June 6, 2023. Salesforce, Inc. is an Amer"
+          }
+        ],
+        "serper_latency_ms": 2224,
+        "tavily_latency_ms": 937
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "entity",
+      "query": "Who founded Notion productivity software?",
+      "comparison": {
+        "overlap_domains": [
+          "en.wikipedia.org",
+          "firstround.com",
+          "kitrum.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/Notion_(productivity_software)",
+          "https://www.firstround.com/companies/notion"
+        ],
+        "num_token_overlap": [
+          "2013"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Notion (productivity software)",
+            "url": "https://en.wikipedia.org/wiki/Notion_(productivity_software)",
+            "snippet": "Notion Labs, Inc. was created \u2026 founded in 2013 by Ivan Zhao, Akshay Kothari, Chris Prucha, Jessica Lam, Simon Last, and Toby Schachman."
+          },
+          {
+            "title": "Ivan Zhao - Founder at Notion",
+            "url": "https://www.linkedin.com/in/ivanhzhao",
+            "snippet": "Ivan Zhao. Founder at Notion. The University of British Columbia. San Francisco, California, United States."
+          },
+          {
+            "title": "Notion",
+            "url": "https://www.firstround.com/companies/notion",
+            "snippet": "Founders: Ivan Zhao, Simon Last, Akshay Kothari ; Initial Partnership: Seed ; Categories: Enterprise / AI / Consumer ; Partner: Josh Kopelman ; Location: SF Bay"
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Notion (productivity software) - Wikipedia",
+            "url": "https://en.wikipedia.org/wiki/Notion_(productivity_software)",
+            "snippet": "Notion Labs, Inc. was created as a startup in San Francisco, California, founded in 2013 by Ivan Zhao, Akshay Kothari, Chris Prucha, Jessica Lam, Simon Last, an"
+          },
+          {
+            "title": "The Phenomenal Journey of Ivan Zhao, Notion's Founder - KITRUM",
+            "url": "https://kitrum.com/blog/the-phenomenal-journey-of-ivan-zhao-notions-founder",
+            "snippet": "### Building the next great productivity tool? We help product-led teams design and scale standout software.\n\nExplore Development Services\n\n## Bottom line\n\nUndo"
+          },
+          {
+            "title": "$10 Billion Productivity Startup Notion Wants To Build Your AI Everything App",
+            "url": "https://www.forbes.com/sites/kenrickcai/2024/04/11/10-billion-productivity-startup-notion-wants-to-build-your-ai-everything-app",
+            "snippet": "In a last-ditch attempt to save the company, Zhao and cofounder Simon Last laid off all their employees, sublet their San Francisco office and moved to Kyoto, J"
+          }
+        ],
+        "serper_latency_ms": 1143,
+        "tavily_latency_ms": 5068
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "entity",
+      "query": "What is HubSpot known for?",
+      "comparison": {
+        "overlap_domains": [
+          "cargas.com",
+          "en.wikipedia.org",
+          "simplestrat.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "https://en.wikipedia.org/wiki/HubSpot",
+          "https://simplestrat.com/blog/what-is-hubspot"
+        ],
+        "num_token_overlap": [],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "About HubSpot | HubSpot's Story",
+            "url": "https://www.hubspot.com/our-story",
+            "snippet": "Founded in Boston in 2006 as marketing software, today HubSpot is a complete customer platform that helps millions of businesses grow around the world."
+          },
+          {
+            "title": "Could you explain what HubSpot is and what it's used for?",
+            "url": "https://www.reddit.com/r/hubspot/comments/1qjbjaq/could_you_explain_what_hubspot_is_and_what_its/",
+            "snippet": "I have a meeting with my boss and I need to know what HubSpot is. I'd like to hear from someone who has worked with it. Thanks :)"
+          },
+          {
+            "title": "What Is HubSpot and What Does It Do? - Cargas",
+            "url": "https://cargas.com/blog/what-is-hubspot/",
+            "snippet": "HubSpot is an all-in-one, AI-powered customer platform created to help businesses simplify and centralize their sales, marketing, and ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "What is HubSpot\u2014and what does it do? | Zapier",
+            "url": "https://zapier.com/blog/what-is-hubspot",
+            "snippet": "HubSpot is most well-known for its powerful CRM and inbound marketing tools, but it's actually organized into six \"Hubs\" (hence the platform's name) that cover "
+          },
+          {
+            "title": "What is HubSpot?",
+            "url": "https://www.youtube.com/watch?v=GnIREMgz-SQ",
+            "snippet": "About HubSpot: \nHubSpot is a customer platform that provides education, software, and support to help businesses grow better. The platform includes marketing, s"
+          },
+          {
+            "title": "What Is HubSpot and What Does It Do? - Cargas",
+            "url": "https://cargas.com/blog/what-is-hubspot",
+            "snippet": "HubSpot is an all-in-one, AI-powered customer platform created to help businesses simplify and centralize their sales, marketing, and relationship management ef"
+          }
+        ],
+        "serper_latency_ms": 983,
+        "tavily_latency_ms": 1076
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "comparison",
+      "query": "PostgreSQL vs MySQL primary differences for OLTP",
+      "comparison": {
+        "overlap_domains": [
+          "enterprisedb.com",
+          "fivetran.com",
+          "reddit.com"
+        ],
+        "overlap_domain_count": 3,
+        "overlap_urls": [
+          "https://www.enterprisedb.com/blog/postgresql-vs-mysql-360-degree-comparison-syntax-performance-scalability-and-features",
+          "https://www.fivetran.com/blog/postgresql-vs-mysql"
+        ],
+        "num_token_overlap": [],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "PostgreSQL vs MySQL: In-depth Comparison & Performance Analysis",
+            "url": "https://www.enterprisedb.com/blog/postgresql-vs-mysql-360-degree-comparison-syntax-performance-scalability-and-features",
+            "snippet": "PostgreSQL is as the superior choice due to its extensive feature set and strong community support. While MySQL's straightforward interface ..."
+          },
+          {
+            "title": "PostgreSQL vs. MySQL: Differences in performance and uses - Fivetran",
+            "url": "https://www.fivetran.com/blog/postgresql-vs-mysql",
+            "snippet": "MySQL excels at straightforward, high-speed operations, but PostgreSQL is better for applications that require more advanced and unique data ..."
+          },
+          {
+            "title": "In what circumstances is MySQL better than PostgreSQL? - Reddit",
+            "url": "https://www.reddit.com/r/PostgreSQL/comments/tldork/in_what_circumstances_is_mysql_better_than/",
+            "snippet": "PostgreSQL shines when it comes to complex queries, whereas MySQL shines when it comes to OLAP and OLTP systems. MySQL is only ACID-compliant ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "PostgreSQL vs MySQL: 5 Benchmarks Reveal the Winner [2026]",
+            "url": "https://tech-insider.org/postgresql-vs-mysql-2026",
+            "snippet": "For simple point lookups and range scans on indexed tables \u2013 the bread-and-butter of most web applications \u2013 MySQL maintains a measurable edge. In sysbench OLTP"
+          },
+          {
+            "title": "PostgreSQL vs. MySQL: Differences in performance and uses",
+            "url": "https://www.fivetran.com/blog/postgresql-vs-mysql",
+            "snippet": "MySQL uses a relational design, while PostgreSQL is an object-relational database. Relational systems store data in basic tables, while object-relational databa"
+          },
+          {
+            "title": "PostgreSQL vs MySQL: In-depth Comparison & Performance Analysis",
+            "url": "https://www.enterprisedb.com/blog/postgresql-vs-mysql-360-degree-comparison-syntax-performance-scalability-and-features",
+            "snippet": "MySQL features a tablespaces option within its InnoDB engine, akin to PostgreSQL, allowing DBAs to group and store physical objects, thus enhancing I/O distribu"
+          }
+        ],
+        "serper_latency_ms": 670,
+        "tavily_latency_ms": 2794
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "comparison",
+      "query": "React vs Vue which is more popular in 2026 enterprise apps",
+      "comparison": {
+        "overlap_domains": [],
+        "overlap_domain_count": 0,
+        "overlap_urls": [],
+        "num_token_overlap": [
+          "2026"
+        ],
+        "flags": [
+          "no_domain_overlap"
+        ],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "React vs Vue vs Angular: Which Framework to Choose in 2026?",
+            "url": "https://www.reddit.com/r/Nuxt/comments/1q25xdr/react_vs_vue_vs_angular_which_framework_to_choose/",
+            "snippet": "React > maximum flexibility/ecosystem \u00b7 Vue > easiest balance of simplicity + power \u00b7 Angular > strongest structure for enterprise-scale apps."
+          },
+          {
+            "title": "Vue vs React: I Switched Teams Halfway Through a Project (Here's ...",
+            "url": "https://navanathjadhav.medium.com/vue-vs-react-i-switched-teams-halfway-through-a-project-heres-what-happened-2bf6736a8f48",
+            "snippet": "React won the popularity contest. More jobs, more developers, more everything. But Vue has a cult following. Developers who use Vue LOVE Vue ( ..."
+          },
+          {
+            "title": "Vue vs React 2026: 5x Download Gap and 93% Retention Rate [Tested]",
+            "url": "https://tech-insider.org/vue-vs-react-2026/",
+            "snippet": "React dominates with 25 million weekly npm downloads against Vue's 5 million, but Vue's developer satisfaction scores have climbed to 93% in ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Vue vs React: A Complete 2026 Comparison for Scalable Web Apps",
+            "url": "https://www.thefrontendcompany.com/posts/vue-vs-react",
+            "snippet": "It says that companies using React will hire developers faster, and skilled React experts have better opportunities.\n\nThe trend in job demand is still heavily i"
+          },
+          {
+            "title": "ReactJS vs Angular vs Vue: Which Framework Leads in 2026?",
+            "url": "https://www.unifiedinfotech.net/blog/react-vs-angular-vs-vue-web-app",
+            "snippet": "Angular is best for large-scale web apps in 2026, thanks to its built-in scalability tools, such as dependency injection, modules, zoneless detection, TypeScrip"
+          },
+          {
+            "title": "React vs Angular vs Vue Performance Benchmarks 2026 - Enqcode blog",
+            "url": "https://enqcode.com/blog/react-angular-vue-performance-benchmarks-2026",
+            "snippet": "Enterprises: Opt for Angular 20 as it has strict TypeScript, a structured architecture, and predictable upgrades. Big teams enjoy the benefit of ecosystem stabi"
+          }
+        ],
+        "serper_latency_ms": 671,
+        "tavily_latency_ms": 3034
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "comparison",
+      "query": "AWS vs Azure market share cloud computing",
+      "comparison": {
+        "overlap_domains": [
+          "emma.ms",
+          "linkedin.com"
+        ],
+        "overlap_domain_count": 2,
+        "overlap_urls": [
+          "https://www.emma.ms/blog/cloud-market-share-trends",
+          "https://www.linkedin.com/posts/swastis_cloudcomputing-digitaltransformation-aws-activity-7401926607164071937-iHk4"
+        ],
+        "num_token_overlap": [
+          "2026",
+          "25",
+          "28"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Seriously though, who actually holds the higher market share AWS or ...",
+            "url": "https://www.reddit.com/r/Cloud/comments/1daam2f/seriously_though_who_actually_holds_the_higher/",
+            "snippet": "AWS has the larger market share right now at around 30% while azure is at 25%, AWS has the market share but Azure is growing faster. Azure also ..."
+          },
+          {
+            "title": "Chart: Big Three Hold Dominant Lead in Accelerating Cloud Market - Statista",
+            "url": "https://www.statista.com/chart/18819/worldwide-market-share-of-leading-cloud-infrastructure-service-providers/?srsltid=AfmBOoqf74nVZw4YCpqd2PhyOc2DZ38JpZTs_L4hYOFJxc6HnE8E3Ee5",
+            "snippet": "Amazon's market share in the worldwide cloud infrastructure market amounted to 28 percent in the first quarter of 2026, ahead of Microsoft's ..."
+          },
+          {
+            "title": "Cloud Market Share Trends - Big Three Together Hold 63% while ...",
+            "url": "https://www.srgresearch.com/articles/cloud-market-share-trends-big-three-together-hold-63-while-oracle-and-the-neoclouds-inch-higher",
+            "snippet": "Amazon, Microsoft and Google together accounted for 63% of enterprise spending on cloud infrastructure services in Q3. Four quarters ago it was ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Azure vs AWS: Which Cloud Provider Is Best in 2025?",
+            "url": "https://intercept.cloud/en-gb/blogs/azure-vs-aws",
+            "snippet": "Niels Kroeze\n\nAuthor\n\nNiels Kroeze Cloud Content Specialist\n\nReading time 20 minutes Published: 25 July 2025\n\n## Azure vs AWS: Overview\n\nThe cloud computing ind"
+          },
+          {
+            "title": "Cloud Computing Landscape 2026: AWS, Azure, GCP Compared | Swastisundar Bose posted on the topic | LinkedIn",
+            "url": "https://www.linkedin.com/posts/swastis_cloudcomputing-digitaltransformation-aws-activity-7401926607164071937-iHk4",
+            "snippet": "Cloud 2026: A Strategic Comparison The cloud computing landscape in 2026 is more competitive and specialized than ever. While Amazon Web Services (AWS) still ho"
+          },
+          {
+            "title": "AWS vs Azure vs GCP: Honest Comparison for 2026",
+            "url": "https://kodekloud.com/blog/aws-vs-azure-vs-gcp",
+            "snippet": "AWS leads with approximately 31% of the global cloud infrastructure market share. Microsoft Azure follows at around 23-25%, while Google Cloud holds 11-12%. Tog"
+          }
+        ],
+        "serper_latency_ms": 570,
+        "tavily_latency_ms": 1465
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "lookup",
+      "query": "NIST Cybersecurity Framework 2.0 Govern function summary",
+      "comparison": {
+        "overlap_domains": [
+          "arcticwolf.com",
+          "nvlpubs.nist.gov",
+          "safe.security",
+          "urmconsulting.com"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+          "https://www.urmconsulting.com/blog/the-core-functions-of-nist-csf-govern"
+        ],
+        "num_token_overlap": [
+          "2.0"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "The NIST Cybersecurity Framework (CSF) 2.0",
+            "url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+            "snippet": "The GOVERN. Function provides outcomes to inform what an organization may do to achieve and prioritize the outcomes of the other five Functions ..."
+          },
+          {
+            "title": "NIST CSF 2.0: Govern Function",
+            "url": "https://arcticwolf.com/resources/blog/nist-csf-2-0-understanding-and-implementing-the-govern-function/",
+            "snippet": "NIST CSF 2.0 makes the establishment, communication, and enforcement of cybersecurity policy an essential aspect of the Govern function. Particular emphasis is "
+          },
+          {
+            "title": "What is NIST Cybersecurity Framework (CSF) 2.0?",
+            "url": "https://safe.security/resources/insights/nist-cybersecurity-framework/",
+            "snippet": "The Govern function is an overarching addition introduced to emphasize governance's importance in effectively managing cybersecurity risks."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "[PDF] The NIST Cybersecurity Framework (CSF) 2.0",
+            "url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+            "snippet": "The GOVERN Function supports organizational risk communication with executives. Executives\u2019 discussions involve strategy, particularly how cybersecurity-related"
+          },
+          {
+            "title": "What is NIST Cybersecurity Framework (CSF) 2.0? - Safe Security",
+            "url": "https://safe.security/resources/insights/nist-cybersecurity-framework",
+            "snippet": "The Govern function is an overarching addition introduced to emphasize governance\u2019s importance in effectively managing cybersecurity risks. It focuses on establ"
+          },
+          {
+            "title": "The Core Functions of NIST CSF: Govern | URM Consulting",
+            "url": "https://www.urmconsulting.com/blog/the-core-functions-of-nist-csf-govern",
+            "snippet": "The Govern Function is focused on defining the circumstances of your cyber security risk strategy, with the aim of incorporating cyber security risk into your o"
+          }
+        ],
+        "serper_latency_ms": 722,
+        "tavily_latency_ms": 2680
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "lookup",
+      "query": "CAN-SPAM Act main requirements for commercial email",
+      "comparison": {
+        "overlap_domains": [
+          "cloudflare.com",
+          "lewisrice.com",
+          "shopify.com",
+          "transcend.io"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://transcend.io/blog/can-spam-act",
+          "https://www.shopify.com/blog/can-spam-act"
+        ],
+        "num_token_overlap": [
+          "2025"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "The CAN-SPAM Act: A Complete Compliance Guide - Transcend.io",
+            "url": "https://transcend.io/blog/can-spam-act",
+            "snippet": "CAN-SPAM compliance requirements \u00b7 1. Provide an opt-out mechanism \u00b7 2. Honor opt-out requests promptly \u00b7 3. Obtain consent before sending commercial emails \u00b7 4"
+          },
+          {
+            "title": "CAN-SPAM Act: A Compliance Guide for Businesses (2025) - Shopify",
+            "url": "https://www.shopify.com/blog/can-spam-act",
+            "snippet": "The CAN-SPAM Act is a federal US law that regulates commercial emails\u2014namely, prohibiting misleading header information, deceptive subject lines ..."
+          },
+          {
+            "title": "What is the CAN-SPAM Act? - Cloudflare",
+            "url": "https://www.cloudflare.com/learning/privacy/what-is-the-can-spam-act/",
+            "snippet": "The CAN-SPAM Act applies to all commercial messages, including emails, regardless of whether they are directed to consumers or businesses. The FTC defines a \u201c ."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "The CAN-SPAM Act: A Complete Compliance Guide",
+            "url": "https://transcend.io/blog/can-spam-act",
+            "snippet": "Every commercial email must include a valid postal address for the sender. This requirement helps establish transparency and trust, allowing recipients to conta"
+          },
+          {
+            "title": "What is the CAN-SPAM Act?",
+            "url": "https://www.cloudflare.com/learning/privacy/what-is-the-can-spam-act",
+            "snippet": "The CAN-SPAM Act is a United States law that dictates a range of requirements for emails and other messages from commercial entities, like businesses, marketers"
+          },
+          {
+            "title": "CAN-SPAM Act: A Compliance Guide for Businesses (2025) - Shopify",
+            "url": "https://www.shopify.com/blog/can-spam-act",
+            "snippet": "To achieve and maintain CAN-SPAM compliance, every commercial email must meet specific FTC requirements. Here are the core rules every marketer should be aware "
+          }
+        ],
+        "serper_latency_ms": 540,
+        "tavily_latency_ms": 2501
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "lookup",
+      "query": "SBA definition of a small business size standard overview",
+      "comparison": {
+        "overlap_domains": [
+          "fcc.gov",
+          "gtlaw.com",
+          "legacy.sba.gov",
+          "sba.gov"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://legacy.sba.gov/document/support-table-size-standards",
+          "https://www.fcc.gov/communications-business-opportunities/size-standards-small-business-industries",
+          "https://www.gtlaw.com/en/insights/2025/8/sba-proposes-increasing-small-business-size-standards"
+        ],
+        "num_token_overlap": [],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Table of size standards | U.S. Small Business Administration",
+            "url": "https://legacy.sba.gov/document/support-table-size-standards",
+            "snippet": "A size standard, which is usually stated in number of employees or average annual receipts, represents the largest size that a business"
+          },
+          {
+            "title": "Get started with contracting - Small Business Administration",
+            "url": "https://www.sba.gov/counseling/get-started/",
+            "snippet": "These size standards define the maximum size that a business \u2014 and its affiliates \u2014 can be to qualify as a small business for a particular contract."
+          },
+          {
+            "title": "SBA Proposes Increasing Small Business Size Standards",
+            "url": "https://www.gtlaw.com/en/insights/2025/8/sba-proposes-increasing-small-business-size-standards",
+            "snippet": "Size standards define whether a business is \u201csmall,\u201d and therefore eligible for government programs and preferences reserved for small ..."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Decoding the SBA Definition of Small Business - Government Contracting Consultant | SGCR",
+            "url": "https://selectgcr.com/government-contracts/decoding-the-sba-definition-of-small-business",
+            "snippet": "The SBA defines a small business as an independently owned for-profit entity with 500 or fewer employees, with specific size standards based on employee count a"
+          },
+          {
+            "title": "Table of size standards | U.S. Small Business Administration",
+            "url": "https://legacy.sba.gov/document/support-table-size-standards",
+            "snippet": "A size standard, which is usually stated in number of employees or average annual receipts, represents the largest size that a business (including its subsidiar"
+          },
+          {
+            "title": "Size Standards for Small Business Industries | Federal Communications Commission",
+            "url": "https://www.fcc.gov/communications-business-opportunities/size-standards-small-business-industries",
+            "snippet": "The Small Business Administration (SBA) established size standards that define the maximum size a business (including its subsidiaries and affiliates) may be to"
+          }
+        ],
+        "serper_latency_ms": 1230,
+        "tavily_latency_ms": 975
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "time_sensitive",
+      "query": "Today's date UTC and day of week",
+      "comparison": {
+        "overlap_domains": [
+          "datetoday.net",
+          "time.is",
+          "timeanddate.com",
+          "utctime.net"
+        ],
+        "overlap_domain_count": 4,
+        "overlap_urls": [
+          "https://time.is/UTC",
+          "https://www.timeanddate.com/worldclock/timezone/utc"
+        ],
+        "num_token_overlap": [
+          "01",
+          "07",
+          "11",
+          "17",
+          "2026"
+        ],
+        "flags": [],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Current UTC \u2014 Coordinated Universal Time",
+            "url": "https://www.timeanddate.com/worldclock/timezone/utc",
+            "snippet": "Current local time in UTC. UTC Tuesday, August 11, 2026 Fullscreen UTC / GMT is the basis for local times worldwide"
+          },
+          {
+            "title": "UTC Time Now",
+            "url": "https://www.utctime.net/",
+            "snippet": "UTC current time is 15:27:11 UTC current date is 11th Tuesday August 2026. Current time: 15:27:11 UTC."
+          },
+          {
+            "title": "UTC",
+            "url": "https://time.is/UTC",
+            "snippet": "UTC now UTC 17:40:31 Tuesday, August 11, 2026 World Steelpan Day \u2026 am Paris 07:40pm London 06:40pm New York 01:40pm"
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "UTC - Time.is",
+            "url": "https://time.is/UTC",
+            "snippet": "# UTC now\n\nTuesday, 11 August, 2026, week 33\n\nWorld Steelpan Day\n\nMake UTC time default - Add to favorite locations\n\n Tokyo  \n  17:51\n Beijing  \n  16:51\n Paris "
+          },
+          {
+            "title": "What is the date today? Today's Date",
+            "url": "https://www.datetoday.net",
+            "snippet": "Q: What is today's date?  \n   A: Today is Tuesday, August 11, 2026.\n Q: What day of the week is it?  \n   A: It's Tuesday. Tuesday is named after the Norse god T"
+          },
+          {
+            "title": "UTC Time Now",
+            "url": "https://www.utctime.net",
+            "snippet": "| Date Time Format | UTC Date Time Now |\n --- |\n| UTC | 2026-08-10T22:21:07Z |\n| ISO-8601 | 2026-08-10T22:21:07+0000 |\n| RFC 2822 | Mon, 10 Aug 2026 22:21:07 +0"
+          }
+        ],
+        "serper_latency_ms": 884,
+        "tavily_latency_ms": 1257
+      },
+      "serper_error": null,
+      "tavily_error": null
+    },
+    {
+      "category": "time_sensitive",
+      "query": "Next US federal holiday after today",
+      "comparison": {
+        "overlap_domains": [],
+        "overlap_domain_count": 0,
+        "overlap_urls": [],
+        "num_token_overlap": [
+          "2026"
+        ],
+        "flags": [
+          "no_domain_overlap"
+        ],
+        "serper_result_count": 5,
+        "tavily_result_count": 5,
+        "serper_worse": false,
+        "tavily_worse": false,
+        "quality_hold": true,
+        "serper_top": [
+          {
+            "title": "Federal Holidays",
+            "url": "https://www.ca2.uscourts.gov/clerk/calendars/federal_holidays.html",
+            "snippet": "Thursday, January 1, 2026, New Year's Day ; Monday, January 19, 2026, Birthday of Martin Luther King, Jr. ; Monday, February 16, 2026**, Washington's Birthday."
+          },
+          {
+            "title": "Today's and Upcoming Holidays in the United States",
+            "url": "https://www.timeanddate.com/holidays/us/",
+            "snippet": "There are no holidays in the United States today. Aug 12 Wednesday International Youth Day"
+          },
+          {
+            "title": "List of Federal Holidays for 2026 and 2027",
+            "url": "https://www.federalpay.org/holidays",
+            "snippet": "The next federal holiday is Labor Day. Labor Day is 26 days away and will be observed on Monday, September 7, 2026."
+          }
+        ],
+        "tavily_top": [
+          {
+            "title": "Is Today A Holiday? Live US Federal Holiday Checker",
+            "url": "https://www.christmascountdown.org/Is-Today-A-Holiday.html",
+            "snippet": "Title: Is Today A Holiday? Live US Federal Holiday Checker\nNext Federal Holiday: Memorial Day on 05/25/2026. **Today is Presidents' Day - a federal holiday**. #"
+          },
+          {
+            "title": "What Holiday Is Tomorrow? | Next Holiday From Today",
+            "url": "https://days-from.com/next-holiday-from-today",
+            "snippet": "Title: What Holiday Is Tomorrow? | Next Holiday From Today\n# What Holiday Is Tomorrow? Find out what holiday is tomorrow and discover upcoming holidays from tod"
+          },
+          {
+            "title": "When is my next day off? See when the next federal holiday will be",
+            "url": "https://www.savannahnow.com/story/news/2026/04/07/when-is-my-next-day-off-see-when-the-next-federal-holiday-will-be/89483512007",
+            "snippet": "Title: When is my next day off? See when the next federal holiday will be\nWhen is your next day off in Georgia? See when next federal holiday falls. # When is y"
+          }
+        ],
+        "serper_latency_ms": 857,
+        "tavily_latency_ms": 2828
+      },
+      "serper_error": null,
+      "tavily_error": null
+    }
+  ],
+  "summary": {
+    "hold_count": 18,
+    "fail_count": 0,
+    "serper_worse_count": 0,
+    "hold_rate": 1.0,
+    "avg_serper_latency_ms": 1068,
+    "avg_tavily_latency_ms": 2246,
+    "fail_queries": []
+  },
+  "verdict": "GO \u2014 Serper quality holds on widened sample; proceed to Phase 1",
+  "go": true,
+  "finished_at": "2026-08-11T19:42:15.216297+00:00"
+}

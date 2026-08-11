@@ -44,6 +44,14 @@ type GoldenSignalsResponse = {
     alerts?: string[]
   }
   alerts?: string[]
+  research_lookups?: {
+    configured_provider?: string
+    sample_count?: number
+    serper_pct?: number
+    fallback_pct?: number
+    by_provider?: Record<string, number>
+    alerts?: string[]
+  }
   r2_removal_gates?: {
     ready?: boolean
     current_fallthrough_pct?: number
@@ -63,6 +71,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   const cache = signals?.prefix_cache
   const ttft = signals?.ttft
   const mount = signals?.mount_tti
+  const research = signals?.research_lookups
 
   return (
     <section
@@ -143,6 +152,24 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           label="R2 removal ready"
           value={signals?.r2_removal_gates?.ready ? "Yes" : "No"}
           variant={signals?.r2_removal_gates?.ready ? "success" : "default"}
+        />
+        <StatCard
+          label="Research Serper %"
+          value={
+            research?.sample_count
+              ? `${research.serper_pct ?? 0}% (${research.sample_count})`
+              : "—"
+          }
+          variant={research?.alerts?.length ? "warning" : "default"}
+        />
+        <StatCard
+          label="Research fallback %"
+          value={
+            research?.sample_count != null
+              ? `${research.fallback_pct ?? 0}%`
+              : "—"
+          }
+          variant={research?.alerts?.length ? "warning" : "default"}
         />
       </StatsGrid>
     </section>

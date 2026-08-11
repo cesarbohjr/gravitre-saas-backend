@@ -71,6 +71,7 @@ def record_research_lookup(
     input_tokens: int = 0,
     output_tokens: int = 0,
     source_id: str | None = None,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Record one Research Lookup for org billing + internal COGS metadata."""
     period_start = _month_start()
@@ -87,6 +88,10 @@ def record_research_lookup(
         "provider": provider,
         **cogs,
     }
+    if extra_metadata:
+        for key, value in extra_metadata.items():
+            if value is not None and key not in metadata:
+                metadata[key] = value
 
     idempotency_key = derive_idempotency_key(
         org_id,

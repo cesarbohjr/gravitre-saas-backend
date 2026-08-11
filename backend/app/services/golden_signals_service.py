@@ -187,6 +187,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
     deploy_smoke = _latest_platform_signal(client, "platform.deploy_smoke")
     hardening = _latest_platform_signal(client, "platform.hardening_smoke")
     billing_drift = _billing_plan_price_drift(client, settings)
+    research_providers = _research_lookup_provider_signals(client, since_iso=since_iso, settings=settings)
 
     alerts: list[str] = []
     if fallthrough_pct > FALLTHROUGH_ALERT_PCT:
@@ -196,6 +197,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
         alerts.append(f"defer_connector_tool_proposal_spike>={FALLTHROUGH_ALERT_BUCKET_SPIKE}")
     if billing_drift.get("drift_count", 0) > 0:
         alerts.append(f"billing_plan_price_drift>{billing_drift['drift_count']}")
+    alerts.extend(research_providers.get("alerts") or [])
 
     ttft_alerts: list[str] = []
     if ttft_p50 is not None and ttft_p50 > TTFT_ALERT_P50_MS:
@@ -265,6 +267,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
         },
         "alerts": alerts,
         "billing_plan_drift": billing_drift,
+        "research_lookups": research_providers,
         "r2_removal_gates": {
             "fallthrough_pct_target": 1.0,
             "current_fallthrough_pct": fallthrough_pct,
@@ -276,6 +279,93 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             "customer_facing": "deferred",
             "note": "Internal golden signals first; public uptime page is a product decision.",
         },
+    }
+
+
+# Alert when configured primary is serper but live meters show zero serper
+# (the silent Google→Tavily 100% fallback failure mode).
+RESEARCH_SERPER_SILENT_FAIL_MIN_SAMPLES = 5
+RESEARCH_FALLBACK_ALERT_PCT = 50.0
+
+
+def _research_lookup_provider_signals(
+    client: Any,
+    *,
+    since_iso: str,
+    settings: Any,
+) -> dict[str, Any]:
+    """Standing monitor: Serper vs Tavily (and fallback) ratio from usage_records."""
+    configured = (getattr(settings, "web_research_provider", None) or "").strip().lower()
+    by_provider: Counter = Counter()
+    fallback_count = 0
+    sample = 0
+    try:
+        rows = (
+            client.table("usage_records")
+            .select("metadata, recorded_at")
+            .eq("metric_type", "research_lookups")
+            .gte("recorded_at", since_iso)
+            .limit(500)
+            .execute()
+            .data
+            or []
+        )
+        for row in rows:
+            meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            provider = str(meta.get("provider") or "unknown")
+            by_provider[provider] += 1
+            sample += 1
+            if meta.get("fallback_from"):
+                fallback_count += 1
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "window_since": since_iso,
+            "configured_provider": configured,
+            "sample_count": 0,
+            "by_provider": {},
+            "fallback_count": 0,
+            "fallback_pct": 0.0,
+            "serper_pct": 0.0,
+            "alerts": [],
+            "error": str(exc)[:200],
+        }
+
+    serper_n = int(by_provider.get("serper") or 0)
+    tavily_n = int(by_provider.get("tavily") or 0)
+    serper_pct = round(100.0 * serper_n / sample, 2) if sample else 0.0
+    fallback_pct = round(100.0 * fallback_count / sample, 2) if sample else 0.0
+    alerts: list[str] = []
+    if (
+        configured == "serper"
+        and sample >= RESEARCH_SERPER_SILENT_FAIL_MIN_SAMPLES
+        and serper_n == 0
+    ):
+        alerts.append(
+            f"research_serper_silent_fail sample>={RESEARCH_SERPER_SILENT_FAIL_MIN_SAMPLES} serper=0 "
+            f"(all metered elsewhere — check SERPER_API_KEY / primary path)"
+        )
+    if sample >= RESEARCH_SERPER_SILENT_FAIL_MIN_SAMPLES and fallback_pct >= RESEARCH_FALLBACK_ALERT_PCT:
+        alerts.append(f"research_fallback_pct>={RESEARCH_FALLBACK_ALERT_PCT}%")
+
+    return {
+        "window_since": since_iso,
+        "configured_provider": configured,
+        "sample_count": sample,
+        "by_provider": dict(by_provider),
+        "serper_count": serper_n,
+        "tavily_count": tavily_n,
+        "serper_pct": serper_pct,
+        "fallback_count": fallback_count,
+        "fallback_pct": fallback_pct,
+        "alert_thresholds": {
+            "silent_fail_min_samples": RESEARCH_SERPER_SILENT_FAIL_MIN_SAMPLES,
+            "fallback_alert_pct": RESEARCH_FALLBACK_ALERT_PCT,
+        },
+        "alerts": alerts,
+        "note": (
+            "Tracks usage_records.metadata.provider for research_lookups. "
+            "When WEB_RESEARCH_PROVIDER=serper, serper_pct≈0 with volume means silent primary failure."
+        ),
     }
 
 
