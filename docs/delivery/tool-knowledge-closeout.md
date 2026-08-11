@@ -23,4 +23,6 @@ Shipped Knowledge-only Tool Packs attached to the existing ActionSpec catalog. O
 
 ## Deploy
 
-- Tip `git_sha` stamped after Railway redeploy (see below / health poll).
+- Commit: `1a7623b5ef956d8093194f2ace6b124b0c24ed46` on `main`
+- Live `GET https://api.gravitre.app/health` → `git_sha=1a7623b5ef956d8093194f2ace6b124b0c24ed46` `status=ok` @ `2026-08-11T23:12:12Z`
+- Post-deploy compose: `tool-knowledge-postdeploy-compose.json` — `compose_pass=true` (HubSpot actions + 2 tool-expertise citations) @ `2026-08-11T23:13:07Z`

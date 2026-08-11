@@ -1,0 +1,23 @@
+{
+  "verified_at": "2026-08-11T23:13:07.649983+00:00",
+  "deployed_git_sha": "1a7623b5ef956d8093194f2ace6b124b0c24ed46",
+  "health_status": "ok",
+  "tool_packs": [
+    "pack.tool.hubspot",
+    "pack.tool.slack"
+  ],
+  "hubspot_actions_sample": [
+    "hubspot.contacts.get",
+    "hubspot.contacts.search",
+    "hubspot.deals.get",
+    "hubspot.deals.search",
+    "hubspot.deals.list"
+  ],
+  "fabric_hit_count": 3,
+  "hubspot_knowledge_hits": 2,
+  "sample_citations": [
+    "Gravitre tool expertise \u2014 hubspot \u2014 HubSpot CRM object model (Gravitre summary)",
+    "Gravitre tool expertise \u2014 hubspot \u2014 HubSpot lists and enrollment patterns (Gravitre summary)"
+  ],
+  "compose_pass": true
+}
