@@ -1,0 +1,77 @@
+{
+  "record": "web_research_provider_serper_live",
+  "started_at": "2026-08-11T19:46:59.925028+00:00",
+  "railway_git_commit_sha": "unknown",
+  "settings": {
+    "web_research_provider": "serper",
+    "web_research_fallback_tavily": true,
+    "serper_configured": true,
+    "tavily_configured": true
+  },
+  "path_analysis": {
+    "serper_primary_block_entered": true,
+    "direct_tavily_path": false
+  },
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "external_search": {
+    "totalResults": 3,
+    "provider": "serper",
+    "fallback_from": null,
+    "fallback_reason": null,
+    "has_urls": true,
+    "error": null
+  },
+  "usage_records_latest": [
+    {
+      "recorded_at": "2026-08-11T19:47:02.483868+00:00",
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "serper",
+        "source_id": "5f3af892b2f98ce8",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "quantity": 1
+    },
+    {
+      "recorded_at": "2026-08-11T08:25:41.503657+00:00",
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "fc6593985aef81ba",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "quantity": 1
+    },
+    {
+      "recorded_at": "2026-08-11T05:54:32.664005+00:00",
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "e0a5bf38f21b5f15",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "quantity": 1
+    }
+  ],
+  "metered_provider": "serper",
+  "verdict": "PASS \u2014 Serper primary served + metered provider=serper, no fallback",
+  "finished_at": "2026-08-11T19:47:03.054874+00:00"
+}

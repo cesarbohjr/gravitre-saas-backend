@@ -25,10 +25,14 @@ Two queries flagged `no_domain_overlap` (React vs Vue; next federal holiday) but
 - `usage_records.metadata.provider` = actual server (`serper` or `tavily`); `fallback_from` when fallback
 - `SERPER_API_KEY` via Railway secrets (not hardcoded)
 
-## Phase 2 — verification checklist
+## Phase 2 — verification (PASS)
 
-- [ ] Live lookup meters `provider=serper`
-- [ ] Forced invalid Serper key → Tavily fallback + `fallback_from=serper`
-- [ ] Billing plans still 10/60/200 @ $0.35
-- [ ] Golden signals `research_lookups` Serper % / fallback % wired
-- [ ] Deployed `/health` `git_sha` matches tip
+| Check | Result | Evidence |
+| -- | -- | -- |
+| Live Serper primary | **PASS** — `provider=serper`, no fallback, 3 results | `usage_records` @ `2026-08-11T19:47:02.483868Z` org `f07e57c0…`; `web-research-provider-serper-live.json` |
+| Forced Serper failure → Tavily | **PASS** — invalid key → http 403 → visible fallback logs; meter `provider=tavily` + `fallback_from=serper` | `serper-fallback-tavily-live.json` @ `2026-08-11T19:47:10Z` |
+| Pricing unchanged | **PASS** — 10/60/200 + $0.35 | `sta341-pricing-unchanged-live.json` |
+| Golden signals | Wired — `research_lookups` Serper % / fallback % + silent-fail alert | `golden_signals_service.py` |
+| Deploy tip | **PASS** — `git_sha=9b677094…` | `GET https://api.gravitre.app/health` |
+
+Serper 2,500 free credits = **platform test/COGS only**. New Gravitre customers keep plan Research Lookup allotments (not Serper’s free pool).

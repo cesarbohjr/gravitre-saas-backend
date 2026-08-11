@@ -1,0 +1,29 @@
+{
+  "record": "serper_fallback_tavily_live",
+  "started_at": "2026-08-11T19:47:10.819646+00:00",
+  "method": "invalid SERPER_API_KEY forces primary http error \u2192 Tavily",
+  "external_search": {
+    "provider": "tavily",
+    "fallback_from": "serper",
+    "fallback_reason": "primary_error:serper http 403",
+    "totalResults": 3,
+    "error": null
+  },
+  "usage_metadata": {
+    "source": "research_lookup",
+    "provider": "tavily",
+    "source_id": "2d7cb22a8508ecf5",
+    "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+    "input_tokens": 0,
+    "fallback_from": "serper",
+    "output_tokens": 0,
+    "token_cogs_usd": 0.0,
+    "total_cogs_usd": 0.0,
+    "fallback_reason": "primary_error:serper http 403",
+    "grounding_count": 1,
+    "grounding_cogs_usd": 0.0
+  },
+  "railway_git_commit_sha": "unknown",
+  "verdict": "PASS \u2014 Tavily fallback fired, logged via fallback_from, metered provider=tavily",
+  "finished_at": "2026-08-11T19:47:10.819705+00:00"
+}
