@@ -412,6 +412,13 @@ class IntelligenceOrchestrator:
             confidence={"score": pre_confidence.get("confidence"), "missing_context": pre_confidence.get("missing_context")},
         )
         context_explanation = generated.get("summary") or explanation
+        # Module C: fabric provenance (incl. content_mode / fetch_status) must reach citation UI
+        if fabric_provenance:
+            generated = {
+                **generated,
+                "knowledge_citations": list(fabric_provenance)[:6],
+                "sources": list(fabric_provenance)[:6],
+            }
         explainability = generated
 
         advisor_brief = None

@@ -1,0 +1,156 @@
+{
+  "ran_at": "2026-08-11T21:31:24.140322+00:00",
+  "cisa_query": "What does CISA StopRansomware recommend for ransomware prevention?",
+  "cisa_results": [
+    {
+      "source_id": "cyber.cisa.advisories",
+      "citation": "CISA \u2014 https://www.cisa.gov/stopransomware",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status_html_blocked": true
+    },
+    {
+      "source_id": "cyber.cisa.advisories",
+      "citation": "CISA \u2014 https://www.cisa.gov/news-events/cybersecurity-advisories",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status_html_blocked": true
+    },
+    {
+      "source_id": "cyber.cisa.advisories",
+      "citation": "CISA \u2014 https://www.cisa.gov/topics/cybersecurity-best-practices",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status_html_blocked": true
+    }
+  ],
+  "cisa_provenance": [
+    {
+      "citation": "CISA \u2014 https://www.cisa.gov/stopransomware",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status": {
+        "statuses": [
+          {
+            "url": "https://www.cisa.gov/news-events/cybersecurity-advisories",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/topics/cybersecurity-best-practices",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/stopransomware",
+            "status": 403
+          }
+        ],
+        "attempted": true,
+        "html_blocked": true
+      },
+      "authority_score": 0.95
+    },
+    {
+      "citation": "CISA \u2014 https://www.cisa.gov/news-events/cybersecurity-advisories",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status": {
+        "statuses": [
+          {
+            "url": "https://www.cisa.gov/news-events/cybersecurity-advisories",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/topics/cybersecurity-best-practices",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/stopransomware",
+            "status": 403
+          }
+        ],
+        "attempted": true,
+        "html_blocked": true
+      },
+      "authority_score": 0.95
+    },
+    {
+      "citation": "CISA \u2014 https://www.cisa.gov/topics/cybersecurity-best-practices",
+      "content_mode": "curated_summary_live_html_blocked",
+      "fetch_status": {
+        "statuses": [
+          {
+            "url": "https://www.cisa.gov/news-events/cybersecurity-advisories",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/topics/cybersecurity-best-practices",
+            "status": 403
+          },
+          {
+            "url": "https://www.cisa.gov/stopransomware",
+            "status": 403
+          }
+        ],
+        "attempted": true,
+        "html_blocked": true
+      },
+      "authority_score": 0.95
+    }
+  ],
+  "honesty_pass": true,
+  "sales_recommended": [
+    "pack.sales",
+    "pack.marketing"
+  ],
+  "legal_recommended": [
+    "pack.legal"
+  ],
+  "sales_ui_order": [
+    {
+      "pack_id": "pack.marketing",
+      "recommended": true
+    },
+    {
+      "pack_id": "pack.sales",
+      "recommended": true
+    },
+    {
+      "pack_id": "pack.cybersecurity",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.finance",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.hr",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.legal",
+      "recommended": false
+    }
+  ],
+  "legal_ui_order": [
+    {
+      "pack_id": "pack.legal",
+      "recommended": true
+    },
+    {
+      "pack_id": "pack.cybersecurity",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.finance",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.hr",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.marketing",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.sales",
+      "recommended": false
+    }
+  ],
+  "recs_differ": true
+}

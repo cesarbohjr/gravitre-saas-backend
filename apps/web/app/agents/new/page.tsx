@@ -512,6 +512,7 @@ export default function NewAgentPage() {
                 <AgentKnowledgePacksEditor
                   value={knowledgePacks}
                   onChange={setKnowledgePacks}
+                  department={selectedDepartment}
                 />
               </div>
             )}

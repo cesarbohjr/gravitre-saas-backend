@@ -1,8 +1,12 @@
 """Unit tests — knowledge router + authority rerank."""
 from __future__ import annotations
 
+from app.knowledge_fabric.registry import list_platform_packs
 from app.knowledge_fabric.retrieval import jurisdiction_allowed, rerank_with_authority
-from app.knowledge_fabric.router import classify_knowledge_query
+from app.knowledge_fabric.router import (
+    classify_knowledge_query,
+    recommended_pack_ids_for_department,
+)
 
 
 def test_router_scopes_employment_law_to_jurisdiction_and_legal():
@@ -79,6 +83,20 @@ def test_jurisdiction_filter_blocks_cross_border_chunks():
     assert jurisdiction_allowed("CA-federal", ["CA-federal"]) is True
     assert jurisdiction_allowed("US-federal", ["US-CA"]) is True
     assert jurisdiction_allowed(None, ["US-federal"]) is True
+
+
+def test_department_pack_recommendations_use_server_correlation():
+    sales = recommended_pack_ids_for_department("Sales")
+    legal = recommended_pack_ids_for_department("Legal")
+    assert "pack.sales" in sales
+    assert "pack.marketing" in sales  # secondary_packs on sales sources
+    assert "pack.legal" in legal
+    assert "pack.sales" not in legal
+    sales_packs = list_platform_packs(agent_department="Sales")
+    all_packs = list_platform_packs()
+    assert sales_packs[0]["recommended"] is True
+    assert sales_packs[0]["pack_id"] in sales
+    assert len(sales_packs) == len(all_packs)  # recommendation never hides packs
 
 
 def test_gov_authority_outranks_academic_and_live_commercial():

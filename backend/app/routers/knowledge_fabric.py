@@ -63,9 +63,18 @@ async def require_internal_secret(
 @router.get("/packs")
 async def list_packs(
     current_user: Annotated[dict, Depends(get_current_user)],
+    department: str | None = None,
 ) -> dict[str, Any]:
+    """List platform packs; optional department marks server-side recommendations."""
     _ = current_user
-    return {"packs": list_platform_packs()}
+    packs = list_platform_packs(agent_department=department)
+    from app.knowledge_fabric.router import recommended_pack_ids_for_department
+
+    return {
+        "packs": packs,
+        "department": department,
+        "recommended_pack_ids": recommended_pack_ids_for_department(department),
+    }
 
 
 @router.get("/admin/quality")

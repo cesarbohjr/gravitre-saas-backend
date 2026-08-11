@@ -365,7 +365,11 @@ export default function AgentKnowledgePage({
                 exit={{ opacity: 0, y: -10 }}
               >
                 <div className="mb-6 rounded-xl border border-border bg-card/50 p-4 space-y-3">
-                  <AgentKnowledgePacksEditor value={packDraft} onChange={setPackDraft} />
+                  <AgentKnowledgePacksEditor
+                    value={packDraft}
+                    onChange={setPackDraft}
+                    department={agent.department}
+                  />
                   <Button size="sm" onClick={handleSavePacks} disabled={savingPacks}>
                     {savingPacks ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     Save knowledge packs

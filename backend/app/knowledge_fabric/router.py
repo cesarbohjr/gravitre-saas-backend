@@ -134,6 +134,52 @@ _PACK_BY_DEPT = {
     "marketing": "pack.marketing",
 }
 
+# Agent UI department labels → router department keys (existing correlation).
+_AGENT_DEPT_ALIASES: dict[str, str] = {
+    "legal": "legal",
+    "finance": "finance",
+    "cybersecurity": "cybersecurity",
+    "cyber": "cybersecurity",
+    "msp": "cybersecurity",
+    "it": "cybersecurity",
+    "hr": "hr",
+    "sales": "sales",
+    "marketing": "marketing",
+    "operations": "cybersecurity",
+    "support": "legal",
+}
+
+
+def normalize_agent_department(agent_department: str | None) -> str | None:
+    if not agent_department:
+        return None
+    key = agent_department.strip().lower()
+    return _AGENT_DEPT_ALIASES.get(key) or (key if key in _PACK_BY_DEPT else None)
+
+
+def recommended_pack_ids_for_department(agent_department: str | None) -> list[str]:
+    """Surface existing _PACK_BY_DEPT + registry secondary_packs correlation for UI.
+
+    Recommendation only — never a restriction on which packs can be assigned.
+    """
+    from app.knowledge_fabric.registry import PLATFORM_KNOWLEDGE_SOURCES
+
+    dept = normalize_agent_department(agent_department)
+    if not dept:
+        return []
+    primary = _PACK_BY_DEPT.get(dept)
+    out: list[str] = []
+    if primary:
+        out.append(primary)
+    for spec in PLATFORM_KNOWLEDGE_SOURCES:
+        if primary and spec.pack_id == primary:
+            for sp in spec.secondary_packs:
+                if sp not in out:
+                    out.append(sp)
+        if spec.department == dept and spec.pack_id not in out:
+            out.append(spec.pack_id)
+    return out
+
 
 def classify_knowledge_query(
     query: str,

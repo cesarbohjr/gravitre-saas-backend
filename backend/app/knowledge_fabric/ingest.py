@@ -122,6 +122,12 @@ def replace_document_chunks(
             except Exception as exc:  # noqa: BLE001
                 logger.warning("knowledge_fabric.embed_failed", extra={"error": str(exc)[:200]})
                 embedding = None
+        chunk_meta: dict[str, Any] = {"external_id": external_id, "title": title}
+        # Propagate honesty fields so citation UI need not join documents
+        if isinstance(metadata, dict):
+            for key in ("content_mode", "fetch_status", "license", "license_url"):
+                if key in metadata:
+                    chunk_meta[key] = metadata[key]
         rows.append(
             {
                 "document_id": document_id,
@@ -135,7 +141,7 @@ def replace_document_chunks(
                 "authority_score": authority,
                 "freshness_score": 0.95,
                 "citation": citation,
-                "metadata": {"external_id": external_id, "title": title},
+                "metadata": chunk_meta,
             }
         )
     if rows:

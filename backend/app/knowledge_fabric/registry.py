@@ -890,7 +890,10 @@ PLATFORM_KNOWLEDGE_SOURCES: tuple[KnowledgeSourceSpec, ...] = (
 )
 
 
-def list_platform_packs() -> list[dict[str, Any]]:
+def list_platform_packs(*, agent_department: str | None = None) -> list[dict[str, Any]]:
+    from app.knowledge_fabric.router import recommended_pack_ids_for_department
+
+    recommended = set(recommended_pack_ids_for_department(agent_department))
     packs: dict[str, dict[str, Any]] = {}
     for spec in PLATFORM_KNOWLEDGE_SOURCES:
         entry = packs.setdefault(
@@ -902,6 +905,8 @@ def list_platform_packs() -> list[dict[str, Any]]:
                 "sources": [],
                 "ingestible": False,
                 "hold": False,
+                "recommended": False,
+                "recommended_for_department": None,
             },
         )
         entry["sources"].append(
@@ -918,7 +923,18 @@ def list_platform_packs() -> list[dict[str, Any]]:
             entry["hold"] = True
         elif spec.license_type in {"A", "B"}:
             entry["ingestible"] = True
-    return list(packs.values())
+    rows = list(packs.values())
+    if agent_department and recommended:
+        dept_label = agent_department.strip()
+        for entry in rows:
+            if entry["pack_id"] in recommended:
+                entry["recommended"] = True
+                entry["recommended_for_department"] = dept_label
+        # Recommended first, then label — full list still present
+        rows.sort(key=lambda e: (0 if e.get("recommended") else 1, str(e.get("label") or "")))
+    else:
+        rows.sort(key=lambda e: str(e.get("label") or ""))
+    return rows
 
 
 def get_spec(source_id: str) -> KnowledgeSourceSpec | None:

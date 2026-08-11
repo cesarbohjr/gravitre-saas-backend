@@ -96,9 +96,15 @@ class IntelligenceVisibilityService:
             summary=summary,
             missing_context=list(missing_context or []),
         )
+        payload = envelope.to_dict()
+        # Pass through knowledge-fabric citation honesty fields for KnowledgeCitationCard
+        citations = self._extract_knowledge_citations(sources, ctx, resp)
+        if citations:
+            payload["knowledge_citations"] = citations
+            payload["sources"] = citations
         if not self.is_enabled():
-            return sanitize_envelope({"status": "disabled", **envelope.to_dict()})
-        return sanitize_envelope(envelope.to_dict())
+            return sanitize_envelope({"status": "disabled", **payload})
+        return sanitize_envelope(payload)
 
     async def build_decision_envelope_from_response(
         self,
@@ -511,6 +517,42 @@ class IntelligenceVisibilityService:
                 }
             )
         return signals
+
+    @staticmethod
+    def _extract_knowledge_citations(
+        sources: list[dict[str, Any]] | None,
+        context: dict[str, Any],
+        response: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Flatten knowledge-fabric provenance for citation honesty UI."""
+        out: list[dict[str, Any]] = []
+        for bucket in (
+            response.get("knowledge_citations"),
+            context.get("knowledge_citations"),
+            sources,
+        ):
+            if not isinstance(bucket, list):
+                continue
+            for row in bucket:
+                if not isinstance(row, dict):
+                    continue
+                # Nested list on context source metadata
+                nested = row.get("metadata", {}).get("provenance") if isinstance(row.get("metadata"), dict) else None
+                candidates = nested if isinstance(nested, list) else [row]
+                for c in candidates:
+                    if not isinstance(c, dict):
+                        continue
+                    if not (
+                        c.get("citation")
+                        or c.get("authority_score") is not None
+                        or c.get("jurisdiction")
+                        or c.get("content_mode")
+                    ):
+                        continue
+                    out.append(c)
+                    if len(out) >= 6:
+                        return out
+        return out
 
     @staticmethod
     def _build_evidence(

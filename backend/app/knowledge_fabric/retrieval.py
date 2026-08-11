@@ -182,10 +182,31 @@ def retrieve_knowledge_fabric(
 
     ranked = rerank_with_authority(list(by_id.values()))[:top_k]
     source_map = {s["id"]: s for s in sources}
+    # Document-level honesty fields (CISA curated summaries store content_mode here)
+    doc_meta_by_id: dict[str, dict[str, Any]] = {}
+    doc_ids = [str(r.get("document_id")) for r in ranked if r.get("document_id")]
+    if doc_ids:
+        try:
+            docs = (
+                client.table("knowledge_documents")
+                .select("id,metadata")
+                .in_("id", list(dict.fromkeys(doc_ids)))
+                .execute()
+            )
+            for d in docs.data or []:
+                meta = d.get("metadata") if isinstance(d.get("metadata"), dict) else {}
+                doc_meta_by_id[str(d["id"])] = meta
+        except Exception as exc:  # noqa: BLE001
+            logger.info("knowledge_fabric.doc_meta_unavailable", extra={"error": str(exc)[:160]})
+
     provenance = []
     results = []
     for row in ranked:
         src = source_map.get(row.get("source_id"), {})
+        chunk_meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        doc_meta = doc_meta_by_id.get(str(row.get("document_id") or ""), {})
+        content_mode = chunk_meta.get("content_mode") or doc_meta.get("content_mode")
+        fetch_status = chunk_meta.get("fetch_status") or doc_meta.get("fetch_status")
         prov = build_provenance_envelope(
             source_system="knowledge_fabric",
             source_name=str(src.get("publisher") or "Platform knowledge"),
@@ -204,6 +225,8 @@ def retrieve_knowledge_fabric(
                 "license_type": src.get("license_type"),
                 "web_link": src.get("url"),
                 "match": row.get("match"),
+                "content_mode": content_mode,
+                "fetch_status": fetch_status,
             },
         )
         provenance.append(prov)
@@ -218,6 +241,8 @@ def retrieve_knowledge_fabric(
                 "freshness_score": row.get("freshness_score"),
                 "source_id": src.get("source_id"),
                 "publisher": src.get("publisher"),
+                "content_mode": content_mode,
+                "fetch_status": fetch_status,
             }
         )
     return {"route": route.to_dict(), "results": results, "provenance": provenance}
