@@ -329,7 +329,7 @@ def select_model_for_agent(
     *,
     parameters: dict[str, Any] | None = None,
 ) -> str:
-    """Resolve OpenAI model: agent override, fine-tuned model, or complexity tier."""
+    """Resolve inference model for tool-calling: agent override, fine-tune, or complexity tier."""
     inference = resolve_agent_inference_model(client, org_id, agent)
     if inference.fine_tuned_openai_id:
         return inference.fine_tuned_openai_id

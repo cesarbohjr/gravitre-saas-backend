@@ -815,6 +815,7 @@ class ToolRegistry:
         self._static_specs = static
         self._specs = {**dynamic, **static}
         self._registered = set(list_registered_actions())
+        self._mcp_meta: dict[str, dict[str, Any]] = {}
 
     def preferred_static_tool_name(self, invoke_action: str, integration: str) -> str | None:
         """Return curated static tool name for an invoke_tool action when one exists."""
@@ -962,12 +963,22 @@ class ToolRegistry:
         from app.services.mcp_client_service import get_mcp_client_service
 
         mcp_tools = await get_mcp_client_service().get_enabled_tools_for_org(org_id)
+        self._mcp_meta = {}
         native_names = {str(tool.get("function", {}).get("name") or tool.get("name") or "") for tool in native_tools}
         filtered_mcp: list[dict[str, Any]] = []
         for tool in mcp_tools:
             name = str(tool.get("name") or "")
             if not name or name in native_names:
                 continue
+            self._mcp_meta[name] = {
+                "capability_tier": tool.get("capability_tier"),
+                "requires_approval": tool.get("requires_approval"),
+                "read_only_hint": tool.get("read_only_hint"),
+                "destructive_hint": tool.get("destructive_hint"),
+                "label": tool.get("description") or name,
+                "description": tool.get("description"),
+                "mcp_tool_id": tool.get("mcp_tool_id"),
+            }
             filtered_mcp.append(
                 {
                     "type": "function",
@@ -983,6 +994,11 @@ class ToolRegistry:
                 }
             )
         return native_tools + filtered_mcp
+
+    def get_mcp_tool_meta(self, tool_name: str) -> dict[str, Any] | None:
+        """Cached MCP annotation metadata populated by get_available_tools."""
+        meta = self._mcp_meta.get(str(tool_name or "").strip())
+        return dict(meta) if isinstance(meta, dict) else None
 
     def get_handler(self, tool_name: str) -> Callable[..., Any] | None:
         """Return async handler for a tool name, or None if unknown."""
@@ -1023,6 +1039,7 @@ class ToolRegistry:
                 "pending_approval": True,
                 "approval_id": payload.get("approval_id"),
                 "message": payload.get("message"),
+                "error_code": "write_approval_required",
             }
         if payload.get("status") == "completed":
             return {

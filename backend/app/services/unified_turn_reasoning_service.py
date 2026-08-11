@@ -221,6 +221,67 @@ async def _complete_unified_turn_stream(
         raise TimeoutError(f"unified_turn_stream_timeout:{cap}") from exc
 
 
+async def _complete_unified_turn(
+    router: Any,
+    openai_client: Any,
+    *,
+    model: str,
+    kwargs: dict[str, Any],
+    wall_start: float,
+    model_start: float,
+    timeout_s: float = 20.0,
+) -> _StreamedCompletion:
+    """Dispatch tool completion to the agent's configured provider."""
+    from app.services.providers.provider_tool_router import (
+        complete_with_tools,
+        resolve_provider_for_model,
+    )
+
+    provider = resolve_provider_for_model(model)
+    if provider == "openai":
+        return await _complete_unified_turn_stream(
+            openai_client,
+            kwargs=kwargs,
+            wall_start=wall_start,
+            model_start=model_start,
+            timeout_s=timeout_s,
+        )
+
+    cap = max(5.0, float(timeout_s or 20.0))
+
+    async def _run() -> _StreamedCompletion:
+        resp = await complete_with_tools(
+            router,
+            model=model,
+            messages=list(kwargs.get("messages") or []),
+            tools=list(kwargs.get("tools") or []),
+            tool_choice=str(kwargs.get("tool_choice") or "auto"),
+            temperature=kwargs.get("temperature"),
+        )
+        choice = resp.choices[0]
+        message = choice.message
+        tool_calls = list(getattr(message, "tool_calls", None) or [])
+        content = (getattr(message, "content", None) or "").strip()
+        end = time.perf_counter()
+        latency_ms = int((end - wall_start) * 1000)
+        model_total_ms = int((end - model_start) * 1000)
+        return _StreamedCompletion(
+            content=content,
+            tool_calls=tool_calls,
+            first_token_ms=latency_ms,
+            model_ttft_ms=model_total_ms,
+            latency_ms=latency_ms,
+            model_total_ms=model_total_ms,
+            streamed=False,
+        )
+
+    try:
+        return await asyncio.wait_for(_run(), timeout=cap)
+    except asyncio.TimeoutError as exc:
+        logger.warning("unified_turn_provider_timeout timeout_s=%s provider=%s", cap, provider)
+        raise TimeoutError(f"unified_turn_provider_timeout:{cap}") from exc
+
+
 def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Stable ordering so OpenAI automatic prefix caching can hit across turns."""
     from app.services.narrowed_tools import NarrowedTools, mark_narrowed
@@ -278,6 +339,20 @@ def _resolve_model(settings: Settings, *, task_shaped: bool = False) -> str:
     return str(tier.get("openai") or "gpt-4o-mini")
 
 
+def _resolve_unified_turn_model(
+    settings: Settings,
+    *,
+    agent: dict[str, Any] | None,
+    task_shaped: bool = False,
+) -> str:
+    """Honor agent-configured model for unified-turn tool calling when set."""
+    if agent:
+        configured = str(agent.get("model") or "").strip()
+        if configured:
+            return configured
+    return _resolve_model(settings, task_shaped=task_shaped)
+
+
 async def run_unified_turn_shadow(
     *,
     org_id: str,
@@ -302,8 +377,18 @@ async def run_unified_turn_shadow(
     if not shadow_on and not live_on:
         return UnifiedTurnShadowResult(outcome_kind="skipped")
 
-    if not (active.openai_api_key or "").strip():
-        return UnifiedTurnShadowResult(outcome_kind="error", error="openai_not_configured")
+    from app.services.providers.provider_tool_router import (
+        provider_tools_configured,
+        resolve_provider_for_model,
+    )
+
+    probe_model = _resolve_unified_turn_model(active, agent=agent, task_shaped=False)
+    probe_provider = resolve_provider_for_model(probe_model)
+    if not provider_tools_configured(probe_provider, active):
+        return UnifiedTurnShadowResult(
+            outcome_kind="error",
+            error=f"{probe_provider}_not_configured",
+        )
 
     from app.services.unified_turn_qa_hooks import (
         resolve_qa_force_outcome,
@@ -526,10 +611,13 @@ async def run_unified_turn_shadow(
     # Hypothetical full-catalog payload for the same connected set (not sent).
     full_catalog_bytes = len(json.dumps(all_tools, separators=(",", ":")).encode("utf-8"))
 
-    model = _resolve_model(active, task_shaped=use_embed)
+    model = _resolve_unified_turn_model(active, agent=agent, task_shaped=use_embed)
     router = get_model_router()
-    openai_client = router._openai  # noqa: SLF001 — same pattern as react_engine
-    if openai_client is None:
+    from app.services.providers.provider_tool_router import resolve_provider_for_model
+
+    inference_provider = resolve_provider_for_model(model)
+    openai_client = router._openai if inference_provider == "openai" else None  # noqa: SLF001
+    if inference_provider == "openai" and openai_client is None:
         return UnifiedTurnShadowResult(outcome_kind="error", error="openai_client_unavailable")
 
     assert_tools_narrowed(attach_tools, where="unified_turn_reasoning_service.attach")
@@ -622,8 +710,10 @@ async def run_unified_turn_shadow(
                 kwargs["temperature"] = 0.2
             assert_tools_narrowed(attach_tools, where=f"unified_turn.round_{prog_round}")
             round_start = time.perf_counter()
-            completion = await _complete_unified_turn_stream(
+            completion = await _complete_unified_turn(
+                router,
                 openai_client,
+                model=model,
                 kwargs=kwargs,
                 wall_start=wall_start,
                 model_start=model_start if prog_round == 0 else time.perf_counter(),

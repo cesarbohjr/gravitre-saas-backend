@@ -97,6 +97,7 @@ def test_no_raw_completions_create_with_tools_outside_allowlist():
         "operators/react_engine.py",
         "services/unified_turn_reasoning_service.py",
         "services/providers/openai_adapter.py",
+        "services/providers/provider_tool_router.py",
     }
     offenders: list[str] = []
     for path in (REPO_BACKEND / "app").rglob("*.py"):

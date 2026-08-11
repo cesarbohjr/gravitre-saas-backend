@@ -163,6 +163,30 @@ def model_for_routing_phase(phase: str, routing_tier: str) -> str:
     return MODEL_TIERS.get(model_tier, MODEL_TIERS["medium"])["openai"]
 
 
+def resolve_tool_loop_model(
+    *,
+    explicit_model: str | None,
+    routing_control: "RoutingControl | None",
+    phase: str,
+    routing_tier: str,
+) -> str:
+    """Pick the inference model for a tool-calling iteration.
+
+    When the agent (or caller) configured a non-OpenAI model, that selection locks
+    the full tool loop — routing-tier OpenAI defaults must not override it.
+    """
+    from app.services.providers.provider_tool_router import resolve_provider_for_model
+
+    locked = str(explicit_model or "").strip()
+    if locked and resolve_provider_for_model(locked) != "openai":
+        return locked
+    if routing_control is not None and phase == "synthesis":
+        return str(routing_control.model or "").strip() or model_for_routing_phase(
+            phase, routing_tier
+        )
+    return model_for_routing_phase(phase, routing_tier)
+
+
 def task_type_for_phase(phase: str) -> TaskType:
     return {
         "classification": TaskType.CLASSIFICATION,

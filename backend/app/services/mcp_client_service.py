@@ -25,7 +25,7 @@ _ENCRYPTED_AUTH_KEYS = frozenset({"api_key", "token", "bearer_token", "access_to
 
 
 def classify_mcp_tool_capability(tool_name: str, tool_description: str | None = None) -> str:
-    """Conservative classification — when in doubt, treat as write."""
+    """Conservative keyword fallback when MCP annotations are absent (discovery only)."""
     haystack = f"{tool_name} {tool_description or ''}".lower()
     tokens = set(re.split(r"[^a-z0-9]+", haystack))
     if tokens & _WRITE_KEYWORDS:
@@ -34,6 +34,30 @@ def classify_mcp_tool_capability(tool_name: str, tool_description: str | None = 
         if keyword in haystack:
             return "write"
     return "read"
+
+
+def resolve_mcp_tool_authority(
+    tool_name: str,
+    tool_description: str | None = None,
+    input_schema: dict[str, Any] | None = None,
+) -> tuple[str, bool, bool | None, bool | None]:
+    """Return (capability_tier, requires_approval, read_only_hint, destructive_hint).
+
+    Uses MCP annotation hints when present; keyword classifier is fallback only.
+    """
+    from app.services.catalog_write_authority import (
+        mcp_hints_from_schema,
+        mcp_tool_requires_write_approval,
+    )
+
+    read_only, destructive = mcp_hints_from_schema(input_schema)
+    if read_only is True:
+        return "read", False, read_only, destructive
+    if destructive is True:
+        return "write", True, read_only, destructive
+    capability = classify_mcp_tool_capability(tool_name, tool_description)
+    requires = mcp_tool_requires_write_approval(capability_tier=capability)
+    return capability, requires, read_only, destructive
 
 
 def encrypt_auth_config(auth_config: dict[str, Any], encryption_key: str) -> dict[str, Any]:
@@ -100,10 +124,12 @@ class MCPClientService:
             if not name:
                 continue
             description = str(remote.get("description") or "")
-            capability = classify_mcp_tool_capability(name, description)
             schema = remote.get("inputSchema") or remote.get("input_schema") or {}
             if not isinstance(schema, dict):
                 schema = {}
+            capability, requires_approval, read_only_hint, destructive_hint = (
+                resolve_mcp_tool_authority(name, description, schema)
+            )
             existing = (
                 client.table("mcp_tools")
                 .select("id")
@@ -171,7 +197,20 @@ class MCPClientService:
         if not tool.get("enabled", True):
             return {"status": "failed", "error": "MCP tool is disabled"}
 
-        if tool["capability_tier"] == "write":
+        from app.services.catalog_write_authority import (
+            mcp_hints_from_schema,
+            mcp_tool_requires_write_approval,
+        )
+
+        schema = tool.get("input_schema") if isinstance(tool.get("input_schema"), dict) else {}
+        read_only_hint, destructive_hint = mcp_hints_from_schema(schema)
+        requires_write = mcp_tool_requires_write_approval(
+            capability_tier=str(tool.get("capability_tier") or "") or None,
+            requires_approval=bool(tool.get("requires_approval")),
+            read_only_hint=read_only_hint,
+            destructive_hint=destructive_hint,
+        )
+        if requires_write:
             if not approval_id:
                 pending = await self._create_pending_execution(
                     tool_id=tool_id,
@@ -244,15 +283,30 @@ class MCPClientService:
             nested = row.get("mcp_servers")
             if isinstance(nested, dict):
                 server_name = str(nested.get("server_name") or "")
+            from app.services.catalog_write_authority import (
+                mcp_hints_from_schema,
+                mcp_tool_requires_write_approval,
+            )
+
             openai_name = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
             schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
+            capability = str(row.get("capability_tier") or "read")
+            read_only_hint, destructive_hint = mcp_hints_from_schema(schema)
+            requires_approval = mcp_tool_requires_write_approval(
+                capability_tier=capability,
+                requires_approval=bool(row.get("requires_approval")),
+                read_only_hint=read_only_hint,
+                destructive_hint=destructive_hint,
+            )
             tools.append(
                 {
                     "name": openai_name,
                     "mcp_tool_id": str(row["id"]),
                     "integration": "mcp",
-                    "capability_tier": row.get("capability_tier"),
-                    "requires_approval": bool(row.get("requires_approval")),
+                    "capability_tier": capability,
+                    "requires_approval": requires_approval,
+                    "read_only_hint": read_only_hint,
+                    "destructive_hint": destructive_hint,
                     "description": row.get("tool_description") or f"MCP tool {row.get('tool_name')}",
                     "parameters": schema.get("properties") or schema,
                     "input_schema": schema,

@@ -78,8 +78,24 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
     deciding whether to block execution for a specific user/org.
     """
     name = str(tool_name or "").strip()
-    if not name or name.startswith("mcp_"):
+    if not name:
         return False, "", "", ""
+    if name.startswith("mcp_"):
+        meta = None
+        if registry is not None and hasattr(registry, "get_mcp_tool_meta"):
+            meta = registry.get_mcp_tool_meta(name)
+        if not isinstance(meta, dict):
+            return False, f"mcp.{name}", "mcp", name.replace("mcp_", "").replace("_", " ")
+        from app.services.catalog_write_authority import mcp_tool_requires_write_approval
+
+        requires = mcp_tool_requires_write_approval(
+            capability_tier=str(meta.get("capability_tier") or "") or None,
+            requires_approval=meta.get("requires_approval"),
+            read_only_hint=meta.get("read_only_hint"),
+            destructive_hint=meta.get("destructive_hint"),
+        )
+        label = str(meta.get("label") or meta.get("description") or name)
+        return requires, f"mcp.{name}", "mcp", label
     if name in {"web_search", "browser_agent_read", "browser_agent_interact", "knowledge_base"}:
         return False, "", "", ""
 

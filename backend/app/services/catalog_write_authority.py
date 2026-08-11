@@ -157,3 +157,38 @@ def invoke_action_requires_write_approval(action: str) -> bool:
     if entry is not None:
         return matrix_entry_requires_write_approval(entry)
     return action_name_indicates_write(action)
+
+
+def mcp_hints_from_schema(schema: dict[str, Any] | None) -> tuple[bool | None, bool | None]:
+    """Extract MCP standard readOnlyHint / destructiveHint from tool input schema."""
+    if not isinstance(schema, dict):
+        return None, None
+    ann = schema.get("annotations")
+    if not isinstance(ann, dict):
+        ann = {}
+    read_only = ann.get("readOnlyHint")
+    if read_only is None and "readOnlyHint" in schema:
+        read_only = schema.get("readOnlyHint")
+    destructive = ann.get("destructiveHint")
+    if destructive is None and "destructiveHint" in schema:
+        destructive = schema.get("destructiveHint")
+    ro = bool(read_only) if read_only is not None else None
+    de = bool(destructive) if destructive is not None else None
+    return ro, de
+
+
+def mcp_tool_requires_write_approval(
+    *,
+    capability_tier: str | None = None,
+    requires_approval: bool | None = None,
+    read_only_hint: bool | None = None,
+    destructive_hint: bool | None = None,
+) -> bool:
+    """Annotation-driven MCP write gate — same authority model as native catalog."""
+    if read_only_hint is True:
+        return False
+    if requires_approval is True or destructive_hint is True:
+        return True
+    if str(capability_tier or "").strip().lower() == "write":
+        return True
+    return False

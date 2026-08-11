@@ -284,11 +284,17 @@ class ReActEngine:
                 environment_name=ctx.environment_name,
             )
 
-        resolved_model = (
-            (getattr(routing_control, "model", None) if routing_control is not None else None)
-            or model
-            or MODEL_TIERS["high"]["openai"]
-        )
+        from app.services.assistant_routing_tier import resolve_tool_loop_model
+
+        explicit_tool_model = str(model or "").strip() or None
+        resolved_model = resolve_tool_loop_model(
+            explicit_model=explicit_tool_model,
+            routing_control=routing_control,
+            phase="planning",
+            routing_tier=getattr(routing_control, "tier", "multi_step")
+            if routing_control is not None
+            else "multi_step",
+        ) or MODEL_TIERS["high"]["openai"]
         messages: list[dict[str, Any]] = []
         from app.services.gravitre_voice import apply_voice
 
@@ -354,12 +360,15 @@ class ReActEngine:
                 break
             iteration += 1
             routing_tier = getattr(routing_control, "tier", "multi_step") if routing_control else "multi_step"
-            from app.services.assistant_routing_tier import model_for_routing_phase
+            from app.services.assistant_routing_tier import resolve_tool_loop_model
 
             phase = "synthesis" if iteration == effective_max else "planning"
-            resolved_model = model_for_routing_phase(phase, routing_tier)
-            if routing_control is not None and phase == "synthesis":
-                resolved_model = routing_control.model
+            resolved_model = resolve_tool_loop_model(
+                explicit_model=explicit_tool_model,
+                routing_control=routing_control,
+                phase=phase,
+                routing_tier=routing_tier,
+            )
             try:
                 response = await self._chat_with_tools(messages, tools, resolved_model)
             except Exception as exc:  # noqa: BLE001
@@ -717,23 +726,17 @@ class ReActEngine:
         tools: list[dict[str, Any]],
         model: str,
     ) -> Any:
-        from app.services.narrowed_tools import assert_tools_narrowed
+        from app.services.providers.provider_tool_router import complete_with_tools
 
-        # G5 standing guard — refuse unnarrowed full-registry attaches.
-        assert_tools_narrowed(tools, where="react_engine._chat_with_tools")
-        client = self.router._openai
-        if client is None:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
-        openai_tools = list(tools) if tools else []
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "tools": openai_tools,
-            "tool_choice": "auto",
-        }
-        if _supports_custom_temperature(model):
-            kwargs["temperature"] = 0.2
-        return await client.chat.completions.create(**kwargs)
+        temp = 0.2 if _supports_custom_temperature(model) else None
+        return await complete_with_tools(
+            self.router,
+            model=model,
+            messages=messages,
+            tools=list(tools) if tools else [],
+            tool_choice="auto",
+            temperature=temp,
+        )
 
     async def _run_reasoning_only(
         self,
