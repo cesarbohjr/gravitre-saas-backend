@@ -1,0 +1,30 @@
+{
+  "record": "billing_plans_research_lookups_restore",
+  "restored_at": "2026-08-11",
+  "root_cause": "20260729120000_seed_all_billing_plans.sql ON CONFLICT replaced features/overage_rates without research keys after 20260719120000 had merged them",
+  "before": {
+    "node": {"research_lookups_per_month": null, "research_lookup": null},
+    "control": {"research_lookups_per_month": null, "research_lookup": null},
+    "command": {"research_lookups_per_month": null, "research_lookup": null},
+    "enterprise": {"research_lookups_per_month": null, "research_lookup": null}
+  },
+  "after": {
+    "node": {"research_lookups_per_month": 10, "research_lookup": 0.35, "voice_minutes_per_month": 60},
+    "control": {"research_lookups_per_month": 60, "research_lookup": 0.35, "voice_minutes_per_month": 300},
+    "command": {"research_lookups_per_month": 200, "research_lookup": 0.35, "voice_minutes_per_month": 1200},
+    "enterprise": {"research_lookups_per_month": 200, "research_lookup": 0.35, "voice_minutes_per_month": 1200}
+  },
+  "verdict": "VERIFY_PASS research keys restored; voice keys intact",
+  "migration": "supabase/migrations/20260811120000_restore_billing_plans_research_lookups.sql",
+  "apply_script": "scripts/restore-billing-plans-research-lookups.py",
+  "supabase_db_push": {
+    "status": "BLOCKED",
+    "reason": "Remote migration versions not found in local migrations directory",
+    "note": "Live row restore already applied via service-role script; SQL migration remains in repo. Do not repair migration history without explicit owner choice."
+  },
+  "harden": [
+    "supabase/seed.sql includes research+voice keys; ON CONFLICT merges jsonb",
+    "supabase/migrations/20260729120000_seed_all_billing_plans.sql same harden"
+  ],
+  "dual_provider_note": "Google grounding is intentional primary in code/governance; 100% live traffic is Tavily fallback. Recommend WEB_RESEARCH_PROVIDER=tavily until google_grounding appears in usage_records."
+}

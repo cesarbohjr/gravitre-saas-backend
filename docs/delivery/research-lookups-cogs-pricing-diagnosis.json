@@ -21,7 +21,15 @@
     "control": 60,
     "command": 200,
     "overage_usd": 0.35,
-    "billing_plans_db_has_research_keys": false
+    "billing_plans_db_has_research_keys": true,
+    "billing_plans_restored_at": "2026-08-11",
+    "billing_plans_restore_artifact": "docs/delivery/billing-plans-research-lookups-restore-2026-08-11.json"
+  },
+  "dual_provider": {
+    "code_default": "google",
+    "live_metered": "tavily_100_percent",
+    "verdict": "deliberate_primary_with_silent_fallback_not_dead_code",
+    "ops_recommendation": "Set WEB_RESEARCH_PROVIDER=tavily until usage_records show google_grounding"
   },
   "usage_records": {
     "metric_type": "research_lookups",

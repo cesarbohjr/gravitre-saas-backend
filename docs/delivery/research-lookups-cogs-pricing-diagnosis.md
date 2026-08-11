@@ -81,7 +81,7 @@ Internal safety constant still documents paid-tier grounding as `$0.035`:
 Customer overage list price remains **$0.35 / lookup** (code fallback + marketing constants). Margin vs Tavily PAYG ≈ **43×**; vs Google paid grounding ≈ **10×**.
 
 **Customer-facing allotments (code fallback / marketing):** Node **10**, Control **60**, Command **200**, overage **$0.35**.  
-**DB drift note:** live `billing_plans.features` on 2026-08-11 **does not** contain `research_lookups_per_month` / `research_lookup` overage keys (voice minutes present). Runtime falls back to code constants. **CONFIRMED** query — treat as hygiene gap, not a pricing decision.
+**DB drift (fixed 2026-08-11):** live `billing_plans.features` was missing `research_lookups_per_month` / `research_lookup` overage (voice minutes present). Root cause: `20260729120000_seed_all_billing_plans.sql` **replaced** `features`/`overage_rates` wholesale without research keys after `20260719120000` had merged them. Runtime fell back to code constants — same class as prior Node/Command display bugs. Restored via `20260811120000_restore_billing_plans_research_lookups.sql` + live apply; seed/ON CONFLICT hardened to **merge**.
 
 ---
 
@@ -155,13 +155,40 @@ Until then, hiding would be an assumption — the opposite of the voice decision
 
 ---
 
+## Follow-up (2026-08-11) — dual provider + billing_plans restore
+
+### Why Gemini grounding exists when traffic is 100% Tavily
+
+**Not dead code. Deliberate dual-provider design that has never won in prod.**
+
+| Fact | Evidence |
+| -- | -- |
+| Governance chose Google Grounding as Tavily *replacement* (training/retention) | `internet-research-governance-closure.json` — recommended_replacement = Grounded Generation |
+| Code default `WEB_RESEARCH_PROVIDER=google`, Tavily = fallback (`WEB_RESEARCH_FALLBACK_TAVILY=true`) | `config.py`, `web_research.py` |
+| Live smoke still sets provider=google but metered result = tavily | `internet-research-live-latest.json` — `web_research_provider: google`, `external_search.provider: tavily`; pre-go-live: “Google primary fell back to Tavily” |
+| Lifetime usage_records | 35/35 `provider: tavily`, 0 `google_grounding` |
+
+**Honest read:** Google is the *intended* primary cost path; Tavily is the *actual* production path because Google fails or returns no results and fallback always wins. That is an unexplained live gap (credentials / API / empty grounding chunks), not a second product surface by design. `web_research_provider_configured=true` can be true from Tavily alone — it does not prove Google works.
+
+**Consolidation recommendation (ops, not this pricing pass):** Until a live lookup meters `google_grounding`, set prod `WEB_RESEARCH_PROVIDER=tavily` so the configured default matches reality (one billing surface). Keep Google code behind explicit opt-in until a PASS smoke records `provider=google_grounding`. Do **not** treat Google as a live COGS base while traffic is 100% Tavily. Removing Google entirely is a product/governance call — only after abandoning the closed governance recommendation.
+
+### billing_plans research keys — fixed
+
+| Step | Result |
+| -- | -- |
+| Root cause | `20260729120000_seed_all_billing_plans.sql` `ON CONFLICT` **replaced** features/overage_rates without research keys (after `20260719120000` had merged them). Voice survived via later merge migration. |
+| Live restore | 2026-08-11 — node 10 / control 60 / command 200 / enterprise 200; overage `research_lookup=0.35`; voice keys intact (`VERIFY_PASS`) |
+| Repo harden | New migration `20260811120000_…`; seed + seed_all now include research+voice keys; ON CONFLICT **merges** jsonb instead of replace |
+
+---
+
 ## Open UNKNOWNs (do not invent)
 
 1. Gravitre’s **Tavily account plan** and invoice unit price (vs published $0.008).  
 2. Whether Railway currently has a working **GEMINI_API_KEY** (health says configured; usage never records `google_grounding`).  
 3. Google Cloud / AI Studio **invoice** grounding line for this project.  
 4. Real paying-customer research distribution (needs more than smoke org).  
-5. Why `billing_plans` lost `research_lookups_per_month` / `research_lookup` overage keys after migration `20260719120000`.
+5. ~~Why `billing_plans` lost research keys~~ — **ANSWERED 2026-08-11:** wiped by `20260729120000` wholesale features replace; restored live + hardened seeds.
 
 ---
 
