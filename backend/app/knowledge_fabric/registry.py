@@ -45,6 +45,14 @@ class KnowledgeSourceSpec:
     third_party_content_present: bool = False
     legal_review_status: str = "unreviewed"
     secondary_packs: tuple[str, ...] = ()
+    # Wave 2 licensing / retrieval / freshness
+    licence_verified: bool = False
+    license_verified_at: str | None = None
+    retrieval_semantic: bool = True
+    retrieval_keyword: bool = True
+    citation_required: bool = True
+    refresh_days: int | None = None
+    effective_date_sensitive: bool = False
 
     def to_row(self) -> dict[str, Any]:
         return {
@@ -71,6 +79,13 @@ class KnowledgeSourceSpec:
             "derivatives_allowed": self.derivatives_allowed,
             "third_party_content_present": self.third_party_content_present,
             "legal_review_status": self.legal_review_status,
+            "licence_verified": self.licence_verified,
+            "license_verified_at": self.license_verified_at,
+            "retrieval_semantic": self.retrieval_semantic,
+            "retrieval_keyword": self.retrieval_keyword,
+            "citation_required": self.citation_required,
+            "refresh_days": self.refresh_days,
+            "effective_date_sensitive": self.effective_date_sensitive,
             "metadata": {
                 "pack_id": self.pack_id,
                 "pack_label": self.pack_label,
@@ -102,6 +117,7 @@ class KnowledgeSourceSpec:
             ingestion_method=self.ingestion_method,
             crawl_allowed=self.crawl_allowed,
             commercial_use_allowed=self.commercial_use_allowed,
+            licence_verified=self.licence_verified,
         )
 
 
@@ -156,6 +172,7 @@ def _base_legal_finance_cyber_hr() -> tuple[KnowledgeSourceSpec, ...]:
             license_url="https://www.archives.gov/founding-docs/constitution-transcript",
             derivatives_allowed=True,
             legal_review_status="verified_live",
+            licence_verified=True,
             license_notes="U.S. government work / public domain founding document text.",
         ),
         KnowledgeSourceSpec(
@@ -206,6 +223,7 @@ def _base_legal_finance_cyber_hr() -> tuple[KnowledgeSourceSpec, ...]:
             license_url="https://www.sec.gov/edgar/sec-api-documentation",
             derivatives_allowed=True,
             legal_review_status="verified_live",
+            licence_verified=True,
             license_notes="SEC EDGAR APIs — fair access policy; identify User-Agent; no bulk abuse.",
         ),
         KnowledgeSourceSpec(
@@ -231,6 +249,7 @@ def _base_legal_finance_cyber_hr() -> tuple[KnowledgeSourceSpec, ...]:
             license_url="https://www.nist.gov/open",
             derivatives_allowed=True,
             legal_review_status="verified_live",
+            licence_verified=True,
             license_notes=(
                 "U.S. government work — not subject to U.S. copyright (17 U.S.C. § 105). "
                 "Credit NIST; foreign rights may differ (nist.gov/copyrights-disclaimers)."
@@ -259,6 +278,7 @@ def _base_legal_finance_cyber_hr() -> tuple[KnowledgeSourceSpec, ...]:
             license_url="https://www.nist.gov/open",
             derivatives_allowed=True,
             legal_review_status="verified_live",
+            licence_verified=True,
             license_notes="NIST SP — U.S. government work; attribute NIST.",
         ),
         KnowledgeSourceSpec(
@@ -284,6 +304,7 @@ def _base_legal_finance_cyber_hr() -> tuple[KnowledgeSourceSpec, ...]:
             license_url="https://developer.dol.gov/",
             derivatives_allowed=True,
             legal_review_status="verified_live",
+            licence_verified=True,
             license_notes="DOL developer APIs — use per DOL API terms.",
         ),
         KnowledgeSourceSpec(
@@ -333,12 +354,15 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
         derivatives_allowed=True,
         third_party_content_present=True,
         legal_review_status="filtered_provenance",
+        licence_verified=True,
+        refresh_days=90,
         license_notes=(
             "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep "
             "their own licenses — ingest only provenance-filtered Saylor-authored pages "
             "(guest-accessible syllabi/intros). UNIT READINGS BLOCKED until further "
             "clarification (Cesar 2026-08-11): no authenticated-enrollment provenance "
-            "pass / deeper ingest without explicit reopen."
+            "pass / deeper ingest without explicit reopen. Resource allowlist: "
+            "CC-BY-3.0/4.0, CC-BY-SA-3.0/4.0; block NC/ARR/UNKNOWN."
         ),
     )
     saylor_specs = (
@@ -507,6 +531,7 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
             derivatives_allowed=True,
             third_party_content_present=False,
             legal_review_status="verified_live",
+            licence_verified=True,
             secondary_packs=("pack.legal",),
             license_notes=(
                 "Live-verified: FTC website policy — U.S. government work / public domain "
@@ -544,6 +569,7 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
             derivatives_allowed=True,
             third_party_content_present=False,
             legal_review_status="verified_live",
+            licence_verified=True,
             secondary_packs=("pack.sales",),
             license_notes=(
                 "Live-verified: SBA.gov government information is public domain; "
@@ -583,6 +609,7 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
             derivatives_allowed=True,
             third_party_content_present=False,
             legal_review_status="verified_live",
+            licence_verified=True,
             secondary_packs=("pack.marketing",),
             license_notes=(
                 "Live-verified Census API ToS: permitted to develop services that get Census "
@@ -658,9 +685,208 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
     )
 
 
+def _wave2_expansion_sources() -> tuple[KnowledgeSourceSpec, ...]:
+    """Genuinely new Wave 2 KF sources (Phase 0 deduped). licence_verified set after live check."""
+    us_gov = dict(
+        license_type="A",
+        commercial_use_allowed=True,
+        attribution_required=True,
+        crawl_allowed=True,
+        license="US-Gov-Work",
+        license_url="https://www.usa.gov/government-works",
+        derivatives_allowed=True,
+        legal_review_status="verified_live",
+        licence_verified=True,
+        retrieval_semantic=True,
+        retrieval_keyword=True,
+        citation_required=True,
+        refresh_days=30,
+    )
+    ca_ogl = dict(
+        license_type="A",
+        commercial_use_allowed=True,
+        attribution_required=True,
+        crawl_allowed=True,
+        license="Canada-OGL",
+        license_url="https://open.canada.ca/en/open-government-licence-canada",
+        derivatives_allowed=True,
+        legal_review_status="verified_live",
+        licence_verified=True,
+        retrieval_semantic=True,
+        retrieval_keyword=True,
+        citation_required=True,
+        refresh_days=30,
+        effective_date_sensitive=True,
+    )
+    return (
+        KnowledgeSourceSpec(
+            source_id="hr.dol.employment_law_guide",
+            publisher="U.S. Department of Labor / Wage and Hour Division",
+            url="https://www.dol.gov/agencies/whd/employment-law-guide",
+            source_type="government_work",
+            department="hr",
+            industry=None,
+            topics=("employment_law", "wage_hour", "flsa", "fmla", "dol_guide"),
+            jurisdictions=("US", "US-federal"),
+            ingestion_method="bulk",
+            refresh_frequency="monthly",
+            authority_score=0.96,
+            quality_score=0.9,
+            pack_id="pack.hr",
+            pack_label="HR Pack",
+            license_notes=(
+                "U.S. government work (17 U.S.C. § 105) — live-confirmed before ingest. "
+                "Expands beyond hr.dol.developer FLSA/FMLA snippets."
+            ),
+            **us_gov,
+        ),
+        KnowledgeSourceSpec(
+            source_id="hr.eeoc.employer_guidance",
+            publisher="U.S. Equal Employment Opportunity Commission",
+            url="https://www.eeoc.gov/employers",
+            source_type="government_work",
+            department="hr",
+            industry=None,
+            topics=("eeoc", "employment_discrimination", "title_vii", "employer_guidance"),
+            jurisdictions=("US", "US-federal"),
+            ingestion_method="bulk",
+            refresh_frequency="monthly",
+            authority_score=0.97,
+            quality_score=0.9,
+            pack_id="pack.hr",
+            pack_label="HR Pack",
+            license_notes="U.S. government work — EEOC employer guidance + guidance library.",
+            **us_gov,
+        ),
+        KnowledgeSourceSpec(
+            source_id="legal.ca.justice_laws",
+            publisher="Department of Justice Canada / Justice Laws Website",
+            url="https://laws-lois.justice.gc.ca/eng/",
+            source_type="government_work",
+            department="legal",
+            industry=None,
+            topics=("statutes", "regulations", "pipeda", "competition_act", "canada_federal"),
+            jurisdictions=("CA", "CA-federal"),
+            ingestion_method="bulk",
+            refresh_frequency="monthly",
+            authority_score=0.98,
+            quality_score=0.94,
+            pack_id="pack.legal",
+            pack_label="Legal Pack",
+            license_notes=(
+                "Canada Open Government Licence — commercial use with attribution; "
+                "chunks carry jurisdiction/act/current_to_date metadata. New jurisdiction — "
+                "router-tested US vs CA separation required."
+            ),
+            **ca_ogl,
+        ),
+        KnowledgeSourceSpec(
+            source_id="cyber.nist.ai_rmf",
+            publisher="National Institute of Standards and Technology",
+            url="https://doi.org/10.6028/NIST.AI.100-1",
+            source_type="government_work",
+            department="cybersecurity",
+            industry="msp",
+            topics=("ai_rmf", "govern", "map", "measure", "manage", "ai_risk"),
+            jurisdictions=("US",),
+            ingestion_method="bulk",
+            refresh_frequency="version_change",
+            authority_score=0.97,
+            quality_score=0.94,
+            pack_id="pack.cybersecurity",
+            pack_label="Cybersecurity / MSP Pack",
+            license_notes="NIST AI RMF 1.0 — U.S. government work; attribute NIST.",
+            **{**us_gov, "license_url": "https://www.nist.gov/open", "refresh_days": 90},
+        ),
+        KnowledgeSourceSpec(
+            source_id="cyber.nist.genai_profile",
+            publisher="National Institute of Standards and Technology",
+            url="https://doi.org/10.6028/NIST.AI.600-1",
+            source_type="government_work",
+            department="cybersecurity",
+            industry="msp",
+            topics=("genai", "ai_rmf", "content_integrity", "ai_risk"),
+            jurisdictions=("US",),
+            ingestion_method="bulk",
+            refresh_frequency="version_change",
+            authority_score=0.96,
+            quality_score=0.93,
+            pack_id="pack.cybersecurity",
+            pack_label="Cybersecurity / MSP Pack",
+            license_notes="NIST AI 600-1 Generative AI Profile — U.S. government work.",
+            **{**us_gov, "license_url": "https://www.nist.gov/open", "refresh_days": 90},
+        ),
+        KnowledgeSourceSpec(
+            source_id="cyber.nist.zero_trust",
+            publisher="National Institute of Standards and Technology",
+            url="https://doi.org/10.6028/NIST.SP.800-207",
+            source_type="government_work",
+            department="cybersecurity",
+            industry="msp",
+            topics=("zero_trust", "zta", "sp800-207", "access_control"),
+            jurisdictions=("US",),
+            ingestion_method="bulk",
+            refresh_frequency="version_change",
+            authority_score=0.96,
+            quality_score=0.93,
+            pack_id="pack.cybersecurity",
+            pack_label="Cybersecurity / MSP Pack",
+            license_notes="NIST SP 800-207 Zero Trust Architecture — U.S. government work.",
+            **{**us_gov, "license_url": "https://www.nist.gov/open", "refresh_days": 90},
+        ),
+        KnowledgeSourceSpec(
+            source_id="cyber.cisa.advisories",
+            publisher="Cybersecurity and Infrastructure Security Agency",
+            url="https://www.cisa.gov/news-events/cybersecurity-advisories",
+            source_type="government_work",
+            department="cybersecurity",
+            industry="msp",
+            topics=("cisa", "advisories", "cyber_threats", "msp", "ransomware"),
+            jurisdictions=("US", "US-federal"),
+            ingestion_method="bulk",
+            refresh_frequency="weekly",
+            authority_score=0.95,
+            quality_score=0.9,
+            pack_id="pack.cybersecurity",
+            pack_label="Cybersecurity / MSP Pack",
+            license_notes="CISA advisories / MSP guidance / StopRansomware — U.S. government work.",
+            **{**us_gov, "refresh_days": 7},
+        ),
+        KnowledgeSourceSpec(
+            source_id="marketing.ca.competition_bureau",
+            publisher="Competition Bureau Canada",
+            url="https://competition-bureau.canada.ca/en/deceptive-marketing-practices",
+            source_type="government_work",
+            department="marketing",
+            industry=None,
+            topics=(
+                "deceptive_marketing",
+                "influencer_marketing",
+                "competition_bureau",
+                "advertising",
+                "canada",
+            ),
+            jurisdictions=("CA", "CA-federal"),
+            ingestion_method="bulk",
+            refresh_frequency="monthly",
+            authority_score=0.96,
+            quality_score=0.9,
+            pack_id="pack.marketing",
+            pack_label="Marketing Pack",
+            secondary_packs=("pack.legal",),
+            license_notes=(
+                "Canada Open Government Licence — Competition Bureau deceptive + influencer "
+                "marketing guidance. Cross-pack with Legal."
+            ),
+            **ca_ogl,
+        ),
+    )
+
+
 PLATFORM_KNOWLEDGE_SOURCES: tuple[KnowledgeSourceSpec, ...] = (
     *_base_legal_finance_cyber_hr(),
     *_sales_marketing_sources(),
+    *_wave2_expansion_sources(),
 )
 
 

@@ -1,0 +1,71 @@
+{
+  "ran_at": "2026-08-11T20:26:14.191935+00:00",
+  "cisa": [
+    {
+      "source_id": "cyber.cisa.advisories",
+      "status": "ingested",
+      "documents": 3,
+      "chunks": 3,
+      "license": "US-Gov-Work",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    }
+  ],
+  "router": {
+    "us_route": {
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "US-federal"
+      ],
+      "tiers": [
+        "customer_rag",
+        "expert_pack"
+      ],
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['US-federal']; packs=['pack.legal']"
+    },
+    "ca_route": {
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "CA-federal"
+      ],
+      "tiers": [
+        "customer_rag",
+        "expert_pack"
+      ],
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['CA-federal']; packs=['pack.legal']"
+    },
+    "us_hit_jurisdictions": [
+      "US-FEDERAL"
+    ],
+    "ca_hit_jurisdictions": [
+      "CA-FEDERAL"
+    ],
+    "us_excludes_ca": true,
+    "ca_includes_ca": true,
+    "ca_excludes_us_federal": true,
+    "us_sources": [
+      "legal.us.constitution",
+      "legal.us.constitution",
+      "legal.us.constitution",
+      "marketing.ftc.business_guidance",
+      "marketing.ftc.business_guidance"
+    ],
+    "ca_sources": [
+      "legal.ca.justice_laws",
+      "legal.ca.justice_laws",
+      "legal.ca.justice_laws",
+      "legal.ca.justice_laws",
+      "legal.ca.justice_laws"
+    ]
+  }
+}

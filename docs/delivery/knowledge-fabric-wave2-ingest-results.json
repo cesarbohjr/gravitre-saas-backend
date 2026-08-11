@@ -1,0 +1,496 @@
+{
+  "ran_at": "2026-08-11T20:24:09.470713+00:00",
+  "phase0_ref": "docs/delivery/knowledge-fabric-wave2-phase0-dedupe.md",
+  "license_verification": {
+    "Canada-OGL": {
+      "family": "Canada-OGL",
+      "ok": true,
+      "matched": [
+        "Open Government Licence",
+        "copy, modify, publish, translate, adapt, distribute",
+        "commercial purpose"
+      ],
+      "forbidden_hits": [],
+      "urls": [
+        {
+          "url": "https://open.canada.ca/en/open-government-licence-canada",
+          "status": 200,
+          "chars": 4597,
+          "attempt": 1
+        }
+      ]
+    },
+    "US-Gov-Work": {
+      "family": "US-Gov-Work",
+      "ok": true,
+      "matched": [
+        "not subject to copyright protection",
+        "works of the U\\.S\\. government",
+        "Sections?\\s+101 and 105",
+        "Government work is something created by a U\\.S\\. government",
+        "copyright-free"
+      ],
+      "forbidden_hits": [],
+      "urls": [
+        {
+          "url": "https://www.usa.gov/government-copyright",
+          "status": 200,
+          "chars": 5755,
+          "attempt": 1
+        },
+        {
+          "url": "https://www.archives.gov/founding-docs/constitution-transcript",
+          "status": 200,
+          "chars": 29969,
+          "attempt": 1
+        }
+      ]
+    }
+  },
+  "halted_license_mismatch": [],
+  "allowed_sources": [
+    "hr.dol.employment_law_guide",
+    "hr.eeoc.employer_guidance",
+    "legal.ca.justice_laws",
+    "cyber.nist.ai_rmf",
+    "cyber.nist.genai_profile",
+    "cyber.nist.zero_trust",
+    "cyber.cisa.advisories",
+    "marketing.ca.competition_bureau"
+  ],
+  "registered": 30,
+  "batches": [
+    {
+      "batch": "hr",
+      "status": "ran",
+      "documents": 5,
+      "chunks": 27,
+      "results": [
+        {
+          "document_id": "29f9a3ba-f81d-4b9a-b7c9-ea6f709baecc",
+          "skipped": false,
+          "chunks": 6
+        },
+        {
+          "document_id": "d25f72b3-db57-430a-96b3-e55daaf0b0f9",
+          "skipped": false,
+          "chunks": 6
+        },
+        {
+          "document_id": "fc50cbf0-0392-4fb5-82d1-dab81d7996a8",
+          "skipped": false,
+          "chunks": 4
+        },
+        {
+          "document_id": "c8f34a0b-7cd0-4703-b45c-3e7dfc1ea633",
+          "skipped": false,
+          "chunks": 5
+        },
+        {
+          "document_id": "529dd6f6-8a31-4215-bef5-6e3390cb03fa",
+          "skipped": false,
+          "chunks": 6
+        }
+      ],
+      "errors": [],
+      "per_source": [
+        {
+          "source_id": "hr.dol.employment_law_guide",
+          "status": "ingested",
+          "documents": 2,
+          "chunks": 12,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        },
+        {
+          "source_id": "hr.eeoc.employer_guidance",
+          "status": "ingested",
+          "documents": 3,
+          "chunks": 15,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        }
+      ]
+    },
+    {
+      "batch": "legal_ca",
+      "status": "ran",
+      "documents": 3,
+      "chunks": 0,
+      "results": [
+        {
+          "document_id": "559bb9ab-30e0-4c82-acbf-27ae254bd658",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "81a6094a-8f59-4163-96a0-17b7f955a5ad",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "07274db8-4fe5-4591-8f97-130e44cb6b41",
+          "skipped": true,
+          "chunks": 0
+        }
+      ],
+      "errors": [],
+      "per_source": [
+        {
+          "source_id": "legal.ca.justice_laws",
+          "status": "ingested",
+          "documents": 3,
+          "chunks": 0,
+          "license": "Canada-OGL",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        }
+      ]
+    },
+    {
+      "batch": "cyber",
+      "status": "ran",
+      "documents": 3,
+      "chunks": 3,
+      "results": [
+        {
+          "document_id": "41ac9cc5-27f3-4bb4-b462-321976e1c703",
+          "skipped": false,
+          "chunks": 1
+        },
+        {
+          "document_id": "da925227-6b1e-45b0-a6e4-7bbaf08a3dd1",
+          "skipped": false,
+          "chunks": 1
+        },
+        {
+          "document_id": "be7bbcd0-ef63-4319-b94f-208e5df89c53",
+          "skipped": false,
+          "chunks": 1
+        }
+      ],
+      "errors": [],
+      "per_source": [
+        {
+          "source_id": "cyber.nist.ai_rmf",
+          "status": "ingested",
+          "documents": 1,
+          "chunks": 1,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        },
+        {
+          "source_id": "cyber.nist.genai_profile",
+          "status": "ingested",
+          "documents": 1,
+          "chunks": 1,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        },
+        {
+          "source_id": "cyber.nist.zero_trust",
+          "status": "ingested",
+          "documents": 1,
+          "chunks": 1,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        },
+        {
+          "source_id": "cyber.cisa.advisories",
+          "status": "ingested",
+          "documents": 0,
+          "chunks": 0,
+          "license": "US-Gov-Work",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        }
+      ]
+    },
+    {
+      "batch": "marketing_ca",
+      "status": "ran",
+      "documents": 1,
+      "chunks": 0,
+      "results": [
+        {
+          "document_id": "357e274d-380a-4533-a425-2af7a3d22751",
+          "skipped": true,
+          "chunks": 0
+        }
+      ],
+      "errors": [],
+      "per_source": [
+        {
+          "source_id": "marketing.ca.competition_bureau",
+          "status": "ingested",
+          "documents": 1,
+          "chunks": 0,
+          "license": "Canada-OGL",
+          "licence_verified": true,
+          "legal_review_status": "verified_live"
+        }
+      ]
+    }
+  ],
+  "router_us_vs_ca": {
+    "us_query_route": {
+      "departments": [],
+      "jurisdictions": [
+        "US-federal"
+      ],
+      "tiers": [
+        "customer_rag",
+        "expert_pack"
+      ],
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "reason": "departments=['unspecified']; jurisdictions=['US-federal']; packs=['pack.legal']"
+    },
+    "ca_query_route": {
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "CA-federal"
+      ],
+      "tiers": [
+        "customer_rag",
+        "expert_pack"
+      ],
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['CA-federal']; packs=['pack.legal']"
+    },
+    "us_hit_jurisdictions": [
+      "CA-FEDERAL",
+      "US-FEDERAL"
+    ],
+    "ca_hit_jurisdictions": [
+      "CA-FEDERAL"
+    ],
+    "ca_route_has_ca_federal": true,
+    "us_route_lacks_ca_federal": true,
+    "ca_hits_include_ca": true,
+    "us_hits_exclude_ca_federal": false
+  },
+  "quality": {
+    "as_of": "2026-08-11T20:24:46.929159+00:00",
+    "honesty": "exact_live_counts_no_rounding_up",
+    "packs": [
+      {
+        "pack_id": "pack.cybersecurity",
+        "source_count": 6,
+        "active_source_count": 6,
+        "document_count": 7,
+        "chunk_count": 7,
+        "authoritative_source_count": 6,
+        "primary_source_count": 6,
+        "avg_authority_score": 0.9617,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 0,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 100.0,
+        "topic_coverage_pct": 100.0,
+        "topics_covered": [
+          "csf2",
+          "sp800-53",
+          "ai_rmf",
+          "genai",
+          "zero_trust",
+          "cisa",
+          "ransomware",
+          "msp",
+          "advisories"
+        ],
+        "topics_missing": [],
+        "gaps": [],
+        "honesty": "exact_counts_from_live_tables"
+      },
+      {
+        "pack_id": "pack.finance",
+        "source_count": 1,
+        "active_source_count": 1,
+        "document_count": 2,
+        "chunk_count": 2,
+        "authoritative_source_count": 1,
+        "primary_source_count": 1,
+        "avg_authority_score": 0.95,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 1,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 100.0,
+        "topic_coverage_pct": 75.0,
+        "topics_covered": [
+          "filings",
+          "xbrl",
+          "corporate_disclosure"
+        ],
+        "topics_missing": [
+          "edgar"
+        ],
+        "gaps": [
+          "pack.finance: coverage weak on edgar"
+        ],
+        "honesty": "exact_counts_from_live_tables"
+      },
+      {
+        "pack_id": "pack.hr",
+        "source_count": 4,
+        "active_source_count": 3,
+        "document_count": 7,
+        "chunk_count": 29,
+        "authoritative_source_count": 3,
+        "primary_source_count": 4,
+        "avg_authority_score": 0.9275,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 2,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 75.0,
+        "topic_coverage_pct": 100.0,
+        "topics_covered": [
+          "employment_law",
+          "wage_hour",
+          "flsa",
+          "fmla",
+          "eeoc",
+          "occupations",
+          "leave"
+        ],
+        "topics_missing": [],
+        "gaps": [
+          "pack.hr: license-verified 75.0% (not all sources verified)"
+        ],
+        "honesty": "exact_counts_from_live_tables"
+      },
+      {
+        "pack_id": "pack.legal",
+        "source_count": 4,
+        "active_source_count": 2,
+        "document_count": 6,
+        "chunk_count": 12,
+        "authoritative_source_count": 4,
+        "primary_source_count": 4,
+        "avg_authority_score": 0.9475,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "CA",
+          "CA-federal",
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 2,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 50.0,
+        "topic_coverage_pct": 72.73,
+        "topics_covered": [
+          "constitution",
+          "case_law",
+          "statutes",
+          "regulations",
+          "privacy",
+          "pipeda",
+          "competition",
+          "canada_federal"
+        ],
+        "topics_missing": [
+          "employment_law",
+          "ftc",
+          "can_spam"
+        ],
+        "gaps": [
+          "pack.legal: coverage weak on employment_law, ftc, can_spam",
+          "pack.legal: license-verified 50.0% (not all sources verified)"
+        ],
+        "honesty": "exact_counts_from_live_tables"
+      },
+      {
+        "pack_id": "pack.marketing",
+        "source_count": 14,
+        "active_source_count": 12,
+        "document_count": 16,
+        "chunk_count": 67,
+        "authoritative_source_count": 3,
+        "primary_source_count": 10,
+        "avg_authority_score": 0.815,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "CA",
+          "CA-federal",
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 2,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 71.43,
+        "topic_coverage_pct": 100.0,
+        "topics_covered": [
+          "advertising",
+          "consumer_behavior",
+          "market_research",
+          "influencer_marketing",
+          "deceptive_marketing",
+          "segmentation",
+          "can_spam",
+          "competition_bureau"
+        ],
+        "topics_missing": [],
+        "gaps": [
+          "pack.marketing: license-verified 71.43% (not all sources verified)"
+        ],
+        "honesty": "exact_counts_from_live_tables"
+      },
+      {
+        "pack_id": "pack.sales",
+        "source_count": 3,
+        "active_source_count": 2,
+        "document_count": 2,
+        "chunk_count": 6,
+        "authoritative_source_count": 1,
+        "primary_source_count": 2,
+        "avg_authority_score": 0.7767,
+        "avg_freshness_days": 0.0,
+        "jurisdictions_covered": [
+          "US",
+          "US-federal"
+        ],
+        "live_data_provider_count": 1,
+        "citation_coverage_pct": 100.0,
+        "license_verified_pct": 66.67,
+        "topic_coverage_pct": 80.0,
+        "topics_covered": [
+          "sales_management",
+          "pipeline",
+          "establishments",
+          "personal_selling"
+        ],
+        "topics_missing": [
+          "census"
+        ],
+        "gaps": [
+          "pack.sales: coverage weak on census",
+          "pack.sales: license-verified 66.67% (not all sources verified)"
+        ],
+        "honesty": "exact_counts_from_live_tables"
+      }
+    ]
+  }
+}

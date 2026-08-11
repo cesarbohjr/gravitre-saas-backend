@@ -19,6 +19,10 @@ from typing import Any
 
 import httpx
 
+from app.knowledge_fabric.license_types import (
+    normalize_saylor_resource_license,
+    saylor_resource_allowed,
+)
 from app.knowledge_fabric.registry import KnowledgeSourceSpec
 
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; GravitreKnowledgeFabric/1.0)"}
@@ -56,11 +60,28 @@ def _guest_login(client: httpx.Client) -> None:
         )
 
 
-def classify_saylor_page(title: str, text: str, course_code: str) -> tuple[bool, list[str]]:
+def classify_saylor_page(
+    title: str, text: str, course_code: str
+) -> tuple[bool, list[str], str]:
+    """Resource-level provenance: structured allow/block, not course-level dump.
+
+    Returns (include, reasons, license_code). Allow: CC-BY-3.0/4.0, CC-BY-SA-3.0/4.0.
+    Block: CC-BY-NC*, ARR, UNKNOWN.
+    """
     reasons: list[str] = []
     lower_title = (title or "").lower()
-    if re.search(r"NonCommercial|BY-NC|CC BY-NC", text, re.I):
-        reasons.append("nc_license_marker")
+    lic_snip = ""
+    m = re.search(
+        r"(Creative Commons[^.]{0,80}|CC BY[^.\s,]{0,30}|All rights reserved)",
+        text,
+        re.I,
+    )
+    if m:
+        lic_snip = m.group(0)
+    license_code = normalize_saylor_resource_license(lic_snip or text[:2000])
+    license_ok = saylor_resource_allowed(license_code)
+    if not license_ok:
+        reasons.append(f"blocked_license:{license_code}")
     if re.search(r"\bOpenStax\b|\bBoundless\b|\bLumen Learning\b|\bFlat World\b", text, re.I):
         reasons.append("third_party_publisher_marker")
     if re.search(r"adapted from|reused from|reproduced with permission", text, re.I):
@@ -69,14 +90,14 @@ def classify_saylor_page(title: str, text: str, course_code: str) -> tuple[bool,
         reasons.append("site_chrome_not_course_content")
     if "ai learning zone" in lower_title:
         reasons.append("ai_zone_or_nc_risk")
-    is_cc_by = bool(re.search(r"Creative Commons Attribution|CC BY 3\.0|CC BY 4\.0", text, re.I))
     course_specific = course_code.lower() in lower_title or course_code.lower() in text[:1500].lower()
     is_syllabus_or_intro = ("syllabus" in lower_title) or ("course introduction" in lower_title)
+    extra_blockers = [r for r in reasons if not r.startswith("blocked_license:")]
     include = (
-        is_cc_by
+        license_ok
         and course_specific
         and is_syllabus_or_intro
-        and not reasons
+        and not extra_blockers
         and 800 < len(text) < 80000
     )
     if not include and not reasons:
@@ -86,7 +107,7 @@ def classify_saylor_page(title: str, text: str, course_code: str) -> tuple[bool,
             reasons.append("not_course_specific")
         else:
             reasons.append("failed_include_heuristics")
-    return include, reasons
+    return include, reasons, license_code
 
 
 def provenance_filter_course(client: httpx.Client, course_code: str, course_id: int) -> dict[str, Any]:
@@ -112,8 +133,15 @@ def provenance_filter_course(client: httpx.Client, course_code: str, course_id: 
         text = _plain(pr.text)
         tm = re.search(r"<title>([^<]+)</title>", pr.text, re.I)
         title = (tm.group(1) if tm else pid).replace("| Saylor University", "").strip()
-        include, reasons = classify_saylor_page(title, text, course_code)
-        row = {"page_id": pid, "url": url, "title": title, "chars": len(text), "reasons": reasons}
+        include, reasons, license_code = classify_saylor_page(title, text, course_code)
+        row = {
+            "page_id": pid,
+            "url": url,
+            "title": title,
+            "chars": len(text),
+            "reasons": reasons,
+            "license_code": license_code,
+        }
         if include:
             # Trim to course body
             start = text.find(f"{course_code}:")
@@ -177,7 +205,7 @@ async def fetch_saylor_documents(
                     "topics": list(topics),
                     "metadata": {
                         "license_type": "A",
-                        "license": "CC-BY-3.0",
+                        "license": item.get("license_code") or "CC-BY-3.0",
                         "provenance_filter": {
                             "included_count": report["included_count"],
                             "excluded_count": report["excluded_count"],

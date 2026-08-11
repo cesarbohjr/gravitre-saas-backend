@@ -1949,8 +1949,35 @@ export const intelligencePacksApi = {
     }>(apiUrl(`/api/intelligence-packs/${encodeURIComponent(packId)}/kpis`)),
 }
 
+export type KnowledgeFabricPackQuality = {
+  pack_id: string
+  source_count: number
+  active_source_count: number
+  document_count: number
+  chunk_count: number
+  authoritative_source_count: number
+  primary_source_count: number
+  avg_authority_score: number | null
+  avg_freshness_days: number | null
+  jurisdictions_covered: string[]
+  live_data_provider_count: number
+  citation_coverage_pct: number | null
+  license_verified_pct: number | null
+  topic_coverage_pct: number | null
+  topics_covered: string[]
+  topics_missing: string[]
+  gaps: string[]
+  honesty: string
+}
+
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  knowledgeFabricQuality: () =>
+    fetcher<{
+      as_of: string
+      honesty: string
+      packs: KnowledgeFabricPackQuality[]
+    }>(apiUrl("/api/knowledge-fabric/admin/quality")),
   heuristicRecommendations: () =>
     fetcher<{
       advisoryOnly: boolean

@@ -1,7 +1,7 @@
 """Unit tests — knowledge router + authority rerank."""
 from __future__ import annotations
 
-from app.knowledge_fabric.retrieval import rerank_with_authority
+from app.knowledge_fabric.retrieval import jurisdiction_allowed, rerank_with_authority
 from app.knowledge_fabric.router import classify_knowledge_query
 
 
@@ -56,6 +56,29 @@ def test_marketing_compliance_routes_marketing_and_legal():
     assert "legal" in route.departments
     assert "pack.marketing" in route.pack_ids
     assert "pack.legal" in route.pack_ids
+
+
+def test_router_canada_federal_separates_from_us_default():
+    ca = classify_knowledge_query(
+        "What does PIPEDA require under Justice Laws Canada?",
+        assigned_pack_ids=["pack.legal"],
+    )
+    us = classify_knowledge_query(
+        "What does U.S. federal employment law say about overtime?",
+        assigned_pack_ids=["pack.legal"],
+    )
+    assert "CA-federal" in ca.jurisdictions
+    assert "US-federal" not in ca.jurisdictions
+    assert "CA-federal" not in us.jurisdictions
+    assert "US-federal" in us.jurisdictions
+
+
+def test_jurisdiction_filter_blocks_cross_border_chunks():
+    assert jurisdiction_allowed("CA-federal", ["US-federal"]) is False
+    assert jurisdiction_allowed("US-federal", ["CA-federal"]) is False
+    assert jurisdiction_allowed("CA-federal", ["CA-federal"]) is True
+    assert jurisdiction_allowed("US-federal", ["US-CA"]) is True
+    assert jurisdiction_allowed(None, ["US-federal"]) is True
 
 
 def test_gov_authority_outranks_academic_and_live_commercial():

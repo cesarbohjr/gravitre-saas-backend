@@ -5,8 +5,11 @@ import pytest
 
 from app.knowledge_fabric.license_types import (
     LICENSE_TYPES,
+    SAYLOR_ALLOWED_LICENSES,
     assert_ingest_allowed,
     license_implies_noncommercial,
+    normalize_saylor_resource_license,
+    saylor_resource_allowed,
 )
 from app.knowledge_fabric.registry import PLATFORM_KNOWLEDGE_SOURCES
 from app.knowledge_fabric.sources.openstax import deliberate_nc_ingest_attempt
@@ -53,6 +56,42 @@ def test_commercial_use_hard_gate_blocks_false_and_unconfirmed():
         assert_ingest_allowed("A", ingestion_method="bulk", crawl_allowed=True, commercial_use_allowed=False)
     with pytest.raises(ValueError, match="commercial_use_allowed"):
         assert_ingest_allowed("A", ingestion_method="bulk", crawl_allowed=True, commercial_use_allowed=None)
+
+
+def test_licence_verified_hard_gate_blocks_unconfirmed():
+    with pytest.raises(ValueError, match="licence_verified"):
+        assert_ingest_allowed(
+            "A",
+            ingestion_method="bulk",
+            crawl_allowed=True,
+            commercial_use_allowed=True,
+            licence_verified=False,
+        )
+    with pytest.raises(ValueError, match="licence_verified"):
+        assert_ingest_allowed(
+            "A",
+            ingestion_method="bulk",
+            crawl_allowed=True,
+            commercial_use_allowed=True,
+            licence_verified=None,
+        )
+    assert_ingest_allowed(
+        "A",
+        ingestion_method="bulk",
+        crawl_allowed=True,
+        commercial_use_allowed=True,
+        licence_verified=True,
+    )
+
+
+def test_saylor_resource_allow_block_list():
+    for code in SAYLOR_ALLOWED_LICENSES:
+        assert saylor_resource_allowed(code)
+    assert not saylor_resource_allowed("CC-BY-NC-4.0")
+    assert not saylor_resource_allowed("ARR")
+    assert not saylor_resource_allowed("UNKNOWN")
+    assert normalize_saylor_resource_license("CC BY-NC-SA 4.0") == "CC-BY-NC-SA-4.0"
+    assert normalize_saylor_resource_license("Creative Commons Attribution 4.0") == "CC-BY-4.0"
 
 
 def test_openstax_nc_discrepancy_is_blocked():

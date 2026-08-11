@@ -23,6 +23,8 @@ def upsert_source(client: Any, spec: KnowledgeSourceSpec) -> dict[str, Any]:
     spec.validate()
     row = spec.to_row()
     row["updated_at"] = datetime.now(timezone.utc).isoformat()
+    if row.get("licence_verified") and not row.get("license_verified_at"):
+        row["license_verified_at"] = datetime.now(timezone.utc).isoformat()
     existing = (
         client.table("knowledge_sources")
         .select("*")
@@ -64,11 +66,13 @@ def replace_document_chunks(
     settings = settings or get_settings()
     license_type = str(source_row.get("license_type") or "")
     commercial = source_row.get("commercial_use_allowed")
+    verified = source_row.get("licence_verified")
     assert_ingest_allowed(
         license_type,
         ingestion_method=str(source_row.get("ingestion_method") or "api"),
         crawl_allowed=bool(source_row.get("crawl_allowed")),
         commercial_use_allowed=commercial if isinstance(commercial, bool) else None,
+        licence_verified=verified if isinstance(verified, bool) else None,
     )
     source_uuid = source_row["id"]
     authority = float(source_row.get("authority_score") or 0.8)
@@ -152,27 +156,34 @@ def register_all_sources(client: Any) -> list[dict[str, Any]]:
     return out
 
 
-async def ingest_pack(
+async def ingest_sources(
     client: Any,
-    pack_id: str,
+    source_ids: list[str],
     *,
     settings: Settings | None = None,
     embed: bool = True,
     limit: int = 5,
 ) -> dict[str, Any]:
+    """Ingest an explicit source_id list (Wave 2 sub-batches; avoids re-touching live packs)."""
     settings = settings or get_settings()
-    specs = [s for s in ingestible_specs() if s.pack_id == pack_id]
-    if not specs:
-        return {"pack_id": pack_id, "error": "no_ingestible_sources", "documents": 0}
-
     results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
-    for spec in specs:
+    per_source: list[dict[str, Any]] = []
+    for sid in source_ids:
+        spec = get_spec(sid)
+        if spec is None:
+            errors.append({"source_id": sid, "error": "unknown_source_id"})
+            continue
+        if spec.hold_reason:
+            errors.append({"source_id": sid, "error": f"held:{spec.hold_reason}"})
+            per_source.append({"source_id": sid, "status": "held", "hold_reason": spec.hold_reason})
+            continue
         try:
             source_row = upsert_source(client, spec)
             docs = await _fetch_documents_for_spec(spec, limit=limit, settings=settings)
+            doc_results = []
             for doc in docs:
-                results.append(
+                doc_results.append(
                     replace_document_chunks(
                         client,
                         source_row=source_row,
@@ -189,19 +200,55 @@ async def ingest_pack(
                         embed=embed,
                     )
                 )
+            results.extend(doc_results)
+            per_source.append(
+                {
+                    "source_id": sid,
+                    "status": "ingested",
+                    "documents": len(doc_results),
+                    "chunks": sum(int(r.get("chunks") or 0) for r in doc_results),
+                    "license": spec.license,
+                    "licence_verified": spec.licence_verified,
+                    "legal_review_status": spec.legal_review_status,
+                }
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "knowledge_fabric.ingest_spec_failed",
-                extra={"source_id": spec.source_id, "error": str(exc)[:240]},
+                extra={"source_id": sid, "error": str(exc)[:240]},
             )
-            errors.append({"source_id": spec.source_id, "error": str(exc)[:240]})
+            errors.append({"source_id": sid, "error": str(exc)[:240]})
+            per_source.append({"source_id": sid, "status": "error", "error": str(exc)[:240]})
     return {
-        "pack_id": pack_id,
         "documents": len(results),
         "chunks": sum(int(r.get("chunks") or 0) for r in results),
         "results": results,
         "errors": errors,
+        "per_source": per_source,
     }
+
+
+async def ingest_pack(
+    client: Any,
+    pack_id: str,
+    *,
+    settings: Settings | None = None,
+    embed: bool = True,
+    limit: int = 5,
+) -> dict[str, Any]:
+    settings = settings or get_settings()
+    specs = [s for s in ingestible_specs() if s.pack_id == pack_id]
+    if not specs:
+        return {"pack_id": pack_id, "error": "no_ingestible_sources", "documents": 0}
+    out = await ingest_sources(
+        client,
+        [s.source_id for s in specs],
+        settings=settings,
+        embed=embed,
+        limit=limit,
+    )
+    out["pack_id"] = pack_id
+    return out
 
 
 async def _fetch_documents_for_spec(
@@ -210,10 +257,23 @@ async def _fetch_documents_for_spec(
     limit: int,
     settings: Settings,
 ) -> list[dict[str, Any]]:
+    # Wave 2 NIST expansions (before generic cyber.nist → CSF/SP800-53)
+    if spec.source_id in {
+        "cyber.nist.ai_rmf",
+        "cyber.nist.genai_profile",
+        "cyber.nist.zero_trust",
+    }:
+        from app.knowledge_fabric.sources.nist_wave2 import fetch_nist_wave2_documents
+
+        return await fetch_nist_wave2_documents(spec, limit=limit)
     if spec.source_id.startswith("cyber.nist"):
         from app.knowledge_fabric.sources.nist import fetch_nist_documents
 
         return await fetch_nist_documents(spec, limit=limit)
+    if spec.source_id.startswith("cyber.cisa"):
+        from app.knowledge_fabric.sources.cisa import fetch_cisa_documents
+
+        return await fetch_cisa_documents(spec, limit=limit)
     if spec.source_id.startswith("legal.courtlistener"):
         from app.knowledge_fabric.sources.courtlistener import fetch_courtlistener_opinions
 
@@ -222,14 +282,32 @@ async def _fetch_documents_for_spec(
         from app.knowledge_fabric.sources.us_constitution import fetch_constitution_documents
 
         return await fetch_constitution_documents(limit=limit)
+    if spec.source_id.startswith("legal.ca.justice_laws"):
+        from app.knowledge_fabric.sources.justice_laws_ca import fetch_justice_laws_ca_documents
+
+        return await fetch_justice_laws_ca_documents(spec, limit=limit)
     if spec.source_id.startswith("finance.sec"):
         from app.knowledge_fabric.sources.sec_edgar import fetch_sec_edgar_documents
 
         return await fetch_sec_edgar_documents(limit=limit, settings=settings)
+    if spec.source_id.startswith("hr.dol.employment_law_guide"):
+        from app.knowledge_fabric.sources.dol_elg import fetch_dol_elg_documents
+
+        return await fetch_dol_elg_documents(spec, limit=limit)
+    if spec.source_id.startswith("hr.eeoc"):
+        from app.knowledge_fabric.sources.eeoc import fetch_eeoc_documents
+
+        return await fetch_eeoc_documents(spec, limit=limit)
     if spec.source_id.startswith("hr.dol"):
         from app.knowledge_fabric.sources.dol import fetch_dol_documents
 
         return await fetch_dol_documents(limit=limit)
+    if spec.source_id.startswith("marketing.ca.competition_bureau"):
+        from app.knowledge_fabric.sources.competition_bureau_ca import (
+            fetch_competition_bureau_ca_documents,
+        )
+
+        return await fetch_competition_bureau_ca_documents(spec, limit=limit)
     if spec.source_id.startswith("marketing.ftc"):
         from app.knowledge_fabric.sources.ftc import fetch_ftc_documents
 

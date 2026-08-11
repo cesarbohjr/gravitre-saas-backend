@@ -13,6 +13,7 @@ import { ArrowsClockwise } from "@phosphor-icons/react"
 import { OverviewTab } from "./_components/overview-tab"
 import { BusinessImpactCard } from "./_components/business-impact-card"
 import { ConnectorOpsCard } from "./_components/connector-ops-card"
+import { KnowledgeFabricQualityCard } from "./_components/knowledge-fabric-quality-card"
 import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
@@ -108,6 +109,7 @@ export default function AdminIntelligencePage() {
             <GoldenSignalsPanel />
             <BusinessImpactCard />
             <ConnectorOpsCard />
+            <KnowledgeFabricQualityCard />
             <OverviewTab data={data} isLoading={isLoading} />
           </TabsContent>
 

@@ -5,14 +5,23 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-# US state / province hints for jurisdiction scoping
+# Jurisdiction hints — Canada federal must win over bare "CA" (California postal)
+_CANADA_FEDERAL_PAT = re.compile(
+    r"\bCanada\b|\bCanadian\b|\bPIPEDA\b|\bJustice Laws\b|"
+    r"\bCompetition Bureau\b|\blaws-lois\.justice\.gc\.ca\b|"
+    r"\bCanada Open Government\b",
+    re.I,
+)
 _STATE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bCalifornia\b|\bCA\b", re.I), "US-CA"),
+    (re.compile(r"\bCalifornia\b", re.I), "US-CA"),
+    # Bare CA only when not clearly Canada (handled separately above)
+    (re.compile(r"(?<![A-Za-z])\bCA\b(?![A-Za-z])", re.I), "US-CA"),
     (re.compile(r"\bNew York\b|\bNY\b", re.I), "US-NY"),
     (re.compile(r"\bTexas\b|\bTX\b", re.I), "US-TX"),
     (re.compile(r"\bOntario\b", re.I), "CA-ON"),
     (re.compile(r"\bBritish Columbia\b|\bB\.?C\.?\b", re.I), "CA-BC"),
-    (re.compile(r"\bfederal\b|\bU\.?S\.?\b|\bUnited States\b", re.I), "US-federal"),
+    (re.compile(r"\bU\.?S\.?\b|\bUnited States\b", re.I), "US-federal"),
+    (re.compile(r"\bfederal\b", re.I), "US-federal"),
 ]
 
 _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
@@ -23,6 +32,8 @@ _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
         "court",
         "opinion",
         "jurisdiction",
+        "constitution",
+        "equal protection",
         "employment law",
         "flsa",
         "fmla",
@@ -32,10 +43,37 @@ _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
         "endorsement guide",
         "deceptive advertising",
         "native advertising",
+        "pipeda",
+        "justice laws",
+        "competition act",
+        "competition bureau",
     ),
     "finance": ("sec", "edgar", "filing", "10-k", "xbrl", "revenue", "gaap", "earnings"),
-    "cybersecurity": ("nist", "csf", "cyber", "incident", "sp 800", "controls", "msp"),
-    "hr": ("employee", "payroll", "hiring", "occupation", "o*net", "leave", "wage", "labor"),
+    "cybersecurity": (
+        "nist",
+        "csf",
+        "cyber",
+        "incident",
+        "sp 800",
+        "controls",
+        "msp",
+        "cisa",
+        "ransomware",
+        "zero trust",
+        "ai rmf",
+    ),
+    "hr": (
+        "employee",
+        "payroll",
+        "hiring",
+        "occupation",
+        "o*net",
+        "leave",
+        "wage",
+        "labor",
+        "eeoc",
+        "employment law guide",
+    ),
     "sales": (
         "pipeline",
         "quota",
@@ -118,9 +156,21 @@ def classify_knowledge_query(
             departments = ["cybersecurity"]
 
     jurisdictions: list[str] = []
+    canada_federal = bool(_CANADA_FEDERAL_PAT.search(text))
+    if canada_federal:
+        jurisdictions.append("CA-federal")
     for pat, code in _STATE_PATTERNS:
         if pat.search(text):
-            jurisdictions.append(code)
+            # Skip bare-CA → US-CA when the query is clearly Canadian
+            if code == "US-CA" and canada_federal and not re.search(r"\bCalifornia\b", text, re.I):
+                continue
+            # Bare "federal" alone under a Canada query → CA-federal (already set)
+            if code == "US-federal" and canada_federal and not re.search(
+                r"\bU\.?S\.?\b|\bUnited States\b", text, re.I
+            ):
+                continue
+            if code not in jurisdictions:
+                jurisdictions.append(code)
     if not jurisdictions and any(d == "legal" for d in departments):
         jurisdictions.append("US-federal")
 
@@ -129,7 +179,8 @@ def classify_knowledge_query(
         pid = _PACK_BY_DEPT.get(d)
         if pid and pid not in pack_ids:
             pack_ids.append(pid)
-    # Marketing compliance (FTC / CAN-SPAM / endorsements) should retrieve Legal + Marketing together
+    # Marketing compliance (FTC / CAN-SPAM / endorsements / Competition Bureau)
+    # should retrieve Legal + Marketing together
     compliance_markers = (
         "can-spam",
         "can spam",
@@ -138,6 +189,8 @@ def classify_knowledge_query(
         "influencer",
         "native advertising",
         "deceptive advertising",
+        "competition bureau",
+        "deceptive marketing",
     )
     if any(m in lower for m in compliance_markers):
         for pid in ("pack.marketing", "pack.legal"):

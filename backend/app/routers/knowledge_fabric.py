@@ -11,6 +11,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_platform_admin
 from app.config import Settings, get_settings
 from app.knowledge_fabric.ingest import ingest_pack, register_all_sources
+from app.knowledge_fabric.quality import compute_pack_quality
 from app.knowledge_fabric.refresh import run_refresh_cycle
 from app.knowledge_fabric.registry import list_platform_packs
 from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
@@ -65,6 +66,16 @@ async def list_packs(
 ) -> dict[str, Any]:
     _ = current_user
     return {"packs": list_platform_packs()}
+
+
+@router.get("/admin/quality")
+async def admin_quality_dashboard(
+    _: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Platform-admin — honest per-pack Knowledge Fabric quality metrics."""
+    client = _client(settings)
+    return compute_pack_quality(client)
 
 
 @router.post("/classify")
@@ -127,14 +138,6 @@ async def admin_ingest(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Platform-admin only — org admins must not mutate the shared corpus."""
-    if body.pack_id in {"pack.sales", "pack.marketing"}:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Sales/Marketing packs are HOLD — choose commercially licensed content (C) "
-                "or originally-authored Gravitre content before ingest."
-            ),
-        )
     client = _client(settings)
     register_all_sources(client)
     return await ingest_pack(

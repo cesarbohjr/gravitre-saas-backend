@@ -16,6 +16,31 @@ def _authority_boost(authority: float, freshness: float) -> float:
     return 0.55 * float(authority or 0) + 0.25 * float(freshness or 0)
 
 
+def jurisdiction_allowed(chunk_jurisdiction: str | None, route_jurisdictions: list[str]) -> bool:
+    """Hard US/CA separation — never assume marketing-compliance tests cover this."""
+    if not route_jurisdictions:
+        return True
+    j = (chunk_jurisdiction or "").strip().upper()
+    if not j:
+        # Non-jurisdictional chunks (e.g. Saylor) allowed when route is scoped
+        return True
+    route_u = [c.strip().upper() for c in route_jurisdictions if c]
+    if any(j == code or j in code or code in j for code in route_u):
+        return True
+    ca_route = any(c.startswith("CA") for c in route_u)
+    us_route = any(c.startswith("US") for c in route_u)
+    if us_route and j.startswith("CA"):
+        return False
+    if ca_route and j.startswith("US"):
+        return False
+    # Same-country federal may satisfy a state/provincial ask
+    if any(c.startswith("US-") for c in route_u) and j in {"US", "US-FEDERAL"}:
+        return True
+    if any(c.startswith("CA-") for c in route_u) and j in {"CA", "CA-FEDERAL"}:
+        return True
+    return False
+
+
 def rerank_with_authority(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Ensure high-authority sources are not outranked by weak semantic-only hits."""
     scored: list[tuple[float, dict[str, Any]]] = []
@@ -89,12 +114,8 @@ def retrieve_knowledge_fabric(
             .execute()
         )
         for row in fts.data or []:
-            if route.jurisdictions:
-                j = (row.get("jurisdiction") or "").upper()
-                if j and not any(j in code.upper() or code.upper() in j for code in route.jurisdictions):
-                    # Keep federal when state asked if no state-specific rows
-                    if "US-FEDERAL" not in j and "US" != j:
-                        continue
+            if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
+                continue
             candidates.append(
                 {
                     **row,
@@ -124,6 +145,8 @@ def retrieve_knowledge_fabric(
                 rpc = None
             if rpc and rpc.data:
                 for row in rpc.data:
+                    if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
+                        continue
                     candidates.append({**row, "semantic_score": float(row.get("similarity") or 0.5), "match": "vector"})
             else:
                 chunk_rows = (
@@ -135,6 +158,8 @@ def retrieve_knowledge_fabric(
                     .execute()
                 )
                 for row in chunk_rows.data or []:
+                    if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
+                        continue
                     emb = row.get("embedding")
                     if not emb:
                         continue
@@ -143,9 +168,11 @@ def retrieve_knowledge_fabric(
         except Exception as exc:  # noqa: BLE001
             logger.warning("knowledge_fabric.vector_failed", extra={"error": str(exc)[:160]})
 
-    # Dedup by chunk id
+    # Dedup by chunk id (jurisdiction already applied on both paths)
     by_id: dict[str, dict[str, Any]] = {}
     for c in candidates:
+        if not jurisdiction_allowed(c.get("jurisdiction"), route.jurisdictions):
+            continue
         cid = str(c.get("id") or "")
         if not cid:
             continue
