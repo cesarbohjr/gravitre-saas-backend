@@ -27,4 +27,6 @@ Verified:
 
 ## Deploy
 
-Stamped after push — see live `/health` `git_sha`.
+- Tip: `0d4e226feaa5c14fd6a4ab3e87ce651be21c5ec0`
+- Live `GET https://api.gravitre.app/health` → `git_sha=0d4e226feaa5c14fd6a4ab3e87ce651be21c5ec0`
+- Post-deploy retrieve still returns CISA `content_mode=curated_summary_live_html_blocked` (`honesty_pass=true`)
