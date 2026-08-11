@@ -1,14 +1,14 @@
 {
   "probe": "multi_provider_tool_live",
-  "started_at": "2026-08-11T09:07:31.521830+00:00",
+  "started_at": "2026-08-11T09:23:56.482890+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "health": {
     "status": "ok",
-    "timestamp": "2026-08-11T09:07:31.277403+00:00",
+    "timestamp": "2026-08-11T09:23:56.228802+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "b56326119b1c99100d0557ffe9ad4e34aa5d9f7e",
+    "git_sha": "60e5a3f7690dde31a727613020667cd7f126b1d4",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -29,16 +29,261 @@
   "deploy_sha_ok": true,
   "api_keys": {
     "openai": true,
-    "anthropic": false,
-    "gemini": false
+    "anthropic": true,
+    "gemini": true
   },
-  "agents": {},
-  "providers": {},
-  "mcp_unified_gate": {},
+  "agents": {
+    "anthropic": {
+      "id": "a1111111-1111-4111-8111-111111110001",
+      "model": "claude-sonnet-4-6",
+      "row": {
+        "id": "a1111111-1111-4111-8111-111111110001",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "name": "Smoke anthropic tool probe",
+        "purpose": "Multi-provider native tool-calling smoke probe",
+        "role": "operator",
+        "model": "claude-sonnet-4-6",
+        "systems": [
+          "platform",
+          "apollo"
+        ],
+        "status": "active",
+        "config": {
+          "smoke_probe": true,
+          "permitted_tools": [
+            "*"
+          ],
+          "description": "Ephemeral smoke agent \u2014 do not use in customer workflows"
+        }
+      }
+    },
+    "gemini": {
+      "id": "a1111111-1111-4111-8111-111111110002",
+      "model": "gemini-2.0-flash",
+      "row": {
+        "id": "a1111111-1111-4111-8111-111111110002",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "name": "Smoke gemini tool probe",
+        "purpose": "Multi-provider native tool-calling smoke probe",
+        "role": "operator",
+        "model": "gemini-2.0-flash",
+        "systems": [
+          "platform",
+          "apollo"
+        ],
+        "status": "active",
+        "config": {
+          "smoke_probe": true,
+          "permitted_tools": [
+            "*"
+          ],
+          "description": "Ephemeral smoke agent \u2014 do not use in customer workflows"
+        }
+      }
+    }
+  },
+  "providers": {
+    "anthropic": {
+      "model": "claude-sonnet-4-6",
+      "agent_id": "a1111111-1111-4111-8111-111111110001",
+      "read": {
+        "probe_id": "3288710b-ba1b-435a-9a48-e18be854b3f8",
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-6",
+        "openai_tool_path_forbidden": true,
+        "react_status": "completed",
+        "tool_calls": [
+          {
+            "iteration": 1,
+            "tool": "assistant_connector_status",
+            "args": {},
+            "result": {
+              "success": true,
+              "tool": "assistant_connector_status",
+              "result": {
+                "connectors": [
+                  {
+                    "connector_id": "98d82730-17d0-4a4d-af23-9fd738ebad58",
+                    "vendor": "slack",
+                    "configured": true,
+                    "authenticated": false,
+                    "token_valid": false,
+                    "scopes_valid": true,
+                    "health_status": "error",
+                    "execution_available": false,
+                    "read_available": false,
+                    "write_available": false,
+                    "last_checked_at": "2026-08-11T09:24:06.327780+00:00",
+                    "source_of_truth": "connector_availability_service",
+                    "blocking_reason": "token_expired",
+                    "recovery_action": "Slack is configured, but authentication has expired. Reconnect Slack.",
+                    "auth_status": "auth_expired",
+                    "display_status": "error",
+                    "status": "error",
+                    "connected": false,
+                    "raw_status": "error",
+                    "environment": "production",
+                    "name": "slack-isolated-smoke"
+                  },
+                  {
+                    "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+                    "vendor": "hubspot",
+                    "configured": true,
+                    "authenticated": true,
+                    "token_valid": true,
+                    "scopes_valid": true,
+                    "health_status": "healthy",
+                    "execution_available": true,
+                    "read_available": true,
+                    "write_available": true,
+                    "last_checked_at": "2026-08-11T09:24:07.142518+00:00",
+                    "source_of_truth": "connector_availability_service",
+                    "blocking_reason": null,
+                    "recovery_action": null,
+                    "auth_status": "connected",
+                    "display_status": "connected",
+                    "status": "connected",
+                    "connected": true,
+                    "raw_status": "healthy",
+                    "environment": "production",
+                    "name": "hubspot-isolated-smoke"
+                  },
+                  {
+                    "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                    "vendor": "apollo",
+                    "configured": true,
+                    "authenticated": true,
+                    "token_valid": true,
+                    "scopes_valid": true,
+                    "health_status": "healthy",
+                    "execution_available": true,
+                    "read_available": true,
+                    "write_available": true,
+                    "last_checked_at": "2026-08-11T09:24:08.529171+00:00",
+                    "source_of_truth": "connector_availability_service",
+                    "blocking_reason": null,
+                    "recovery_action": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
+                    "auth_status": "connected",
+                    "display_status": "connected",
+                    "status": "connected",
+                    "connected": true,
+                    "raw_status": "healthy",
+                    "environment": "production",
+                    "name": "apollo-isolated-smoke",
+                    "requirementNote": "Company/contact discovery requires your own Apollo plan with search API access (same BYO-tier pattern as ZoomInfo / LinkedIn Sales Navigator). Build ICP and Create list work with any connected Apollo account.",
+                    "capabilityNotes": [
+                      "Can create list? yes (typically works on free Apollo)",
+                      "Can search companies/people? requires: paid Apollo plan with search API access"
+                    ],
+                    "discoveryProbe": {
+                      "probed": true,
+                      "planLimited": true,
+                      "searchPeople": true,
+                      "searchCompanies": false
+                    },
+                    "discoveryLimitation": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade"
+                  }
+                ]
+              }
+            },
+            "parallel_batch": false,
+            "batch_id": "i1-b1-1",
+            "batch_elapsed_ms": 6454
+          }
+        ],
+        "read_tool_called": true,
+        "read_tool_success": true,
+        "inference_audit_rows": [
+          {
+            "id": "c3b74d5c-e5b2-49ba-927b-5c411a211621",
+            "action": "inference.tool_completion",
+            "metadata": {
+              "model": "claude-sonnet-4-6",
+              "taskId": null,
+              "agentId": "multi-provider-smoke",
+              "provider": "anthropic",
+              "iteration": 2,
+              "toolCallCount": 0
+            },
+            "created_at": "2026-08-11T09:24:18.151378+00:00",
+            "resource_id": "3288710b-ba1b-435a-9a48-e18be854b3f8"
+          },
+          {
+            "id": "131a5d25-373c-4ee6-a87b-672aab69d342",
+            "action": "inference.tool_completion",
+            "metadata": {
+              "model": "claude-sonnet-4-6",
+              "taskId": null,
+              "agentId": "multi-provider-smoke",
+              "provider": "anthropic",
+              "iteration": 1,
+              "toolCallCount": 1
+            },
+            "created_at": "2026-08-11T09:24:03.762253+00:00",
+            "resource_id": "3288710b-ba1b-435a-9a48-e18be854b3f8"
+          }
+        ],
+        "pass": true
+      },
+      "write": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-6",
+        "tool": "apollo_lists_create",
+        "list_name": "gravitre-provider-smoke-anthropic-20260811092356",
+        "success": false,
+        "error_code": "write_approval_required",
+        "pending_approval": true,
+        "action": "apollo.lists.create",
+        "pass": true,
+        "note": "Write gate is provider-agnostic at execution; READ probe proves native inference routing."
+      },
+      "pass": true
+    },
+    "gemini": {
+      "model": "gemini-2.0-flash",
+      "agent_id": "a1111111-1111-4111-8111-111111110002",
+      "read": {
+        "probe_id": "66a55490-5c5d-4588-a1d6-166d593bf1a1",
+        "provider": "gemini",
+        "model": "gemini-2.0-flash",
+        "openai_tool_path_forbidden": true,
+        "react_status": "error",
+        "tool_calls": [],
+        "read_tool_called": false,
+        "read_tool_success": false,
+        "inference_audit_rows": [],
+        "pass": false
+      },
+      "write": {
+        "provider": "gemini",
+        "model": "gemini-2.0-flash",
+        "tool": "apollo_lists_create",
+        "list_name": "gravitre-provider-smoke-gemini-20260811092356",
+        "success": false,
+        "error_code": "write_approval_required",
+        "pending_approval": true,
+        "action": "apollo.lists.create",
+        "pass": true,
+        "note": "Write gate is provider-agnostic at execution; READ probe proves native inference routing."
+      },
+      "pass": false
+    }
+  },
+  "mcp_unified_gate": {
+    "tool": "mcp_smoke_probe_delete_record",
+    "classified_requires_write": true,
+    "invoke_action": "mcp.mcp_smoke_probe_delete_record",
+    "integration": "mcp",
+    "label": "Smoke destructive MCP delete",
+    "success": false,
+    "error_code": "write_approval_required",
+    "pending_approval": true,
+    "pass": true
+  },
   "pass": false,
-  "failed_at": "missing_api_keys",
-  "missing_providers": [
-    "anthropic",
-    "gemini"
-  ]
+  "hitl_policy": {
+    "id": "b1111111-1111-4111-8111-111111110001",
+    "name": "Smoke multi-provider write gate"
+  },
+  "finished_at": "2026-08-11T09:24:22.010721+00:00"
 }

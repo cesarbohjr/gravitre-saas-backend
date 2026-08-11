@@ -20,6 +20,7 @@ import asyncio
 import json
 import os
 import sys
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,14 +41,25 @@ PROD_HEALTH = "https://api.gravitre.app/health"
 CLAUDE_AGENT_ID = "a1111111-1111-4111-8111-111111110001"
 GEMINI_AGENT_ID = "a1111111-1111-4111-8111-111111110002"
 
+_GEMINI_ENV = os.environ.get("SMOKE_GEMINI_MODEL", "").strip()
+GEMINI_MODEL_FALLBACKS: tuple[str, ...] = (
+    (_GEMINI_ENV,) if _GEMINI_ENV else ()
+) + (
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.0-flash",
+)
+
 PROVIDER_MATRIX: list[tuple[str, str, str]] = [
     ("anthropic", "claude-sonnet-4-6", CLAUDE_AGENT_ID),
-    ("gemini", "gemini-2.5-flash", GEMINI_AGENT_ID),
+    ("gemini", GEMINI_MODEL_FALLBACKS[0], GEMINI_AGENT_ID),
 ]
 
 READ_TOOL = "assistant_connector_status"
 WRITE_TOOL = "apollo_lists_create"
 MCP_WRITE_TOOL = "mcp_smoke_probe_delete_record"
+SMOKE_HITL_POLICY_ID = "b1111111-1111-4111-8111-111111110001"
 
 
 class OpenAIToolPathForbidden(RuntimeError):
@@ -101,6 +113,45 @@ def _health() -> dict[str, Any]:
 
     with urllib.request.urlopen(PROD_HEALTH, timeout=30) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def _ensure_smoke_hitl_write_policy(client: Any, org_id: str, actor_id: str) -> dict[str, Any]:
+    """Org-scoped write/delete approval so react_write_gate blocks during smoke."""
+    row = {
+        "id": SMOKE_HITL_POLICY_ID,
+        "org_id": org_id,
+        "name": "Smoke multi-provider write gate",
+        "enabled": True,
+        "scope_type": "org",
+        "action_kinds": ["write", "delete"],
+        "approver_roles": ["admin", "owner"],
+        "approver_user_ids": [],
+        "required_approvals": 1,
+        "created_by": actor_id,
+    }
+    existing = (
+        client.table("hitl_policies")
+        .select("id")
+        .eq("id", SMOKE_HITL_POLICY_ID)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if existing:
+        client.table("hitl_policies").update(
+            {
+                "name": row["name"],
+                "enabled": True,
+                "action_kinds": row["action_kinds"],
+                "approver_roles": row["approver_roles"],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).eq("id", SMOKE_HITL_POLICY_ID).eq("org_id", org_id).execute()
+    else:
+        client.table("hitl_policies").insert(row).execute()
+    return row
 
 
 def _upsert_smoke_agent(client: Any, org_id: str, agent_id: str, name: str, model: str) -> dict[str, Any]:
@@ -400,6 +451,8 @@ async def _run_smoke(*, json_path: Path) -> dict[str, Any]:
 
     registry = get_tool_registry()
     engine = ReActEngine(settings=settings, registry=registry)
+    hitl_policy = _ensure_smoke_hitl_write_policy(client, org_id, actor_id)
+    report["hitl_policy"] = {"id": SMOKE_HITL_POLICY_ID, "name": hitl_policy.get("name")}
     ctx = ToolContext(
         settings=settings,
         client=client,
@@ -419,7 +472,7 @@ async def _run_smoke(*, json_path: Path) -> dict[str, Any]:
         )
         report["agents"][provider] = {"id": agent_id, "model": model, "row": agent_row}
         agent = dict(agent_row)
-        probe_id = f"smoke-{provider}-{nonce}"
+        probe_id = str(uuid.uuid4())
         list_name = f"gravitre-provider-smoke-{provider}-{nonce}"
 
         read_evidence = await _probe_read(

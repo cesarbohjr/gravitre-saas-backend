@@ -199,6 +199,34 @@ async def _complete_anthropic_with_tools(
     return _parse_anthropic_response(resp)
 
 
+def _sanitize_json_schema_for_gemini(schema: Any) -> Any:
+    """Gemini function declarations reject array `items` without an explicit type."""
+    if not isinstance(schema, dict):
+        return schema
+    out: dict[str, Any] = {}
+    for key, value in schema.items():
+        if key in {"properties", "patternProperties"} and isinstance(value, dict):
+            out[key] = {
+                prop_key: _sanitize_json_schema_for_gemini(prop_val)
+                for prop_key, prop_val in value.items()
+            }
+        elif key == "items":
+            if isinstance(value, dict):
+                sanitized = _sanitize_json_schema_for_gemini(value)
+                if not sanitized.get("type"):
+                    sanitized = {**sanitized, "type": "string"}
+                out[key] = sanitized
+            else:
+                out[key] = {"type": "string"}
+        elif key in {"anyOf", "oneOf", "allOf"} and isinstance(value, list):
+            out[key] = [_sanitize_json_schema_for_gemini(item) for item in value]
+        else:
+            out[key] = value
+    if out.get("type") == "array" and "items" not in out:
+        out["items"] = {"type": "string"}
+    return out
+
+
 def openai_tools_to_gemini_declarations(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     decls: list[dict[str, Any]] = []
     for tool in tools:
@@ -209,6 +237,7 @@ def openai_tools_to_gemini_declarations(tools: list[dict[str, Any]]) -> list[dic
         params = fn.get("parameters") if isinstance(fn.get("parameters"), dict) else {}
         if not params:
             params = {"type": "object", "properties": {}}
+        params = _sanitize_json_schema_for_gemini(params)
         decls.append(
             {
                 "name": name,

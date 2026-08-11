@@ -254,7 +254,7 @@ async def _complete_unified_turn(
             router,
             model=model,
             messages=list(kwargs.get("messages") or []),
-            tools=list(kwargs.get("tools") or []),
+            tools=kwargs.get("tools") or [],
             tool_choice=str(kwargs.get("tool_choice") or "auto"),
             temperature=kwargs.get("temperature"),
         )

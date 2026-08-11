@@ -756,7 +756,7 @@ class ReActEngine:
             self.router,
             model=model,
             messages=messages,
-            tools=list(tools) if tools else [],
+            tools=tools if tools else [],
             tool_choice="auto",
             temperature=temp,
         )
