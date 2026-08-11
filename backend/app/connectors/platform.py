@@ -54,7 +54,7 @@ def raise_connector_type_schema_error(exc: BaseException) -> None:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=error_detail(
             "Connector type is not enabled in the database. Apply the latest Supabase migration "
-            "(supabase db push) or run supabase/migrations/20260730120000_add_google_ads_connector_type.sql "
+            "(supabase db push) or run supabase/migrations/20260731001645_add_google_ads_connector_type.sql "
             "(and prior connector-type expands).",
             "CONNECTOR_TYPE_SCHEMA_OUTDATED",
         ),

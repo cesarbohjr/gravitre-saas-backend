@@ -3,7 +3,8 @@
 **Date:** 2026-08-11  
 **Project:** `smyeexlrqdpymwjmgzqu`  
 **Method:** `supabase migration list --linked` + read-only `supabase db query --linked` against `supabase_migrations.schema_migrations` + schema/data probes via service role  
-**Constraint honored:** No `migration repair`, no history rewrite, no force-push, no delete/reorder of migration records.
+**Constraint (diagnosis pass):** No repair/rewrite until Cesar chose Option D.  
+**Resolution pass:** Renames + selective `repair --status applied` only; no force-push; no delete/reorder of remote history; never `reverted` on the 11 wall-clock rows.
 
 Supporting artifacts:
 - `docs/delivery/_migration_list_linked.txt` — full list output  
@@ -145,13 +146,69 @@ Add idempotent SQL for any true schema gaps; leave existing history rows untouch
 
 ### Explicit hold
 
-**No repair in this pass.** Await Cesar’s named choice among A / B / D (or a hybrid of D+A) before any history or rename work proceeds.
+**Lifted 2026-08-11** — Cesar chose **Option D**. Resolution below.
+
+---
+
+## Option D resolution (2026-08-11)
+
+**Choice:** Option D (align local filenames to remote version IDs, then selective `repair --status applied` for confirmed orphans only).  
+**Never used:** `repair --status reverted` on the 11 remote wall-clock rows; no delete/reorder of remote history.
+
+### D1 — Local renames (11 files → remote wall-clock versions)
+
+| Remote version (history unchanged) | Local file after `git mv` |
+| -- | -- |
+| `20260725085714` | `…_agent_avatar_url.sql` |
+| `20260725234024` | `…_agents_icon_avatar_color.sql` |
+| `20260731001645` | `…_add_google_ads_connector_type.sql` |
+| `20260801060750` | `…_workflow_schedules_once_timezone.sql` |
+| `20260802223452` | `…_workflow_runs_partial_success_status.sql` |
+| `20260804021749` | `…_chat_artifacts_storage.sql` |
+| `20260808065607` | `…_department_resource_assignments.sql` |
+| `20260808085000` | `…_voice_agent_profile_and_minutes.sql` |
+| `20260808204958` | `…_voice_plan_included_and_topups.sql` |
+| `20260809044816` | `…_archive_scaffolding_meson_addons.sql` |
+| `20260809085843` | `…_billing_plans_voice_included_list_prices.sql` |
+
+Path refs updated in `backend/app/connectors/platform.py`, `docs/integration/WORKFLOW_SCHEDULES.md`, meson/completed-work docs. Duplicate stamp resolved: `20260725120000` remains only `…_org_creator_owner_role.sql` (avatar moved to `20260725085714`).
+
+### D2 — Orphan probes (schema/data already live)
+
+| Version | Probe result |
+| -- | -- |
+| `20260725120000` | `handle_new_user` mentions owner; `organization_members.role='owner'` count = 4 |
+| `20260725180000` | production env rows present (prior probe) |
+| `20260726120000` | `cesar@gravitre.app` platform_admins present (prior probe) |
+| `20260805140000` | `users.job_title`, `department` present |
+| `20260805210000` | RLS enabled on `agent_execution_interrupts`, `intelligence_outcome_events` |
+| `20260805220000` | `idx_audit_events…` / related audit idx present (prior + cluster) |
+| `20260805221000` | FK indexes present (`idx_audit_logs_actor_id_fk`, `idx_workflow_runs_schedule_id_fk`, `idx_org_billing_plan_code_fk`); file notes live apply 2026-08-06 |
+| `20260807140000` | `flagged_for_review` status queryable |
+| `20260811120000` | research keys live via service-role restore (`billing-plans-research-lookups-restore-2026-08-11.json`) |
+
+### D3 — Selective repair (history bookkeeping only)
+
+```text
+supabase migration repair --status applied \
+  20260725120000 20260725180000 20260726120000 \
+  20260805140000 20260805210000 20260805220000 20260805221000 \
+  20260807140000 20260811120000
+```
+
+CLI: `Repaired migration history: […] => applied` (2026-08-11).
+
+### D4 — Post-repair verification
+
+| Check | Result |
+| -- | -- |
+| `migration list --linked` | **both = 194**, **remote_only = 0**, **local_only = 0** (artifact: `_migration_list_linked_post_option_d.txt`) |
+| `db push --linked --dry-run` | **`Remote database is up to date.`** — remote-not-in-local blocker cleared |
 
 ---
 
 ## Uncertainties (stated plainly)
 
 1. Exact Dashboard vs CLI mechanism that chose wall-clock stamps — known `created_by` and name match; mechanism inferred as live apply clock, not a second SQL dialect.  
-2. Whether `20260725180000_seed_production_env_and_owner` and `20260725120000_org_creator_owner_role` SQL ran in full — related data exists; dedicated history rows for those local versions do **not**.  
-3. Whether Aug 5–7 index/RLS files were applied verbatim or only partially — some effects present; index-level proof incomplete for `20260805220000` / `20260805221000`.  
-4. Fresh-DB replay of entire local chain vs current prod — **not run** (would require disposable DB); diagnosis does not claim bit-identical replay.
+2. ~~Whether seed / org_creator / Aug 5–7 files ran~~ — **resolved for Option D:** probes showed effects live; versions marked `applied` via repair (history bookkeeping). Full bit-identical SQL replay **not** proven.  
+3. Fresh-DB replay of entire local chain vs current prod — **not run** (would require disposable DB); diagnosis does not claim bit-identical replay.

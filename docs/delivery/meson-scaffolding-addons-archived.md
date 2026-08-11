@@ -16,7 +16,7 @@ Never product-authorized, never Stripe-wired (`stripe_price_id` null), never gat
 
 ## Fix
 
-1. Migration `20260809010000_archive_scaffolding_meson_addons.sql` — `archived_at`, rename, price→0; clear inert JSON flags.
+1. Migration `20260809044816_archive_scaffolding_meson_addons.sql` — `archived_at`, rename, price→0; clear inert JSON flags.
 2. `GET /api/settings/meson-addons` returns **only** rows with `stripe_price_id` set and `archived_at` null.
 3. `monthly_total_usd` sums only those billable rows.
 4. Settings UI: no scaffolding cards; empty state “No billable Meson addons”; Voice plan-included card remains.

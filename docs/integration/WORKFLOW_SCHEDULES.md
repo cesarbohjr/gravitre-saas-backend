@@ -80,7 +80,7 @@ Each fire window uses `parameters.schedule_window = "{schedule_id}:{next_run_at}
 - `backend/app/services/schedules_aggregation_service.py` — calendar aggregation
 - `backend/app/services/assistant_tools.py` — `tool_schedules_list`
 - `apps/web/components/schedules/schedule-editor-dialog.tsx` — shared create/edit UI
-- Migration: `supabase/migrations/20260801120000_workflow_schedules_once_timezone.sql`
+- Migration: `supabase/migrations/20260801060750_workflow_schedules_once_timezone.sql`
 
 ## Related
 

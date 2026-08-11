@@ -41,7 +41,7 @@ covered” summaries to include these three until that audit lands.
 
 `workflow_runs_status_check` in prod did **not** include `partial_success`, so Module A
 honesty terminals failed `run_persisted` while audit/notify still fired. Migration
-`20260802120000_workflow_runs_partial_success_status.sql` adds the status. **Do not merge
+`20260802223452_workflow_runs_partial_success_status.sql` adds the status. **Do not merge
 claiming live PASS until that migration is applied and both Apollo directions re-run with
 persisted statuses.**
 
