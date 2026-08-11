@@ -1834,7 +1834,6 @@ export function AiWorkspace({
     !threadRestoreStale &&
     !activeConversationHasStoredMessages
 
-  const isStreaming = status === "streaming"
   const lastMessage = messages[messages.length - 1]
   const lastAssistantEmpty =
     lastMessage?.role === "assistant" && !uiMessageText(lastMessage).trim()
