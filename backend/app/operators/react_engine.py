@@ -391,6 +391,29 @@ class ReActEngine:
             content = (message.content or "").strip()
             tool_calls = message.tool_calls or []
 
+            from app.services.providers.provider_tool_router import resolve_provider_for_model
+
+            inference_provider = resolve_provider_for_model(resolved_model)
+            if audit_id:
+                from app.workflows.audit import write_audit_event
+
+                write_audit_event(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    actor_id=ctx.actor_id,
+                    action="inference.tool_completion",
+                    resource_type=audit_resource_type,
+                    resource_id=audit_id,
+                    metadata={
+                        "provider": inference_provider,
+                        "model": resolved_model,
+                        "iteration": iteration,
+                        "toolCallCount": len(tool_calls or []),
+                        "agentId": ctx.agent_id,
+                        "taskId": ctx.task_id,
+                    },
+                )
+
             if content.upper().startswith(_NEEDS_HUMAN_PREFIX.upper()):
                 question = content.split(":", 1)[-1].strip() or content
                 trace.append(ReActTraceStep(iteration=iteration, thought=question))

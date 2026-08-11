@@ -56,7 +56,8 @@ def provider_tools_configured(provider: ProviderName, settings: Any) -> bool:
     if provider == "anthropic":
         return bool(getattr(settings, "anthropic_api_key", None))
     if provider == "gemini":
-        return bool(getattr(settings, "gemini_api_key", None))
+        key = getattr(settings, "gemini_api_key", None) or getattr(settings, "google_api_key", None)
+        return bool(key)
     return False
 
 
@@ -413,7 +414,7 @@ async def complete_with_tools(
             temperature=temperature,
         )
     elif provider == "gemini":
-        api_key = str(getattr(settings, "gemini_api_key", None) or "")
+        api_key = str(getattr(settings, "gemini_key", None) or getattr(settings, "gemini_api_key", None) or "")
         if not api_key:
             raise ProviderUnavailableError("gemini", "GEMINI_API_KEY is not configured")
         result = await _complete_gemini_with_tools(

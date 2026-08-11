@@ -3395,6 +3395,9 @@ class AgentIntelligence:
             tools_available=tools_available,
             tool_calls=tool_calls,
         )
+        from app.services.providers.provider_tool_router import resolve_provider_for_model
+
+        inference_provider = resolve_provider_for_model(model)
 
         decision: dict[str, Any] | None = None
         if status == ReActStatus.COMPLETED:
@@ -3431,6 +3434,7 @@ class AgentIntelligence:
             task=task,
             persona=persona,
             model=model,
+            provider=inference_provider,
             briefing_received=bool(briefing),
             error=react_result.error,
             execution_mode=execution_mode,
