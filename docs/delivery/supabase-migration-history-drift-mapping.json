@@ -1,0 +1,313 @@
+{
+  "remote_count_from_20260725": 17,
+  "remote_only_mapped": [
+    {
+      "remote_version": "20260725085714",
+      "remote_name": "agent_avatar_url",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260725120000",
+          "file": "20260725120000_agent_avatar_url.sql",
+          "name_stem": "agent_avatar_url"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260725234024",
+      "remote_name": "agents_icon_avatar_color_columns",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260725190000",
+          "file": "20260725190000_agents_icon_avatar_color.sql",
+          "name_stem": "agents_icon_avatar_color"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260731001645",
+      "remote_name": "add_google_ads_connector_type",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260730120000",
+          "file": "20260730120000_add_google_ads_connector_type.sql",
+          "name_stem": "add_google_ads_connector_type"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260801060750",
+      "remote_name": "workflow_schedules_once_timezone",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260801120000",
+          "file": "20260801120000_workflow_schedules_once_timezone.sql",
+          "name_stem": "workflow_schedules_once_timezone"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260802223452",
+      "remote_name": "workflow_runs_partial_success_status",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260802120000",
+          "file": "20260802120000_workflow_runs_partial_success_status.sql",
+          "name_stem": "workflow_runs_partial_success_status"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260804021749",
+      "remote_name": "chat_artifacts_storage",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260804020000",
+          "file": "20260804020000_chat_artifacts_storage.sql",
+          "name_stem": "chat_artifacts_storage"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260808065607",
+      "remote_name": "department_resource_assignments",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260808010000",
+          "file": "20260808010000_department_resource_assignments.sql",
+          "name_stem": "department_resource_assignments"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260808085000",
+      "remote_name": "voice_agent_profile_and_minutes",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260808120000",
+          "file": "20260808120000_voice_agent_profile_and_minutes.sql",
+          "name_stem": "voice_agent_profile_and_minutes"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260808204958",
+      "remote_name": "voice_plan_included_and_topups",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260808140000",
+          "file": "20260808140000_voice_plan_included_and_topups.sql",
+          "name_stem": "voice_plan_included_and_topups"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260809044816",
+      "remote_name": "archive_scaffolding_meson_addons",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260809010000",
+          "file": "20260809010000_archive_scaffolding_meson_addons.sql",
+          "name_stem": "archive_scaffolding_meson_addons"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    },
+    {
+      "remote_version": "20260809085843",
+      "remote_name": "billing_plans_voice_included_list_prices",
+      "created_by": "cesar.bohorquez.jr@gmail.com",
+      "local_candidates": [
+        {
+          "local_version": "20260809120000",
+          "file": "20260809120000_billing_plans_voice_included_list_prices.sql",
+          "name_stem": "billing_plans_voice_included_list_prices"
+        }
+      ],
+      "on_local_filesystem_as_same_version": false
+    }
+  ],
+  "local_only_versions_present_on_remote": {
+    "20260725120000": {
+      "present": false,
+      "name": null
+    },
+    "20260725180000": {
+      "present": false,
+      "name": null
+    },
+    "20260725190000": {
+      "present": false,
+      "name": null
+    },
+    "20260726120000": {
+      "present": false,
+      "name": null
+    },
+    "20260730120000": {
+      "present": false,
+      "name": null
+    },
+    "20260801120000": {
+      "present": false,
+      "name": null
+    },
+    "20260802120000": {
+      "present": false,
+      "name": null
+    },
+    "20260804020000": {
+      "present": false,
+      "name": null
+    },
+    "20260805140000": {
+      "present": false,
+      "name": null
+    },
+    "20260805210000": {
+      "present": false,
+      "name": null
+    },
+    "20260805220000": {
+      "present": false,
+      "name": null
+    },
+    "20260805221000": {
+      "present": false,
+      "name": null
+    },
+    "20260807140000": {
+      "present": false,
+      "name": null
+    },
+    "20260808010000": {
+      "present": false,
+      "name": null
+    },
+    "20260808120000": {
+      "present": false,
+      "name": null
+    },
+    "20260808140000": {
+      "present": false,
+      "name": null
+    },
+    "20260809010000": {
+      "present": false,
+      "name": null
+    },
+    "20260809120000": {
+      "present": false,
+      "name": null
+    },
+    "20260811120000": {
+      "present": false,
+      "name": null
+    }
+  },
+  "all_recent": [
+    {
+      "version": "20260725085714",
+      "name": "agent_avatar_url",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260725234024",
+      "name": "agents_icon_avatar_color_columns",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260727120000",
+      "name": "approvals_numeric_value",
+      "created_by": null
+    },
+    {
+      "version": "20260728120000",
+      "name": "conversational_intelligence",
+      "created_by": null
+    },
+    {
+      "version": "20260728150000",
+      "name": "phase_omega_intelligence",
+      "created_by": null
+    },
+    {
+      "version": "20260728150100",
+      "name": "notification_event_taxonomy",
+      "created_by": null
+    },
+    {
+      "version": "20260728150200",
+      "name": "activity_events",
+      "created_by": null
+    },
+    {
+      "version": "20260729120000",
+      "name": "seed_all_billing_plans",
+      "created_by": null
+    },
+    {
+      "version": "20260731001645",
+      "name": "add_google_ads_connector_type",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260801060750",
+      "name": "workflow_schedules_once_timezone",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260802223452",
+      "name": "workflow_runs_partial_success_status",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260804021749",
+      "name": "chat_artifacts_storage",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260808065607",
+      "name": "department_resource_assignments",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260808085000",
+      "name": "voice_agent_profile_and_minutes",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260808204958",
+      "name": "voice_plan_included_and_topups",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260809044816",
+      "name": "archive_scaffolding_meson_addons",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    },
+    {
+      "version": "20260809085843",
+      "name": "billing_plans_voice_included_list_prices",
+      "created_by": "cesar.bohorquez.jr@gmail.com"
+    }
+  ]
+}
