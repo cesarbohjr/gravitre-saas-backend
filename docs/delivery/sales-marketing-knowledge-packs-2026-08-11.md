@@ -68,4 +68,4 @@ CAN-SPAM / FTC / endorsement queries route **Marketing + Legal**. Authority rera
 - Retrieve live @ `2026-08-11T18:01:21Z`: FTC CAN-SPAM → FTC citations authority 0.99; market research → SBA citations authority 0.90 (`sales-marketing-retrieve-live.json`)
 - Saylor provenance: `saylor-provenance-filter-evidence.json` + ingest metadata `provenance_filter`
 - Stale holds `sales.content.hold` / `marketing.content.hold` **retired** in prod
-- Deploy tip `git_sha`: fill after Railway redeploy of this commit
+- Deploy tip: `GET https://api.gravitre.app/health` → `git_sha=a171ed8c0b9a6f2699d520471438efcbde0bfab4` (tip of this ship)

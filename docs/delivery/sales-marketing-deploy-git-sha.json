@@ -1,0 +1,25 @@
+{
+  "checked_at": 1786471715.7723112,
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-08-11T18:08:35.538171+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "a171ed8c0b9a6f2699d520471438efcbde0bfab4",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  }
+}
