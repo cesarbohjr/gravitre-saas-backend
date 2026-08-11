@@ -157,6 +157,8 @@ Add idempotent SQL for any true schema gaps; leave existing history rows untouch
 
 ### D1 — Local renames (11 files → remote wall-clock versions)
 
+Repo note: wall-clock twins were already present beside rounded copies; Option D completed by **removing the 11 rounded duplicates** (`60e5a3f7`) after docs/path updates (`ee898871`). Remote `schema_migrations` rows were not rewritten.
+
 | Remote version (history unchanged) | Local file after `git mv` |
 | -- | -- |
 | `20260725085714` | `…_agent_avatar_url.sql` |
