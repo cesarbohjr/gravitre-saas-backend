@@ -1,0 +1,42 @@
+{
+  "record": "research_lookups_cogs_pricing_diagnosis",
+  "diagnosed_at": "2026-08-11",
+  "prod_tip": "93bac82e534ac110343c828a435bf26588b2cffa",
+  "recommendation": "keep_transparent_metered",
+  "recommendation_plain": "Do not hide Research Lookups like voice. Keep included allotment + visible $0.35 overage until real-customer usage and account invoices clear the heavy-tail risk.",
+  "live_provider_in_usage_records": "tavily",
+  "code_primary_provider": "google_grounding",
+  "code_model": "gemini-2.5-flash",
+  "cogs": {
+    "tavily_basic_search_published_payg_usd": 0.008,
+    "tavily_account_invoice_usd": null,
+    "google_25_flash_grounding_paid_usd_per_prompt": 0.035,
+    "google_25_flash_free_rpd": 1500,
+    "google_token_cogs_per_lookup_approx_usd": 0.001,
+    "ai_credits_debited_from_research_path": false
+  },
+  "allotments": {
+    "source": "code_fallback_research_lookup_plan_rates",
+    "node": 10,
+    "control": 60,
+    "command": 200,
+    "overage_usd": 0.35,
+    "billing_plans_db_has_research_keys": false
+  },
+  "usage_records": {
+    "metric_type": "research_lookups",
+    "lifetime_quantity": 35,
+    "orgs": 2,
+    "provider_mix": { "tavily": 35 },
+    "org_month_max": 17,
+    "org_month_median": 17,
+    "stripe_reported_rows": 0,
+    "note": "smoke-dominated; not a real customer distribution"
+  },
+  "tier_cogs_at_full_included": {
+    "tavily_008": { "node": 0.08, "control": 0.48, "command": 1.6 },
+    "google_paid_035": { "node": 0.35, "control": 2.1, "command": 7.0 }
+  },
+  "voice_comparison_blended_usd_per_min": 0.02645,
+  "report_md": "docs/delivery/research-lookups-cogs-pricing-diagnosis.md"
+}
