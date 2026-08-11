@@ -1,0 +1,81 @@
+{
+  "record": "web_research_provider_tavily_live",
+  "started_at": "2026-08-11T08:25:36.799715+00:00",
+  "railway_git_commit_sha": "unknown",
+  "settings": {
+    "web_research_provider": "tavily",
+    "web_research_fallback_tavily": true,
+    "internet_research_enabled": true,
+    "tavily_configured": true,
+    "gemini_configured": true
+  },
+  "path_analysis": {
+    "google_primary_block_entered": false,
+    "direct_tavily_path": true,
+    "note": "When provider=tavily, web_research.search_web skips Google entirely (no fallback event)."
+  },
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "external_search": {
+    "totalResults": 3,
+    "provider": "tavily",
+    "has_urls": true,
+    "error": null,
+    "query_sent": "What is the current US federal funds rate?"
+  },
+  "recent_usage_records": [
+    {
+      "metric_type": "research_lookups",
+      "quantity": 1,
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "fc6593985aef81ba",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "recorded_at": "2026-08-11T08:25:41.503657+00:00"
+    },
+    {
+      "metric_type": "research_lookups",
+      "quantity": 1,
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "e0a5bf38f21b5f15",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "recorded_at": "2026-08-11T05:54:32.664005+00:00"
+    },
+    {
+      "metric_type": "research_lookups",
+      "quantity": 1,
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "1ac67f606cc8aa84",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      },
+      "recorded_at": "2026-08-10T06:12:21.02845+00:00"
+    }
+  ],
+  "latest_metered_provider": "tavily",
+  "verdict": "PASS \u2014 direct tavily path; metered provider=tavily; google block not entered",
+  "finished_at": "2026-08-11T08:25:42.058839+00:00"
+}

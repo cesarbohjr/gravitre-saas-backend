@@ -1,0 +1,28 @@
+{
+  "record": "sta341_serper_vs_tavily",
+  "finished_at": "2026-08-11",
+  "linear": "STA-341",
+  "pricing_model_unchanged": true,
+  "step1": {
+    "verdict": "PASS",
+    "web_research_provider": "tavily",
+    "direct_path": true,
+    "google_block_entered": false,
+    "metered_provider": "tavily",
+    "usage_recorded_at": "2026-08-11T08:25:41.503657Z",
+    "prod_git_sha": "b56326119b1c99100d0557ffe9ad4e34aa5d9f7e",
+    "artifact": "docs/delivery/web-research-provider-tavily-live.json"
+  },
+  "step2": {
+    "serper_pricing_source": "https://serper.dev/ homepage 2026-08-11",
+    "serper_usd_per_query_starter": 0.001,
+    "serper_usd_per_query_ultimate": 0.0003,
+    "tavily_usd_per_query_payg_bound": 0.008,
+    "historical_distinct_queries": 2,
+    "quality_holds": true,
+    "recommendation": "adopt_serper_primary_tavily_fallback",
+    "recommendation_plain": "Serper quality holds on all distinct historical research queries; propose Serper primary with Tavily fallback; metadata.provider=serper; no allotment/overage/hide changes.",
+    "integration_implemented": false,
+    "tavily_half_artifact": "docs/delivery/_sta341-tavily-half.json"
+  }
+}
