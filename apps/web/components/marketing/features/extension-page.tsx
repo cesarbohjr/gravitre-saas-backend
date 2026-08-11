@@ -16,10 +16,14 @@ import {
 import {
   extensionInstallCtaLabel,
   extensionInstallHref,
-  hasChromeWebStoreListing,
 } from "@/lib/extension-install"
 import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { BrowserFrame } from "@/components/marketing/browser-frame"
+import {
+  BraveVendorIcon,
+  ChromeVendorIcon,
+  EdgeVendorIcon,
+} from "@/components/marketing/browser-vendor-icons"
 
 const activationSteps = [
   {
@@ -63,7 +67,6 @@ const surfacesProven = [
 export function ExtensionPage() {
   const installHref = extensionInstallHref()
   const installLabel = extensionInstallCtaLabel()
-  const storeLive = hasChromeWebStoreListing()
 
   return (
     <div className="bg-white">
@@ -108,36 +111,22 @@ export function ExtensionPage() {
                 Setup guide
               </Link>
             </div>
-            <p className="mt-4 text-sm text-zinc-500">
-              Supported: Chrome, Edge, Brave (same MV3 pack). Not supported:
-              Firefox, Safari, or mobile.
-              {!storeLive
-                ? " Chrome Web Store listing not published yet — use the setup guide (load unpacked)."
-                : null}
-            </p>
+            <ul
+              aria-label="Supported browsers"
+              className="mt-8 flex items-center justify-center gap-5"
+            >
+              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
+                <ChromeVendorIcon className="h-7 w-7" />
+              </li>
+              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
+                <EdgeVendorIcon className="h-7 w-7" />
+              </li>
+              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
+                <BraveVendorIcon className="h-7 w-7" />
+              </li>
+            </ul>
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="relative mx-auto mt-14 max-w-3xl px-6"
-        >
-          <BrowserFrame
-            url="linkedin.com/in/…"
-            tabTitle="LinkedIn"
-            placement="popup"
-            priority
-            panel={{
-              src: "/product/extension-popup.png",
-              alt: "Gravitre extension popup showing a connected org session, three active connectors (HubSpot, Apollo, Slack), and an Enrich this LinkedIn page button.",
-              width: 720,
-              height: 714,
-            }}
-            caption="Real extension UI, seeded demo workspace — not customer data. Page behind it is a neutral placeholder."
-          />
-        </motion.div>
       </section>
 
       <section className="border-t border-zinc-100 py-16">
