@@ -5,7 +5,6 @@ import { motion } from "framer-motion"
 import {
   ArrowRight,
   CheckCircle2,
-  Chrome,
   Link2,
   ListChecks,
   MessageSquare,
@@ -29,7 +28,7 @@ const activationSteps = [
   {
     n: "1",
     title: "Install",
-    body: "Add the Gravitre extension in Chrome (store listing when published, or load-unpacked beta).",
+    body: "Add Gravitre from the Chrome Web Store (works in Chrome, Edge, and Brave).",
   },
   {
     n: "2",
@@ -67,63 +66,80 @@ const surfacesProven = [
 export function ExtensionPage() {
   const installHref = extensionInstallHref()
   const installLabel = extensionInstallCtaLabel()
+  const storeListing = installHref.startsWith("http")
 
   return (
     <div className="bg-white">
-      <section className="relative overflow-hidden pt-28 pb-16 sm:pt-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 via-white to-white" />
-        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
+      <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-24">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/80 via-white to-white" />
+        <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-emerald-100/50 blur-3xl" />
+        <div className="relative mx-auto max-w-3xl px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2">
-              <Chrome className="h-4 w-4 text-emerald-600" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 shadow-sm shadow-zinc-900/[0.04]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <span className="text-sm font-medium text-emerald-700">
                 Chrome · Edge · Brave · overlay and approve
               </span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl text-balance">
-              Enrich the page. Approve the write.{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                Same Outcomes as chat.
+
+            <h1 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
+              Enrich the page.{" "}
+              <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Approve the write.
               </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-zinc-600">
-              Gravitre on LinkedIn, Gmail, Outlook, and company sites — catalog
-              actions only, human approval before writes, full audit in Outcomes.
-              Not a parallel CRM bot.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link
+
+            <div className="mx-auto mt-6 max-w-2xl space-y-3 text-lg leading-relaxed text-zinc-600">
+              <p>
+                Gravitre lives where you already work: LinkedIn, Gmail, Outlook, company
+                sites.{" "}
+                <span className="font-semibold text-zinc-800">Real actions, not guesses.</span>{" "}
+                Your approval before every write. Full audit in Outcomes.
+              </p>
+              <p>Not another CRM bot. Just Gravitre, closer.</p>
+            </div>
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <a
                 href={installHref}
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                {...(storeListing
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
               >
                 {installLabel}
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
               <Link
                 href="/docs/guides/how-to/browser-extension"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
               >
                 Setup guide
               </Link>
             </div>
+
             <ul
               aria-label="Supported browsers"
-              className="mt-8 flex items-center justify-center gap-5"
+              className="mt-10 flex items-end justify-center gap-8 sm:gap-10"
             >
-              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
-                <ChromeVendorIcon className="h-7 w-7" />
-              </li>
-              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
-                <EdgeVendorIcon className="h-7 w-7" />
-              </li>
-              <li className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
-                <BraveVendorIcon className="h-7 w-7" />
-              </li>
+              {(
+                [
+                  { label: "Chrome", Icon: ChromeVendorIcon },
+                  { label: "Edge", Icon: EdgeVendorIcon },
+                  { label: "Brave", Icon: BraveVendorIcon },
+                ] as const
+              ).map(({ label, Icon }) => (
+                <li key={label} className="flex flex-col items-center gap-2.5">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/[0.04]">
+                    <Icon className="h-7 w-7" />
+                  </span>
+                  <span className="text-xs font-medium text-zinc-500">{label}</span>
+                </li>
+              ))}
             </ul>
           </motion.div>
         </div>
@@ -399,13 +415,16 @@ export function ExtensionPage() {
             approve one write, open Outcomes.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
+            <a
               href={installHref}
+              {...(storeListing
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
               className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500"
             >
               {installLabel}
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </a>
             <Link
               href="/get-started"
               className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"

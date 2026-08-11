@@ -1,14 +1,23 @@
 /**
- * Chrome Web Store listing URL — set NEXT_PUBLIC_CHROME_WEB_STORE_URL when the
- * real listing (or unlisted beta) is live. Empty means install via setup guide
- * (load unpacked / org-distributed Chromium pack).
+ * Chrome Web Store listing URL.
+ *
+ * Prefer `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel. Falls back to the published
+ * public listing for extension id `iegkidilloajngolbpgfkaeglblnklol`.
+ *
+ * Do not use Chrome Web Store Dev Console URLs (…/devconsole/…) — those require
+ * Google sign-in and are not installable by customers.
  */
+export const PUBLISHED_CHROME_WEB_STORE_URL =
+  "https://chromewebstore.google.com/detail/gravitre/iegkidilloajngolbpgfkaeglblnklol"
+
 export const CHROME_WEB_STORE_URL = (
-  process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL || ""
+  process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL || PUBLISHED_CHROME_WEB_STORE_URL
 ).trim()
 
 export function hasChromeWebStoreListing(): boolean {
-  return /^https:\/\/chromewebstore\.google\.com\//i.test(CHROME_WEB_STORE_URL)
+  return /^https:\/\/(chromewebstore\.google\.com|chrome\.google\.com\/webstore)\//i.test(
+    CHROME_WEB_STORE_URL,
+  )
 }
 
 /** Primary install CTA — store when published, otherwise setup guide. */
@@ -19,7 +28,5 @@ export function extensionInstallHref(): string {
 }
 
 export function extensionInstallCtaLabel(): string {
-  return hasChromeWebStoreListing()
-    ? "Install from Chrome Web Store"
-    : "Install guide (Chrome / Edge / Brave)"
+  return hasChromeWebStoreListing() ? "Add to Chrome" : "Install guide"
 }
