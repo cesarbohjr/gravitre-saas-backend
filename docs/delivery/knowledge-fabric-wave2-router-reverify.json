@@ -1,11 +1,11 @@
 {
-  "ran_at": "2026-08-11T20:26:14.191935+00:00",
+  "ran_at": "2026-08-11T20:34:30.452706+00:00",
   "cisa": [
     {
       "source_id": "cyber.cisa.advisories",
       "status": "ingested",
       "documents": 3,
-      "chunks": 3,
+      "chunks": 0,
       "license": "US-Gov-Work",
       "licence_verified": true,
       "legal_review_status": "verified_live"

@@ -45,6 +45,14 @@ First US-Gov probe attempt halted (usa.gov meta-refresh / flaky fetch) — corre
 - UI: Admin Intelligence overview → **Knowledge Fabric quality** card
 - Metrics: topic coverage %, authoritative/primary counts, avg authority, freshness days, jurisdictions, live-provider count, citation %, license-verified %, named gaps
 
+## Deploy
+
+- Commit / tip: `d59cb0d075d46eacb4bd57846657a6eb82191a09`
+- Pushed `main` → Railway
+- Live `GET https://api.gravitre.app/health` → `git_sha=d59cb0d075d46eacb4bd57846657a6eb82191a09` `status=ok` (polled after prior tip `4a3c9731`)
+
+Corpus + router evidence above was written against live Supabase before/during deploy; jurisdiction filter ships in this tip.
+
 ## Deferred (unchanged)
 
 Executive/Strategy pack · Procurement/GTM · industry packs · MEDDPICC
