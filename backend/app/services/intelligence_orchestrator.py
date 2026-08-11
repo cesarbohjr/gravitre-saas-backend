@@ -200,6 +200,54 @@ class IntelligenceOrchestrator:
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
+        fabric_pack_ids = [
+            str(row.get("source_id") or "")
+            for row in knowledge_assignments
+            if isinstance(row, dict)
+            and str(row.get("source_type") or "").lower() == "knowledge_pack"
+            and str(row.get("source_id") or "").startswith("pack.")
+            and row.get("enabled", True)
+        ]
+        fabric_section = ""
+        fabric_provenance: list[dict[str, Any]] = []
+        if fabric_pack_ids:
+            try:
+                from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
+
+                fabric = await asyncio.to_thread(
+                    retrieve_knowledge_fabric,
+                    client,
+                    query,
+                    assigned_pack_ids=fabric_pack_ids,
+                    agent_department=str(
+                        (agent or {}).get("department")
+                        or classification.get("department")
+                        or ""
+                    ),
+                    top_k=6,
+                    settings=self.settings,
+                )
+                fabric_provenance = list(fabric.get("provenance") or [])
+                lines = []
+                for hit in fabric.get("results") or []:
+                    cite = hit.get("citation") or hit.get("source_id") or "knowledge pack"
+                    auth = hit.get("authority_score")
+                    fresh = hit.get("freshness_score")
+                    lines.append(
+                        f"- [{cite}] (authority={auth}, freshness={fresh})\n{hit.get('content') or ''}"
+                    )
+                if lines:
+                    route = fabric.get("route") or {}
+                    fabric_section = (
+                        "<knowledge_fabric route="
+                        + str(route.get("reason") or "")
+                        + ">\n"
+                        + "\n\n".join(lines[:6])
+                        + "\n</knowledge_fabric>"
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("orchestrator knowledge_fabric skipped error=%s", exc)
+
         pack_state_section = ""
         if extract_pack_ids(knowledge_assignments):
             if not registry_plan.slice_enabled("pack_state"):
@@ -330,6 +378,8 @@ class IntelligenceOrchestrator:
             knowledge_gap_message=knowledge_gap_message,
             memory_conflicts=memory_conflicts,
             pack_state_section=pack_state_section,
+            fabric_section=fabric_section,
+            fabric_provenance=fabric_provenance,
         )
         raw_sources = filter_context_sources(raw_sources, registry_plan)
         # Pattern 9 — distill oversized context before ranking/token budget.
@@ -530,6 +580,8 @@ class IntelligenceOrchestrator:
         knowledge_gap_message: str | None = None,
         memory_conflicts: list[dict[str, Any]] | None = None,
         pack_state_section: str = "",
+        fabric_section: str = "",
+        fabric_provenance: list[dict[str, Any]] | None = None,
     ) -> list[ContextSource]:
         sources: list[ContextSource] = []
         if org_context_block.strip():
@@ -627,6 +679,17 @@ class IntelligenceOrchestrator:
                     label="Agent knowledge sources",
                     score=0.0,
                     content=f"<knowledge_assignments>\n{knowledge_section}\n</knowledge_assignments>",
+                )
+            )
+        if fabric_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="knowledge_fabric",
+                    source_type="knowledge_fabric",
+                    label="Expert knowledge packs",
+                    score=0.0,
+                    content=fabric_section,
+                    metadata={"provenance": list(fabric_provenance or [])[:6]},
                 )
             )
         if pack_state_section.strip():

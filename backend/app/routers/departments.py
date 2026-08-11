@@ -19,7 +19,7 @@ from app.core.errors import error_detail
 
 router = APIRouter(prefix="/api/departments", tags=["departments"])
 
-ResourceType = Literal["workflow", "agent", "council"]
+ResourceType = Literal["workflow", "agent", "council", "knowledge_pack"]
 
 
 class AssignResourceRequest(BaseModel):

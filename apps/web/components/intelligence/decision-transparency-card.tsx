@@ -7,6 +7,7 @@ import { LearningConfidenceBadge } from "@/components/intelligence/learning-conf
 import { readString } from "@/lib/intelligence/helpers"
 import { freshnessLabelText } from "@/lib/intelligence/visibility-helpers"
 import type { DecisionTransparencyEnvelope } from "@/lib/intelligence/visibility-types"
+import { KnowledgeCitationCard, type KnowledgeCitation } from "@/components/intelligence/knowledge-citation-card"
 
 export function DecisionTransparencyCard({
   envelope,
@@ -103,6 +104,23 @@ export function DecisionTransparencyCard({
           </ul>
         </div>
       ) : null}
+
+      {(() => {
+        const sources = (envelope as { sources?: KnowledgeCitation[]; knowledge_citations?: KnowledgeCitation[] })
+          .knowledge_citations
+          ?? (envelope as { sources?: KnowledgeCitation[] }).sources
+          ?? []
+        const fabric = sources.filter(
+          (s) =>
+            s &&
+            (typeof s.authority_score === "number" ||
+              Boolean(s.citation) ||
+              Boolean(s.jurisdiction)),
+        )
+        return fabric.length ? (
+          <KnowledgeCitationCard citations={fabric.slice(0, 6)} className="mt-4" />
+        ) : null
+      })()}
 
       <AdvisoryOnlyNote className="mt-4" />
     </article>

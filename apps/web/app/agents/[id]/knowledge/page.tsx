@@ -16,6 +16,10 @@ import { agentsApi, trainingApi } from "@/lib/api"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
 import { AgentKnowledgeAssignmentsPanel } from "@/components/agents/agent-knowledge-assignments-panel"
+import {
+  AgentKnowledgePacksEditor,
+  type KnowledgePackSelection,
+} from "@/components/agents/agent-knowledge-packs-editor"
 import type { Agent, AgentReferenceFolder, TrainingDataset, CustomInstruction } from "@/types/api"
 import {
   AlertDialog,
@@ -63,6 +67,8 @@ export default function AgentKnowledgePage({
   const [mutatingId, setMutatingId] = useState<string | null>(null)
   const [folderDraft, setFolderDraft] = useState<AgentReferenceFolder[]>([])
   const [savingFolders, setSavingFolders] = useState(false)
+  const [packDraft, setPackDraft] = useState<KnowledgePackSelection[]>([])
+  const [savingPacks, setSavingPacks] = useState(false)
 
   // Fetch agent data
   const { data: agentData, isLoading: agentLoading, mutate: mutateAgent } = useSWR(
@@ -75,6 +81,20 @@ export default function AgentKnowledgePage({
   useEffect(() => {
     setFolderDraft(agent?.referenceFolders ?? [])
   }, [agent?.referenceFolders])
+
+  useEffect(() => {
+    const cfg = (agent as Agent & { config?: { knowledge_packs?: KnowledgePackSelection[] } })?.config
+    const packs = cfg?.knowledge_packs
+    if (Array.isArray(packs)) {
+      setPackDraft(
+        packs.map((p) => ({
+          id: String(p.id || ""),
+          name: String(p.name || p.id || "Pack"),
+          department: p.department,
+        })).filter((p) => p.id),
+      )
+    }
+  }, [agent])
 
   // Fetch datasets
   const { data: datasetsData, mutate: mutateDatasets } = useSWR(
@@ -114,6 +134,35 @@ export default function AgentKnowledgePage({
       toast.error("Failed to save reference folders")
     } finally {
       setSavingFolders(false)
+    }
+  }
+
+  const handleSavePacks = async () => {
+    if (!agent) return
+    try {
+      setSavingPacks(true)
+      await agentsApi.update(agent.id, { knowledgePacks: packDraft } as Partial<Agent>)
+      for (const pack of packDraft) {
+        await fetch(`/api/agents/${agent.id}/knowledge-assignments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_type: "knowledge_pack",
+            source_id: pack.id,
+            label: pack.name,
+            department: pack.department,
+            enabled: true,
+            metadata: { fabric_pack: true },
+          }),
+        }).catch(() => null)
+      }
+      toast.success("Knowledge packs updated")
+      await mutateAgent()
+    } catch (error) {
+      console.error("[knowledge] Save packs failed:", error)
+      toast.error("Failed to save knowledge packs")
+    } finally {
+      setSavingPacks(false)
     }
   }
 
@@ -315,6 +364,13 @@ export default function AgentKnowledgePage({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
+                <div className="mb-6 rounded-xl border border-border bg-card/50 p-4 space-y-3">
+                  <AgentKnowledgePacksEditor value={packDraft} onChange={setPackDraft} />
+                  <Button size="sm" onClick={handleSavePacks} disabled={savingPacks}>
+                    {savingPacks ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Save knowledge packs
+                  </Button>
+                </div>
                 <AgentKnowledgeAssignmentsPanel agentId={agentId} />
               </motion.div>
             )}

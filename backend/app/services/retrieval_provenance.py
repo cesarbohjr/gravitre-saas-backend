@@ -49,6 +49,22 @@ def build_provenance_envelope(
     }
     if extra:
         envelope.update(extra)
+    # Module C: label authority when present (same honesty contract as confidence)
+    authority = envelope.get("authority_score")
+    if authority is not None and "authority_is_estimate" not in envelope:
+        try:
+            from app.services.confidence_honesty import label_confidence
+
+            labeled = label_confidence(
+                float(authority),
+                source=str(envelope.get("authority_source") or "knowledge_source_registry"),
+                key="authority_score",
+                is_estimate=bool(envelope.get("authority_is_estimate", False)),
+            )
+            envelope.update(labeled)
+        except Exception:  # noqa: BLE001
+            envelope.setdefault("authority_is_estimate", False)
+            envelope.setdefault("authoritySource", envelope.get("authority_source"))
     return envelope
 
 

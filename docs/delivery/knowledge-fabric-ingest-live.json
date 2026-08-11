@@ -1,0 +1,92 @@
+{
+  "registered": 10,
+  "packs": {
+    "pack.cybersecurity": {
+      "pack_id": "pack.cybersecurity",
+      "documents": 4,
+      "chunks": 0,
+      "results": [
+        {
+          "document_id": "54426e72-25a2-428e-9874-0a1084ad72ef",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "0e9ca8f8-121b-4b3b-9778-f8af8213c178",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "7dc75fe9-290d-4e85-9715-8e45468f4d6e",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "cab5c33c-5a1a-498c-bcb4-1a00b146a729",
+          "skipped": true,
+          "chunks": 0
+        }
+      ],
+      "errors": []
+    },
+    "pack.finance": {
+      "pack_id": "pack.finance",
+      "documents": 2,
+      "chunks": 0,
+      "results": [
+        {
+          "document_id": "bedc668d-e153-4b5d-87f9-b53bba6d6c32",
+          "skipped": true,
+          "chunks": 0
+        },
+        {
+          "document_id": "77c01b54-6aa5-4c8e-8a22-10c4e0b1d455",
+          "skipped": true,
+          "chunks": 0
+        }
+      ],
+      "errors": []
+    },
+    "pack.legal": {
+      "pack_id": "pack.legal",
+      "documents": 3,
+      "chunks": 3,
+      "results": [
+        {
+          "document_id": "8a3a3897-bfc3-4e30-8bd4-0c914ff29a3f",
+          "skipped": false,
+          "chunks": 1
+        },
+        {
+          "document_id": "cc544377-6cb3-4d6c-b9fe-291340aaa1f7",
+          "skipped": false,
+          "chunks": 1
+        },
+        {
+          "document_id": "900b3caf-83ee-43b4-a299-6f582e29f30a",
+          "skipped": false,
+          "chunks": 1
+        }
+      ],
+      "errors": []
+    },
+    "pack.hr": {
+      "pack_id": "pack.hr",
+      "documents": 2,
+      "chunks": 2,
+      "results": [
+        {
+          "document_id": "cb9b4f40-6223-4d2c-a628-51a3d5f1867f",
+          "skipped": false,
+          "chunks": 1
+        },
+        {
+          "document_id": "10f86b4e-5ea4-49b6-88b4-3be58440e86c",
+          "skipped": false,
+          "chunks": 1
+        }
+      ],
+      "errors": []
+    }
+  }
+}

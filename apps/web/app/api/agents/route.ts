@@ -451,6 +451,11 @@ export async function POST(request: NextRequest) {
       : Array.isArray(snake.reference_folders)
         ? snake.reference_folders
         : []
+    const knowledgePacks = Array.isArray(body.knowledgePacks)
+      ? body.knowledgePacks
+      : Array.isArray(snake.knowledge_packs)
+        ? snake.knowledge_packs
+        : []
     const existingConfig =
       snake.config && typeof snake.config === "object"
         ? (snake.config as Record<string, unknown>)
@@ -493,6 +498,7 @@ export async function POST(request: NextRequest) {
       config: {
         ...existingConfig,
         reference_folders: referenceFolders,
+        knowledge_packs: knowledgePacks,
         response_style: responseStyle,
       },
       status: String(snake.status ?? "active"),

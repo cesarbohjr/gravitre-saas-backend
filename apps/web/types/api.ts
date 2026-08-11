@@ -175,6 +175,8 @@ export interface Agent {
   permissions: string[]
   guardrails?: string[]
   referenceFolders?: AgentReferenceFolder[]
+  knowledgePacks?: Array<{ id: string; name: string; department?: string }>
+  config?: Record<string, unknown>
   lastAction: string
   lastActionTime: string
   created_at?: string
@@ -1189,6 +1191,7 @@ export interface CreateAgentRequest {
   systems?: string[]
   guardrails?: string[]
   referenceFolders?: AgentReferenceFolder[]
+  knowledgePacks?: Array<{ id: string; name: string; department?: string }>
   status?: string
 }
 

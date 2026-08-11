@@ -86,7 +86,11 @@ function mapAgentRow(input: Record<string, unknown>) {
     permissions: Array.isArray(model.systems) ? model.systems : [],
     guardrails: Array.isArray(model.guardrails) ? model.guardrails : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
+    knowledgePacks: Array.isArray((model.config as Record<string, unknown> | undefined)?.knowledge_packs)
+      ? ((model.config as Record<string, unknown>).knowledge_packs as Array<{ id: string; name: string; department?: string }>)
+      : [],
     responseStyle: readResponseStyleFromConfig(model.config),
+    config: model.config && typeof model.config === "object" ? model.config : {},
     voiceProfile:
       model.voiceProfile && typeof model.voiceProfile === "object"
         ? model.voiceProfile
@@ -375,6 +379,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     nextConfig = {
       ...(nextConfig ?? currentConfig),
       reference_folders: referenceFolders,
+    }
+  }
+
+  const knowledgePacks =
+    (Array.isArray(bodyRecord.knowledgePacks) && bodyRecord.knowledgePacks) ||
+    (Array.isArray(snakeBody.knowledge_packs) && snakeBody.knowledge_packs) ||
+    null
+  if (knowledgePacks) {
+    nextConfig = {
+      ...(nextConfig ?? currentConfig),
+      knowledge_packs: knowledgePacks,
     }
   }
 

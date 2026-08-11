@@ -1,0 +1,68 @@
+{
+  "checked_at": "2026-08-11T09:31:44.759213+00:00",
+  "git_sha": null,
+  "checks": {
+    "sources_registered": {
+      "pass": true,
+      "count": 10,
+      "namespaces": [
+        "platform_shared"
+      ]
+    },
+    "isolation": {
+      "pass": true,
+      "knowledge_chunks_sample": 5,
+      "rag_chunks_have_org_id": true,
+      "knowledge_sources_namespace_only_platform_shared": true,
+      "note": "Shared packs live in knowledge_*; customer RAG remains org-scoped rag_*"
+    },
+    "router_jurisdiction": {
+      "pass": true,
+      "route": {
+        "departments": [
+          "legal"
+        ],
+        "jurisdictions": [
+          "US-CA"
+        ],
+        "tiers": [
+          "customer_rag",
+          "expert_pack"
+        ],
+        "pack_ids": [
+          "pack.legal"
+        ],
+        "reason": "departments=['legal']; jurisdictions=['US-CA']; packs=['pack.legal']"
+      }
+    },
+    "authority_rerank": {
+      "pass": true,
+      "top": "gov"
+    },
+    "retrieve_cyber": {
+      "pass": true,
+      "result_count": 3,
+      "route": {
+        "departments": [
+          "cybersecurity"
+        ],
+        "jurisdictions": [],
+        "tiers": [
+          "customer_rag",
+          "expert_pack"
+        ],
+        "pack_ids": [
+          "pack.cybersecurity"
+        ],
+        "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+      },
+      "top_citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29"
+    },
+    "no_shared_pack_in_customer_rag_titles": {
+      "pass": true,
+      "rag_title_hits": 0,
+      "structural": "knowledge_* vs rag_* separate tables"
+    }
+  },
+  "overall_pass": true
+}

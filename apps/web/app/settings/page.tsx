@@ -1380,7 +1380,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   const [newDeptSeats, setNewDeptSeats] = useState(0)
   const [memberEmailByDept, setMemberEmailByDept] = useState<Record<string, string>>({})
   const [assignByDept, setAssignByDept] = useState<
-    Record<string, { resource_type: "workflow" | "agent" | "council"; resource_id: string }>
+    Record<string, { resource_type: "workflow" | "agent" | "council" | "knowledge_pack"; resource_id: string }>
   >({})
   const [isSaving, setIsSaving] = useState(false)
 
@@ -1459,7 +1459,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
     const draft = assignByDept[departmentId] || { resource_type: "workflow" as const, resource_id: "" }
     const resourceId = draft.resource_id.trim()
     if (!resourceId) {
-      toast.error("Enter a workflow, agent, or council id")
+      toast.error("Enter a workflow, agent, council, or knowledge pack id")
       return
     }
     setIsSaving(true)
@@ -1565,7 +1565,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
               </Button>
             </div>
             <div className="mt-3 space-y-2 border-t border-border pt-3">
-              <p className="text-xs font-medium text-foreground">Assign workflow / agent / council</p>
+              <p className="text-xs font-medium text-foreground">Assign workflow / agent / council / knowledge pack</p>
               <p className="text-[11px] text-muted-foreground">
                 Lite seats in this department can run assigned workflows (Meson build still requires a full seat).
               </p>
@@ -1578,7 +1578,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                     setAssignByDept((prev) => ({
                       ...prev,
                       [department.id]: {
-                        resource_type: event.target.value as "workflow" | "agent" | "council",
+                        resource_type: event.target.value as "workflow" | "agent" | "council" | "knowledge_pack",
                         resource_id: prev[department.id]?.resource_id || "",
                       },
                     }))
@@ -1587,6 +1587,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                   <option value="workflow">Workflow</option>
                   <option value="agent">Agent</option>
                   <option value="council">Council</option>
+                  <option value="knowledge_pack">Knowledge pack</option>
                 </select>
                 <Input
                   value={assignByDept[department.id]?.resource_id ?? ""}

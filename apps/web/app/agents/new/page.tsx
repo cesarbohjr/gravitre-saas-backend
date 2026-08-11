@@ -23,6 +23,10 @@ import {
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
+import {
+  AgentKnowledgePacksEditor,
+  type KnowledgePackSelection,
+} from "@/components/agents/agent-knowledge-packs-editor"
 import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
 import { agentsApi } from "@/lib/api"
@@ -130,6 +134,7 @@ export default function NewAgentPage() {
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedGuardrails, setSelectedGuardrails] = useState<string[]>(["approval-changes", "admin-delete"])
   const [referenceFolders, setReferenceFolders] = useState<AgentReferenceFolder[]>([])
+  const [knowledgePacks, setKnowledgePacks] = useState<KnowledgePackSelection[]>([])
   const suggestedIdentity = useSuggestedAgentIdentity(agentName, agentPurpose)
   const [selectedIcon, setSelectedIcon] = useState<AgentIconId>(suggestedIdentity.icon)
   const [selectedColor, setSelectedColor] = useState<AgentAvatarColorId>(suggestedIdentity.avatarColor)
@@ -204,8 +209,28 @@ export default function NewAgentPage() {
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
         referenceFolders,
+        knowledgePacks,
         status: "active",
       })
+
+      for (const pack of knowledgePacks) {
+        try {
+          await fetch(`/api/agents/${created.id}/knowledge-assignments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_type: "knowledge_pack",
+              source_id: pack.id,
+              label: pack.name,
+              department: pack.department,
+              enabled: true,
+              metadata: { fabric_pack: true },
+            }),
+          })
+        } catch {
+          // Config knowledge_packs still resolve via resolve_assignments
+        }
+      }
 
       toast.success("Agent created")
       await globalMutate("/api/agents")
@@ -482,6 +507,11 @@ export default function NewAgentPage() {
                 <AgentReferenceFoldersEditor
                   value={referenceFolders}
                   onChange={setReferenceFolders}
+                />
+
+                <AgentKnowledgePacksEditor
+                  value={knowledgePacks}
+                  onChange={setKnowledgePacks}
                 />
               </div>
             )}
