@@ -1,40 +1,62 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Apple, Download, Monitor, Terminal } from "lucide-react"
+import { AlertTriangle, Download } from "lucide-react"
 import {
   DESKTOP_RELEASE_FALLBACK,
   detectDesktopPlatform,
   type DesktopPlatformKey,
   type DesktopReleaseManifest,
 } from "@/lib/desktop-release"
-
-const PLATFORM_META: Record<
-  DesktopPlatformKey,
-  { label: string; blurb: string; Icon: typeof Apple }
-> = {
-  macos: {
-    label: "macOS",
-    blurb: "Apple Silicon · .dmg",
-    Icon: Apple,
-  },
-  windows: {
-    label: "Windows",
-    blurb: "Windows 10/11 · setup.exe",
-    Icon: Monitor,
-  },
-  linux: {
-    label: "Linux",
-    blurb: "AppImage · modern desktops",
-    Icon: Terminal,
-  },
-}
+import {
+  AppleVendorIcon,
+  LinuxVendorIcon,
+  WindowsVendorIcon,
+} from "@/components/marketing/os-vendor-icons"
 
 const RELEASE_PAGE =
   "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0"
 const MAC_INTEL_DMG =
   "https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/desktop-v0.1.0/Gravitre_0.1.0_x64.dmg"
+
+type PlatformMeta = {
+  label: string
+  blurb: string
+  index: string
+  footer: string
+  footerHref?: string
+  Icon: (props: { className?: string }) => ReactNode
+  iconClassName: string
+}
+
+const PLATFORM_META: Record<DesktopPlatformKey, PlatformMeta> = {
+  macos: {
+    label: "macOS",
+    blurb: "Apple Silicon · .dmg",
+    index: "01",
+    footer: "Intel Mac? Get the x64 build",
+    footerHref: MAC_INTEL_DMG,
+    Icon: AppleVendorIcon,
+    iconClassName: "text-zinc-900",
+  },
+  windows: {
+    label: "Windows",
+    blurb: "Windows 10/11 · setup.exe",
+    index: "02",
+    footer: "64-bit only",
+    Icon: WindowsVendorIcon,
+    iconClassName: "",
+  },
+  linux: {
+    label: "Linux",
+    blurb: "AppImage · modern desktops",
+    index: "03",
+    footer: "x86_64 AppImage",
+    Icon: LinuxVendorIcon,
+    iconClassName: "text-zinc-900",
+  },
+}
 
 type Props = {
   initialManifest?: DesktopReleaseManifest
@@ -42,8 +64,8 @@ type Props = {
 }
 
 /**
- * Marketing download block — three OS options, smart highlight, version from
- * /desktop/latest.json (same file CI should rewrite on release).
+ * Marketing download — hero + OS cards + unsigned-build honesty callout.
+ * Layout follows the v0 composition; hero atmosphere matches other marketing pages.
  */
 export function DesktopDownloadSection({
   initialManifest = DESKTOP_RELEASE_FALLBACK,
@@ -70,146 +92,232 @@ export function DesktopDownloadSection({
     }
   }, [])
 
-  const platforms = useMemo(
-    () =>
-      (["macos", "windows", "linux"] as const).map((key) => ({
-        key,
-        ...PLATFORM_META[key],
-        href: manifest.downloads[key]?.url || "#",
-      })),
-    [manifest],
-  )
+  const platforms = useMemo(() => {
+    const intelUrl = manifest.alsoAvailable?.macosIntel?.url || MAC_INTEL_DMG
+    return (["macos", "windows", "linux"] as const).map((key) => ({
+      key,
+      ...PLATFORM_META[key],
+      href: manifest.downloads[key]?.url || "#",
+      footerHref:
+        key === "macos" ? intelUrl : PLATFORM_META[key].footerHref,
+    }))
+  }, [manifest])
 
   const releaseUrl = manifest.releaseUrl || RELEASE_PAGE
-  const intelUrl = manifest.alsoAvailable?.macosIntel?.url || MAC_INTEL_DMG
   const isUnsigned = manifest.signed !== true
+  const publishedLabel = manifest.publishedAt
+    ? new Date(manifest.publishedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null
 
   return (
-    <section className={className ?? "relative py-24 sm:py-32 bg-white border-t border-zinc-200"}>
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-2xl text-center mb-12">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2">
-            <Download className="h-4 w-4 text-emerald-600" />
-            <span className="text-sm font-medium text-emerald-700">Desktop companion</span>
+    <section
+      className={
+        className ??
+        "relative overflow-hidden border-t border-zinc-200/80 bg-[#F8F7F2]"
+      }
+    >
+      {/* Marketing-style hero atmosphere (same language as /pricing + /extension) */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 via-[#F8F7F2] to-[#F8F7F2]" />
+        <div className="absolute -top-24 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl" />
+        <div className="absolute top-24 right-[-8%] h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
+        <div className="absolute bottom-[20%] left-[-6%] h-64 w-64 rounded-full bg-amber-100/40 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pb-28 sm:pt-32">
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-auto max-w-3xl text-center"
+        >
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200/90 bg-emerald-50/90 px-4 py-2 backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
+              Desktop companion
+            </span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900 text-balance">
-            Download Gravitre Desktop
+
+          <h2 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+            Gravitre,{" "}
+            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              one shortcut away.
+            </span>
           </h2>
-          <p className="mt-4 text-lg text-zinc-600">
-            Summon chat, glanceable activity, and approvals from a global shortcut — without
-            hunting for a browser tab. Full Settings, Meson, Agents, and Billing stay on the web.
+
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-600 sm:text-xl">
+            A lightweight companion for chat, activity, and approvals — summon it from anywhere with
+            a global shortcut. Settings, Meson, Agents, and Billing stay on the web.
           </p>
-          <p className="mt-3 text-sm font-medium text-zinc-500">
-            Version <span className="text-zinc-800">v{manifest.version}</span>
-            {manifest.publishedAt ? (
-              <span className="text-zinc-400">
-                {" "}
-                · {new Date(manifest.publishedAt).toLocaleDateString()}
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
+            <span className="inline-flex items-center rounded-full border border-zinc-200/80 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-800 shadow-sm shadow-zinc-900/[0.04]">
+              v{manifest.version}
+            </span>
+            {publishedLabel ? (
+              <span className="inline-flex items-center rounded-full border border-zinc-200/80 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 shadow-sm shadow-zinc-900/[0.04]">
+                {publishedLabel}
               </span>
             ) : null}
             {isUnsigned ? (
-              <span className="text-amber-700"> · unsigned early builds</span>
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-sm font-semibold text-amber-900">
+                Unsigned early build
+              </span>
             ) : null}
-          </p>
+          </div>
+        </motion.div>
+
+        {/* OS cards */}
+        <div className="mt-14 grid gap-5 sm:grid-cols-3 sm:gap-6">
+          {platforms.map((platform, index) => {
+            const highlighted = detected === platform.key
+            const Icon = platform.Icon
+            return (
+              <motion.div
+                key={platform.key}
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: 0.08 + index * 0.07, duration: 0.45 }}
+                className={[
+                  "relative flex flex-col rounded-[1.35rem] border bg-white p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] transition-transform duration-300 hover:-translate-y-0.5",
+                  highlighted
+                    ? "border-emerald-300 ring-2 ring-emerald-400/35"
+                    : "border-zinc-200/80",
+                ].join(" ")}
+              >
+                <div className="mb-5 flex items-start justify-between gap-3">
+                  <div
+                    className={[
+                      "flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-100 bg-zinc-50",
+                      platform.iconClassName,
+                    ].join(" ")}
+                  >
+                    <Icon className="h-7 w-7" />
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs font-semibold tabular-nums tracking-wide text-zinc-300">
+                      {platform.index}
+                    </span>
+                    {highlighted ? (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                        Your OS
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-semibold tracking-tight text-zinc-900">
+                  {platform.label}
+                </h3>
+                <p className="mt-1.5 text-sm text-zinc-500">{platform.blurb}</p>
+
+                <a
+                  href={platform.href}
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </a>
+
+                {platform.footerHref ? (
+                  <a
+                    href={platform.footerHref}
+                    className="mt-3 text-center text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800"
+                  >
+                    {platform.footer}
+                  </a>
+                ) : (
+                  <p className="mt-3 text-center text-xs font-medium text-zinc-400">
+                    {platform.footer}
+                  </p>
+                )}
+              </motion.div>
+            )
+          })}
         </div>
 
+        {/* Honesty callout — expected OS warnings */}
         {isUnsigned ? (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20px" }}
+            transition={{ duration: 0.45, delay: 0.1 }}
             role="note"
             aria-label="Unsigned build security warnings"
-            className="mx-auto mb-10 max-w-3xl border border-amber-300 bg-amber-50 px-5 py-5 text-left sm:px-6"
+            className="mt-10 rounded-[1.35rem] border border-amber-200/90 bg-amber-50/90 p-6 sm:p-8"
           >
-            <p className="text-sm font-semibold text-amber-950">
-              These are early, unsigned builds
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-amber-950/90">
-              We have not yet provisioned Apple or Windows code-signing certificates. On first
-              launch, Windows and macOS will show a real security warning. That is expected for
-              this release — not malware, and not something we are hiding. Signed installers are a
-              separate follow-up once credentials are in place.
-            </p>
-            <div className="mt-4 space-y-3 text-sm leading-relaxed text-amber-950/90">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+              </span>
               <div>
-                <p className="font-semibold text-amber-950">Windows — “Windows protected your PC”</p>
-                <p className="mt-1">
-                  SmartScreen may block the installer. Click <strong>More info</strong>, then{" "}
-                  <strong>Run anyway</strong>. Only do this if you downloaded from this page or the
-                  official GitHub release linked below.
+                <p className="text-base font-semibold text-amber-950">
+                  These are early, unsigned builds
                 </p>
-              </div>
-              <div>
-                <p className="font-semibold text-amber-950">
-                  macOS — “Apple could not verify…” / cannot be opened
-                </p>
-                <p className="mt-1">
-                  Gatekeeper blocks unsigned apps. In Finder, <strong>right-click</strong> (or
-                  Control-click) the app → <strong>Open</strong> → confirm{" "}
-                  <strong>Open</strong> again. Or: System Settings → Privacy &amp; Security → scroll
-                  to the blocked app → <strong>Open Anyway</strong>.
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-amber-950/85">
+                  We have not yet provisioned Apple or Windows code-signing certificates. On first
+                  launch, Windows and macOS will show a real security warning. That is expected for
+                  this release — not malware, and not something we are hiding. Signed installers are
+                  a separate follow-up once credentials are in place.
                 </p>
               </div>
             </div>
-            <p className="mt-4 text-xs text-amber-900/80">
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm shadow-amber-900/5">
+                <p className="text-sm font-semibold text-zinc-900">
+                  Windows — “Windows protected your PC”
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                  SmartScreen may block the installer. Click <strong className="text-zinc-800">More info</strong>,
+                  then <strong className="text-zinc-800">Run anyway</strong>. Only continue if you
+                  downloaded from this page or the official GitHub release.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm shadow-amber-900/5">
+                <p className="text-sm font-semibold text-zinc-900">
+                  macOS — “Apple could not verify…” / cannot be opened
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                  In Finder, <strong className="text-zinc-800">right-click</strong> (or Control-click)
+                  the app → <strong className="text-zinc-800">Open</strong> → confirm{" "}
+                  <strong className="text-zinc-800">Open</strong> again. Or: System Settings → Privacy
+                  &amp; Security → <strong className="text-zinc-800">Open Anyway</strong>.
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-5 text-xs text-amber-900/75">
               Release assets:{" "}
               <a
                 href={releaseUrl}
-                className="font-medium underline underline-offset-2 hover:text-amber-950"
+                className="font-semibold underline underline-offset-2 hover:text-amber-950"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 desktop-v0.1.0 on GitHub
               </a>
-              . Intel Macs: use{" "}
-              <a
-                href={intelUrl}
-                className="font-medium underline underline-offset-2 hover:text-amber-950"
-              >
-                Gravitre_0.1.0_x64.dmg
-              </a>
               .
             </p>
-          </div>
+          </motion.div>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          {platforms.map((platform, index) => {
-            const highlighted = detected === platform.key
-            const Icon = platform.Icon
-            return (
-              <motion.a
-                key={platform.key}
-                href={platform.href}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className={[
-                  "group relative flex flex-col items-start rounded-2xl border p-6 transition-colors",
-                  highlighted
-                    ? "border-emerald-300 bg-emerald-50/70 shadow-sm"
-                    : "border-zinc-200 bg-zinc-50/60 hover:border-zinc-300 hover:bg-white",
-                ].join(" ")}
-              >
-                {highlighted ? (
-                  <span className="absolute right-4 top-4 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                    Your OS
-                  </span>
-                ) : null}
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-800">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-900">{platform.label}</h3>
-                <p className="mt-1 text-sm text-zinc-600">{platform.blurb}</p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-900 group-hover:text-emerald-700">
-                  Download
-                  <Download className="h-3.5 w-3.5" />
-                </span>
-              </motion.a>
-            )
-          })}
-        </div>
-
-        <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-zinc-500">
+        <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-zinc-500">
           Browser enrichment stays in the Chrome extension — not in Desktop. Full Settings, Meson,
           Agents, and Billing open in the browser from the companion.
         </p>
