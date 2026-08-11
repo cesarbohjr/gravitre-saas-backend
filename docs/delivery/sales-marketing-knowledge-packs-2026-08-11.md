@@ -35,9 +35,21 @@ Hard gate: `assert_ingest_allowed(..., commercial_use_allowed=True)` — false/N
 
 Evidence JSON: `docs/delivery/sales-marketing-license-verify-live.json`.
 
+## Decision (2026-08-11) — keep blocked
+
+Cesar: keep **OpenStax** and **Saylor unit-reading / authenticated provenance** blocked until further clarification.
+
+| Path | Status |
+| -- | -- |
+| OpenStax Principles of Marketing | Stay `blocked_nc` / paused — no corpus ingest |
+| Saylor unit readings | Stay excluded — syllabi/intros only; no enrollment deep-dive |
+| FTC / SBA / Census / Saylor syllabi | Unchanged (already live) |
+
+Reopen only with explicit human choice after OpenStax commercial clarification and/or a paid-methodology priority call.
+
 ## Phase 1 — OpenStax
 
-**HALTED.** Discrepancy from prompt. Registry: `marketing.openstax.principles`, `legal_review_status=blocked_nc`.
+**HALTED / blocked until further clarification.** Registry: `marketing.openstax.principles`, `legal_review_status=blocked_nc`.
 
 ## Phase 2 — Saylor
 

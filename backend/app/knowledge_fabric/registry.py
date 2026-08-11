@@ -336,8 +336,9 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
         license_notes=(
             "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep "
             "their own licenses — ingest only provenance-filtered Saylor-authored pages "
-            "(guest-accessible syllabi/intros). Unit readings require enrollment and are "
-            "excluded until per-unit license verification."
+            "(guest-accessible syllabi/intros). UNIT READINGS BLOCKED until further "
+            "clarification (Cesar 2026-08-11): no authenticated-enrollment provenance "
+            "pass / deeper ingest without explicit reopen."
         ),
     )
     saylor_specs = (
@@ -464,11 +465,12 @@ def _sales_marketing_sources() -> tuple[KnowledgeSourceSpec, ...]:
             license_notes=(
                 "LIVE DISCREPANCY 2026-08-11: preface + chapter pages state "
                 "CC BY-NC-SA 4.0 (NonCommercial), not CC BY 4.0. Shared-corpus ingest HALTED. "
-                "Type C until OpenStax grants commercial permission."
+                "BLOCKED until further clarification (Cesar 2026-08-11) — no OpenStax "
+                "commercial reuse / alternate-title ingest without explicit reopen."
             ),
             hold_reason=(
-                "CC BY-NC-SA 4.0 live-verified — commercial_use false; blocked by hard gate "
-                "(prompt expected CC BY 4.0)."
+                "blocked until further clarification (Cesar 2026-08-11): CC BY-NC-SA 4.0 "
+                "live-verified; commercial_use false; do not ingest."
             ),
         ),
         *saylor_specs,

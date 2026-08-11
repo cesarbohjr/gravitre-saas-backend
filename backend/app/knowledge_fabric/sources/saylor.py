@@ -125,12 +125,14 @@ def provenance_filter_course(client: httpx.Client, course_code: str, course_id: 
         else:
             excluded.append(row)
 
-    # Honest note: guest surface does not expose unit readings
+    # Honest note: guest surface does not expose unit readings.
+    # BLOCKED until further clarification (Cesar 2026-08-11) — do not deepen ingest.
     excluded.append(
         {
             "url": course_url,
-            "title": f"{course_code} unit readings (guest-inaccessible)",
+            "title": f"{course_code} unit readings (blocked until clarification)",
             "reasons": [
+                "unit_materials_blocked_until_further_clarification",
                 "unit_materials_require_enrollment_not_ingested",
                 "third_party_materials_various_licenses_per_saylor_footer",
             ],
