@@ -1,0 +1,32 @@
+{
+  "started_at": "2026-08-11T10:09:50.098873+00:00",
+  "finished_at": "2026-08-11T10:09:50.767680+00:00",
+  "force": true,
+  "packs": [
+    "pack.finance"
+  ],
+  "results": {
+    "pack.finance": {
+      "ingest": {
+        "pack_id": "pack.finance",
+        "documents": 1,
+        "chunks": 1,
+        "results": [
+          {
+            "document_id": "bedc668d-e153-4b5d-87f9-b53bba6d6c32",
+            "skipped": false,
+            "chunks": 1
+          }
+        ],
+        "errors": []
+      },
+      "last_refreshed_before": {
+        "finance.sec.edgar": "2026-08-11T10:06:07.849053+00:00"
+      },
+      "last_refreshed_after": {
+        "finance.sec.edgar": "2026-08-11T10:09:50.712624+00:00"
+      },
+      "timestamps_advanced": true
+    }
+  }
+}

@@ -1,0 +1,496 @@
+{
+  "generated_at": "2026-08-11T10:09:15.186483+00:00",
+  "part_a1_honest_prior_status": "The verify-knowledge-fabric-live.json isolation check was SCHEMA/SERVICE-ROLE only (namespace + table presence). It was NOT a disposable-org JWT/API attempt.",
+  "api_base": "https://api.gravitre.app",
+  "foreign_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "probes": {
+    "postgrest_knowledge_write": [
+      {
+        "table": "knowledge_sources",
+        "method": "POST",
+        "http": 403,
+        "body": {
+          "code": "42501",
+          "details": null,
+          "hint": null,
+          "message": "new row violates row-level security policy for table \"knowledge_sources\""
+        },
+        "blocked": true,
+        "leaked": false
+      },
+      {
+        "table": "knowledge_documents",
+        "method": "POST",
+        "http": 403,
+        "body": {
+          "code": "42501",
+          "details": null,
+          "hint": null,
+          "message": "new row violates row-level security policy for table \"knowledge_documents\""
+        },
+        "blocked": true,
+        "leaked": false
+      },
+      {
+        "table": "knowledge_chunks",
+        "method": "POST",
+        "http": 403,
+        "body": {
+          "code": "42501",
+          "details": null,
+          "hint": null,
+          "message": "new row violates row-level security policy for table \"knowledge_chunks\""
+        },
+        "blocked": true,
+        "leaked": false
+      }
+    ],
+    "postgrest_knowledge_delete": [
+      {
+        "table": "knowledge_sources",
+        "method": "DELETE",
+        "http": 200,
+        "body": {
+          "row_count": 0,
+          "sample_ids": []
+        },
+        "blocked": true,
+        "note": "no rows deleted / empty success without write policy"
+      },
+      {
+        "table": "knowledge_documents",
+        "method": "DELETE",
+        "http": 200,
+        "body": {
+          "row_count": 0,
+          "sample_ids": []
+        },
+        "blocked": true,
+        "note": "no rows deleted / empty success without write policy"
+      },
+      {
+        "table": "knowledge_chunks",
+        "method": "DELETE",
+        "http": 200,
+        "body": {
+          "row_count": 0,
+          "sample_ids": []
+        },
+        "blocked": true,
+        "note": "no rows deleted / empty success without write policy"
+      }
+    ],
+    "postgrest_knowledge_read": [
+      {
+        "table": "knowledge_sources",
+        "method": "GET",
+        "http": 200,
+        "body": {
+          "row_count": 2,
+          "sample_ids": [
+            "eab43276-69b1-45fd-8bcc-dd2e75ee4b10",
+            "0017f6b3-54bb-450a-9100-353985addaff"
+          ]
+        },
+        "read_ok": true
+      },
+      {
+        "table": "knowledge_documents",
+        "method": "GET",
+        "http": 200,
+        "body": {
+          "row_count": 2,
+          "sample_ids": [
+            "54426e72-25a2-428e-9874-0a1084ad72ef",
+            "0e9ca8f8-121b-4b3b-9778-f8af8213c178"
+          ]
+        },
+        "read_ok": true
+      },
+      {
+        "table": "knowledge_chunks",
+        "method": "GET",
+        "http": 200,
+        "body": {
+          "row_count": 2,
+          "sample_ids": [
+            "373b1da7-fb8b-488a-90a3-e841b85b0d60",
+            "ccd6296e-731c-4ef4-83de-203d1960cffe"
+          ]
+        },
+        "read_ok": true
+      }
+    ],
+    "postgrest_foreign_rag": {
+      "table": "rag_sources",
+      "method": "GET",
+      "http": 200,
+      "body": {
+        "row_count": 0,
+        "sample_ids": []
+      },
+      "blocked": true,
+      "leaked": false
+    },
+    "api": {
+      "GET /packs": {
+        "path": "/api/knowledge-fabric/packs",
+        "method": "GET",
+        "http": 200,
+        "body": {
+          "packs": [
+            {
+              "pack_id": "pack.legal",
+              "label": "Legal Pack",
+              "department": "legal",
+              "sources": [
+                {
+                  "source_id": "legal.courtlistener.opinions",
+                  "license_type": "B",
+                  "hold_reason": "COURTLISTENER_API_TOKEN not provisioned (REST v4 returns 401 without token).",
+                  "authority_score": 0.92
+                },
+                {
+                  "source_id": "legal.us.constitution",
+                  "license_type": "A",
+                  "hold_reason": null,
+                  "authority_score": 0.99
+                },
+                {
+                  "source_id": "legal.openlaws.statutes",
+                  "license_type": "B",
+                  "hold_reason": "OPENLAWS_API_KEY not provisioned \u2014 registry only until credentials confirmed.",
+                  "authority_score": 0.9
+                }
+              ],
+              "ingestible": true,
+              "hold": true
+            },
+            {
+              "pack_id": "pack.finance",
+              "label": "Finance Pack",
+              "department": "finance",
+              "sources": [
+                {
+                  "source_id": "finance.sec.edgar",
+                  "license_type": "B",
+                  "hold_reason": null,
+                  "authority_score": 0.95
+                }
+              ],
+              "ingestible": true,
+              "hold": false
+            },
+            {
+              "pack_id": "pack.cybersecurity",
+              "label": "Cybersecurity / MSP Pack",
+              "department": "cybersecurity",
+              "sources": [
+                {
+                  "source_id": "cyber.nist.csf2",
+                  "license_type": "A",
+                  "hold_reason": null,
+                  "authority_score": 0.97
+                },
+                {
+                  "source_id": "cyber.nist.sp800-53",
+                  "license_type": "A",
+                  "hold_reason": null,
+                  "authority_score": 0.96
+                }
+              ],
+              "ingestible": true,
+              "hold": false
+            },
+            {
+              "pack_id": "pack.hr",
+              "label": "HR Pack",
+              "department": "hr",
+              "sources": [
+                {
+                  "source_id": "hr.dol.developer",
+                  "license_type": "B",
+                  "hold_reason": null,
+                  "authority_score": 0.9
+                },
+                {
+                  "source_id": "hr.onet.occupations",
+                  "license_type": "B",
+                  "hold_reason": "ONET credentials not provisioned \u2014 registry only until API access confirmed.",
+                  "authority_score": 0.88
+                }
+              ],
+              "ingestible": true,
+              "hold": true
+            },
+            {
+              "pack_id": "pack.sales",
+              "label": "Sales Pack",
+              "department": "sales",
+              "sources": [
+                {
+                  "source_id": "sales.content.hold",
+                  "license_type": "C",
+                  "hold_reason": "Awaiting explicit Sales/Marketing content sourcing decision \u2014 do not ingest blogs.",
+                  "authority_score": 0.5
+                }
+              ],
+              "ingestible": false,
+              "hold": true
+            },
+            {
+              "pack_id": "pack.marketing",
+              "label": "Marketing Pack",
+              "department": "marketing",
+              "sources": [
+                {
+                  "source_id": "marketing.content.hold",
+                  "license_type": "C",
+                  "hold_reason": "Awaiting explicit Sales/Marketing content sourcing decision \u2014 do not ingest blogs.",
+                  "authority_score": 0.5
+                }
+              ],
+              "ingestible": false,
+              "hold": true
+            }
+          ]
+        }
+      },
+      "POST /classify": {
+        "path": "/api/knowledge-fabric/classify",
+        "method": "POST",
+        "http": 200,
+        "body": {
+          "route": {
+            "departments": [
+              "cybersecurity"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.cybersecurity"
+            ],
+            "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+          }
+        }
+      },
+      "POST /retrieve": {
+        "path": "/api/knowledge-fabric/retrieve",
+        "method": "POST",
+        "http": 200,
+        "body": {
+          "route": {
+            "departments": [
+              "cybersecurity"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.cybersecurity"
+            ],
+            "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+          },
+          "results": [
+            {
+              "id": "373b1da7-fb8b-488a-90a3-e841b85b0d60",
+              "content": "The Govern Function establishes and monitors the organization's cybersecurity risk management strategy, expectations, and policy. Govern informs how an organization will achieve and prioritize the outcomes of the other five Functions in the context of its mission and stakeholder expectations. Governance activities are critical for incorporating cybersecurity into an organization's broader enterprise risk management (ERM) strategy. Govern addresses understanding organizational context; establishing cybersecurity strategy and cybersecurity supply chain risk management; roles, responsibilities, and authorities; policy; and oversight of cybersecurity strategy.\n\nSource: National Institute of Standards and Technology (2024) The NIST Cybersecurity Framework (CSF) 2.0. NIST CSWP 29. https://doi.org/10.6028/NIST.CSWP.29 \u2014 Reprinted courtesy of NIST.",
+              "score": 1.0535275861825852,
+              "citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+              "jurisdiction": "US",
+              "authority_score": 0.97,
+              "freshness_score": 0.95,
+              "source_id": "cyber.nist.csf2",
+              "publisher": "National Institute of Standards and Technology"
+            },
+            {
+              "id": "b9684e4e-3d31-4fc8-8eaf-85a55db1e9c1",
+              "content": "The Protect Function covers safeguards for managing the organization's cybersecurity risks. Those risks include threats to and vulnerabilities of assets that could be exploited by threat actors. Protect supports the ability to secure assets to prevent or lower the likelihood and impact of adverse cybersecurity events, and to increase likelihood and impact of succeeding in the organization's mission. Outcomes include identity management, authentication, and access control; awareness and training; data security; platform security; and technology infrastructure resilience.\n\nSource: National Institute of Standards and Technology (2024) The NIST Cybersecurity Framework (CSF) 2.0. NIST CSWP 29. https://doi.org/10.6028/NIST.CSWP.29 \u2014 Reprinted courtesy of NIST.",
+              "score": 1.0012234443782306,
+              "citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+              "jurisdiction": "US",
+              "authority_score": 0.97,
+              "freshness_score": 0.95,
+              "source_id": "cyber.nist.csf2",
+              "publisher": "National Institute of Standards and Technology"
+            },
+            {
+              "id": "3120459c-136b-4ac9-8b41-83b59bcb0ca0",
+              "content": "NIST Special Publication 800-53 Revision 5 provides a catalog of security and privacy controls for information systems and organizations. Controls are organized into families (e.g., Access Control, Audit and Accountability, Incident Response, System and Communications Protection). Organizations select and implement controls based on risk assessments and baseline requirements. SP 800-53 is widely used by federal agencies and contractors and aligns with broader risk management frameworks including the NIST Cybersecurity Framework.",
+              "score": 0.9953017840279765,
+              "citation": "NIST SP 800-53 Rev. 5 (https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)",
+              "jurisdiction": "US",
+              "authority_score": 0.96,
+              "freshness_score": 0.95,
+              "source_id": "cyber.nist.sp800-53",
+              "publisher": "National Institute of Standards and Technology"
+            }
+          ],
+          "provenance": [
+            {
+              "source_system": "knowledge_fabric",
+              "source_name": "National Institute of Standards and Technology",
+              "source_type": "knowledge_pack_chunk",
+              "source_id": "cyber.nist.csf2",
+              "assignment_id": null,
+              "retrieved_at": "2026-08-11T10:09:30.677038+00:00",
+              "last_updated": null,
+              "freshness_score": 0.95,
+              "permission_scope": "org_member",
+              "confidence": 1.0535275861825852,
+              "reference_only": true,
+              "retrieval_policy": "legacy",
+              "domain_department": null,
+              "domain_subdomain": null,
+              "match_tier": null,
+              "weight_applied": null,
+              "authority_score": 0.97,
+              "authority_is_estimate": false,
+              "authority_source": "knowledge_source_registry",
+              "citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+              "jurisdiction": "US",
+              "license_type": "A",
+              "web_link": "https://doi.org/10.6028/NIST.CSWP.29",
+              "match": "vector"
+            },
+            {
+              "source_system": "knowledge_fabric",
+              "source_name": "National Institute of Standards and Technology",
+              "source_type": "knowledge_pack_chunk",
+              "source_id": "cyber.nist.csf2",
+              "assignment_id": null,
+              "retrieved_at": "2026-08-11T10:09:30.677079+00:00",
+              "last_updated": null,
+              "freshness_score": 0.95,
+              "permission_scope": "org_member",
+              "confidence": 1.0012234443782306,
+              "reference_only": true,
+              "retrieval_policy": "legacy",
+              "domain_department": null,
+              "domain_subdomain": null,
+              "match_tier": null,
+              "weight_applied": null,
+              "authority_score": 0.97,
+              "authority_is_estimate": false,
+              "authority_source": "knowledge_source_registry",
+              "citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+              "jurisdiction": "US",
+              "license_type": "A",
+              "web_link": "https://doi.org/10.6028/NIST.CSWP.29",
+              "match": "vector"
+            },
+            {
+              "source_system": "knowledge_fabric",
+              "source_name": "National Institute of Standards and Technology",
+              "source_type": "knowledge_pack_chunk",
+              "source_id": "cyber.nist.sp800-53",
+              "assignment_id": null,
+              "retrieved_at": "2026-08-11T10:09:30.677094+00:00",
+              "last_updated": null,
+              "freshness_score": 0.95,
+              "permission_scope": "org_member",
+              "confidence": 0.9953017840279765,
+              "reference_only": true,
+              "retrieval_policy": "legacy",
+              "domain_department": null,
+              "domain_subdomain": null,
+              "match_tier": null,
+              "weight_applied": null,
+              "authority_score": 0.96,
+              "authority_is_estimate": false,
+              "authority_source": "knowledge_source_registry",
+              "citation": "NIST SP 800-53 Rev. 5 (https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)",
+              "jurisdiction": "US",
+              "license_type": "A",
+              "web_link": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+              "match": "vector"
+            }
+          ],
+          "org_id": "e82b214f-8c04-41bc-9603-42b93f8d81fd",
+          "isolation": {
+            "namespace": "platform_shared",
+            "customer_rag_tables_touched": false
+          }
+        },
+        "foreign_rag_title_absent": true,
+        "customer_rag_tables_touched": false,
+        "result_count": 3
+      },
+      "POST /admin/register-sources": {
+        "path": "/api/knowledge-fabric/admin/register-sources",
+        "method": "POST",
+        "http": 403,
+        "body": {
+          "success": false,
+          "error": "Platform admin required",
+          "code": "UNAUTHORIZED",
+          "details": {},
+          "detail": "Platform admin required"
+        },
+        "expected": "403 Platform admin required (org admin of disposable org blocked)",
+        "blocked": true
+      },
+      "POST /admin/ingest": {
+        "path": "/api/knowledge-fabric/admin/ingest",
+        "method": "POST",
+        "http": 403,
+        "body": {
+          "success": false,
+          "error": "Platform admin required",
+          "code": "UNAUTHORIZED",
+          "details": {},
+          "detail": "Platform admin required"
+        },
+        "expected": "403 Platform admin required (org admin of disposable org blocked)",
+        "blocked": true
+      },
+      "POST /internal/refresh-due (no secret)": {
+        "path": "/api/internal/knowledge-fabric/refresh-due",
+        "method": "POST",
+        "http": 401,
+        "body": {
+          "success": false,
+          "error": "Invalid internal secret",
+          "code": "UNAUTHORIZED",
+          "details": {},
+          "detail": "Invalid internal secret"
+        },
+        "blocked": true,
+        "expected": "401 without INTERNAL_API_SECRET"
+      }
+    }
+  },
+  "disposable_org_id": "e82b214f-8c04-41bc-9603-42b93f8d81fd",
+  "disposable_user_id": "6187a061-542b-4501-99fa-5028830907da",
+  "disposable_email": "kf-isolation+1786442955@gravitre.app",
+  "cleanup": {
+    "notes": [
+      "deleted:organization_members",
+      "deleted:org_billing",
+      "deleted:subscriptions",
+      "deleted:agents",
+      "deleted:rag_sources",
+      "deleted:organizations",
+      "deleted:auth_user"
+    ],
+    "org_still_exists": false,
+    "cleaned": true,
+    "foreign_rag_seed_deleted": true
+  },
+  "pass": true,
+  "assertions": {
+    "postgrest_writes_blocked": true,
+    "foreign_rag_not_readable": true,
+    "org_admin_cannot_mutate_shared_corpus": true,
+    "internal_refresh_requires_secret": true,
+    "retrieve_ok_no_foreign_rag": true,
+    "shared_read_allowed": true,
+    "disposable_cleaned": true
+  },
+  "verdict": "PASS \u2014 disposable org live isolation"
+}

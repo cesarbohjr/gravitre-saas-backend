@@ -1,0 +1,559 @@
+{
+  "generated_at": "2026-08-11T10:05:54.536993+00:00",
+  "deployed_health": {
+    "status": "ok",
+    "timestamp": "2026-08-11T10:05:54.264884+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "7c1c06379c7710cc6b5182e797d04f570bd490ed",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "sales_marketing": "UNTOUCHED \u2014 out of scope this pass",
+  "pending_sources_tokens": {
+    "courtlistener": {
+      "provisioned": false,
+      "keys_present": [],
+      "status": "WAITING_ON_CESAR \u2014 token not provisioned"
+    },
+    "openlaws": {
+      "provisioned": false,
+      "keys_present": [],
+      "status": "WAITING_ON_CESAR \u2014 token not provisioned"
+    },
+    "onet": {
+      "provisioned": false,
+      "keys_present": [],
+      "status": "WAITING_ON_CESAR \u2014 token not provisioned"
+    }
+  },
+  "chunk_counts": {
+    "pack.hr": {
+      "sources": [
+        {
+          "source_id": "hr.dol.developer",
+          "license_type": "B",
+          "status": "active",
+          "refresh_frequency": "daily",
+          "last_refreshed_at": "2026-08-11T09:31:26.132338+00:00"
+        },
+        {
+          "source_id": "hr.onet.occupations",
+          "license_type": "B",
+          "status": "paused",
+          "refresh_frequency": "version_change",
+          "last_refreshed_at": null
+        }
+      ],
+      "documents": 2,
+      "chunks": 2,
+      "with_authority": 2
+    },
+    "pack.legal": {
+      "sources": [
+        {
+          "source_id": "legal.courtlistener.opinions",
+          "license_type": "B",
+          "status": "paused",
+          "refresh_frequency": "realtime",
+          "last_refreshed_at": null
+        },
+        {
+          "source_id": "legal.openlaws.statutes",
+          "license_type": "B",
+          "status": "paused",
+          "refresh_frequency": "version_change",
+          "last_refreshed_at": null
+        },
+        {
+          "source_id": "legal.us.constitution",
+          "license_type": "A",
+          "status": "active",
+          "refresh_frequency": "version_change",
+          "last_refreshed_at": "2026-08-11T09:31:24.492879+00:00"
+        }
+      ],
+      "documents": 3,
+      "chunks": 3,
+      "with_authority": 3
+    },
+    "pack.sales": {
+      "sources": [
+        {
+          "source_id": "sales.content.hold",
+          "license_type": "C",
+          "status": "paused",
+          "refresh_frequency": "manual",
+          "last_refreshed_at": null
+        }
+      ],
+      "documents": 0,
+      "chunks": 0,
+      "with_authority": 0
+    },
+    "pack.finance": {
+      "sources": [
+        {
+          "source_id": "finance.sec.edgar",
+          "license_type": "B",
+          "status": "active",
+          "refresh_frequency": "realtime",
+          "last_refreshed_at": "2026-08-11T09:30:35.990575+00:00"
+        }
+      ],
+      "documents": 2,
+      "chunks": 2,
+      "with_authority": 2
+    },
+    "pack.marketing": {
+      "sources": [
+        {
+          "source_id": "marketing.content.hold",
+          "license_type": "C",
+          "status": "paused",
+          "refresh_frequency": "manual",
+          "last_refreshed_at": null
+        }
+      ],
+      "documents": 0,
+      "chunks": 0,
+      "with_authority": 0
+    },
+    "pack.cybersecurity": {
+      "sources": [
+        {
+          "source_id": "cyber.nist.csf2",
+          "license_type": "A",
+          "status": "active",
+          "refresh_frequency": "version_change",
+          "last_refreshed_at": "2026-08-11T09:30:32.190646+00:00"
+        },
+        {
+          "source_id": "cyber.nist.sp800-53",
+          "license_type": "A",
+          "status": "active",
+          "refresh_frequency": "version_change",
+          "last_refreshed_at": "2026-08-11T09:30:33.282394+00:00"
+        }
+      ],
+      "documents": 4,
+      "chunks": 4,
+      "with_authority": 4
+    }
+  },
+  "spot_checks": {
+    "pack.cybersecurity": {
+      "queries": [
+        {
+          "query": "What is the NIST CSF 2.0 Govern function?",
+          "route": {
+            "departments": [
+              "cybersecurity"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.cybersecurity"
+            ],
+            "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+          },
+          "result_count": 3,
+          "top_citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+          "top_authority": 0.97,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "Explain the Detect function in CSF 2.0",
+          "route": {
+            "departments": [
+              "cybersecurity"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.cybersecurity"
+            ],
+            "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+          },
+          "result_count": 3,
+          "top_citation": "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+          "top_authority": 0.97,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "What is NIST SP 800-53 used for?",
+          "route": {
+            "departments": [
+              "cybersecurity"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.cybersecurity"
+            ],
+            "reason": "departments=['cybersecurity']; jurisdictions=['none']; packs=['pack.cybersecurity']"
+          },
+          "result_count": 3,
+          "top_citation": "NIST SP 800-53 Rev. 5 (https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)",
+          "top_authority": 0.96,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    "pack.finance": {
+      "queries": [
+        {
+          "query": "How do SEC EDGAR company tickers map to CIK?",
+          "route": {
+            "departments": [
+              "finance"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.finance"
+            ],
+            "reason": "departments=['finance']; jurisdictions=['none']; packs=['pack.finance']"
+          },
+          "result_count": 2,
+          "top_citation": "SEC EDGAR company_tickers.json \u2014 https://www.sec.gov/files/company_tickers.json",
+          "top_authority": 0.95,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "What XBRL company facts does SEC publish?",
+          "route": {
+            "departments": [
+              "finance"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.finance"
+            ],
+            "reason": "departments=['finance']; jurisdictions=['none']; packs=['pack.finance']"
+          },
+          "result_count": 2,
+          "top_citation": "SEC EDGAR company_tickers.json \u2014 https://www.sec.gov/files/company_tickers.json",
+          "top_authority": 0.95,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "Apple SEC companyfacts sample concepts",
+          "route": {
+            "departments": [
+              "finance"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.finance"
+            ],
+            "reason": "departments=['finance']; jurisdictions=['none']; packs=['pack.finance']"
+          },
+          "result_count": 2,
+          "top_citation": "SEC companyfacts CIK0000320193 \u2014 https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+          "top_authority": 0.95,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    "pack.legal": {
+      "queries": [
+        {
+          "query": "What does the 14th Amendment equal protection clause say?",
+          "route": {
+            "departments": [],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.legal"
+            ],
+            "reason": "departments=['unspecified']; jurisdictions=['none']; packs=['pack.legal']"
+          },
+          "result_count": 3,
+          "top_citation": "U.S. Constitution \u2014 https://www.archives.gov/founding-docs/constitution-transcript",
+          "top_authority": 0.99,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "U.S. Constitution commerce clause Article I Section 8",
+          "route": {
+            "departments": [
+              "finance"
+            ],
+            "jurisdictions": [
+              "US-federal"
+            ],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.legal"
+            ],
+            "reason": "departments=['finance']; jurisdictions=['US-federal']; packs=['pack.legal']"
+          },
+          "result_count": 3,
+          "top_citation": "U.S. Constitution \u2014 https://www.archives.gov/founding-docs/constitution-transcript",
+          "top_authority": 0.99,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "Tenth Amendment reserved powers",
+          "route": {
+            "departments": [],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.legal"
+            ],
+            "reason": "departments=['unspecified']; jurisdictions=['none']; packs=['pack.legal']"
+          },
+          "result_count": 3,
+          "top_citation": "U.S. Constitution \u2014 https://www.archives.gov/founding-docs/constitution-transcript",
+          "top_authority": 0.99,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    "pack.hr": {
+      "queries": [
+        {
+          "query": "What does the FLSA require for overtime pay?",
+          "route": {
+            "departments": [
+              "legal"
+            ],
+            "jurisdictions": [
+              "US-federal"
+            ],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.hr"
+            ],
+            "reason": "departments=['legal']; jurisdictions=['US-federal']; packs=['pack.hr']"
+          },
+          "result_count": 2,
+          "top_citation": "U.S. DOL WHD FLSA \u2014 https://www.dol.gov/agencies/whd/flsa",
+          "top_authority": 0.9,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "FMLA leave eligibility requirements",
+          "route": {
+            "departments": [
+              "legal",
+              "hr"
+            ],
+            "jurisdictions": [
+              "US-federal"
+            ],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.hr"
+            ],
+            "reason": "departments=['legal', 'hr']; jurisdictions=['US-federal']; packs=['pack.hr']"
+          },
+          "result_count": 2,
+          "top_citation": "U.S. DOL WHD FMLA \u2014 https://www.dol.gov/agencies/whd/fmla",
+          "top_authority": 0.9,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        },
+        {
+          "query": "Department of Labor wage and hour basics",
+          "route": {
+            "departments": [
+              "hr"
+            ],
+            "jurisdictions": [],
+            "tiers": [
+              "customer_rag",
+              "expert_pack"
+            ],
+            "pack_ids": [
+              "pack.hr"
+            ],
+            "reason": "departments=['hr']; jurisdictions=['none']; packs=['pack.hr']"
+          },
+          "result_count": 2,
+          "top_citation": "U.S. DOL WHD FLSA \u2014 https://www.dol.gov/agencies/whd/flsa",
+          "top_authority": 0.9,
+          "top_freshness": 0.95,
+          "provenance_has_authority": true,
+          "pack_scoped": true,
+          "pass": true
+        }
+      ],
+      "pass": true
+    }
+  },
+  "refresh_cycle": {
+    "via": "direct_service",
+    "result": {
+      "started_at": "2026-08-11T10:06:05.804160+00:00",
+      "finished_at": "2026-08-11T10:06:09.582951+00:00",
+      "force": true,
+      "packs": [
+        "pack.finance",
+        "pack.cybersecurity"
+      ],
+      "results": {
+        "pack.finance": {
+          "ingest": {
+            "pack_id": "pack.finance",
+            "documents": 2,
+            "chunks": 1,
+            "results": [
+              {
+                "document_id": "bedc668d-e153-4b5d-87f9-b53bba6d6c32",
+                "skipped": false,
+                "chunks": 1
+              },
+              {
+                "document_id": "77c01b54-6aa5-4c8e-8a22-10c4e0b1d455",
+                "skipped": true,
+                "chunks": 0
+              }
+            ],
+            "errors": []
+          },
+          "last_refreshed_before": {
+            "finance.sec.edgar": "2026-08-11T09:30:35.990575+00:00"
+          },
+          "last_refreshed_after": {
+            "finance.sec.edgar": "2026-08-11T10:06:07.849053+00:00"
+          },
+          "timestamps_advanced": true
+        },
+        "pack.cybersecurity": {
+          "ingest": {
+            "pack_id": "pack.cybersecurity",
+            "documents": 3,
+            "chunks": 0,
+            "results": [
+              {
+                "document_id": "54426e72-25a2-428e-9874-0a1084ad72ef",
+                "skipped": true,
+                "chunks": 0
+              },
+              {
+                "document_id": "0e9ca8f8-121b-4b3b-9778-f8af8213c178",
+                "skipped": true,
+                "chunks": 0
+              },
+              {
+                "document_id": "cab5c33c-5a1a-498c-bcb4-1a00b146a729",
+                "skipped": true,
+                "chunks": 0
+              }
+            ],
+            "errors": []
+          },
+          "last_refreshed_before": {
+            "cyber.nist.csf2": "2026-08-11T09:30:32.190646+00:00",
+            "cyber.nist.sp800-53": "2026-08-11T09:30:33.282394+00:00"
+          },
+          "last_refreshed_after": {
+            "cyber.nist.csf2": "2026-08-11T09:30:32.190646+00:00",
+            "cyber.nist.sp800-53": "2026-08-11T09:30:33.282394+00:00"
+          },
+          "timestamps_advanced": false
+        }
+      }
+    },
+    "pass": true,
+    "finance_advanced": true
+  },
+  "totals": {
+    "sources": 10,
+    "documents": 11,
+    "chunks": 11
+  },
+  "ingestion_pending": {
+    "courtlistener": "WAITING_ON_CESAR \u2014 token not provisioned",
+    "openlaws": "WAITING_ON_CESAR \u2014 token not provisioned",
+    "onet": "WAITING_ON_CESAR \u2014 token not provisioned"
+  },
+  "overall_pass": true,
+  "tokens_block_further_ingest": true
+}

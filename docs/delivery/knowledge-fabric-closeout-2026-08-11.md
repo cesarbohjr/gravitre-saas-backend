@@ -11,24 +11,40 @@ A later standing-isolated-org probe (`knowledge-fabric-isolation-live.json`, org
 
 ## Part A.2 — Disposable org live proof
 
+**PASS** @ `2026-08-11T10:09:15Z` on tip `054d50e1`  
 Script: `scripts/verify-knowledge-fabric-isolation-disposable-live.py`  
 Artifact: `docs/delivery/knowledge-fabric-isolation-disposable-live.json`
 
-Probes:
-- PostgREST INSERT/DELETE on `knowledge_*` with disposable JWT (must RLS-block)
-- PostgREST SELECT shared packs (read-only allowed by design)
-- Foreign-org `rag_sources` seed not readable
-- API: `/packs`, `/classify`, `/retrieve`
-- API: `/admin/register-sources`, `/admin/ingest` must **403** (platform-admin only)
-- Internal `/refresh-due` without secret must **401**
-- Disposable org+user deleted afterward
+| Probe | Result | Evidence |
+| -- | -- | -- |
+| Disposable org created | `e82b214f-8c04-41bc-9603-42b93f8d81fd` | user `6187a061-…` / `kf-isolation+1786442955@gravitre.app` |
+| PostgREST INSERT `knowledge_*` | **403** RLS | `"new row violates row-level security policy"` |
+| PostgREST DELETE `knowledge_*` | no rows deleted | http 200, `row_count: 0` |
+| PostgREST SELECT shared | **200** read-only | 2 rows each table |
+| Foreign `rag_sources` seed | **blocked** | `row_count: 0` for foreign org title |
+| `GET /packs` | 200 | registry returned |
+| `POST /retrieve` | 200 | NIST Govern; `customer_rag_tables_touched: false` |
+| `POST /admin/ingest` | **403** | `"Platform admin required"` |
+| `POST /admin/register-sources` | **403** | `"Platform admin required"` |
+| Internal refresh no secret | **401** | `"Invalid internal secret"` |
+| Cleanup | **cleaned** | org deleted, auth user deleted, foreign seed deleted |
 
-**Fix shipped with this closeout:** admin ingest/register now use `require_platform_admin`
-(previously any org admin could mutate the shared corpus).
+**Fix shipped:** admin ingest/register now `require_platform_admin` (org admins can no longer mutate shared corpus).
 
 ## Part B — Tokens / spot-checks / refresh
 
-- CourtListener / OpenLaws / O*NET: see closeout JSON `pending_sources_tokens`
-- Sales/Marketing: **untouched**
-- Spot-checks + forced refresh cycle: `knowledge-fabric-closeout-live.json`
-- Refresh cron path: `POST /api/internal/knowledge-fabric/refresh-due` (`X-Internal-Secret`)
+| Source | Status |
+| -- | -- |
+| CourtListener | **WAITING_ON_CESAR** — no `COURTLISTENER_API_TOKEN` |
+| OpenLaws | **WAITING_ON_CESAR** — no `OPENLAWS_API_KEY` |
+| O*NET | **WAITING_ON_CESAR** — no `ONET_*` credentials |
+| Sales / Marketing | **UNTOUCHED** |
+
+Chunk counts (active packs): cyber 4 / finance 2 / legal 3 / hr 2 — all with authority scores.  
+Spot-checks: 3 queries × 4 packs — all PASS (`knowledge-fabric-closeout-live.json`).
+
+Refresh:
+- Direct service force refresh: finance `last_refreshed` **09:30:35Z → 10:06:07Z** (`timestamps_advanced: true`)
+- Live API cron: `POST /api/internal/knowledge-fabric/refresh-due` **http 200** @ tip `054d50e1`; finance **10:06:07Z → 10:09:50Z** (`knowledge-fabric-refresh-api-live.json`)
+
+Deploy health: `git_sha=054d50e1002d35c14500b7113f72523b5264e0aa`
