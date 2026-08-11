@@ -64,7 +64,11 @@ def retrieve_knowledge_fabric(
     for s in sources:
         meta = s.get("metadata") if isinstance(s.get("metadata"), dict) else {}
         pack_id = meta.get("pack_id")
-        if pack_filter and pack_id not in pack_filter:
+        secondary = meta.get("secondary_packs") or []
+        if not isinstance(secondary, list):
+            secondary = []
+        pack_hit = (pack_id in pack_filter) or any(p in pack_filter for p in secondary)
+        if pack_filter and not pack_hit:
             continue
         if route.departments and s.get("department") not in route.departments and not pack_filter:
             continue

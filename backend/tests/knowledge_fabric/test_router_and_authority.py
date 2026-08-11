@@ -45,3 +45,44 @@ def test_authority_rerank_beats_naive_semantic_similarity():
     ranked = rerank_with_authority(candidates)
     assert ranked[0]["id"] == "nist"
     assert ranked[0]["score"] > ranked[1]["score"]
+
+
+def test_marketing_compliance_routes_marketing_and_legal():
+    route = classify_knowledge_query(
+        "What does the FTC CAN-SPAM rule require for email marketing?",
+        assigned_pack_ids=["pack.marketing", "pack.legal", "pack.sales"],
+    )
+    assert "marketing" in route.departments
+    assert "legal" in route.departments
+    assert "pack.marketing" in route.pack_ids
+    assert "pack.legal" in route.pack_ids
+
+
+def test_gov_authority_outranks_academic_and_live_commercial():
+    candidates = [
+        {
+            "id": "hubspot_live",
+            "semantic_score": 0.95,
+            "authority_score": 0.55,
+            "freshness_score": 0.9,
+            "content": "hubspot research",
+        },
+        {
+            "id": "saylor",
+            "semantic_score": 0.85,
+            "authority_score": 0.84,
+            "freshness_score": 0.8,
+            "content": "saylor syllabus",
+        },
+        {
+            "id": "ftc",
+            "semantic_score": 0.80,
+            "authority_score": 0.99,
+            "freshness_score": 0.95,
+            "content": "ftc can-spam",
+        },
+    ]
+    ranked = rerank_with_authority(candidates)
+    assert ranked[0]["id"] == "ftc"
+    assert ranked[1]["id"] == "saylor"
+    assert ranked[2]["id"] == "hubspot_live"

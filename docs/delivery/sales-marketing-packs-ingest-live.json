@@ -1,0 +1,1170 @@
+{
+  "ran_at": "2026-08-11T17:58:34.445340+00:00",
+  "git_sha_env": null,
+  "nc_gate_unit": {
+    "rejected": true,
+    "error": "commercial_use_allowed must be true to ingest into the shared platform corpus (got False) \u2014 NC / unconfirmed licenses are blocked"
+  },
+  "nc_gate_ingest": {
+    "rejected": true,
+    "error": "commercial_use_allowed must be true to ingest into the shared platform corpus (got False) \u2014 NC / unconfirmed licenses are blocked"
+  },
+  "refuse_marketing.hubspot.research_live": {
+    "rejected": true,
+    "error": "Type D must not be permanently ingested into knowledge_* tables"
+  },
+  "refuse_marketing.google_trends.live": {
+    "rejected": true,
+    "error": "Type D must not be permanently ingested into knowledge_* tables"
+  },
+  "google_trends_access": {
+    "official_api_key_configured": false,
+    "access_path": "live_research_connector_fallback",
+    "explore_url": "https://trends.google.com/trends/",
+    "signals": [
+      "topic_interest",
+      "keyword_interest",
+      "geo_interest",
+      "historical_interest",
+      "trend_comparison"
+    ],
+    "corpus_policy": "live_only_no_permanent_ingest",
+    "license_type": "D",
+    "note": "No production Google Trends official API credential is configured. Do not scrape Trends HTML into knowledge_*. Use live research fallback."
+  },
+  "saylor_provenance": {
+    "courses": {
+      "BUS203": {
+        "course_code": "BUS203",
+        "course_id": 1250,
+        "course_url": "https://learn.saylor.org/course/view.php?id=1250",
+        "included": [
+          {
+            "page_id": "101602",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101602",
+            "title": "BUS203: Course Introduction Video",
+            "chars": 3035,
+            "reasons": []
+          },
+          {
+            "page_id": "89302",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=89302",
+            "title": "BUS203: Course Syllabus",
+            "chars": 11960,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101889",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101889",
+            "title": "BUS203: AI Learning Zone",
+            "chars": 4159,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=1250",
+            "title": "BUS203 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 2,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "marketing_strategy",
+          "segmentation",
+          "promotion",
+          "pricing"
+        ]
+      },
+      "BUS633": {
+        "course_code": "BUS633",
+        "course_id": 881,
+        "course_url": "https://learn.saylor.org/course/view.php?id=881",
+        "included": [
+          {
+            "page_id": "83120",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=83120",
+            "title": "BUS633: Course Syllabus",
+            "chars": 11395,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102876",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102876",
+            "title": "BUS633: AI Learning Zone",
+            "chars": 4131,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=881",
+            "title": "BUS633 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "sales",
+        "topics": [
+          "personal_selling",
+          "sales_management",
+          "pipeline"
+        ]
+      },
+      "BUS630": {
+        "course_code": "BUS630",
+        "course_id": 789,
+        "course_url": "https://learn.saylor.org/course/view.php?id=789",
+        "included": [
+          {
+            "page_id": "71941",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=71941",
+            "title": "BUS630: Course Syllabus",
+            "chars": 11877,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102873",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102873",
+            "title": "BUS630: AI Learning Zone",
+            "chars": 4094,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=789",
+            "title": "BUS630 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "consumer_behavior",
+          "customer_value"
+        ]
+      },
+      "BUS631": {
+        "course_code": "BUS631",
+        "course_id": 878,
+        "course_url": "https://learn.saylor.org/course/view.php?id=878",
+        "included": [
+          {
+            "page_id": "83234",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=83234",
+            "title": "BUS631: Course Syllabus",
+            "chars": 11388,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102874",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102874",
+            "title": "BUS631: AI Learning Zone",
+            "chars": 4093,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=878",
+            "title": "BUS631 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "brand_management",
+          "positioning",
+          "promotion"
+        ]
+      },
+      "BUS632": {
+        "course_code": "BUS632",
+        "course_id": 1266,
+        "course_url": "https://learn.saylor.org/course/view.php?id=1266",
+        "included": [
+          {
+            "page_id": "91025",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=91025",
+            "title": "BUS632: Course Syllabus",
+            "chars": 11073,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102875",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102875",
+            "title": "BUS632: AI Learning Zone",
+            "chars": 4110,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=1266",
+            "title": "BUS632 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "digital_marketing",
+          "advertising"
+        ]
+      },
+      "BUS634": {
+        "course_code": "BUS634",
+        "course_id": 1278,
+        "course_url": "https://learn.saylor.org/course/view.php?id=1278",
+        "included": [
+          {
+            "page_id": "92232",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=92232",
+            "title": "BUS634: Course Syllabus",
+            "chars": 11561,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102877",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102877",
+            "title": "BUS634: AI Learning Zone",
+            "chars": 4122,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=1278",
+            "title": "BUS634 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "market_research",
+          "marketing_strategy"
+        ]
+      },
+      "BUS502": {
+        "course_code": "BUS502",
+        "course_id": 669,
+        "course_url": "https://learn.saylor.org/course/view.php?id=669",
+        "included": [
+          {
+            "page_id": "101980",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101980",
+            "title": "BUS502: Course Introduction Video",
+            "chars": 3031,
+            "reasons": []
+          },
+          {
+            "page_id": "56044",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=56044",
+            "title": "BUS502: Course Syllabus",
+            "chars": 10578,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102852",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102852",
+            "title": "BUS502: AI Learning Zone",
+            "chars": 4146,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=669",
+            "title": "BUS502 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 2,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "marketing_strategy",
+          "targeting",
+          "positioning"
+        ]
+      },
+      "BUS615": {
+        "course_code": "BUS615",
+        "course_id": 796,
+        "course_url": "https://learn.saylor.org/course/view.php?id=796",
+        "included": [
+          {
+            "page_id": "72640",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=72640",
+            "title": "BUS615: Course Syllabus",
+            "chars": 12954,
+            "reasons": []
+          }
+        ],
+        "excluded": [
+          {
+            "page_id": "101593",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+            "title": "General Information: Translation FAQs",
+            "chars": 7360,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "101601",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+            "title": "General Information: Certificate Verification",
+            "chars": 3819,
+            "reasons": [
+              "site_chrome_not_course_content"
+            ]
+          },
+          {
+            "page_id": "102872",
+            "url": "https://learn.saylor.org/mod/page/view.php?id=102872",
+            "title": "BUS615: AI Learning Zone",
+            "chars": 4100,
+            "reasons": [
+              "nc_license_marker",
+              "ai_zone_or_nc_risk"
+            ]
+          },
+          {
+            "url": "https://learn.saylor.org/course/view.php?id=796",
+            "title": "BUS615 unit readings (guest-inaccessible)",
+            "reasons": [
+              "unit_materials_require_enrollment_not_ingested",
+              "third_party_materials_various_licenses_per_saylor_footer"
+            ]
+          }
+        ],
+        "included_count": 1,
+        "excluded_count": 4,
+        "department": "marketing",
+        "topics": [
+          "international_marketing",
+          "marketing_strategy"
+        ]
+      }
+    }
+  },
+  "registered": [
+    {
+      "id": "b6822d65-881c-4e08-8b31-e7534136adaf",
+      "source_id": "marketing.openstax.principles",
+      "publisher": "OpenStax / Rice University",
+      "url": "https://openstax.org/books/principles-marketing/pages/preface",
+      "source_type": "open_textbook",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "marketing_strategy",
+        "customer_value",
+        "segmentation",
+        "targeting",
+        "positioning",
+        "consumer_behavior",
+        "market_research",
+        "product_strategy",
+        "pricing",
+        "distribution",
+        "promotion",
+        "advertising",
+        "public_relations",
+        "digital_marketing",
+        "personal_selling",
+        "sales_promotions",
+        "marketing_metrics",
+        "ethics"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "C",
+      "commercial_use_allowed": false,
+      "attribution_required": true,
+      "crawl_allowed": false,
+      "refresh_frequency": "manual",
+      "authority_score": 0.88,
+      "quality_score": 0.9,
+      "status": "paused",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": "CC BY-NC-SA 4.0 live-verified \u2014 commercial_use false; blocked by hard gate (prompt expected CC BY 4.0).",
+        "license_notes": "LIVE DISCREPANCY 2026-08-11: preface + chapter pages state CC BY-NC-SA 4.0 (NonCommercial), not CC BY 4.0. Shared-corpus ingest HALTED. Type C until OpenStax grants commercial permission.",
+        "secondary_packs": [
+          "pack.sales"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.002632+00:00",
+      "updated_at": "2026-08-11T17:58:52.091799+00:00",
+      "license": "CC-BY-NC-SA-4.0",
+      "license_url": "https://openstax.org/books/principles-marketing/pages/preface",
+      "derivatives_allowed": true,
+      "third_party_content_present": false,
+      "legal_review_status": "blocked_nc"
+    },
+    {
+      "id": "3541ef92-2bae-42fe-ae3d-f95e71816489",
+      "source_id": "marketing.saylor.bus203",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=1250",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "marketing_strategy",
+        "segmentation",
+        "promotion",
+        "pricing",
+        "consumer_behavior"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": [
+          "pack.sales"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.190441+00:00",
+      "updated_at": "2026-08-11T17:58:52.274866+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "f1bda188-42f2-4f6a-8b66-97971064a796",
+      "source_id": "sales.saylor.bus633",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=881",
+      "source_type": "open_course",
+      "department": "sales",
+      "industry": null,
+      "topics": [
+        "personal_selling",
+        "sales_management",
+        "pipeline"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.sales",
+        "pack_label": "Sales Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": [
+          "pack.marketing"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.378072+00:00",
+      "updated_at": "2026-08-11T17:58:52.45782+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "0f072157-947c-43a4-b94c-a40b8c2fd605",
+      "source_id": "marketing.saylor.bus630",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=789",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "consumer_behavior",
+        "customer_value"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.57974+00:00",
+      "updated_at": "2026-08-11T17:58:52.643277+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "7daadaa6-a4ae-448a-a6cd-07e713582439",
+      "source_id": "marketing.saylor.bus631",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=878",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "brand_management",
+        "positioning",
+        "promotion"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.765705+00:00",
+      "updated_at": "2026-08-11T17:58:52.848864+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "56f869d4-23b0-4c6f-9b29-bf1b080a9166",
+      "source_id": "marketing.saylor.bus632",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=1266",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "digital_marketing",
+        "advertising"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:52.958457+00:00",
+      "updated_at": "2026-08-11T17:58:53.032724+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "7871f93f-58b0-42c9-963c-14052bfeab58",
+      "source_id": "marketing.saylor.bus634",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=1278",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "market_research",
+        "marketing_strategy"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:53.139129+00:00",
+      "updated_at": "2026-08-11T17:58:53.224071+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "c088087c-8186-44e2-ab9f-cff6697b38e3",
+      "source_id": "marketing.saylor.bus502",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=669",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "marketing_strategy",
+        "targeting",
+        "positioning"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:53.323428+00:00",
+      "updated_at": "2026-08-11T17:58:53.407111+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "4de2f46e-b79d-4b9a-a402-7b8f93a7ccbf",
+      "source_id": "marketing.saylor.bus615",
+      "publisher": "Saylor Academy",
+      "url": "https://learn.saylor.org/course/view.php?id=796",
+      "source_type": "open_course",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "international_marketing",
+        "marketing_strategy"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "version_change",
+      "authority_score": 0.84,
+      "quality_score": 0.82,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live footer: Saylor-authored content CC BY 3.0; third-party materials keep their own licenses \u2014 ingest only provenance-filtered Saylor-authored pages (guest-accessible syllabi/intros). Unit readings require enrollment and are excluded until per-unit license verification.",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:53.500432+00:00",
+      "updated_at": "2026-08-11T17:58:53.58833+00:00",
+      "license": "CC-BY-3.0",
+      "license_url": "https://learn.saylor.org/course/view.php?id=1250",
+      "derivatives_allowed": true,
+      "third_party_content_present": true,
+      "legal_review_status": "filtered_provenance"
+    },
+    {
+      "id": "d5509a0a-ba9a-453f-a263-7665d81e775e",
+      "source_id": "marketing.ftc.business_guidance",
+      "publisher": "U.S. Federal Trade Commission",
+      "url": "https://www.ftc.gov/business-guidance",
+      "source_type": "government_work",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "can_spam",
+        "endorsements",
+        "influencers",
+        "native_advertising",
+        "deceptive_advertising",
+        "advertising",
+        "compliance",
+        "ethics"
+      ],
+      "jurisdictions": [
+        "US",
+        "US-federal"
+      ],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "weekly",
+      "authority_score": 0.99,
+      "quality_score": 0.95,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live-verified: FTC website policy \u2014 U.S. government work / public domain (17 U.S.C. \u00a7 105). REFRESHABLE regulatory guidance. Cross-links Legal pack.",
+        "secondary_packs": [
+          "pack.legal"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:53.681065+00:00",
+      "updated_at": "2026-08-11T17:58:53.766749+00:00",
+      "license": "US-Gov-Work",
+      "license_url": "https://www.ftc.gov/policy-notices/website-policy",
+      "derivatives_allowed": true,
+      "third_party_content_present": false,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "id": "871755b5-8c2b-489d-8e0e-6bf97ac6b39d",
+      "source_id": "marketing.sba.guidance",
+      "publisher": "U.S. Small Business Administration",
+      "url": "https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+      "source_type": "government_work",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "market_research",
+        "competitive_analysis",
+        "marketing_strategy",
+        "customer_acquisition",
+        "customer_retention",
+        "sales_planning"
+      ],
+      "jurisdictions": [
+        "US",
+        "US-federal"
+      ],
+      "ingestion_method": "bulk",
+      "license_type": "A",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": true,
+      "refresh_frequency": "weekly",
+      "authority_score": 0.9,
+      "quality_score": 0.88,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live-verified: SBA.gov government information is public domain; exclude any third-party copyrighted embeds.",
+        "secondary_packs": [
+          "pack.sales"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:53.909159+00:00",
+      "updated_at": "2026-08-11T17:58:53.949884+00:00",
+      "license": "US-Gov-Work",
+      "license_url": "https://www.sba.gov/about-sba/open-government/about-sbagov-website/privacy-policy",
+      "derivatives_allowed": true,
+      "third_party_content_present": false,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "id": "4d2d3d6e-7a47-436f-991f-8b6b01be8183",
+      "source_id": "sales.census.api",
+      "publisher": "U.S. Census Bureau",
+      "url": "https://www.census.gov/data/developers/about/terms-of-service.html",
+      "source_type": "api",
+      "department": "sales",
+      "industry": null,
+      "topics": [
+        "geography",
+        "industry",
+        "establishments",
+        "employment",
+        "population",
+        "income",
+        "business_formation",
+        "trade"
+      ],
+      "jurisdictions": [
+        "US",
+        "US-federal"
+      ],
+      "ingestion_method": "api",
+      "license_type": "B",
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "crawl_allowed": false,
+      "refresh_frequency": "weekly",
+      "authority_score": 0.99,
+      "quality_score": 0.95,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.sales",
+        "pack_label": "Sales Pack",
+        "hold_reason": null,
+        "license_notes": "Live-verified Census API ToS: permitted to develop services that get Census data; attribution notice required; API key for most datasets. Structured intelligence \u2014 not narrative scrape.",
+        "secondary_packs": [
+          "pack.marketing"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:54.092807+00:00",
+      "updated_at": "2026-08-11T17:58:54.176+00:00",
+      "license": "Census-Data-API",
+      "license_url": "https://www.census.gov/data/developers/about/terms-of-service.html",
+      "derivatives_allowed": true,
+      "third_party_content_present": false,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "id": "3515b45a-587d-4a17-8964-ece17b682cc3",
+      "source_id": "marketing.google_trends.live",
+      "publisher": "Google Trends",
+      "url": "https://trends.google.com/trends/",
+      "source_type": "live_signal",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "topic_interest",
+        "keyword_interest",
+        "geo_interest",
+        "historical_interest",
+        "trend_comparison"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "live_only",
+      "license_type": "D",
+      "commercial_use_allowed": false,
+      "attribution_required": true,
+      "crawl_allowed": false,
+      "refresh_frequency": "realtime",
+      "authority_score": 0.75,
+      "quality_score": 0.7,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "Live signal only. Official Trends API alpha credential not configured (2026-08-11) \u2014 use live-research connector fallback; never permanent ingest.",
+        "secondary_packs": [
+          "pack.sales"
+        ]
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:54.281282+00:00",
+      "updated_at": "2026-08-11T17:58:54.360812+00:00",
+      "license": "Google-Trends-Terms",
+      "license_url": "https://policies.google.com/terms",
+      "derivatives_allowed": false,
+      "third_party_content_present": false,
+      "legal_review_status": "live_retrieval_only"
+    },
+    {
+      "id": "1bf061cf-0a57-4f05-b7dc-31c4fa495198",
+      "source_id": "marketing.hubspot.research_live",
+      "publisher": "HubSpot",
+      "url": "https://www.hubspot.com/state-of-marketing",
+      "source_type": "commercial_research",
+      "department": "marketing",
+      "industry": null,
+      "topics": [
+        "marketing_research",
+        "benchmarks"
+      ],
+      "jurisdictions": [],
+      "ingestion_method": "live_only",
+      "license_type": "D",
+      "commercial_use_allowed": false,
+      "attribution_required": true,
+      "crawl_allowed": false,
+      "refresh_frequency": "realtime",
+      "authority_score": 0.55,
+      "quality_score": 0.6,
+      "status": "active",
+      "namespace": "platform_shared",
+      "metadata": {
+        "pack_id": "pack.marketing",
+        "pack_label": "Marketing Pack",
+        "hold_reason": null,
+        "license_notes": "LIVE_RETRIEVAL_ONLY \u2014 do not permanently ingest HubSpot commercial research into platform_shared (type D caution).",
+        "secondary_packs": []
+      },
+      "last_refreshed_at": null,
+      "created_at": "2026-08-11T17:58:54.463471+00:00",
+      "updated_at": "2026-08-11T17:58:54.547926+00:00",
+      "license": "HubSpot-Site-Terms",
+      "license_url": "https://legal.hubspot.com/terms-of-service",
+      "derivatives_allowed": false,
+      "third_party_content_present": false,
+      "legal_review_status": "live_retrieval_only"
+    }
+  ],
+  "ingest_marketing": {
+    "documents": 15,
+    "chunks": 65,
+    "errors": []
+  },
+  "ingest_sales": {
+    "documents": 2,
+    "chunks": 6,
+    "errors": []
+  },
+  "router_compliance": {
+    "departments": [
+      "legal",
+      "marketing"
+    ],
+    "jurisdictions": [
+      "US-federal"
+    ],
+    "tiers": [
+      "customer_rag",
+      "expert_pack"
+    ],
+    "pack_ids": [
+      "pack.legal",
+      "pack.marketing"
+    ],
+    "reason": "departments=['legal', 'marketing']; jurisdictions=['US-federal']; packs=['pack.legal', 'pack.marketing']"
+  }
+}

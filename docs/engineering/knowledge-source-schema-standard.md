@@ -16,8 +16,8 @@ A knowledge source is a **corpus provenance record**, not an invoke tool. It mus
 | `url` | Canonical source URL |
 | `source_type` | One of registry types (api, government_work, …) |
 | `department` | Primary department pack |
-| `license_type` | **A \| B \| C \| D \| E** (see below) |
-| `commercial_use_allowed` | Boolean consistent with license |
+| `license_type` | **A \| B \| C \| D \| E** (see below) — canonical scheme |
+| `commercial_use_allowed` | Boolean — **must be true** to write platform_shared corpus (hard gate) |
 | `attribution_required` | Boolean |
 | `crawl_allowed` | Boolean — false for type D |
 | `ingestion_method` | `api` \| `bulk` \| `manual_authored` \| `live_only` |
@@ -26,6 +26,23 @@ A knowledge source is a **corpus provenance record**, not an invoke tool. It mus
 | `quality_score` | 0.0–1.0 |
 | `topics` | Non-empty list |
 | `jurisdictions` | List (may be empty for non-legal) |
+| `license` | Human/SPDX-ish label (e.g. `CC-BY-3.0`, `US-Gov-Work`) |
+| `license_url` | Canonical page where terms were live-verified |
+| `derivatives_allowed` | Boolean or null (unconfirmed) |
+| `third_party_content_present` | Boolean — requires provenance filter when true |
+| `legal_review_status` | `unreviewed` \| `verified_live` \| `filtered_provenance` \| `blocked_nc` \| `blocked_unconfirmed` \| `live_retrieval_only` \| `pending_credentials` |
+
+### Proposed `ingestion_policy` → existing A–E (do not invent a parallel enum)
+
+| Proposed policy | Maps to |
+| -- | -- |
+| FULL | A/B + `commercial_use_allowed=true` + bulk/api |
+| FILTERED | A + `third_party_content_present=true` + provenance filter |
+| API | B + `ingestion_method=api` |
+| REFRESHABLE | A/B + non-manual `refresh_frequency` |
+| LIVE_RETRIEVAL | **D** + `live_only` + `crawl_allowed=false` |
+| METADATA_ONLY | registry row with `hold_reason` / no chunks |
+| BLOCKED_LICENSE | `commercial_use_allowed=false` (+ `blocked_nc` / hold) |
 
 ## License classification (non-negotiable)
 

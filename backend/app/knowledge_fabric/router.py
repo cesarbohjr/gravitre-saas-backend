@@ -16,12 +16,56 @@ _STATE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "legal": ("law", "statute", "regulation", "court", "opinion", "jurisdiction", "employment law", "flsa", "fmla"),
+    "legal": (
+        "law",
+        "statute",
+        "regulation",
+        "court",
+        "opinion",
+        "jurisdiction",
+        "employment law",
+        "flsa",
+        "fmla",
+        "ftc",
+        "can-spam",
+        "can spam",
+        "endorsement guide",
+        "deceptive advertising",
+        "native advertising",
+    ),
     "finance": ("sec", "edgar", "filing", "10-k", "xbrl", "revenue", "gaap", "earnings"),
     "cybersecurity": ("nist", "csf", "cyber", "incident", "sp 800", "controls", "msp"),
     "hr": ("employee", "payroll", "hiring", "occupation", "o*net", "leave", "wage", "labor"),
-    "sales": ("pipeline", "quota", "prospect", "crm deal"),
-    "marketing": ("campaign", "brand", "seo", "content calendar"),
+    "sales": (
+        "pipeline",
+        "quota",
+        "prospect",
+        "crm deal",
+        "sales management",
+        "personal selling",
+        "quota attainment",
+        "census",
+        "establishments",
+        "business formation",
+    ),
+    "marketing": (
+        "campaign",
+        "brand",
+        "seo",
+        "content calendar",
+        "marketing",
+        "segmentation",
+        "positioning",
+        "consumer behavior",
+        "market research",
+        "advertising",
+        "influencer",
+        "can-spam",
+        "can spam",
+        "native advertising",
+        "google trends",
+        "customer acquisition",
+    ),
 }
 
 
@@ -83,8 +127,26 @@ def classify_knowledge_query(
     pack_ids = []
     for d in departments:
         pid = _PACK_BY_DEPT.get(d)
-        if pid:
+        if pid and pid not in pack_ids:
             pack_ids.append(pid)
+    # Marketing compliance (FTC / CAN-SPAM / endorsements) should retrieve Legal + Marketing together
+    compliance_markers = (
+        "can-spam",
+        "can spam",
+        "ftc",
+        "endorsement",
+        "influencer",
+        "native advertising",
+        "deceptive advertising",
+    )
+    if any(m in lower for m in compliance_markers):
+        for pid in ("pack.marketing", "pack.legal"):
+            if pid not in pack_ids:
+                pack_ids.append(pid)
+        if "marketing" not in departments:
+            departments.append("marketing")
+        if "legal" not in departments:
+            departments.append("legal")
     assigned = [p for p in (assigned_pack_ids or []) if p]
     if assigned:
         # Only retrieve from packs the agent is entitled to

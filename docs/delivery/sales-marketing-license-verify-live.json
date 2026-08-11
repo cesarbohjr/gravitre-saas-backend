@@ -1,0 +1,77 @@
+{
+  "openstax_preface": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-marketing/pages/preface",
+    "license_hits": [
+      "CC BY NC-SA) license, which means that you ca",
+      "CC BY NC-SA 4",
+      "CC BY NC-SA 4",
+      "CC BY NC-SA) license",
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License "
+    ],
+    "has_nc": true
+  },
+  "openstax_ch1": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-marketing/pages/1-1-marketing-and-the-marketing-process",
+    "license_hits": [
+      "CC BY NC-SA 4",
+      "CC BY NC-SA 4",
+      "CC BY NC-SA) license",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written conse"
+    ],
+    "has_nc": true
+  },
+  "openstax_help_license": {
+    "http": 200,
+    "url": "https://help.openstax.org/s/article/Openstax-textbook-licensing-and-customization",
+    "license_hits": [],
+    "has_nc": false
+  },
+  "saylor_opencontent": {
+    "error": "[WinError 10054] An existing connection was forcibly closed by the remote host"
+  },
+  "census_tos": {
+    "http": 200,
+    "url": "https://www.census.gov/data/developers/about/terms-of-service.html",
+    "license_hits": [],
+    "has_nc": false
+  },
+  "ftc_policy": {
+    "http": 200,
+    "url": "https://www.ftc.gov/policy-notices/website-policy",
+    "license_hits": [
+      "public domain and is not subject to copyright restrictions (",
+      "17 U.S.C",
+      "17 U.S.C"
+    ],
+    "has_nc": false
+  },
+  "ftc_canspam": {
+    "http": 200,
+    "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+    "license_hits": [],
+    "has_nc": false
+  },
+  "sba_copyright": {
+    "http": 404,
+    "url": "https://www.sba.gov/about-sba/open-government/about-sbagov-website/privacy-and-use-notice",
+    "license_hits": [],
+    "has_nc": false
+  },
+  "sba_market": {
+    "http": 200,
+    "url": "https://www.sba.gov/counseling/plan-your-business/#market-research",
+    "license_hits": [],
+    "has_nc": false
+  },
+  "google_trends_explore": {
+    "http": 200,
+    "url": "https://trends.google.com/trends/",
+    "license_hits": [],
+    "has_nc": false
+  }
+}

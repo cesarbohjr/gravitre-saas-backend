@@ -1,0 +1,159 @@
+{
+  "ran_at": "2026-08-11T18:01:21.818853+00:00",
+  "queries": [
+    {
+      "query": "What does the FTC CAN-SPAM rule require for email marketing?",
+      "route": {
+        "departments": [
+          "legal",
+          "marketing"
+        ],
+        "jurisdictions": [
+          "US-federal"
+        ],
+        "tiers": [
+          "customer_rag",
+          "expert_pack"
+        ],
+        "pack_ids": [
+          "pack.legal",
+          "pack.marketing"
+        ],
+        "reason": "departments=['legal', 'marketing']; jurisdictions=['US-federal']; packs=['pack.legal', 'pack.marketing']"
+      },
+      "hit_count": 5,
+      "citations": [
+        {
+          "citation": "U.S. Federal Trade Commission \u2014 https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+          "authority_score": 0.99,
+          "score": 1.0854893244789112,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Federal Trade Commission \u2014 https://www.ftc.gov/business-guidance/advertising-marketing/advertising-marketing-basics",
+          "authority_score": 0.99,
+          "score": 1.0026345605768765,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Federal Trade Commission \u2014 https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+          "authority_score": 0.99,
+          "score": 0.9896956246080472,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Federal Trade Commission \u2014 https://www.ftc.gov/business-guidance/resources/native-advertising-guide-businesses",
+          "authority_score": 0.99,
+          "score": 0.9723309623472365,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Federal Trade Commission \u2014 https://www.ftc.gov/business-guidance/advertising-marketing/advertising-marketing-basics",
+          "authority_score": 0.99,
+          "score": 0.9636444985930973,
+          "source_id": null
+        }
+      ]
+    },
+    {
+      "query": "How should a small business do market research and competitive analysis?",
+      "route": {
+        "departments": [
+          "marketing"
+        ],
+        "jurisdictions": [],
+        "tiers": [
+          "customer_rag",
+          "expert_pack"
+        ],
+        "pack_ids": [
+          "pack.marketing"
+        ],
+        "reason": "departments=['marketing']; jurisdictions=['none']; packs=['pack.marketing']"
+      },
+      "hit_count": 5,
+      "citations": [
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+          "authority_score": 0.9,
+          "score": 1.0665913872674164,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan",
+          "authority_score": 0.9,
+          "score": 1.0665605976566732,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan",
+          "authority_score": 0.9,
+          "score": 1.0337068816401298,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+          "authority_score": 0.9,
+          "score": 1.0336981812127655,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+          "authority_score": 0.9,
+          "score": 0.9797085519549511,
+          "source_id": null
+        }
+      ]
+    },
+    {
+      "query": "What dimensions does the Census Bureau API cover for establishments and population?",
+      "route": {
+        "departments": [
+          "sales"
+        ],
+        "jurisdictions": [],
+        "tiers": [
+          "customer_rag",
+          "expert_pack"
+        ],
+        "pack_ids": [
+          "pack.sales"
+        ],
+        "reason": "departments=['sales']; jurisdictions=['none']; packs=['pack.sales']"
+      },
+      "hit_count": 5,
+      "citations": [
+        {
+          "citation": "U.S. Census Bureau Data API \u2014 https://www.census.gov/data/developers/",
+          "authority_score": 0.99,
+          "score": 1.06866427281353,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+          "authority_score": 0.9,
+          "score": 0.8663812578600674,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan",
+          "authority_score": 0.9,
+          "score": 0.8663666379354814,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan",
+          "authority_score": 0.9,
+          "score": 0.846191207313931,
+          "source_id": null
+        },
+        {
+          "citation": "U.S. Small Business Administration \u2014 https://www.sba.gov/business-guide/plan-your-business/market-research-competitive-analysis",
+          "authority_score": 0.9,
+          "score": 0.8461881690805053,
+          "source_id": null
+        }
+      ]
+    }
+  ]
+}

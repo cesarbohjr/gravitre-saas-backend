@@ -1,0 +1,76 @@
+{
+  "census_tos": {
+    "http": 200,
+    "final_url": "https://www.census.gov/data/developers/about/terms-of-service.html",
+    "snippets": [
+      "Terms of Service United States Census Bureau | An official website of the United States Government An official website of the United Sta",
+      "earn more about America&#39;s changing population and economy. About Developers Terms of Service Request an API Key Developers&#39; Forum Geography Contact Us View All Available APIs Guidance for Developers Census Da",
+      "Latest Releases About Available APIs Guidance Latest Releases About Developers Terms of Service Request an API Key Developers&#39; Forum Geography Contact Us View All Available APIs Guidance for Developers Census Da",
+      "s // Census.gov / Census Bureau Data and Maps / Developers / About Developers / Terms of Service Terms of Service Skip Navigation Within Developers About Available APIs Developers&#39; Forum Geography Guidance for De",
+      "velopers News Terms of Service Updates Within Developers Within Developers About Available APIs Developers&#39; Forum Geography Guidance for Developer"
+    ]
+  },
+  "census_api": {
+    "http": 200,
+    "final_url": "https://www.census.gov/data/developers/guidance/api-user-guide.html",
+    "snippets": [
+      "earn more about America&#39;s changing population and economy. About Developers Terms of Service Request an API Key Developers&#39; Forum Geography Contact Us View All Available APIs Guidance for Developers Census Da",
+      "Latest Releases About Available APIs Guidance Latest Releases About Developers Terms of Service Request an API Key Developers&#39; Forum Geography Contact Us View All Available APIs Guidance for Developers Census Da",
+      "out Available APIs Developers&#39; Forum Geography Guidance for Developers News Terms of Service Updates Within Developers Within Developers About Available APIs Developers&#39; Forum Geography Guidance for Developer",
+      "s News Terms of Service Updates --> Census Data API User Guide May 12, 2026 Share Facebook X (Twitter) LinkedIn --> --> in static template will",
+      "st data from U.S. Census Bureau datasets. Overview What is the API Query Limits API Key Available Data More Core Concepts Example API Queries Ucgid Predicate Help &amp; Contact Us Overview Overview What is t"
+    ]
+  },
+  "sba_privacy": {
+    "http": 200,
+    "final_url": "https://www.sba.gov/about-sba/open-government/about-the-sba-gov-website/#website-privacy",
+    "snippets": [
+      "owed. Reproduction of SBA content + Government information on SBA.gov is in the public domain. Public domain information may be freely distributed and copied, but it is requested that in any subsequent use,&nbsp;S",
+      "ividuals, companies, or organizations that may be protected by U.S. and foreign copyright laws. Transmission or reproduction of protected items beyond that allowed by fair use as defined in the copyright laws",
+      "requires the written permission of the copyright owners. It is your responsibility to identify the copyright owner and obtain permission before making use of this mater",
+      "ey express or the products/services they offer. SBA cannot authorize the use of copyrighted materials contained in linked websites. Users must request such authorization from the sponsor of the linked website.",
+      "ey express or the products/services they offer. SBA cannot authorize the use of copyrighted materials contained in linked websites. Users must request such authorization from the sponsor of the linked website."
+    ]
+  },
+  "sba_use": {
+    "http": 200,
+    "final_url": "https://www.sba.gov/about-sba/organization/",
+    "snippets": []
+  },
+  "sba_market_alt": {
+    "http": 200,
+    "final_url": "https://www.sba.gov/counseling/plan-your-business/#market-research",
+    "snippets": [
+      "product lifecycle looks like. Share your plans for intellectual property, like copyright or patent filings. If you&#8217;re doing&nbsp; research and development &nbsp;for your service or product, explain it i"
+    ]
+  },
+  "saylor_licensing": {
+    "http": 404,
+    "final_url": "https://learn.saylor.org/mod/page/view.php?id=22068",
+    "snippets": [
+      "course final exams, content authored by Saylor University is available under a Creative Commons Attribution 3.0 Unported license . Third-party materials are the copyright of their respective owners and shared under"
+    ]
+  },
+  "saylor_terms": {
+    "http": 200,
+    "final_url": "https://www.saylor.org/terms/",
+    "snippets": []
+  },
+  "saylor_bus203": {
+    "http": 200,
+    "final_url": "https://learn.saylor.org/course/view.php?id=72",
+    "snippets": [
+      "course final exams, content authored by Saylor University is available under a Creative Commons Attribution 3.0 Unported license . Third-party materials are the copyright of their respective owners and shared under"
+    ]
+  },
+  "ftc_endorsements": {
+    "http": 200,
+    "final_url": "https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking",
+    "snippets": []
+  },
+  "google_trends_api_docs": {
+    "http": 200,
+    "final_url": "https://developers.google.com/search/apis/trends",
+    "snippets": []
+  }
+}

@@ -63,10 +63,12 @@ def replace_document_chunks(
     """Upsert one document and replace its chunks (+ optional embeddings)."""
     settings = settings or get_settings()
     license_type = str(source_row.get("license_type") or "")
+    commercial = source_row.get("commercial_use_allowed")
     assert_ingest_allowed(
         license_type,
         ingestion_method=str(source_row.get("ingestion_method") or "api"),
         crawl_allowed=bool(source_row.get("crawl_allowed")),
+        commercial_use_allowed=commercial if isinstance(commercial, bool) else None,
     )
     source_uuid = source_row["id"]
     authority = float(source_row.get("authority_score") or 0.8)
@@ -228,4 +230,26 @@ async def _fetch_documents_for_spec(
         from app.knowledge_fabric.sources.dol import fetch_dol_documents
 
         return await fetch_dol_documents(limit=limit)
+    if spec.source_id.startswith("marketing.ftc"):
+        from app.knowledge_fabric.sources.ftc import fetch_ftc_documents
+
+        return await fetch_ftc_documents(spec, limit=limit)
+    if spec.source_id.startswith("marketing.sba"):
+        from app.knowledge_fabric.sources.sba import fetch_sba_documents
+
+        return await fetch_sba_documents(spec, limit=limit)
+    if spec.source_id.startswith("sales.census"):
+        from app.knowledge_fabric.sources.census import fetch_census_documents
+
+        return await fetch_census_documents(spec, limit=limit)
+    if ".saylor." in spec.source_id:
+        from app.knowledge_fabric.sources.saylor import fetch_saylor_documents
+
+        return await fetch_saylor_documents(spec, limit=limit)
+    if spec.source_id.startswith("marketing.openstax"):
+        from app.knowledge_fabric.sources.openstax import fetch_openstax_documents
+
+        return await fetch_openstax_documents(spec, limit=limit)
+    if spec.license_type == "D" or spec.ingestion_method == "live_only":
+        raise ValueError(f"{spec.source_id}: live_only / type D — refuse permanent ingest")
     return []

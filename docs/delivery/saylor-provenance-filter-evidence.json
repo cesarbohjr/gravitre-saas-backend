@@ -1,0 +1,502 @@
+{
+  "courses": {
+    "BUS203": {
+      "course_id": 1250,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "101602",
+        "89302",
+        "101889"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "101602",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101602",
+          "title": "BUS203: Course Introduction Video",
+          "chars": 1870,
+          "reasons": [],
+          "snip": " Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS203: Principles"
+        },
+        {
+          "page_id": "89302",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=89302",
+          "title": "BUS203: Course Syllabus",
+          "chars": 10257,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS203: Principles of Market"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "101889",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101889",
+          "title": "BUS203: AI Learning Zone",
+          "chars": 2945,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS203: Principles of Marke"
+        }
+      ],
+      "included_count": 3,
+      "excluded_count": 2
+    },
+    "BUS633": {
+      "course_id": 881,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "83120",
+        "102876"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "83120",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=83120",
+          "title": "BUS633: Course Syllabus",
+          "chars": 9774,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS633: Sales Management Cou"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102876",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102876",
+          "title": "BUS633: AI Learning Zone",
+          "chars": 2932,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS633: Sales Management AI"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    },
+    "BUS630": {
+      "course_id": 789,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "71941",
+        "102873"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "71941",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=71941",
+          "title": "BUS630: Course Syllabus",
+          "chars": 10284,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS630: Consumer Behavior Co"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102873",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102873",
+          "title": "BUS630: AI Learning Zone",
+          "chars": 2919,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS630: Consumer Behavior A"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    },
+    "BUS631": {
+      "course_id": 878,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "83234",
+        "102874"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "83234",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=83234",
+          "title": "BUS631: Course Syllabus",
+          "chars": 9797,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS631: Brand Management Cou"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102874",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102874",
+          "title": "BUS631: AI Learning Zone",
+          "chars": 2918,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS631: Brand Management AI"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    },
+    "BUS632": {
+      "course_id": 1266,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "91025",
+        "102875"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "91025",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=91025",
+          "title": "BUS632: Course Syllabus",
+          "chars": 9484,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS632: Digital Marketing an"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102875",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102875",
+          "title": "BUS632: AI Learning Zone",
+          "chars": 2935,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS632: Digital Marketing a"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    },
+    "BUS634": {
+      "course_id": 1278,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "92232",
+        "102877"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "92232",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=92232",
+          "title": "BUS634: Course Syllabus",
+          "chars": 9968,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS634: Marketing Research, "
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102877",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102877",
+          "title": "BUS634: AI Learning Zone",
+          "chars": 2947,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS634: Marketing Research,"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    },
+    "BUS502": {
+      "course_id": 669,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "101980",
+        "56044",
+        "102852"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "101980",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101980",
+          "title": "BUS502: Course Introduction Video",
+          "chars": 1866,
+          "reasons": [],
+          "snip": " Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS502: Strategic "
+        },
+        {
+          "page_id": "56044",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=56044",
+          "title": "BUS502: Course Syllabus",
+          "chars": 8984,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS502: Strategic Marketing "
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102852",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102852",
+          "title": "BUS502: AI Learning Zone",
+          "chars": 2947,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS502: Strategic Marketing"
+        }
+      ],
+      "included_count": 3,
+      "excluded_count": 2
+    },
+    "BUS615": {
+      "course_id": 796,
+      "enrol": {
+        "enrol_http": 200,
+        "instances": [],
+        "has_sesskey": false
+      },
+      "http": 200,
+      "page_ids": [
+        "101593",
+        "101601",
+        "72640",
+        "102872"
+      ],
+      "url_ids": [],
+      "book_ids": [],
+      "instancenames_sample": [],
+      "included": [
+        {
+          "page_id": "101601",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+          "title": "General Information: Certificate Verification",
+          "chars": 2620,
+          "reasons": [],
+          "snip": "ies Business Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Certificate Verification Cer"
+        },
+        {
+          "page_id": "72640",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=72640",
+          "title": "BUS615: Course Syllabus",
+          "chars": 11357,
+          "reasons": [],
+          "snip": "ation Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS615: International Market"
+        }
+      ],
+      "excluded": [
+        {
+          "page_id": "101593",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+          "title": "General Information: Translation FAQs",
+          "chars": 5806,
+          "reasons": [
+            "site_chrome_not_course_content"
+          ],
+          "snip": "ness Administration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in General Information Translation FAQs Translation FAQs Co"
+        },
+        {
+          "page_id": "102872",
+          "url": "https://learn.saylor.org/mod/page/view.php?id=102872",
+          "title": "BUS615: AI Learning Zone",
+          "chars": 2925,
+          "reasons": [
+            "nc_license_marker"
+          ],
+          "snip": "ration Computer Science English as a Second Language Professional Development Science and Mathematics Social Sciences Specialization Programs Degree Programs Help Help Center &amp; FAQ \u6587A Translate Verify Certificate More Site-wide search Search Close Perform search Toggle search input You are currently using guest access Log in Expand all Collapse all Open course index BUS615: International Marke"
+        }
+      ],
+      "included_count": 2,
+      "excluded_count": 2
+    }
+  }
+}
