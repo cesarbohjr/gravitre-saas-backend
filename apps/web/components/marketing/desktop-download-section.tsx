@@ -22,7 +22,6 @@ import {
   WindowsVendorIcon,
 } from "@/components/marketing/os-vendor-icons"
 import { GridBackground } from "@/components/marketing/home/grid-background"
-import { LottieAnimation } from "@/components/gravitre/lottie-animation"
 import { DesktopCompanionPreview } from "@/components/marketing/desktop-companion-preview"
 
 const RELEASE_PAGE =
@@ -81,7 +80,7 @@ type Props = {
 }
 
 /**
- * Marketing download — light hero (shared with home), Lottie/effects, companion mock, OS cards.
+ * Marketing download — light hero (shared with home), effects, companion mock, OS cards.
  */
 export function DesktopDownloadSection({
   initialManifest = DESKTOP_RELEASE_FALLBACK,
@@ -138,18 +137,8 @@ export function DesktopDownloadSection({
       {/* Same atmosphere language as home / extension — not the darker cream+green wash */}
       <GridBackground />
 
-      {/* Soft Lottie accents */}
+      {/* Floating accent icons (no Lottie logo marks) */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <LottieAnimation
-          src="/animations/gravitre-logo-animation.json"
-          className="absolute -left-16 top-24 h-56 w-56 opacity-[0.12] sm:h-72 sm:w-72"
-          speed={0.7}
-        />
-        <LottieAnimation
-          src="/animations/gravitre-logo-animation.json"
-          className="absolute -right-20 bottom-[28%] h-64 w-64 opacity-[0.1] sm:h-80 sm:w-80"
-          speed={0.55}
-        />
         {FLOATING_ICONS.map(({ Icon, className: pos, delay }) => (
           <motion.div
             key={pos}
