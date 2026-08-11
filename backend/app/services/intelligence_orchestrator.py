@@ -208,6 +208,15 @@ class IntelligenceOrchestrator:
             and str(row.get("source_id") or "").startswith("pack.")
             and row.get("enabled", True)
         ]
+        # Tool expertise packs: driven by granted connectors (one source, many departments)
+        try:
+            from app.knowledge_fabric.tool_knowledge import tool_packs_for_connected_vendors
+
+            for pid in tool_packs_for_connected_vendors(list(connected or [])):
+                if pid not in fabric_pack_ids:
+                    fabric_pack_ids.append(pid)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestrator tool_knowledge packs skipped error=%s", exc)
         fabric_section = ""
         fabric_provenance: list[dict[str, Any]] = []
         if fabric_pack_ids:

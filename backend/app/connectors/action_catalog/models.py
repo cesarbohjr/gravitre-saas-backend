@@ -197,12 +197,23 @@ class VendorCatalogSpec:
                 "description": "Cross-object search, pipelines, and destructive orchestration — approval recommended.",
                 "actions": v4_list,
             }
+        from app.connectors.action_catalog.integration_taxonomy import (
+            get_integration_class,
+            mcp_preference_for_vendor,
+            tool_knowledge_pack_id,
+        )
+        from app.knowledge_fabric.tool_knowledge import tool_knowledge_vendors
+
+        has_tool_knowledge = self.vendor in tool_knowledge_vendors()
         return {
             "vendor": self.vendor,
             "displayName": self.display_name,
             "category": self.category,
             "apiDocsUrl": self.api_docs_url,
             "shipped": self.shipped,
+            "integrationClass": get_integration_class(self.vendor),
+            "toolKnowledgePackId": tool_knowledge_pack_id(self.vendor) if has_tool_knowledge else None,
+            "mcpPreference": mcp_preference_for_vendor(self.vendor),
             "tiers": tiers,
             "readTools": read_tools,
             "demoWorkflows": [wf.to_dict(vendor=self.vendor) for wf in self.demo_workflows],

@@ -64,6 +64,13 @@ PACK_TOPIC_TAXONOMY: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# Tool expertise packs share a small taxonomy (vendor + practice topics).
+_TOOL_TOPIC_TAXONOMY: tuple[str, ...] = (
+    "tool_expertise",
+    "connector",
+    "best_practices",
+)
+
 
 def _parse_ts(value: Any) -> datetime | None:
     if not value:
@@ -133,7 +140,17 @@ def compute_pack_quality(
         }.get(dept, f"pack.{dept or 'unknown'}")
 
     packs: dict[str, dict[str, Any]] = {}
-    for sid, taxonomy in PACK_TOPIC_TAXONOMY.items():
+    taxonomy_map = dict(PACK_TOPIC_TAXONOMY)
+    # Discover tool packs from live sources (already loaded)
+    for row in source_rows:
+        meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        pid = str(meta.get("pack_id") or "")
+        if pid.startswith("pack.tool.") and pid not in taxonomy_map:
+            taxonomy_map[pid] = _TOOL_TOPIC_TAXONOMY
+        if (row.get("department") or "") == "tool_expertise" and pid.startswith("pack.tool."):
+            taxonomy_map.setdefault(pid, _TOOL_TOPIC_TAXONOMY)
+
+    for sid, taxonomy in taxonomy_map.items():
         packs[sid] = {
             "pack_id": sid,
             "source_count": 0,
@@ -252,7 +269,7 @@ def compute_pack_quality(
         elif p["chunk_count"] == 0:
             p["citation_coverage_pct"] = None  # withhold — no evidence
         p["jurisdictions_covered"] = sorted(jurisdictions.get(pid, set()))
-        taxonomy = [t.lower() for t in PACK_TOPIC_TAXONOMY.get(pid, ())]
+        taxonomy = [t.lower() for t in taxonomy_map.get(pid, ())]
         hit = topics_hit.get(pid, set())
         covered = [t for t in taxonomy if t in hit or any(t in h or h in t for h in hit)]
         missing = [t for t in taxonomy if t not in covered]

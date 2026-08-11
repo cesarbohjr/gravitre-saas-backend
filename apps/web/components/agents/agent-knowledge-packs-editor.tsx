@@ -16,6 +16,7 @@ type PackRow = {
   pack_id: string
   label: string
   department: string
+  pack_type?: "department" | "tool_expertise"
   ingestible?: boolean
   hold?: boolean
   recommended?: boolean
@@ -38,7 +39,8 @@ export function AgentKnowledgePacksEditor({ value, onChange, department, classNa
     fetcher,
     { revalidateOnFocus: false },
   )
-  const packs = data?.packs ?? []
+  // Department packs only — tool expertise is granted via connectors (not a second toggle list)
+  const packs = (data?.packs ?? []).filter((p) => p.pack_type !== "tool_expertise")
   const selected = new Set(value.map((p) => p.id))
 
   const toggle = (pack: PackRow) => {

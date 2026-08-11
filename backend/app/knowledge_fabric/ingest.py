@@ -280,6 +280,10 @@ async def _fetch_documents_for_spec(
         from app.knowledge_fabric.sources.cisa import fetch_cisa_documents
 
         return await fetch_cisa_documents(spec, limit=limit)
+    if spec.source_id.startswith("tool.") and spec.department == "tool_expertise":
+        from app.knowledge_fabric.tool_knowledge import fetch_tool_knowledge_documents
+
+        return await fetch_tool_knowledge_documents(spec, limit=limit)
     if spec.source_id.startswith("legal.courtlistener"):
         from app.knowledge_fabric.sources.courtlistener import fetch_courtlistener_opinions
 

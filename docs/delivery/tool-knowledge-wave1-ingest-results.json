@@ -1,0 +1,288 @@
+{
+  "ran_at": "2026-08-11T23:07:49.396090+00:00",
+  "phase0_ref": "docs/delivery/tool-knowledge-phase0-reconciliation.md",
+  "registered_sources": 40,
+  "tool_vendors_ingested": [
+    "github",
+    "google_analytics",
+    "hubspot",
+    "jira",
+    "notion",
+    "salesforce",
+    "sendgrid",
+    "slack",
+    "stripe",
+    "zendesk"
+  ],
+  "ingest_per_source": [
+    {
+      "source_id": "tool.github.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.google_analytics.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.hubspot.expertise",
+      "status": "ingested",
+      "documents": 2,
+      "chunks": 2,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.jira.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.notion.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.salesforce.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.sendgrid.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.slack.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.stripe.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    },
+    {
+      "source_id": "tool.zendesk.expertise",
+      "status": "ingested",
+      "documents": 1,
+      "chunks": 1,
+      "license": "Gravitre-Original",
+      "licence_verified": true,
+      "legal_review_status": "verified_live"
+    }
+  ],
+  "license_posture": "Gravitre-Original \u2014 commercial_use=true, licence_verified=true; vendor docs NOT bulk-ingested",
+  "integration_class_sample": [
+    {
+      "vendor": "hubspot",
+      "in_catalog": true,
+      "integration_class": "OPEN_API",
+      "tool_knowledge_pack_id": "pack.tool.hubspot",
+      "mcp": {
+        "vendor": "hubspot",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "salesforce",
+      "in_catalog": true,
+      "integration_class": "OPEN_API",
+      "tool_knowledge_pack_id": "pack.tool.salesforce",
+      "mcp": {
+        "vendor": "salesforce",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "google_analytics",
+      "in_catalog": true,
+      "integration_class": "OPEN_API_CUSTOMER_ENTITLEMENT",
+      "tool_knowledge_pack_id": "pack.tool.google_analytics",
+      "mcp": {
+        "vendor": "google_analytics",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "google_search_console",
+      "in_catalog": true,
+      "integration_class": "OPEN_API_CUSTOMER_ENTITLEMENT",
+      "tool_knowledge_pack_id": "pack.tool.google_search_console",
+      "mcp": {
+        "vendor": "google_search_console",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "gmail",
+      "in_catalog": true,
+      "integration_class": "OPEN_API_CUSTOMER_ENTITLEMENT",
+      "tool_knowledge_pack_id": "pack.tool.gmail",
+      "mcp": {
+        "vendor": "gmail",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "google_drive",
+      "in_catalog": true,
+      "integration_class": "OPEN_API_CUSTOMER_ENTITLEMENT",
+      "tool_knowledge_pack_id": "pack.tool.google_drive",
+      "mcp": {
+        "vendor": "google_drive",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "slack",
+      "in_catalog": true,
+      "integration_class": "OPEN_API",
+      "tool_knowledge_pack_id": "pack.tool.slack",
+      "mcp": {
+        "vendor": "slack",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    },
+    {
+      "vendor": "github",
+      "in_catalog": true,
+      "integration_class": "OPEN_API",
+      "tool_knowledge_pack_id": "pack.tool.github",
+      "mcp": {
+        "vendor": "github",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      }
+    }
+  ],
+  "compose_test": {
+    "connected_vendors": [
+      "hubspot",
+      "slack"
+    ],
+    "tool_packs": [
+      "pack.tool.hubspot",
+      "pack.tool.slack"
+    ],
+    "hubspot_catalog_actions_sample": [
+      "hubspot.contacts.get",
+      "hubspot.contacts.search",
+      "hubspot.deals.get",
+      "hubspot.deals.search",
+      "hubspot.deals.list"
+    ],
+    "fabric_hit_count": 3,
+    "hubspot_knowledge_hits": 2,
+    "compose_pass": true,
+    "sample_citations": [
+      "Gravitre tool expertise \u2014 hubspot \u2014 HubSpot CRM object model (Gravitre summary)",
+      "Gravitre tool expertise \u2014 hubspot \u2014 HubSpot lists and enrollment patterns (Gravitre summary)"
+    ]
+  },
+  "cross_department": {
+    "note": "Single pack.tool.hubspot row; Sales and Marketing agents both receive it when hubspot is connected",
+    "packs_for_hubspot_only": [
+      "pack.tool.hubspot"
+    ]
+  },
+  "blocked_or_deferred": [
+    {
+      "vendor": "gitlab",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "trello",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "linear",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "paypal",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "shopify",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "woocommerce",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "wordpress",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "brevo",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "meta_marketing",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "cloudflare",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "azure",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    },
+    {
+      "vendor": "google_cloud",
+      "reason": "No ActionSpec connector \u2014 tool knowledge deferred"
+    }
+  ]
+}

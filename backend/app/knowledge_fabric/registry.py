@@ -883,10 +883,17 @@ def _wave2_expansion_sources() -> tuple[KnowledgeSourceSpec, ...]:
     )
 
 
+def _tool_expertise_sources() -> tuple[KnowledgeSourceSpec, ...]:
+    from app.knowledge_fabric.tool_knowledge import tool_knowledge_source_specs
+
+    return tool_knowledge_source_specs()
+
+
 PLATFORM_KNOWLEDGE_SOURCES: tuple[KnowledgeSourceSpec, ...] = (
     *_base_legal_finance_cyber_hr(),
     *_sales_marketing_sources(),
     *_wave2_expansion_sources(),
+    *_tool_expertise_sources(),
 )
 
 
@@ -896,12 +903,14 @@ def list_platform_packs(*, agent_department: str | None = None) -> list[dict[str
     recommended = set(recommended_pack_ids_for_department(agent_department))
     packs: dict[str, dict[str, Any]] = {}
     for spec in PLATFORM_KNOWLEDGE_SOURCES:
+        pack_type = "tool_expertise" if spec.department == "tool_expertise" else "department"
         entry = packs.setdefault(
             spec.pack_id,
             {
                 "pack_id": spec.pack_id,
                 "label": spec.pack_label,
                 "department": spec.department,
+                "pack_type": pack_type,
                 "sources": [],
                 "ingestible": False,
                 "hold": False,
