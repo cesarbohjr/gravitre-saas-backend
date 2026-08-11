@@ -1666,6 +1666,7 @@ class AgentIntelligence:
                 ),
                 agent_id=agent_id,
                 spoken_mode=bool(spoken_mode),
+                research_scope=research_scope,
             )
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state

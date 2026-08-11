@@ -68,10 +68,6 @@ def suggest_research_actions(
     if not _ACTION_VERBS.search(query or ""):
         return []
 
-    scope = str(research_scope or research_cascade.get("research_scope") or ResearchScope.INTERNAL_ONLY.value)
-    if research_cascade.get("suggest_broaden") and scope == ResearchScope.INTERNAL_ONLY.value:
-        return []
-
     connected = _connected_slugs(connected_integrations)
     if not connected:
         return []

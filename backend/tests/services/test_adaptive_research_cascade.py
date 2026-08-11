@@ -4,7 +4,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.services.adaptive_research_cascade import (
-    ADAPTIVE_RESEARCH_LEAD,
     ResearchScope,
     assess_internal_retrieval_thinness,
     build_research_policy_extension,
@@ -57,16 +56,18 @@ def test_internet_option_enabled_by_default_when_provider_configured():
     assert internet["enabled"] is True
 
 
-def test_evaluate_research_cascade_suggest_broaden_when_thin():
+def test_evaluate_research_cascade_auto_internet_when_thin():
     state = evaluate_research_cascade(
         retrieval_effectiveness={"source_count": 0, "retrieval_score": None},
         rag_sources=[],
-        settings=_settings(),
+        settings=_settings(internet_enabled=True, tavily="tvly-test"),
     )
     assert state["internal_thin"] is True
-    assert state["suggest_broaden"] is True
-    assert state["prompt_message"] == ADAPTIVE_RESEARCH_LEAD
-    assert len(state["options"]) == 4
+    assert state["suggest_broaden"] is False
+    assert state["prompt_message"] is None
+    assert state["options"] == []
+    assert state["auto_internet_when_thin"] is True
+    assert "internet_research" in state["active_stages"]
 
 
 def test_evaluate_research_cascade_no_prompt_when_scope_selected():
@@ -89,10 +90,14 @@ def test_resolve_active_stages_everything_without_internet_when_gated():
 def test_build_research_policy_extension_for_thin_retrieval():
     section = build_research_policy_extension(
         research_scope=None,
-        cascade_state={"internal_thin": True, "suggest_broaden": True, "active_stages": ["internal_rag"]},
+        cascade_state={
+            "internal_thin": True,
+            "active_stages": ["internal_rag", "internet_research"],
+            "internet_research": {"ran": True, "result_count": 2},
+        },
     )
-    assert ADAPTIVE_RESEARCH_LEAD in section
-    assert "internet research is disabled" in section.lower()
+    assert "automatically" in section.lower()
+    assert "internet research" in section.lower()
 
 
 def test_normalize_internet_results():
@@ -115,6 +120,16 @@ def test_should_run_internet_research_when_governance_allows():
     assert should_run_internet_research(
         ResearchScope.INTERNET_RESEARCH.value,
         settings=_settings(internet_enabled=True, tavily="tvly-test"),
+    )
+    assert should_run_internet_research(
+        ResearchScope.INTERNAL_ONLY.value,
+        settings=_settings(internet_enabled=True, tavily="tvly-test"),
+        internal_thin=True,
+    )
+    assert not should_run_internet_research(
+        ResearchScope.INTERNAL_ONLY.value,
+        settings=_settings(internet_enabled=True, tavily="tvly-test"),
+        internal_thin=False,
     )
     assert not should_run_internet_research(
         ResearchScope.INTERNET_RESEARCH.value,

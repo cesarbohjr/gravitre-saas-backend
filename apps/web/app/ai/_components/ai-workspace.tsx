@@ -918,12 +918,15 @@ export function AiWorkspace({
       if (activeConversationIdRef.current !== id) return
 
       setMessages((live) => {
-        // Hard replace on conversation switch — never merge the previous thread.
-        if (options?.replace) {
-          return nextMessages
-        }
         const chatBusy =
           chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming"
+        // Hard replace on conversation switch — but never wipe an in-flight turn.
+        if (options?.replace) {
+          if (chatBusy || sessionBusyRef.current) {
+            return mergeTranscriptWithLiveMessages(nextMessages, live)
+          }
+          return nextMessages
+        }
         if (chatBusy || sessionBusyRef.current) {
           return mergeTranscriptWithLiveMessages(nextMessages, live)
         }
@@ -1209,6 +1212,7 @@ export function AiWorkspace({
   const runChat = useCallback(
     async (prompt: string, attachments: ConnectedFileAttachment[] = []) => {
       submitLockRef.current = true
+      sessionBusyRef.current = true
       setSessionBusy(true)
       chatFirstTokenMarkedRef.current = false
       startChatPerf("total_response")
@@ -1830,12 +1834,17 @@ export function AiWorkspace({
     !threadRestoreStale &&
     !activeConversationHasStoredMessages
 
+  const isStreaming = status === "streaming"
+  const lastMessage = messages[messages.length - 1]
+  const lastAssistantEmpty =
+    lastMessage?.role === "assistant" && !uiMessageText(lastMessage).trim()
   const showWaitingForReply =
     !showLanding &&
     !conversationLoading &&
     (sessionBusy || isChatBusy) &&
     messages.length > 0 &&
-    messages[messages.length - 1]?.role === "user"
+    !isStreaming &&
+    (lastMessage?.role === "user" || lastAssistantEmpty)
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 

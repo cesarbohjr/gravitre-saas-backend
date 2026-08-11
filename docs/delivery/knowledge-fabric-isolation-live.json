@@ -1,0 +1,145 @@
+{
+  "generated_at": "2026-08-11T10:01:01.709919+00:00",
+  "isolated_org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated_user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "foreign_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "prior_verify_isolation_was": "schema/service-role only (not live JWT/API)",
+  "probes": {
+    "cross_org_rag": [
+      {
+        "table": "rag_sources",
+        "method": "GET",
+        "http": 200,
+        "row_count": 0,
+        "error": null,
+        "sample_ids": [],
+        "blocked": true,
+        "leaked": false,
+        "seed": "990391de-bff3-4f8b-92d3-7c1ac4158dec"
+      },
+      {
+        "table": "rag_chunks",
+        "method": "GET",
+        "http": 200,
+        "row_count": 0,
+        "error": null,
+        "sample_ids": [],
+        "blocked": true,
+        "leaked": false,
+        "seed": "990391de-bff3-4f8b-92d3-7c1ac4158dec"
+      }
+    ],
+    "knowledge_write_blocked": [
+      {
+        "table": "knowledge_sources",
+        "method": "POST",
+        "http": 403,
+        "row_count": null,
+        "error": {
+          "code": "42501",
+          "details": null,
+          "hint": null,
+          "message": "new row violates row-level security policy for table \"knowledge_sources\""
+        },
+        "sample_ids": null,
+        "blocked": true,
+        "leaked": false
+      },
+      {
+        "table": "knowledge_chunks",
+        "method": "POST",
+        "http": 403,
+        "row_count": null,
+        "error": {
+          "code": "42501",
+          "details": null,
+          "hint": null,
+          "message": "new row violates row-level security policy for table \"knowledge_chunks\""
+        },
+        "sample_ids": null,
+        "blocked": true,
+        "leaked": false
+      }
+    ],
+    "knowledge_read": [
+      {
+        "table": "knowledge_sources",
+        "method": "GET",
+        "http": 200,
+        "row_count": 3,
+        "error": null,
+        "sample_ids": [
+          "0017f6b3-54bb-450a-9100-353985addaff",
+          "1a327071-7ca6-4664-987e-f9d4ef732af8",
+          "6d3edd86-dd66-4595-bc14-d3a5d619f67a"
+        ],
+        "expected_read": "allowed (platform_shared SELECT policy)"
+      },
+      {
+        "table": "knowledge_documents",
+        "method": "GET",
+        "http": 200,
+        "row_count": 3,
+        "error": null,
+        "sample_ids": [
+          "54426e72-25a2-428e-9874-0a1084ad72ef",
+          "0e9ca8f8-121b-4b3b-9778-f8af8213c178",
+          "7dc75fe9-290d-4e85-9715-8e45468f4d6e"
+        ],
+        "expected_read": "allowed (platform_shared SELECT policy)"
+      },
+      {
+        "table": "knowledge_chunks",
+        "method": "GET",
+        "http": 200,
+        "row_count": 3,
+        "error": null,
+        "sample_ids": [
+          "373b1da7-fb8b-488a-90a3-e841b85b0d60",
+          "ccd6296e-731c-4ef4-83de-203d1960cffe",
+          "b9684e4e-3d31-4fc8-8eaf-85a55db1e9c1"
+        ],
+        "expected_read": "allowed (platform_shared SELECT policy)"
+      }
+    ],
+    "api_retrieve": {
+      "http": 200,
+      "blocked_foreign_rag_in_results": true,
+      "isolation": {
+        "namespace": "platform_shared",
+        "customer_rag_tables_touched": false
+      },
+      "result_count": 3,
+      "customer_rag_tables_touched": false
+    }
+  },
+  "schema_presence": {
+    "knowledge_sources": {
+      "exists": true,
+      "sample_count": 1
+    },
+    "knowledge_documents": {
+      "exists": true,
+      "sample_count": 1
+    },
+    "knowledge_chunks": {
+      "exists": true,
+      "sample_count": 1
+    },
+    "rag_sources": {
+      "exists": true,
+      "sample_count": 1
+    },
+    "rag_chunks": {
+      "exists": true,
+      "sample_count": 1
+    }
+  },
+  "cleanup": {
+    "foreign_rag_seed_deleted": true
+  },
+  "pass": true,
+  "partial": false,
+  "schema_note": null,
+  "verdict": "PASS \u2014 live JWT/API isolation probes"
+}

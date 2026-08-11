@@ -135,11 +135,34 @@ def should_run_internet_research(
     research_scope: str | None,
     *,
     settings: Settings,
+    internal_thin: bool = False,
 ) -> bool:
-    """True when governance allows and the selected scope includes internet research."""
+    """True when governance allows and scope or thin-internal auto-escalation applies."""
     if not _internet_research_allowed(settings):
         return False
+    if internal_thin:
+        return True
     return "internet_research" in resolve_active_stages(research_scope, settings=settings)
+
+
+def resolve_active_stages_with_auto_internet(
+    research_scope: str | None,
+    *,
+    settings: Settings,
+    internal_thin: bool = False,
+) -> list[str]:
+    """Active cascade stages, inserting internet when internal retrieval is thin."""
+    stages = list(resolve_active_stages(research_scope, settings=settings))
+    if (
+        internal_thin
+        and _internet_research_allowed(settings)
+        and "internet_research" not in stages
+    ):
+        if "reasoning" in stages:
+            stages.insert(stages.index("reasoning"), "internet_research")
+        else:
+            stages.append("internet_research")
+    return stages
 
 
 def should_run_intelligence_packs_stage(
@@ -257,8 +280,6 @@ def build_research_policy_extension(
     lines = [
         "## Adaptive Research",
     ]
-    if cascade_state.get("internal_thin"):
-        lines.append(ADAPTIVE_RESEARCH_LEAD)
     lines.extend(
         [
             f"Active research scope: {scope.replace('_', ' ')}.",
@@ -269,10 +290,14 @@ def build_research_policy_extension(
             ),
         ]
     )
-    if cascade_state.get("suggest_broaden") and not research_scope:
+    if cascade_state.get("internal_thin") and internet_meta.get("ran"):
         lines.append(
-            "The user has not chosen a broader research scope yet. Answer with what you have, "
-            "then invite them to pick a research option if they want you to go further."
+            "Internal sources were thin — live internet research was run automatically. "
+            "Cite web results distinctly from org knowledge."
+        )
+    elif cascade_state.get("internal_thin") and not internet_meta.get("ran"):
+        lines.append(
+            "Internal sources were thin. Internet research was unavailable or returned no results."
         )
     internet_meta = cascade_state.get("internet_research") if isinstance(cascade_state.get("internet_research"), dict) else {}
     if internet_meta.get("ran") and int(internet_meta.get("result_count") or 0) > 0:
@@ -412,7 +437,7 @@ def should_emit_research_cascade_sse(cascade: dict[str, Any] | None) -> bool:
     """True when the client should receive cascade metadata mid-stream."""
     if not isinstance(cascade, dict) or not cascade:
         return False
-    if cascade.get("suggest_broaden"):
+    if cascade.get("internal_thin") and cascade.get("internet_research_enabled"):
         return True
     scope = str(cascade.get("research_scope") or ResearchScope.INTERNAL_ONLY.value)
     if scope != ResearchScope.INTERNAL_ONLY.value:
@@ -442,15 +467,18 @@ def evaluate_research_cascade(
         graph_context=graph_context,
     )
     internet_enabled = _internet_research_allowed(settings)
-    active_stages = resolve_active_stages(research_scope, settings=settings)
-    options = build_research_scope_options(settings)
-    suggest_broaden = internal_thin and not str(research_scope or "").strip()
+    active_stages = resolve_active_stages_with_auto_internet(
+        research_scope,
+        settings=settings,
+        internal_thin=internal_thin,
+    )
 
     return {
         "internal_thin": internal_thin,
-        "suggest_broaden": suggest_broaden,
-        "prompt_message": ADAPTIVE_RESEARCH_LEAD if suggest_broaden else None,
-        "options": options if suggest_broaden else [],
+        "suggest_broaden": False,
+        "prompt_message": None,
+        "options": [],
+        "auto_internet_when_thin": internal_thin and internet_enabled,
         "research_scope": research_scope or ResearchScope.INTERNAL_ONLY.value,
         "active_stages": active_stages,
         "stage_order": list(CASCADE_STAGE_ORDER),

@@ -369,6 +369,8 @@ async def run_unified_turn_shadow(
     agent: dict[str, Any] | None = None,
     permitted_tools: list[str] | None = None,
     spoken_mode: bool = False,
+    classification: dict[str, Any] | None = None,
+    research_scope: str | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -597,6 +599,40 @@ async def run_unified_turn_shadow(
             "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
             "or connector results."
         )
+    if client is not None and org_id:
+        from app.services.unified_turn_knowledge_context import (
+            build_unified_turn_knowledge_context,
+        )
+        from app.services.agent_knowledge_assignment_service import (
+            AgentKnowledgeAssignmentService,
+        )
+
+        knowledge_assignments: list[dict[str, Any]] = []
+        agent_id = str((agent or {}).get("id") or "")
+        if agent_id and agent_id not in {"assistant"}:
+            try:
+                knowledge_assignments = AgentKnowledgeAssignmentService(
+                    active
+                ).list_assignments(client, org_id, agent_id)
+            except Exception:  # noqa: BLE001
+                knowledge_assignments = AgentKnowledgeAssignmentService(
+                    active
+                ).resolve_assignments(agent or {})
+        knowledge_block, knowledge_meta = await build_unified_turn_knowledge_context(
+            org_id=org_id,
+            query=message or "",
+            client=client,
+            settings=active,
+            classification=classification,
+            agent=agent,
+            knowledge_assignments=knowledge_assignments,
+            research_scope=research_scope,
+        )
+        if knowledge_block:
+            user_parts.append(knowledge_block)
+        unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
+    else:
+        unified_turn_knowledge_meta = None
     user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 
@@ -655,6 +691,8 @@ async def run_unified_turn_shadow(
         "retrieval_query": (retrieval_query or "")[:240],
         "task_model_tier": str(getattr(active, "unified_turn_task_model_tier", "") or "") or None,
     }
+    if unified_turn_knowledge_meta:
+        breakdown["unifiedTurnKnowledge"] = unified_turn_knowledge_meta
     for _embed_key in (
         "embed_query_ms",
         "embed_query_method",
@@ -1096,6 +1134,7 @@ async def apply_unified_turn_live(
     permitted_tools: list[str] | None = None,
     agent_id: str | None = None,
     spoken_mode: bool = False,
+    research_scope: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1285,6 +1324,8 @@ async def apply_unified_turn_live(
         agent=agent,
         permitted_tools=permitted_tools,
         spoken_mode=bool(spoken_mode),
+        classification=classification,
+        research_scope=research_scope,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

@@ -60,7 +60,13 @@ def test_build_cascade_stage_progress_marks_internet_and_packs():
 
 def test_should_emit_research_cascade_sse_for_broad_scope():
     assert should_emit_research_cascade_sse({"research_scope": "everything", "active_stages": ["internal_rag"]})
-    assert should_emit_research_cascade_sse({"suggest_broaden": True})
+    assert should_emit_research_cascade_sse(
+        {
+            "internal_thin": True,
+            "internet_research_enabled": True,
+            "active_stages": ["internal_rag", "internet_research"],
+        }
+    )
     assert not should_emit_research_cascade_sse(None)
 
 

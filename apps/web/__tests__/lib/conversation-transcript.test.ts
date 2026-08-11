@@ -27,6 +27,11 @@ describe("mergeTranscriptWithLiveMessages", () => {
       msg("a1", "assistant", "Reply"),
     ])
   })
+
+  it("keeps live user when stored is empty during in-flight send", () => {
+    const live = [msg("u-live", "user", "tell me about the best CRM"), msg("a1", "assistant", "")]
+    expect(mergeTranscriptWithLiveMessages([], live)).toEqual(live)
+  })
 })
 
 describe("uiMessageText", () => {

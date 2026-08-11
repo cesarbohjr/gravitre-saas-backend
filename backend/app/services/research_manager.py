@@ -192,15 +192,28 @@ def build_cascade_plan(
         for ext in (CascadeStage.INTELLIGENCE_PACKS.value, CascadeStage.INTERNET_RESEARCH.value):
             if ext in stages:
                 stages.remove(ext)
-    elif not should_run_intelligence_packs_stage(
-        research_scope,
-        settings=settings,
-        knowledge_assignments=knowledge_assignments,
-    ):
-        if CascadeStage.INTELLIGENCE_PACKS.value in stages:
-            stages.remove(CascadeStage.INTELLIGENCE_PACKS.value)
-    elif not should_run_internet_research(research_scope, settings=settings):
-        if CascadeStage.INTERNET_RESEARCH.value in stages:
+    else:
+        if not should_run_intelligence_packs_stage(
+            research_scope,
+            settings=settings,
+            knowledge_assignments=knowledge_assignments,
+        ):
+            if CascadeStage.INTELLIGENCE_PACKS.value in stages:
+                stages.remove(CascadeStage.INTELLIGENCE_PACKS.value)
+        if should_run_internet_research(
+            research_scope,
+            settings=settings,
+            internal_thin=not confidence_sufficient,
+        ):
+            if CascadeStage.INTERNET_RESEARCH.value not in stages:
+                if CascadeStage.REASONING.value in stages:
+                    stages.insert(
+                        stages.index(CascadeStage.REASONING.value),
+                        CascadeStage.INTERNET_RESEARCH.value,
+                    )
+                else:
+                    stages.append(CascadeStage.INTERNET_RESEARCH.value)
+        elif CascadeStage.INTERNET_RESEARCH.value in stages:
             stages.remove(CascadeStage.INTERNET_RESEARCH.value)
 
     return CascadePlan(
