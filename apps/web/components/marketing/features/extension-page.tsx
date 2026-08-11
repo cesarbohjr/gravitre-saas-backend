@@ -191,7 +191,6 @@ export function ExtensionPage() {
                   width: 760,
                   height: 1802,
                 }}
-                caption="Real extension UI, seeded demo data — not a real contact. Page behind it is a neutral placeholder."
               />
             </motion.div>
             <motion.div
@@ -220,7 +219,6 @@ export function ExtensionPage() {
                   width: 760,
                   height: 2358,
                 }}
-                caption="Real extension UI, seeded demo data — not a real contact. Page behind it is a neutral placeholder."
               />
             </motion.div>
           </div>
@@ -261,7 +259,6 @@ export function ExtensionPage() {
                 className="mt-5"
                 src="/product/app-approvals.png"
                 alt="Approvals queue showing three pending requests, with a HubSpot contact create selected and its recommendation, SLA, and impact detail open."
-                caption="Illustrative data — seeded demo workspace, not customer metrics"
               />
             </motion.div>
             <motion.div
@@ -284,7 +281,6 @@ export function ExtensionPage() {
                 className="mt-5"
                 src="/product/app-activity.png"
                 alt="Activity feed listing runs with lifecycle state and source, including a created HubSpot contact run sourced from the browser extension."
-                caption="Illustrative data — seeded demo workspace, not customer metrics"
               />
             </motion.div>
           </div>

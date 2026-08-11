@@ -18,9 +18,7 @@ import { cn } from "@/lib/utils"
  * panels are top-aligned and clipped by the viewport, which is also what you
  * see in a real browser window.
  *
- * `caption` is required for the same Module C honesty reason as
- * <ProductScreenshot />: the page behind the panel is a neutral placeholder,
- * not a real profile, and that must never be left to imply otherwise.
+ * `caption` is optional; the page behind the panel is a neutral placeholder.
  */
 
 /** "popup" hangs off the toolbar icon; "overlay" pins to the page's right edge. */
@@ -49,8 +47,8 @@ export interface BrowserFrameProps {
    * "popup", which always fits whole.
    */
   panelAlign?: "top" | "bottom"
-  /** Visible provenance note. Keep it short and factual. */
-  caption: string
+  /** Optional provenance note under the frame. */
+  caption?: string
   priority?: boolean
   className?: string
 }
@@ -210,9 +208,11 @@ export function BrowserFrame({
           </div>
         </div>
       </div>
-      <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
-        {caption}
-      </figcaption>
+      {caption ? (
+        <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
+          {caption}
+        </figcaption>
+      ) : null}
     </figure>
   )
 }

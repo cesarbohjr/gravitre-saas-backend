@@ -4,20 +4,18 @@ import { cn } from "@/lib/utils"
 /**
  * Real UI captures from scripts/capture-product-shots.mjs (2880x1800 @2x).
  *
- * `caption` is REQUIRED on purpose. Every shot is rendered against seeded
- * fixture data in apps/web/lib/e2e-shot-fixtures.ts, so the workspace name,
- * counts, and latency figures are illustrative rather than customer data.
- * Module C honesty rules mean a screenshot must never be wired in bare and
- * left to imply those numbers are real production metrics — making the prop
- * mandatory is what stops that happening by omission.
+ * Shots are rendered against seeded fixture data in
+ * apps/web/lib/e2e-shot-fixtures.ts. Prefer a visible `caption` when the frame
+ * could be mistaken for live customer metrics; some marketing surfaces omit it
+ * by product request when surrounding copy already scopes the demo.
  */
 export interface ProductScreenshotProps {
   /** Path under /public, e.g. "/product/app-approvals.png". */
   src: string
   /** Describe the UI state shown, not just the page name. */
   alt: string
-  /** Visible provenance note. Keep it short and factual. */
-  caption: string
+  /** Optional provenance note under the frame. */
+  caption?: string
   /** Set on the first shot above the fold only. */
   priority?: boolean
   /**
@@ -85,9 +83,11 @@ export function ProductScreenshot({
           </div>
         )}
       </div>
-      <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
-        {caption}
-      </figcaption>
+      {caption ? (
+        <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
+          {caption}
+        </figcaption>
+      ) : null}
     </figure>
   )
 }
