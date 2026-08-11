@@ -1111,7 +1111,6 @@ export function FeaturesLegacyContent({
                 alt="Gravitre AI workspace with the conversation history panel open, showing three past threads and the ask box with org-specific suggestion chips."
                 chromeLabel="Gravitre AI"
                 glowClassName="bg-gradient-to-r from-emerald-100/60 to-teal-100/60"
-                caption="Real UI · seeded demo workspace, not customer data"
               />
             </motion.div>
             ) : null}
@@ -1150,7 +1149,6 @@ export function FeaturesLegacyContent({
                 alt="Agents roster showing four configured agents with their department, status, tasks today, and success rate."
                 chromeLabel="Agents"
                 glowClassName="bg-gradient-to-r from-blue-100/60 to-indigo-100/60"
-                caption="Real UI · seeded demo workspace, not customer data"
                 className="lg:order-1"
               />
             </motion.div>
@@ -1190,7 +1188,6 @@ export function FeaturesLegacyContent({
                 alt="Workflows list showing five workflows with their environment, last run, success rate, and run count, including a paused and a draft workflow."
                 chromeLabel="Workflows"
                 glowClassName="bg-gradient-to-r from-purple-100/60 to-pink-100/60"
-                caption="Real UI · seeded demo workspace, not customer data"
               />
             </motion.div>
             ) : null}
@@ -1229,7 +1226,6 @@ export function FeaturesLegacyContent({
                 alt="Connectors page showing connected and available integrations with their sync status."
                 chromeLabel="Connectors"
                 glowClassName="bg-gradient-to-r from-amber-100/60 to-orange-100/60"
-                caption="Real UI · seeded demo workspace, not customer data"
                 className="lg:order-1"
               />
             </motion.div>
@@ -1273,7 +1269,6 @@ export function FeaturesLegacyContent({
                 alt="Approvals queue with a pending write request awaiting human review, showing the requesting agent, target system, and the diff to be applied."
                 chromeLabel="Approvals"
                 glowClassName="bg-gradient-to-r from-rose-100/60 to-red-100/60"
-                caption="Real UI · seeded demo workspace, not customer data"
               />
             </motion.div>
             ) : null}
