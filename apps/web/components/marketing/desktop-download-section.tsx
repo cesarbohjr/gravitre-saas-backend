@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { AlertTriangle, Download } from "lucide-react"
+import {
+  AlertTriangle,
+  Download,
+  Keyboard,
+  MessageSquare,
+  Shield,
+  Sparkles,
+} from "lucide-react"
 import {
   DESKTOP_RELEASE_FALLBACK,
   detectDesktopPlatform,
@@ -14,6 +21,9 @@ import {
   LinuxVendorIcon,
   WindowsVendorIcon,
 } from "@/components/marketing/os-vendor-icons"
+import { GridBackground } from "@/components/marketing/home/grid-background"
+import { LottieAnimation } from "@/components/gravitre/lottie-animation"
+import { DesktopCompanionPreview } from "@/components/marketing/desktop-companion-preview"
 
 const RELEASE_PAGE =
   "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0"
@@ -58,14 +68,20 @@ const PLATFORM_META: Record<DesktopPlatformKey, PlatformMeta> = {
   },
 }
 
+const FLOATING_ICONS = [
+  { Icon: Keyboard, className: "left-[6%] top-[18%]", delay: 0 },
+  { Icon: MessageSquare, className: "right-[8%] top-[22%]", delay: 0.6 },
+  { Icon: Shield, className: "left-[10%] top-[58%]", delay: 1.1 },
+  { Icon: Sparkles, className: "right-[6%] top-[52%]", delay: 1.7 },
+] as const
+
 type Props = {
   initialManifest?: DesktopReleaseManifest
   className?: string
 }
 
 /**
- * Marketing download — hero + OS cards + unsigned-build honesty callout.
- * Layout follows the v0 composition; hero atmosphere matches other marketing pages.
+ * Marketing download — light hero (shared with home), Lottie/effects, companion mock, OS cards.
  */
 export function DesktopDownloadSection({
   initialManifest = DESKTOP_RELEASE_FALLBACK,
@@ -116,47 +132,56 @@ export function DesktopDownloadSection({
   return (
     <section
       className={
-        className ??
-        "relative overflow-hidden border-t border-zinc-200/80 bg-[#F8F7F2]"
+        className ?? "relative overflow-hidden border-t border-zinc-100 bg-white"
       }
     >
-      {/* Marketing-style hero atmosphere (same language as /pricing + /extension) */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 via-[#F8F7F2] to-[#F8F7F2]" />
-        <div className="absolute -top-24 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl" />
-        <div className="absolute top-24 right-[-8%] h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
-        <div className="absolute bottom-[20%] left-[-6%] h-64 w-64 rounded-full bg-amber-100/40 blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
+      {/* Same atmosphere language as home / extension — not the darker cream+green wash */}
+      <GridBackground />
+
+      {/* Soft Lottie accents */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <LottieAnimation
+          src="/animations/gravitre-logo-animation.json"
+          className="absolute -left-16 top-24 h-56 w-56 opacity-[0.12] sm:h-72 sm:w-72"
+          speed={0.7}
         />
+        <LottieAnimation
+          src="/animations/gravitre-logo-animation.json"
+          className="absolute -right-20 bottom-[28%] h-64 w-64 opacity-[0.1] sm:h-80 sm:w-80"
+          speed={0.55}
+        />
+        {FLOATING_ICONS.map(({ Icon, className: pos, delay }) => (
+          <motion.div
+            key={pos}
+            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200/70 bg-white/70 text-emerald-600 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm lg:flex ${pos}`}
+            animate={{ y: [0, -12, 0], opacity: [0.45, 0.85, 0.45] }}
+            transition={{ duration: 5.5, delay, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Icon className="h-5 w-5" strokeWidth={1.5} />
+          </motion.div>
+        ))}
       </div>
 
       <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pb-28 sm:pt-32">
-        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto max-w-3xl text-center"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200/90 bg-emerald-50/90 px-4 py-2 backdrop-blur-sm">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-4 py-2 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
-              Desktop companion
+            <span className="text-sm font-medium text-emerald-700">
+              Desktop companion · Alt+Space
             </span>
           </div>
 
-          <h2 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
             Gravitre,{" "}
-            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
               one shortcut away.
             </span>
-          </h2>
+          </h1>
 
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-600 sm:text-xl">
             A lightweight companion for chat, activity, and approvals — summon it from anywhere with
@@ -180,8 +205,12 @@ export function DesktopDownloadSection({
           </div>
         </motion.div>
 
+        <div className="mt-14 sm:mt-16">
+          <DesktopCompanionPreview />
+        </div>
+
         {/* OS cards */}
-        <div className="mt-14 grid gap-5 sm:grid-cols-3 sm:gap-6">
+        <div className="mt-16 grid gap-5 sm:grid-cols-3 sm:gap-6">
           {platforms.map((platform, index) => {
             const highlighted = detected === platform.key
             const Icon = platform.Icon
@@ -193,7 +222,7 @@ export function DesktopDownloadSection({
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: 0.08 + index * 0.07, duration: 0.45 }}
                 className={[
-                  "relative flex flex-col rounded-[1.35rem] border bg-white p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] transition-transform duration-300 hover:-translate-y-0.5",
+                  "relative flex flex-col rounded-[1.35rem] border bg-white/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
                   highlighted
                     ? "border-emerald-300 ring-2 ring-emerald-400/35"
                     : "border-zinc-200/80",
@@ -220,14 +249,14 @@ export function DesktopDownloadSection({
                   </div>
                 </div>
 
-                <h3 className="text-xl font-semibold tracking-tight text-zinc-900">
+                <h2 className="text-xl font-semibold tracking-tight text-zinc-900">
                   {platform.label}
-                </h3>
+                </h2>
                 <p className="mt-1.5 text-sm text-zinc-500">{platform.blurb}</p>
 
                 <a
                   href={platform.href}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2"
                 >
                   <Download className="h-4 w-4" />
                   Download
@@ -250,7 +279,6 @@ export function DesktopDownloadSection({
           })}
         </div>
 
-        {/* Honesty callout — expected OS warnings */}
         {isUnsigned ? (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -284,8 +312,9 @@ export function DesktopDownloadSection({
                   Windows — “Windows protected your PC”
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  SmartScreen may block the installer. Click <strong className="text-zinc-800">More info</strong>,
-                  then <strong className="text-zinc-800">Run anyway</strong>. Only continue if you
+                  SmartScreen may block the installer. Click{" "}
+                  <strong className="text-zinc-800">More info</strong>, then{" "}
+                  <strong className="text-zinc-800">Run anyway</strong>. Only continue if you
                   downloaded from this page or the official GitHub release.
                 </p>
               </div>

@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function DownloadPage() {
   return (
-    <div className="relative overflow-hidden bg-[#F8F7F2]">
+    <div className="relative overflow-hidden bg-white">
       <DesktopDownloadSection
         initialManifest={DESKTOP_RELEASE_MANIFEST}
-        className="relative overflow-hidden bg-[#F8F7F2]"
+        className="relative overflow-hidden bg-white"
       />
     </div>
   )
