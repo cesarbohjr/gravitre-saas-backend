@@ -1,20 +1,23 @@
-"""Platform knowledge fabric API — packs, retrieve, admin ingest."""
+"""Platform knowledge fabric API — packs, retrieve, admin ingest, internal refresh."""
 from __future__ import annotations
 
+import hmac
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_org_context, require_platform_admin
 from app.config import Settings, get_settings
 from app.knowledge_fabric.ingest import ingest_pack, register_all_sources
+from app.knowledge_fabric.refresh import run_refresh_cycle
 from app.knowledge_fabric.registry import list_platform_packs
 from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
 from app.knowledge_fabric.router import classify_knowledge_query
 
 router = APIRouter(prefix="/api/knowledge-fabric", tags=["knowledge-fabric"])
+internal_router = APIRouter(prefix="/api/internal/knowledge-fabric", tags=["knowledge-fabric-internal"])
 
 
 def _client(settings: Settings):
@@ -33,6 +36,27 @@ class IngestRequest(BaseModel):
     pack_id: str
     limit: int = Field(default=5, ge=1, le=20)
     embed: bool = True
+
+
+class RefreshRequest(BaseModel):
+    force: bool = False
+    pack_ids: list[str] | None = None
+    limit: int = Field(default=4, ge=1, le=20)
+    embed: bool = True
+
+
+async def require_internal_secret(
+    settings: Annotated[Settings, Depends(get_settings)],
+    x_internal_secret: Annotated[str | None, Header()] = None,
+) -> None:
+    secret = (settings.internal_api_secret or "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="INTERNAL_API_SECRET is not configured",
+        )
+    if not x_internal_secret or not hmac.compare_digest(x_internal_secret, secret):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal secret")
 
 
 @router.get("/packs")
@@ -69,7 +93,6 @@ async def retrieve(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = _client(settings)
-    # Platform shared retrieval — never reads rag_* for this path
     result = retrieve_knowledge_fabric(
         client,
         body.query,
@@ -88,9 +111,10 @@ async def retrieve(
 
 @router.post("/admin/register-sources", status_code=status.HTTP_201_CREATED)
 async def admin_register_sources(
-    _: Annotated[dict, Depends(require_admin)],
+    _: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
+    """Platform-admin only — mutates shared knowledge_sources registry."""
     client = _client(settings)
     rows = register_all_sources(client)
     return {"registered": len(rows), "source_ids": [r.get("source_id") for r in rows]}
@@ -99,9 +123,10 @@ async def admin_register_sources(
 @router.post("/admin/ingest")
 async def admin_ingest(
     body: IngestRequest,
-    _: Annotated[dict, Depends(require_admin)],
+    _: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
+    """Platform-admin only — org admins must not mutate the shared corpus."""
     if body.pack_id in {"pack.sales", "pack.marketing"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -118,4 +143,23 @@ async def admin_ingest(
         settings=settings,
         embed=body.embed,
         limit=body.limit,
+    )
+
+
+@internal_router.post("/refresh-due")
+async def internal_refresh_due(
+    _secret: Annotated[None, Depends(require_internal_secret)],
+    body: RefreshRequest | None = None,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Cron entry: refresh due packs (or force specific packs)."""
+    payload = body or RefreshRequest()
+    client = _client(settings)
+    return await run_refresh_cycle(
+        client,
+        settings=settings,
+        force=payload.force,
+        pack_ids=payload.pack_ids,
+        limit=payload.limit,
+        embed=payload.embed,
     )
