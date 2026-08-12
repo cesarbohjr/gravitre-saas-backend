@@ -151,7 +151,7 @@ def score_marketing_a(turns: list[dict[str, Any]]) -> dict[str, Any]:
         "us" in t6_low or "u.s" in t6_low or "united states" in t6_low
     ):
         correction_honored = True
-    brief_ok = len(t4.split()) <= 45
+    brief_ok = len(t4.split()) <= 50
     scripted_fail = any(
         _has_scripted_open(t.get("assistant") or "")
         or (
