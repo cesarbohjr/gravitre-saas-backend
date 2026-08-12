@@ -29,4 +29,6 @@ LIVE department agents used Module D register/tone + honesty rules, but **no rea
 - After probe: `conversational-behavior-after-transcript.json` — `verdict=PASS` for Marketing Analyst + Sales Agent
 - Before baseline: `conversational-behavior-before-transcript.json` — `verdict=FAIL` (rescored)
 - Wave 2 (rules 6–10) tip: `57cccaf16cb518a8a2e36b92f4be0aa07aed70fc` — see `conversational-behavior-wave2-closeout.md`
-- Reverify @ `57cccaf1` (2026-08-12): Marketing Analyst `pass=true` (clarify×2, prior ref, length 26→51→18); Sales Agent prior-ref inverted email→call once — hardened in follow-up tip (see below)
+- Reverify @ `57cccaf1`: Marketing `pass=true`; Sales inverted email→call on remind-me
+- Fix tip `f6f6382f`: pin remind-me to prior assistant recommendations (skip research on those turns)
+- Live reverify3 @ `f6f6382fdbd4a01654db7affc6041f82fbde3dd1`: Marketing + Sales both `pass=true` (`conversational-behavior-reverify3-transcript.json`)

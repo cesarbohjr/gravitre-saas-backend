@@ -1,0 +1,163 @@
+{
+  "feature": "conversational_behavior",
+  "label": "reverify3",
+  "checkedAt": "2026-08-12T17:44:30.780853+00:00",
+  "git_sha": "f6f6382fdbd4a01654db7affc6041f82fbde3dd1",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "agents_found": [
+    {
+      "id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "name": "Marketing Analyst",
+      "conversation_id": "74d7ad03-6038-4ed4-bab4-7b6e220d773b"
+    },
+    {
+      "id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "name": "Sales Agent",
+      "conversation_id": "98dd3e58-6d21-4f3b-b4d3-5226d55af6b7"
+    }
+  ],
+  "verdict": "PASS",
+  "results": [
+    {
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "74d7ad03-6038-4ed4-bab4-7b6e220d773b",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "help me improve our SEO",
+          "assistant": "Happy to help. Are you aiming to grow organic traffic, fix a ranking drop, or build a content calendar? And which site or market are we focusing on?",
+          "http_status": 200,
+          "word_count": 28,
+          "expect_clarify": true
+        },
+        {
+          "turn": 2,
+          "user": "organic traffic for the main marketing site",
+          "assistant": "Organic traffic means visitors who find your main marketing site through unpaid search results—mostly from Google and similar engines. If you want to increase it, the core levers are keyword research, high-quality content, technical site health, and earning backlinks (source: semrush.com, yotpo.com).\n\nIf you want to dig into your current gaps or set a plan, let me know where you want to start: rankings, content, or technical issues?",
+          "http_status": 200,
+          "word_count": 68,
+          "expect_clarify": true
+        },
+        {
+          "turn": 3,
+          "user": "should we prioritize blog posts or product pages first?",
+          "assistant": "Product pages first — they drive conversions and usually have clearer commercial intent. Blog posts are useful to support those pages with relevant content and keyword clusters, but the main product and landing pages should be your lead priority. Once those are solid, use the blog to expand reach and support rankings.",
+          "http_status": 200,
+          "word_count": 52
+        },
+        {
+          "turn": 4,
+          "user": "ok, sketch the first two product-page fixes only",
+          "assistant": "1) Show every product image above the fold—not just the first.  \n2) Use one clear primary call-to-action and cut competing upsell clutter.",
+          "http_status": 200,
+          "word_count": 22,
+          "expect_short": true
+        },
+        {
+          "turn": 5,
+          "user": "thanks — and remind me what we decided about blog vs product pages",
+          "assistant": "We decided to prioritize product pages first. The blog supports those pages, but it isn't the lead bet.",
+          "http_status": 200,
+          "word_count": 18,
+          "expect_prior_ref": true,
+          "prior_needles": [
+            "product page",
+            "product pages first",
+            "prioritize product",
+            "product pages should"
+          ]
+        }
+      ],
+      "score": {
+        "clarifying_question_fired": true,
+        "clarifying_turns": [
+          1,
+          2
+        ],
+        "prior_turn_reference": true,
+        "length_words": [
+          28,
+          68,
+          52,
+          22,
+          18
+        ],
+        "length_spread_words": 50,
+        "length_ratio": 3.78,
+        "length_variation": true,
+        "short_reply_when_asked": true,
+        "pass": true
+      }
+    },
+    {
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "agent_name": "Sales Agent",
+      "conversation_id": "98dd3e58-6d21-4f3b-b4d3-5226d55af6b7",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "our collections feel messy — where should we start?",
+          "assistant": "Start with the most visible or high-impact collection first. Clear out obvious clutter and group similar items together. That gives you a quick win and sets a standard for the rest. If you want, tell me which collection is causing the most friction and I’ll help you break it down.",
+          "http_status": 200,
+          "word_count": 50,
+          "expect_clarify": true
+        },
+        {
+          "turn": 2,
+          "user": "focus on overdue invoices over 30 days",
+          "assistant": "You want to focus on invoices that are over 30 days overdue. To move forward, do you want a list of these overdue accounts from HubSpot, or are you looking for recommended actions and messaging to follow up with those clients?",
+          "http_status": 200,
+          "word_count": 41
+        },
+        {
+          "turn": 3,
+          "user": "should we email customers or call first?",
+          "assistant": "Email first. Most sales experts and recent sources recommend starting with an email—it’s less intrusive, gives the customer time to respond, and creates a record. Calls work better for urgent or complex issues, but for initial outreach, email is the best move. If you want the research, I can share sources.",
+          "http_status": 200,
+          "word_count": 51
+        },
+        {
+          "turn": 4,
+          "user": "just the email approach, one sentence",
+          "assistant": "For a pure email approach in one sentence:  \n\"Are you the right person to discuss [your product/service] for [their company]?\"\n\nKeep the subject line clear and relevant. This style gets quick replies and avoids clutter. If you want a version tailored to your offer, just say the word.",
+          "http_status": 200,
+          "word_count": 48,
+          "expect_short": true
+        },
+        {
+          "turn": 5,
+          "user": "remind me — did we pick email or call first?",
+          "assistant": "We decided email first for the initial outreach, then call if needed.",
+          "http_status": 200,
+          "word_count": 12,
+          "expect_prior_ref": true,
+          "prior_needles": [
+            "email",
+            "email first",
+            "email approach"
+          ]
+        }
+      ],
+      "score": {
+        "clarifying_question_fired": true,
+        "clarifying_turns": [
+          1
+        ],
+        "prior_turn_reference": true,
+        "length_words": [
+          50,
+          41,
+          51,
+          48,
+          12
+        ],
+        "length_spread_words": 39,
+        "length_ratio": 4.25,
+        "length_variation": true,
+        "short_reply_when_asked": true,
+        "pass": true
+      }
+    }
+  ]
+}
