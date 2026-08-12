@@ -4,8 +4,7 @@ from __future__ import annotations
 from app.connectors.action_catalog.registry import all_catalog_action_specs, get_vendor_catalog
 from app.connectors.action_catalog.tool_aliases import registry_keys_for_catalog_tool
 from app.connectors.catalog_http.executor import make_catalog_http_executor
-from app.connectors.twilio_api import _ROUTES as TWILIO_ROUTES
-from app.connectors.twilio_api import make_twilio_executor
+from app.connectors.twilio_tools import TWILIO_ROUTES, make_twilio_executor
 
 
 def _catalog_tool_keys() -> set[str]:

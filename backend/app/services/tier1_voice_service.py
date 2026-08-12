@@ -113,6 +113,7 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             ),
         },
         "error_classes": ["billing", "auth", "rate_limit", "service_failure"],
+        "entitlement_decision_needed": False,
     }
 
 

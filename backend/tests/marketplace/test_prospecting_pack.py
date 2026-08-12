@@ -68,7 +68,8 @@ def test_prospecting_install_includes_enrichment_workflow(
         mock.eq.return_value = mock
         mock.is_.return_value = mock
         mock.limit.return_value = mock
-        mock.execute.return_value = MagicMock(data=[])
+        mock.insert.return_value = mock
+        mock.execute.side_effect = lambda: MagicMock(error=None, data=[{"id": "node-1"}])
         mock.upsert.side_effect = lambda row, **kwargs: upserts.append({"table": name, "row": row}) or mock
         return mock
 

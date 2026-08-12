@@ -15,6 +15,7 @@ from app.connectors.action_catalog.action_workflow_schema import (
     HUBSPOT_CONTACTS_CREATE_SCHEMA,
     SLACK_CONVERSATIONS_JOIN_SCHEMA,
     SLACK_POST_MESSAGE_SCHEMA,
+    VAPI_CALLS_CREATE_SCHEMA,
 )
 
 VENDOR_DEFINITIONS: tuple = (
@@ -1241,9 +1242,24 @@ VENDOR_DEFINITIONS: tuple = (
                     },
                     "required": ["assistant_id", "customer"],
                 },
+                workflow_schema=VAPI_CALLS_CREATE_SCHEMA,
             ),
         ),
-        v3=(),
+        v3=(
+            action(
+                "vapi",
+                "calls.end",
+                "End active call",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="calls:write",
+                requires_approval=True,
+                description=(
+                    "End an in-progress Vapi external AI phone call. Use when an approved "
+                    "workflow must stop an outbound or inbound call session."
+                ),
+            ),
+        ),
     ),
     build_vendor(
         "sendgrid",

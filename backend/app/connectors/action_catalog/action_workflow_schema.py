@@ -101,6 +101,21 @@ SLACK_CONVERSATIONS_JOIN_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+VAPI_CALLS_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Start outbound Vapi AI phone call",
+    required_fields=(
+        WorkflowFieldSpec("assistant id", ("assistant_id",)),
+        WorkflowFieldSpec(
+            "customer phone number",
+            ("customer", "number", "phone"),
+            sensitive=True,
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("phone number id", ("phone_number_id",), sensitive=True),
+    ),
+)
+
 GOOGLE_ADS_CAMPAIGNS_UPDATE_BUDGET_SCHEMA = ActionWorkflowSchema(
     intent_label="Update Google Ads campaign budget",
     required_fields=(

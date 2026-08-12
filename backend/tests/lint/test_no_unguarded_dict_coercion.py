@@ -78,7 +78,7 @@ def _scan_source(path_label: str, source: str) -> list[DictCoercionIssue]:
 def _scan_backend_app() -> list[DictCoercionIssue]:
     issues: list[DictCoercionIssue] = []
     for path in sorted(APP_ROOT.rglob("*.py")):
-        source = path.read_text()
+        source = path.read_text(encoding="utf-8")
         rel = str(path.relative_to(APP_ROOT.parent))
         issues.extend(_scan_source(rel, source))
     return issues

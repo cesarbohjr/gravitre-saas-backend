@@ -10,6 +10,7 @@ from app.billing.seat_context import assert_full_seat, resolve_seat_context
 from app.billing.service import get_org_billing, get_plan_for_org, get_supabase_client
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
+from app.core.safe_dict import safe_normalize_stored_dict
 
 TierName = str
 
@@ -200,8 +201,8 @@ def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
     addons_raw = (subscription or {}).get("meson_addons") or []
     addons = [str(a) for a in addons_raw] if isinstance(addons_raw, list) else []
 
-    tier_defaults = dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
-    plan_features = dict(plan.get("features") or {})
+    tier_defaults = safe_normalize_stored_dict(TIER_LIMITS.get(tier, TIER_LIMITS["free"]))
+    plan_features = safe_normalize_stored_dict(plan.get("features"))
     # E1: plan features.lite_users is SoT for included Lite seats (−1 / None = unlimited).
     plan_lite = plan_features.get("lite_users", tier_defaults.get("lite_seats_included"))
     if plan_lite is None or plan_lite is False:

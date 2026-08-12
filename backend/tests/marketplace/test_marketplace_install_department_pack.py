@@ -7,20 +7,9 @@ import pytest
 
 from app.marketplace.service import install_asset
 from app.workflows.constants import SCHEMA_VERSION
+from tests.marketplace.conftest import marketplace_table_mock as _table
 
 ASSET_ID = "22222222-2222-2222-2222-222222222222"
-
-
-def _table(select_data: list | None = None) -> MagicMock:
-    mock = MagicMock()
-    mock.select.return_value = mock
-    mock.eq.return_value = mock
-    mock.limit.return_value = mock
-    mock.insert.return_value = mock
-    mock.update.return_value = mock
-    mock.upsert.return_value = mock
-    mock.execute.return_value = MagicMock(data=select_data or [])
-    return mock
 
 
 def _department_pack_asset() -> dict:
@@ -124,7 +113,7 @@ def test_partial_pack_failure_returns_summary_not_total_failure(
             return rag
         if name in {"workflows", "workflow_defs"}:
             return workflows if name == "workflows" else workflow_defs
-        return _table([])
+        return _table()
 
     client.table.side_effect = table
 

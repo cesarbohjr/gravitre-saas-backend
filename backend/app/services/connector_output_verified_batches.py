@@ -196,6 +196,7 @@ VERIFIED_OUTPUT_BATCH_06: frozenset[str] = frozenset(
 VERIFIED_OUTPUT_BATCH_07: frozenset[str] = frozenset(
     {
         "twilio.messages.create",
+        "vapi.calls.create",
         "webhook.post",
         "workday.jobs.update",
         "workday.timeoff.request",

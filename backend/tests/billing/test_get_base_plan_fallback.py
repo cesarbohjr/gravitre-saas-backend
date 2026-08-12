@@ -13,4 +13,4 @@ def test_missing_db_command_plan_uses_default_command_catalog(_plans, _billing):
     assert plan["code"] == "command"
     assert plan["workflow_runs_included"] == 10000
     assert plan["ai_credits_included"] == 15000
-    assert plan["price_usd"] == 299
+    assert plan["price_usd"] == 349

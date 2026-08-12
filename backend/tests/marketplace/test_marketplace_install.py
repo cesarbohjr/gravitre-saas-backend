@@ -7,18 +7,7 @@ import pytest
 
 from app.marketplace.service import MarketplaceError, install_asset, preview_install, validate_connectors_for_asset
 from app.workflows.constants import SCHEMA_VERSION
-
-
-def _table(select_data: list | None = None) -> MagicMock:
-    mock = MagicMock()
-    mock.select.return_value = mock
-    mock.eq.return_value = mock
-    mock.limit.return_value = mock
-    mock.update.return_value = mock
-    mock.insert.return_value = mock
-    mock.execute.return_value = MagicMock(data=select_data or [])
-    mock.upsert.return_value = mock
-    return mock
+from tests.marketplace.conftest import marketplace_table_mock as _table
 
 
 ASSET_ID = "11111111-1111-1111-1111-111111111111"
@@ -88,7 +77,7 @@ def test_install_ai_agent_uses_create_operator(mock_plan, mock_create_operator, 
             return agents
         if name == "operators":
             return operators
-        return _table([])
+        return _table()
 
     client.table.side_effect = table
 
@@ -166,7 +155,7 @@ def test_install_workflow_writes_workflow_defs(mock_plan, mock_version):
             return workflows
         if name == "marketplace_installs":
             return installs
-        return _table([])
+        return _table()
 
     client.table.side_effect = table
 
@@ -232,8 +221,8 @@ def test_install_workflow_provisions_companion_agents(mock_plan, mock_version, m
         if name == "agents":
             return agents
         if name == "marketplace_installs":
-            return _table([])
-        return _table([])
+            return _table()
+        return _table()
 
     client.table.side_effect = table
 

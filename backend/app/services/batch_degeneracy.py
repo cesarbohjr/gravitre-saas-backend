@@ -11,6 +11,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 # Placeholder / non-answer patterns (case-insensitive exact or whole-token).
 _PLACEHOLDER_EXACT = frozenset(
     {
@@ -290,7 +292,9 @@ def assess_batch_degeneracy(
 ) -> BatchDegeneracyResult:
     """Return flagged=True when batch distribution is degenerate / low-info."""
     batch_class = batch_class_for_action(invoke_action)
-    cfg = dict(BATCH_CLASS_THRESHOLDS.get(batch_class) or BATCH_CLASS_THRESHOLDS["default"])
+    cfg = safe_normalize_stored_dict(
+        BATCH_CLASS_THRESHOLDS.get(batch_class) or BATCH_CLASS_THRESHOLDS["default"]
+    )
     if thresholds:
         cfg.update(thresholds)
     min_batch = int(cfg["min_batch"])

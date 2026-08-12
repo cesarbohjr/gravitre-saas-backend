@@ -25,7 +25,7 @@ export type KnowledgeCitation = {
   } | null
 }
 
-function contentModeHonestyLabel(mode: string | null | undefined): string | null {
+export function contentModeHonestyLabel(mode: string | null | undefined): string | null {
   if (!mode) return null
   if (mode === "curated_summary_live_html_blocked") {
     return "Curated summary — live source fetch was blocked"
@@ -82,7 +82,7 @@ export function KnowledgeCitationCard({
                 {typeof authority === "number" ? (
                   <ConfidenceBadge
                     score={authority}
-                    isEstimate={Boolean(c.authority_is_estimate ?? c.confidence_is_estimate || blocked)}
+                    isEstimate={Boolean(c.authority_is_estimate ?? (c.confidence_is_estimate || blocked))}
                   />
                 ) : null}
               </div>
