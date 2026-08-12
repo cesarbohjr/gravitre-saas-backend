@@ -326,7 +326,15 @@ def _last_assistant_snippet(conversation_history: list[dict[str, Any]] | None) -
 
 _REMIND_ME_RE = re.compile(
     r"(?i)\b(remind me|what did we (just )?(decide|pick|choose)|"
-    r"did we (pick|decide|choose)|which .+ did we)\b"
+    r"did we (pick|decide|choose)|which .+ did (we|i)|"
+    r"without asking( me)? again|did i correct|which .+ (did i|was my) correct|"
+    r"after my correction|which (market|segment|geo|cloud|law|city|hq)\b)"
+)
+
+_USER_CORRECTION_RE = re.compile(
+    r"(?i)\b(correction\b|standing( from now on)?\b|forget \w+|we ARE\b|"
+    r"actually\b.{0,40}\bnot\b|primary (market|cloud|geo|focus) is\b|"
+    r"governing law is\b|hq is\b|hiring geo is\b)"
 )
 
 
@@ -352,6 +360,31 @@ def _prior_recommendations_block(
         "PRIOR ASSISTANT RECOMMENDATIONS IN THIS THREAD "
         "(authoritative for remind-me / what-did-we-decide — restate these; "
         "do not invert or replace with a generic industry default):\n"
+        + body
+    )
+
+
+def _standing_user_corrections_block(
+    conversation_history: list[dict[str, Any]] | None,
+) -> str:
+    """Surface user corrections as standing facts for later turns (rule 6)."""
+    hits: list[str] = []
+    for row in list(conversation_history or []):
+        if str(row.get("role") or "").lower() != "user":
+            continue
+        text = str(row.get("content") or row.get("message") or "").strip()
+        if not text:
+            continue
+        if _USER_CORRECTION_RE.search(text):
+            hits.append(text[:400])
+    if not hits:
+        return ""
+    body = "\n---\n".join(hits[-6:])
+    return (
+        "STANDING USER CORRECTIONS IN THIS THREAD "
+        "(authoritative ground truth for the rest of the conversation — "
+        "apply these values; never claim they were unspecified; never revert "
+        "to the pre-correction value):\n"
         + body
     )
 
@@ -632,6 +665,9 @@ async def run_unified_turn_shadow(
             "or connector results."
         )
     remind_me = _is_remind_me_turn(message)
+    standing = _standing_user_corrections_block(conversation_history)
+    if standing:
+        user_parts.append(standing)
     prior_recs = _prior_recommendations_block(conversation_history) if remind_me else ""
     if prior_recs:
         user_parts.append(prior_recs)

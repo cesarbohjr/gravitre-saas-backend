@@ -15,6 +15,7 @@ from app.services.unified_turn_reasoning_service import (
     UnifiedTurnShadowResult,
     _is_remind_me_turn,
     _prior_recommendations_block,
+    _standing_user_corrections_block,
     apply_unified_turn_live,
     run_unified_turn_shadow,
     schedule_unified_turn_shadow,
@@ -79,6 +80,9 @@ def test_module_d_unified_spec_has_knowledge_boundary_and_drift():
 
 def test_remind_me_prior_recommendations_block_surfaces_assistant_history():
     assert _is_remind_me_turn("remind me — did we pick email or call first?")
+    assert _is_remind_me_turn(
+        "Without asking again — which governing law did I correct us to?"
+    )
     assert not _is_remind_me_turn("send an email to stephanie")
     block = _prior_recommendations_block(
         [
@@ -91,6 +95,23 @@ def test_remind_me_prior_recommendations_block_surfaces_assistant_history():
     assert "PRIOR ASSISTANT RECOMMENDATIONS" in block
     assert "Email first" in block
     assert "do not invert" in block
+
+
+def test_standing_user_corrections_block_surfaces_corrections():
+    block = _standing_user_corrections_block(
+        [
+            {"role": "user", "content": "Governing law is Delaware."},
+            {"role": "assistant", "content": "Got it — Delaware."},
+            {
+                "role": "user",
+                "content": "Correction, standing: governing law is California, not Delaware.",
+            },
+            {"role": "assistant", "content": "Got it — California."},
+        ]
+    )
+    assert "STANDING USER CORRECTIONS" in block
+    assert "California" in block
+    assert "never claim they were unspecified" in block
 
 
 def test_build_unified_turn_pending_context_empty_when_no_pending():
