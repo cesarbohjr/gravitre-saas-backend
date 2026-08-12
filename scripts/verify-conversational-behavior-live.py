@@ -145,7 +145,7 @@ def score_transcript(turns: list[dict[str, Any]]) -> dict[str, Any]:
         ratio = (max(lengths) / max(1, min(lengths))) if min(lengths) else 99.0
     else:
         spread, ratio = 0, 1.0
-        short_ok = any(
+    short_ok = any(
         len((t.get("assistant") or "").split()) <= 80
         for t in turns
         if t.get("expect_short")
