@@ -1,6 +1,8 @@
 """Module D expression range — selection + fact consistency."""
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.services.gravitre_voice import format_operator_message
@@ -202,7 +204,9 @@ def test_conversational_banks_rotate_without_immediate_repeat():
 
 def test_conversational_fact_consistency_venting_and_meta():
     vent = all_expressions("conversational.venting")
-    assert_fact_tokens_consistent(vent, ["/connectors"])
+    # Human-moment venting acknowledges pressure; no forced /connectors digression.
+    assert all(isinstance(v, str) and len(v.split()) >= 6 for v in vent)
+    assert any(re.search(r"(?i)\b(rough|tough|pressure|frustrat|hear you)\b", v) for v in vent)
     meta = all_expressions(
         "conversational.meta_capability",
         ctx={"capability": "Connected for this org right now: Apollo."},

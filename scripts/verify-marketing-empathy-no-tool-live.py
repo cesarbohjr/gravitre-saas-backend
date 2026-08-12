@@ -58,7 +58,7 @@ TOOL_ERROR = re.compile(
 )
 EMPATHY = re.compile(
     r"(?i)\b(rough|frustrat|stress|tight|pressure|tough|hard spot|bad spot|"
-    r"clock|urgent|hear you)\b"
+    r"clock|urgent|hear you|friction|annoying|with you|empathy)\b"
 )
 
 

@@ -73,19 +73,13 @@ EXPRESSION_BANKS: dict[str, tuple[str, ...]] = {
         "Okay — I'm with you. What next?",
     ),
     "conversational.venting": (
-        "That friction is real. When you want to dig in, we can check the connector "
-        "at /connectors (Connected / Healthy / Authenticated) and retry the action.",
-        "Yeah, that kind of friction wears you down. We can inspect Connected / Healthy / "
-        "Authenticated at /connectors whenever you want to dig in.",
-        "Understood — that's annoying. Next useful step is usually a connector health check "
-        "at /connectors, then a clean retry.",
-        "I hear you. No need to force it right now; when you're ready we can verify the "
-        "connector at /connectors and retry.",
-        "That sounds rough. Grounded next step: check Connected / Healthy / Authenticated "
-        "at /connectors, then try the action again.",
-        "Friction like that is real. I'm here when you want a concrete connector check "
-        "at /connectors — no ticket theater.",
-        "Got it. Empathy first: that setup pain is real. Dig in at /connectors when you want.",
+        "That's a rough spot with a tight clock. What's the one first check you want to run?",
+        "I hear you — that pressure is real. Tell me the single next check and we'll start there.",
+        "That's a tough spot. One short clause of empathy, then: what should we verify first?",
+        "Understood — stressful with that deadline. Name the first check and I'll stay with it.",
+        "That sounds rough. When you're ready, pick one diagnostic and we'll dig in.",
+        "Fair frustration. I'm with you — what's the first concrete check?",
+        "Got it. Empathy first: that's a hard moment. What do you want to inspect first?",
     ),
     "conversational.meta_capability": (
         "I am Gravitre — a calm operator for your Connected tools. {capability}",
