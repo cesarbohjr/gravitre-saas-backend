@@ -108,8 +108,7 @@ def phrase_for_conversational_category(
         "conversational.thanks": "You're welcome. Ready when you are.",
         "conversational.banter": "Ha — noted. What should we tackle next?",
         "conversational.venting": (
-            "That friction is real. When you want to dig in, we can check the connector "
-            "at /connectors (Connected / Healthy / Authenticated) and retry the action."
+            "That's a rough spot. Tell me the one check you want first and we'll start there."
         ),
         "conversational.meta_capability": (
             f"I am Gravitre — a calm operator for your Connected tools. {ctx.get('capability', '')}"

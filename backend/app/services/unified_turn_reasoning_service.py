@@ -1392,6 +1392,75 @@ async def apply_unified_turn_live(
             )
             return staged
 
+    # Rule 10 hard path: human-moment venting with no explicit ask must be served
+    # as LIVE text without classical tool fallthrough (prevents HubSpot/Apollo derail).
+    from app.services.conversational_turn_gate import (
+        heuristic_turn_shape,
+        is_human_moment_venting_no_ask,
+    )
+    from app.services.pending_reply_classifier import has_pending_family
+
+    if is_human_moment_venting_no_ask(message or "") and not has_pending_family(task_state):
+        result = await run_unified_turn_shadow(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message=message,
+            task_state=task_state,
+            conversation_history=conversation_history,
+            connected_integrations=connected_integrations,
+            client=client,
+            settings=active,
+            qa_force_tool=None,
+            qa_force_outcome=None,
+            agent=agent,
+            permitted_tools=permitted_tools,
+            spoken_mode=bool(spoken_mode),
+            classification=classification,
+            research_scope=None,
+        )
+        text = (result.user_message or "").strip()
+        if result.outcome_kind in {"skipped", "error"} or not text:
+            from app.services.conversational_reply_service import generate_conversational_reply
+
+            decision = heuristic_turn_shape(message or "")
+            if decision is None or decision.shape != "conversational":
+                from app.services.conversational_turn_gate import ConversationalGateDecision
+
+                decision = ConversationalGateDecision(
+                    shape="conversational",
+                    reason="human_moment_venting_no_ask",
+                    social_portion=(message or "").strip(),
+                    category="venting",
+                )
+            text = await generate_conversational_reply(
+                message or "",
+                decision=decision,
+                settings=active,
+                org_id=org_id,
+                task_state=task_state,
+                conversation_history=conversation_history,
+                connected_integrations=list(connected_integrations or []),
+                client=client,
+                allow_humor=False,
+            )
+            result.outcome_kind = "conversational_reply"
+            result.user_message = text
+            result.error = None
+        result.needs_tool_sse = False
+        result.live_served = True
+        result.tool_name = None
+        result.tool_invoke_action = None
+        result.tool_arguments = None
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return _unified_live_turn_payload(result, task_state)
+
     result = await run_unified_turn_shadow(
         org_id=org_id,
         user_id=user_id,
@@ -1573,16 +1642,26 @@ async def apply_unified_turn_live(
     )
     from app.services.chat_orchestration_service import ChatOrchestrationService
 
+    from app.services.conversational_turn_gate import is_human_moment_venting_no_ask
+
+    human_moment = is_human_moment_venting_no_ask(message or "")
+
     # F2: structured needs_tool_sse — orch / tool-shaped turns set the flag even
     # when the model returned conversational text (no bare apollo/slack keyword).
-    if not result.needs_tool_sse and ChatOrchestrationService.is_orchestration_intent(
-        message or "",
-        task_state or {},
-        list(result.connected_integrations or connected_integrations or []),
+    # Skip for rule-10 human-moment vents (no explicit ask).
+    if (
+        not human_moment
+        and not result.needs_tool_sse
+        and ChatOrchestrationService.is_orchestration_intent(
+            message or "",
+            task_state or {},
+            list(result.connected_integrations or connected_integrations or []),
+        )
     ):
         result.needs_tool_sse = True
     if (
-        not result.needs_tool_sse
+        not human_moment
+        and not result.needs_tool_sse
         and isinstance(classification, dict)
         and classification.get("requires_action")
         and result.outcome_kind
@@ -1595,6 +1674,9 @@ async def apply_unified_turn_live(
 
         if message_requires_classical_tool_sse(message or ""):
             result.needs_tool_sse = True
+
+    if human_moment:
+        result.needs_tool_sse = False
 
     would_defer = should_defer_unified_turn_live_to_classical(
         mode_key=mode_key,

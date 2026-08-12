@@ -96,6 +96,25 @@ def test_venting_with_explicit_ask_stays_task_or_mixed():
     assert decision.shape in {"task_shaped", "mixed"}
 
 
+def test_human_moment_never_defers_to_classical_tool_sse():
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+
+    assert (
+        should_defer_unified_turn_live_to_classical(
+            mode_key="agent",
+            outcome_kind="conversational_reply",
+            message=(
+                "I'm so frustrated — organic traffic cratered overnight and "
+                "leadership wants answers by noon"
+            ),
+            needs_tool_sse=True,
+        )
+        is False
+    )
+
+
 def test_capability_snapshot_uses_connected_list():
     text = build_capability_snapshot(connected_integrations=["hubspot", "slack"])
     assert "Hubspot" in text or "HubSpot" in text or "hubspot" in text.lower()

@@ -81,6 +81,13 @@ def should_defer_unified_turn_live_to_classical(
     }:
         return False
 
+    # Rule 10: frustration/urgency without an explicit ask must stay on LIVE text —
+    # never defer into classical tool SSE (Marketing HubSpot derail class).
+    from app.services.conversational_turn_gate import is_human_moment_venting_no_ask
+
+    if is_human_moment_venting_no_ask(msg):
+        return False
+
     # F2 primary: structured signal from LIVE reasoning.
     if needs_tool_sse is True:
         return True
