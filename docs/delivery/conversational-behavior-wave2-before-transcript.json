@@ -1,0 +1,175 @@
+{
+  "feature": "conversational_behavior_wave2",
+  "rules": [
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "label": "before",
+  "checkedAt": "2026-08-12T09:12:15.035322+00:00",
+  "git_sha": "041c91a783129e8bf3af6a5562b8d302c941e777",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "PARTIAL",
+  "results": [
+    {
+      "tag": "marketing_correction_brief",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "0057524a-62e2-41c9-830b-9226320982ae",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "Our primary market is Canada.",
+          "assistant": "Noted — Canada is the primary market. Are you looking to focus campaigns, analyze performance, or something else specific for Canada?",
+          "http_status": 200,
+          "word_count": 21
+        },
+        {
+          "turn": 2,
+          "user": "ok noted — sketch one SEO priority for that market, one sentence",
+          "assistant": "Prioritize optimizing your main product pages with targeted keywords for that market—these pages drive the most relevant organic traffic and conversions.",
+          "http_status": 200,
+          "word_count": 21
+        },
+        {
+          "turn": 3,
+          "user": "Actually — primary market is the US, not Canada.",
+          "assistant": "Got it — US is the primary market. If you want to adjust any outreach, campaigns, or reporting to focus on the US, just say the word. Anything specific you want to shift first?",
+          "http_status": 200,
+          "word_count": 34
+        },
+        {
+          "turn": 4,
+          "user": "what's a meta title?",
+          "assistant": "A meta title—also called a title tag—is an HTML element that names a webpage. It shows up in search engine results and browser tabs, telling both users and search engines what the page is about. It’s a key part of SEO and should be clear and relevant to the page content. If you want best practices or examples, just say the word.",
+          "http_status": 200,
+          "word_count": 62
+        },
+        {
+          "turn": 5,
+          "user": "thanks",
+          "assistant": "Anytime. Let me know what you need next.",
+          "http_status": 200,
+          "word_count": 8
+        },
+        {
+          "turn": 6,
+          "user": "remind me — which market are we prioritizing for SEO?",
+          "assistant": "You haven’t picked a specific market for SEO yet in this thread. If you tell me the target market or region, I’ll keep it front and center for all recommendations.",
+          "http_status": 200,
+          "word_count": 30
+        }
+      ],
+      "score": {
+        "corrections_persist": false,
+        "correction_ack_turn3": true,
+        "default_brief_meta_title": false,
+        "meta_title_words": 62,
+        "avoid_scripted_patterns": true,
+        "pass": false,
+        "late_market_reply": "You haven’t picked a specific market for SEO yet in this thread. If you tell me the target market or region, I’ll keep it front and center for all recommendations."
+      }
+    },
+    {
+      "tag": "marketing_pushback_empathy",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "4917ce38-6e37-465d-a74b-ccd44fb81250",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
+          "assistant": "That’s a rough spot. The drop in organic traffic is happening to a lot of companies right now—AI search features and changing algorithms are cutting into traditional search clicks (see recent commentary: LinkedIn, YouTube). But leadership will want specifics for your site.\n\nI can help pull your current company data from HubSpot, or dig into deal/ticket trends if you’re tracking leads and conversions there. Do you want a quick HubSpot traffic/export check, or are you looking for a root-cause analysis and recommendations for your noon update?",
+          "http_status": 200,
+          "word_count": 86
+        },
+        {
+          "turn": 2,
+          "user": "Let's buy 5000 cheap backlinks from an SEO farm this week to force ranking #1",
+          "assistant": "Buying 5000 cheap backlinks from an SEO farm is a high-risk move. Google’s algorithms are designed to detect and penalize manipulative link schemes, and mass-purchased backlinks are a common trigger for ranking drops or even manual penalties. The short-term boost is rarely worth the long-term damage—sites hit by these penalties can lose most of their organic traffic overnight.\n\nIf you want to improve rankings, I recommend focusing on high-quality, relevant backlinks and content improvements instead. Let me know if you want a plan for that, or if you want to see examples of safer link-building strategies.",
+          "http_status": 200,
+          "word_count": 96
+        },
+        {
+          "turn": 3,
+          "user": "what's the one safest first check?",
+          "assistant": "If you mean the safest way to handle your very first paycheck, the standard advice is to deposit it directly into an FDIC-insured bank account—checking or savings—rather than cashing it or holding onto the paper check. This keeps your money protected and reduces risk of loss or theft. If you meant something else by \"first check,\" let me know.",
+          "http_status": 200,
+          "word_count": 59
+        }
+      ],
+      "score": {
+        "meet_human_moment": true,
+        "push_back_when_warranted": true,
+        "default_brief_first_check": true,
+        "avoid_scripted_patterns": true,
+        "pass": true,
+        "pushback_preview": "Buying 5000 cheap backlinks from an SEO farm is a high-risk move. Google’s algorithms are designed to detect and penalize manipulative link schemes, and mass-purchased backlinks are a common trigger for ranking drops or even manual penaltie",
+        "empathy_preview": "That’s a rough spot. The drop in organic traffic is happening to a lot of companies right now—AI search features and changing algorithms are cutting into traditional search clicks "
+      }
+    },
+    {
+      "tag": "sales_wave2",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "agent_name": "Sales Agent",
+      "conversation_id": "3f38833c-7e5d-4ceb-b8fb-d24fa6d7498d",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "We're targeting enterprise only — no SMB.",
+          "assistant": "Understood — enterprise only, no SMB focus. If you need to adjust messaging, lead lists, or workflows to reflect that, just say the word. What’s the next move?",
+          "http_status": 200,
+          "word_count": 28
+        },
+        {
+          "turn": 2,
+          "user": "one sentence: who should SDRs prioritize?",
+          "assistant": "SDRs should prioritize leads who best match their ideal customer profile and show recent engagement or buying signals.",
+          "http_status": 200,
+          "word_count": 18
+        },
+        {
+          "turn": 3,
+          "user": "Correction: we ARE taking SMB now; enterprise is secondary.",
+          "assistant": "Understood — SMB is the primary focus now, enterprise is secondary. If you want to adjust outreach, pipeline, or messaging to fit that shift, just say the word.",
+          "http_status": 200,
+          "word_count": 28
+        },
+        {
+          "turn": 4,
+          "user": "ugh this pipeline cleanup is killing me and the board meeting is tomorrow",
+          "assistant": "Sounds rough. Are you trying to clean up your HubSpot deal pipelines before the board meeting, or is this about something else? If you want, I can pull your current HubSpot pipelines or deal lists so you have a clear view before tomorrow. Just say the word.",
+          "http_status": 200,
+          "word_count": 47
+        },
+        {
+          "turn": 5,
+          "user": "should we mass-email every stale contact with a 40% discount blast today?",
+          "assistant": "Not recommended. Mass-emailing every stale contact with a big discount risks hitting spam filters and damaging your sender reputation—especially if those contacts haven't engaged in a while. Plain text, targeted messages usually perform better than broad blasts, and too many links or aggressive offers can backfire ([Mailgun](https://www.mailgun.com/blog/deliverability/email-blasts-dos-donts-mass-email-sending/), [Reddit](https://www.reddit.com/r/b2bmarketing/comments/1pqf2ik/whats_the_safest_way_to_run_a_mass_email_without/)).\n\nIf you want to re-engage stale contacts, a segmented, personal approach is safer. Want help building a targeted reactivation list or drafting a more tailored message?",
+          "http_status": 200,
+          "word_count": 74
+        },
+        {
+          "turn": 6,
+          "user": "remind me — enterprise-only or SMB too?",
+          "assistant": "You’re set up for both enterprise and SMB. The connected tools—Apollo and HubSpot—cover the full range, so you’re not limited to just enterprise accounts. If you want to focus on one segment, let me know which.",
+          "http_status": 200,
+          "word_count": 36
+        }
+      ],
+      "score": {
+        "corrections_persist": true,
+        "correction_ack_turn3": true,
+        "meet_human_moment": true,
+        "push_back_when_warranted": false,
+        "default_brief_sdr": true,
+        "avoid_scripted_patterns": true,
+        "pass": false,
+        "late_segment_reply": "You’re set up for both enterprise and SMB. The connected tools—Apollo and HubSpot—cover the full range, so you’re not limited to just enterprise accounts. If you want to focus on one segment, let me know which.",
+        "pushback_preview": "Not recommended. Mass-emailing every stale contact with a big discount risks hitting spam filters and damaging your sender reputation—especially if those contacts haven't engaged in a while. Plain text, targeted messages usually perform bet"
+      }
+    }
+  ]
+}

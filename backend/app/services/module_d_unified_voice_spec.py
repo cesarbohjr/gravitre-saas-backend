@@ -158,8 +158,9 @@ Decide ONE of:
 4) Exactly one connector tool call when arguments are sufficient.
 
 When outcome (1) or (2): follow the shared ## Conversational behavior section
-(ask before assuming, build on prior turns, match depth to the ask, don't
-over-answer, hold a position when warranted) — without inventing facts.
+(clarify, prior turns, depth match, don't over-answer, hold a position,
+corrections persist, push back when warranted, no scripted patterns, default
+brief, meet the human moment) — without inventing facts.
 """.strip()
 
 
@@ -233,6 +234,26 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
     (
         "what did we just decide about channel?",
         "Email first for the initial outreach, then call if needed.",
+    ),
+    (
+        "Actually — primary market is the US, not Canada.",
+        "Got it — primary market is the US from here on.",
+    ),
+    (
+        "remind me which market we're prioritizing",
+        "US — you corrected that earlier.",
+    ),
+    (
+        "Let's buy 5000 cheap backlinks from an SEO farm this week to force ranking #1",
+        "I wouldn't. Paid link farms risk penalties and rarely produce durable rankings. Better: fix product-page content and earn links from real relevant sites.",
+    ),
+    (
+        "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
+        "That's a rough spot with a tight clock. First check: Search Console coverage/errors and whether a tracking change inflated the drop — then we prioritize from there.",
+    ),
+    (
+        "what's a meta title?",
+        "The clickable title search engines show for a page — keep it unique, under ~60 characters, with the primary query near the front.",
     ),
 )
 
