@@ -1,0 +1,59 @@
+{
+  "feature": "expert_dialogue_library",
+  "label": "before",
+  "checkedAt": "2026-08-12T19:39:13.500754+00:00",
+  "git_sha": "4dc52508254a5cc3ca6f124753102dcef303908e",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "BASELINE",
+  "passed": 2,
+  "total": 3,
+  "results": [
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "conversation_id": "d4177408-b2a8-453b-81df-4529dc819c15",
+      "question": "A deal stage update in HubSpot keeps failing — what should I check first as an SEO marketer tying pipeline to content?",
+      "assistant": "First, check that the deal exists and is in a valid current stage—HubSpot won't update if the deal ID is wrong or the stage transition isn't allowed. Make sure you have permission to edit deals, and that all required properties for the new stage are filled in (some stages require fields like amount or close date). If you're mapping content to pipeline, confirm the deal's lifecycle matches your content triggers—sometimes a mismatch there blocks updates. If you want, I can walk you through checking a specific deal or stage.",
+      "http_status": 200,
+      "score": {
+        "term_hits": 1,
+        "term_patterns_matched": 1,
+        "practitioner_framing": true,
+        "fabricated_metric": false,
+        "word_count": 89,
+        "pass": true
+      },
+      "ok": true,
+      "strict_expert_marker": false,
+      "strict_note": "before ship — distinctive library markers"
+    },
+    {
+      "tag": "sales",
+      "agent": "Sales Agent",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "conversation_id": "32884054-c2c9-42d0-9aa2-0d72a35ddce7",
+      "question": "How should we work a stalled opportunity that has a contact but no next step in the CRM?",
+      "assistant": "First, flag the opportunity as stalled in your CRM so it doesn't slip through. Then, reach out to the contact directly—reference your last interaction and ask a specific question or propose a next step (like a call or demo). If you get no response, set a clear follow-up date in the CRM. No next step means it’s at risk of being forgotten, so always log a concrete action or a scheduled check-in.",
+      "http_status": 200,
+      "score": {
+        "term_hits": 1,
+        "term_patterns_matched": 1,
+        "practitioner_framing": true,
+        "fabricated_metric": false,
+        "word_count": 72,
+        "pass": true
+      },
+      "ok": true,
+      "strict_expert_marker": false,
+      "strict_note": "before ship — distinctive library markers"
+    },
+    {
+      "tag": "finance",
+      "ok": false,
+      "error": "agent_not_found"
+    }
+  ],
+  "third_department_note": "No Finance/Legal agent in org; before ran Marketing+Sales only; after adds Competitor Research Agent specialty",
+  "strict_pass_count": 0
+}

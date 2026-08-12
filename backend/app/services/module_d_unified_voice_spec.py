@@ -274,6 +274,7 @@ def build_module_d_unified_system_prompt(
 ) -> str:
     """Compose the system prompt for the unified reasoning call."""
     from app.services.conversational_behavior import conversational_behavior_section
+    from app.services.expert_dialogue_library import expert_dialogue_prompt_section
     from app.services.voice_agent_profile import (
         agent_self_recognition_section,
         spoken_register_section,
@@ -292,6 +293,9 @@ def build_module_d_unified_system_prompt(
         self_name = agent_self_recognition_section(agent)
         if self_name:
             parts.append(self_name)
+        expert = expert_dialogue_prompt_section(agent, spoken_mode=spoken_mode)
+        if expert:
+            parts.append(expert)
     if spoken_mode:
         parts.append(spoken_register_section())
     extra = (extra_operator_rules or "").strip()

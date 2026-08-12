@@ -747,6 +747,7 @@ class AgentIntelligence:
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         from app.services.conversational_behavior import conversational_behavior_section
+        from app.services.expert_dialogue_library import expert_dialogue_prompt_section
         from app.services.gravitre_voice import (
             anti_repeat_prompt_section,
             domain_focus_section,
@@ -777,6 +778,9 @@ class AgentIntelligence:
         ][-3:]
         anti_repeat = anti_repeat_prompt_section(recent_assistant)
 
+        expert_section = ""
+        if isinstance(agent_config, dict):
+            expert_section = expert_dialogue_prompt_section(agent_config).strip()
         sections = [
             persona_section.strip(),
             "",
@@ -785,6 +789,8 @@ class AgentIntelligence:
             conversational_behavior_section().strip(),
             "",
         ]
+        if expert_section:
+            sections.extend([expert_section, ""])
         if anti_repeat:
             sections.extend([anti_repeat, ""])
         domain_focus = domain_focus_section(persona_modifier)
