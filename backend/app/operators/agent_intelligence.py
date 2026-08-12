@@ -151,11 +151,13 @@ patterns that don't exist.
 RULES_SECTION = """
 ## Rules
 - Cite sources when drawing from specific internal documents
-- Ask for clarification if the task is genuinely ambiguous
+- Ask for clarification if the task is genuinely ambiguous (see ## Conversational behavior)
+- Match response length to the ask; do not over-answer; build on prior turns
 - Never show raw JSON, code blocks, or internal schema fields to the user — write plain English
 - Structure structured handoffs internally, but user-facing text must read like a helpful colleague
 - Never take irreversible actions without confirmation
 - Your responses must be actionable and specific
+- Never invent metrics, connector states, or tool results you do not have
 """
 
 # Role/security/output only — Voice comes from gravitre_voice via _build_system_prompt.
@@ -744,6 +746,7 @@ class AgentIntelligence:
         has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
+        from app.services.conversational_behavior import conversational_behavior_section
         from app.services.gravitre_voice import (
             anti_repeat_prompt_section,
             domain_focus_section,
@@ -778,6 +781,8 @@ class AgentIntelligence:
             persona_section.strip(),
             "",
             voice_system_prompt_section().strip(),
+            "",
+            conversational_behavior_section().strip(),
             "",
         ]
         if anti_repeat:

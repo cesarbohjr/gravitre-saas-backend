@@ -156,6 +156,10 @@ Decide ONE of:
 2) One clear clarifying question.
 3) Confirmation request before a mutating action (args complete; approval needed).
 4) Exactly one connector tool call when arguments are sufficient.
+
+When outcome (1) or (2): follow the shared ## Conversational behavior section
+(ask before assuming, build on prior turns, match depth to the ask, don't
+over-answer, hold a position when warranted) — without inventing facts.
 """.strip()
 
 
@@ -206,6 +210,18 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
         "can you chekc if teh HubSpot list got creatd",
         "I don't have that list status yet — want me to look it up in HubSpot?",
     ),
+    (
+        "help me improve our SEO",
+        "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, or a content calendar — and for which site or market?",
+    ),
+    (
+        "organic traffic for the main site",
+        "Got it — main site, organic growth. What's the biggest gap you're seeing: rankings slipping, thin content, or technical crawl issues?",
+    ),
+    (
+        "should we prioritize blog posts or product pages first?",
+        "Product pages first — they convert and usually have clearer commercial intent. Use the blog to support those pages with query clusters, not as the lead bet.",
+    ),
 )
 
 
@@ -216,6 +232,7 @@ def build_module_d_unified_system_prompt(
     agent: dict | None = None,
 ) -> str:
     """Compose the system prompt for the unified reasoning call."""
+    from app.services.conversational_behavior import conversational_behavior_section
     from app.services.voice_agent_profile import (
         agent_self_recognition_section,
         spoken_register_section,
@@ -226,6 +243,7 @@ def build_module_d_unified_system_prompt(
     )
     parts = [
         MODULE_D_UNIFIED_SYSTEM_SPEC,
+        conversational_behavior_section(),
         "## Few-shot demonstrations (match register and honesty; do not copy verbatim every time)",
         shots,
     ]

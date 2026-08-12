@@ -1,0 +1,92 @@
+{
+  "feature": "conversational_behavior",
+  "label": "before",
+  "checkedAt": "2026-08-12T08:17:01.616763+00:00",
+  "git_sha": "1a7623b5ef956d8093194f2ace6b124b0c24ed46",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "agents_found": [
+    {
+      "id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "name": "Marketing Analyst",
+      "conversation_id": "99a96c5f-abe2-4085-9ce0-3cc8053c7e23"
+    }
+  ],
+  "verdict": "FAIL",
+  "rescored_notes": [
+    "Turn 1: 132-word SEO brief with no clarifying question (one-shot document).",
+    "Turn 5: denied a blog-vs-product decision that turn 3 already made — prior-ref false positive fixed.",
+    "Turn 4: 108 words when asked for two fixes only — over-answer.",
+    "Only Marketing Analyst found in org; Finance agent absent for second-agent before pass."
+  ],
+  "results": [
+    {
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "99a96c5f-abe2-4085-9ce0-3cc8053c7e23",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "help me improve our SEO",
+          "assistant": "Here’s a focused approach to improving your SEO, based on current best practices and recent research:\n\n- Identify and use relevant keywords your audience is searching for. Tools like Google Adwords can help you find traffic data for those keywords.\n- Publish authoritative, useful content that addresses your readers’ needs. Keep it updated regularly.\n- Optimize your site structure—use clear meta tags, descriptive titles, and make sure your site is easy to navigate.\n- Get quality backlinks from reputable sites in your industry.\n- Avoid distracting ads and make your site experience smooth for visitors.\n\nIf you want a more tailored plan, let me know your website URL or your main business focus, and I can dig in further. For deeper technical checks, I can also walk you through a step-by-step audit.",
+          "http_status": 200,
+          "word_count": 132,
+          "expect_clarify": true
+        },
+        {
+          "turn": 2,
+          "user": "organic traffic for the main marketing site",
+          "assistant": "Organic traffic means visitors who reach your main marketing site through unpaid search engine results—so, not ads, just regular search clicks. I don’t have direct analytics access here, so I can’t pull your current organic traffic numbers.\n\nIf you want to track or analyze organic traffic, you’d typically use tools like Google Analytics or similar web analytics platforms. Those aren’t Connected here. If you need advice on increasing organic traffic, I can summarize best practices or pull more research. Let me know which direction you want to go.",
+          "http_status": 200,
+          "word_count": 88,
+          "expect_clarify": true
+        },
+        {
+          "turn": 3,
+          "user": "should we prioritize blog posts or product pages first?",
+          "assistant": "If your goal is to drive traffic and conversions, product pages should come first. They’re what actually convert visitors into customers. Once those are in place and healthy, blog posts can help bring in more organic traffic and support your SEO.\n\nA few sources back this up: landing pages and product pages are key for ranking and conversions ([Grow and Convert](https://www.growandconvert.com/conversion-rate-optimization/landing-pages-vs-blog-posts/)), and you want those ready before focusing on blog content ([Reddit](https://www.reddit.com/r/ecommerce/comments/132tmy3/blogging_before_or_after_products_are_ready/)). Regular blog posting helps long-term, but only after your core pages are solid.\n\nShort version: product pages first, then blog.",
+          "http_status": 200,
+          "word_count": 92
+        },
+        {
+          "turn": 4,
+          "user": "ok, sketch the first two product-page fixes only",
+          "assistant": "Here are the first two fixes for common Shopify product page issues, based on current research:\n\n1. Make sure your product page displays all product images, not just the first one. Some themes or settings may hide additional images, which can hurt conversions. Check your theme settings and code to ensure all images are visible to shoppers. (Reference: Shopify Community)\n\n2. Avoid cluttering the product page with too many upsell offers or unrelated products. Focus on clear, relevant upsells that actually help the buyer, rather than distracting them from the main purchase. (Reference: Zipify Help Center)\n\nIf you want more detail or examples for either, let me know.",
+          "http_status": 200,
+          "word_count": 108,
+          "expect_short": true
+        },
+        {
+          "turn": 5,
+          "user": "thanks — and remind me what we decided about blog vs product pages",
+          "assistant": "You haven't shared a decision about blog vs product pages here yet. If you want to review or document a decision, just let me know the details and I’ll capture it. If you’re looking for recommendations or want to compare the two, I can help with that too. What’s next?",
+          "http_status": 200,
+          "word_count": 50,
+          "expect_prior_ref": true,
+          "prior_needles": [
+            "product",
+            "blog"
+          ]
+        }
+      ],
+      "score": {
+        "clarifying_question_fired": false,
+        "clarifying_turns": [],
+        "clarifying_note": "Turn 2 had soft 'let me know which direction' but turn 1 did not clarify; no real choice-shaped clarifying question on the ambiguous opener.",
+        "prior_turn_reference": false,
+        "prior_note": "Turn 5 said decision was never shared despite turn 3 recommending product pages first.",
+        "length_words": [
+          132,
+          88,
+          92,
+          108,
+          50
+        ],
+        "length_spread_words": 82,
+        "length_ratio": 2.64,
+        "length_variation": true,
+        "short_reply_when_asked": false,
+        "pass": false
+      }
+    }
+  ]
+}
