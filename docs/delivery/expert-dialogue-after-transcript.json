@@ -1,0 +1,66 @@
+{
+  "feature": "expert_dialogue_library",
+  "label": "after",
+  "checkedAt": "2026-08-12T20:09:56.370302+00:00",
+  "git_sha": "aa24bfc3aaa91613d77238b56989b7f7499cabda",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "PASS",
+  "passed": 3,
+  "total": 3,
+  "results": [
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "conversation_id": "ad2f1b71-5f56-424f-b28c-04a5f844952f",
+      "question": "A deal stage update in HubSpot keeps failing — what should I check first as an SEO marketer tying pipeline to content?",
+      "assistant": "Treat it as a CRM property problem before a content problem. First, confirm the deal’s pipeline and that the target stage exists in that pipeline—HubSpot deal stages are pipeline-specific, so using a stage from another pipeline will fail. Next, check if the deal is missing any required properties for that stage; HubSpot blocks updates if mandatory fields aren’t filled. Once the stage write works, map UTMs or landing pages to the deal associations so your content attribution is accurate.",
+      "http_status": 200,
+      "score": {
+        "term_hits": 1,
+        "term_patterns_matched": 1,
+        "practitioner_framing": true,
+        "fabricated_metric": false,
+        "word_count": 79,
+        "pass": true
+      },
+      "ok": true
+    },
+    {
+      "tag": "sales",
+      "agent": "Sales Agent",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "conversation_id": "949577f0-88fd-42af-a658-0714c2befda9",
+      "question": "How should we work a stalled opportunity that has a contact but no next step in the CRM?",
+      "assistant": "No next step means the opportunity isn’t being actively managed. Open the Opportunity, check that the stage and close date are still accurate, then log a concrete next action—like a discovery call, a mutual action plan, or a written ask to the champion. Make sure the Opportunity is linked to the right Contact and Account. If there’s no clear champion, re-qualify before moving forward or discounting. Don’t create a duplicate deal; update the existing record.",
+      "http_status": 200,
+      "score": {
+        "term_hits": 1,
+        "term_patterns_matched": 1,
+        "practitioner_framing": true,
+        "fabricated_metric": false,
+        "word_count": 75,
+        "pass": true
+      },
+      "ok": true
+    },
+    {
+      "tag": "marketing_specialty",
+      "agent": "Competitor Research Agent",
+      "agent_id": "d7575e83-62c8-5185-88e4-20d36cd49ba1",
+      "conversation_id": "4a772431-53ce-41cb-822a-e09cf91d5085",
+      "question": "Should we push a blog series or fix product-page SEO first for a new ICP?",
+      "assistant": "Product pages first. They carry commercial intent and convert; blog posts should support those pages with query clusters, not lead the bet. In HubSpot, make sure product/landing page contacts associate cleanly to Companies and Deals before you scale content enrollment into workflows.",
+      "http_status": 200,
+      "score": {
+        "term_hits": 1,
+        "term_patterns_matched": 1,
+        "practitioner_framing": true,
+        "fabricated_metric": false,
+        "word_count": 42,
+        "pass": true
+      },
+      "ok": true
+    }
+  ]
+}
