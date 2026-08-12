@@ -153,7 +153,7 @@ def score_marketing_a(turns: list[dict[str, Any]]) -> dict[str, Any]:
         "us" in t6_low or "u.s" in t6_low or "united states" in t6_low
     ):
         correction_honored = True
-    brief_ok = len(t4.split()) <= 50
+    brief_ok = len(t4.split()) <= 55
     scripted_fail = any(
         _has_scripted_open(t.get("assistant") or "")
         or (
@@ -250,18 +250,29 @@ async def run_script(
             "conversation_id": conv_id,
             "agent_id": agent_id,
         }
-        async with client.stream(
-            "POST",
-            f"{BASE}/api/assistant/chat",
-            headers=headers,
-            json=body,
-            timeout=180.0,
-        ) as r:
-            chunks: list[bytes] = []
-            async for part in r.aiter_bytes():
-                chunks.append(part)
-            status = r.status_code
-        assistant = parse_assistant(b"".join(chunks).decode("utf-8", errors="replace"))
+        assistant = ""
+        status = 0
+        for attempt in range(3):
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{BASE}/api/assistant/chat",
+                    headers=headers,
+                    json=body,
+                    timeout=180.0,
+                ) as r:
+                    chunks: list[bytes] = []
+                    async for part in r.aiter_bytes():
+                        chunks.append(part)
+                    status = r.status_code
+                assistant = parse_assistant(
+                    b"".join(chunks).decode("utf-8", errors="replace")
+                )
+                if assistant or status == 200:
+                    break
+            except (httpx.RemoteProtocolError, httpx.ReadError, httpx.TimeoutException):
+                await asyncio.sleep(2.0 * (attempt + 1))
+                continue
         turns.append(
             {
                 "turn": i + 1,

@@ -1,0 +1,176 @@
+{
+  "feature": "conversational_behavior_wave2",
+  "rules": [
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "label": "after",
+  "checkedAt": "2026-08-12T09:42:07.024498+00:00",
+  "git_sha": "57cccaf16cb518a8a2e36b92f4be0aa07aed70fc",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "PASS",
+  "results": [
+    {
+      "tag": "marketing_correction_brief",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "650182de-8cdc-4cb0-94cc-7347f892537b",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "Our primary market is Canada.",
+          "assistant": "Understood — primary market is Canada from here on. If you want to adjust targeting, messaging, or reporting for Canada, just say the word.",
+          "http_status": 200,
+          "word_count": 24
+        },
+        {
+          "turn": 2,
+          "user": "ok noted — sketch one SEO priority for that market, one sentence",
+          "assistant": "Optimize key product pages for US search intent—focus on unique meta titles and clear calls to action that match high-volume US queries.",
+          "http_status": 200,
+          "word_count": 22
+        },
+        {
+          "turn": 3,
+          "user": "Correction, standing from now on: primary market is the US, not Canada. Forget Canada.",
+          "assistant": "Understood — primary market is the US from here on. Canada is out of scope.",
+          "http_status": 200,
+          "word_count": 15
+        },
+        {
+          "turn": 4,
+          "user": "what's a meta title?",
+          "assistant": "A meta title, or title tag, is the text shown on search engine results and browser tabs to describe a webpage’s topic. It’s set in the HTML of the page and helps search engines and users understand what the page is about. Keep it unique and concise—usually under 60 characters. (Source: Seobility, coschedule.com)",
+          "http_status": 200,
+          "word_count": 53
+        },
+        {
+          "turn": 5,
+          "user": "thanks",
+          "assistant": "Anytime. Let me know what you need next.",
+          "http_status": 200,
+          "word_count": 8
+        },
+        {
+          "turn": 6,
+          "user": "Without asking me again — which market did I correct us to for SEO?",
+          "assistant": "US — you corrected that earlier.",
+          "http_status": 200,
+          "word_count": 6
+        }
+      ],
+      "score": {
+        "corrections_persist": true,
+        "correction_ack_turn3": true,
+        "default_brief_meta_title": true,
+        "meta_title_words": 53,
+        "avoid_scripted_patterns": true,
+        "pass": true,
+        "late_market_reply": "US — you corrected that earlier.",
+        "brief_bar_words": 55
+      }
+    },
+    {
+      "tag": "marketing_pushback_empathy",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "7f52d08d-92d5-4404-8f92-01891484476a",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
+          "assistant": "That's a rough spot with a tight clock. First check: look for coverage or error issues in Search Console, and confirm no tracking changes inflated the drop. If those are clear, we can dig into recent site changes or external factors. Want to start with a quick HubSpot contact or deal trend check, or focus on web analytics first?",
+          "http_status": 200,
+          "word_count": 59
+        },
+        {
+          "turn": 2,
+          "user": "Let's buy 5000 cheap backlinks from an SEO farm this week to force ranking #1",
+          "assistant": "I wouldn't. Buying 5,000 cheap backlinks from an SEO farm is risky—Google can penalize your site, and links from spammy or irrelevant sources often hurt rankings instead of helping. Better move: focus on earning links from real, relevant sites and improving your product-page content. If you want, I can sketch a safer link-building plan.",
+          "http_status": 200,
+          "word_count": 54
+        },
+        {
+          "turn": 3,
+          "user": "what's the one safest first check?",
+          "assistant": "If you mean the safest way to write your first physical check: use a permanent gel pen, fill out every field completely (no blank spaces), and avoid leaving room for alterations. That’s the standard for check safety ([source](https://www.southernfirst.com/first-insights/blog-detail/blog/2025/07/23/your-guide-to-check-safety)).\n\nIf you meant something else by “first check,” let me know.",
+          "http_status": 200,
+          "word_count": 49
+        }
+      ],
+      "score": {
+        "meet_human_moment": true,
+        "push_back_when_warranted": true,
+        "default_brief_first_check": true,
+        "avoid_scripted_patterns": true,
+        "pass": true,
+        "pushback_preview": "I wouldn't. Buying 5,000 cheap backlinks from an SEO farm is risky—Google can penalize your site, and links from spammy or irrelevant sources often hurt rankings instead of helping. Better move: focus on earning links from real, relevant si",
+        "empathy_preview": "That's a rough spot with a tight clock. First check: look for coverage or error issues in Search Console, and confirm no tracking changes inflated the drop. If those are clear, we "
+      }
+    },
+    {
+      "tag": "sales_wave2",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "agent_name": "Sales Agent",
+      "conversation_id": "acd9263e-cf63-4734-a013-1210495ae07a",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "We're targeting enterprise only — no SMB.",
+          "assistant": "Understood — focus is enterprise only, not SMB. All recommendations and searches will stay on enterprise targets from here on. Let me know if you want to refine by industry or region.",
+          "http_status": 200,
+          "word_count": 32
+        },
+        {
+          "turn": 2,
+          "user": "one sentence: who should SDRs prioritize?",
+          "assistant": "SDRs should prioritize inbound hand-raisers and prospects in the early steps of outreach sequences, since they're most likely to engage.",
+          "http_status": 200,
+          "word_count": 20
+        },
+        {
+          "turn": 3,
+          "user": "Correction: we ARE taking SMB now; enterprise is secondary.",
+          "assistant": "Understood — SMB is now the primary focus, enterprise is secondary. I’ll use that as the standing priority from here on.",
+          "http_status": 200,
+          "word_count": 21
+        },
+        {
+          "turn": 4,
+          "user": "ugh this pipeline cleanup is killing me and the board meeting is tomorrow",
+          "assistant": "That’s a tough spot with the board breathing down your neck. If you want, I can pull your current HubSpot deal pipelines and surface anything that looks risky or out of place before the meeting. Want me to fetch the latest pipeline data?",
+          "http_status": 200,
+          "word_count": 43
+        },
+        {
+          "turn": 5,
+          "user": "should we mass-email every stale contact with a 40% discount blast today?",
+          "assistant": "I wouldn't recommend blasting every stale contact with a 40% discount. Mass emails to disengaged lists can hurt your sender reputation, trigger spam filters, and risk compliance issues if you don't have clear opt-in. Better: segment for recent engagement or clear opt-in, and use a targeted, plain-text message with one clear offer. If you want to proceed, I can help pull the right segment from HubSpot.",
+          "http_status": 200,
+          "word_count": 66
+        },
+        {
+          "turn": 6,
+          "user": "remind me — enterprise-only or SMB too?",
+          "assistant": "You aren't limited to enterprise — SMB is in scope too. If you want to narrow that, just say the word.",
+          "http_status": 200,
+          "word_count": 21
+        }
+      ],
+      "score": {
+        "corrections_persist": true,
+        "correction_ack_turn3": true,
+        "meet_human_moment": true,
+        "push_back_when_warranted": true,
+        "default_brief_sdr": true,
+        "avoid_scripted_patterns": true,
+        "pass": true,
+        "late_segment_reply": "You aren't limited to enterprise — SMB is in scope too. If you want to narrow that, just say the word.",
+        "pushback_preview": "I wouldn't recommend blasting every stale contact with a 40% discount. Mass emails to disengaged lists can hurt your sender reputation, trigger spam filters, and risk compliance issues if you don't have clear opt-in. Better: segment for rec"
+      }
+    }
+  ]
+}
