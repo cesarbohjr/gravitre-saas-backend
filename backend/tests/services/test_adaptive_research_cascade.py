@@ -106,8 +106,15 @@ def test_normalize_internet_results():
     rows = normalize_internet_results(
         {
             "totalResults": 1,
-            "results": [{"title": "Example", "url": "https://example.com", "snippet": "Hello world"}],
-        }
+            "results": [
+                {
+                    "title": "HubSpot CRM example guide",
+                    "url": "https://example.com",
+                    "snippet": "HubSpot CRM practices for deal stages and contacts.",
+                }
+            ],
+        },
+        query="HubSpot CRM deal stages",
     )
     assert len(rows) == 1
     assert rows[0]["kind"] == "internet"

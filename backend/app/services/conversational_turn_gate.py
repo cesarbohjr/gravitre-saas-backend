@@ -141,7 +141,9 @@ def heuristic_turn_shape(message: str) -> ConversationalGateDecision | None:
             task_portion=text,
             category="other",
         )
-    is_meta = bool(re.search(r"(?i)what can you do|are you (an )?ai|who are you|what are you", text))
+    from app.services.conversational_reply_service import re_search_meta
+
+    is_meta = re_search_meta(text)
     if is_meta and not has_data and not (has_connector and asks_for_help):
         return ConversationalGateDecision(
             shape="conversational",

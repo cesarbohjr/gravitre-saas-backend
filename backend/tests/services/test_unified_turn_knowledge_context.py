@@ -19,6 +19,8 @@ from app.services.unified_turn_knowledge_context import (
         ("tell me about the best CRM practices for our team", True),
         ("What is NIST CSF Govern function?", True),
         ("ok", False),
+        ("What can you help me with?", False),
+        ("what tools do you have access to?", False),
     ],
 )
 def test_should_augment_informational_messages(message: str, expected: bool) -> None:

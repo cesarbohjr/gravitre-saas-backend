@@ -414,12 +414,16 @@ class UnifiedRetrievalService:
                         org_id=org_id,
                         client=client,
                     )
-                    internet_rows = normalize_internet_results(internet_payload)
+                    internet_rows = normalize_internet_results(
+                        internet_payload, query=governed_query
+                    )
                     if internet_rows:
                         rag_sources = [*rag_sources, *internet_rows]
                         for row in internet_rows:
                             sources.append({"kind": "internet", **row})
-                        internet_section = format_internet_research_section(internet_payload)
+                        internet_section = format_internet_research_section(
+                            internet_payload, query=governed_query
+                        )
                         if internet_section:
                             rag_section = (
                                 f"{rag_section}\n{internet_section}".strip()

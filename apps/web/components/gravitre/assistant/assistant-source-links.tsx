@@ -76,9 +76,8 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         const found = knowledgeCitations(invocation.result)
         if (found.length) {
           citations.push(...found)
-        } else {
-          add("Sources checked", "/sources")
         }
+        // Honest empty: do not invent a "Sources checked" chip with no citations.
         break
       }
       case "getConnectorStatus":
@@ -98,9 +97,8 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         const found = knowledgeCitations(invocation.result)
         if (found.length) {
           citations.push(...found)
-        } else {
-          add("Web sources", "#why-this-answer")
         }
+        // Honest empty when provider returned noise / nothing topical.
         break
       }
       default:
@@ -111,7 +109,15 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
   add("View audit trail", "/audit")
   add("How Gravitre keeps you in control", "/ai/help/control")
 
-  if (!links.length && !citations.length) return null
+  const webOrKbInvoked = invocations.some(
+    (inv) =>
+      inv.state === "result" &&
+      (inv.toolName === "searchWeb" ||
+        inv.toolName === "web_search" ||
+        inv.toolName === "searchKnowledgeBase"),
+  )
+
+  if (!links.length && !citations.length && !webOrKbInvoked) return null
 
   return (
     <div className="not-prose mt-3 space-y-2 text-xs text-muted-foreground">
@@ -135,6 +141,13 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
               </li>
             ))}
           </ol>
+        </div>
+      ) : webOrKbInvoked ? (
+        <div className="space-y-1">
+          <div className="font-medium text-foreground/80">Sources checked</div>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            No relevant sources found for this question.
+          </p>
         </div>
       ) : null}
       {links.length ? (

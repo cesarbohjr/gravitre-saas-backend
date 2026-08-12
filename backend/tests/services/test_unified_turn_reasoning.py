@@ -480,6 +480,9 @@ async def test_apply_unified_live_channel_override_no_use_gmail():
     "message",
     [
         "what can you do?",
+        "What can you help me with?",
+        "what are you able to do?",
+        "what tools do you have access to?",
         "are you an AI?",
         "who are you?",
         "what are you?",

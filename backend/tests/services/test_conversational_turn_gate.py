@@ -22,6 +22,7 @@ from app.services.conversational_reply_service import (
         ("thanks!", "conversational", "thanks"),
         ("haha nice", "conversational", "banter"),
         ("what can you do?", "conversational", "meta_capability"),
+        ("What can you help me with?", "conversational", "meta_capability"),
         ("ugh this HubSpot connector is being annoying", "conversational", "venting"),
         ("how are the deals looking", "task_shaped", "other"),
         ("how's our pipeline looking this week", "task_shaped", "other"),

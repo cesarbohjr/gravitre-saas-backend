@@ -26,10 +26,15 @@ def should_augment_unified_turn_with_knowledge(
     classification: dict[str, Any] | None = None,
 ) -> bool:
     """True when LIVE should prefetch RAG / knowledge packs before answering."""
+    from app.services.conversational_reply_service import re_search_meta
+
     text = (message or "").strip()
     if len(text) < 8:
         return False
     if _GREETING_HINT.match(text):
+        return False
+    # Meta/capability: answer from agent config — zero KF / web retrieval / COGS.
+    if re_search_meta(text):
         return False
     if isinstance(classification, dict) and classification.get("requires_action"):
         return False
@@ -48,7 +53,10 @@ async def _run_internet_prefetch(
     client: Any,
     settings: Settings,
 ) -> tuple[str, dict[str, Any]]:
-    from app.services.adaptive_research_cascade import format_internet_research_section
+    from app.services.adaptive_research_cascade import (
+        format_internet_research_section,
+        normalize_internet_results,
+    )
     from app.services.internet_research_query import prepare_internet_research_query
     from app.services.web_research import search_web
 
@@ -61,12 +69,17 @@ async def _run_internet_prefetch(
         org_id=org_id,
         client=client,
     )
-    internet_section = format_internet_research_section(internet_payload)
-    if not internet_section:
-        meta["internet_hit_count"] = 0
-        return "", meta
-    meta["internet_hit_count"] = len(internet_payload.get("results") or [])
+    raw_count = len(internet_payload.get("results") or [])
+    relevant = normalize_internet_results(internet_payload, query=governed_query)
+    internet_section = format_internet_research_section(
+        internet_payload, query=governed_query
+    )
+    meta["internet_raw_hit_count"] = raw_count
+    meta["internet_hit_count"] = len(relevant)
     meta["internet_provider"] = internet_payload.get("provider")
+    if not internet_section:
+        meta["internet_empty_relevant"] = raw_count > 0
+        return "", meta
     return (
         "INTERNET RESEARCH (metered; cite URLs when used):\n" + internet_section.strip(),
         meta,

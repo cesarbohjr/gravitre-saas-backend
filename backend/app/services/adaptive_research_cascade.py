@@ -2,11 +2,62 @@
 from __future__ import annotations
 
 import json
+import re
 from enum import StrEnum
 from typing import Any
 
 from app.config import Settings
 from app.services.assistant_availability import rag_sources_effectively_empty
+
+# Contentless tokens — keyword overlap alone on these must not pass relevance.
+_INTERNET_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "to",
+        "of",
+        "in",
+        "on",
+        "for",
+        "with",
+        "about",
+        "what",
+        "how",
+        "why",
+        "when",
+        "where",
+        "who",
+        "can",
+        "you",
+        "me",
+        "us",
+        "i",
+        "my",
+        "our",
+        "your",
+        "is",
+        "are",
+        "do",
+        "does",
+        "did",
+        "help",
+        "please",
+        "tell",
+        "show",
+        "get",
+        "find",
+        "best",
+        "top",
+        "vs",
+        "versus",
+    }
+)
+_TOKEN_RE = re.compile(r"[a-z0-9]{2,}")
+# Minimum topical overlap for a web hit to surface as a "source checked".
+INTERNET_RELEVANCE_FLOOR = 0.22
 
 # Real signal from summarize_retrieval_effectiveness (retrieval_provenance.py).
 THIN_RETRIEVAL_SCORE_THRESHOLD = 0.35
@@ -179,10 +230,64 @@ def should_run_intelligence_packs_stage(
     return bool(extract_pack_ids(knowledge_assignments))
 
 
-def normalize_internet_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map Tavily search_web output into rag_sources-compatible rows."""
+def _contentful_tokens(text: str) -> set[str]:
+    return {
+        tok
+        for tok in _TOKEN_RE.findall((text or "").lower())
+        if tok not in _INTERNET_STOPWORDS and len(tok) >= 3
+    }
+
+
+def score_internet_result_relevance(query: str, *, title: str, snippet: str) -> float:
+    """Topical overlap score in [0, 1] — not raw keyword hits on stopwords."""
+    q = _contentful_tokens(query)
+    if not q:
+        return 0.0
+    doc = _contentful_tokens(f"{title} {snippet}")
+    if not doc:
+        return 0.0
+    overlap = q & doc
+    if not overlap:
+        return 0.0
+    # Prefer denser overlap; title hits count double via re-adding title tokens.
+    title_hits = q & _contentful_tokens(title)
+    return min(1.0, (len(overlap) / len(q)) * 0.7 + (len(title_hits) / max(1, len(q))) * 0.5)
+
+
+def filter_relevant_internet_results(
+    query: str,
+    results: list[dict[str, Any]] | None,
+    *,
+    min_score: float = INTERNET_RELEVANCE_FLOOR,
+) -> list[dict[str, Any]]:
+    """Drop provider hits with no genuine topical connection to the query."""
+    kept: list[dict[str, Any]] = []
+    for item in results or []:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "")
+        snippet = str(item.get("snippet") or item.get("content") or "")
+        score = score_internet_result_relevance(query, title=title, snippet=snippet)
+        if score < min_score:
+            continue
+        enriched = dict(item)
+        enriched["relevance_score"] = round(score, 3)
+        kept.append(enriched)
+    return kept
+
+
+def normalize_internet_results(
+    payload: dict[str, Any],
+    *,
+    query: str | None = None,
+) -> list[dict[str, Any]]:
+    """Map search_web output into rag_sources-compatible rows (relevance-filtered)."""
+    raw = list(payload.get("results") or [])
+    q = (query or payload.get("query") or "").strip()
+    if q:
+        raw = filter_relevant_internet_results(q, raw)
     rows: list[dict[str, Any]] = []
-    for index, item in enumerate(payload.get("results") or []):
+    for index, item in enumerate(raw):
         if not isinstance(item, dict):
             continue
         title = str(item.get("title") or "Web result")
@@ -190,24 +295,29 @@ def normalize_internet_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
         snippet = str(item.get("snippet") or item.get("content") or "").strip()
         if not snippet and not url:
             continue
+        rel = float(item.get("relevance_score") or 0.55)
         rows.append(
             {
                 "id": f"internet-{index}",
                 "content": snippet,
-                "score": 0.55,
+                "score": max(0.35, min(0.9, rel)),
                 "source": title,
                 "title": title,
                 "url": url,
                 "kind": "internet",
-                "metadata": {"provider": payload.get("provider") or "tavily", "url": url},
+                "metadata": {
+                    "provider": payload.get("provider") or "tavily",
+                    "url": url,
+                    "relevance_score": rel,
+                },
             }
         )
     return rows
 
 
-def format_internet_research_section(payload: dict[str, Any]) -> str:
-    """Prompt block for cascade-injected internet results."""
-    rows = normalize_internet_results(payload)
+def format_internet_research_section(payload: dict[str, Any], *, query: str | None = None) -> str:
+    """Prompt block for cascade-injected internet results (empty when none relevant)."""
+    rows = normalize_internet_results(payload, query=query)
     if not rows:
         return ""
     body = json.dumps(

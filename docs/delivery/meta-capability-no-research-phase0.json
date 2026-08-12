@@ -1,0 +1,99 @@
+{
+  "feature": "meta_capability_no_research",
+  "label": "phase0",
+  "checkedAt": "2026-08-12T18:28:27.058138+00:00",
+  "git_sha": "40a571526cc06f153e4125a13bd5264c6e5288eb",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "historical_meta_like_research_lookups_30d_org": 0,
+  "historical_research_lookups_sampled": 77,
+  "verdict": "FAIL",
+  "passed": 1,
+  "total": 3,
+  "rows": [
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "message": "What can you help me with?",
+      "conversation_id": "21d727ff-36ad-4460-b9c1-032bfc6edc0c",
+      "http_status": 200,
+      "assistant_preview": "Right now, I can help you with HubSpot and Apollo data—searching, viewing, and managing companies, contacts, deals, and tickets. I can also run multi-step plans, check run history, and provide marketplace intelligence packs. If you want to take action in HubSpot or Apollo, just s",
+      "research_lookups_billed": true,
+      "usage_rows": [
+        {
+          "id": "6e05b8f9-4b29-4432-8f58-6bb317db5e6d",
+          "recorded_at": "2026-08-12T18:27:58.374978+00:00",
+          "metadata": {
+            "source": "research_lookup",
+            "provider": "serper",
+            "source_id": "7d8e02bbac4076f2",
+            "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "token_cogs_usd": 0.0,
+            "total_cogs_usd": 0.0,
+            "grounding_count": 1,
+            "grounding_cogs_usd": 0.0
+          }
+        }
+      ],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": false
+    },
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "message": "what are you able to do?",
+      "conversation_id": "f27cd7d0-4b42-4d02-9584-693b01efb49d",
+      "http_status": 200,
+      "assistant_preview": "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and ma",
+      "research_lookups_billed": false,
+      "usage_rows": [],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": true
+    },
+    {
+      "tag": "sales",
+      "agent": "Sales Agent",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "message": "what tools do you have access to?",
+      "conversation_id": "f78110d2-1ab5-4e9f-841d-b79eddcd8fba",
+      "http_status": 200,
+      "assistant_preview": "Right now, I have access to Apollo, HubSpot, and Platform integrations for this org. I can work with HubSpot data—companies, contacts, deals, tickets, and owners—plus run web searches and interact with web pages when needed. If you want specifics on what I can do for each, just a",
+      "research_lookups_billed": true,
+      "usage_rows": [
+        {
+          "id": "68acf7d8-f2f6-4783-99ab-e0049cf36e4a",
+          "recorded_at": "2026-08-12T18:28:19.056426+00:00",
+          "metadata": {
+            "source": "research_lookup",
+            "provider": "serper",
+            "source_id": "f193eec0915621ef",
+            "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "token_cogs_usd": 0.0,
+            "total_cogs_usd": 0.0,
+            "grounding_count": 1,
+            "grounding_cogs_usd": 0.0
+          }
+        }
+      ],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": false
+    }
+  ]
+}

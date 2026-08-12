@@ -169,15 +169,33 @@ async def generate_conversational_reply(
     return body
 
 
+# Meta / capability questions — answer from agent config only; never retrieve.
+# Prefer full-message match so "what can you help with our SEO campaign" stays task-shaped.
+_META_CAPABILITY_FULL = (
+    r"(?i)^\s*("
+    r"what can you do"
+    r"|what can you help(?:\s+me|\s+us)?(?:\s+with)?"
+    r"|what (can|do) you help (me|us)?\s*(with)?"
+    r"|how can you help(?:\s+me|\s+us)?"
+    r"|what are you able to do"
+    r"|what tools? do you (have|have access to|support|offer)"
+    r"|what('?s| is) your (capability|capabilities|skillset|skills)"
+    r"|are you (an )?(human or )?ai"
+    r"|who are you"
+    r"|what are you"
+    r"|human or ai"
+    r")\s*\??\s*$"
+)
+
+
 def re_search_meta(message: str) -> bool:
+    """True for meta/capability asks (UI suggested-prompt class + variants)."""
     import re
 
-    return bool(
-        re.search(
-            r"(?i)what can you do|are you (an )?(human or )?ai|who are you|what are you|human or ai",
-            message or "",
-        )
-    )
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(re.match(_META_CAPABILITY_FULL, text))
 
 
 async def generate_social_ack(
