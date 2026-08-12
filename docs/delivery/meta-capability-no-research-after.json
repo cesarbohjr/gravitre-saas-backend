@@ -1,0 +1,65 @@
+{
+  "feature": "meta_capability_no_research",
+  "label": "after",
+  "checkedAt": "2026-08-12T18:57:56.729393+00:00",
+  "git_sha": "4dc52508254a5cc3ca6f124753102dcef303908e",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "historical_meta_like_research_lookups_30d_org": 0,
+  "historical_research_lookups_sampled": 88,
+  "verdict": "PASS",
+  "passed": 3,
+  "total": 3,
+  "rows": [
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "message": "What can you help me with?",
+      "conversation_id": "31e0afa8-2fed-4590-b56e-23f61dc339e3",
+      "http_status": 200,
+      "assistant_preview": "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and ma",
+      "research_lookups_billed": false,
+      "usage_rows": [],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": true
+    },
+    {
+      "tag": "marketing",
+      "agent": "Marketing Analyst",
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "message": "what are you able to do?",
+      "conversation_id": "224d415d-9066-4263-bf41-e3faa612a3cd",
+      "http_status": 200,
+      "assistant_preview": "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and ma",
+      "research_lookups_billed": false,
+      "usage_rows": [],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": true
+    },
+    {
+      "tag": "sales",
+      "agent": "Sales Agent",
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "message": "what tools do you have access to?",
+      "conversation_id": "ba10bd37-5f61-489b-8e1a-986dff4f00f1",
+      "http_status": 200,
+      "assistant_preview": "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and ma",
+      "research_lookups_billed": false,
+      "usage_rows": [],
+      "internet_hit_count_audit": null,
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "noise_citation_in_reply": false,
+      "ok": true
+    }
+  ]
+}
