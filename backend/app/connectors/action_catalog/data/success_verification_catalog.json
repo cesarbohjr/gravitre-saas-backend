@@ -1440,6 +1440,12 @@
       "read_action": "vapi.calls.get",
       "reason": "Sibling GET must return the written entity id/field"
     },
+    "vapi.calls.end": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "vapi.calls.get",
+      "reason": "Confirm call ended via vapi.calls.get after terminate"
+    },
     "webhook.post": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"

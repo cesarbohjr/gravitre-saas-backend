@@ -12947,6 +12947,25 @@
         "mutate",
         "create"
       ]
+    },
+    "vapi.calls.end": {
+      "examples": [
+        "End the active Vapi AI phone call",
+        "Stop outbound Vapi call after approval",
+        "Hang up Vapi call session",
+        "terminate Vapi external call",
+        "end approved call-center call via Vapi"
+      ],
+      "tags": [
+        "vapi",
+        "calls",
+        "advanced",
+        "voice-agent",
+        "external",
+        "telephony",
+        "mutate",
+        "end"
+      ]
     }
   }
 }
