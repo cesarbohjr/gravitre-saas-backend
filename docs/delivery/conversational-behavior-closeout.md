@@ -25,6 +25,8 @@ LIVE department agents used Module D register/tone + honesty rules, but **no rea
 
 ## Deploy evidence
 
-- Feature tip: `GET https://api.gravitre.app/health` → `git_sha=041c91a783129e8bf3af6a5562b8d302c941e777` `status=ok`
+- Feature tip (rules 1–5 ship): `041c91a783129e8bf3af6a5562b8d302c941e777`
 - After probe: `conversational-behavior-after-transcript.json` — `verdict=PASS` for Marketing Analyst + Sales Agent
 - Before baseline: `conversational-behavior-before-transcript.json` — `verdict=FAIL` (rescored)
+- Wave 2 (rules 6–10) tip: `57cccaf16cb518a8a2e36b92f4be0aa07aed70fc` — see `conversational-behavior-wave2-closeout.md`
+- Reverify @ `57cccaf1` (2026-08-12): Marketing Analyst `pass=true` (clarify×2, prior ref, length 26→51→18); Sales Agent prior-ref inverted email→call once — hardened in follow-up tip (see below)

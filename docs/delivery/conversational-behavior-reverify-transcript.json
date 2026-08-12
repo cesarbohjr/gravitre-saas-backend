@@ -1,0 +1,161 @@
+{
+  "feature": "conversational_behavior",
+  "label": "reverify",
+  "checkedAt": "2026-08-12T16:58:43.829289+00:00",
+  "git_sha": "57cccaf16cb518a8a2e36b92f4be0aa07aed70fc",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "agents_found": [
+    {
+      "id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "name": "Marketing Analyst",
+      "conversation_id": "a6989e18-c917-4a2e-81c5-5b8abb4ad96a"
+    },
+    {
+      "id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "name": "Sales Agent",
+      "conversation_id": "d3e9f5e3-f456-4cf8-ad41-945cbb90b7c7"
+    }
+  ],
+  "verdict": "PARTIAL",
+  "results": [
+    {
+      "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
+      "agent_name": "Marketing Analyst",
+      "conversation_id": "a6989e18-c917-4a2e-81c5-5b8abb4ad96a",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "help me improve our SEO",
+          "assistant": "Happy to help. Are we aiming for organic traffic growth, fixing a ranking drop, or building a content calendar — and for which site or market?",
+          "http_status": 200,
+          "word_count": 26,
+          "expect_clarify": true
+        },
+        {
+          "turn": 2,
+          "user": "organic traffic for the main marketing site",
+          "assistant": "Understood — you want to grow organic traffic for the main marketing site. Are you seeing a rankings drop, thin content, or technical issues, or is this about scaling up what’s already working? That will help me target the right next steps.",
+          "http_status": 200,
+          "word_count": 42,
+          "expect_clarify": true
+        },
+        {
+          "turn": 3,
+          "user": "should we prioritize blog posts or product pages first?",
+          "assistant": "Product pages first — they drive conversions and have clearer commercial intent. Blog posts are useful to support those pages with relevant topics and internal links, but getting your product and landing pages ranking is the priority. Once those are solid, use the blog to build authority and target supporting queries.",
+          "http_status": 200,
+          "word_count": 51
+        },
+        {
+          "turn": 4,
+          "user": "ok, sketch the first two product-page fixes only",
+          "assistant": "1) Show every product image above the fold—not just the first one. Hiding extra images limits engagement and trust.\n\n2) Use one clear primary call-to-action (CTA). Cut out competing upsell clutter that distracts from the main purchase path.",
+          "http_status": 200,
+          "word_count": 38,
+          "expect_short": true
+        },
+        {
+          "turn": 5,
+          "user": "thanks — and remind me what we decided about blog vs product pages",
+          "assistant": "We decided to prioritize product pages first. The blog supports those pages, but it isn't the lead bet.",
+          "http_status": 200,
+          "word_count": 18,
+          "expect_prior_ref": true,
+          "prior_needles": [
+            "product page",
+            "product pages first",
+            "prioritize product",
+            "product pages should"
+          ]
+        }
+      ],
+      "score": {
+        "clarifying_question_fired": true,
+        "clarifying_turns": [
+          1,
+          2
+        ],
+        "prior_turn_reference": true,
+        "length_words": [
+          26,
+          42,
+          51,
+          38,
+          18
+        ],
+        "length_spread_words": 33,
+        "length_ratio": 2.83,
+        "length_variation": true,
+        "short_reply_when_asked": true,
+        "pass": true
+      }
+    },
+    {
+      "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
+      "agent_name": "Sales Agent",
+      "conversation_id": "d3e9f5e3-f456-4cf8-ad41-945cbb90b7c7",
+      "turns": [
+        {
+          "turn": 1,
+          "user": "our collections feel messy — where should we start?",
+          "assistant": "Start with the most-used or most-visible collections first. That usually means tackling the areas your team interacts with daily—think main sales lists, active lead pools, or shared resources. Clean up naming, archive what’s outdated, and set clear owner rules. Once the core is organized, the rest gets easier. If you want, I can pull a list of your main HubSpot collections to help you prioritize.",
+          "http_status": 200,
+          "word_count": 65,
+          "expect_clarify": true
+        },
+        {
+          "turn": 2,
+          "user": "focus on overdue invoices over 30 days",
+          "assistant": "To focus on overdue invoices over 30 days, start by identifying accounts with invoices past due by more than a month. Prioritize the largest or most critical balances first. Then, send clear reminders stating the invoice is 30 days overdue and requires urgent attention. If reminders don’t work, escalate with phone calls or a payment plan discussion.\n\nIf you want to pull a list of these accounts from HubSpot, let me know if you want to search by company, contact, or deal — and any filters you want applied.",
+          "http_status": 200,
+          "word_count": 89
+        },
+        {
+          "turn": 3,
+          "user": "should we email customers or call first?",
+          "assistant": "Start with email. Most sales experts and recent sources recommend emailing first for outreach—it gives the customer time to respond on their terms and creates a record. Calls are better for urgent or complex issues, but for initial contact, email leads ([source](https://salesscripter.com/cold-call-or-cold-email-first-best-cold-outreach-sequence/), [source](https://www.linkedin.com/pulse/do-you-call-email-first-agree-email-first-rule-ankit-shah)). If you want to switch to calls later, you'll have context from their reply.",
+          "http_status": 200,
+          "word_count": 57
+        },
+        {
+          "turn": 4,
+          "user": "just the email approach, one sentence",
+          "assistant": "For one-sentence email outreach: keep it direct, specific, and personal. Example: “Are you the right person to discuss [topic] at [company]?” That’s the whole message—no filler, just the ask.",
+          "http_status": 200,
+          "word_count": 29,
+          "expect_short": true
+        },
+        {
+          "turn": 5,
+          "user": "remind me — did we pick email or call first?",
+          "assistant": "We decided to call first, then send an email referencing the call. That sequence tends to get better results.",
+          "http_status": 200,
+          "word_count": 19,
+          "expect_prior_ref": true,
+          "prior_needles": [
+            "email",
+            "email first",
+            "email approach"
+          ]
+        }
+      ],
+      "score": {
+        "clarifying_question_fired": false,
+        "clarifying_turns": [],
+        "prior_turn_reference": true,
+        "length_words": [
+          65,
+          89,
+          57,
+          29,
+          19
+        ],
+        "length_spread_words": 70,
+        "length_ratio": 4.68,
+        "length_variation": true,
+        "short_reply_when_asked": true,
+        "pass": false
+      }
+    }
+  ]
+}

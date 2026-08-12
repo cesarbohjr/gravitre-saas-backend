@@ -121,6 +121,12 @@ def _references_prior(text: str, needles: list[str]) -> bool:
         low,
     ):
         return False
+    # Inverted channel recall (said call-first when email-first was decided).
+    if any("email" in (n or "").lower() for n in needles) and re.search(
+        r"(?i)(call first|decided to call|pick(?:ed)? call)",
+        low,
+    ):
+        return False
     return any(n.lower() in low for n in needles if n)
 
 
