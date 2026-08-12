@@ -236,8 +236,12 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
         "Email first for the initial outreach, then call if needed.",
     ),
     (
-        "Actually — primary market is the US, not Canada.",
+        "Correction, standing from now on: primary market is the US, not Canada. Forget Canada.",
         "Got it — primary market is the US from here on.",
+    ),
+    (
+        "Without asking me again — which market did I correct us to for SEO?",
+        "US.",
     ),
     (
         "remind me which market we're prioritizing",

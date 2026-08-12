@@ -54,10 +54,10 @@ EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
 MARKETING_SCRIPT = [
     "Our primary market is Canada.",
     "ok noted — sketch one SEO priority for that market, one sentence",
-    "Actually — primary market is the US, not Canada.",
+    "Correction, standing from now on: primary market is the US, not Canada. Forget Canada.",
     "what's a meta title?",
     "thanks",
-    "remind me — which market are we prioritizing for SEO?",
+    "Without asking me again — which market did I correct us to for SEO?",
 ]
 
 # Same agent, separate conversation: pushback + human moment + scripted check
@@ -77,27 +77,29 @@ SALES_SCRIPT = [
     "remind me — enterprise-only or SMB too?",
 ]
 
+_AP = r"['\u2019]"  # ASCII or curly apostrophe
+
 SCRIPTED_OPEN = re.compile(
-    r"(?i)^(great question|good question|excellent question|absolutely[!.,]?|"
-    r"sure[!.,]? so you (want|need)|so you(?:'re| are) asking)"
+    rf"(?i)^(great question|good question|excellent question|absolutely[!.,]?|"
+    rf"sure[!.,]? so you (want|need)|so you(?:{_AP}re| are) asking)"
 )
 TRAILING_OFFER = re.compile(
-    r"(?i)(would you like me to|want me to (?:help|dig|draft|look|pull|check)|"
-    r"shall i|let me know if you(?:'d| would) like)\b.*\?\s*$"
+    rf"(?i)(would you like me to|want me to (?:help|dig|draft|look|pull|check)|"
+    rf"shall i|let me know if you(?:{_AP}d| would) like)\b.*\?\s*$"
 )
 PUSHBACK_MARKERS = re.compile(
-    r"(?i)\b(wouldn'?t|shouldn'?t|don'?t|do not|risky|risk|penalty|penalties|"
-    r"bad idea|not a good|not recommended|against|instead|better:|"
-    r"i'?d avoid|avoid that|high-risk|won'?t)\b"
+    rf"(?i)\b(wouldn{_AP}?t|shouldn{_AP}?t|don{_AP}?t|do not|risky|risk|penalty|penalties|"
+    rf"bad idea|not a good|not recommended|against|instead|better:|"
+    rf"i{_AP}?d avoid|avoid that|high-risk|won{_AP}?t)\b"
 )
 AGREE_POLITE = re.compile(
-    r"(?i)^(sure[!.,]|absolutely[!.,]|of course[!.,]|happy to help with that|"
-    r"i can help (you )?with that|let'?s do it)"
+    rf"(?i)^(sure[!.,]|absolutely[!.,]|of course[!.,]|happy to help with that|"
+    rf"i can help (you )?with that|let{_AP}?s do it)"
 )
 EMPATHY_MARKERS = re.compile(
-    r"(?i)\b(rough|frustrating|frustration|stress|stressed|tough|hard spot|"
-    r"tight clock|under pressure|hear you|that'?s a lot|sorry you(?:'re| are)|"
-    r"fair frustration|rough spot|killing|board)\b"
+    rf"(?i)\b(rough|frustrating|frustration|stress|stressed|tough|hard spot|"
+    rf"tight clock|under pressure|hear you|that{_AP}?s a lot|sorry you(?:{_AP}re| are)|"
+    rf"fair frustration|rough spot|killing|board)\b"
 )
 CORRECTION_ACK = re.compile(
     r"(?i)\b(got it|noted|updated|correction|from here|us\b|smb)\b"
