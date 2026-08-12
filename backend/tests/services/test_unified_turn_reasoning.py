@@ -13,6 +13,8 @@ from app.services.module_d_unified_voice_spec import (
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
 from app.services.unified_turn_reasoning_service import (
     UnifiedTurnShadowResult,
+    _is_remind_me_turn,
+    _prior_recommendations_block,
     apply_unified_turn_live,
     run_unified_turn_shadow,
     schedule_unified_turn_shadow,
@@ -73,6 +75,22 @@ def test_module_d_unified_spec_has_knowledge_boundary_and_drift():
     assert "Imperfect input" in MODULE_D_UNIFIED_SYSTEM_SPEC
     assert "I think you meant" in MODULE_D_UNIFIED_SYSTEM_SPEC
     assert "sned emial" in text.lower()
+
+
+def test_remind_me_prior_recommendations_block_surfaces_assistant_history():
+    assert _is_remind_me_turn("remind me — did we pick email or call first?")
+    assert not _is_remind_me_turn("send an email to stephanie")
+    block = _prior_recommendations_block(
+        [
+            {"role": "user", "content": "email or call?"},
+            {"role": "assistant", "content": "Email first is usually the better move."},
+            {"role": "user", "content": "just the email approach"},
+            {"role": "assistant", "content": "One-sentence email, clear ask."},
+        ]
+    )
+    assert "PRIOR ASSISTANT RECOMMENDATIONS" in block
+    assert "Email first" in block
+    assert "do not invert" in block
 
 
 def test_build_unified_turn_pending_context_empty_when_no_pending():

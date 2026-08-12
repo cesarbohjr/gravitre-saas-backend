@@ -324,6 +324,38 @@ def _last_assistant_snippet(conversation_history: list[dict[str, Any]] | None) -
     return None
 
 
+_REMIND_ME_RE = re.compile(
+    r"(?i)\b(remind me|what did we (just )?(decide|pick|choose)|"
+    r"did we (pick|decide|choose)|which .+ did we)\b"
+)
+
+
+def _is_remind_me_turn(message: str | None) -> bool:
+    return bool(_REMIND_ME_RE.search((message or "").strip()))
+
+
+def _prior_recommendations_block(
+    conversation_history: list[dict[str, Any]] | None,
+) -> str:
+    """Surface recent assistant recommendations for remind-me turns (anti-invert)."""
+    prior: list[str] = []
+    for row in list(conversation_history or []):
+        if str(row.get("role") or "").lower() != "assistant":
+            continue
+        text = str(row.get("content") or row.get("message") or "").strip()
+        if text:
+            prior.append(text[:500])
+    if not prior:
+        return ""
+    body = "\n---\n".join(prior[-4:])
+    return (
+        "PRIOR ASSISTANT RECOMMENDATIONS IN THIS THREAD "
+        "(authoritative for remind-me / what-did-we-decide — restate these; "
+        "do not invert or replace with a generic industry default):\n"
+        + body
+    )
+
+
 def _resolve_model(settings: Settings, *, task_shaped: bool = False) -> str:
     from app.config import MODEL_TIERS
 
@@ -599,7 +631,12 @@ async def run_unified_turn_shadow(
             "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
             "or connector results."
         )
-    if client is not None and org_id:
+    remind_me = _is_remind_me_turn(message)
+    prior_recs = _prior_recommendations_block(conversation_history) if remind_me else ""
+    if prior_recs:
+        user_parts.append(prior_recs)
+
+    if client is not None and org_id and not remind_me:
         from app.services.unified_turn_knowledge_context import (
             build_unified_turn_knowledge_context,
         )
@@ -632,7 +669,9 @@ async def run_unified_turn_shadow(
             user_parts.append(knowledge_block)
         unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
     else:
-        unified_turn_knowledge_meta = None
+        unified_turn_knowledge_meta = (
+            {"skipped": "remind_me_turn"} if remind_me else None
+        )
     user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 
