@@ -51,7 +51,7 @@ FINANCE_SCRIPT = [
     "focus on overdue invoices over 30 days",
     "should we email customers or call first?",
     "just the email approach, one sentence",
-    "what did we just decide about channel?",
+    "remind me — did we pick email or call first?",
 ]
 
 
