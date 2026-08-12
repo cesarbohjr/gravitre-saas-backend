@@ -383,7 +383,8 @@ def _standing_user_corrections_block(
     return (
         "STANDING USER CORRECTIONS IN THIS THREAD "
         "(authoritative ground truth for the rest of the conversation — "
-        "apply these values; never claim they were unspecified; never revert "
+        "when entries conflict, the LATEST correction wins; "
+        "apply that value; never claim it was unspecified; never revert "
         "to the pre-correction value):\n"
         + body
     )
@@ -813,15 +814,22 @@ async def run_unified_turn_shadow(
         for prog_round in range(2):
             from app.services.narrowed_tools import openai_tool_payload
 
+            # Pure conversational / human-moment venting: never attach tools.
+            # Empathy-warranting turns must not derail into connector calls (rule 10).
+            conversational_no_tools = shape_label == "conversational"
+            round_tools = [] if conversational_no_tools else list(attach_tools)
             kwargs: dict[str, Any] = {
                 "model": model,
                 "messages": messages,
-                "tools": [openai_tool_payload(t) for t in list(attach_tools)],
-                "tool_choice": "auto",
+                "tool_choice": "none" if conversational_no_tools else "auto",
             }
+            if round_tools:
+                kwargs["tools"] = [openai_tool_payload(t) for t in round_tools]
             if _supports_custom_temperature(model):
                 kwargs["temperature"] = 0.2
-            assert_tools_narrowed(attach_tools, where=f"unified_turn.round_{prog_round}")
+            assert_tools_narrowed(round_tools, where=f"unified_turn.round_{prog_round}")
+            if conversational_no_tools:
+                breakdown["conversational_no_tools"] = True
             round_start = time.perf_counter()
             completion = await _complete_unified_turn(
                 router,

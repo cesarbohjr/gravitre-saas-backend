@@ -374,7 +374,13 @@ def is_task_shaped_for_retrieval(message: str) -> tuple[bool, str, str]:
 
     decision = heuristic_turn_shape(message)
     if decision is None:
-        return True, "ambiguous_taskish", (message or "").strip()
+        # Fail closed to retrieval only when not an unrecognized human-moment vent.
+        from app.services.conversational_turn_gate import is_human_moment_venting_no_ask
+
+        text = (message or "").strip()
+        if is_human_moment_venting_no_ask(text):
+            return False, "conversational", text
+        return True, "ambiguous_taskish", text
     if decision.shape == "conversational":
         return False, "conversational", (message or "").strip()
     if decision.shape == "mixed":

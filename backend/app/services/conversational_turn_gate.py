@@ -45,7 +45,31 @@ _SOCIAL_HINT_RE = re.compile(
     r"how(?:'s|\s+is)\s+your\s+day|weather|"
     r"what\s+can\s+you\s+do|are\s+you\s+(?:an\s+)?ai|"
     r"who\s+are\s+you|what\s+are\s+you|"
-    r"ugh|annoying|frustrating|this\s+sucks"
+    r"ugh|annoying|frustrating|frustrated|frustration|"
+    r"stressed|stressful|under\s+pressure|this\s+sucks|"
+    r"killing\s+me|rough\s+spot|bad\s+spot|tight\s+clock"
+    r")\b"
+)
+
+# Human-moment / venting lexicon (rule 10) — includes "frustrated" not only "frustrating".
+_VENTING_RE = re.compile(
+    r"(?i)\b("
+    r"ugh|annoying|frustrating|frustrated|frustration|"
+    r"stressed|stressful|under\s+pressure|this\s+sucks|"
+    r"killing\s+me|cratered|meltdown|panicking|panic"
+    r")\b"
+)
+
+# Explicit asks that keep a vent in task/mixed mode (still needs tools).
+# Avoid bare nouns like "draft" / past-tense problem description ("sent").
+_EXPLICIT_TASK_ASK_RE = re.compile(
+    r"(?i)\b("
+    r"can you|could you|please|help me|"
+    r"fix(?:\s+it|\s+this|\s+the)?|reconnect|"
+    r"check (?:on|my|our|the|if|whether)|debug|"
+    r"show me|look up|search|find|list|pull|"
+    r"create|send (?:me|an?|the)|post|update|"
+    r"draft (?:me|an?|the|us)|enrich|run (?:the|a|an|my|our)"
     r")\b"
 )
 
@@ -110,30 +134,27 @@ def heuristic_turn_shape(message: str) -> ConversationalGateDecision | None:
     has_social = bool(_SOCIAL_HINT_RE.search(text))
     has_data = bool(_DATA_TASK_RE.search(text))
     has_connector = bool(_CONNECTOR_HINT_RE.search(text))
-    is_vent = bool(re.search(r"(?i)\bugh|annoying|frustrating|sucks\b", text))
-    asks_for_help = bool(
-        re.search(
-            r"(?i)\b(can you|could you|please|fix|reconnect|help me|check|debug)\b",
-            text,
-        )
-    )
-    # Mild venting about a connector with no ask → conversational empathy, not task mode.
-    if is_vent and has_connector and not asks_for_help and not _looks_mixed(text):
+    is_vent = bool(_VENTING_RE.search(text))
+    asks_for_help = bool(_EXPLICIT_TASK_ASK_RE.search(text))
+    # Rule 10: frustration/urgency with no explicit ask → conversational first.
+    # Do not treat problem-description words (pipeline, traffic, deals) as a tool
+    # request when the user is venting without "show me / pull / please / check…".
+    if is_vent and not asks_for_help and not _looks_mixed(text):
         return ConversationalGateDecision(
             shape="conversational",
-            reason="venting_no_ask",
+            reason="human_moment_venting_no_ask",
             social_portion=text,
             category="venting",
         )
     if has_data or has_connector:
-        if has_social and _looks_mixed(text):
+        if (has_social or is_vent) and _looks_mixed(text):
             social, task = _split_mixed(text)
             return ConversationalGateDecision(
                 shape="mixed",
                 reason="social_plus_task_heuristic",
                 social_portion=social,
                 task_portion=task or text,
-                category="other",
+                category="venting" if is_vent else "other",
             )
         return ConversationalGateDecision(
             shape="task_shaped",
@@ -157,7 +178,7 @@ def heuristic_turn_shape(message: str) -> ConversationalGateDecision | None:
         cat = "small_talk"
         if re.search(r"(?i)\bhaha|lol|lmao|heh|funny|joke", text):
             cat = "banter"
-        if re.search(r"(?i)\bugh|annoying|frustrating|sucks\b", text):
+        if _VENTING_RE.search(text):
             cat = "venting"
         if is_meta:
             cat = "meta_capability"
@@ -258,6 +279,14 @@ async def classify_turn_shape(
             category="other",
             used_model=False,
         )
+
+
+def is_human_moment_venting_no_ask(message: str) -> bool:
+    """True when the message is frustration/urgency without an explicit tool ask."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    return bool(_VENTING_RE.search(text)) and not bool(_EXPLICIT_TASK_ASK_RE.search(text))
 
 
 def should_offer_conversational_path(

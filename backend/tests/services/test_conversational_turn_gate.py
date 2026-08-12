@@ -70,6 +70,32 @@ def test_venting_without_connector_word_is_conversational():
     assert decision.category == "venting"
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
+        "ugh this pipeline cleanup is killing me and the board meeting is tomorrow",
+        "I'm under pressure — leadership wants the vendor on the box in the next hour",
+        "I'm stressed — sales already sent the draft and the counterparty wants a signature today",
+    ],
+)
+def test_human_moment_venting_without_ask_is_conversational(message):
+    """Rule 10: frustrated/stressed problem descriptions must not become tool turns."""
+    decision = heuristic_turn_shape(message)
+    assert decision is not None
+    assert decision.shape == "conversational"
+    assert decision.category == "venting"
+    assert decision.reason == "human_moment_venting_no_ask"
+
+
+def test_venting_with_explicit_ask_stays_task_or_mixed():
+    decision = heuristic_turn_shape(
+        "I'm so frustrated — please pull our HubSpot deals from yesterday"
+    )
+    assert decision is not None
+    assert decision.shape in {"task_shaped", "mixed"}
+
+
 def test_capability_snapshot_uses_connected_list():
     text = build_capability_snapshot(connected_integrations=["hubspot", "slack"])
     assert "Hubspot" in text or "HubSpot" in text or "hubspot" in text.lower()
