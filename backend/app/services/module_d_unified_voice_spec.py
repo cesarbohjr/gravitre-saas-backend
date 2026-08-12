@@ -222,6 +222,18 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
         "should we prioritize blog posts or product pages first?",
         "Product pages first — they convert and usually have clearer commercial intent. Use the blog to support those pages with query clusters, not as the lead bet.",
     ),
+    (
+        "ok, sketch the first two product-page fixes only",
+        "1) Show every product image above the fold — not just the first. 2) Put one clear primary CTA and cut competing upsell clutter.",
+    ),
+    (
+        "thanks — and remind me what we decided about blog vs product pages",
+        "We decided product pages first; blog supports them, it isn't the lead bet.",
+    ),
+    (
+        "what did we just decide about channel?",
+        "Email first for the initial outreach, then call if needed.",
+    ),
 )
 
 
