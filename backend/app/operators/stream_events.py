@@ -37,6 +37,7 @@ class AssistantStreamComplete:
     message_id: str | None = None
     confidence: dict[str, Any] | None = None
     answer_explanation: str | None = None
+    evidence: dict[str, Any] | None = None
     validation: dict[str, Any] | None = None
     conflicts: list[dict[str, Any]] | None = None
     refined_query: str | None = None

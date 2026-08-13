@@ -520,6 +520,18 @@ class ChatOrchestrationService:
                     conversation_id, org_id, client=client
                 )
 
+            if intent == "slot_answer":
+                # Plan/step confirm is not a slot form — ask, don't assume unrelated.
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_ambiguous_clarify(snap),
+                    "task_state": task_state,
+                    "pending_task": self._pending_task_payload(task_state),
+                    "pending_reply_intent": intent,
+                    "block_fabrication": True,
+                }
+
             if intent == "confirm":
                 if status == "awaiting_plan_confirm":
                     return await self._start_execution(

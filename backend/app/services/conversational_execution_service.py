@@ -255,7 +255,7 @@ class ConversationalExecutionService:
                 task_state=task_state,
                 settings=self.settings,
                 org_id=org_id,
-                use_model=False,
+                use_model=True,
             )
             emit_pending_reply_audit(
                 client=client,

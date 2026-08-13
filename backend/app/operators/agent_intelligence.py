@@ -1050,11 +1050,20 @@ class AgentIntelligence:
         from app.services.user_facing_copy_guard import finalize_user_facing_message
 
         content = finalize_user_facing_message(content, context="assistant_finalize")
+        from app.services.cognitive_evidence_envelope import build_evidence_envelope
+
+        evidence = build_evidence_envelope(
+            recommendation=content,
+            why=explanation,
+            sources=rag_sources,
+            confidence=confidence,
+        )
         return {
             "content": content,
             "validation": validation,
             "confidence": confidence,
             "explanation": explanation,
+            "evidence": evidence,
             "context_profile": turn_context.context_profile if turn_context else None,
             "context_explanation": turn_context.context_explanation if turn_context else None,
         }
@@ -1632,23 +1641,56 @@ class AgentIntelligence:
                         resume_goal[:120],
                     )
                 elif plan_intent == "unclear":
-                    # Unrelated intervening turn — archive sticky plan so a later
-                    # coincidental "yes" cannot resume it.
+                    # Phase A: never silently archive. Ask whether to keep or drop
+                    # the sticky plan — classifier-as-final-answer was the bug class.
                     await get_conversation_state_service(active_settings).update_task_state(
                         conversation_id,
                         org_id,
                         {
-                            "current_plan": None,
-                            "pending_steps": [],
-                            "completed_steps": [],
+                            "pending_hold_prompt": True,
+                            "pending_hold_new_request": task_text,
+                            "last_pending_reply_intent": "ambiguous",
                         },
                         client=client,
                     )
                     logger.info(
-                        "orphan_strategic_plan_superseded conversation_id=%s org_id=%s",
+                        "orphan_strategic_plan_clarify conversation_id=%s org_id=%s",
                         conversation_id,
                         org_id,
                     )
+                    goal_note = resume_goal[:160] if resume_goal else "the pending plan"
+                    clarify_msg = (
+                        f"I still have a pending plan ({goal_note}). "
+                        "Reply `abandon` to drop it and handle your new message, "
+                        "or `hold` to keep it aside — I won't guess."
+                    )
+                    text_id, start_event = sse_text_start()
+                    yield start_event
+                    yield sse_text_delta(text_id, clarify_msg)
+                    yield sse_text_end(text_id)
+                    yield sse_intelligence_metadata(
+                        message_id=message_id,
+                        confidence={"score": 0.4, "needs_clarification": True},
+                        answer_explanation="orphan_plan_unclear_ask",
+                        conflicts=None,
+                        refined_query=None,
+                        validation=None,
+                        effective_mode=mode_key,
+                        pipeline_tier=pipeline_tier,
+                        routing_tier=routing_control.tier,
+                        routing=routing_sse,
+                    )
+                    yield AssistantStreamComplete(
+                        full_content=clarify_msg,
+                        tool_results=[],
+                        react_result=None,
+                        model="pending_clarify",
+                        message_id=message_id,
+                        confidence={"score": 0.4, "needs_clarification": True},
+                        answer_explanation="orphan_plan_unclear_ask",
+                        dialogue_mode="clarifying",
+                    )
+                    return
 
         dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
         sentiment = (
@@ -2323,6 +2365,7 @@ class AgentIntelligence:
                 client=client,
                 environment_name=environment_name,
                 source="chat",
+                conversation_turns=conversation_history,
             )
             if connector_turn and connector_turn.get("stop_pipeline"):
                 task_state = connector_turn.get("task_state") or task_state
@@ -3302,17 +3345,37 @@ class AgentIntelligence:
 
         from app.services.verification_critic_service import get_verification_critic_service
 
+        # Phase D item 5 — mandatory critic on consequential writes / high-risk actions.
+        _cls = pipeline_classification if isinstance(pipeline_classification, dict) else {}
+        _mandatory_critic = bool(
+            _cls.get("requires_approval")
+            or _cls.get("requires_write_approval")
+            or _cls.get("is_write")
+            or _cls.get("is_destructive")
+            or str(_cls.get("risk_level") or "").lower() in {"high", "critical"}
+            or str(_cls.get("intent") or "").lower()
+            in {"write_confirm", "enrich", "extension_action", "workflow_execution"}
+        )
         critic = await get_verification_critic_service(active_settings).verify_before_delivery(
             query=task_text,
             answer=full_content,
-            classification=pipeline_classification,
+            classification=_cls,
             routing_tier=routing_control.tier,
             rag_sources=rag_sources,
             tool_results=tool_results,
             org_id=org_id,
+            mandatory=_mandatory_critic,
         )
         if not critic.get("passed") and critic.get("revised_answer"):
             full_content = str(critic.get("revised_answer") or full_content)
+        elif _mandatory_critic and not critic.get("passed"):
+            # Fail closed: do not deliver an unrevised consequential write recommendation.
+            caveat = (
+                "\n\nI could not complete mandatory verification for this consequential action. "
+                "Please review the details carefully before approving any write."
+            )
+            if caveat.strip() not in full_content:
+                full_content = f"{full_content.rstrip()}{caveat}"
 
         # Patterns 4 + 14 — reflection loop + advisory self-heal (fail-open).
         reflection_meta: dict[str, Any] = {}
@@ -3494,6 +3557,14 @@ class AgentIntelligence:
             react_perf=react_perf,
         )
 
+        from app.services.cognitive_evidence_envelope import build_evidence_envelope
+
+        stream_evidence = finalized.get("evidence") or build_evidence_envelope(
+            recommendation=full_content,
+            why=str(finalized.get("explanation") or ""),
+            sources=rag_sources,
+            confidence=finalized.get("confidence"),
+        )
         yield AssistantStreamComplete(
             full_content=full_content,
             tool_results=tool_results,
@@ -3504,6 +3575,7 @@ class AgentIntelligence:
             message_id=message_id,
             confidence=finalized["confidence"],
             answer_explanation=finalized["explanation"],
+            evidence=stream_evidence,
             validation=finalized["validation"],
             conflicts=rag_conflicts,
             refined_query=refined_query if refined_query != task_text else None,

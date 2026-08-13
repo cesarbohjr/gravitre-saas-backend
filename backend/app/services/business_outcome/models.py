@@ -180,7 +180,9 @@ def _sections_to_dict(sections: BusinessOutcomeSections) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if sections.summary:
         out["summary"] = sections.summary
-    # impact intentionally never fabricated
+    # Qualitative impact only when stamped (e.g. PreAction estimated_impact) — never invent $.
+    if sections.impact:
+        out["impact"] = sections.impact
     if sections.evidence and (sections.evidence.links or sections.evidence.entity_id):
         out["evidence"] = {
             "links": [asdict(link) for link in sections.evidence.links],

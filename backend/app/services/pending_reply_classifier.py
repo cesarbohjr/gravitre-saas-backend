@@ -404,6 +404,27 @@ def classify_pending_reply_fast(
     return None
 
 
+def _format_conversation_for_classifier(
+    conversation_turns: list[dict[str, Any]] | None,
+    *,
+    max_turns: int = 24,
+) -> str:
+    """Full recent conversation for model fallback — not a retrieval cut."""
+    if not conversation_turns:
+        return ""
+    lines: list[str] = []
+    for turn in conversation_turns[-max_turns:]:
+        if not isinstance(turn, dict):
+            continue
+        role = str(turn.get("role") or turn.get("speaker") or "user").strip().lower()
+        content = str(turn.get("content") or turn.get("text") or turn.get("message") or "").strip()
+        if not content:
+            continue
+        label = "Assistant" if role in {"assistant", "ai", "model"} else "User"
+        lines.append(f"{label}: {content[:1200]}")
+    return "\n".join(lines)
+
+
 async def classify_pending_reply(
     message: str,
     *,
@@ -411,7 +432,15 @@ async def classify_pending_reply(
     settings: Settings | None = None,
     org_id: str | None = None,
     use_model: bool = True,
+    conversation_turns: list[dict[str, Any]] | None = None,
 ) -> PendingReplyIntent:
+    """Classify pending reply.
+
+    Fast path (regex/keyword) is high-confidence only. On miss, when ``use_model``
+    is True, a real LLM call reads the pending snapshot plus full recent
+    conversation. Never silently default to execute / search / new-query.
+    LLM failure → ``ambiguous`` (ask), not a guessed action.
+    """
     snap = build_pending_snapshot(task_state)
     if not has_pending_family(task_state):
         return "ambiguous"
@@ -426,6 +455,7 @@ async def classify_pending_reply(
             snap=snap,
             settings=settings,
             org_id=org_id,
+            conversation_turns=conversation_turns,
         )
         if modeled in _VALID_INTENTS:
             return modeled  # type: ignore[return-value]
@@ -440,12 +470,21 @@ async def _model_pending_reply_intent(
     snap: PendingSnapshot,
     settings: Settings | None,
     org_id: str | None,
+    conversation_turns: list[dict[str, Any]] | None = None,
 ) -> PendingReplyIntent:
     try:
         from app.services.model_router import TaskType, get_model_router
 
+        history = _format_conversation_for_classifier(conversation_turns)
+        history_block = (
+            f"Full recent conversation (unfiltered):\n{history}\n\n"
+            if history
+            else "Full recent conversation: (not provided — use pending + reply only)\n\n"
+        )
         prompt = (
-            "Classify the user reply while an assistant action/plan is pending.\n"
+            "A user has a pending assistant action/plan. Read the FULL conversation "
+            "and decide what their latest reply means in context. Do not invent a "
+            "default; if unsure, choose ambiguous.\n"
             "Labels (pick exactly one):\n"
             "- slot_answer: supplying a missing field value\n"
             "- confirm: approve / proceed with the pending action\n"
@@ -454,18 +493,21 @@ async def _model_pending_reply_intent(
             "- modify: changing the pending plan or fields (not a bare yes/no)\n"
             "- unrelated: a new request that is not answering the pending ask\n"
             "- ambiguous: unclear; assistant should ask a specific follow-up\n\n"
+            f"{history_block}"
             f"Pending: {snap.summary_for_model()}\n"
-            f"User reply: {message}\n"
+            f"Latest user reply: {message}\n"
         )
         response = await get_model_router(settings or get_settings()).complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(
+                "You are classifying user intent against a pending action. "
+                "Regex did not match with confidence — comprehend the conversation. "
                 'Respond as JSON: {"intent":"slot_answer|confirm|reject|meta_clarify|'
                 'modify|unrelated|ambiguous","reason":"..."}'
             ),
             temperature=0.0,
-            max_tokens=100,
+            max_tokens=120,
             response_format=PendingReplyIntentResult,
             org_id=org_id,
         )

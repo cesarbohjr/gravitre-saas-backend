@@ -112,9 +112,13 @@ def project_business_outcome(
     )
     lifecycle_state = lifecycle_reached[-1] if lifecycle_reached else "created"
 
+    # Qualitative pre-action impact (low/medium/high) when stamped — never invent $.
+    impact_label = params.get("estimated_impact") or params.get("estimatedImpact")
+    impact_text = str(impact_label).strip() if impact_label else None
+
     sections = BusinessOutcomeSections(
         summary=summary,
-        impact=None,
+        impact=impact_text,
         evidence=evidence,
         verification=verification,
         explanation=explanation,
@@ -136,6 +140,10 @@ def project_business_outcome(
                 if isinstance(params.get("action_args"), dict)
                 else (er.get("structured") or {}).get("action_args")
             ),
+            # PreActionCard projection (Phase D item 18) — only when already stamped.
+            "estimated_impact": params.get("estimated_impact") or params.get("estimatedImpact"),
+            "risk_level": params.get("risk_level") or params.get("riskLevel"),
+            "approval_reason": params.get("approval_reason") or params.get("approvalReason"),
         },
     )
 

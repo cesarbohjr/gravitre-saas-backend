@@ -980,7 +980,7 @@ class ChatConnectorExecutionService:
                 task_state=task_state,
                 settings=self.settings,
                 org_id=org_id,
-                use_model=False,
+                use_model=True,
             )
         snap = build_pending_snapshot(task_state)
         if intent == "meta_clarify" and is_awaiting_params(task_state):
@@ -2621,11 +2621,46 @@ class ChatConnectorExecutionService:
                     "entity_type": "approval",
                     "entity_id": approval_id or conversation_id,
                     "result_url": result_url,
+                    "integration": plan.integration,
+                    "estimated_impact": pending_params.get("estimated_impact"),
+                    "risk_level": pending_params.get("risk_level"),
+                    "approval_reason": plan.approval_reason
+                    or pending_params.get("approval_reason"),
                 },
                 channel_hints={"bell": True, "email": False},
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat write requester notify failed: %s", exc)
+
+        # Activity projection of PreAction fields (Phase D item 18).
+        try:
+            from app.services.activity_feed_service import record_activity_event
+
+            record_activity_event(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                source="connector_write",
+                event_type="approval_needed",
+                title=title,
+                body=description,
+                status="pending",
+                entity_type="approval",
+                entity_id=approval_id or conversation_id,
+                url=result_url,
+                integration=plan.integration,
+                metadata={
+                    "estimated_impact": pending_params.get("estimated_impact"),
+                    "risk_level": pending_params.get("risk_level"),
+                    "approval_reason": plan.approval_reason
+                    or pending_params.get("approval_reason"),
+                    "conversation_id": conversation_id,
+                    "approval_id": approval_id,
+                    "pre_action": True,
+                },
+            )
+        except Exception as act_exc:  # noqa: BLE001
+            logger.debug("pre_action activity projection skipped: %s", act_exc)
 
         # Approver inbox — configured HITL roles/users, else org admins
         for approver_id in self._org_approver_user_ids(client, org_id, hitl=hitl):

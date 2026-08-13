@@ -240,3 +240,75 @@ Product decisions still gated (unchanged): fuzzy person-name Option C out; cross
 - Honesty bar — measured as **prompt-section injection + PLAN bias notes**, not yet “assistant recommendation text changed for same situation” on streaming path
 
 Append further dated notes; do not overwrite Part A/B.
+
+---
+
+## Phase A–D completion log (2026-08-13)
+
+Append-only Phase D structural pass vs Part A standing list. Labels: **CODE** = present in repo this pass; **LIVE PENDING** = needs prod/chat evidence before PASS; **BLOCKED** = product decision required (not claimed FULL). Never invent LIVE PASS without evidence pointer. Fuzzy Option C memory remains out of scope.
+
+| # | Proposal item | Status this pass | What shipped (real code) | Notes / blockers |
+|---|----------------|------------------|--------------------------|------------------|
+| 1 | Memory taxonomy | **CODE (PARTIAL)** | Kernel recall taxonomy + `agent_memories` categories already from Phase 1 | Full episodic cross-convo still **BLOCKED** on product scope; Option C fuzzy **not** authorized |
+| 2 | Org knowledge graph | **CODE (PARTIAL)** | `org_knowledge_nodes` + entity relationships (prior) | Productized company/employees/vendors graph still **BLOCKED** |
+| 3 | Temporal knowledge (`valid_from` / `valid_until` / `superseded_by`) | **CODE** | Migration `20260813150000_cognitive_phase_d_aliases.sql` (generated aliases + `superseded_by`); `knowledge_fabric/temporal.py`; ingest accepts aliases; retrieval filters superseded + emits aliases | Bi-temporal lineage graph still not FULL; **LIVE PENDING** migration apply + retrieval sample |
+| 4 | Planning / replan | **CODE (PARTIAL)** | CognitivePlanner + kernel PLAN (prior); what-if step append | Mid-flight replan product still PARTIAL |
+| 5 | Mandatory reflection / critic | **CODE** | `verification_critic_service` fail-closed when `mandatory`/consequential write; kernel VERIFY + `agent_intelligence` stream path | **LIVE PENDING** consequential write with `mandatory_critic_*` / revision caveat |
+| 6 | Uniform evidence DTO | **CODE** | `cognitive_evidence_envelope.py` `{recommendation, why, sources, confidence}`; attached on classical finalize + LIVE `_unified_live_turn_payload` + `AssistantStreamComplete.evidence` | **LIVE PENDING** chat payload shows `evidence.evidence_schema=cognitive_evidence_v1` |
+| 7 | Confidence thresholds | **CODE (PARTIAL)** | Module C honesty unchanged; confidence join on traces (item 20) | No single behavior-policy table — still PARTIAL |
+| 8 | Autonomous research mode | **PARTIAL** | Embedded cascade only | No second research product surface / fake prices — intentionally not greenfielded |
+| 9 | Council cross-exam | **SKIPPED this pass** | Peer agent ownership of `council_service.py` | Do not double-edit |
+| 10 | Dept sub-agents | **PARTIAL** | Unchanged — product model gap | **BLOCKED** on recursive dept-memory product decision |
+| 11 | Operating model inference | **PARTIAL** | Company intel / inventory unchanged | Auto-adopt sequences still not shipped |
+| 12 | Outcome learning | **CODE (Mode A)** | Prior LIVE PASS in Part C execution log | Mode A only — not automatic policy rewrite |
+| 13 | Metrics SoT | **CODE** | Kernel resolves `org_metric_definitions` into knowledge/plan prompt when message mentions keys; admin API prior | Authoritative MQL/CAC/ARR **content** still **BLOCKED** (org must define rows); no invented formulas |
+| 14 | Proactive unprompted | **PARTIAL** | Unchanged | Standing investigators not shipped |
+| 15 | Free-form watchers | **PARTIAL** | Unchanged | Workflow triggers ≠ free-form agents |
+| 16 | What-if simulation | **CODE** | Kernel PLAN detects what-if intent → `simulate_business_scenario` + prompt section; admin API prior | Heuristic Module C only; predictive twin still refused; **LIVE PENDING** chat “what if…” turn |
+| 17 | Field-level permissions | **CODE** | GOVERN auto-derives field keys from args; `redact_payload` on deny; table prior | Full CRM column ACL entitlement design still **BLOCKED** |
+| 18 | Pre-action card → Activity | **CODE** | Projector stamps `estimated_impact` / `risk_level` / `approval_reason` into BusinessOutcome metadata + impact; Activity list chips; `record_activity_event` on approval create | **LIVE PENDING** fresh write-approval shows risk/impact chips on Activity |
+| 19 | Unified eval suite | **CODE** | `cognitive-regression-suite.mjs` Phase D needles + targeted pytest (pending-reply + council + kernel + evidence) under `COGNITIVE_REGRESSION_RUN_PYTEST=1`; backend CI job step | Not “all agents on every pack change” product suite — structural + targeted batteries |
+| 20 | Per-run observability console | **CODE** | `confidence_summary` jsonb on `cognitive_turn_traces`; admin Cognitive turns list/detail shows latency + confidence + verify | **LIVE PENDING** new turn row with non-null `confidence_summary` after migration |
+
+### Phase D local verification (not LIVE PASS)
+
+- `python -m pytest -q tests/services/test_cognitive_evidence_envelope.py tests/services/test_cognitive_turn_kernel.py tests/services/test_council_service.py tests/services/test_pending_reply_classifier.py` → **42 passed** (local, 2026-08-13)
+- `node scripts/cognitive-regression-suite.mjs` → **PASS** (structural; targeted pytest gated by env flag)
+
+### Suggested live verification commands
+
+```bash
+# After Railway deploy + apply migration 20260813150000_cognitive_phase_d_aliases.sql
+# 1) Temporal aliases exist
+# SELECT column_name FROM information_schema.columns
+#  WHERE table_name='knowledge_documents'
+#    AND column_name IN ('valid_from','valid_until','superseded_by');
+
+# 2) Metrics resolve (admin upsert a metric_key then chat mentioning it)
+# POST /api/admin/cognitive-metrics  { "metric_key": "mql", "label": "Marketing Qualified Lead", "formula": "..." }
+
+# 3) What-if product path
+# Chat: "what if we cut outbound spend 30%" — expect heuristic disclaimer, no SKU prices
+
+# 4) Evidence envelope on LIVE/classical answer
+# Inspect assistant turn JSON / audit for evidence.evidence_schema == "cognitive_evidence_v1"
+
+# 5) Mandatory critic on consequential write
+# Propose a connector write; confirm critic ran (revised answer or mandatory caveat)
+
+# 6) PreAction on Activity
+# Stage a write confirm; open /activity — risk:/impact: chips when metadata stamped
+
+# 7) Observability console
+# Admin → Learning → Cognitive turns — latency ms + confidence line on new turns
+# SELECT confidence_summary FROM cognitive_turn_traces ORDER BY created_at DESC LIMIT 5;
+
+# 8) CI cognitive gate
+# COGNITIVE_REGRESSION_RUN_PYTEST=1 node scripts/cognitive-regression-suite.mjs
+```
+
+### Honesty bar
+
+- No customer SKU prices or Enable toggles invented.
+- Items 1 (Option C), 2 (org graph product), 8 (second research surface), 10–11, 13 (metric **definitions content**), 14–15 remain product-gated or PARTIAL.
+- Do **not** claim FULL for fuzzy memory or LIVE PASS without audit/conversation evidence pointers above.

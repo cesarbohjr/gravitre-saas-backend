@@ -58,6 +58,10 @@ def replace_document_chunks(
     topics: list[str],
     published_at: str | None = None,
     effective_at: str | None = None,
+    superseded_at: str | None = None,
+    valid_from: str | None = None,
+    valid_until: str | None = None,
+    superseded_by: str | None = None,
     metadata: dict[str, Any] | None = None,
     settings: Settings | None = None,
     embed: bool = True,
@@ -74,6 +78,16 @@ def replace_document_chunks(
         commercial_use_allowed=commercial if isinstance(commercial, bool) else None,
         licence_verified=verified if isinstance(verified, bool) else None,
     )
+    from app.knowledge_fabric.temporal import resolve_temporal_fields
+
+    temporal = resolve_temporal_fields(
+        effective_at=effective_at,
+        superseded_at=superseded_at,
+        valid_from=valid_from,
+        valid_until=valid_until,
+        superseded_by=superseded_by,
+        metadata=metadata if isinstance(metadata, dict) else None,
+    )
     source_uuid = source_row["id"]
     authority = float(source_row.get("authority_score") or 0.8)
     checksum = _checksum(content)
@@ -82,7 +96,8 @@ def replace_document_chunks(
         "external_id": external_id,
         "title": title,
         "published_at": published_at,
-        "effective_at": effective_at,
+        "effective_at": temporal.get("effective_at"),
+        "superseded_at": temporal.get("superseded_at"),
         "checksum": checksum,
         "citation": citation,
         "jurisdiction": jurisdiction,
@@ -90,6 +105,8 @@ def replace_document_chunks(
         "metadata": metadata or {},
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+    if temporal.get("superseded_by"):
+        doc_payload["superseded_by"] = temporal["superseded_by"]
     existing = (
         client.table("knowledge_documents")
         .select("id,checksum")

@@ -24,9 +24,31 @@ type TraceRow = {
   created_at?: string
   memory_summary?: Record<string, unknown>
   knowledge_summary?: Record<string, unknown>
+  confidence_summary?: {
+    confidence?: number | null
+    confidence_source?: string
+    confidenceSource?: string
+    confidence_is_estimate?: boolean
+    confidenceIsEstimate?: boolean
+    verify_passed?: boolean
+    total_stage_ms?: number
+    [key: string]: unknown
+  } | null
   conversation_id?: string | null
   user_id?: string | null
   [key: string]: unknown
+}
+
+function confidenceLabel(summary: TraceRow["confidence_summary"]): string | null {
+  if (!summary) return null
+  const score = summary.confidence
+  const src = summary.confidence_source || summary.confidenceSource || "heuristic"
+  const est =
+    summary.confidence_is_estimate ?? summary.confidenceIsEstimate ?? true
+  if (score == null || Number.isNaN(Number(score))) {
+    return `confidence: n/a (${src})`
+  }
+  return `confidence: ${Number(score).toFixed(2)}${est ? " est" : ""} · ${src}`
 }
 
 const PAGE_SIZE = 15
@@ -208,6 +230,16 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
                               <Clock className="h-3 w-3" weight="bold" aria-hidden />
                               {formatTime(trace.created_at)}
                             </span>
+                            {typeof trace.confidence_summary?.total_stage_ms === "number" ? (
+                              <span className="text-[11px] text-muted-foreground tabular-nums">
+                                {Math.round(trace.confidence_summary.total_stage_ms)}ms
+                              </span>
+                            ) : null}
+                            {confidenceLabel(trace.confidence_summary) ? (
+                              <span className="text-[11px] text-muted-foreground">
+                                {confidenceLabel(trace.confidence_summary)}
+                              </span>
+                            ) : null}
                           </div>
                           <StagesTimeline stages={trace.stages} />
                         </button>
@@ -263,6 +295,27 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
                   <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">When</dt>
                   <dd className="mt-0.5">{formatTime(detail.created_at)}</dd>
                 </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Latency + confidence
+                  </dt>
+                  <dd className="mt-0.5 text-pretty">
+                    {typeof detail.confidence_summary?.total_stage_ms === "number"
+                      ? `${Math.round(detail.confidence_summary.total_stage_ms)}ms · `
+                      : ""}
+                    {confidenceLabel(detail.confidence_summary) || "Not recorded for this turn"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Verify</dt>
+                  <dd className="mt-0.5">
+                    {detail.confidence_summary?.verify_passed === false
+                      ? "Failed / blocked"
+                      : detail.confidence_summary?.verify_passed === true
+                        ? "Passed"
+                        : "—"}
+                  </dd>
+                </div>
               </dl>
 
               <div>
@@ -278,6 +331,10 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
 
               {detail.knowledge_summary ? (
                 <SummaryBlock title="Knowledge used" value={detail.knowledge_summary} />
+              ) : null}
+
+              {detail.confidence_summary ? (
+                <SummaryBlock title="Confidence join" value={detail.confidence_summary} />
               ) : null}
             </div>
           ) : (

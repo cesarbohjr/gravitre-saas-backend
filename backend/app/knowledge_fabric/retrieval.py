@@ -182,20 +182,34 @@ def retrieve_knowledge_fabric(
 
     ranked = rerank_with_authority(list(by_id.values()))[:top_k]
     source_map = {s["id"]: s for s in sources}
-    # Document-level honesty fields (CISA curated summaries store content_mode here)
+    # Document-level honesty + temporal fields (proposal aliases valid_from/valid_until)
     doc_meta_by_id: dict[str, dict[str, Any]] = {}
+    doc_temporal_by_id: dict[str, dict[str, Any]] = {}
     doc_ids = [str(r.get("document_id")) for r in ranked if r.get("document_id")]
     if doc_ids:
         try:
             docs = (
                 client.table("knowledge_documents")
-                .select("id,metadata")
+                .select(
+                    "id,metadata,effective_at,superseded_at,superseded_by,valid_from,valid_until"
+                )
                 .in_("id", list(dict.fromkeys(doc_ids)))
                 .execute()
             )
+            from app.knowledge_fabric.temporal import attach_temporal_aliases, document_is_currently_valid
+
             for d in docs.data or []:
                 meta = d.get("metadata") if isinstance(d.get("metadata"), dict) else {}
                 doc_meta_by_id[str(d["id"])] = meta
+                doc_temporal_by_id[str(d["id"])] = attach_temporal_aliases(d)
+            # Drop chunks from superseded documents (valid_until / superseded_at in the past).
+            ranked = [
+                r
+                for r in ranked
+                if document_is_currently_valid(
+                    doc_temporal_by_id.get(str(r.get("document_id") or ""))
+                )
+            ]
         except Exception as exc:  # noqa: BLE001
             logger.info("knowledge_fabric.doc_meta_unavailable", extra={"error": str(exc)[:160]})
 
@@ -205,6 +219,7 @@ def retrieve_knowledge_fabric(
         src = source_map.get(row.get("source_id"), {})
         chunk_meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
         doc_meta = doc_meta_by_id.get(str(row.get("document_id") or ""), {})
+        temporal = doc_temporal_by_id.get(str(row.get("document_id") or ""), {})
         content_mode = chunk_meta.get("content_mode") or doc_meta.get("content_mode")
         fetch_status = chunk_meta.get("fetch_status") or doc_meta.get("fetch_status")
         prov = build_provenance_envelope(
@@ -212,7 +227,7 @@ def retrieve_knowledge_fabric(
             source_name=str(src.get("publisher") or "Platform knowledge"),
             source_type="knowledge_pack_chunk",
             source_id=str(src.get("source_id") or row.get("source_id") or ""),
-            last_updated=None,
+            last_updated=temporal.get("valid_from") or temporal.get("effective_at"),
             freshness_score=float(row.get("freshness_score") or 0.8),
             confidence=float(row.get("score") or 0),
             reference_only=True,
@@ -227,6 +242,9 @@ def retrieve_knowledge_fabric(
                 "match": row.get("match"),
                 "content_mode": content_mode,
                 "fetch_status": fetch_status,
+                "valid_from": temporal.get("valid_from"),
+                "valid_until": temporal.get("valid_until"),
+                "superseded_by": temporal.get("superseded_by"),
             },
         )
         provenance.append(prov)
@@ -243,6 +261,11 @@ def retrieve_knowledge_fabric(
                 "publisher": src.get("publisher"),
                 "content_mode": content_mode,
                 "fetch_status": fetch_status,
+                "valid_from": temporal.get("valid_from"),
+                "valid_until": temporal.get("valid_until"),
+                "effective_at": temporal.get("effective_at"),
+                "superseded_at": temporal.get("superseded_at"),
+                "superseded_by": temporal.get("superseded_by"),
             }
         )
     return {"route": route.to_dict(), "results": results, "provenance": provenance}

@@ -216,18 +216,13 @@ def should_attempt_connector_fallback(
     """
     _ = connected_integrations  # retained for call-site compatibility
     from app.services.chat_connector_execution_service import ChatConnectorExecutionService
-    from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
-
-    from app.services.chat_message_normalize import strip_assistant_scope_prefix
 
     pending = has_pending_connector_task(task_state)
-    text = strip_assistant_scope_prefix(message)
-    # Pending confirm/decline must always reach process_turn — including when an
-    # earlier org-scoped response cache or ReAct text path skipped preflight.
-    if pending and (CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text)):
-        return True
+    # Any pending connector family must reach process_turn so the 7-way classifier
+    # (fast path + LLM fallback) can decide — not only bare yes/no regex matches.
+    # Regex-only gating was the silent-default bug class (novel cancel/modify/meta).
     if pending:
-        return False
+        return True
     if react_succeeded_connector_tools(react_result):
         return False
 

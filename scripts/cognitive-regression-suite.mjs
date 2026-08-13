@@ -91,13 +91,43 @@ mustContain(
   "run_kernel_for_entry",
 )
 
-// --- 6) Optional python import smoke ---
+// --- 6) Phase D structural wiring ---
+mustExist("backend/app/services/cognitive_evidence_envelope.py")
+mustExist("backend/app/knowledge_fabric/temporal.py")
+mustExist("supabase/migrations/20260813140000_cognitive_phase_d_aliases.sql")
+mustContain(
+  "backend/app/services/cognitive_turn_kernel.py",
+  "confidence_summary",
+  "confidence_summary persist",
+)
+mustContain(
+  "backend/app/services/cognitive_turn_kernel.py",
+  "what_if",
+  "what_if product path",
+)
+mustContain(
+  "backend/app/services/verification_critic_service.py",
+  "mandatory",
+  "mandatory critic flag",
+)
+mustContain(
+  "backend/app/services/unified_turn_reasoning_service.py",
+  "attach_evidence_envelope",
+  "LIVE evidence envelope",
+)
+mustContain(
+  "backend/app/operators/agent_intelligence.py",
+  "build_evidence_envelope",
+  "classical evidence envelope",
+)
+
+// --- 7) Optional python import smoke ---
 {
   const py = spawnSync(
     "python",
     [
       "-c",
-      "from app.services.cognitive_turn_kernel import CognitiveTurnKernel, CognitiveTurnRequest; from app.services.cognitive_planner import CognitivePlanner; print('ok')",
+      "from app.services.cognitive_turn_kernel import CognitiveTurnKernel, CognitiveTurnRequest; from app.services.cognitive_planner import CognitivePlanner; from app.services.cognitive_evidence_envelope import build_evidence_envelope; print('ok')",
     ],
     {
       cwd: join(ROOT, "backend"),
@@ -113,7 +143,7 @@ mustContain(
       "python3",
       [
         "-c",
-        "from app.services.cognitive_turn_kernel import CognitiveTurnKernel, CognitiveTurnRequest; from app.services.cognitive_planner import CognitivePlanner; print('ok')",
+        "from app.services.cognitive_turn_kernel import CognitiveTurnKernel, CognitiveTurnRequest; from app.services.cognitive_planner import CognitivePlanner; from app.services.cognitive_evidence_envelope import build_evidence_envelope; print('ok')",
       ],
       {
         cwd: join(ROOT, "backend"),
@@ -128,6 +158,58 @@ mustContain(
         `python import smoke failed: ${(py.stderr || py.stdout || py3.stderr || py3.stdout || "").trim().slice(0, 400)}`,
       )
     }
+  }
+}
+
+// --- 8) Targeted cognitive eval pytest (pending-reply + council + kernel) ---
+// When COGNITIVE_REGRESSION_RUN_PYTEST=1 (backend CI job), require these to pass.
+{
+  const runPytest =
+    process.env.COGNITIVE_REGRESSION_RUN_PYTEST === "1" ||
+    process.env.COGNITIVE_REGRESSION_RUN_PYTEST === "true"
+  if (runPytest) {
+    const args = [
+      "-m",
+      "pytest",
+      "-q",
+      "tests/services/test_pending_reply_classifier.py",
+      "tests/services/test_council_service.py",
+      "tests/services/test_cognitive_turn_kernel.py",
+      "tests/services/test_cognitive_evidence_envelope.py",
+    ]
+    const env = {
+      ...process.env,
+      PYTHONPATH: ".",
+      APP_ENV: process.env.APP_ENV || "dev",
+      SUPABASE_URL: process.env.SUPABASE_URL || "https://test.supabase.co",
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "anon-test",
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "service-role-test",
+    }
+    let result = spawnSync("python", args, {
+      cwd: join(ROOT, "backend"),
+      encoding: "utf8",
+      env,
+    })
+    if (result.error && (result.error.code === "ENOENT" || String(result.error).includes("ENOENT"))) {
+      result = spawnSync("python3", args, {
+        cwd: join(ROOT, "backend"),
+        encoding: "utf8",
+        env,
+      })
+    }
+    if (result.error) {
+      fail(`targeted cognitive pytest spawn failed: ${result.error.message || result.error}`)
+    } else if (result.status !== 0) {
+      fail(
+        `targeted cognitive pytest failed:\n${(result.stdout || "").trim().slice(0, 800)}\n${(result.stderr || "").trim().slice(0, 800)}`,
+      )
+    } else {
+      console.log("cognitive-regression-suite: targeted pytest PASS (pending-reply + council + kernel + evidence)")
+    }
+  } else {
+    console.log(
+      "cognitive-regression-suite: targeted pytest skipped (set COGNITIVE_REGRESSION_RUN_PYTEST=1)",
+    )
   }
 }
 

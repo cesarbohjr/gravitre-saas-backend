@@ -192,6 +192,32 @@ class CognitiveTurnKernel:
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_outcome_bias_skipped error=%s", exc)
 
+        # Org metrics SoT — resolve mentioned KPI keys into knowledge/plan context
+        metric_hits: list[dict[str, Any]] = []
+        try:
+            metric_hits = _resolve_mentioned_metrics(client, request.org_id, request.message or "")
+            if metric_hits and isinstance(ctx.knowledge_pack, dict):
+                ctx.knowledge_pack = dict(ctx.knowledge_pack)
+                ctx.knowledge_pack["org_metrics"] = metric_hits
+                section = str(ctx.knowledge_pack.get("prompt_section") or "")
+                metric_lines = [
+                    f"- {m.get('metric_key')}: {m.get('label')} "
+                    f"(formula={m.get('formula') or 'n/a'}; source={m.get('resolved_from')})"
+                    for m in metric_hits[:6]
+                ]
+                metric_block = (
+                    "<org_metric_definitions>\n"
+                    + "\n".join(metric_lines)
+                    + "\nUse these org-scoped definitions when discussing KPIs. "
+                    "Do not invent MQL/CAC/ARR formulas when a definition exists.\n"
+                    "</org_metric_definitions>"
+                )
+                ctx.knowledge_pack["prompt_section"] = (
+                    f"{section}\n\n{metric_block}".strip() if section else metric_block
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cognitive_metrics_resolve_skipped error=%s", exc)
+
         # 4 PLAN
         t0 = time.perf_counter()
         try:
@@ -206,13 +232,45 @@ class CognitiveTurnKernel:
             if bias.get("bias_notes"):
                 plan = dict(plan)
                 plan["outcome_bias"] = bias
+            if metric_hits:
+                plan = dict(plan)
+                plan["org_metrics"] = metric_hits
+            # Honest what-if (item 16) — product path into existing heuristic simulator
+            if _looks_like_what_if(request.message or ""):
+                plan = dict(plan)
+                try:
+                    from app.services.cognitive_simulation_service import simulate_business_scenario
+
+                    sim = await simulate_business_scenario(
+                        org_id=request.org_id,
+                        scenario=request.message or "",
+                    )
+                    plan["what_if"] = sim
+                    steps = list(plan.get("steps") or [])
+                    steps.append(
+                        {
+                            "step_id": "what_if_simulation",
+                            "title": "Heuristic what-if projection",
+                            "description": str((sim or {}).get("summary") or "")[:240],
+                            "status": "pending",
+                            "honesty": "heuristic_not_forecast",
+                        }
+                    )
+                    plan["steps"] = steps
+                except Exception as sim_exc:  # noqa: BLE001
+                    logger.debug("cognitive_what_if_plan_skipped error=%s", sim_exc)
             ctx.plan = plan
             ctx.stages.append(
                 StageRecord(
                     stage="PLAN",
                     ok=True,
                     ms=_elapsed_ms(t0),
-                    meta={"source": plan.get("source"), "steps": len(plan.get("steps") or [])},
+                    meta={
+                        "source": plan.get("source"),
+                        "steps": len(plan.get("steps") or []),
+                        "org_metrics": len(metric_hits),
+                        "what_if": bool(plan.get("what_if")),
+                    },
                 )
             )
         except Exception as exc:  # noqa: BLE001
@@ -231,14 +289,29 @@ class CognitiveTurnKernel:
                     stage="VERIFY",
                     ok=bool(ctx.verify.get("passed", True)),
                     ms=_elapsed_ms(t0),
-                    meta={"skipped": bool(ctx.verify.get("skipped"))},
+                    meta={
+                        "skipped": bool(ctx.verify.get("skipped")),
+                        "mandatory": bool(ctx.verify.get("mandatory")),
+                    },
                 )
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_verify_failed error=%s", exc)
-            ctx.verify = {"passed": True, "skipped": True, "error": str(exc)[:200]}
+            # Fail closed when the turn looks like a consequential write.
+            write_like = _request_is_consequential_write(request)
+            ctx.verify = {
+                "passed": not write_like,
+                "skipped": True,
+                "error": str(exc)[:200],
+                "mandatory": write_like,
+            }
             ctx.stages.append(
-                StageRecord(stage="VERIFY", ok=True, ms=_elapsed_ms(t0), meta={"error": str(exc)[:200]})
+                StageRecord(
+                    stage="VERIFY",
+                    ok=not write_like,
+                    ms=_elapsed_ms(t0),
+                    meta={"error": str(exc)[:200], "mandatory": write_like},
+                )
             )
 
         # 6 GOVERN
@@ -252,6 +325,7 @@ class CognitiveTurnKernel:
                     ms=_elapsed_ms(t0),
                     meta={
                         "requires_approval": bool(ctx.govern.get("requires_approval")),
+                        "denied_fields": ctx.govern.get("denied_fields") or [],
                     },
                 )
             )
@@ -426,31 +500,52 @@ class CognitiveTurnKernel:
         request: CognitiveTurnRequest,
         ctx: CognitiveTurnContext,
     ) -> dict[str, Any]:
-        # Pre-ACT verify is advisory/noop when there is no draft answer yet.
+        # Pre-ACT verify is advisory/noop when there is no draft answer yet —
+        # except consequential writes, which mark mandatory critic pending for post-ACT.
         draft = ""
         if isinstance(request.parameters, dict):
             draft = str(request.parameters.get("draft_answer") or request.parameters.get("answer") or "")
+        consequential = _request_is_consequential_write(request)
         if not draft.strip():
             return {
                 "passed": True,
                 "issues": [],
                 "skipped": "pre_act_no_draft",
                 "critic": "noop",
+                "mandatory": consequential,
+                "mandatory_pending_post_act": consequential,
             }
         try:
             from app.services.verification_critic_service import get_verification_critic_service
 
             critic = get_verification_critic_service(self.settings)
+            classification = {
+                "requires_action": request.intent in {"write_confirm", "job", "enrich", "extension_action"},
+                "intent": request.intent,
+                "is_write": consequential,
+                "risk_level": (request.parameters or {}).get("risk_level"),
+                "invoke_action": (request.parameters or {}).get("invoke_action")
+                or (request.parameters or {}).get("action"),
+            }
             result = await critic.verify_before_delivery(
                 query=request.message or "",
                 answer=draft,
-                classification={"requires_action": request.intent in {"write_confirm", "job"}},
+                classification=classification,
                 org_id=request.org_id,
                 rag_sources=list(ctx.knowledge_pack.get("fabric_chunks") or [])[:4],
+                mandatory=consequential,
             )
             return result if isinstance(result, dict) else {"passed": True, "raw": result}
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_verify_best_effort_skipped error=%s", exc)
+            if consequential:
+                return {
+                    "passed": False,
+                    "skipped": True,
+                    "error": str(exc)[:200],
+                    "mandatory": True,
+                    "issues": ["mandatory_critic_error"],
+                }
             return {"passed": True, "skipped": True, "error": str(exc)[:200]}
 
     def _govern(self, request: CognitiveTurnRequest) -> dict[str, Any]:
@@ -469,12 +564,16 @@ class CognitiveTurnKernel:
             action_hints.extend(str(h) for h in hints if h)
 
         field_checks: list[dict[str, Any]] = []
+        denied: list[str] = []
+        redacted_preview: Any = None
         try:
-            from app.services.cognitive_field_acl import assert_field_allowed
+            from app.services.cognitive_field_acl import assert_field_allowed, redact_payload
 
             role = str(params.get("role") or params.get("seat_role") or "member")
-            resource = str(params.get("resource") or "conversation")
+            resource = str(params.get("resource") or params.get("integration") or "conversation")
             fields = params.get("fields") or params.get("field_keys") or []
+            if not isinstance(fields, list) or not fields:
+                fields = _derive_field_keys(params)
             if isinstance(fields, list) and request.client is not None:
                 for fk in fields:
                     allowed = assert_field_allowed(
@@ -487,6 +586,10 @@ class CognitiveTurnKernel:
                     field_checks.append({"field": str(fk), "allowed": bool(allowed)})
                 if field_checks and not all(c["allowed"] for c in field_checks):
                     denied = [c["field"] for c in field_checks if not c["allowed"]]
+                    # Apply redact helper so GOVERN returns a safe preview of args.
+                    args_preview = params.get("args") or params.get("parameters") or params.get("payload")
+                    if isinstance(args_preview, dict):
+                        redacted_preview = redact_payload(args_preview, denied)
                     try:
                         from app.workflows.audit import write_audit_event
 
@@ -514,6 +617,7 @@ class CognitiveTurnKernel:
                         "blocked": "field_acl_deny",
                         "field_checks": field_checks,
                         "denied_fields": denied,
+                        "redacted_args": redacted_preview,
                         "actions": action_hints,
                     }
         except Exception as exc:  # noqa: BLE001
@@ -529,6 +633,7 @@ class CognitiveTurnKernel:
                     "requires_approval": bool(requires),
                     "actions": action_hints,
                     "field_checks": field_checks,
+                    "denied_fields": denied,
                 }
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_govern_authority_skipped error=%s", exc)
@@ -538,9 +643,15 @@ class CognitiveTurnKernel:
                     "actions": action_hints,
                     "error": str(exc)[:200],
                     "field_checks": field_checks,
+                    "denied_fields": denied,
                 }
 
-        return {"ok": True, "requires_approval": False, "field_checks": field_checks}
+        return {
+            "ok": True,
+            "requires_approval": False,
+            "field_checks": field_checks,
+            "denied_fields": denied,
+        }
 
     async def _persist_trace(self, request: CognitiveTurnRequest, ctx: CognitiveTurnContext) -> None:
         client = request.client
@@ -558,7 +669,9 @@ class CognitiveTurnKernel:
             knowledge_summary = {
                 "fabric_chunks": len((ctx.knowledge_pack or {}).get("fabric_chunks") or []),
                 "has_entity": bool((ctx.knowledge_pack or {}).get("entity_section")),
+                "org_metrics": len((ctx.knowledge_pack or {}).get("org_metrics") or []),
             }
+            confidence_summary = _confidence_summary_from_ctx(ctx, request)
             payload = {
                 "id": str(uuid4()),
                 "org_id": request.org_id,
@@ -569,6 +682,7 @@ class CognitiveTurnKernel:
                 "stages": stages_payload,
                 "memory_summary": memory_summary,
                 "knowledge_summary": knowledge_summary,
+                "confidence_summary": confidence_summary,
             }
             client.table("cognitive_turn_traces").insert(payload).execute()
         except Exception as exc:  # noqa: BLE001
@@ -591,10 +705,14 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
     outcome_bias_section = _outcome_bias_prompt_section(
         (ctx.plan or {}).get("outcome_bias") if isinstance(ctx.plan, dict) else None
     )
+    what_if_section = _what_if_prompt_section(
+        (ctx.plan or {}).get("what_if") if isinstance(ctx.plan, dict) else None
+    )
     return {
         "memory_section": memory_section,
         "knowledge_section": knowledge_section,
         "outcome_bias_section": outcome_bias_section,
+        "what_if_section": what_if_section,
     }
 
 
@@ -651,22 +769,208 @@ def _empty_memory_pack() -> dict[str, Any]:
 
 
 def _memory_prompt_section(pack: dict[str, Any]) -> str:
+    """Format recalled memory. Admit low confidence rather than silently omitting."""
     lines: list[str] = ["<memory_pack>"]
+    scores: list[float] = []
+    any_items = False
     for key in _MEMORY_KEYS:
         items = pack.get(key) or []
         if not items:
             continue
+        any_items = True
         lines.append(f"## {key}")
         for item in items[:5]:
             if isinstance(item, dict):
+                raw_score = item.get("score")
+                if raw_score is None:
+                    raw_score = item.get("confidence")
+                try:
+                    if raw_score is not None:
+                        scores.append(float(raw_score))
+                except (TypeError, ValueError):
+                    pass
                 text = str(item.get("content") or item.get("memory_text") or item)[:300]
             else:
                 text = str(item)[:300]
             if text:
                 lines.append(f"- {text}")
+    # Phase C: retrieval is lossy — say so when pack is empty or scores are weak.
+    best = max(scores) if scores else None
+    if not any_items:
+        lines.append(
+            "NOTE: No cross-conversation memories ranked into this turn. "
+            "Related prior context may be missing — ask the user if recall seems incomplete."
+        )
+    elif best is not None and best < 0.35:
+        lines.append(
+            "NOTE: Related cross-conversation memory may be missing — "
+            "retrieval confidence is low for this turn."
+        )
     lines.append("</memory_pack>")
     return "\n".join(lines) if len(lines) > 2 else ""
 
 
 def _elapsed_ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000.0, 2)
+
+
+def _looks_like_what_if(message: str) -> bool:
+    text = (message or "").strip().lower()
+    if not text:
+        return False
+    needles = (
+        "what if",
+        "what-if",
+        "whats if",
+        "suppose we",
+        "if we cut",
+        "if we reduce",
+        "scenario where",
+        "counterfactual",
+    )
+    return any(n in text for n in needles)
+
+
+def _request_is_consequential_write(request: CognitiveTurnRequest) -> bool:
+    intent = (request.intent or "").lower()
+    params = request.parameters if isinstance(request.parameters, dict) else {}
+    if intent in {"write_confirm", "enrich", "extension_action"}:
+        return True
+    if bool(params.get("is_write")) or bool(params.get("is_destructive")):
+        return True
+    if bool(params.get("requires_write_approval")) or bool(params.get("requires_approval")):
+        return True
+    risk = str(params.get("risk_level") or "").lower()
+    if risk in {"high", "critical"}:
+        return True
+    for key in ("action", "invoke_action", "action_key", "tool"):
+        val = str(params.get(key) or "").lower()
+        if val and any(tok in val for tok in (".create", ".update", ".delete", ".upsert", ".write")):
+            return True
+    return False
+
+
+def _derive_field_keys(params: dict[str, Any]) -> list[str]:
+    """Best-effort field keys from planned tool args for GOVERN ACL checks."""
+    keys: list[str] = []
+    seen: set[str] = set()
+
+    def _add(name: Any) -> None:
+        text = str(name or "").strip()
+        if not text or text in seen or text.startswith("_"):
+            return
+        if text in {"args", "parameters", "payload", "fields", "field_keys"}:
+            return
+        seen.add(text)
+        keys.append(text)
+
+    for container_key in ("args", "parameters", "payload", "properties", "fields_map"):
+        container = params.get(container_key)
+        if isinstance(container, dict):
+            for k in container.keys():
+                _add(k)
+        elif isinstance(container, list):
+            for item in container:
+                if isinstance(item, str):
+                    _add(item)
+                elif isinstance(item, dict) and item.get("name"):
+                    _add(item.get("name"))
+    explicit = params.get("field_keys") or params.get("fields")
+    if isinstance(explicit, list):
+        for item in explicit:
+            _add(item)
+    return keys[:40]
+
+
+def _resolve_mentioned_metrics(client: Any, org_id: str, message: str) -> list[dict[str, Any]]:
+    if not client or not org_id or not (message or "").strip():
+        return []
+    from app.services.cognitive_metrics import list_metric_definitions, resolve_metric_for_agent
+
+    defs = list_metric_definitions(client, org_id, limit=100)
+    if not defs:
+        return []
+    text = message.lower()
+    hits: list[dict[str, Any]] = []
+    for row in defs:
+        key = str(row.get("metric_key") or "").strip()
+        label = str(row.get("label") or "").strip()
+        if not key:
+            continue
+        token_hit = key.lower() in text or (label and label.lower() in text)
+        # Also match bare tokens like MQL / CAC / ARR when they appear as words.
+        if not token_hit and len(key) <= 8:
+            import re
+
+            if re.search(rf"\b{re.escape(key.lower())}\b", text):
+                token_hit = True
+        if token_hit:
+            hits.append(resolve_metric_for_agent(client, org_id, key, fallback_label=label or key))
+    return hits[:8]
+
+
+def _confidence_summary_from_ctx(
+    ctx: CognitiveTurnContext,
+    request: CognitiveTurnRequest,
+) -> dict[str, Any]:
+    """Build a compact confidence join for admin Cognitive turns console."""
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_HEURISTIC,
+        label_confidence,
+    )
+
+    params = request.parameters if isinstance(request.parameters, dict) else {}
+    raw = None
+    source = CONFIDENCE_SOURCE_HEURISTIC
+    is_estimate = True
+    for candidate in (
+        params.get("confidence"),
+        (ctx.verify or {}).get("confidence"),
+        (ctx.plan or {}).get("confidence") if isinstance(ctx.plan, dict) else None,
+    ):
+        if isinstance(candidate, dict):
+            raw = candidate.get("confidence")
+            if raw is None:
+                raw = candidate.get("score")
+            source = (
+                candidate.get("confidence_source")
+                or candidate.get("confidenceSource")
+                or source
+            )
+            if candidate.get("confidence_is_estimate") is not None:
+                is_estimate = bool(candidate.get("confidence_is_estimate"))
+            elif candidate.get("confidenceIsEstimate") is not None:
+                is_estimate = bool(candidate.get("confidenceIsEstimate"))
+            break
+        if isinstance(candidate, (int, float)):
+            raw = float(candidate)
+            break
+    try:
+        score = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        score = None
+    labeled = label_confidence(score, source=str(source), is_estimate=bool(is_estimate))
+    labeled["verify_passed"] = bool((ctx.verify or {}).get("passed", True))
+    labeled["verify_mandatory"] = bool((ctx.verify or {}).get("mandatory"))
+    labeled["total_stage_ms"] = round(
+        sum(float(getattr(s, "ms", 0) or 0) for s in (ctx.stages or [])), 2
+    )
+    return labeled
+
+
+def _what_if_prompt_section(sim: Any) -> str:
+    if not isinstance(sim, dict) or not sim.get("ok"):
+        return ""
+    lines = [
+        "<what_if honesty=\"heuristic_not_forecast\">",
+        str(sim.get("disclaimer") or "Heuristic scenario only — not a factual forecast."),
+        f"summary: {str(sim.get('summary') or '')[:400]}",
+    ]
+    for proj in (sim.get("projections") or [])[:6]:
+        if isinstance(proj, dict):
+            lines.append(
+                f"- {proj.get('dimension')}: {proj.get('direction')} "
+                f"({str(proj.get('note') or '')[:160]})"
+            )
+    lines.append("</what_if>")
+    return "\n".join(lines)

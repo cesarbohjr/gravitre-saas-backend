@@ -451,6 +451,24 @@ function ActivityPageInner() {
                                 ) : null}
                                 {pack ? <span>pack:{pack}</span> : null}
                                 {outcome.source ? <span>{outcome.source}</span> : null}
+                                {typeof meta.risk_level === "string" ||
+                                typeof meta.riskLevel === "string" ? (
+                                  <span>
+                                    risk:{String(meta.risk_level || meta.riskLevel)}
+                                  </span>
+                                ) : null}
+                                {typeof meta.estimated_impact === "string" ||
+                                typeof meta.estimatedImpact === "string" ||
+                                outcome.sections?.impact ? (
+                                  <span>
+                                    impact:
+                                    {String(
+                                      meta.estimated_impact ||
+                                        meta.estimatedImpact ||
+                                        outcome.sections?.impact,
+                                    )}
+                                  </span>
+                                ) : null}
                                 {outcome.runId ? (
                                   <Link
                                     href={`/runs/${outcome.runId}`}

@@ -35,12 +35,31 @@ class VerificationCriticService:
         rag_sources: list[dict[str, Any]] | None = None,
         tool_results: list[dict[str, Any]] | None = None,
         org_id: str | None = None,
+        mandatory: bool | None = None,
     ) -> dict[str, Any]:
+        """
+        Run critic before delivery.
+
+        When ``mandatory`` (or consequential write signals on classification) is true,
+        short-answer / unparseable / error skips fail closed instead of fail-open.
+        """
+        classification = classification if isinstance(classification, dict) else {}
+        consequential = _is_consequential_write(classification)
+        require_critic = bool(mandatory) if mandatory is not None else consequential
+
         text = (answer or "").strip()
         if not text or len(text) < 40:
+            if require_critic:
+                return {
+                    "passed": False,
+                    "issues": ["mandatory_critic_short_answer"],
+                    "revised_answer": answer,
+                    "skipped": "short_answer",
+                    "mandatory": True,
+                }
             return {"passed": True, "issues": [], "revised_answer": answer, "skipped": "short_answer"}
 
-        requires_action = bool(classification.get("requires_action"))
+        requires_action = bool(classification.get("requires_action")) or consequential
         tool_results = tool_results or []
         failed_tools = [
             row for row in tool_results if isinstance(row, dict) and row.get("success") is False
@@ -51,6 +70,7 @@ class VerificationCriticService:
                 "issues": ["connector_tool_failed"],
                 "revised_answer": answer,
                 "critic": "connector",
+                "mandatory": require_critic,
             }
 
         # Heuristic connector critic — empty structured results after tool use.
@@ -62,6 +82,7 @@ class VerificationCriticService:
                     "issues": ["no_successful_connector_results"],
                     "revised_answer": answer,
                     "critic": "connector",
+                    "mandatory": require_critic,
                 }
 
         model = model_for_routing_phase("verification", routing_tier)
@@ -94,6 +115,14 @@ class VerificationCriticService:
             raw = str(response.content or "").strip()
             match = _JSON_BLOCK.search(raw)
             if not match:
+                if require_critic:
+                    return {
+                        "passed": False,
+                        "issues": ["mandatory_critic_unparseable"],
+                        "revised_answer": answer,
+                        "skipped": "unparseable",
+                        "mandatory": True,
+                    }
                 return {"passed": True, "issues": [], "revised_answer": answer, "skipped": "unparseable"}
             parsed = json.loads(match.group(0))
             passed = bool(parsed.get("passed", True))
@@ -105,11 +134,52 @@ class VerificationCriticService:
                     "issues": issues or ["critic_revision"],
                     "revised_answer": revised.strip(),
                     "critic": "business",
+                    "mandatory": require_critic,
                 }
-            return {"passed": passed, "issues": issues, "revised_answer": answer, "critic": "business"}
+            return {
+                "passed": passed,
+                "issues": issues,
+                "revised_answer": answer,
+                "critic": "business",
+                "mandatory": require_critic,
+            }
         except Exception as exc:  # noqa: BLE001
             logger.debug("verification_critic_skipped org_id=%s error=%s", org_id, exc)
+            if require_critic:
+                return {
+                    "passed": False,
+                    "issues": ["mandatory_critic_error"],
+                    "revised_answer": answer,
+                    "skipped": "error",
+                    "mandatory": True,
+                    "error": str(exc)[:200],
+                }
             return {"passed": True, "issues": [], "revised_answer": answer, "skipped": "error"}
+
+
+def _is_consequential_write(classification: dict[str, Any]) -> bool:
+    """True when the turn proposes / executes a consequential write or high-risk action."""
+    if bool(classification.get("is_write")) or bool(classification.get("is_destructive")):
+        return True
+    if bool(classification.get("requires_write_approval")) or bool(
+        classification.get("requires_approval")
+    ):
+        return True
+    intent = str(classification.get("intent") or "").lower()
+    if intent in {"write_confirm", "enrich", "extension_action", "workflow_execution"}:
+        return True
+    risk = str(classification.get("risk_level") or "").lower()
+    if risk in {"high", "critical"}:
+        return True
+    action = str(
+        classification.get("action")
+        or classification.get("invoke_action")
+        or classification.get("action_key")
+        or ""
+    ).lower()
+    if action and any(tok in action for tok in (".create", ".update", ".delete", ".upsert", ".write")):
+        return True
+    return False
 
 
 _service: VerificationCriticService | None = None

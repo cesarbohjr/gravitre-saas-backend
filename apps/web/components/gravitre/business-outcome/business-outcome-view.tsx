@@ -36,6 +36,7 @@ export type BusinessOutcomeDto = {
   createdAt?: string | null
   sections?: {
     summary?: string
+    impact?: string
     evidence?: {
       links?: Array<{ label: string; href: string; kind?: string }>
       entityType?: string | null

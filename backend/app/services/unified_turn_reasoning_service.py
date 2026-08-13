@@ -305,8 +305,12 @@ def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _history_to_messages(
     conversation_history: list[dict[str, Any]] | None,
     *,
-    max_turns: int = 12,
+    max_turns: int = 48,
 ) -> list[dict[str, str]]:
+    """Within-session: prefer full recent conversation (matches assistant _MAX_HISTORY).
+
+    Not retrieval-filtered. Truncation is a token window only — never top-k memory cut.
+    """
     out: list[dict[str, str]] = []
     for row in list(conversation_history or [])[-max_turns:]:
         role = str(row.get("role") or "").strip().lower()
@@ -1201,7 +1205,9 @@ def _unified_live_turn_payload(
     result: UnifiedTurnShadowResult,
     task_state: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    return {
+    from app.services.cognitive_evidence_envelope import attach_evidence_envelope
+
+    payload = {
         "stop_pipeline": True,
         "dialogue_mode": (
             "confirm"
@@ -1217,7 +1223,15 @@ def _unified_live_turn_payload(
         "unified_outcome_kind": result.outcome_kind,
         "latency_ms": result.latency_ms,
         "first_token_ms": result.first_token_proxy_ms,
+        "confidence": getattr(result, "confidence", None),
     }
+    return attach_evidence_envelope(
+        payload,
+        recommendation=result.user_message,
+        why=f"Unified turn live ({result.outcome_kind})",
+        sources=getattr(result, "sources", None) or getattr(result, "citations", None),
+        confidence=getattr(result, "confidence", None),
+    )
 
 
 async def _maybe_prepend_mixed_social_ack(

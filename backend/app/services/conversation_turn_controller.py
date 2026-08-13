@@ -87,6 +87,7 @@ async def prepare_conversation_turn(
     source: str = "chat",
     structured_plan: ConnectorActionPlan | None = None,
     persist: bool = True,
+    conversation_turns: list[dict[str, Any]] | None = None,
 ) -> TurnInterpretation:
     """Load ledger, ingest this turn's slots, classify pending-plan recovery."""
     from app.services.chat_message_normalize import strip_assistant_scope_prefix
@@ -153,6 +154,7 @@ async def prepare_conversation_turn(
             settings=settings,
             org_id=org_id,
             use_model=True,
+            conversation_turns=conversation_turns,
         )
         state = {
             **state,
@@ -309,9 +311,32 @@ async def run_connector_turn(
     environment_name: str = "production",
     structured_plan: ConnectorActionPlan | None = None,
     source: str = "chat",
+    conversation_turns: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Shared connector turn entry for governed chat and ReAct fallback."""
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+
+    turns = conversation_turns
+    if turns is None and client is not None and conversation_id:
+        try:
+            rows = (
+                client.table("conversation_messages")
+                .select("role, content")
+                .eq("conversation_id", conversation_id)
+                .eq("org_id", org_id)
+                .order("created_at", desc=False)
+                .limit(48)
+                .execute()
+                .data
+                or []
+            )
+            turns = [
+                {"role": str(r.get("role") or ""), "content": str(r.get("content") or "")}
+                for r in rows
+                if isinstance(r, dict)
+            ]
+        except Exception:  # noqa: BLE001
+            turns = None
 
     interpretation = await prepare_conversation_turn(
         message=message,
@@ -323,6 +348,7 @@ async def run_connector_turn(
         source=source,
         structured_plan=structured_plan,
         persist=True,
+        conversation_turns=turns,
     )
 
     from app.services.conversation_state_service import get_conversation_state_service

@@ -163,6 +163,19 @@ jobs:
           GRAVITRE_CONVERSATION_SMOKE: ""
           GRAVITREE_CONVERSATION_SMOKE: ""
 
+      # Unified cognitive eval gate: structural suite + pending-reply + council + kernel.
+      - name: Cognitive regression suite (structural + targeted pytest)
+        working-directory: .
+        run: node scripts/cognitive-regression-suite.mjs
+        env:
+          COGNITIVE_REGRESSION_RUN_PYTEST: "1"
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+
       - name: Marketplace QA (schemas, install, RLS)
         run: python -m pytest tests/marketplace/ -q
         env:

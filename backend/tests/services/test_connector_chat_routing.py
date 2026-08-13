@@ -177,7 +177,17 @@ def test_fallback_runs_without_connected_integrations_for_connector_intent():
     )
 
 
-def test_fallback_skipped_for_pending_connector_task():
+def test_fallback_always_runs_for_pending_connector_task():
+    """Phase A: pending family must reach process_turn for LLM classify — not regex-only."""
+    assert (
+        should_attempt_connector_fallback(
+            task_state={"pending_task": {"type": "connector_action"}},
+            react_result=None,
+            message="actually never mind that write",
+            connected_integrations=["hubspot"],
+        )
+        is True
+    )
     assert (
         should_attempt_connector_fallback(
             task_state={"pending_task": {"type": "connector_action"}},
@@ -185,7 +195,7 @@ def test_fallback_skipped_for_pending_connector_task():
             message="yes proceed",
             connected_integrations=["hubspot"],
         )
-        is False
+        is True
     )
 
 
