@@ -168,16 +168,8 @@ async def extension_enrich(
     except Exception:  # noqa: BLE001
         pass
     connected = connected_integrations(ctx.client, str(org_id), body.environment)
-    if not connected:
-        return {
-            "surface": "unknown",
-            "matches": [],
-            "suggestions": [],
-            "connectedIntegrations": [],
-            "voiceNote": "Connect Apollo or HubSpot in Gravitre to enrich this page.",
-            "openInGravitreUrl": "/connectors",
-            "openInGravitreeUrl": "/connectors",  # legacy dual-read alias
-        }
+    # Always enter enrich_from_page_context so CognitiveTurnKernel RECALL/KNOWLEDGE run
+    # even when no connectors are connected (empty matches is still a valid enrich turn).
     return enrich_from_page_context(
         ctx,
         page_url=body.pageUrl,

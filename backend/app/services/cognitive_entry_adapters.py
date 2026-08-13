@@ -58,19 +58,27 @@ async def run_kernel_for_entry(
 
 
 def run_kernel_for_entry_sync(**kwargs: Any) -> Any:
-    """Sync wrapper for sync extension/confirm paths."""
+    """Sync wrapper for sync extension/confirm paths.
+
+    When already inside a running event loop (async FastAPI handlers calling sync
+    bridge helpers), run the coroutine on a short-lived worker thread so callers
+    still receive the CognitiveTurnContext instead of fire-and-forget None.
+    """
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(run_kernel_for_entry(**kwargs))
-    # Already inside an event loop — schedule best-effort and return None context.
-    # Callers that need the pack should use the async helper.
+
+    import concurrent.futures
+
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(run_kernel_for_entry(**kwargs))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(lambda: asyncio.run(run_kernel_for_entry(**kwargs))).result(
+                timeout=60
+            )
     except Exception as exc:  # noqa: BLE001
-        logger.debug("cognitive_entry_adapter_sync_schedule_failed error=%s", exc)
-    return None
+        logger.debug("cognitive_entry_adapter_sync_thread_failed error=%s", exc)
+        return None
 
 
 def attach_kernel_pack_to_evidence(evidence: dict[str, Any] | None, ctx: Any) -> dict[str, Any]:
