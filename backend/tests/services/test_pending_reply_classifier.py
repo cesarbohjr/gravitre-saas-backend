@@ -15,6 +15,7 @@ from app.services.pending_reply_classifier import (
     format_pending_meta_answer,
     format_unrelated_hold_prompt,
     has_pending_family,
+    is_clear_pending_cancel_intent,
 )
 
 
@@ -127,6 +128,43 @@ def test_orch_plan_confirm_snapshot():
         classify_pending_reply_fast("why do you need approval?", snap)
         in {"meta_clarify", "unrelated", "ambiguous"}
     )
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "cancel",
+        "cancel that",
+        "drop it",
+        "never mind",
+        "forget it",
+        "stop",
+        "not now",
+        "scratch that",
+        "don't",
+        "do not",
+    ],
+)
+def test_pending_cancel_variants_classify_as_reject(phrase: str):
+    state = {
+        "pending_task": {
+            "type": "connector_orchestration",
+            "status": "awaiting_plan_confirm",
+            "params": {"label": "Send Gmail message"},
+        },
+        "current_plan": {"goal": "Send Gmail message to customer"},
+    }
+    snap = build_pending_snapshot(state)
+    assert classify_pending_reply_fast(phrase, snap) == "reject"
+    assert is_clear_pending_cancel_intent(phrase) is True
+
+
+def test_pending_modify_phrase_not_misclassified_as_cancel():
+    state = _gmail_awaiting_params_state()
+    snap = build_pending_snapshot(state)
+    text = "don't include a CC, just the recipient"
+    assert is_clear_pending_cancel_intent(text) is False
+    assert classify_pending_reply_fast(text, snap) == "modify"
 
 
 def test_other_connector_imperative_is_unrelated():

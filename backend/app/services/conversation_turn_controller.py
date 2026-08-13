@@ -41,6 +41,7 @@ from app.services.pending_reply_classifier import (
     format_pending_meta_answer,
     format_unrelated_hold_prompt,
     has_pending_family,
+    is_clear_pending_cancel_intent,
     map_legacy_plan_intent,
 )
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -191,18 +192,12 @@ async def classify_pending_plan_intent(
     use_model: bool = True,
 ) -> PendingPlanIntent:
     """FAST-tier continue/modify/cancel for pending plans (Module B Phase 4)."""
-    from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
-
-    import re
+    from app.services.conversational_execution_service import CONFIRM_PATTERN
 
     text = (message or "").strip()
     if not text:
         return "unclear"
-    if DECLINE_PATTERN.match(text) or re.search(
-        r"\b(cancel|never\s*mind|abort|stop\s+(?:that|this|the\s+plan))\b",
-        text,
-        re.I,
-    ):
+    if is_clear_pending_cancel_intent(text):
         return "cancel"
     if CONFIRM_PATTERN.match(text) or text.lower() in {"yes", "y", "ok", "okay", "confirm"}:
         return "continue"

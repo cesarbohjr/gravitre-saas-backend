@@ -48,6 +48,39 @@ _VALID_INTENTS: frozenset[str] = frozenset(
     }
 )
 
+
+_CANCEL_ONLY_PHRASES: frozenset[str] = frozenset(
+    {
+        "cancel",
+        "cancel it",
+        "cancel that",
+        "cancel this",
+        "cancel for now",
+        "drop it",
+        "drop that",
+        "drop this",
+        "forget it",
+        "forget that",
+        "forget about it",
+        "never mind",
+        "nevermind",
+        "not now",
+        "not right now",
+        "scratch that",
+        "abort",
+        "abort it",
+        "abort that",
+        "abort this",
+        "stop",
+        "stop it",
+        "stop that",
+        "stop this",
+        "don't",
+        "dont",
+        "do not",
+    }
+)
+
 PENDING_AWAITING_STATUSES = frozenset(
     {
         "awaiting_params",
@@ -209,6 +242,41 @@ def _modify_hint(text: str) -> bool:
     )
 
 
+def is_clear_pending_cancel_intent(message: str) -> bool:
+    """True for clear natural-language cancellation utterances."""
+    from app.services.conversational_execution_service import DECLINE_PATTERN
+
+    text = (message or "").strip()
+    if not text:
+        return False
+    if DECLINE_PATTERN.match(text):
+        return True
+    lower = re.sub(r"[.!?]+$", "", text.lower()).strip()
+    if not lower:
+        return False
+    if re.fullmatch(
+        r"no\s+(?:cancel|drop|forget|scratch|abort|stop)"
+        r"(?:\s+(?:it|that|this|the\s+plan|this\s+plan|the\s+pending\s+plan|for\s+now|about\s+it))?",
+        lower,
+    ):
+        return True
+    if lower in _CANCEL_ONLY_PHRASES:
+        return True
+    if re.fullmatch(
+        r"(?:please\s+)?(?:cancel|drop|forget|scratch|abort|stop)"
+        r"(?:\s+(?:it|that|this|the\s+plan|this\s+plan|the\s+pending\s+plan|for\s+now|about\s+it))?",
+        lower,
+    ):
+        return True
+    if re.fullmatch(
+        r"(?:let'?s|lets)\s+(?:cancel|drop|abort|scratch|stop)\s+"
+        r"(?:it|that|this|the\s+plan|this\s+plan)",
+        lower,
+    ):
+        return True
+    return False
+
+
 def classify_pending_reply_fast(
     message: str,
     snap: PendingSnapshot,
@@ -224,7 +292,7 @@ def classify_pending_reply_fast(
     # Active hold/abandon prompt — map confirm-ish to abandon/proceed via reject/confirm.
     if snap.hold_prompt_active:
         lower = text.lower()
-        if DECLINE_PATTERN.match(text) or re.search(
+        if is_clear_pending_cancel_intent(text) or re.search(
             r"\b(abandon|drop|discard|forget)\b", lower
         ):
             return "reject"
@@ -236,11 +304,7 @@ def classify_pending_reply_fast(
             return "meta_clarify"
         return "ambiguous"
 
-    if DECLINE_PATTERN.match(text) or re.search(
-        r"\b(cancel|never\s*mind|abort|stop\s+(?:that|this|the\s+plan))\b",
-        text,
-        re.I,
-    ):
+    if is_clear_pending_cancel_intent(text):
         return "reject"
 
     if CONFIRM_PATTERN.match(text) or text.lower() in {

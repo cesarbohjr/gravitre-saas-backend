@@ -19,6 +19,13 @@ def test_preflight_for_pending_connector_tasks():
     assert should_run_connector_preflight({"pending_task": {"type": "connector_action"}}) is True
     assert should_run_connector_preflight({"pending_task": {"type": "connector_orchestration"}}) is True
     assert should_run_connector_preflight({"pending_task": {"type": "general"}}) is False
+    assert (
+        should_run_connector_preflight(
+            {"current_plan": {"goal": "Send Gmail message"}},
+            message="cancel",
+        )
+        is True
+    )
 
 
 def test_preflight_skips_fresh_connector_intent_for_react_first():

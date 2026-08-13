@@ -6,6 +6,8 @@ into permanent regression coverage.
 from __future__ import annotations
 
 from app.services.chat_action_mapper import ChatActionMapper
+from app.services.connector_chat_routing import should_run_connector_preflight
+from app.services.pending_reply_classifier import build_pending_snapshot, classify_pending_reply_fast
 from app.services.pack_common_intent_defaults import (
     try_pack_common_list_create_plan,
     try_pack_common_msp_enrich_workflow_plan,
@@ -175,3 +177,24 @@ def test_g1_object_disambiguation_still_holds():
         connected_integrations=["salesforce"],
     )
     assert sf and "contacts" in sf.tool_name and "leads" not in sf.tool_name
+
+
+def test_pending_cancel_transcript_drop_it_then_cancel_routing():
+    """Regression battery: send email -> drop it -> cancel must stay in pending flow."""
+    pending_state = {
+        "current_plan": {
+            "goal": "Send Gmail message",
+            "status": "ok",
+            "steps": [{"step_id": "s1", "description": "Collect email details"}],
+        },
+        "pending_task": {
+            "type": "connector_orchestration",
+            "status": "awaiting_plan_confirm",
+            "params": {"label": "Send Gmail message"},
+        },
+    }
+    snap = build_pending_snapshot(pending_state)
+    assert classify_pending_reply_fast("drop it", snap) == "reject"
+    assert classify_pending_reply_fast("cancel", snap) == "reject"
+    # Keep cancellation in Module B pending handler, never retrieval/search path.
+    assert should_run_connector_preflight(pending_state, message="cancel") is True

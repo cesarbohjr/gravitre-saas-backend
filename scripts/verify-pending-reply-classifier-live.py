@@ -66,6 +66,7 @@ def load_env() -> dict[str, str]:
 def parse_sse(raw: str) -> dict[str, Any]:
     texts: list[str] = []
     intel: list[dict[str, Any]] = []
+    tools: list[str] = []
     for block in re.split(r"\n\n+", raw):
         data_lines = [ln[5:].lstrip() for ln in block.splitlines() if ln.startswith("data:")]
         if not data_lines:
@@ -90,7 +91,18 @@ def parse_sse(raw: str) -> dict[str, Any]:
                     or (d.get("routing") or {}).get("pendingReplyIntent"),
                 }
             )
-    return {"assistant": "".join(texts).strip(), "intel": intel}
+        if t in {"tool-input-available", "tool-output-available", "tool-start", "tool-complete"}:
+            d = o.get("data") if isinstance(o.get("data"), dict) else {}
+            name = str(
+                d.get("toolName")
+                or d.get("name")
+                or o.get("toolName")
+                or o.get("name")
+                or ""
+            ).strip()
+            if name:
+                tools.append(name)
+    return {"assistant": "".join(texts).strip(), "intel": intel, "tools": tools}
 
 
 async def health(client: httpx.AsyncClient) -> dict[str, Any]:
@@ -239,6 +251,19 @@ def orch_awaiting_plan() -> dict[str, Any]:
     }
 
 
+def plan_only_pending() -> dict[str, Any]:
+    return {
+        "current_plan": {
+            "goal": "Send Gmail message",
+            "status": "ok",
+            "steps": [
+                {"step_id": "s1", "description": "Collect recipient + message details"},
+            ],
+        },
+        "pending_task": None,
+    }
+
+
 CASES: list[dict[str, Any]] = [
     # --- Known bugs ---
     {
@@ -266,6 +291,35 @@ CASES: list[dict[str, Any]] = [
         "followup": {
             "user": "yes",
             "must_not_include": ["starting execution", "Running step"],
+        },
+    },
+    {
+        "id": "known_drop_it_cancels_pending_plan",
+        "seed": "plan_only",
+        "user": "drop it",
+        "expect_intent": "reject",
+        "must_include": ["cancel"],
+        "must_not_include": ["say **yes** to continue", "I still have a plan open"],
+    },
+    {
+        "id": "known_cancel_pending_plan_no_external_search",
+        "seed": "plan_only",
+        "user": "cancel",
+        "expect_intent": "reject",
+        "must_include": ["cancel"],
+        "must_not_tools": ["web_search", "knowledge_base"],
+    },
+    {
+        "id": "known_reported_transcript_drop_it_then_cancel",
+        "seed": "plan_only",
+        "user": "drop it",
+        "expect_intent": "reject",
+        "must_include": ["cancel"],
+        "must_not_include": ["say **yes** to continue", "I still have a plan open"],
+        "followup": {
+            "user": "cancel",
+            "must_include": ["cancel"],
+            "must_not_tools": ["web_search", "knowledge_base"],
         },
     },
     # --- Meta clarify variations ---
@@ -428,13 +482,22 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any]) -> dict[str, Any]:
     for needle in case.get("must_not_include") or []:
         if needle.lower() in lower:
             failures.append(f"forbidden:{needle}")
+    tool_names = [str(t or "").strip().lower() for t in (turn.get("tools") or [])]
+    for forbidden in case.get("must_not_tools") or []:
+        f = str(forbidden or "").strip().lower()
+        if f and any(f in tool for tool in tool_names):
+            failures.append(f"forbidden_tool:{forbidden}")
+    for required in case.get("must_include_tools") or []:
+        r = str(required or "").strip().lower()
+        if r and not any(r in tool for tool in tool_names):
+            failures.append(f"missing_tool:{required}")
     # Heuristic intent from assistant shape when intel lacks field.
     inferred = None
     if "abandon" in lower and "hold" in lower:
         inferred = "unrelated"
     elif "email address" in lower and "still needed" in lower:
         inferred = "meta_clarify"
-    elif "cancel" in lower and "won't" in lower:
+    elif "cancelled" in lower or ("cancel" in lower and "won't" in lower):
         inferred = "reject"
     expect = case.get("expect_intent")
     expect_any = case.get("expect_any_intent") or []
@@ -450,6 +513,7 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any]) -> dict[str, Any]:
         "inferred_intent": inferred,
         "expect_intent": expect,
         "assistant_snippet": assistant[:280],
+        "tools": turn.get("tools") or [],
     }
 
 
@@ -484,6 +548,7 @@ async def main() -> int:
         "gmail": gmail_awaiting_params,
         "slack": slack_awaiting_params,
         "orch": orch_awaiting_plan,
+        "plan_only": plan_only_pending,
     }
 
     results: list[dict[str, Any]] = []
@@ -522,8 +587,17 @@ async def main() -> int:
                 for needle in fu.get("must_not_include") or []:
                     if needle.lower() in al:
                         fu_fail.append(f"forbidden:{needle}")
+                for needle in fu.get("must_include") or []:
+                    if needle.lower() not in al:
+                        fu_fail.append(f"missing:{needle}")
+                tool2 = [str(t or "").strip().lower() for t in (turn2.get("tools") or [])]
+                for forbidden in fu.get("must_not_tools") or []:
+                    f = str(forbidden or "").strip().lower()
+                    if f and any(f in t for t in tool2):
+                        fu_fail.append(f"forbidden_tool:{forbidden}")
                 follow = {
                     "assistant_snippet": (turn2.get("assistant") or "")[:280],
+                    "tools": turn2.get("tools") or [],
                     "ok": len(fu_fail) == 0 and turn2.get("http") == 200,
                     "failures": fu_fail,
                 }
@@ -542,6 +616,7 @@ async def main() -> int:
                         "http": turn.get("http"),
                         "at": turn.get("at"),
                         "assistant": (turn.get("assistant") or "")[:500],
+                        "tools": turn.get("tools") or [],
                     },
                     "judgment": judgment,
                     "followup": follow,

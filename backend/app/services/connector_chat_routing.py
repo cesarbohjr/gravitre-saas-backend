@@ -83,7 +83,13 @@ def should_run_connector_preflight(
     ``is_orchestration_intent``; the LIST_CREATE prefer_connector guard must live
     here as well as in ``run_connector_fallback_turn`` (parallel-path parity).
     """
+    from app.services.pending_reply_classifier import has_pending_family
+
     if has_pending_connector_task(task_state):
+        return True
+    # Any pending family (including sticky current_plan without pending_task) must
+    # route through Module B pending handling before retrieval/research.
+    if has_pending_family(task_state):
         return True
     if not (message or "").strip():
         return False

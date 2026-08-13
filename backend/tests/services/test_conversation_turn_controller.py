@@ -52,6 +52,16 @@ async def test_classify_cancel_via_regex():
 
 
 @pytest.mark.asyncio
+async def test_classify_cancel_drop_it_phrase():
+    intent = await classify_pending_plan_intent(
+        "drop it",
+        current_plan={"goal": "Create Apollo list"},
+        use_model=False,
+    )
+    assert intent == "cancel"
+
+
+@pytest.mark.asyncio
 async def test_classify_modify_off_script():
     assert re_modify_hint("let's skip step 2 and just create the list")
     intent = await classify_pending_plan_intent(
