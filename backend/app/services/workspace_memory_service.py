@@ -56,6 +56,26 @@ def promote_turn_memories(
     if conversation_id:
         base_prov = f"{base_prov}:conversation:{conversation_id}"
 
+    # Until agent_id is nullable in prod, pin workspace rows to an org steward agent
+    # while keeping org-wide RECALL (workspace-scoped product semantics).
+    resolved_agent_id = (str(agent_id).strip() or None) if agent_id else None
+    if not resolved_agent_id:
+        try:
+            rows = (
+                client.table("agents")
+                .select("id")
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if rows:
+                resolved_agent_id = str(rows[0].get("id") or "") or None
+                base_prov = f"{base_prov}:workspace_steward"
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("workspace_memory_steward_lookup_failed error=%s", exc)
+
     for raw in memories:
         if not isinstance(raw, dict):
             continue
@@ -74,7 +94,7 @@ def promote_turn_memories(
         payload: dict[str, Any] = {
             "id": str(raw.get("id") or uuid4()),
             "org_id": org_id,
-            "agent_id": (str(agent_id).strip() or None) if agent_id else None,
+            "agent_id": resolved_agent_id,
             "content": content[:4000],
             "category": category,
             "provenance": str(raw.get("provenance") or base_prov)[:500],
@@ -83,6 +103,13 @@ def promote_turn_memories(
             "created_by": user_id,
             "is_active": True,
         }
+        if not resolved_agent_id:
+            # Cannot insert without agent_id until migration applied — skip honestly.
+            logger.warning(
+                "workspace_memory_promote_skipped_no_steward org_id=%s",
+                org_id,
+            )
+            continue
         # Optional embedding — best-effort; recall still works via content/category.
         try:
             from app.rag.embedding import get_embedding
