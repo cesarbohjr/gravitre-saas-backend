@@ -74,7 +74,7 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "plaid": VendorHttpProfile("plaid", "plaid", "https://sandbox.plaid.com", "api_token"),
     "snowflake": VendorHttpProfile("snowflake", "snowflake", "https://{account}.snowflakecomputing.com", "api_token"),
     "shopify": VendorHttpProfile("shopify", "shopify", "https://{shop}.myshopify.com/admin/api/2024-01", "generic_oauth"),
-    "linear": VendorHttpProfile("linear", "linear", "https://api.linear.app/graphql", "api_token"),
+    "linear": VendorHttpProfile("linear", "linear", "https://api.linear.app/graphql", "generic_oauth"),
     "gitlab": VendorHttpProfile("gitlab", "gitlab", "https://gitlab.com/api/v4", "generic_oauth"),
     "paypal": VendorHttpProfile("paypal", "paypal", "https://api-m.paypal.com", "generic_oauth"),
     "brevo": VendorHttpProfile("brevo", "brevo", "https://api.brevo.com/v3", "api_token"),

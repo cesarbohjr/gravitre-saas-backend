@@ -168,6 +168,13 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "linkedin_sales_navigator",
         "crunchbase",
         "pdl",
+        # Phase 2 OAuth / API connectors
+        "linear",
+        "gitlab",
+        "shopify",
+        "paypal",
+        "brevo",
+        "meta_marketing",
     }
 )
 

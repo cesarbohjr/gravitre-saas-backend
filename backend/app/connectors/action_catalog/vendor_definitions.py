@@ -2317,13 +2317,13 @@ VENDOR_DEFINITIONS: tuple = (
             ),
         ),
     ),
-    # Phase 2 connector scaffold — catalog ActionSpecs only; executors wired in follow-up PRs.
+    # Phase 2 connector executors — OAuth/API wired in follow-up PRs.
     build_vendor(
         "linear",
         "Linear",
         "Engineering",
         "https://developers.linear.app/docs/graphql/working-with-the-graphql-api",
-        shipped=False,
+        shipped=True,
         department="engineering",
         v1=(
             action("linear", "issues.list", "List issues", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
@@ -2340,7 +2340,7 @@ VENDOR_DEFINITIONS: tuple = (
         "GitLab",
         "Engineering",
         "https://docs.gitlab.com/ee/api/rest/",
-        shipped=False,
+        shipped=True,
         department="engineering",
         v1=(
             action("gitlab", "projects.list", "List projects", tier="v1", kind="read", scope_suffix="projects:read", idempotent=True),
@@ -2357,7 +2357,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Shopify",
         "Commerce",
         "https://shopify.dev/docs/api/admin-rest",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("shopify", "products.list", "List products", tier="v1", kind="read", scope_suffix="products:read", idempotent=True),
@@ -2374,7 +2374,7 @@ VENDOR_DEFINITIONS: tuple = (
         "PayPal",
         "Payments",
         "https://developer.paypal.com/docs/api/overview/",
-        shipped=False,
+        shipped=True,
         department="finance",
         v1=(
             action("paypal", "payments.list", "List payments", tier="v1", kind="read", scope_suffix="payments:read", idempotent=True),
@@ -2391,7 +2391,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Brevo",
         "Marketing",
         "https://developers.brevo.com/reference/getting-started-1",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("brevo", "contacts.list", "List contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
@@ -2408,7 +2408,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Meta Marketing",
         "Marketing",
         "https://developers.facebook.com/docs/marketing-apis/",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("meta_marketing", "campaigns.list", "List ad campaigns", tier="v1", kind="read", scope_suffix="ads:read", idempotent=True),

@@ -196,6 +196,43 @@ def _specs() -> dict[str, OAuthProviderSpec]:
                 "Scopes are configured in the Apollo app; omit scope param to use registered defaults."
             ),
         ),
+        OAuthProviderSpec(
+            vendor="linear",
+            authorize_url="https://linear.app/oauth/authorize",
+            token_url="https://api.linear.app/oauth/token",
+            scopes="read write",
+            notes="Linear GraphQL OAuth; API key fallback supported on tool path",
+        ),
+        OAuthProviderSpec(
+            vendor="gitlab",
+            authorize_url="https://gitlab.com/oauth/authorize",
+            token_url="https://gitlab.com/oauth/token",
+            scopes="api read_api",
+            notes="GitLab.com OAuth; self-hosted uses instance_url on connector config",
+        ),
+        OAuthProviderSpec(
+            vendor="shopify",
+            authorize_url="https://{subdomain}.myshopify.com/admin/oauth/authorize",
+            token_url="https://{subdomain}.myshopify.com/admin/oauth/access_token",
+            scopes="read_products,write_products,read_orders,write_orders",
+            requires_subdomain=True,
+            notes="Shop subdomain required before OAuth (stored as config.subdomain / shop)",
+        ),
+        OAuthProviderSpec(
+            vendor="paypal",
+            authorize_url="https://www.paypal.com/signin/authorize",
+            token_url="https://api-m.paypal.com/v1/oauth2/token",
+            scopes="openid https://uri.paypal.com/services/payments/payment https://uri.paypal.com/services/payments/refund",
+            token_style=TokenRequestStyle.BASIC_AUTH,
+            notes="PayPal REST OAuth; sandbox uses api-m.sandbox.paypal.com via connector override",
+        ),
+        OAuthProviderSpec(
+            vendor="meta_marketing",
+            authorize_url="https://www.facebook.com/v21.0/dialog/oauth",
+            token_url="https://graph.facebook.com/v21.0/oauth/access_token",
+            scopes="ads_management,ads_read",
+            notes="Meta Marketing API via Facebook Login; ad_account_id required on connector config",
+        ),
     ]
     return {spec.vendor: spec for spec in entries}
 
@@ -213,6 +250,8 @@ _VENDOR_ALIASES: dict[str, str] = {
     "microsoft_365": "microsoft365",
     "ms365": "microsoft365",
     "githubapp": "github",
+    "metamarketing": "meta_marketing",
+    "facebookads": "meta_marketing",
 }
 
 
