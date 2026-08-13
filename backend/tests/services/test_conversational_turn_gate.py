@@ -115,6 +115,23 @@ def test_human_moment_never_defers_to_classical_tool_sse():
     )
 
 
+@pytest.mark.parametrize(
+    "message,needle",
+    [
+        ("help me improve our hiring process", "time-to-hire"),
+        ("help me plan next week's priorities", "revenue"),
+        ("help me improve our SEO", "organic"),
+    ],
+)
+def test_ambiguous_open_clarify_replies(message, needle):
+    from app.services.conversational_turn_gate import ambiguous_open_clarify_reply
+
+    reply = ambiguous_open_clarify_reply(message)
+    assert reply is not None
+    assert "?" in reply
+    assert needle in reply.lower()
+
+
 def test_capability_snapshot_uses_connected_list():
     text = build_capability_snapshot(connected_integrations=["hubspot", "slack"])
     assert "Hubspot" in text or "HubSpot" in text or "hubspot" in text.lower()

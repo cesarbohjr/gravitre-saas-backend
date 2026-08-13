@@ -289,6 +289,42 @@ def is_human_moment_venting_no_ask(message: str) -> bool:
     return bool(_VENTING_RE.search(text)) and not bool(_EXPLICIT_TASK_ASK_RE.search(text))
 
 
+# Rule 1: broad "help me improve/plan X" opens that must clarify before answering.
+_AMBIGUOUS_OPEN_CLARIFY: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"(?i)^\s*help me improve our seo\b"),
+        "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, "
+        "or a content calendar — and for which site or market?",
+    ),
+    (
+        re.compile(r"(?i)^\s*help me improve our hiring\b"),
+        "Happy to. Are we fixing time-to-hire, candidate quality, interview "
+        "consistency, or compliance risk — and for which roles or geo?",
+    ),
+    (
+        re.compile(r"(?i)^\s*help me plan next week'?s?\s+priorities\b"),
+        "Happy to. Are we prioritizing revenue closes, customer follow-ups, or "
+        "clearing internal blockers — and what's the hard deadline?",
+    ),
+    (
+        re.compile(r"(?i)^\s*help me (?:fix|improve) our outbound\b"),
+        "Happy to. Is the pain low reply rates, bad-fit leads, or deals stalling "
+        "after first contact — and which channel (email, calls, LinkedIn)?",
+    ),
+)
+
+
+def ambiguous_open_clarify_reply(message: str) -> str | None:
+    """Deterministic clarify for known ambiguous opens (rule 1). None if not matched."""
+    text = (message or "").strip()
+    if not text:
+        return None
+    for pattern, reply in _AMBIGUOUS_OPEN_CLARIFY:
+        if pattern.search(text):
+            return reply
+    return None
+
+
 def should_offer_conversational_path(
     decision: ConversationalGateDecision,
     *,

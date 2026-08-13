@@ -1392,14 +1392,36 @@ async def apply_unified_turn_live(
             )
             return staged
 
-    # Rule 10 hard path: human-moment venting with no explicit ask must be served
-    # as LIVE text without classical tool fallthrough (prevents HubSpot/Apollo derail).
     from app.services.conversational_turn_gate import (
+        ambiguous_open_clarify_reply,
         heuristic_turn_shape,
         is_human_moment_venting_no_ask,
     )
     from app.services.pending_reply_classifier import has_pending_family
 
+    # Rule 1 hard path: known ambiguous opens must clarify first (same class as
+    # Marketing SEO brief — also covers HR hiring + default weekly priorities).
+    clarify_open = ambiguous_open_clarify_reply(message or "")
+    if clarify_open and not has_pending_family(task_state):
+        clarify_result = UnifiedTurnShadowResult(
+            outcome_kind="clarifying_question",
+            user_message=clarify_open,
+            live_served=True,
+            needs_tool_sse=False,
+            model="ambiguous_open_clarify",
+            connected_integrations=list(connected_integrations or []),
+        )
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=clarify_result,
+        )
+        return _unified_live_turn_payload(clarify_result, task_state)
+
+    # Rule 10 hard path: human-moment venting with no explicit ask must be served
+    # as LIVE text without classical tool fallthrough (prevents HubSpot/Apollo derail).
     if is_human_moment_venting_no_ask(message or "") and not has_pending_family(task_state):
         result = await run_unified_turn_shadow(
             org_id=org_id,
