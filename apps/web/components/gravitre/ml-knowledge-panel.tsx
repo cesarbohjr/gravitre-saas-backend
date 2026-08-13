@@ -14,19 +14,19 @@ export function MlKnowledgePanel() {
         </span>
         <div>
           <h3 id="ml-knowledge-heading" className="text-sm font-semibold text-foreground">
-            ML Knowledge &amp; Performance
+            How your models are doing
           </h3>
           <p className="text-xs text-muted-foreground">
-            Weighted model strengths and learning trend across your registry.
+            Strength and trend across models you have registered.
           </p>
         </div>
       </div>
 
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 py-12 text-center">
         <Sparkles className="mb-3 h-8 w-8 text-muted-foreground/60" />
-        <p className="text-sm font-medium text-foreground">No performance metrics yet</p>
+        <p className="text-sm font-medium text-foreground">No performance data yet</p>
         <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-          Deploy or train models in your registry to see strength scores, trends, and knowledge growth here.
+          Train or deploy a model to see strength scores and trends here.
         </p>
       </div>
     </div>

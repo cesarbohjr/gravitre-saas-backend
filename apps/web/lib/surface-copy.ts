@@ -40,31 +40,30 @@ export const SURFACE_COPY = {
   models: {
     title: "Models",
     shortTitle: "Models",
-    description:
-      "Register, version, and deploy models your workflows and services can call.",
-    badge: "Production models",
-    heroTitle: "Deploy models to workflows",
+    description: "Register and deploy models your workflows and agents can call.",
+    badge: "Your model registry",
+    heroTitle: "Models ready for real work",
     heroDescription:
-      "Track versions, wire datasets from Training, and expose inference to automations. For org-wide learning signals, see Learning.",
+      "Version models, connect datasets from Training, and use them in workflows. For org-wide learning signals, open Learning.",
     route: APP_ROUTES.models,
     step: "Deploy",
-    stepSummary: "Versioned models ready for workflows and API calls.",
+    stepSummary: "Models ready for workflows and API calls.",
   },
   builtInModels: {
     title: "Built-in models",
     shortTitle: "Built-in",
     description:
-      "Gravitre's org ML brain — plain-language models that learn from your workflows, CRM, support, and chat signals.",
+      "Gravitre's org learning models. Plain-language learners from your workflows, CRM, support, and chat.",
     intro:
-      "These are Gravitre’s built-in learners for your organization. Each card explains what the model does, why training matters, and how close you are to its data quality gate.",
+      "Built-in learners for your organization. Each card explains what the model does, why training matters, and how close you are to enough data.",
     emptyTitle: "No catalog models yet",
-    emptyDescription: "Built-in models appear here once ML catalog is enabled for your org.",
+    emptyDescription: "Built-in models appear here once the catalog is enabled for your org.",
     route: APP_ROUTES.builtInModels,
   },
   learningLoop: {
     title: "Learning loop",
     subtitle: "Observe → Train → Deploy",
-    description: "Three connected steps: learn from usage, fine-tune agents, deploy production models.",
+    description: "Three steps: learn from usage, train agents, deploy production models.",
   },
   hubLinks: {
     operationalHealth: {
@@ -79,22 +78,22 @@ export const SURFACE_COPY = {
     },
     learning: {
       title: "Learning & golden signals",
-      summary: "Query, memory, and search learning — including revenue risk.",
+      summary: "Query, memory, and search learning, including items to review.",
       route: APP_ROUTES.learning,
     },
     builtIn: {
-      title: "Model confidence / built-in",
-      summary: "Org ML brain — what each model does, why train it, and data readiness.",
+      title: "Built-in model confidence",
+      summary: "What each org model does, why train it, and data readiness.",
       route: APP_ROUTES.builtInModels,
     },
     models: {
       title: "Models registry",
-      summary: "Register, version, and deploy models for workflows.",
+      summary: "Register and deploy models for workflows and agents.",
       route: APP_ROUTES.models,
     },
     memory: {
       title: "Memory",
-      summary: "Promoted memories and knowledge graph connections.",
+      summary: "Shared memories and knowledge connections.",
       route: APP_ROUTES.intelligenceMemory,
     },
     predictive: {

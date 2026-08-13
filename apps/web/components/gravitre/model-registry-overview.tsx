@@ -92,11 +92,11 @@ export function ModelRegistryOverview({
               {SURFACE_COPY.models.heroTitle}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Track versions, wire datasets from{" "}
+              Version models, connect datasets from{" "}
               <Link href={APP_ROUTES.training} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
                 {SURFACE_COPY.training.title}
               </Link>
-              , and expose inference to workflows. For org-wide signals, see{" "}
+              , and use them in workflows. For org-wide learning signals, open{" "}
               <Link href={APP_ROUTES.learning} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
                 {SURFACE_COPY.learning.title}
               </Link>

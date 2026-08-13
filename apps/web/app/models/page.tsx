@@ -318,7 +318,7 @@ export default function ModelsPage() {
         />
 
         <p className="text-sm text-muted-foreground">
-          Looking for Gravitre&apos;s system catalog? See{" "}
+          Looking for Gravitre&apos;s built-in learners? Open{" "}
           <Link href={APP_ROUTES.builtInModels} className="text-primary hover:underline">
             {SURFACE_COPY.builtInModels.title}
           </Link>
@@ -390,7 +390,7 @@ export default function ModelsPage() {
             <EmptyState
               icon={Brain}
               title="No models yet"
-              description="Register a classifier, forecaster, fine-tuned LLM, or anomaly detector. Base models adapt to your connected data sources and platform LLM providers."
+              description="Register a scoring model, forecast, fine-tuned assistant, or anomaly detector. Available bases follow your connected data and LLM providers."
               action={{ label: "Register model", onClick: openRegisterDialog }}
             />
           </motion.div>
@@ -412,17 +412,15 @@ export default function ModelsPage() {
         <div className="rounded-xl border border-border/50 bg-secondary/20 p-4 text-xs text-muted-foreground">
           <p className="font-medium text-foreground/90">How it fits together</p>
           <ol className="mt-2 list-decimal space-y-1 pl-4">
+            <li>Register a model here and pick a type plus base model.</li>
             <li>
-              Register a model here with type + base algorithm or foundation LLM.
-            </li>
-            <li>
-              Attach training data on{" "}
+              Add training data on{" "}
               <Link href="/training" className="text-primary underline-offset-4 hover:underline">
                 Training
               </Link>{" "}
-              and start a job linked to this registry entry.
+              and run a job for this model.
             </li>
-            <li>Deploy a version, then reference the model from workflows, agents, or Meson nodes.</li>
+            <li>Deploy a version, then use it from workflows or agents.</li>
           </ol>
           {dataSources.length === 0 ? (
             <p className="mt-3 flex flex-wrap items-center gap-1">
@@ -431,7 +429,7 @@ export default function ModelsPage() {
               <Link href="/connectors" className="text-primary underline-offset-4 hover:underline">
                 Connectors
               </Link>{" "}
-              to unlock tabular base models.
+              to unlock scoring and forecast bases.
             </p>
           ) : null}
         </div>
@@ -455,11 +453,11 @@ export default function ModelsPage() {
               Register model
             </DialogTitle>
             <DialogDescription className="text-left">
-              Creates a draft registry entry. Train on{" "}
+              Creates a draft model. Train on{" "}
               <Link href="/training" className="text-primary underline-offset-4 hover:underline">
                 Training
               </Link>
-              , then deploy from the model detail page.
+              , then deploy from the model page.
             </DialogDescription>
             {activeTemplateLayer ? (
               <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-2.5 text-left text-xs">
@@ -467,7 +465,7 @@ export default function ModelsPage() {
                   Template: {activeTemplateLayer.title}
                 </p>
                 <p className="mt-1 leading-relaxed text-foreground/80">
-                  Pre-filled for this stack layer — adjust name, base model, or task profile before creating.
+                  Pre-filled for this type. Adjust name, base model, or task before creating.
                 </p>
               </div>
             ) : null}
@@ -495,7 +493,7 @@ export default function ModelsPage() {
                 <SelectTrigger id="model-type" className="h-auto min-h-10 py-2">
                   <SelectValue>
                     {selectedTypeMeta
-                      ? `${selectedTypeMeta.label} — ${selectedTypeMeta.tagline}`
+                      ? `${selectedTypeMeta.label}: ${selectedTypeMeta.tagline}`
                       : "Select model type"}
                   </SelectValue>
                 </SelectTrigger>
@@ -503,7 +501,7 @@ export default function ModelsPage() {
                   {MODEL_TYPE_CATALOG.map((t) => (
                     <SelectItem key={t.value} value={t.value} textValue={t.label}>
                       <span className="font-medium">{t.label}</span>
-                      <span className="ml-2 text-muted-foreground">— {t.tagline}</span>
+                      <span className="ml-2 text-muted-foreground">{t.tagline}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
