@@ -223,6 +223,8 @@ export function AiWorkspace({
     if (!match || (match.status && match.status !== "active")) return null
     return voiceProfileIsConfigured(match.voiceProfile) ? match : null
   }, [voiceAgents, voiceAgentId])
+  // Session identity for transcript + voice pills (You / persona). Avatar disc
+  // stays the Gravitre mark on every surface — only the label differs.
   const assistantLabel = useMemo(
     () => resolveChatPersonaLabel(preferredPersona),
     [preferredPersona],
@@ -1680,6 +1682,8 @@ export function AiWorkspace({
     }
   }, [modality, stopAgentVoice, clearVoiceErrors])
 
+  // Live-floor chrome (11a/11b) only when Voice is armed or the mic/TTS owns
+  // the floor — never treat ordinary Text streaming as "agent speaking".
   const voicePresence: VoicePresenceState =
     voiceBilling || voiceServiceError
       ? "error"
@@ -1687,7 +1691,7 @@ export function AiWorkspace({
         ? "listening"
         : micStatus === "permission-denied" || micStatus === "audio-capture"
           ? "error"
-          : ttsSpeaking || isStreaming
+          : ttsSpeaking || (modality === "voice" && isStreaming)
             ? "speaking"
             : "idle"
   const voicePresenceDetail = voiceBilling
@@ -2112,6 +2116,7 @@ export function AiWorkspace({
                     onRegenerate={handleRegenerateAssistant}
                     onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
                     assistantLabel={assistantLabel}
+                    waitingLabel={`${assistantLabel} is thinking…`}
                   />
                 </div>
                 {shouldShowTaskSidePanel(researchProgressSteps, pendingTask) ? (

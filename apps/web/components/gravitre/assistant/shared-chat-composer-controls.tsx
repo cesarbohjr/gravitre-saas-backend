@@ -82,6 +82,7 @@ export type SharedChatComposerControlsProps = {
 export function SharedChatComposerControls({
   input,
   onInputChange,
+  modality = "text",
   onModalityChange,
   voiceEntitled,
   unavailableReason = "Voice is turned off for this organization, or your seat cannot use voice here. An admin can enable voice under Meson Addons / Billing.",
@@ -124,11 +125,25 @@ export function SharedChatComposerControls({
     onMicStatusChange?.(status)
   }, [status, onMicStatusChange])
 
-  const isLiveVoice = voicePresence === "listening" || voicePresence === "speaking"
-  const speaker: VoiceSpeaker = voicePresence === "speaking" ? "agent" : "user"
+  // 11a/11b speaker chrome only while Voice owns the floor (mic or TTS / voice stream).
+  // Idle Text replies must not paint a graphite agent pill.
+  const isLiveVoice =
+    voicePresence === "listening" ||
+    voicePresence === "speaking" ||
+    isListening ||
+    ttsSpeaking ||
+    (modality === "voice" && isStreaming)
+  const speaker: VoiceSpeaker =
+    voicePresence === "speaking" || ttsSpeaking || (modality === "voice" && isStreaming && !isListening)
+      ? "agent"
+      : "user"
   const waveActive = isLiveVoice
   const speakerLabel =
-    voicePresence === "listening" ? "You" : voicePresence === "speaking" ? agentLabel : null
+    voicePresence === "listening" || isListening
+      ? "You"
+      : voicePresence === "speaking" || ttsSpeaking || (modality === "voice" && isStreaming)
+        ? agentLabel
+        : null
 
   const isBusy = isStreaming || ttsSpeaking || isListening
 

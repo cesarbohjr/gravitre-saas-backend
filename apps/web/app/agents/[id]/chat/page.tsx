@@ -270,7 +270,7 @@ export default function AgentChatPage({
     }
   }, [modality, stopAgentVoice, clearVoiceErrors])
 
-  // Presence: real TTS playback + real 402 billing (not inferred from stream alone).
+  // Live-floor chrome only when Voice is armed or mic/TTS owns the floor.
   const voicePresence: VoicePresenceState =
     voiceBilling || voiceServiceError
       ? "error"
@@ -278,7 +278,7 @@ export default function AgentChatPage({
         ? "listening"
         : micStatus === "permission-denied" || micStatus === "audio-capture"
           ? "error"
-          : ttsSpeaking || isStreaming
+          : ttsSpeaking || (modality === "voice" && isStreaming)
             ? "speaking"
             : "idle"
   const voicePresenceDetail = voiceBilling

@@ -161,7 +161,9 @@ export function ChatTranscript({
   onCopyText,
   onCopyLink,
   onSaveQuestion,
-  assistantLabel = "Gravitre",
+  // Prefer an explicit surface label; fall back to the default persona name so
+  // uppercase chrome never paints a bare GRAVITRE when a caller forgets the prop.
+  assistantLabel = "Friendly Assistant",
   waitingLabel,
 }: ChatTranscriptProps) {
   // Which assistant message is currently being read aloud, so that message's

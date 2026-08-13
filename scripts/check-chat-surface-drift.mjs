@@ -215,6 +215,18 @@ for (const rel of requiredImporters) {
   if (!src.includes("spoken_mode")) {
     failures.push(`${rel}: must send spoken_mode on chat transport when Voice modality is active`)
   }
+  if (!/assistantLabel=\{/.test(src)) {
+    failures.push(`${rel}: must pass assistantLabel into ChatTranscript (persona / agent name)`)
+  }
+  if (!/agentLabel=\{/.test(src)) {
+    failures.push(`${rel}: must pass agentLabel into SharedChatComposerControls for You/agent pills`)
+  }
+  // Text streaming must not fake Voice "speaking" chrome (11a/11b live floor).
+  if (/ttsSpeaking\s*\|\|\s*isStreaming/.test(src) && !/modality\s*===\s*["']voice["']/.test(src)) {
+    failures.push(
+      `${rel}: voicePresence speaking must gate isStreaming on modality === "voice" (or use ttsSpeaking alone)`,
+    )
+  }
   if (/\bDictate\b|\bonDictateError\b/.test(src)) {
     failures.push(`${rel}: Dictate affordance must remain removed`)
   }
