@@ -180,6 +180,14 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "brevo.contacts.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "brevo.email.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "canva.autofill.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -439,6 +447,14 @@
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "github.releases.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gitlab.issues.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "gitlab.merge_requests.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
@@ -782,6 +798,18 @@
       "read_action": "jira.issues.get",
       "reason": "Sibling GET must return the written entity id/field"
     },
+    "linear.issues.create": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "linear.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
+    "linear.issues.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "linear.issues.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
     "linkedin.audience.update": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -851,6 +879,14 @@
       "reason": "F6 collection population membership proof"
     },
     "marketo.programs.members.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "meta_marketing.campaigns.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "meta_marketing.campaigns.update": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
@@ -1130,6 +1166,14 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "paypal.payouts.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "paypal.refunds.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "pipedrive.deals.create": {
       "assert_field": "id",
       "mode": "follow_up_entity_get",
@@ -1314,6 +1358,14 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "shopify.orders.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "shopify.products.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "slack.chat.update": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -1411,20 +1463,20 @@
       "reason": "Sibling GET must return the written entity id/field"
     },
     "twilio.calls.create": {
-      "assert_field": "sid",
+      "assert_field": "id",
       "mode": "follow_up_entity_get",
       "read_action": "twilio.calls.get",
-      "reason": "Confirm Call SID via twilio.calls.get after outbound dial"
+      "reason": "Sibling GET must return the written entity id/field"
     },
     "twilio.conversations.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "twilio.messages.create": {
-      "assert_field": "sid",
+      "assert_field": "id",
       "mode": "follow_up_entity_get",
       "read_action": "twilio.messages.get",
-      "reason": "Confirm Message SID via twilio.messages.get after SMS send"
+      "reason": "Sibling GET must return the written entity id/field"
     },
     "twilio.studio.flows.execute": {
       "mode": "accepted_async",
@@ -1441,10 +1493,8 @@
       "reason": "Sibling GET must return the written entity id/field"
     },
     "vapi.calls.end": {
-      "assert_field": "id",
-      "mode": "follow_up_entity_get",
-      "read_action": "vapi.calls.get",
-      "reason": "Confirm call ended via vapi.calls.get after terminate"
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "webhook.post": {
       "mode": "accepted_async",
@@ -1540,6 +1590,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 345,
+  "mutating_action_count": 358,
   "version": 1
 }

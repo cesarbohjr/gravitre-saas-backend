@@ -41,7 +41,7 @@ def test_all_write_actions_are_verified():
 
 
 def test_verified_batches_are_size_at_most_25_and_cover_cleared_set():
-    assert len(VERIFIED_OUTPUT_BATCHES) == 9
+    assert len(VERIFIED_OUTPUT_BATCHES) == 10
     for index, batch in enumerate(VERIFIED_OUTPUT_BATCHES, start=1):
         assert 1 <= len(batch) <= 25, f"batch {index} size={len(batch)}"
         assert batch <= CLEARED_OUTPUT_SCHEMA_ACTIONS

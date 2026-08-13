@@ -251,6 +251,23 @@ VERIFIED_ADVANCED_OUTPUT_BATCH_14: frozenset[str] = frozenset(
     }
 )
 
+VERIFIED_OUTPUT_BATCH_10: frozenset[str] = frozenset(
+    {
+        "linear.issues.create",
+        "linear.issues.update",
+        "gitlab.issues.create",
+        "gitlab.merge_requests.create",
+        "shopify.products.create",
+        "shopify.orders.update",
+        "paypal.refunds.create",
+        "paypal.payouts.create",
+        "brevo.email.send",
+        "brevo.contacts.create",
+        "meta_marketing.campaigns.create",
+        "meta_marketing.campaigns.update",
+    }
+)
+
 VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_OUTPUT_BATCH_01,
     VERIFIED_OUTPUT_BATCH_02,
@@ -261,6 +278,7 @@ VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_OUTPUT_BATCH_07,
     VERIFIED_OUTPUT_BATCH_08,
     VERIFIED_OUTPUT_BATCH_09,
+    VERIFIED_OUTPUT_BATCH_10,
 )
 
 CLEARED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(*VERIFIED_OUTPUT_BATCHES)

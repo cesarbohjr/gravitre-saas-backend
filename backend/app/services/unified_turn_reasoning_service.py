@@ -532,7 +532,7 @@ async def run_unified_turn_shadow(
 
     # G.5.2 progressive disclosure — stubs + search_catalog_tools (A1/A2).
     # Candidate set stays the narrowed list; full schemas load on demand.
-    from app.services.narrowed_tools import assert_tools_narrowed, mark_narrowed
+    from app.services.narrowed_tools import NarrowedTools, assert_tools_narrowed, mark_narrowed
     from app.services.progressive_tool_schemas import (
         SEARCH_CATALOG_TOOLS_NAME,
         apply_progressive_disclosure,
@@ -817,7 +817,12 @@ async def run_unified_turn_shadow(
             # Pure conversational / human-moment venting: never attach tools.
             # Empathy-warranting turns must not derail into connector calls (rule 10).
             conversational_no_tools = shape_label == "conversational"
-            round_tools = [] if conversational_no_tools else list(attach_tools)
+            if conversational_no_tools:
+                round_tools: list[dict[str, Any]] = []
+            elif isinstance(attach_tools, NarrowedTools):
+                round_tools = attach_tools
+            else:
+                round_tools = list(attach_tools or [])
             kwargs: dict[str, Any] = {
                 "model": model,
                 "messages": messages,
@@ -965,6 +970,12 @@ async def run_unified_turn_shadow(
             result.qa_force_tool = forced
             if tool_calls:
                 result.qa_overrode_model_tool = str(tool_calls[0].function.name or "")
+                try:
+                    parsed = json.loads(tool_calls[0].function.arguments or "{}")
+                    if isinstance(parsed, dict) and parsed:
+                        args = parsed
+                except json.JSONDecodeError:
+                    pass
             # QA force loads the schema so progressive gate does not block fixtures.
             if tool_name:
                 loaded_names.add(tool_name)

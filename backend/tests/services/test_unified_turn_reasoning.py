@@ -20,6 +20,12 @@ from app.services.unified_turn_reasoning_service import (
     run_unified_turn_shadow,
     schedule_unified_turn_shadow,
 )
+from app.services.narrowed_tools import mark_narrowed
+
+
+def _mock_narrowed(tools: list, stats: dict | None = None) -> tuple[list, dict]:
+    payload = stats or {"visibleTools": len(tools), "retrievalMethod": "keyword_narrow_tools_for_turn"}
+    return mark_narrowed(list(tools), stats=payload, source="narrow_tools_for_turn"), payload
 
 
 def _mock_stream_client(*, content: str = "", tool_calls: list | None = None) -> MagicMock:
@@ -111,7 +117,7 @@ def test_standing_user_corrections_block_surfaces_corrections():
     )
     assert "STANDING USER CORRECTIONS" in block
     assert "California" in block
-    assert "never claim they were unspecified" in block
+    assert "never claim it was unspecified" in block
 
 
 def test_build_unified_turn_pending_context_empty_when_no_pending():
@@ -178,7 +184,7 @@ async def test_apply_unified_turn_live_serves_conversational_text():
         return_value=mock_router,
     ), patch(
         "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
-        return_value=([], {"visibleTools": 0}),
+        return_value=_mock_narrowed([]),
     ), patch(
         "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"
     ) as audit:
@@ -243,7 +249,7 @@ async def test_run_unified_turn_shadow_conversational_reply():
         return_value=mock_router,
     ), patch(
         "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
-        return_value=([], {"visibleTools": 0}),
+        return_value=_mock_narrowed([]),
     ):
         reg_patch.return_value.get_tools_for_agent.return_value = []
         result = await run_unified_turn_shadow(
@@ -297,7 +303,7 @@ async def test_run_unified_turn_shadow_knowledge_boundary_kind():
         return_value=mock_router,
     ), patch(
         "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
-        return_value=([], {"visibleTools": 0}),
+        return_value=_mock_narrowed([]),
     ):
         reg_patch.return_value.get_tools_for_agent.return_value = []
         result = await run_unified_turn_shadow(
@@ -327,7 +333,7 @@ async def test_run_unified_turn_shadow_tool_proposal():
     mock_router = MagicMock()
     mock_router._openai = mock_client
 
-    mock_spec = MagicMock(invoke_action="gmail.messages.send")
+    mock_spec = MagicMock(invoke_action="gmail.messages.send", name="gmail_messages_send")
     mock_registry = MagicMock()
     mock_registry.get_tools_for_agent.return_value = []
     mock_registry._specs = {"gmail_messages_send": mock_spec}
@@ -336,6 +342,7 @@ async def test_run_unified_turn_shadow_tool_proposal():
         unified_turn_shadow_enabled=True,
         unified_turn_shadow_max_tools=24,
         unified_turn_embedding_tool_retrieval=False,
+        unified_turn_progressive_schemas=False,
         unified_turn_task_max_tools=16,
         unified_turn_task_model_tier="",
         openai_api_key="sk-test",
@@ -349,7 +356,7 @@ async def test_run_unified_turn_shadow_tool_proposal():
         return_value=mock_router,
     ), patch(
         "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
-        return_value=([{"type": "function"}], {"visibleTools": 1}),
+        return_value=_mock_narrowed([{"type": "function", "function": {"name": "gmail_messages_send"}}]),
     ), patch(
         "app.services.unified_turn_reasoning_service.tool_requires_user_write_approval",
         return_value=(True, "write", "gmail"),
@@ -383,8 +390,8 @@ async def test_run_unified_turn_shadow_qa_force_clarifies_send_vs_batch():
     mock_router = MagicMock()
     mock_router._openai = mock_client
 
-    batch_spec = MagicMock(invoke_action="gmail.messages.batch")
-    send_spec = MagicMock(invoke_action="gmail.messages.send")
+    batch_spec = SimpleNamespace(invoke_action="gmail.messages.batch", name="gmail_messages_batch")
+    send_spec = SimpleNamespace(invoke_action="gmail.messages.send", name="gmail_messages_send")
     mock_registry = MagicMock()
     mock_registry.get_tools_for_agent.return_value = []
     mock_registry._specs = {
@@ -396,6 +403,7 @@ async def test_run_unified_turn_shadow_qa_force_clarifies_send_vs_batch():
         unified_turn_shadow_enabled=True,
         unified_turn_shadow_max_tools=24,
         unified_turn_embedding_tool_retrieval=False,
+        unified_turn_progressive_schemas=False,
         unified_turn_task_max_tools=16,
         unified_turn_task_model_tier="",
         unified_turn_qa_hooks_enabled=True,
@@ -410,7 +418,7 @@ async def test_run_unified_turn_shadow_qa_force_clarifies_send_vs_batch():
         return_value=mock_router,
     ), patch(
         "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
-        return_value=([{"type": "function"}], {"visibleTools": 1}),
+        return_value=_mock_narrowed([{"type": "function", "function": {"name": "gmail_messages_send"}}]),
     ), patch(
         "app.services.unified_turn_reasoning_service.tool_requires_user_write_approval",
         return_value=(True, "write", "gmail"),
