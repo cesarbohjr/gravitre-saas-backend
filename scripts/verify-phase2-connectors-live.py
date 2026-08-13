@@ -141,7 +141,7 @@ def _recent_audit_hits(env: dict[str, str], org_id: str, since_iso: str) -> list
         client = get_supabase_client(get_settings())
         rows = (
             client.table("audit_events")
-            .select("id,created_at,action,tool,integration,metadata")
+            .select("id,created_at,action,resource_type,resource_id,metadata")
             .eq("org_id", org_id)
             .eq("action", "tool.invoke.completed")
             .gte("created_at", since_iso)
@@ -151,21 +151,21 @@ def _recent_audit_hits(env: dict[str, str], org_id: str, since_iso: str) -> list
             .data
             or []
         )
+        phase2_prefixes = {v for v in ("linear", "gitlab", "shopify", "paypal", "brevo", "meta_marketing")}
         hits = []
         for row in rows:
-            tool = str(row.get("tool") or "")
             meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-            action = str(meta.get("action") or tool or "")
-            if any(action.startswith(prefix.split(".")[0]) for prefix in PHASE2_CATALOG_ACTIONS):
-                if any(cat.split(".")[0] in action for cat in PHASE2_CATALOG_ACTIONS):
-                    hits.append(
-                        {
-                            "id": row.get("id"),
-                            "created_at": row.get("created_at"),
-                            "action": action,
-                            "integration": row.get("integration"),
-                        }
-                    )
+            action = str(meta.get("action") or meta.get("tool") or row.get("resource_id") or "")
+            integration = str(meta.get("integration") or "")
+            if integration in phase2_prefixes or any(action.startswith(f"{p}.") for p in phase2_prefixes):
+                hits.append(
+                    {
+                        "id": row.get("id"),
+                        "created_at": row.get("created_at"),
+                        "action": action,
+                        "integration": integration or None,
+                    }
+                )
         return hits
     except Exception as exc:  # noqa: BLE001
         return [{"error": f"{exc.__class__.__name__}:{exc}"}]
