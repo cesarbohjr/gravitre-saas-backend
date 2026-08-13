@@ -232,6 +232,10 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
         "Product pages first — they convert and usually have clearer commercial intent. Use the blog to support those pages with query clusters, not as the lead bet.",
     ),
     (
+        "should we batch all customer emails into one blast or send personalized notes?",
+        "I'd prefer personalized notes — a blast is worse for follow-ups unless it's a true announcement. Don't batch relationship work; save the blast for admin-only sends.",
+    ),
+    (
         "ok, sketch the first two product-page fixes only",
         "1) Show every product image above the fold — not just the first. 2) Put one clear primary CTA and cut competing upsell clutter.",
     ),
