@@ -793,6 +793,38 @@ class AgentIntelligence:
             sections.extend([expert_section, ""])
         if anti_repeat:
             sections.extend([anti_repeat, ""])
+
+        # Active Training → Custom instructions (org-wide + this agent).
+        try:
+            org_id_for_instructions = None
+            if isinstance(org_context, dict):
+                org_id_for_instructions = str(
+                    org_context.get("org_id") or org_context.get("id") or ""
+                ).strip() or None
+            agent_id_for_instructions = None
+            if isinstance(agent_config, dict):
+                agent_id_for_instructions = str(agent_config.get("id") or "").strip() or None
+            if org_id_for_instructions:
+                from app.services.training_service import load_active_instruction_texts
+                from app.workflows.repository import get_supabase_client
+
+                instruction_texts = load_active_instruction_texts(
+                    get_supabase_client(self.settings),
+                    org_id_for_instructions,
+                    agent_id=agent_id_for_instructions,
+                )
+                if instruction_texts:
+                    sections.extend(
+                        [
+                            "## Custom Training Instructions",
+                            "Follow these org-approved instructions when they apply:",
+                            *[f"- {text}" for text in instruction_texts],
+                            "",
+                        ]
+                    )
+        except Exception:  # noqa: BLE001
+            logger.debug("custom_instructions_prompt_inject_skipped", exc_info=True)
+
         domain_focus = domain_focus_section(persona_modifier)
         if domain_focus:
             sections.extend([domain_focus, ""])

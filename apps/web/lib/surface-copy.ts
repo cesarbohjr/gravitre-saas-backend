@@ -28,11 +28,11 @@ export const SURFACE_COPY = {
     title: "Training",
     shortTitle: "Training",
     description:
-      "Shape agent behavior with examples, training jobs, and custom instructions.",
+      "Teach agents with examples, documents, and feedback. Run jobs and assign finished models.",
     badge: "Agent behavior",
-    heroTitle: "Teach agents with real examples",
+    heroTitle: "Teach agents what good looks like",
     heroDescription:
-      "Add datasets, run fine-tunes, and assign models to workflow agents. Starts from what Learning already detected.",
+      "Collect teaching material, run a training job, assign the model, and keep custom instructions on for day-to-day guidance.",
     route: APP_ROUTES.training,
     step: "Train",
     stepSummary: "Examples, jobs, and instructions that change how agents respond.",

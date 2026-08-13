@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -20,6 +20,7 @@ from app.services.training_service import (
     list_workflow_agents,
 )
 from app.workers.queue import enqueue_training_job
+from app.workers.training_worker import create_training_worker
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
@@ -32,6 +33,10 @@ class DatasetCreateRequest(BaseModel):
 
 class DatasetRecordsRequest(BaseModel):
     records: list[dict]
+
+
+class DocumentImportRequest(BaseModel):
+    documents: list[dict] = Field(default_factory=list)
 
 
 class JobCreateRequest(BaseModel):
@@ -134,7 +139,7 @@ async def create_dataset(
                 "name": body.name.strip(),
                 "description": body.description,
                 "type": body.type,
-                "status": "processing",
+                "status": "ready",
                 "record_count": 0,
                 "created_by": user["user_id"],
             }
@@ -230,6 +235,263 @@ async def upload_dataset_records(
     return {"added": len(rows)}
 
 
+def _bump_dataset_record_count(client: Any, *, org_id: str, dataset_id: str, increment: int) -> None:
+    if increment <= 0:
+        return
+    update_dataset = (
+        client.rpc(
+            "increment_training_dataset_record_count",
+            {"p_dataset_id": dataset_id, "p_org_id": org_id, "p_increment": increment},
+        ).execute()
+    )
+    update_error = response_error(update_dataset)
+    if update_error and "function" in str(update_error).lower():
+        dataset_resp = (
+            client.table("training_datasets")
+            .select("record_count")
+            .eq("org_id", org_id)
+            .eq("id", dataset_id)
+            .limit(1)
+            .execute()
+        )
+        current = int((dataset_resp.data or [{}])[0].get("record_count") or 0)
+        client.table("training_datasets").update(
+            {"record_count": current + increment, "status": "ready"}
+        ).eq("org_id", org_id).eq("id", dataset_id).execute()
+
+
+@router.post("/datasets/{dataset_id}/import-documents")
+async def import_documents(
+    dataset_id: str,
+    body: DocumentImportRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Turn pasted/uploaded document text into training records for document datasets."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    if not body.documents:
+        return {"added": 0}
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dataset_resp = (
+        client.table("training_datasets")
+        .select("id, type")
+        .eq("org_id", org_id)
+        .eq("id", dataset_id)
+        .limit(1)
+        .execute()
+    )
+    _raise_if_response_error(dataset_resp)
+    if not dataset_resp.data:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    dataset_type = str((dataset_resp.data[0] or {}).get("type") or "")
+    if dataset_type != "documents":
+        raise HTTPException(
+            status_code=400,
+            detail="Document import only works on datasets with type 'documents'.",
+        )
+
+    rows: list[dict[str, Any]] = []
+    for doc in body.documents:
+        content = str(doc.get("content") or "").strip()
+        if not content:
+            continue
+        title = str(doc.get("title") or "Document").strip() or "Document"
+        rows.append(
+            {
+                "org_id": org_id,
+                "dataset_id": dataset_id,
+                "input": f"Document: {title}\n\n{content[:12000]}",
+                "expected_output": (
+                    "Use this document as an authoritative reference when answering related questions. "
+                    "Cite the document title and stay faithful to its facts."
+                ),
+                "metadata": {"source": "document_import", "title": title},
+                "created_by": user["user_id"],
+            }
+        )
+    if not rows:
+        return {"added": 0}
+    inserted = client.table("training_records").insert(rows).execute()
+    inserted_error = response_error(inserted)
+    if inserted_error:
+        if _is_missing_table_error(inserted_error):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Training storage is not provisioned. Apply database migrations.",
+            )
+        raise HTTPException(status_code=500, detail=str(inserted_error))
+    _bump_dataset_record_count(client, org_id=org_id, dataset_id=dataset_id, increment=len(rows))
+    return {"added": len(rows)}
+
+
+@router.post("/datasets/{dataset_id}/import-feedback")
+async def import_feedback(
+    dataset_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = 50,
+) -> dict:
+    """Import recent chat feedback into a feedback training dataset."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dataset_resp = (
+        client.table("training_datasets")
+        .select("id, type")
+        .eq("org_id", org_id)
+        .eq("id", dataset_id)
+        .limit(1)
+        .execute()
+    )
+    _raise_if_response_error(dataset_resp)
+    if not dataset_resp.data:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    dataset_type = str((dataset_resp.data[0] or {}).get("type") or "")
+    if dataset_type != "feedback":
+        raise HTTPException(
+            status_code=400,
+            detail="Feedback import only works on datasets with type 'feedback'.",
+        )
+
+    feedback_resp = (
+        client.table("message_feedback")
+        .select("message_id, feedback, reason, corrected_answer, created_at")
+        .eq("org_id", org_id)
+        .order("created_at", desc=True)
+        .limit(max(1, min(limit, 100)))
+        .execute()
+    )
+    feedback_error = response_error(feedback_resp)
+    if feedback_error and _is_missing_table_error(feedback_error):
+        return {"added": 0, "available": 0}
+    if feedback_error:
+        raise HTTPException(status_code=500, detail=str(feedback_error))
+    feedback_rows = list(feedback_resp.data or [])
+    if not feedback_rows:
+        return {"added": 0, "available": 0}
+
+    message_ids = [str(r.get("message_id") or "") for r in feedback_rows if r.get("message_id")]
+    messages_by_id: dict[str, dict[str, Any]] = {}
+    if message_ids:
+        msg_resp = (
+            client.table("conversation_messages")
+            .select("id, role, content, conversation_id, created_at")
+            .in_("id", message_ids[:100])
+            .execute()
+        )
+        if not response_error(msg_resp):
+            messages_by_id = {str(m["id"]): dict(m) for m in (msg_resp.data or []) if m.get("id")}
+
+    # Prefetch prior user turns so feedback on assistant replies becomes real Q/A pairs.
+    conversation_ids = sorted(
+        {
+            str(m.get("conversation_id") or "")
+            for m in messages_by_id.values()
+            if m.get("conversation_id")
+        }
+    )
+    prior_user_by_conversation: dict[str, list[dict[str, Any]]] = {}
+    for conversation_id in conversation_ids[:40]:
+        prior_resp = (
+            client.table("conversation_messages")
+            .select("id, role, content, created_at")
+            .eq("conversation_id", conversation_id)
+            .eq("role", "user")
+            .order("created_at", desc=False)
+            .limit(200)
+            .execute()
+        )
+        if not response_error(prior_resp):
+            prior_user_by_conversation[conversation_id] = list(prior_resp.data or [])
+
+    def _prior_user_content(msg: dict[str, Any]) -> str:
+        conversation_id = str(msg.get("conversation_id") or "")
+        created_at = str(msg.get("created_at") or "")
+        candidates = prior_user_by_conversation.get(conversation_id) or []
+        prior = ""
+        for candidate in candidates:
+            cand_at = str(candidate.get("created_at") or "")
+            if created_at and cand_at and cand_at > created_at:
+                break
+            content = str(candidate.get("content") or "").strip()
+            if content:
+                prior = content
+        return prior
+
+    rows: list[dict[str, Any]] = []
+    for fb in feedback_rows:
+        mid = str(fb.get("message_id") or "")
+        msg = messages_by_id.get(mid) or {}
+        content = str(msg.get("content") or "").strip()
+        if not content:
+            continue
+        role = str(msg.get("role") or "").strip().lower()
+        rating = str(fb.get("feedback") or "").strip().lower()
+        reason = str(fb.get("reason") or "").strip()
+        corrected = str(fb.get("corrected_answer") or "").strip()
+        prior_user = _prior_user_content(msg) if role == "assistant" else ""
+        is_positive = rating in {"helpful", "up", "positive", "good"}
+        if role == "assistant" and prior_user:
+            train_input = prior_user
+            if corrected:
+                expected = corrected
+            elif is_positive:
+                expected = content
+                if reason:
+                    expected = f"{content}\n\n(User note: {reason})"
+            else:
+                expected = (
+                    "Provide a clearer, more accurate, or more actionable answer than the previous reply."
+                )
+                if reason:
+                    expected = f"{expected} User feedback: {reason}"
+        else:
+            train_input = content
+            if corrected:
+                expected = corrected
+            elif is_positive:
+                expected = "Keep this style and substance for similar requests."
+                if reason:
+                    expected = f"{expected} User note: {reason}"
+            else:
+                expected = (
+                    "Avoid this response pattern. Prefer a clearer, more accurate, or more actionable answer."
+                )
+                if reason:
+                    expected = f"{expected} User feedback: {reason}"
+        rows.append(
+            {
+                "org_id": org_id,
+                "dataset_id": dataset_id,
+                "input": train_input[:8000],
+                "expected_output": expected[:4000],
+                "metadata": {
+                    "source": "message_feedback",
+                    "feedback": rating or "unknown",
+                    "message_id": mid,
+                    "message_role": role or "unknown",
+                },
+                "created_by": user["user_id"],
+            }
+        )
+    if not rows:
+        return {"added": 0, "available": len(feedback_rows)}
+    inserted = client.table("training_records").insert(rows).execute()
+    inserted_error = response_error(inserted)
+    if inserted_error:
+        if _is_missing_table_error(inserted_error):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Training storage is not provisioned. Apply database migrations.",
+            )
+        raise HTTPException(status_code=500, detail=str(inserted_error))
+    _bump_dataset_record_count(client, org_id=org_id, dataset_id=dataset_id, increment=len(rows))
+    return {"added": len(rows), "available": len(feedback_rows)}
+
+
 @router.get("/jobs")
 async def list_jobs(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -274,6 +536,7 @@ async def get_job(
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
 async def create_job(
     body: JobCreateRequest,
+    background_tasks: BackgroundTasks,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -303,6 +566,9 @@ async def create_job(
     job_id = str(job.get("id") or "")
     if job_id:
         await enqueue_training_job(job_id)
+        # Also run in-process so jobs do not sit in queued when the Redis poller is idle.
+        worker = create_training_worker()
+        background_tasks.add_task(worker.process_job, job_id)
     return job
 
 

@@ -1616,6 +1616,15 @@ export const trainingApi = {
   deleteDataset: (id: string) => deleteRequest(apiUrl(`/api/training/datasets/${id}`)),
   uploadRecords: (datasetId: string, records: { input: string; expected_output: string }[]) =>
     postJson<{ added: number }>(apiUrl(`/api/training/datasets/${datasetId}/records`), { records }),
+  importDocuments: (datasetId: string, documents: { title?: string; content: string }[]) =>
+    postJson<{ added: number }>(apiUrl(`/api/training/datasets/${datasetId}/import-documents`), {
+      documents,
+    }),
+  importFeedback: (datasetId: string, limit = 50) =>
+    postJson<{ added: number; available?: number }>(
+      apiUrl(`/api/training/datasets/${datasetId}/import-feedback?limit=${limit}`),
+      {},
+    ),
 
   // Jobs
   listJobs: () => fetcher<TrainingJobListResponse>(apiUrl("/api/training/jobs")),

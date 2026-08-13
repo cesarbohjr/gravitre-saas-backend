@@ -72,6 +72,41 @@ def list_training_jobs(client: Any, org_id: str) -> list[dict[str, Any]]:
     )
 
 
+def load_active_instruction_texts(
+    client: Any,
+    org_id: str,
+    *,
+    agent_id: str | None = None,
+    limit: int = 12,
+) -> list[str]:
+    """Active custom instructions for prompt injection (org-wide + optional agent)."""
+    rows = execute_or_empty(
+        client,
+        client.table("custom_instructions")
+        .select("id, agent_id, name, content, is_active, updated_at")
+        .eq("org_id", org_id)
+        .eq("is_active", True)
+        .order("updated_at", desc=True)
+        .limit(max(1, min(limit * 3, 60))),
+        resource="custom_instructions",
+    )
+    texts: list[str] = []
+    agent_key = str(agent_id or "").strip()
+    for row in rows:
+        content = str(row.get("content") or "").strip()
+        if not content:
+            continue
+        row_agent = str(row.get("agent_id") or "").strip()
+        # Org-wide (no agent_id) always apply; agent-scoped only when matching.
+        if row_agent and row_agent != agent_key:
+            continue
+        name = str(row.get("name") or "Instruction").strip()
+        texts.append(f"{name}: {content}")
+        if len(texts) >= limit:
+            break
+    return texts
+
+
 def list_custom_instructions(client: Any, org_id: str) -> list[dict[str, Any]]:
     rows = execute_or_empty(
         client,
