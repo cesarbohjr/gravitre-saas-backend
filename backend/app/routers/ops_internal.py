@@ -892,17 +892,22 @@ async def cognitive_one_brain_smoke(
         if not job_agent.get("id"):
             job_agent = {"id": str(uuid_mod.uuid4()), "name": "OneBrain Smoke Agent"}
         intelligence = AgentIntelligence(settings=settings)
-        await intelligence.execute_task(
-            settings=settings,
-            org_id=org_id,
-            agent=job_agent,
-            task=f"{probe_tag} execute_task job kernel probe — reply briefly",
-            parameters={"surface": "job", "intent": "job", "max_react_iterations": 1},
-            actor_id=actor_id,
-            environment_name=str(body.environment_name or "production"),
-            client=client,
-            max_iterations=1,
-        )
+        job_error: str | None = None
+        try:
+            await intelligence.execute_task(
+                settings=settings,
+                org_id=org_id,
+                agent=job_agent,
+                task=f"{probe_tag} execute_task job kernel probe — reply briefly",
+                parameters={"surface": "job", "intent": "job", "max_react_iterations": 1},
+                actor_id=actor_id,
+                environment_name=str(body.environment_name or "production"),
+                client=client,
+                max_iterations=1,
+            )
+        except Exception as job_exc:  # noqa: BLE001
+            # Kernel persists before ReAct; still accept a job-surface trace.
+            job_error = f"{job_exc.__class__.__name__}:{job_exc}"[:300]
         job_rows = (
             client.table("cognitive_turn_traces")
             .select("turn_id,surface,stages,created_at")
@@ -923,6 +928,7 @@ async def cognitive_one_brain_smoke(
             "turn_id": job_turn.get("turn_id"),
             "surface": job_turn.get("surface"),
             "stages": stage_names,
+            "react_error": job_error,
             "ok": bool(job_turn.get("turn_id")) and "RETRIEVE" in stage_names and "GOVERN" in stage_names,
         }
         checks["job_execute_task"] = bool(results["job_execute_task"]["ok"])
