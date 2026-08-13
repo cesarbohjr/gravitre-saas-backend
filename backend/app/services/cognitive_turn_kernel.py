@@ -486,11 +486,34 @@ class CognitiveTurnKernel:
                     )
                     field_checks.append({"field": str(fk), "allowed": bool(allowed)})
                 if field_checks and not all(c["allowed"] for c in field_checks):
+                    denied = [c["field"] for c in field_checks if not c["allowed"]]
+                    try:
+                        from app.workflows.audit import write_audit_event
+
+                        if request.client is not None and request.user_id:
+                            write_audit_event(
+                                request.client,
+                                org_id=request.org_id,
+                                actor_id=str(request.user_id),
+                                action="cognitive.govern.field_acl_deny",
+                                resource_type="field_permission",
+                                resource_id=request.org_id,
+                                metadata={
+                                    "role": role,
+                                    "resource": resource,
+                                    "deniedFields": denied,
+                                    "surface": request.surface,
+                                    "entryPoint": request.entry_point,
+                                },
+                            )
+                    except Exception as audit_exc:  # noqa: BLE001
+                        logger.debug("cognitive_field_acl_audit_skipped error=%s", audit_exc)
                     return {
                         "ok": False,
                         "requires_approval": True,
                         "blocked": "field_acl_deny",
                         "field_checks": field_checks,
+                        "denied_fields": denied,
                         "actions": action_hints,
                     }
         except Exception as exc:  # noqa: BLE001

@@ -153,14 +153,16 @@ class AgentCouncilService:
                 run_kernel_for_entry,
             )
 
+            settings = get_settings()
+            client = get_supabase_client(settings)
             cog = await run_kernel_for_entry(
                 org_id=org_id,
                 message=objective or "",
                 surface="council",
                 entry_point="start_council",
                 intent="council",
-                settings=getattr(self, "settings", None),
-                client=getattr(self, "client", None),
+                settings=settings,
+                client=client,
             )
             evidence = attach_kernel_pack_to_evidence(evidence, cog)
         except Exception:  # noqa: BLE001

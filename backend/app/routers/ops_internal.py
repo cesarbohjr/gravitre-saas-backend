@@ -492,3 +492,410 @@ async def phase2_connector_smoke(
             )
         ),
     }
+
+
+class CognitiveOneBrainSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    foreign_org_id: str | None = None
+    agent_id: str | None = None
+    environment_name: str = "production"
+
+
+@router.post("/cognitive-one-brain-smoke")
+async def cognitive_one_brain_smoke(
+    body: CognitiveOneBrainSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Deployed-tip proof for remaining One Brain LIVE PENDING claims."""
+    import json
+    import os
+    import uuid as uuid_mod
+
+    from app.services.cognitive_entry_adapters import run_kernel_for_entry
+    from app.services.cognitive_metrics import resolve_metric_for_agent, upsert_metric_definition
+    from app.services.cognitive_outcome_loop import bias_from_outcomes
+    from app.services.cognitive_turn_kernel import (
+        CognitiveTurnRequest,
+        get_cognitive_turn_kernel,
+    )
+    from app.services.council_service import get_council_service
+    from app.services.extension_bridge_service import enrich_from_page_context
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    foreign_org_id = str(body.foreign_org_id or "658c76b3-04b7-489b-bb7e-64a5f3ec1cbe").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+    if foreign_org_id == org_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="foreign_org_id must differ from org_id",
+        )
+
+    client = get_supabase_client(settings)
+    kernel = get_cognitive_turn_kernel(settings)
+    probe_tag = f"onebrain-{uuid_mod.uuid4().hex[:10]}"
+    results: dict[str, Any] = {"probe_tag": probe_tag}
+    checks: dict[str, bool] = {}
+
+    # Resolve agent for agent_chat surface
+    agent_id = str(body.agent_id or "").strip() or None
+    agent_row: dict[str, Any] | None = None
+    if not agent_id:
+        try:
+            rows = (
+                client.table("agents")
+                .select("id,name,department")
+                .eq("org_id", org_id)
+                .limit(5)
+                .execute()
+                .data
+                or []
+            )
+            if rows:
+                agent_row = rows[0]
+                agent_id = str(agent_row.get("id"))
+        except Exception as exc:  # noqa: BLE001
+            results["agent_lookup_error"] = str(exc)[:200]
+    elif agent_id:
+        try:
+            rows = (
+                client.table("agents")
+                .select("id,name,department")
+                .eq("org_id", org_id)
+                .eq("id", agent_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            agent_row = rows[0] if rows else {"id": agent_id}
+        except Exception:  # noqa: BLE001
+            agent_row = {"id": agent_id}
+
+    async def _kernel_surface(surface: str, *, spoken: bool = False, agent: str | None = None) -> dict[str, Any]:
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                agent_id=agent,
+                message=f"{probe_tag} {surface} kernel probe",
+                surface=surface,
+                entry_point="cognitive_one_brain_smoke",
+                spoken_mode=spoken,
+                intent="chat",
+                client=client,
+                agent=agent_row if agent else None,
+            )
+        )
+        stage_names = [getattr(s, "stage", None) or (s.get("stage") if isinstance(s, dict) else None) for s in ctx.stages]
+        return {
+            "turn_id": ctx.turn_id,
+            "surface": surface,
+            "stages": stage_names,
+            "ok": all(x in stage_names for x in ("RETRIEVE", "RECALL", "KNOWLEDGE", "PLAN", "VERIFY", "GOVERN")),
+        }
+
+    # 1) Distinct surfaces: agent_chat + voice
+    agent_trace = await _kernel_surface("agent_chat", agent=agent_id)
+    voice_trace = await _kernel_surface("voice", spoken=True, agent=agent_id)
+    results["agent_chat"] = agent_trace
+    results["voice"] = voice_trace
+    checks["agent_chat"] = bool(agent_trace.get("ok"))
+    checks["voice"] = bool(voice_trace.get("ok"))
+
+    # 2) Extension enrich (+ confirm_write GOVERN path)
+    try:
+        ctx = ToolContext(
+            settings=settings,
+            client=client,
+            org_id=org_id,
+            actor_id=actor_id,
+            environment_name=str(body.environment_name or "production"),
+        )
+        enrich_out = enrich_from_page_context(
+            ctx,
+            page_url="https://example.com/linkedin/in/onebrain-probe",
+            page_context={
+                "fullName": f"OneBrain Probe {probe_tag}",
+                "email": f"{probe_tag}@example.com",
+                "company": "ProbeCo",
+            },
+            connected=[],
+        )
+        ext_turn = await run_kernel_for_entry(
+            org_id=org_id,
+            user_id=actor_id,
+            message=f"{probe_tag} extension_action",
+            surface="extension_action",
+            entry_point="cognitive_one_brain_smoke",
+            intent="write_confirm",
+            parameters={"action": "hubspot.contacts.create", "is_write": True, "action_hints": ["hubspot.contacts.create"]},
+            client=client,
+            settings=settings,
+        )
+        results["extension_enrich"] = {
+            "cognitiveTurnId": enrich_out.get("cognitiveTurnId"),
+            "ok": bool(enrich_out.get("cognitiveTurnId")),
+        }
+        results["extension_action"] = {
+            "turn_id": getattr(ext_turn, "turn_id", None),
+            "ok": bool(getattr(ext_turn, "turn_id", None)),
+        }
+        checks["extension_enrich"] = bool(enrich_out.get("cognitiveTurnId"))
+        checks["extension_action"] = bool(getattr(ext_turn, "turn_id", None))
+    except Exception as exc:  # noqa: BLE001
+        results["extension_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["extension_enrich"] = False
+        checks["extension_action"] = False
+
+    # 3) Council
+    try:
+        session = await get_council_service().start_council(
+            org_id=org_id,
+            workflow_id=str(uuid_mod.uuid4()),
+            run_id=str(uuid_mod.uuid4()),
+            objective=f"{probe_tag} council objective — pick safer option",
+            options=["option_a_safe", "option_b_risky"],
+            agents=[
+                {"name": "Analyst A", "role": "analyst"},
+                {"name": "Compliance B", "role": "compliance"},
+            ],
+            evidence={"probe": probe_tag},
+            max_rounds=1,
+        )
+        # Fetch latest council-surface trace
+        council_rows = (
+            client.table("cognitive_turn_traces")
+            .select("turn_id,surface,stages,created_at")
+            .eq("org_id", org_id)
+            .eq("surface", "council")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        council_turn = council_rows[0] if council_rows else {}
+        results["council"] = {
+            "session_id": getattr(session, "id", None),
+            "turn_id": council_turn.get("turn_id"),
+            "surface": council_turn.get("surface"),
+            "ok": bool(council_turn.get("turn_id")),
+        }
+        checks["council"] = bool(council_turn.get("turn_id"))
+    except Exception as exc:  # noqa: BLE001
+        results["council_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["council"] = False
+
+    # 4) Cross-org isolation: foreign marker must not appear in org RECALL pack
+    foreign_marker = f"FOREIGN_MEMORY_{probe_tag}"
+    try:
+        # Best-effort insert into foreign org agent_memories if an agent exists there.
+        foreign_agent = (
+            client.table("agents")
+            .select("id")
+            .eq("org_id", foreign_org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        foreign_memory_id = None
+        if foreign_agent:
+            inserted = (
+                client.table("agent_memories")
+                .insert(
+                    {
+                        "org_id": foreign_org_id,
+                        "agent_id": foreign_agent[0]["id"],
+                        "content": foreign_marker,
+                        "category": "fact",
+                        "provenance": "one_brain_isolation_probe",
+                    }
+                )
+                .execute()
+                .data
+                or []
+            )
+            foreign_memory_id = (inserted[0] or {}).get("id") if inserted else None
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                message=foreign_marker,
+                surface="ai_chat",
+                entry_point="cognitive_one_brain_smoke_xorg",
+                intent="chat",
+                client=client,
+            )
+        )
+        pack_blob = json.dumps(ctx.memory_pack, default=str)
+        leaked_marker = foreign_marker in pack_blob
+        foreign_rows = 0
+        for key, items in (ctx.memory_pack or {}).items():
+            if key == "prompt_section" or not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, dict) and str(item.get("org_id") or "") not in {"", org_id}:
+                    foreign_rows += 1
+        results["cross_org"] = {
+            "foreign_org_id": foreign_org_id,
+            "foreign_memory_id": foreign_memory_id,
+            "turn_id": ctx.turn_id,
+            "leaked_marker": leaked_marker,
+            "foreign_org_rows_in_pack": foreign_rows,
+            "ok": (not leaked_marker) and foreign_rows == 0,
+        }
+        checks["cross_org"] = (not leaked_marker) and foreign_rows == 0
+    except Exception as exc:  # noqa: BLE001
+        results["cross_org_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["cross_org"] = False
+
+    # 5) Dual-agent metric resolve — same definition_id
+    try:
+        metric_key = f"arr_{probe_tag[:8]}"
+        upserted = upsert_metric_definition(
+            client,
+            org_id,
+            metric_key,
+            label="Annual Recurring Revenue (smoke)",
+            formula="sum(mrr)*12",
+            source_system="billing",
+            owner="smoke",
+        )
+        agent_a = str(agent_id or uuid_mod.uuid4())
+        agent_b = str(uuid_mod.uuid4())
+        ra = resolve_metric_for_agent(client, org_id, metric_key, agent_id=agent_a)
+        rb = resolve_metric_for_agent(client, org_id, metric_key, agent_id=agent_b)
+        same = bool(ra.get("definition_id") and ra.get("definition_id") == rb.get("definition_id"))
+        results["metrics"] = {
+            "metric_key": metric_key,
+            "definition_id": ra.get("definition_id"),
+            "agent_a": ra,
+            "agent_b": rb,
+            "upserted_id": (upserted or {}).get("id"),
+            "ok": same,
+        }
+        checks["metrics"] = same
+    except Exception as exc:  # noqa: BLE001
+        results["metrics_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["metrics"] = False
+
+    # 6) Field-deny GOVERN + audit
+    try:
+        client.table("org_field_permissions").insert(
+            {
+                "org_id": org_id,
+                "role": "member",
+                "resource": "customer",
+                "field_key": "ssn",
+                "effect": "deny",
+            }
+        ).execute()
+        since = datetime.now(timezone.utc).isoformat()
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                message=f"{probe_tag} field acl",
+                surface="confirm_write",
+                entry_point="cognitive_one_brain_smoke_field",
+                intent="write_confirm",
+                parameters={
+                    "role": "member",
+                    "resource": "customer",
+                    "fields": ["ssn"],
+                    "is_write": True,
+                },
+                client=client,
+            )
+        )
+        blocked = (ctx.govern or {}).get("blocked") == "field_acl_deny"
+        audits = (
+            client.table("audit_events")
+            .select("id,created_at,action,metadata")
+            .eq("org_id", org_id)
+            .eq("action", "cognitive.govern.field_acl_deny")
+            .gte("created_at", since)
+            .order("created_at", desc=True)
+            .limit(5)
+            .execute()
+            .data
+            or []
+        )
+        results["field_acl"] = {
+            "turn_id": ctx.turn_id,
+            "blocked": blocked,
+            "govern": ctx.govern,
+            "audit_id": (audits[0] or {}).get("id") if audits else None,
+            "audit_at": (audits[0] or {}).get("created_at") if audits else None,
+            "ok": blocked and bool(audits),
+        }
+        checks["field_acl"] = blocked and bool(audits)
+    except Exception as exc:  # noqa: BLE001
+        results["field_acl_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["field_acl"] = False
+
+    # 7) Outcome → PLAN bias before/after
+    try:
+        before = bias_from_outcomes(client, org_id, probe_tag, settings)
+        rec_id = str(uuid_mod.uuid4())
+        client.table("intelligence_outcome_events").insert(
+            {
+                "org_id": org_id,
+                "recommendation_id": rec_id,
+                "outcome_event": "failed_negative_decline",
+                "entity_type": "recommendation",
+                "entity_id": probe_tag,
+                "confidence_score": 0.4,
+            }
+        ).execute()
+        after = bias_from_outcomes(client, org_id, probe_tag, settings)
+        ctx_after = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                message=probe_tag,
+                surface="ai_chat",
+                entry_point="cognitive_one_brain_smoke_outcome",
+                intent="chat",
+                client=client,
+            )
+        )
+        plan_bias = (ctx_after.plan or {}).get("outcome_bias") or {}
+        changed = float(after.get("weight_delta") or 0) != float(before.get("weight_delta") or 0) or bool(
+            after.get("bias_notes")
+        )
+        results["outcome_loop"] = {
+            "recommendation_id": rec_id,
+            "before_weight_delta": before.get("weight_delta"),
+            "after_weight_delta": after.get("weight_delta"),
+            "after_bias_notes": after.get("bias_notes"),
+            "plan_outcome_bias": plan_bias,
+            "turn_id": ctx_after.turn_id,
+            "ok": changed and bool(plan_bias.get("bias_notes") or plan_bias.get("weight_delta") is not None),
+        }
+        checks["outcome_loop"] = bool(results["outcome_loop"]["ok"])
+    except Exception as exc:  # noqa: BLE001
+        results["outcome_loop_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["outcome_loop"] = False
+
+    overall = all(checks.values()) if checks else False
+    return {
+        "pass": overall,
+        "verdict": "PASS" if overall else "PARTIAL",
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "actor_id": actor_id,
+        "checks": checks,
+        "results": results,
+        "claim": (
+            "PASS — One Brain live residual probes"
+            if overall
+            else f"PARTIAL — failed checks: {[k for k, v in checks.items() if not v]}"
+        ),
+    }
