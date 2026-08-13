@@ -98,8 +98,8 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
         domain="documents",
         kind="read",
         bindings=(
-            VendorCapabilityBinding("google_drive", "google_drive.files.search", "Google Drive search", kind="read"),
-            VendorCapabilityBinding("notion", "notion.pages.search", "Notion page search", kind="read"),
+            VendorCapabilityBinding("google_drive", "google_drive.search_files", "Google Drive search", kind="read"),
+            VendorCapabilityBinding("notion", "notion.search_files", "Notion workspace search", kind="read"),
         ),
     ),
     "analytics.query": CapabilityDefinition(

@@ -619,6 +619,68 @@ async def list_connector_action_catalog(
     return list_full_catalog()
 
 
+@connectors_router.get("/catalog/capability-recipes")
+async def list_capability_department_recipes(
+    _user: Annotated[dict, Depends(get_current_user)],
+    department: str | None = None,
+) -> dict:
+    """Phase 3 — department recipes in capability terms (vendor resolution at runtime)."""
+    from app.capability_ontology.recipes import list_recipes
+
+    recipes = list_recipes(department=department)
+    return {
+        "recipeCount": len(recipes),
+        "recipes": [recipe.to_dict() for recipe in recipes],
+    }
+
+
+class ResolveCapabilityRecipeBody(BaseModel):
+    query: str = ""
+    preferred_vendor: str | None = None
+
+
+@connectors_router.post("/catalog/capability-recipes/{recipe_id}/resolve")
+async def resolve_capability_department_recipe(
+    recipe_id: str,
+    body: ResolveCapabilityRecipeBody | None = None,
+    _user: Annotated[dict, Depends(get_current_user)] = None,
+    org_id: Annotated[str | None, Depends(get_org_context)] = None,
+    environment_name: Annotated[str, Depends(get_environment_context)] = "production",
+    settings: Annotated[Settings, Depends(get_settings)] = None,
+) -> dict:
+    """Resolve a capability recipe to concrete catalog actions for this org's connected stack."""
+    from app.capability_ontology.recipe_resolver import resolve_recipe
+    from app.capability_ontology.recipes import get_recipe
+    from app.services.tool_registry import get_tool_registry
+    from app.workflows.repository import get_supabase_client
+
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    recipe = get_recipe(recipe_id)
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown recipe")
+
+    req = body or ResolveCapabilityRecipeBody()
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    connected = reg.list_connected_integrations(client, org_id, environment_name=environment_name)
+    resolved = resolve_recipe(
+        recipe_id,
+        connected_integrations=connected,
+        query=req.query,
+        preferred_vendor=req.preferred_vendor,
+    )
+    assert resolved is not None
+    return {
+        "recipe": recipe.to_dict(),
+        "connectedIntegrations": connected,
+        "resolution": resolved.to_dict(),
+    }
+
+
 @connectors_router.get("/catalog/execution-matrix")
 async def list_connector_execution_matrix(
     _user: Annotated[dict, Depends(get_current_user)],
