@@ -263,8 +263,10 @@ VERIFIED_OUTPUT_BATCH_10: frozenset[str] = frozenset(
         "paypal.payouts.create",
         "brevo.email.send",
         "brevo.contacts.create",
+        "brevo.contacts.update",
         "meta_marketing.campaigns.create",
         "meta_marketing.campaigns.update",
+        "meta_marketing.adsets.update",
     }
 )
 

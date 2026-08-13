@@ -14,8 +14,10 @@ BATCH_225_ACTION_KEYS: tuple[str, ...] = (
     "paypal.payouts.create",
     "brevo.email.send",
     "brevo.contacts.create",
+    "brevo.contacts.update",
     "meta_marketing.campaigns.create",
     "meta_marketing.campaigns.update",
+    "meta_marketing.adsets.update",
 )
 
 
@@ -99,6 +101,13 @@ WORKFLOW_SCHEMAS_BATCH_225: dict[str, ActionWorkflowSchema] = {
         required_fields=(_req("email", "email"),),
         optional_fields=(_opt("Attributes", "attributes", "properties"),),
     ),
+    "brevo.contacts.update": ActionWorkflowSchema(
+        intent_label="Update Brevo contact",
+        required_fields=(
+            _req("contact id or email", "contact_id", "id", "email"),
+            _req("update properties", "properties", "payload", "attributes", validator="named_or_payload"),
+        ),
+    ),
     "meta_marketing.campaigns.create": ActionWorkflowSchema(
         intent_label="Create Meta ad campaign",
         required_fields=(
@@ -111,6 +120,13 @@ WORKFLOW_SCHEMAS_BATCH_225: dict[str, ActionWorkflowSchema] = {
         intent_label="Update Meta ad campaign",
         required_fields=(
             _req("campaign id", "campaign_id", "id"),
+            _req("update properties", "properties", "payload", "name", validator="named_or_payload"),
+        ),
+    ),
+    "meta_marketing.adsets.update": ActionWorkflowSchema(
+        intent_label="Update Meta ad set",
+        required_fields=(
+            _req("ad set id", "adset_id", "id"),
             _req("update properties", "properties", "payload", "name", validator="named_or_payload"),
         ),
     ),
