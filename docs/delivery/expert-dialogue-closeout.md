@@ -35,3 +35,10 @@ Honesty regression: **none observed** (no invented % lift / connector metrics).
 - After verify checkedAt: `2026-08-12T20:09:56Z`
 
 **PASS** — expert dialogue substance live on tip `aa24bfc3`.
+
+## Wave 2 — Legal / HR / Cyber (2026-08-13)
+
+Structure gate: all-surfaces rules 1–10 PASS @ `6100842c`. Expanded Legal/HR/Cyber
+from stubs to pilot depth; live probe **PASS 5/5** @ tip `803c357f`
+(`expert-dialogue-after-transcript.json`). Details:
+`expert-dialogue-wave2-legal-hr-cyber.md`.
