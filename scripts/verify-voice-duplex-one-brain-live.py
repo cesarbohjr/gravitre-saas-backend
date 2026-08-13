@@ -68,23 +68,33 @@ def _health() -> dict:
 
 
 def _service_token(env: dict[str, str], org_id: str, actor_id: str) -> str | None:
-    """Mint a short-lived JWT if local settings allow; else use OPERATOR_BEARER."""
+    """Mint a short-lived Supabase-compatible JWT; else use OPERATOR_BEARER."""
+    _ = org_id
     bearer = (env.get("OPERATOR_BEARER") or env.get("GRAVITRE_OPERATOR_BEARER") or "").strip()
     if bearer:
         return bearer if not bearer.lower().startswith("bearer ") else bearer.split(" ", 1)[1]
+    url = (env.get("SUPABASE_URL") or "").rstrip("/")
+    secret = (env.get("SUPABASE_JWT_SECRET") or "").strip()
+    if not url or not secret:
+        return None
     try:
-        from app.config import get_settings
-        from app.auth.jwt_utils import create_access_token
-
-        settings = get_settings()
-        return create_access_token(
-            settings,
-            user_id=actor_id,
-            org_id=org_id,
-            email="voice-duplex-probe@gravitre.internal",
-        )
+        import jwt  # PyJWT
     except Exception:  # noqa: BLE001
         return None
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "sub": actor_id,
+            "email": "voice-duplex-probe@gravitre.internal",
+            "aud": "authenticated",
+            "iss": f"{url}/auth/v1",
+            "iat": now,
+            "exp": now + 3600,
+            "role": "authenticated",
+        },
+        secret,
+        algorithm="HS256",
+    )
 
 
 def _read_ndjson_until(

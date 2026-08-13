@@ -507,20 +507,29 @@ async def post_session_turn(
     qa_force_header = request.headers.get(QA_FORCE_VOICE_ERROR_HEADER)
 
     async def gen() -> AsyncIterator[bytes]:
+        disconnected = {"v": False}
+
+        def _should_cancel() -> bool:
+            return bool(disconnected["v"])
+
         try:
             forced = resolve_qa_force_voice_error(settings, header_value=qa_force_header)
             if forced:
                 raise forced_voice_provider_error(forced)
 
-            async def _client_gone() -> bool:
-                return await request.is_disconnected()
-
-            # FastAPI disconnect is async; poll via closure checked each event.
-            disconnected = {"v": False}
-
-            async def _poll_disconnect() -> None:
-                if await _client_gone():
-                    disconnected["v"] = True
+            # Immediate ack so clients never see a silent empty 200 if kernel setup fails.
+            yield (
+                json.dumps(
+                    {
+                        "type": "voice.session.accepted",
+                        "conversation_id": body.conversation_id,
+                        "turn_id": body.turn_id,
+                        "originating_modality": "voice",
+                        "pipeline": "execute_task_streaming",
+                    }
+                )
+                + "\n"
+            ).encode("utf-8")
 
             async for event in stream_voice_turn_events(
                 settings=settings,
@@ -533,23 +542,24 @@ async def post_session_turn(
                 voice_id=body.voice,
                 tts_model=body.model,
                 turn_id=body.turn_id,
-                should_cancel=lambda: disconnected["v"],
+                should_cancel=_should_cancel,
             ):
-                await _poll_disconnect()
-                yield (json.dumps(event) + "\n").encode("utf-8")
-                if event.get("type") in {"voice.turn.cancelled", "voice.session.ended"}:
-                    # Keep streaming terminal events; cancel flag already applied.
+                try:
+                    if await request.is_disconnected():
+                        disconnected["v"] = True
+                except Exception:  # noqa: BLE001
                     pass
+                yield (json.dumps(event) + "\n").encode("utf-8")
         except VoiceProviderError as exc:
             yield (json.dumps({"type": "voice.error", **error_public_payload(exc)}) + "\n").encode(
                 "utf-8"
             )
-        except ValueError as exc:
+        except Exception as exc:  # noqa: BLE001
             yield (
                 json.dumps(
                     {
                         "type": "voice.error",
-                        "detail": str(exc),
+                        "detail": f"{exc.__class__.__name__}:{exc}"[:800],
                         "error_class": "service_failure",
                         "billing_issue": False,
                     }
