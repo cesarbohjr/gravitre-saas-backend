@@ -72,7 +72,8 @@ def test_narrow_tools_focuses_on_mentioned_connector():
     assert "hubspot_create_contact" in names
     assert "hubspot_search_contacts" in names
     # Connected coverage keeps one Slack tool even when HubSpot is the focus.
-    assert stats["visibleTools"] <= stats["totalTools"]
+    injected = int(stats.get("capabilityToolsInjected") or 0)
+    assert stats["visibleTools"] <= stats["totalTools"] + injected
 
 
 def test_compress_tool_definitions_trims_descriptions():

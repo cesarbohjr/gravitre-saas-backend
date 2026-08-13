@@ -342,12 +342,22 @@ def narrow_tools_for_turn(
 
     visible = platform_tools + selected_connector
     compressed = compress_tool_definitions(visible)
+    from app.capability_ontology.tool_bridge import inject_capability_tools
+
+    compressed, capability_stats = inject_capability_tools(
+        compressed,
+        connected_integrations=connected,
+        query=query,
+        classification=classification,
+    )
     stats = {
         "totalTools": len(tools),
+        "catalogTools": len(tools),
         "visibleTools": len(compressed),
         "focusedConnectors": sorted(focus),
         "actionRequired": action_required,
         "compressed": True,
+        **capability_stats,
     }
     from app.services.narrowed_tools import mark_narrowed
 

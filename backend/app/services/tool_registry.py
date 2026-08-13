@@ -1069,6 +1069,85 @@ class ToolRegistry:
         spec = self._specs.get(tool_name)
         if not spec and tool_name.startswith("mcp_"):
             return await self._execute_mcp_tool(ctx, tool_name, args or {})
+
+        from app.capability_ontology.tool_bridge import is_capability_tool_name, resolve_capability_tool_execution
+        from app.connectors.action_catalog.tool_aliases import resolve_registry_action
+
+        if is_capability_tool_name(tool_name):
+            raw_args = dict(args or {})
+            connected: list[str] = []
+            if ctx.client and ctx.org_id:
+                connected = self.list_connected_integrations(ctx.client, ctx.org_id)
+            resolution = resolve_capability_tool_execution(
+                tool_name,
+                connected_integrations=connected,
+                args=raw_args,
+            )
+            if resolution.ambiguous:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error_code": "CAPABILITY_AMBIGUOUS",
+                    "error": (
+                        f"Multiple connectors implement {resolution.capability_id}. "
+                        "Specify preferred_vendor or name the system in your request."
+                    ),
+                    "candidates": list(resolution.candidates),
+                }
+            if not resolution.ok or not resolution.resolved_action:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error_code": "CAPABILITY_UNRESOLVED",
+                    "error": f"Could not resolve capability {resolution.capability_id} ({resolution.reason}).",
+                }
+            invoke_action = resolve_registry_action(
+                resolution.resolved_action,
+                set(self._registered),
+            )
+            invoke_params = {
+                k: v
+                for k, v in raw_args.items()
+                if k not in {"preferred_vendor", "vendor", "integration", "connector"}
+            }
+            try:
+                timeout_s = int(ctx.connector_timeout_seconds or 30)
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params),
+                    timeout=timeout_s,
+                )
+            except ToolError as exc:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "error": str(exc),
+                    "error_code": exc.code,
+                }
+            except Exception as exc:  # noqa: BLE001
+                logger.exception(
+                    "capability_tool_execute_failed tool=%s action=%s",
+                    tool_name,
+                    invoke_action,
+                )
+                return {"success": False, "tool": tool_name, "error": str(exc)}
+            if result.success:
+                return {
+                    "success": True,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "capability_id": resolution.capability_id,
+                    "resolved_vendor": resolution.resolved_vendor,
+                    "result": result.data,
+                }
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_action,
+                "error": result.error_message or "Tool execution failed",
+                "error_code": result.error_code,
+            }
+
         if not spec:
             return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
 

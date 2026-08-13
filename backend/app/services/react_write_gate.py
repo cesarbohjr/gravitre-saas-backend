@@ -71,7 +71,15 @@ def invoke_action_is_write(invoke_action: str) -> bool:
     return action_name_indicates_write(invoke_action)
 
 
-def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bool, str, str, str]:
+def tool_requires_user_write_approval(
+    tool_name: str,
+    registry: Any,
+    *,
+    connected_integrations: list[str] | None = None,
+    query: str = "",
+    classification: dict[str, Any] | None = None,
+    args: dict[str, Any] | None = None,
+) -> tuple[bool, str, str, str]:
     """Return (is_write_action, invoke_action, integration, label).
 
     Catalog classification only — use ``resolve_user_write_approval_required`` when
@@ -96,6 +104,42 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
         )
         label = str(meta.get("label") or meta.get("description") or name)
         return requires, f"mcp.{name}", "mcp", label
+
+    from app.capability_ontology.registry import get_capability
+    from app.capability_ontology.tool_bridge import is_capability_tool_name, resolve_capability_tool_execution
+    from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implemented
+    from app.services.tool_service import list_registered_actions
+
+    if is_capability_tool_name(name):
+        resolution = resolve_capability_tool_execution(
+            name,
+            connected_integrations=connected_integrations,
+            query=query,
+            classification=classification,
+            args=args,
+        )
+        definition = get_capability(resolution.capability_id)
+        label = definition.label if definition else name.replace("_", " ")
+        if resolution.ok and resolution.resolved_action:
+            invoke_action = resolution.resolved_action
+            requires = invoke_action_requires_write_approval(invoke_action)
+            return (
+                requires,
+                invoke_action,
+                resolution.resolved_vendor or "capability",
+                label,
+            )
+        if definition and definition.kind in {"write", "advanced"}:
+            registered = set(list_registered_actions())
+            connected = {str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()}
+            for binding in definition.bindings:
+                if connected and binding.vendor not in connected:
+                    continue
+                if catalog_tool_is_implemented(binding.action_key, registered):
+                    if invoke_action_requires_write_approval(binding.action_key):
+                        return True, binding.action_key, binding.vendor, label
+        return False, f"capability.{resolution.capability_id}", "capability", label
+
     if name in {"web_search", "browser_agent_read", "browser_agent_interact", "knowledge_base"}:
         return False, "", "", ""
 
@@ -151,8 +195,19 @@ def resolve_user_write_approval_required(
     settings: Any | None = None,
 ) -> tuple[bool, str, str, str]:
     """Return (requires_user_approval, invoke_action, integration, label)."""
+    connected: list[str] = []
+    if client is not None and str(org_id or "").strip():
+        try:
+            from app.services.tool_registry import get_tool_registry
+
+            connected = get_tool_registry().list_connected_integrations(client, org_id)
+        except Exception:  # noqa: BLE001
+            connected = []
+
     is_write, invoke_action, integration, label = tool_requires_user_write_approval(
-        tool_name, registry
+        tool_name,
+        registry,
+        connected_integrations=connected,
     )
     if not is_write:
         return False, invoke_action, integration, label

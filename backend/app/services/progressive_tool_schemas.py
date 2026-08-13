@@ -227,6 +227,10 @@ def gate_deferred_tool_call(
         return False, "empty_tool_name"
     if name == SEARCH_CATALOG_TOOLS_NAME:
         return True, "meta_search"
+    from app.capability_ontology.tool_bridge import is_capability_tool_name
+
+    if is_capability_tool_name(name):
+        return True, "capability_tool"
     if name not in full_by_name:
         return False, "tool_not_in_candidate_set"
     if name not in loaded_names:

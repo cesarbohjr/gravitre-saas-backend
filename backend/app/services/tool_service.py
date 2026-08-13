@@ -4429,6 +4429,48 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     from dataclasses import replace
 
     params = dict(params or {})
+    from app.capability_ontology.resolver import resolve_capability_invoke_action
+    from app.connectors.action_catalog.tool_aliases import resolve_registry_action
+
+    connected_hint = [
+        str(v).strip().lower()
+        for v in (params.pop("_connected_integrations", None) or params.pop("connected_integrations", None) or [])
+        if str(v).strip()
+    ]
+    if not connected_hint and ctx.client and ctx.org_id:
+        try:
+            from app.services.tool_registry import get_tool_registry
+
+            connected_hint = get_tool_registry().list_connected_integrations(ctx.client, ctx.org_id)
+        except Exception:  # noqa: BLE001
+            connected_hint = []
+
+    cap_resolution = resolve_capability_invoke_action(
+        action,
+        connected_integrations=connected_hint or None,
+        query=str(params.pop("_capability_query", "") or ""),
+        classification=params.pop("_capability_classification", None),
+        args=params,
+    )
+    if cap_resolution is not None:
+        if cap_resolution.ambiguous:
+            raise ToolValidationError(
+                (
+                    f"Capability '{cap_resolution.capability_id}' is ambiguous across connected systems "
+                    f"({', '.join(cap_resolution.candidates)}). Specify preferred_vendor or name the system."
+                ),
+                code="CAPABILITY_AMBIGUOUS",
+            )
+        if not cap_resolution.ok or not cap_resolution.resolved_action:
+            raise ToolValidationError(
+                f"Capability '{cap_resolution.capability_id}' could not be resolved ({cap_resolution.reason}).",
+                code="CAPABILITY_UNRESOLVED",
+            )
+        registered = set(list_registered_actions())
+        action = resolve_registry_action(cap_resolution.resolved_action, registered)
+        params["_capability_resolved_from"] = cap_resolution.capability_id
+        params["_capability_resolved_vendor"] = cap_resolution.resolved_vendor
+
     # Module 0 — credential/isolation guard on the shared write spine (chat/ReAct/canvas).
     from app.services.conversation_write_guard import (
         ConversationWriteBlockedError,

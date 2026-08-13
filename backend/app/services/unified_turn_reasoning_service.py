@@ -1001,8 +1001,21 @@ async def run_unified_turn_shadow(
                     )
                     breakdown["progressive_gate_blocked"] = gate_reason
                     return result
-            spec = registry._specs.get(tool_name)  # noqa: SLF001
-            invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
+        spec = registry._specs.get(tool_name)  # noqa: SLF001
+        invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
+        from app.capability_ontology.tool_bridge import is_capability_tool_name
+
+        if is_capability_tool_name(tool_name):
+            _, resolved_invoke, *_ = tool_requires_user_write_approval(
+                tool_name,
+                registry,
+                connected_integrations=connected,
+                query=message or "",
+                classification=classification,
+                args=args,
+            )
+            if resolved_invoke:
+                invoke = resolved_invoke
         from app.services.chat_write_intent import evaluate_connector_tool_proposal
 
         review = evaluate_connector_tool_proposal(
@@ -1022,7 +1035,16 @@ async def run_unified_turn_shadow(
         args = review.tool_arguments or args
         spec = registry._specs.get(tool_name)  # noqa: SLF001
         # HARD: write authority AFTER full schema load / selection (unchanged gate).
-        requires_write, *_ = tool_requires_user_write_approval(tool_name, registry)
+        requires_write, resolved_invoke, *_ = tool_requires_user_write_approval(
+            tool_name,
+            registry,
+            connected_integrations=connected,
+            query=message or "",
+            classification=classification,
+            args=args,
+        )
+        if not invoke and resolved_invoke:
+            invoke = resolved_invoke
         requires_user_approval = False
         if requires_write and client is not None:
             requires_user_approval, *_ = resolve_user_write_approval_required(

@@ -276,8 +276,17 @@ def embed_narrow_tools_for_turn(
         narrow_total_ms = int((time.perf_counter() - narrow_start) * 1000)
 
         visible = compress_tool_definitions(platform_tools + selected)
+        from app.capability_ontology.tool_bridge import inject_capability_tools
+
+        visible, capability_stats = inject_capability_tools(
+            visible,
+            connected_integrations=connected,
+            query=query,
+            classification=classification,
+        )
         stats = {
             "totalTools": len(tools),
+            "catalogTools": len(tools),
             "visibleTools": len(visible),
             "focusedConnectors": sorted(focus),
             "actionRequired": action_required,
@@ -290,6 +299,7 @@ def embed_narrow_tools_for_turn(
             "embed_similarity_rank_ms": similarity_ms,
             "embed_narrow_total_ms": narrow_total_ms,
             **tool_partial,
+            **capability_stats,
         }
         from app.services.narrowed_tools import mark_narrowed
 
