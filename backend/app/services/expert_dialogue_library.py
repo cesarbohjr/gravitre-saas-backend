@@ -97,6 +97,11 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     ),
     "hr": (
         (
+            "help me improve our hiring process",
+            "Happy to. Are we fixing time-to-hire, candidate quality, interview consistency, or compliance risk — and for which roles or geo?",
+            "conversational clarify — same class as Marketing SEO brief",
+        ),
+        (
             "Can we train a model on resumes we scraped from job boards?",
             "Not casually. Employment and privacy rules constrain how candidate data can be collected and used. Stick to candidates who applied through your process, and don't invent a legal green light without counsel.",
             "hr/EEOC pack — withhold; candidate data care",

@@ -24,6 +24,8 @@ def test_conversational_behavior_section_has_ten_rules_and_honesty():
     assert "Meet the human moment" in text
     assert "NEVER invent" in text or "never invent" in text.lower()
     assert "Want me to schedule it for review" in text
+    assert "hiring process" in text.lower()
+    assert "next week's priorities" in text.lower() or "next week" in text.lower()
 
 
 def test_module_d_live_prompt_includes_conversational_behavior():

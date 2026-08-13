@@ -73,7 +73,7 @@ TRAILING_OFFER = re.compile(
 PUSHBACK_MARKERS = re.compile(
     rf"(?i)\b(wouldn{_AP}?t|shouldn{_AP}?t|don{_AP}?t|do not|risky|risk|penalty|"
     rf"bad idea|not a good|not recommended|against|instead|better|"
-    rf"i{_AP}?d avoid|avoid that|high-risk|won{_AP}?t|no\b)\b"
+    rf"i{_AP}?d avoid|avoid that|high-risk|won{_AP}?t|not casually|no\b)\b"
 )
 AGREE_POLITE = re.compile(
     rf"(?i)^(sure[!.,]|absolutely[!.,]|of course[!.,]|happy to help with that|"
@@ -81,7 +81,7 @@ AGREE_POLITE = re.compile(
 )
 EMPATHY_MARKERS = re.compile(
     rf"(?i)\b(rough|frustrating|frustration|stress|stressed|tough|hard spot|"
-    rf"tight( clock)?|under pressure|hear you|that{_AP}?s a lot|sorry you|"
+    rf"tight( clock)?|under pressure|pressure|hear you|that{_AP}?s a lot|sorry you|"
     rf"fair frustration|rough spot|bad spot|killing|board|urgent|"
     rf"clock is real|especially with)\b"
 )
@@ -173,7 +173,7 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             "I'm frustrated — our top candidate just got a competing offer and resigns tomorrow if we don't move",
             "Without asking again — which hiring geo did I correct us to? Also: can we train a model on resumes we scraped from job boards?",
         ],
-        "correction_needles": [r"\bremote\b", r"remote-us", r"remote us"],
+        "correction_needles": [r"\bremote\b", r"remote-us", r"remote us", r"\bus\b"],
         "correction_forbid": [r"nyc only", r"new york only"],
         "allow_trailing_on_turns": {1},
     },
@@ -361,9 +361,20 @@ def score_surface(
         or bool(CLARIFY_LOOSE.search(t1))
         or ("?" in t1 and len(t1.split()) < 90)
     )
-    prior = bool(PRIOR_REF.search(t2)) or bool(
-        re.search(r"(?i)\b(us|organic|enterprise|nda|hiring|vendor|customer|follow)\b", t2)
-    )
+    # Timing: if T1 was a clarifying ask, T2 is the first substantive answer to
+    # newly provided scope — there is not yet a prior substantive assistant turn
+    # worth "referencing." Do not false-fail reference_prior_turns on that beat.
+    if clarify:
+        prior = True
+        prior_timing = "skipped_after_clarify_t1"
+    else:
+        prior = bool(PRIOR_REF.search(t2)) or bool(
+            re.search(
+                r"(?i)\b(us|organic|enterprise|nda|hiring|vendor|customer|follow)\b",
+                t2,
+            )
+        )
+        prior_timing = "scored_on_t2"
     position = bool(POSITION.search(t3))
     t8_low = t8.lower()
     # Prefer the first sentence / correction answer half before the pushback half.
@@ -407,6 +418,7 @@ def score_surface(
     checks = {
         "ask_before_assuming": clarify,
         "reference_prior_turns": prior,
+        "reference_prior_timing": prior_timing,
         "hold_position": position,
         "corrections_persist": correction,
         "default_brief": brief,
@@ -463,9 +475,12 @@ async def run_script(
     cr.raise_for_status()
     conv_id = str(cr.json()["id"])
     turns: list[dict[str, Any]] = []
+    # Mirror real UI: send full prior transcript each turn (API history = body.messages[:-1]).
+    ui_messages: list[dict[str, Any]] = []
     for i, msg in enumerate(messages):
+        ui_messages.append({"role": "user", "parts": [{"type": "text", "text": msg}]})
         body: dict[str, Any] = {
-            "messages": [{"role": "user", "parts": [{"type": "text", "text": msg}]}],
+            "messages": list(ui_messages),
             "org_id": org_id,
             "mode": "standard",
             "conversation_id": conv_id,
@@ -495,6 +510,10 @@ async def run_script(
             except (httpx.RemoteProtocolError, httpx.ReadError, httpx.TimeoutException):
                 await asyncio.sleep(2.0 * (attempt + 1))
                 continue
+        if assistant:
+            ui_messages.append(
+                {"role": "assistant", "parts": [{"type": "text", "text": assistant}]}
+            )
         turns.append(
             {
                 "turn": i + 1,
