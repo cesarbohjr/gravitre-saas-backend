@@ -184,6 +184,10 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "brevo.contacts.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "brevo.email.send": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -883,6 +887,10 @@
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "meta_marketing.campaigns.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "meta_marketing.adsets.update": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
