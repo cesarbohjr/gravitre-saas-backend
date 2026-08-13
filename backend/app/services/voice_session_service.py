@@ -91,7 +91,7 @@ async def stream_voice_turn_events(
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     from app.operators.agent_intelligence import get_agent_intelligence
-    from app.operators.assistant_sse import AssistantStreamComplete, AssistantStreamEvent
+    from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
     resolved_voice = voice_id or profile.get("voice_id") or profile.get("voice_key")
