@@ -79,7 +79,7 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     "legal": (
         (
             "Can we reuse a customer's quote in a case study without asking?",
-            "Not as a default. Treat testimonials and case studies as needing clear permission; don't invent that consent exists. If you have a written release, use only what it covers — otherwise draft a short ask before publishing.",
+            "Not as a default. Treat testimonials and case studies as needing a written release or clear permission; don't invent that consent exists. If you have a release, use only what it covers — otherwise draft a short ask before publishing.",
             "legal pack / honesty withhold — no fabricated consent",
         ),
         (
@@ -87,12 +87,37 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
             "Only if you can point to a real attestation on file. If you don't have the report, say the program status plainly and don't claim Certified. I won't invent an audit date.",
             "legal/compliance honesty — withhold fabrication",
         ),
+        (
+            "Vendor NDA — what do I check first before we sign?",
+            "Start with confidentiality carveouts, residual-use language, and governing law — those three decide how much risk you're taking. Then check mutual vs one-way obligations and how long the NDA lasts after the relationship ends. Don't invent that our playbook already approved the form.",
+            "legal pack — NDA review checklist; withhold playbook claims",
+        ),
+        (
+            "Can we say we're GDPR ready in the MSA without a DPA?",
+            "No. If you process personal data for the customer, you need a real DPA (or equivalent) and a clear roles map — controller vs processor. Don't claim GDPR ready because marketing wants a checkbox.",
+            "legal/privacy — DPA vs marketing claims; withhold",
+        ),
     ),
     "cybersecurity": (
         (
             "Should we open inbound SSH to the world for a vendor debug session?",
             "No. Prefer time-bound access via VPN or a bastion, log the session, and close it after. Broad inbound SSH is a standing risk — push for least privilege, not convenience.",
             "NIST/cyber pack — least privilege / zero trust framing",
+        ),
+        (
+            "What's the first hardening move for SaaS admin accounts?",
+            "Enforce MFA on every admin — prefer phishing-resistant factors (security keys / passkeys) over SMS. Then cut standing admin roles to just-in-time elevation and review OAuth app grants. Don't invent that SSO is already enforced if you haven't checked the IdP.",
+            "cyber pack — MFA / phishing-resistant / JIT privilege",
+        ),
+        (
+            "Vendor wants standing production access for support — yes or no?",
+            "No standing production access. Use time-bound ZTNA or bastion sessions with approval, logging, and a ticket. Prefer a non-prod replica when the work allows it.",
+            "cyber pack — ZTNA / time-bound / no standing prod access",
+        ),
+        (
+            "We found an API key in a public repo — first moves?",
+            "Rotate the key immediately, revoke the old credential, and check audit logs for use after exposure. Then find how it landed in git and block that path — don't leave the key live while you write a postmortem.",
+            "cyber incident basics — rotate / revoke / audit",
         ),
     ),
     "hr": (
@@ -103,8 +128,18 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
         ),
         (
             "Can we train a model on resumes we scraped from job boards?",
-            "Not casually. Employment and privacy rules constrain how candidate data can be collected and used. Stick to candidates who applied through your process, and don't invent a legal green light without counsel.",
+            "Not casually. Stick to candidates who applied through your process, keep a human review step, and don't invent a legal green light without counsel — scraped job-board resumes are high privacy and adverse-impact risk.",
             "hr/EEOC pack — withhold; candidate data care",
+        ),
+        (
+            "Should we score candidates with AI on scraped resumes from job boards?",
+            "No as a default. Prefer ATS or first-party applications, a documented job-related scorecard, and human review before any rejection. Fully automated ranking of scraped resumes is the wrong footing legally and operationally.",
+            "hr pack — scorecard / adverse impact / human review",
+        ),
+        (
+            "Offer letter went out with the wrong start date — what now?",
+            "Send a corrected offer letter immediately, confirm the candidate acknowledges the new terms in writing, and update the ATS/HRIS record so onboarding doesn't use the wrong date. Don't invent that verbal acknowledgment is enough if your process requires a signed letter.",
+            "hr ops — offer letter correction / ATS hygiene",
         ),
     ),
 }
@@ -188,4 +223,4 @@ def expert_dialogue_prompt_section(
 
 
 def pilot_departments() -> tuple[str, ...]:
-    return ("marketing", "sales", "finance", "legal")
+    return ("marketing", "sales", "finance", "legal", "hr", "cybersecurity")

@@ -29,6 +29,19 @@ def test_sales_and_finance_sections_grounded():
     assert "PaymentIntent" in finance or "idempotency" in finance
 
 
+def test_legal_hr_cyber_sections_pilot_depth():
+    legal = expert_dialogue_prompt_section({"name": "Legal Agent", "department": "legal"})
+    hr = expert_dialogue_prompt_section({"name": "HR Agent", "department": "hr"})
+    cyber = expert_dialogue_prompt_section(
+        {"name": "Cybersecurity Agent", "department": "cybersecurity"}
+    )
+    assert "written release" in legal.lower() or "attestation" in legal.lower()
+    assert "governing law" in legal.lower() or "residual" in legal.lower()
+    assert "scorecard" in hr.lower() or "adverse" in hr.lower()
+    assert "phishing-resistant" in cyber.lower() or "bastion" in cyber.lower()
+    assert "mfa" in cyber.lower()
+
+
 def test_module_d_prompt_includes_expert_dialogue_for_marketing_agent():
     agent = {"id": "a1", "name": "Marketing Analyst", "department": "marketing"}
     text = build_module_d_unified_system_prompt(agent=agent, spoken_mode=False)

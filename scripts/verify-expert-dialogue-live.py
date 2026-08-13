@@ -41,42 +41,98 @@ _spec = importlib.util.spec_from_file_location(
 _mod = importlib.util.module_from_spec(_spec)
 assert _spec and _spec.loader
 _spec.loader.exec_module(_mod)
-find_agent = _mod.find_agent
 parse_assistant = _mod.parse_assistant
+
+_spec_all = importlib.util.spec_from_file_location(
+    "conv_beh_all",
+    ROOT / "scripts" / "verify-conversational-behavior-all-surfaces-live.py",
+)
+_all = importlib.util.module_from_spec(_spec_all)
+assert _spec_all and _spec_all.loader
+_spec_all.loader.exec_module(_all)
+resolve_surface_agent = _all.resolve_surface_agent
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 LABEL = (os.environ.get("EXPERT_DIALOGUE_LABEL") or "before").strip()
 OUT = ROOT / "docs" / "delivery" / f"expert-dialogue-{LABEL}-transcript.json"
 EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
 
-# One representative domain question per pilot department.
-# Distinctive practitioner markers expected AFTER expert-library ship (stricter than before).
-PROBES: list[tuple[str, list[str], str, list[str]]] = [
-    (
-        "marketing",
-        ["SEO Marketing Analyst", "Marketing Analyst", "SEO", "marketing"],
-        "A deal stage update in HubSpot keeps failing — what should I check first as an SEO marketer tying pipeline to content?",
-        [
-            r"(?i)\b(pipeline-scoped|INVALID_PROPERTY|stage id|associations?|UTM)\b",
+# Representative domain questions. Wave 2 expands Legal/HR/Cyber substance
+# (seeded into isolated smoke org when missing — same pattern as all-surfaces).
+PROBES: list[dict[str, Any]] = [
+    {
+        "tag": "marketing",
+        "needles": ["SEO Marketing Analyst", "Marketing Analyst", "SEO", "marketing"],
+        "seed": None,
+        "question": (
+            "A deal stage update in HubSpot keeps failing — what should I check first "
+            "as an SEO marketer tying pipeline to content?"
+        ),
+        "terms": [r"(?i)\b(pipeline-scoped|INVALID_PROPERTY|stage id|associations?|UTM)\b"],
+    },
+    {
+        "tag": "sales",
+        "needles": ["Sales Agent", "Sales Analyst", "Sales", "sales"],
+        "seed": None,
+        "question": (
+            "How should we work a stalled opportunity that has a contact but no next "
+            "step in the CRM?"
+        ),
+        "terms": [
+            r"(?i)\b(champion|associat(e|ion)|close date|re-?qualif|mutual action|Opportunity)\b"
         ],
-    ),
-    (
-        "sales",
-        ["Sales Agent", "Sales Analyst", "Sales", "sales"],
-        "How should we work a stalled opportunity that has a contact but no next step in the CRM?",
-        [
-            r"(?i)\b(champion|associat(e|ion)|close date|re-?qualif|mutual action|Opportunity)\b",
+    },
+    {
+        "tag": "legal",
+        "needles": ["Legal Agent", "Legal Analyst", "Legal", "Compliance", "legal"],
+        "seed": {
+            "name": "Legal Agent",
+            "department": "legal",
+            "role": "analyst",
+            "purpose": "Legal and compliance guidance for contracts, privacy, and risk.",
+        },
+        "question": "Vendor NDA — what do I check first before we sign?",
+        "terms": [
+            r"(?i)\b(carveout|residual-?use|governing law|mutual|one-way|written release)\b"
         ],
-    ),
-    # Org has no Finance/Legal agents — third live probe uses Marketing specialty agent.
-    (
-        "marketing_specialty",
-        ["Competitor Research Agent", "Marketing Agent", "marketing"],
-        "Should we push a blog series or fix product-page SEO first for a new ICP?",
-        [
-            r"(?i)\b(product pages? first|commercial intent|query cluster|associat|HubSpot)\b",
+    },
+    {
+        "tag": "hr",
+        "needles": ["HR Agent", "People Agent", "HR Analyst", "HR", "hr"],
+        "seed": {
+            "name": "HR Agent",
+            "department": "hr",
+            "role": "analyst",
+            "purpose": "HR and people-ops guidance for hiring, policy, and employee relations.",
+        },
+        "question": (
+            "Should we score candidates with AI on scraped resumes from job boards?"
+        ),
+        "terms": [
+            r"(?i)\b(scorecard|adverse impact|human review|ATS|first-party|applied through)\b"
         ],
-    ),
+    },
+    {
+        "tag": "cybersecurity",
+        "needles": [
+            "Cybersecurity Agent",
+            "Security Agent",
+            "Cyber Agent",
+            "Cybersecurity",
+            "security",
+            "cyber",
+        ],
+        "seed": {
+            "name": "Cybersecurity Agent",
+            "department": "cybersecurity",
+            "role": "analyst",
+            "purpose": "Cybersecurity guidance for access control, hardening, and incident response.",
+        },
+        "question": "What's the first hardening move for SaaS admin accounts?",
+        "terms": [
+            r"(?i)\b(MFA|phishing-resistant|passkey|security key|just-in-time|JIT|SSO)\b"
+        ],
+    },
 ]
 
 FABRICATED_METRIC = re.compile(
@@ -172,8 +228,17 @@ async def main() -> int:
             return 1
 
         results = []
-        for tag, needles, question, terms in PROBES:
-            agent = find_agent(sb, org_id, *needles)
+        for probe in PROBES:
+            tag = str(probe["tag"])
+            question = str(probe["question"])
+            terms = list(probe["terms"])
+            agent = resolve_surface_agent(
+                sb,
+                org_id,
+                user_id,
+                needles=list(probe.get("needles") or []),
+                seed=probe.get("seed"),
+            )
             if not agent:
                 results.append({"tag": tag, "ok": False, "error": "agent_not_found"})
                 continue
@@ -215,6 +280,8 @@ async def main() -> int:
                     "http_status": status,
                     "score": sc,
                     "ok": sc["pass"] and status == 200,
+                    "seeded": bool(probe.get("seed"))
+                    and agent.get("name") == (probe.get("seed") or {}).get("name"),
                 }
             )
             await asyncio.sleep(1.0)

@@ -551,5 +551,12 @@
     }
   ],
   "note": "Unified rules 1–10 multi-turn pass across Marketing, Sales, Legal, HR, Cybersecurity, and default assistant. Legal/HR/Cyber seeded into isolated test org when absent.",
-  "standing_note": "Honest PARTIAL/FAIL record before marketing-empathy derail fix + scorer review (2026-08-12)"
+  "standing_note": "Honest PARTIAL/FAIL record before marketing-empathy derail fix + scorer review (2026-08-12)",
+  "resolution_shipped": {
+    "verdict": "PASS",
+    "git_sha": "6100842c817aa686fb7bae99c8e45a15db94db20",
+    "artifact": "conversational-behavior-all-surfaces-after-transcript.json",
+    "closeout": "conversational-behavior-all-surfaces-closeout.md",
+    "checkedAt_note": "2026-08-13 — do not erase this PARTIAL snapshot; see closeout for full scorecard"
+  }
 }
