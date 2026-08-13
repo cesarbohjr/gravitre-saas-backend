@@ -17,7 +17,7 @@ def test_conversational_behavior_section_has_ten_rules_and_honesty():
     assert "Vary response shape" in text
     assert "Don't over-answer" in text or "Dont over-answer" in text or "over-answer" in text.lower()
     assert "Hold a real position" in text
-    assert "prefer" in text.lower() and "personalized notes" in text.lower()
+    assert "wrong move" in text.lower() and "personalized notes" in text.lower()
     assert "Corrections persist" in text
     assert "Push back when warranted" in text
     assert "Avoid scripted-assistant patterns" in text

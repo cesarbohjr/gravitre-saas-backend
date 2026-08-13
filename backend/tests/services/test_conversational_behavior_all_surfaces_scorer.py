@@ -82,3 +82,75 @@ def test_clarify_few_shots_cover_hiring_and_weekly_priorities():
     assert "next week's priorities" in section.lower() or "next week" in section.lower()
     hr = expert_dialogue_prompt_section({"name": "HR Agent", "department": "hr"})
     assert "hiring process" in hr.lower()
+
+
+def test_hold_position_accepts_standing_default_wrong_move_transcript():
+    """FALSE FAIL case: decisive stance without legacy prefer/I'd/don't markers."""
+    import json
+
+    standing = (
+        ROOT
+        / "docs"
+        / "delivery"
+        / "conversational-behavior-all-surfaces-partial-standing.json"
+    )
+    artifact = json.loads(standing.read_text(encoding="utf-8"))
+    default = next(r for r in artifact["results"] if r["tag"] == "default_assistant")
+    assert default["score"]["hold_position"] is False  # historical false fail
+    t3 = default["turns"][2]["assistant"]
+    assert "wrong move" in t3.lower()
+    assert "unless" in t3.lower()
+    assert ", not " in t3.lower()
+    cfg = _mod.SCRIPTS["default_assistant"]
+    score = score_surface(
+        default["turns"],
+        correction_needles=list(cfg["correction_needles"]),
+        correction_forbid=list(cfg["correction_forbid"]),
+        allow_trailing_on_turns=set(cfg.get("allow_trailing_on_turns") or ()),
+    )
+    assert score["hold_position"] is True
+
+
+def test_hold_position_accepts_json_no_dot_and_not_permitted():
+    """Legal JSON 'No. … not permitted unless…' must count as a stance."""
+    turns = _turns(
+        "Please paste the contract text or the clauses you want reviewed.",
+        "Check confidentiality carveouts first.",
+        (
+            '{"summary":"No. Reusing a customer quote in a case study without asking '
+            'is not permitted unless you already have clear written authorization '
+            'covering that use. The safe default is to obtain consent."}'
+        ),
+        "Got it — Delaware.",
+        "Got it — California from here on.",
+        "An NDA is a confidentiality contract.",
+        "That's urgent.",
+        "California. Do not promise SOC 2 without an attestation.",
+    )
+    score = score_surface(
+        turns,
+        correction_needles=[r"\bcalifornia\b"],
+        correction_forbid=[r"\bdelaware\b"],
+        allow_trailing_on_turns={1},
+    )
+    assert score["hold_position"] is True
+
+
+def test_hold_position_still_fails_neutral_option_list():
+    turns = _turns(
+        "Happy to. Which channel?",
+        "Email for now.",
+        "Either could work depending on your goals — here are five options to consider.",
+        "Austin.",
+        "Denver.",
+        "A standup is a short daily sync.",
+        "That's rough.",
+        "Denver. Do not delete prod without a backup.",
+    )
+    score = score_surface(
+        turns,
+        correction_needles=[r"\bdenver\b"],
+        correction_forbid=[r"\baustin\b"],
+        allow_trailing_on_turns={1},
+    )
+    assert score["hold_position"] is False

@@ -85,9 +85,39 @@ EMPATHY_MARKERS = re.compile(
     rf"fair frustration|rough spot|bad spot|killing|board|urgent|"
     rf"clock is real|especially with)\b"
 )
+# Stance detection only — gate logic (score T3 via POSITION.search) is unchanged.
+# Markers widened from standing all-surfaces transcripts so decisive prose that
+# already takes a real position is not false-failed (e.g. "wrong move… unless…,
+# not relationship work"; JSON "No. … not permitted unless…").
 POSITION = re.compile(
-    rf"(?i)\b(recommend|should|priority|first|prefer|better|i{_AP}?d |"
-    rf"go with|start with|vpn|bastion|unilateral|no\.|don{_AP}?t|product pages?)\b"
+    rf"(?i)("
+    # Established word shapes (keep)
+    rf"\b(recommend|should|priority|first|prefer|better|i{_AP}?d|"
+    rf"go with|start with|vpn|bastion|unilateral|"
+    rf"don{_AP}?t|do not|won{_AP}?t|will not|product pages?)\b"
+    rf"|"
+    # Bare "No." — trailing \b after "." never matches "No. Reusing…"
+    rf"\bno\."
+    rf"|"
+    # Decisive move/call/default/idea/footing language (standing default/HR/legal)
+    rf"\b(wrong|right|risky|bad|better|safe(?:r)?|best)\s+"
+    rf"(move|call|default|footing|idea)\b"
+    rf"|"
+    rf"\b(safer default|safe default|high[-\s]?risk|not permitted|"
+    rf"not a good default|not recommended|not casually|not open)\b"
+    rf"|"
+    # Bounded exception + "only for" carve-out (not a laundry list)
+    rf"\b(unless|only for)\b"
+    rf"|"
+    # "X, not Y" contrast (incl. "admin, not relationship work")
+    rf",\s+not\s+"
+    rf"|"
+    # "go with / choose / pick / prefer X over Y"
+    rf"\b(?:go with|choose|pick|prefer)\b[\w\s'\u2019\-]{{0,48}}\bover\b"
+    rf"|"
+    # Explicit contrast connectors used in stance replies
+    rf"\b(rather than|instead of)\b"
+    rf")"
 )
 CLARIFY_LOOSE = re.compile(
     rf"(?i)\b(paste|upload|tell me|which|what you want|where it hurts|"
