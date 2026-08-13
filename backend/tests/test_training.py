@@ -81,9 +81,13 @@ def test_example_added_to_dataset(mock_create):
 
 
 @patch("app.routers.training.enqueue_training_job", new_callable=AsyncMock)
+@patch("app.routers.training.create_training_worker")
 @patch("app.routers.training.create_client")
-def test_training_job_queued(mock_create, mock_enqueue):
+def test_training_job_queued(mock_create, mock_worker_factory, mock_enqueue):
     mock_enqueue.return_value = None
+    worker = MagicMock()
+    worker.process_job = AsyncMock(return_value=None)
+    mock_worker_factory.return_value = worker
     job_chain = chain_mock(
         data=[
             {
@@ -110,6 +114,7 @@ def test_training_job_queued(mock_create, mock_enqueue):
     )
     assert response.status_code == 201
     mock_enqueue.assert_awaited_once()
+    worker.process_job.assert_awaited_once_with("job-1")
 
 
 @patch("app.routers.training.create_client")

@@ -71,18 +71,24 @@ async def test_one_hop_limit_still_enforced_for_business_entities():
     def table(name):
         t = MagicMock()
         if name == "org_entity_relationships":
-            t.select.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
-                data=[
-                    {
-                        "relationship_type": "tracked-by",
-                        "target_entity_type": "agent",
-                        "target_entity_id": "agent-1",
-                        "confidence": 0.8,
-                        "evidence_count": 1,
-                    }
-                ]
-            )
-            t.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+            chain = MagicMock()
+            chain.eq.return_value = chain
+            chain.is_.return_value = chain
+            chain.execute.side_effect = [
+                MagicMock(
+                    data=[
+                        {
+                            "relationship_type": "tracked-by",
+                            "target_entity_type": "agent",
+                            "target_entity_id": "agent-1",
+                            "confidence": 0.8,
+                            "evidence_count": 1,
+                        }
+                    ]
+                ),
+                MagicMock(data=[]),
+            ]
+            t.select.return_value = chain
         return t
 
     client.table.side_effect = table

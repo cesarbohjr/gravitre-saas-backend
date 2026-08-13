@@ -1844,12 +1844,10 @@ class AgentIntelligence:
                 task_state = {
                     **task_state,
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
-                    "current_plan": cognitive_ctx.plan or task_state.get("current_plan"),
                 }
             else:
                 task_state = {
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
-                    "current_plan": cognitive_ctx.plan,
                 }
         except Exception as exc:  # noqa: BLE001
             logger.warning(

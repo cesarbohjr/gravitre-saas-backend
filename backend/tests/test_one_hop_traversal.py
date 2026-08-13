@@ -16,6 +16,7 @@ def _mock_relationship_client(outgoing: list[dict], incoming: list[dict]) -> Mag
         if name == "org_entity_relationships":
             chain = MagicMock()
             chain.eq.return_value = chain
+            chain.is_.return_value = chain
             chain.execute.side_effect = lambda: next(results)
             t.select.return_value = chain
         return t
@@ -85,6 +86,7 @@ async def test_does_not_chain_beyond_one_hop():
         if name == "org_entity_relationships":
             chain = MagicMock()
             chain.eq.return_value = chain
+            chain.is_.return_value = chain
 
             def execute():
                 execute_count["n"] += 1
