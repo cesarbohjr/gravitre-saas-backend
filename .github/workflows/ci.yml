@@ -42,6 +42,10 @@ jobs:
         working-directory: .
         run: node scripts/check-chat-surface-drift.mjs
 
+      - name: Cognitive regression suite
+        working-directory: .
+        run: node scripts/cognitive-regression-suite.mjs
+
       - name: Gravitre brand rename guard
         working-directory: .
         run: node scripts/check-gravitre-brand.mjs

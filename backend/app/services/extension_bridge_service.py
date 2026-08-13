@@ -319,6 +319,33 @@ def enrich_from_page_context(
     connected: list[str],
 ) -> dict[str, Any]:
     """Run catalog reads against page-derived identity fields."""
+    # Kernel intake (RECALL+KNOWLEDGE); enrich must not skip cognitive assembly.
+    cognitive_turn_id = None
+    try:
+        from app.services.cognitive_entry_adapters import run_kernel_for_entry_sync
+
+        cog = run_kernel_for_entry_sync(
+            org_id=str(ctx.org_id),
+            user_id=str(getattr(ctx, "actor_id", None) or ""),
+            message=str(
+                page_context.get("fullName")
+                or page_context.get("email")
+                or page_context.get("company")
+                or page_url
+                or "enrich"
+            ),
+            surface="extension_enrich",
+            entry_point="enrich_from_page_context",
+            intent="enrich",
+            parameters={"page_url": page_url, "is_write": False},
+            client=ctx.client,
+            settings=ctx.settings,
+        )
+        if cog is not None:
+            cognitive_turn_id = getattr(cog, "turn_id", None)
+    except Exception:  # noqa: BLE001
+        pass
+
     surface = detect_surface(page_url, page_context)
     full_name = str(page_context.get("fullName") or page_context.get("name") or "").strip()
     first = str(page_context.get("firstName") or "").strip()
@@ -561,7 +588,7 @@ def enrich_from_page_context(
     elif surface == "slack":
         voice = "Slack overlay extracts page context; writes go through Apollo/HubSpot/Salesforce catalog."
 
-    return {
+    out = {
         "surface": surface,
         "pageUrl": page_url,
         "extracted": {
@@ -580,6 +607,9 @@ def enrich_from_page_context(
         "connectedIntegrations": connected,
         "voiceNote": voice,
     }
+    if cognitive_turn_id:
+        out["cognitiveTurnId"] = cognitive_turn_id
+    return out
 
 
 EXTENSION_APPROVAL_TYPE = "extension_write"
@@ -1054,6 +1084,29 @@ def execute_extension_action(
     Client ``confirmed`` flags are never trusted. Confirm turn loads args from the
     staged approval row (chat pending_task equivalent), not from client-supplied params.
     """
+    # GOVERN via kernel before invoke / confirm — same catalog_write_authority path.
+    try:
+        from app.services.cognitive_entry_adapters import run_kernel_for_entry_sync
+
+        run_kernel_for_entry_sync(
+            org_id=org_id,
+            user_id=user_id,
+            message=str(action or "extension_action"),
+            surface="extension_action" if not confirmation_token else "confirm_write",
+            entry_point="execute_extension_action",
+            intent="write_confirm" if confirmation_token else "extension_action",
+            parameters={
+                "action": action,
+                "is_write": True,
+                "action_hints": [action] if action else [],
+                "page_url": page_url,
+            },
+            client=ctx.client,
+            settings=ctx.settings,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     token = str(confirmation_token or "").strip()
     if token:
         row, pending = _load_extension_pending_confirm(

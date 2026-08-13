@@ -138,6 +138,7 @@ export const SURFACE_COPY = {
     learning: "Trends",
     engine: "Engine",
     performance: "Performance",
+    cognitive: "Cognitive turns",
   },
   pages: {
     agents: {

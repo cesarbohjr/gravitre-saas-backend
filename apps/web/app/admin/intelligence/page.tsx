@@ -22,12 +22,22 @@ import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
 import { GoldenSignalsPanel } from "./_components/golden-signals-panel"
 import { LearningTrendsTab } from "./_components/learning-trends-tab"
+import { CognitiveTurnsTab } from "./_components/cognitive-turns-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Brain } from "lucide-react"
 
-type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "learning" | "engine" | "performance"
+type TabKey =
+  | "overview"
+  | "memory"
+  | "relationships"
+  | "evaluation"
+  | "outcomes"
+  | "learning"
+  | "engine"
+  | "performance"
+  | "cognitive"
 
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
@@ -103,6 +113,9 @@ export default function AdminIntelligencePage() {
             <TabsTrigger value="performance" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
               {tabs.performance}
             </TabsTrigger>
+            <TabsTrigger value="cognitive" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              {tabs.cognitive}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 space-y-6">
@@ -139,6 +152,10 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="performance" className="mt-0">
             <PerformanceTab enabled={tab === "performance"} />
+          </TabsContent>
+
+          <TabsContent value="cognitive" className="mt-0">
+            <CognitiveTurnsTab enabled={tab === "cognitive"} />
           </TabsContent>
         </Tabs>
       </div>

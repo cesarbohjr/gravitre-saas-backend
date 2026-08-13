@@ -600,3 +600,35 @@ NL variance + withhold assertions also live in CI via `test_routing_nl_variance_
 | 2026-08-05 | **G.5.7 operational re-verify** — tip `97b2e319`; progressive+MiniLM+enrichment-off CONFIRMED; F6 HubSpot + tip CI green GAP. |
 | 2026-08-05 | **G.5.8 gap closure** — Monday F4-class; MSP stale-test CI; HubSpot ILS retry; A5d write short-circuit removed; full pytest 4386 passed. |
 | 2026-08-05 | **G.5.8 tip `ce6db384`** — full CI green (pytest+audit+web); F6 both vendors + A5d progressive/governance live PASS. |
+
+---
+
+## CognitiveTurnKernel intake (2026-08-13)
+
+**Status:** Code path wired — LIVE PENDING for production chat evidence.
+
+### Kernel-first streaming
+
+On the main agent streaming path (`AgentIntelligence.execute_task_streaming`), `CognitiveTurnKernel.run_pre_act` runs **before** `apply_unified_turn_live`. The resulting `CognitiveTurnContext` is passed as `cognitive_context=` into unified turn reasoning so memory/knowledge prompt sections are assembled from the same pre-ACT pack rather than a second ad-hoc retrieve.
+
+Non-streaming `execute_task` uses the same kernel-first pattern for classical fallthrough.
+
+### Entry adapters
+
+| Surface | Adapter / call site | Notes |
+|---------|---------------------|--------|
+| AI / agent chat (streaming) | `agent_intelligence.execute_task_streaming` → `run_pre_act` | LIVE after GOVERN |
+| AI / agent chat (non-stream) | `agent_intelligence.execute_task` → `run_pre_act` | Classical / job-shaped |
+| Extension enrich / action | `extension_bridge_service` → `run_kernel_for_entry_sync` | Best-effort; does not invent ACT |
+| Council | `council_service` → `run_kernel_for_entry` | Shared pre-ACT before debate turn |
+| Shared helper | `cognitive_entry_adapters.run_kernel_for_entry` | Common request → context |
+
+### Admin / metrics / simulation (Phases 5–6)
+
+- Traces: `GET /api/admin/cognitive-turns` (+ `/{turn_id}`)
+- Metrics SoT: `GET/PUT /api/admin/cognitive-metrics`, resolve via `resolve_metric_for_agent`
+- What-if: `POST /api/admin/cognitive-simulation/what-if` (Module C honesty fields; no invented SKU prices)
+
+### Regression guard
+
+`scripts/cognitive-regression-suite.mjs` (CI, next to chat-surface-drift) asserts kernel files, `run_pre_act` before `apply_unified_turn_live` in streaming, `cognitive_context=` wiring, and extension/council adapter greps.

@@ -1055,6 +1055,43 @@ class AgentIntelligence:
         params = parameters or {}
         permission_agent_id = _permission_scoped_agent_id(agent, agent_id)
 
+        # CognitiveTurnKernel first — same pre-ACT sequence as streaming chat path.
+        cognitive_ctx = None
+        cognitive_sections = {"memory_section": "", "knowledge_section": ""}
+        try:
+            from app.services.cognitive_turn_kernel import (
+                CognitiveTurnRequest,
+                get_cognitive_turn_kernel,
+                to_prompt_sections,
+            )
+
+            cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
+                CognitiveTurnRequest(
+                    org_id=org_id,
+                    user_id=actor_id,
+                    agent_id=agent_id or None,
+                    conversation_id=str(params.get("conversation_id") or "") or None,
+                    message=task_text,
+                    surface=str(params.get("surface") or "job"),
+                    entry_point="execute_task",
+                    environment_name=environment_name,
+                    intent=str(params.get("intent") or "job"),
+                    parameters=params,
+                    client=client,
+                    agent=agent,
+                )
+            )
+            cognitive_sections = to_prompt_sections(cognitive_ctx)
+            if cognitive_ctx.plan and isinstance(params, dict):
+                params = {**params, "_cognitive_turn_id": cognitive_ctx.turn_id, "current_plan": cognitive_ctx.plan}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "cognitive_turn_kernel_execute_task_failed org_id=%s agent_id=%s error=%s",
+                org_id,
+                agent_id,
+                exc,
+            )
+
         resolved_plan = resolve_plan(
             PlanResolutionRequest(
                 surface=str(params.get("surface") or "agent"),
@@ -1085,6 +1122,11 @@ class AgentIntelligence:
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
         rag_section = retrieval.rag_section
         memory_section = retrieval.memory_section
+        # Prefer kernel RECALL pack when present (org-scoped taxonomy).
+        if cognitive_sections.get("memory_section"):
+            memory_section = "\n\n".join(
+                p for p in (memory_section or "", cognitive_sections["memory_section"]) if p
+            ).strip()
 
         effective_briefing = dict(briefing or {})
         if resolved_plan.upstream_context:
@@ -1109,6 +1151,10 @@ class AgentIntelligence:
             entity_block = await build_entity_context_section(org_id, task_text, settings=active_settings, client=client)
         except Exception as exc:  # noqa: BLE001
             logger.debug("entity_context_skipped org_id=%s error=%s", org_id, exc)
+        if cognitive_sections.get("knowledge_section"):
+            entity_block = "\n\n".join(
+                p for p in (entity_block or "", cognitive_sections["knowledge_section"]) if p
+            ).strip()
 
         task_prompt = self._build_task_prompt(
             task_text,
@@ -1648,7 +1694,58 @@ class AgentIntelligence:
         if agent_id:
             early_agent = resolve_agent_record(client, org_id, str(agent_id))
 
+        # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
+        cognitive_ctx = None
+        try:
+            from app.services.cognitive_turn_kernel import (
+                CognitiveTurnRequest,
+                get_cognitive_turn_kernel,
+            )
+
+            _surface = (
+                "voice"
+                if spoken_mode
+                else ("agent_chat" if agent_id else "ai_chat")
+            )
+            cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
+                CognitiveTurnRequest(
+                    org_id=org_id,
+                    user_id=user_id,
+                    agent_id=str(agent_id) if agent_id else None,
+                    conversation_id=conversation_id,
+                    message=task_text,
+                    surface=_surface,
+                    entry_point="execute_task_streaming",
+                    environment_name=environment_name,
+                    spoken_mode=bool(spoken_mode),
+                    intent="chat",
+                    task_state=task_state if isinstance(task_state, dict) else None,
+                    conversation_history=conversation_history,
+                    client=client,
+                    agent=early_agent,
+                )
+            )
+            if isinstance(task_state, dict):
+                task_state = {
+                    **task_state,
+                    "_cognitive_turn_id": cognitive_ctx.turn_id,
+                    "current_plan": cognitive_ctx.plan or task_state.get("current_plan"),
+                }
+            else:
+                task_state = {
+                    "_cognitive_turn_id": cognitive_ctx.turn_id,
+                    "current_plan": cognitive_ctx.plan,
+                }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "cognitive_turn_kernel_pre_act_failed org_id=%s conversation_id=%s error=%s",
+                org_id,
+                conversation_id,
+                exc,
+            )
+
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
+        # LIVE is an ACT strategy only — never runs before kernel RECALL/KNOWLEDGE.
         if getattr(active_settings, "unified_turn_live_enabled", False):
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
@@ -1678,6 +1775,7 @@ class AgentIntelligence:
                 agent_id=agent_id,
                 spoken_mode=bool(spoken_mode),
                 research_scope=research_scope,
+                cognitive_context=cognitive_ctx,
             )
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state
@@ -2255,6 +2353,25 @@ class AgentIntelligence:
             mode=requested_mode,
             research_scope=research_scope,
         )
+        # Classical ACT still consumes kernel RECALL/KNOWLEDGE assembled before LIVE.
+        if cognitive_ctx is not None:
+            try:
+                from app.services.cognitive_turn_kernel import to_prompt_sections
+
+                _sections = to_prompt_sections(cognitive_ctx)
+                if _sections.get("memory_section") and hasattr(turn_ctx, "retrieval"):
+                    prior = getattr(turn_ctx.retrieval, "memory_section", "") or ""
+                    turn_ctx.retrieval.memory_section = "\n\n".join(
+                        p for p in (prior, _sections["memory_section"]) if p
+                    ).strip()
+                if _sections.get("knowledge_section"):
+                    prior_k = getattr(turn_ctx, "entity_relationship_section", None) or ""
+                    if hasattr(turn_ctx, "entity_relationship_section"):
+                        turn_ctx.entity_relationship_section = "\n\n".join(
+                            p for p in (prior_k, _sections["knowledge_section"]) if p
+                        ).strip()
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("cognitive_classical_merge_skipped error=%s", exc)
         agent = turn_ctx.agent
         retrieval = turn_ctx.retrieval
         org_context = retrieval.org_context

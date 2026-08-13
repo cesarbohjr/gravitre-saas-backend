@@ -27,6 +27,9 @@ from app.routers import (
     agent_tool_permissions,
     admin_intelligence,
     admin_chat,
+    cognitive_turns,
+    cognitive_metrics,
+    cognitive_simulation,
     activity,
     mcp_admin,
     ai_system,
@@ -592,6 +595,9 @@ app.include_router(knowledge_fabric.router)
 app.include_router(knowledge_fabric.internal_router)
 app.include_router(admin_intelligence.router)
 app.include_router(admin_chat.router)
+app.include_router(cognitive_turns.router)
+app.include_router(cognitive_metrics.router)
+app.include_router(cognitive_simulation.router)
 app.include_router(mcp_admin.router)
 app.include_router(optimization_suggestions.router)
 app.include_router(feedback_mode.router)

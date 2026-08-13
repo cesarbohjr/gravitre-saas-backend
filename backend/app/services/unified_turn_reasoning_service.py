@@ -437,6 +437,7 @@ async def run_unified_turn_shadow(
     spoken_mode: bool = False,
     classification: dict[str, Any] | None = None,
     research_scope: str | None = None,
+    cognitive_context: Any | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -709,6 +710,29 @@ async def run_unified_turn_shadow(
         unified_turn_knowledge_meta = (
             {"skipped": "remind_me_turn"} if remind_me else None
         )
+    # Kernel RECALL/KNOWLEDGE pack (post-retrieve, pre-ACT) — denser than LIVE-only KF.
+    if cognitive_context is not None and not remind_me:
+        try:
+            from app.services.cognitive_turn_kernel import to_prompt_sections
+
+            sections = to_prompt_sections(cognitive_context)
+            mem = (sections.get("memory_section") or "").strip()
+            know = (sections.get("knowledge_section") or "").strip()
+            if mem:
+                user_parts.append(mem)
+            if know:
+                user_parts.append(know)
+            if isinstance(unified_turn_knowledge_meta, dict):
+                unified_turn_knowledge_meta = {
+                    **unified_turn_knowledge_meta,
+                    "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                }
+            elif mem or know:
+                unified_turn_knowledge_meta = {
+                    "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                }
+        except Exception:  # noqa: BLE001
+            pass
     user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 
@@ -1251,6 +1275,7 @@ async def apply_unified_turn_live(
     agent_id: str | None = None,
     spoken_mode: bool = False,
     research_scope: str | None = None,
+    cognitive_context: Any | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1521,6 +1546,7 @@ async def apply_unified_turn_live(
             spoken_mode=bool(spoken_mode),
             classification=classification,
             research_scope=None,
+            cognitive_context=cognitive_context,
         )
         text = (result.user_message or "").strip()
         if result.outcome_kind in {"skipped", "error"} or not text:
@@ -1581,6 +1607,7 @@ async def apply_unified_turn_live(
         spoken_mode=bool(spoken_mode),
         classification=classification,
         research_scope=research_scope,
+        cognitive_context=cognitive_context,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

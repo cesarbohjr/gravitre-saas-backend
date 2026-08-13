@@ -2207,6 +2207,41 @@ export const intelligenceApi = {
     fetcher<import("@/lib/intelligence/visibility-types").AgentVisibilityProfile>(
       apiUrl(`/api/intelligence/visibility/agents/${encodeURIComponent(agentId)}`),
     ),
+  cognitiveTurns: (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      traces: Array<{
+        turn_id?: string
+        surface?: string
+        stages?: Array<{ stage?: string; ok?: boolean; ms?: number; meta?: Record<string, unknown> }>
+        created_at?: string
+        memory_summary?: Record<string, unknown>
+        knowledge_summary?: Record<string, unknown>
+        conversation_id?: string | null
+        user_id?: string | null
+        [key: string]: unknown
+      }>
+      orgId: string
+      limit: number
+      offset: number
+    }>(apiUrl(`/api/admin/cognitive-turns${suffix}`))
+  },
+  cognitiveTurn: (turnId: string) =>
+    fetcher<{
+      trace: {
+        turn_id?: string
+        surface?: string
+        stages?: Array<{ stage?: string; ok?: boolean; ms?: number; meta?: Record<string, unknown> }>
+        created_at?: string
+        memory_summary?: Record<string, unknown>
+        knowledge_summary?: Record<string, unknown>
+        [key: string]: unknown
+      }
+      orgId: string
+    }>(apiUrl(`/api/admin/cognitive-turns/${encodeURIComponent(turnId)}`)),
 }
 
 export const architectureAdminApi = {

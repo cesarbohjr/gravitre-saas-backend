@@ -146,6 +146,26 @@ class AgentCouncilService:
         decision_method: DecisionMethod = DecisionMethod.MAJORITY_VOTE,
         max_rounds: int = 3,
     ) -> CouncilSession:
+        # Inject org RECALL+KNOWLEDGE from kernel so council members are not memory-blind.
+        try:
+            from app.services.cognitive_entry_adapters import (
+                attach_kernel_pack_to_evidence,
+                run_kernel_for_entry,
+            )
+
+            cog = await run_kernel_for_entry(
+                org_id=org_id,
+                message=objective or "",
+                surface="council",
+                entry_point="start_council",
+                intent="council",
+                settings=getattr(self, "settings", None),
+                client=getattr(self, "client", None),
+            )
+            evidence = attach_kernel_pack_to_evidence(evidence, cog)
+        except Exception:  # noqa: BLE001
+            pass
+
         rounds: list[dict] = []
         for idx in range(max(1, min(max_rounds, 5))):
             round_opinions: list[AgentOpinion] = []

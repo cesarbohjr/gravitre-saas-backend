@@ -108,6 +108,11 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
     )
+    # CognitiveTurnKernel kill-switch — when false, pre-ACT stages return a skipped minimal context.
+    cognitive_turn_kernel_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"),
+    )
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,

@@ -92,6 +92,30 @@ class DigitalTwinService:
         }
 
     async def simulate(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Redirect predictive what-if to CognitiveSimulationService (honest envelope)."""
+        try:
+            from app.services.cognitive_simulation_service import simulate_business_scenario
+
+            scenario = ""
+            if args:
+                scenario = str(args[0] or "")
+            scenario = str(kwargs.get("scenario") or kwargs.get("query") or scenario or "")
+            org_id = str(kwargs.get("org_id") or "")
+            assumptions = kwargs.get("assumptions")
+            if org_id and scenario:
+                result = await simulate_business_scenario(
+                    org_id=org_id,
+                    scenario=scenario,
+                    assumptions=assumptions if isinstance(assumptions, list) else None,
+                )
+                return {
+                    **result,
+                    "status": "redirected_to_cognitive_simulation",
+                    "advisory_only": True,
+                    "legacyTwinNote": SIMULATION_REFUSAL,
+                }
+        except Exception:  # noqa: BLE001
+            pass
         return {
             "status": "not_available",
             "reason": SIMULATION_REFUSAL,
