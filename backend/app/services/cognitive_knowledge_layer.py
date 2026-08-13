@@ -90,9 +90,13 @@ async def merge(
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_knowledge_nodes_skipped error=%s", exc)
         try:
+            # Columns match org_entity_relationships migration (no metadata column).
             edges = (
                 client.table("org_entity_relationships")
-                .select("id,org_id,source_entity_id,target_entity_id,relationship_type,metadata")
+                .select(
+                    "id,org_id,source_entity_type,source_entity_id,"
+                    "target_entity_type,target_entity_id,relationship_type,confidence"
+                )
                 .eq("org_id", org_id)
                 .limit(40)
                 .execute()
@@ -107,11 +111,20 @@ async def merge(
     if graph_nodes or graph_edges:
         lines = ["<org_knowledge_graph>"]
         for n in graph_nodes[:12]:
-            lines.append(f"- node:{n.get('node_type')}:{n.get('name')}")
+            # Typed nodes must appear in the prompt for KNOWLEDGE stage.
+            attrs = n.get("attributes") if isinstance(n.get("attributes"), dict) else {}
+            attr_hint = ""
+            if attrs:
+                # Compact non-secret attribute keys for grounding (no PII dump).
+                keys = ",".join(sorted(str(k) for k in list(attrs.keys())[:4]))
+                if keys:
+                    attr_hint = f" attrs={keys}"
+            lines.append(f"- node:{n.get('node_type')}:{n.get('name')}{attr_hint}")
         for e in graph_edges[:12]:
             lines.append(
                 f"- edge:{e.get('relationship_type')} "
-                f"{e.get('source_entity_id')}→{e.get('target_entity_id')}"
+                f"{e.get('source_entity_type')}:{e.get('source_entity_id')}→"
+                f"{e.get('target_entity_type')}:{e.get('target_entity_id')}"
             )
         lines.append("</org_knowledge_graph>")
         graph_section = "\n".join(lines)
@@ -139,6 +152,8 @@ def _empty_pack() -> dict[str, Any]:
         "fabric_route": None,
         "entity_section": "",
         "entity_graph": "",
+        "graph_nodes": [],
+        "graph_edges": [],
         "catalog_hints": [{"note": _CATALOG_HINT}],
         "prompt_section": "",
     }

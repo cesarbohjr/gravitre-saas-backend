@@ -40,17 +40,17 @@ async def list_cognitive_metrics(
     settings: Settings = Depends(get_settings),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict[str, Any]:
-    """List org-scoped metric definitions."""
+    """List platform defaults + org overrides (org row wins on resolve)."""
     try:
         client = _client(settings)
-        rows = metrics_svc.list_metric_definitions(client, org_id, limit=limit)
+        bundled = metrics_svc.list_metrics_with_defaults(client, org_id, limit=limit)
     except Exception as exc:  # noqa: BLE001
         logger.debug("cognitive_metrics_list_failed error=%s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="org_metric_definitions unavailable",
         ) from exc
-    return {"definitions": rows, "orgId": org_id, "limit": limit}
+    return {**bundled, "limit": limit}
 
 
 @router.put("/{metric_key}")
@@ -99,13 +99,13 @@ async def resolve_cognitive_metric(
     agent_id: str | None = Query(default=None),
     fallback_label: str | None = Query(default=None),
 ) -> dict[str, Any]:
-    """Resolve a metric for agent use via cognitive_metrics.resolve_metric_for_agent."""
+    """Resolve a metric: org override if present, else platform default."""
     key = (metric_key or "").strip()
     if not key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="metric_key required")
     try:
         client = _client(settings)
-        resolved = metrics_svc.resolve_metric_for_agent(
+        resolved = metrics_svc.resolve_metric(
             client,
             org_id,
             key,

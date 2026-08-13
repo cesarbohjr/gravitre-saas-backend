@@ -755,8 +755,90 @@ async def cognitive_one_brain_smoke(
         results["cross_org_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
         checks["cross_org"] = False
 
-    # 5) Dual-agent metric resolve — same definition_id
+    # 4b) Cross-conversation workspace memory: write in convo A → recall in convo B
     try:
+        from app.services.workspace_memory_service import promote_turn_memories, recall_workspace
+
+        ws_marker = f"WS_MEMORY_{probe_tag}"
+        convo_a = str(uuid_mod.uuid4())
+        convo_b = str(uuid_mod.uuid4())
+        promoted = promote_turn_memories(
+            client,
+            org_id=org_id,
+            memories=[
+                {
+                    "content": f"{ws_marker} decided to use hubspot for CRM",
+                    "category": "decision",
+                    "confidence": 90,
+                }
+            ],
+            agent_id=None,
+            conversation_id=convo_a,
+            user_id=actor_id,
+            provenance="one_brain_workspace_memory_probe",
+            settings=settings,
+        )
+        recalled = recall_workspace(
+            client,
+            org_id=org_id,
+            query=ws_marker,
+            categories=["decision"],
+            top_k=8,
+            settings=settings,
+        )
+        ctx_b = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                conversation_id=convo_b,
+                message=ws_marker,
+                surface="ai_chat",
+                entry_point="cognitive_one_brain_smoke_ws_memory",
+                intent="chat",
+                client=client,
+            )
+        )
+        pack_blob = json.dumps(ctx_b.memory_pack, default=str)
+        hit_in_recall = any(ws_marker in str(r.get("content") or "") for r in recalled)
+        hit_in_kernel = ws_marker in pack_blob
+        foreign_leak = False
+        for key, items in (ctx_b.memory_pack or {}).items():
+            if key == "prompt_section" or not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, dict) and str(item.get("org_id") or "") not in {"", org_id}:
+                    foreign_leak = True
+        # Foreign-org isolation: promote into foreign org must not appear
+        foreign_ws = f"FOREIGN_WS_{probe_tag}"
+        promote_turn_memories(
+            client,
+            org_id=foreign_org_id,
+            memories=[{"content": foreign_ws, "category": "decision", "confidence": 90}],
+            conversation_id=str(uuid_mod.uuid4()),
+            provenance="one_brain_workspace_foreign_probe",
+            settings=settings,
+        )
+        foreign_in_pack = foreign_ws in pack_blob
+        ok = bool(promoted) and hit_in_recall and hit_in_kernel and (not foreign_leak) and (not foreign_in_pack)
+        results["workspace_cross_conversation"] = {
+            "convo_a": convo_a,
+            "convo_b": convo_b,
+            "promoted_ids": [str(r.get("id")) for r in promoted if isinstance(r, dict)],
+            "recall_hit": hit_in_recall,
+            "kernel_hit": hit_in_kernel,
+            "turn_id_b": ctx_b.turn_id,
+            "foreign_leak": foreign_leak or foreign_in_pack,
+            "ok": ok,
+        }
+        checks["workspace_cross_conversation"] = ok
+    except Exception as exc:  # noqa: BLE001
+        results["workspace_cross_conversation_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["workspace_cross_conversation"] = False
+
+    # 5) Dual-agent metric resolve — same definition_id + platform defaults
+    try:
+        from app.services.cognitive_metrics import resolve_metric, list_platform_defaults
+
         metric_key = f"arr_{probe_tag[:8]}"
         upserted = upsert_metric_definition(
             client,
@@ -772,18 +854,73 @@ async def cognitive_one_brain_smoke(
         ra = resolve_metric_for_agent(client, org_id, metric_key, agent_id=agent_a)
         rb = resolve_metric_for_agent(client, org_id, metric_key, agent_id=agent_b)
         same = bool(ra.get("definition_id") and ra.get("definition_id") == rb.get("definition_id"))
+        defaults = list_platform_defaults()
+        mql = resolve_metric(client, org_id, "mql")
+        cac = resolve_metric(client, org_id, "cac")
+        arr = resolve_metric(client, org_id, "arr")
+        defaults_ok = (
+            len(defaults) >= 3
+            and mql.get("formula")
+            and cac.get("formula")
+            and arr.get("formula")
+            and mql.get("resolved_from") in {"platform_default", "org_metric_definitions"}
+        )
         results["metrics"] = {
             "metric_key": metric_key,
             "definition_id": ra.get("definition_id"),
             "agent_a": ra,
             "agent_b": rb,
             "upserted_id": (upserted or {}).get("id"),
-            "ok": same,
+            "platform_defaults": defaults,
+            "resolve_mql": mql,
+            "resolve_cac": cac,
+            "resolve_arr": arr,
+            "ok": same and defaults_ok,
         }
-        checks["metrics"] = same
+        checks["metrics"] = same and defaults_ok
     except Exception as exc:  # noqa: BLE001
         results["metrics_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
         checks["metrics"] = False
+
+    # 5b) Knowledge nodes → KNOWLEDGE pack
+    try:
+        from app.services.org_knowledge_nodes_service import create_knowledge_node
+
+        node_name = f"ProbeCo-{probe_tag[:8]}"
+        node = create_knowledge_node(
+            client,
+            org_id,
+            node_type="company",
+            name=node_name,
+            attributes={"probe": probe_tag},
+        )
+        ctx_kn = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                message=f"{probe_tag} tell me about {node_name}",
+                surface="ai_chat",
+                entry_point="cognitive_one_brain_smoke_knowledge_node",
+                intent="chat",
+                client=client,
+            )
+        )
+        kn_blob = json.dumps(ctx_kn.knowledge_pack, default=str)
+        node_in_pack = node_name in kn_blob or any(
+            isinstance(n, dict) and node_name in str(n.get("name") or "")
+            for n in (ctx_kn.knowledge_pack or {}).get("graph_nodes") or []
+        )
+        results["knowledge_nodes"] = {
+            "node_id": (node or {}).get("id"),
+            "node_name": node_name,
+            "turn_id": ctx_kn.turn_id,
+            "in_knowledge_pack": node_in_pack,
+            "ok": bool(node) and node_in_pack,
+        }
+        checks["knowledge_nodes"] = bool(node) and node_in_pack
+    except Exception as exc:  # noqa: BLE001
+        results["knowledge_nodes_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["knowledge_nodes"] = False
 
     # 6) Field-deny GOVERN + audit
     try:

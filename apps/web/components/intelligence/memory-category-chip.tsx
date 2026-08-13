@@ -65,6 +65,42 @@ const MEMORY_CATEGORY_CONFIG: Record<
     iconColor: "text-destructive",
     label: "Risk signal",
   },
+  decision: {
+    icon: Lightbulb,
+    chipBg: "bg-chart-3/10",
+    iconColor: "text-chart-3",
+    label: "Decision",
+  },
+  outcome: {
+    icon: FlowArrow,
+    chipBg: "bg-chart-1/10",
+    iconColor: "text-chart-1",
+    label: "Outcome",
+  },
+  relationship: {
+    icon: UserCircle,
+    chipBg: "bg-chart-4/10",
+    iconColor: "text-chart-4",
+    label: "Relationship",
+  },
+  procedural: {
+    icon: BookOpen,
+    chipBg: "bg-chart-2/10",
+    iconColor: "text-chart-2",
+    label: "Procedural",
+  },
+  episodic: {
+    icon: Megaphone,
+    chipBg: "bg-chart-5/10",
+    iconColor: "text-chart-5",
+    label: "Episodic",
+  },
+  working: {
+    icon: Lightbulb,
+    chipBg: "bg-secondary/80",
+    iconColor: "text-muted-foreground",
+    label: "Working",
+  },
 }
 
 const DEFAULT_CONFIG = {

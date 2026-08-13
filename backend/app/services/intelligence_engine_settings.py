@@ -18,6 +18,7 @@ class IntelligenceEngineSettings:
     max_chunks: int = 8
     connector_timeout_seconds: int = 30
     performance_mode: str = "balanced"
+    standing_investigators_enabled: bool = True
 
 
 DEFAULTS = IntelligenceEngineSettings()
@@ -64,6 +65,11 @@ async def load_intelligence_engine_settings(
                     row.get("connector_timeout_seconds") or DEFAULTS.connector_timeout_seconds
                 ),
                 performance_mode=str(row.get("performance_mode") or DEFAULTS.performance_mode),
+                standing_investigators_enabled=bool(
+                    row.get("standing_investigators_enabled", True)
+                    if row.get("standing_investigators_enabled") is not None
+                    else True
+                ),
             )
     except Exception as exc:  # noqa: BLE001
         logger.debug("intelligence engine settings load skipped org_id=%s error=%s", org_id, exc)
@@ -91,6 +97,12 @@ async def save_intelligence_engine_settings(
             payload.get("connector_timeout_seconds", current.connector_timeout_seconds)
         ),
         "performance_mode": str(payload.get("performance_mode", current.performance_mode)),
+        "standing_investigators_enabled": bool(
+            payload.get(
+                "standing_investigators_enabled",
+                current.standing_investigators_enabled,
+            )
+        ),
     }
     row["confidence_threshold"] = max(0.0, min(1.0, row["confidence_threshold"]))
     row["max_chunks"] = max(1, min(50, row["max_chunks"]))

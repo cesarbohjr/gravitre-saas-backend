@@ -12,7 +12,25 @@ from app.rag.department import resolve_department_id_for_agent
 from app.rag.embedding import get_embedding
 from app.rag.retrieval import search_chunks
 
-VALID_CATEGORIES = frozenset({"fact", "preference", "pattern", "rule"})
+VALID_CATEGORIES = frozenset(
+    {
+        # Legacy
+        "fact",
+        "preference",
+        "pattern",
+        "rule",
+        "campaign_learning",
+        "risk_signal",
+        "business_rule",
+        # Cognitive taxonomy (workspace + agent scoped)
+        "working",
+        "episodic",
+        "decision",
+        "outcome",
+        "relationship",
+        "procedural",
+    }
+)
 
 
 def detect_agent_memory_conflicts(memories: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -113,9 +131,12 @@ def _normalize_category(value: str | None) -> str:
 def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
     created_at = row.get("created_at")
     updated_at = row.get("updated_at")
+    dept_id = row.get("department_id")
+    agent_raw = row.get("agent_id")
     return {
         "id": str(row["id"]),
-        "agentId": str(row["agent_id"]),
+        "agentId": str(agent_raw) if agent_raw else None,
+        "departmentId": str(dept_id) if dept_id else None,
         "content": row.get("content") or "",
         "category": row.get("category") or "fact",
         "provenance": row.get("provenance"),
@@ -186,7 +207,7 @@ def create_agent_memory(
     settings: Settings,
     client: Any,
     org_id: str,
-    agent_id: str,
+    agent_id: str | None,
     *,
     user_id: str | None,
     content: str,
@@ -194,15 +215,18 @@ def create_agent_memory(
     provenance: str | None = None,
     confidence: float = 100,
     editable: bool = True,
+    share_with_department: bool = True,
 ) -> dict[str, Any]:
-    ensure_agent_in_org(client, org_id, agent_id)
+    """Create agent- or workspace-scoped memory. ``agent_id`` may be None (org-wide)."""
+    if agent_id:
+        ensure_agent_in_org(client, org_id, agent_id)
     text = (content or "").strip()
     if not text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="content is required")
     embedding = get_embedding(text, settings, org_id=org_id)
     payload: dict[str, Any] = {
         "org_id": org_id,
-        "agent_id": agent_id,
+        "agent_id": agent_id or None,
         "content": text,
         "category": _normalize_category(category),
         "provenance": (provenance or "").strip() or None,
@@ -211,6 +235,10 @@ def create_agent_memory(
         "embedding": embedding,
         "created_by": user_id,
     }
+    if share_with_department and agent_id:
+        dept_id, _ = resolve_department_id_for_agent(client, org_id, agent_id)
+        if dept_id:
+            payload["department_id"] = dept_id
     r = client.table("agent_memories").insert(payload).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
@@ -304,6 +332,87 @@ def search_agent_memories(
             "category": row.get("category") or "fact",
             "provenance": row.get("provenance"),
             "source": row.get("provenance"),
+            "confidence": float(row.get("confidence") or 100),
+            "usageCount": int(row.get("usage_count") or 0) + 1,
+            "editable": bool(row.get("editable", True)),
+            "score": round(float(row.get("score") or 0), 6),
+            "createdAt": row.get("created_at"),
+        }
+        for row in rows
+    ]
+
+
+def search_department_memories(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    department_id: str,
+    *,
+    query: str,
+    top_k: int = 10,
+    category: str | None = None,
+) -> list[dict[str, Any]]:
+    """RECALL memories shared across agents in the same department (not siloed per agent)."""
+    text = (query or "").strip()
+    if not text or not department_id:
+        return []
+    top_k = max(1, min(int(top_k), 50))
+    embedding = get_embedding(text, settings, org_id=org_id)
+    vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    payload: dict[str, Any] = {
+        "p_org_id": org_id,
+        "p_department_id": department_id,
+        "p_query_embedding": vec_str,
+        "p_top_k": top_k,
+        "p_category": _normalize_category(category) if category and category != "all" else None,
+    }
+    try:
+        r = client.rpc("agent_memory_search_by_department", payload).execute()
+        rows = list(r.data or [])
+    except Exception:  # noqa: BLE001
+        # Fallback when RPC not yet migrated: filter by department_id directly.
+        rows = (
+            client.table("agent_memories")
+            .select("id,org_id,agent_id,department_id,content,category,provenance,confidence,usage_count,editable,created_at")
+            .eq("org_id", org_id)
+            .eq("department_id", department_id)
+            .order("created_at", desc=True)
+            .limit(top_k)
+            .execute()
+            .data
+            or []
+        )
+        return [
+            {
+                "id": str(row.get("id")),
+                "org_id": org_id,
+                "agent_id": row.get("agent_id"),
+                "department_id": department_id,
+                "content": row.get("content") or "",
+                "category": row.get("category") or "fact",
+                "provenance": row.get("provenance"),
+                "source": "department_shared_memory",
+                "confidence": float(row.get("confidence") or 100),
+                "usageCount": int(row.get("usage_count") or 0),
+                "editable": bool(row.get("editable", True)),
+                "score": 0.0,
+                "createdAt": row.get("created_at"),
+            }
+            for row in rows
+        ]
+    memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
+    if memory_ids:
+        increment_memory_usage(client, memory_ids)
+    return [
+        {
+            "id": str(row["memory_id"]),
+            "org_id": org_id,
+            "agent_id": row.get("agent_id"),
+            "department_id": str(row.get("department_id") or department_id),
+            "content": row.get("content") or "",
+            "category": row.get("category") or "fact",
+            "provenance": row.get("provenance"),
+            "source": "department_shared_memory",
             "confidence": float(row.get("confidence") or 100),
             "usageCount": int(row.get("usage_count") or 0) + 1,
             "editable": bool(row.get("editable", True)),

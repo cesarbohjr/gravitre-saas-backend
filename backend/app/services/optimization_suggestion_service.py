@@ -87,7 +87,23 @@ class OptimizationSuggestionService:
         suggestions.extend(await self._detect_overdue_invoices(org_id))
         suggestions.extend(await self._detect_support_backlog_growth(org_id))
         suggestions.extend(await self._detect_process_mining_bottlenecks(org_id))
+        suggestions.extend(await self._detect_process_sequences(org_id))
         return suggestions
+
+    async def _detect_process_sequences(self, org_id: str) -> list[dict[str, Any]]:
+        """SUGGEST-ONLY process sequences — never auto-adopt into inventory."""
+        from app.services.process_mining_service import get_process_mining_service
+
+        mining = get_process_mining_service(self.settings)
+        result = await mining.suggest_process_sequences(org_id)
+        assert result.get("advisory_only") is True
+        assert result.get("auto_adopted") is False
+        out: list[dict[str, Any]] = []
+        for row in result.get("suggestions") or []:
+            if row.get("deduped"):
+                continue
+            out.append(row)
+        return out
 
     async def _detect_process_mining_bottlenecks(self, org_id: str) -> list[dict[str, Any]]:
         from app.services.process_mining_service import get_process_mining_service

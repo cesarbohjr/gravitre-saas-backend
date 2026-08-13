@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_org_context, require_admin
@@ -80,6 +80,39 @@ class RelationshipArchiveBody(BaseModel):
     archived: bool = Field(..., description="True to hide from Learning; False to restore")
 
 
+class RelationshipCreateBody(BaseModel):
+    source_entity_type: str = Field(..., alias="sourceEntityType")
+    source_entity_id: str = Field(..., alias="sourceEntityId")
+    relationship_type: str = Field(..., alias="relationshipType")
+    target_entity_type: str = Field(..., alias="targetEntityType")
+    target_entity_id: str = Field(..., alias="targetEntityId")
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+
+    model_config = {"populate_by_name": True}
+
+
+class KnowledgeNodeCreateBody(BaseModel):
+    node_type: str = Field(..., alias="nodeType")
+    name: str
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
+
+
+class KnowledgeNodeUpdateBody(BaseModel):
+    node_type: str | None = Field(default=None, alias="nodeType")
+    name: str | None = None
+    attributes: dict[str, Any] | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+def _supabase(settings: Settings) -> Any:
+    from app.workflows.repository import get_supabase_client
+
+    return get_supabase_client(settings)
+
+
 @router.patch("/relationships/{relationship_id}")
 async def patch_entity_relationship(
     relationship_id: str,
@@ -95,6 +128,138 @@ async def patch_entity_relationship(
         archived=bool(body.archived),
         settings=settings,
     )
+
+
+@router.post("/relationships")
+async def create_entity_relationship(
+    body: RelationshipCreateBody,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Create an org_entity_relationships edge."""
+    from app.services.org_knowledge_nodes_service import create_entity_relationship as create_edge
+
+    client = _supabase(settings)
+    try:
+        row = create_edge(
+            client,
+            org_id,
+            source_entity_type=body.source_entity_type,
+            source_entity_id=body.source_entity_id,
+            relationship_type=body.relationship_type,
+            target_entity_type=body.target_entity_type,
+            target_entity_id=body.target_entity_id,
+            confidence=body.confidence,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="relationship create failed",
+        )
+    return {"relationship": row, "orgId": org_id}
+
+
+@router.get("/knowledge-nodes")
+async def list_knowledge_nodes(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    node_type: str | None = Query(default=None, alias="nodeType"),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict[str, Any]:
+    """List typed org knowledge nodes (company/employee/customer/vendor/product…)."""
+    from app.services.org_knowledge_nodes_service import (
+        PRIMARY_NODE_TYPES,
+        VALID_NODE_TYPES,
+        list_knowledge_nodes as list_nodes,
+    )
+
+    client = _supabase(settings)
+    rows = list_nodes(client, org_id, node_type=node_type, limit=limit)
+    return {
+        "nodes": rows,
+        "orgId": org_id,
+        "validNodeTypes": sorted(VALID_NODE_TYPES),
+        "primaryNodeTypes": sorted(PRIMARY_NODE_TYPES),
+        "limit": limit,
+    }
+
+
+@router.post("/knowledge-nodes")
+async def create_knowledge_node(
+    body: KnowledgeNodeCreateBody,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.org_knowledge_nodes_service import create_knowledge_node as create_node
+
+    client = _supabase(settings)
+    try:
+        row = create_node(
+            client,
+            org_id,
+            node_type=body.node_type,
+            name=body.name,
+            attributes=body.attributes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="knowledge node create failed",
+        )
+    return {"node": row, "orgId": org_id}
+
+
+@router.patch("/knowledge-nodes/{node_id}")
+async def update_knowledge_node(
+    node_id: str,
+    body: KnowledgeNodeUpdateBody,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.org_knowledge_nodes_service import update_knowledge_node as update_node
+
+    client = _supabase(settings)
+    try:
+        row = update_node(
+            client,
+            org_id,
+            node_id,
+            node_type=body.node_type,
+            name=body.name,
+            attributes=body.attributes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="node not found")
+    return {"node": row, "orgId": org_id}
+
+
+@router.delete("/knowledge-nodes/{node_id}")
+async def delete_knowledge_node(
+    node_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.org_knowledge_nodes_service import delete_knowledge_node as delete_node
+
+    client = _supabase(settings)
+    ok = delete_node(client, org_id, node_id)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="knowledge node delete failed",
+        )
+    return {"ok": True, "id": node_id, "orgId": org_id}
 
 
 @router.get("/evaluations")
@@ -446,6 +611,14 @@ class IntelligenceEngineSettingsUpdate(BaseModel):
     max_chunks: int | None = Field(default=None, ge=1, le=50)
     connector_timeout_seconds: int | None = Field(default=None, ge=5, le=300)
     performance_mode: str | None = None
+    standing_investigators_enabled: bool | None = None
+
+
+class AcceptProcessSequenceRequest(BaseModel):
+    department: str | None = None
+    process_name: str | None = Field(default=None, alias="processName")
+
+    model_config = {"populate_by_name": True}
 
 
 class PerformanceModeUpdate(BaseModel):
@@ -466,6 +639,7 @@ async def get_engine_settings(
         "maxChunks": current.max_chunks,
         "connectorTimeoutSeconds": current.connector_timeout_seconds,
         "performanceMode": current.performance_mode,
+        "standingInvestigatorsEnabled": current.standing_investigators_enabled,
     }
 
 
@@ -485,6 +659,7 @@ async def update_engine_settings(
         "maxChunks": saved.max_chunks,
         "connectorTimeoutSeconds": saved.connector_timeout_seconds,
         "performanceMode": saved.performance_mode,
+        "standingInvestigatorsEnabled": saved.standing_investigators_enabled,
     }
 
 
@@ -576,6 +751,44 @@ async def get_process_mining_admin(
     from app.services.process_mining_service import get_process_mining_service
 
     return await get_process_mining_service(settings).get_process_intelligence_summary(org_id)
+
+
+@router.post("/process-mining/suggest-sequences")
+async def suggest_process_sequences_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """SUGGEST-ONLY: write process_sequence rows to optimization_suggestions (pending_review)."""
+    from app.services.process_mining_service import get_process_mining_service
+
+    return await get_process_mining_service(settings).suggest_process_sequences(org_id)
+
+
+@router.post("/process-mining/suggestions/{suggestion_id}/accept")
+async def accept_process_sequence_suggestion_admin(
+    suggestion_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    body: AcceptProcessSequenceRequest | None = None,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Admin accept → copy into organization_process_inventory. Never auto-adopt."""
+    from app.services.process_mining_service import get_process_mining_service
+
+    user, _org = admin
+    user_id = str(user.get("user_id") or user.get("id") or "") or None
+    payload = body or AcceptProcessSequenceRequest()
+    try:
+        return await get_process_mining_service(settings).accept_process_sequence_suggestion(
+            org_id,
+            suggestion_id,
+            reviewed_by=user_id,
+            department=payload.department,
+            process_name=payload.process_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/world-model-status")

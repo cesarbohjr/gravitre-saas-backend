@@ -37,6 +37,8 @@ from app.routers import (
     agent_interrupts,
     agent_jobs,
     agent_swarm,
+    department_subagents,
+    watcher_agents,
     assistant,
     auth,
     audit,
@@ -233,6 +235,10 @@ async def lifespan(app: FastAPI):
         start_company_intelligence_scheduler,
         stop_company_intelligence_scheduler,
     )
+    from app.schedulers.standing_investigator_scheduler import (
+        start_standing_investigator_scheduler,
+        stop_standing_investigator_scheduler,
+    )
     from app.schedulers.memory_promotion_scheduler import (
         start_memory_expiration_scheduler,
         start_memory_promotion_scheduler,
@@ -276,6 +282,8 @@ async def lifespan(app: FastAPI):
         app.state.company_intelligence_task = start_company_intelligence_scheduler()
         app.state.memory_promotion_task = start_memory_promotion_scheduler()
         app.state.temporal_worker_task = None
+    # Standing investigators: asyncio tick (Temporal-friendly service entry also available).
+    app.state.standing_investigator_task = start_standing_investigator_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
 
@@ -305,6 +313,9 @@ async def lifespan(app: FastAPI):
             getattr(app.state, "workflow_failure_prediction_task", None)
         )
         await stop_company_intelligence_scheduler(getattr(app.state, "company_intelligence_task", None))
+        await stop_standing_investigator_scheduler(
+            getattr(app.state, "standing_investigator_task", None)
+        )
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         temporal_task = getattr(app.state, "temporal_worker_task", None)
         if temporal_task is not None:
@@ -567,6 +578,8 @@ app.include_router(segment_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(agent_swarm.router)
+app.include_router(department_subagents.router)
+app.include_router(watcher_agents.router)
 app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)

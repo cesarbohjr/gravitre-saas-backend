@@ -348,9 +348,9 @@ class CognitiveTurnKernel:
         recommendation_id: str | None = None,
         outcome_event: str | None = None,
     ) -> CognitiveTurnContext:
-        """LEARN stage after ACT — record outcome events (best-effort)."""
+        """LEARN stage after ACT — record outcomes + promote typed memories."""
         t0 = time.perf_counter()
-        learn: dict[str, Any] = {"ok": True, "outcome_ids": []}
+        learn: dict[str, Any] = {"ok": True, "outcome_ids": [], "promoted_memory_ids": []}
         try:
             if recommendation_id and outcome_event and request.org_id:
                 from app.services.cognitive_outcome_loop import record_closed_loop
@@ -370,9 +370,44 @@ class CognitiveTurnKernel:
                     for k in ("status", "success", "action", "error")
                     if k in act_result
                 }
+            # Persist typed memories from confirmed turns (workspace-scoped).
+            if request.org_id and request.client is not None:
+                from app.services.workspace_memory_service import (
+                    extract_typed_memories_from_act,
+                    promote_turn_memories,
+                )
+
+                confirmed = bool(
+                    (isinstance(act_result, dict) and act_result.get("confirmed"))
+                    or (isinstance(act_result, dict) and act_result.get("promote_memories"))
+                    or outcome_event
+                )
+                typed = extract_typed_memories_from_act(
+                    act_result if confirmed else None,
+                    outcome_event=outcome_event if confirmed else None,
+                    message=request.message if (confirmed and outcome_event) else None,
+                )
+                if typed:
+                    written = promote_turn_memories(
+                        request.client,
+                        org_id=request.org_id,
+                        memories=typed,
+                        agent_id=request.agent_id,
+                        conversation_id=request.conversation_id,
+                        user_id=request.user_id,
+                        settings=self.settings,
+                    )
+                    learn["promoted_memory_ids"] = [
+                        str(r.get("id")) for r in written if isinstance(r, dict) and r.get("id")
+                    ]
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_learn_failed error=%s", exc)
-            learn = {"ok": False, "error": str(exc)[:200], "outcome_ids": []}
+            learn = {
+                "ok": False,
+                "error": str(exc)[:200],
+                "outcome_ids": [],
+                "promoted_memory_ids": [],
+            }
 
         context.learn = learn
         context.stages.append(
@@ -433,6 +468,43 @@ class CognitiveTurnKernel:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_agent_memory_search_skipped error=%s", exc)
 
+            # Shared department memory: agents in the same department RECALL dept-scoped rows.
+            try:
+                from app.rag.department import resolve_department_id_for_agent
+                from app.services.agent_memory_service import search_department_memories
+
+                dept_id, _ = resolve_department_id_for_agent(client, org_id, request.agent_id)
+                if dept_id:
+                    dept_memories = search_department_memories(
+                        self.settings,
+                        client,
+                        org_id,
+                        dept_id,
+                        query=request.message or "",
+                        top_k=8,
+                    )
+                    seen_ids = {
+                        str(r.get("id"))
+                        for key in _MEMORY_KEYS
+                        for r in (pack.get(key) or [])
+                        if isinstance(r, dict) and r.get("id")
+                    }
+                    for row in dept_memories or []:
+                        if not isinstance(row, dict):
+                            continue
+                        row_org = str(row.get("org_id") or org_id)
+                        if row_org != org_id:
+                            continue
+                        mid = str(row.get("id") or "")
+                        if mid and mid in seen_ids:
+                            continue
+                        if mid:
+                            seen_ids.add(mid)
+                        bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
+                        pack[bucket].append({**row, "source": "department_shared_memory", "org_id": org_id})
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("cognitive_department_memory_skipped error=%s", exc)
+
         # Org-scoped cross-conversation promotions (ledger/entity resolutions).
         # Never fuzzy person-name Option C — explicit promotions + typed memories only.
         if client is not None:
@@ -470,27 +542,40 @@ class CognitiveTurnKernel:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_cross_conversation_recall_skipped error=%s", exc)
 
-            # Promoted memories from other conversations in the same org only.
+            # Workspace recall: category + hybrid content match (org only; no Option C).
             try:
-                rows = (
-                    client.table("agent_memories")
-                    .select("id,org_id,agent_id,category,content,created_at")
-                    .eq("org_id", org_id)
-                    .order("created_at", desc=True)
-                    .limit(12)
-                    .execute()
-                    .data
-                    or []
+                from app.services.workspace_memory_service import (
+                    TYPED_CATEGORIES,
+                    recall_workspace,
                 )
-                for row in rows:
+
+                # Prefer cognitive taxonomy categories when the query hints at them;
+                # otherwise pull recent typed + legacy rows via hybrid scoring.
+                hinted = [
+                    c
+                    for c in TYPED_CATEGORIES
+                    if c in (request.message or "").lower()
+                ]
+                recalled = recall_workspace(
+                    client,
+                    org_id=org_id,
+                    query=request.message or "",
+                    categories=hinted or None,
+                    top_k=12,
+                    agent_id=request.agent_id,
+                    settings=self.settings,
+                )
+                for row in recalled:
                     if not isinstance(row, dict):
                         continue
                     if str(row.get("org_id") or "") != org_id:
                         continue
-                    bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
-                    pack[bucket].append({**row, "source": "org_cross_conversation_memory"})
+                    bucket = _CATEGORY_MAP.get(
+                        str(row.get("category") or "fact").lower(), "episodic"
+                    )
+                    pack[bucket].append({**row, "source": row.get("source") or "workspace_memory_recall"})
             except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_org_memory_scan_skipped error=%s", exc)
+                logger.debug("cognitive_workspace_memory_recall_skipped error=%s", exc)
 
         pack["prompt_section"] = _memory_prompt_section(pack)
         return pack
@@ -885,14 +970,34 @@ def _derive_field_keys(params: dict[str, Any]) -> list[str]:
 def _resolve_mentioned_metrics(client: Any, org_id: str, message: str) -> list[dict[str, Any]]:
     if not client or not org_id or not (message or "").strip():
         return []
-    from app.services.cognitive_metrics import list_metric_definitions, resolve_metric_for_agent
+    import re
+
+    from app.services.cognitive_metrics import (
+        list_metric_definitions,
+        list_platform_defaults,
+        resolve_metric,
+    )
 
     defs = list_metric_definitions(client, org_id, limit=100)
-    if not defs:
+    seen: set[str] = set()
+    candidates: list[dict[str, Any]] = []
+    for row in defs:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("metric_key") or "").strip().lower()
+        if key and key not in seen:
+            candidates.append(row)
+            seen.add(key)
+    for row in list_platform_defaults():
+        key = str(row.get("metric_key") or "").strip().lower()
+        if key and key not in seen:
+            candidates.append(row)
+            seen.add(key)
+    if not candidates:
         return []
     text = message.lower()
     hits: list[dict[str, Any]] = []
-    for row in defs:
+    for row in candidates:
         key = str(row.get("metric_key") or "").strip()
         label = str(row.get("label") or "").strip()
         if not key:
@@ -900,12 +1005,10 @@ def _resolve_mentioned_metrics(client: Any, org_id: str, message: str) -> list[d
         token_hit = key.lower() in text or (label and label.lower() in text)
         # Also match bare tokens like MQL / CAC / ARR when they appear as words.
         if not token_hit and len(key) <= 8:
-            import re
-
             if re.search(rf"\b{re.escape(key.lower())}\b", text):
                 token_hit = True
         if token_hit:
-            hits.append(resolve_metric_for_agent(client, org_id, key, fallback_label=label or key))
+            hits.append(resolve_metric(client, org_id, key, fallback_label=label or key))
     return hits[:8]
 
 

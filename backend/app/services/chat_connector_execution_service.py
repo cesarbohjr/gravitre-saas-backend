@@ -1450,6 +1450,13 @@ class ChatConnectorExecutionService:
                 classification=classification,
                 environment_name=environment_name,
             )
+            self._promote_confirmed_workspace_memory(
+                client,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                task_state=task_state,
+                plan=plan,
+            )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed, plan)
 
@@ -1495,7 +1502,7 @@ class ChatConnectorExecutionService:
                 **self._session_updates_for_pending(task_state, plan),
             },
         )
-        # Phase 2 (flagged OFF): promote confirmed ledger slots to durable store.
+        # Phase 2: promote confirmed ledger slots to durable store.
         try:
             from app.services.cross_conversation_ledger_memory import (
                 promote_confirmed_ledger_slots,
@@ -2272,6 +2279,54 @@ class ChatConnectorExecutionService:
                 "invokeAction": plan.invoke_action,
             },
         }
+
+    def _promote_confirmed_workspace_memory(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        conversation_id: str | None,
+        task_state: dict[str, Any] | None,
+        plan: ConnectorActionPlan | None,
+    ) -> None:
+        """Persist typed memories after a confirmed connector turn (best-effort)."""
+        try:
+            from app.services.cross_conversation_ledger_memory import (
+                promote_confirmed_ledger_slots,
+            )
+            from app.services.workspace_memory_service import promote_turn_memories
+
+            promote_confirmed_ledger_slots(
+                client,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                task_state=task_state,
+            )
+            typed: list[dict[str, Any]] = []
+            if isinstance(task_state, dict):
+                raw = task_state.get("typed_memories") or task_state.get("workspace_memories")
+                if isinstance(raw, list):
+                    typed = [m for m in raw if isinstance(m, dict)]
+            if not typed and plan is not None:
+                label = getattr(plan, "label", None) or getattr(plan, "invoke_action", None)
+                if label:
+                    typed = [
+                        {
+                            "content": f"Confirmed action: {label}",
+                            "category": "procedural",
+                            "confidence": 75,
+                        }
+                    ]
+            if typed:
+                promote_turn_memories(
+                    client,
+                    org_id=org_id,
+                    memories=typed,
+                    conversation_id=conversation_id,
+                    provenance="connector_confirm",
+                )
+        except Exception:  # noqa: BLE001
+            pass
 
     def _turn_from_execution(
         self,

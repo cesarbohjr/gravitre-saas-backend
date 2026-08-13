@@ -28,6 +28,13 @@ class ApplySuggestionRequest(BaseModel):
     preview_token: str = Field(..., min_length=1)
 
 
+class AcceptProcessSequenceBody(BaseModel):
+    department: str | None = None
+    process_name: str | None = Field(default=None, alias="processName")
+
+    model_config = {"populate_by_name": True}
+
+
 @router.get("")
 async def list_optimization_suggestions(
     org_id: Annotated[str, Depends(get_org_context)],
@@ -156,3 +163,31 @@ async def mark_optimization_suggestion_applied(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{suggestion_id}/accept")
+async def accept_process_sequence_suggestion(
+    suggestion_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    body: AcceptProcessSequenceBody | None = None,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Accept process_sequence suggestion → organization_process_inventory (human gate only)."""
+    from app.services.process_mining_service import get_process_mining_service
+
+    user, _org = admin
+    user_id = str(user.get("user_id") or user.get("id") or "") or None
+    payload = body or AcceptProcessSequenceBody()
+    try:
+        return await get_process_mining_service(settings).accept_process_sequence_suggestion(
+            org_id,
+            suggestion_id,
+            reviewed_by=user_id,
+            department=payload.department,
+            process_name=payload.process_name,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        code = status.HTTP_404_NOT_FOUND if "not found" in detail.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=detail) from exc

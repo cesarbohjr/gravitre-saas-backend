@@ -2038,6 +2038,51 @@ export const intelligenceApi = {
       apiUrl(`/api/admin/intelligence/relationships/${encodeURIComponent(relationshipId)}`),
       { archived },
     ),
+  createRelationship: (data: {
+    sourceEntityType: string
+    sourceEntityId: string
+    relationshipType: string
+    targetEntityType: string
+    targetEntityId: string
+    confidence?: number
+  }) =>
+    postJson<{ relationship: Record<string, unknown>; orgId: string }>(
+      apiUrl("/api/admin/intelligence/relationships"),
+      data,
+    ),
+  knowledgeNodes: (params?: { nodeType?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.nodeType) query.set("nodeType", params.nodeType)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      nodes: Array<Record<string, unknown>>
+      orgId: string
+      validNodeTypes: string[]
+      primaryNodeTypes: string[]
+    }>(apiUrl(`/api/admin/intelligence/knowledge-nodes${suffix}`))
+  },
+  createKnowledgeNode: (data: {
+    nodeType: string
+    name: string
+    attributes?: Record<string, unknown>
+  }) =>
+    postJson<{ node: Record<string, unknown>; orgId: string }>(
+      apiUrl("/api/admin/intelligence/knowledge-nodes"),
+      data,
+    ),
+  updateKnowledgeNode: (
+    nodeId: string,
+    data: { nodeType?: string; name?: string; attributes?: Record<string, unknown> },
+  ) =>
+    patchJson<{ node: Record<string, unknown>; orgId: string }>(
+      apiUrl(`/api/admin/intelligence/knowledge-nodes/${encodeURIComponent(nodeId)}`),
+      data,
+    ),
+  deleteKnowledgeNode: (nodeId: string) =>
+    deleteJson<{ ok: boolean; id: string; orgId: string }>(
+      apiUrl(`/api/admin/intelligence/knowledge-nodes/${encodeURIComponent(nodeId)}`),
+    ),
   outcomes: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
@@ -2158,6 +2203,7 @@ export const intelligenceApi = {
       maxChunks: number
       connectorTimeoutSeconds: number
       performanceMode: string
+      standingInvestigatorsEnabled: boolean
     }>(apiUrl("/api/admin/intelligence/engine-settings")),
   updateEngineSettings: (data: {
     validation_enabled?: boolean
@@ -2166,6 +2212,7 @@ export const intelligenceApi = {
     max_chunks?: number
     connector_timeout_seconds?: number
     performance_mode?: string
+    standing_investigators_enabled?: boolean
   }) =>
     patchJson<{
       validationEnabled: boolean
@@ -2174,6 +2221,7 @@ export const intelligenceApi = {
       maxChunks: number
       connectorTimeoutSeconds: number
       performanceMode: string
+      standingInvestigatorsEnabled: boolean
     }>(apiUrl("/api/admin/intelligence/engine-settings"), data),
   performanceMode: () =>
     fetcher<{ mode: string }>(apiUrl("/api/admin/intelligence/performance-mode")),

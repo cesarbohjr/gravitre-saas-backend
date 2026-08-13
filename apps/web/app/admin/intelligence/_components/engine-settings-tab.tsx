@@ -26,6 +26,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.4)
   const [maxChunks, setMaxChunks] = useState(8)
   const [connectorTimeoutSeconds, setConnectorTimeoutSeconds] = useState(30)
+  const [standingInvestigatorsEnabled, setStandingInvestigatorsEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
     setConfidenceThreshold(data.confidenceThreshold)
     setMaxChunks(data.maxChunks)
     setConnectorTimeoutSeconds(data.connectorTimeoutSeconds)
+    setStandingInvestigatorsEnabled(data.standingInvestigatorsEnabled ?? true)
   }, [data])
 
   if (error) {
@@ -55,6 +57,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
         confidence_threshold: confidenceThreshold,
         max_chunks: maxChunks,
         connector_timeout_seconds: connectorTimeoutSeconds,
+        standing_investigators_enabled: standingInvestigatorsEnabled,
       })
       toast.success("Search & grounding settings saved")
       await mutate()
@@ -95,6 +98,21 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
             </p>
           </div>
           <Switch id="reranking-enabled" checked={rerankingEnabled} onCheckedChange={setRerankingEnabled} />
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label htmlFor="standing-investigators-enabled">Standing investigators</Label>
+            <p className="text-xs text-muted-foreground">
+              Run read-scoped advisory scans on a schedule and notify admins. Findings never
+              auto-execute writes. On by default; turn off to disable.
+            </p>
+          </div>
+          <Switch
+            id="standing-investigators-enabled"
+            checked={standingInvestigatorsEnabled}
+            onCheckedChange={setStandingInvestigatorsEnabled}
+          />
         </div>
 
         <div className="space-y-3">

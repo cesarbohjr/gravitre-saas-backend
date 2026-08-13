@@ -14,6 +14,7 @@ from app.temporal.activities import (
     measure_outcome_after_window,
     run_company_intelligence_for_org,
     run_memory_promotion_evaluation,
+    run_standing_investigation_for_org,
     train_ml_model_for_org,
 )
 from app.temporal.workflows import (
@@ -22,6 +23,7 @@ from app.temporal.workflows import (
     MemoryPromotionWorkflow,
     MLModelTrainingWorkflow,
     OutcomeMeasurementWorkflow,
+    StandingInvestigatorWorkflow,
 )
 
 logger = get_logger(__name__)
@@ -31,6 +33,7 @@ TASK_QUEUE = "gravitre-main"
 _WORKFLOWS = [
     CompanyIntelligenceWorkflow,
     MemoryPromotionWorkflow,
+    StandingInvestigatorWorkflow,
     OutcomeMeasurementWorkflow,
     MarketplaceInstallWorkflow,
     MLModelTrainingWorkflow,
@@ -39,6 +42,7 @@ _WORKFLOWS = [
 _ACTIVITIES = [
     run_company_intelligence_for_org,
     run_memory_promotion_evaluation,
+    run_standing_investigation_for_org,
     load_outcome_baseline,
     measure_outcome_after_window,
     install_marketplace_asset,

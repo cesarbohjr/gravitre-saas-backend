@@ -27,6 +27,15 @@ async def run_memory_promotion_evaluation(org_id: str) -> dict[str, Any]:
 
 
 @activity.defn
+async def run_standing_investigation_for_org(org_id: str) -> dict[str, Any]:
+    """Read-scoped standing investigator tick for one org (advisory only)."""
+    from app.services.standing_investigator_service import get_standing_investigator_service
+
+    settings = get_settings()
+    return await get_standing_investigator_service(settings).run_investigation_for_org(org_id)
+
+
+@activity.defn
 async def load_outcome_baseline(outcome_id: str) -> dict[str, Any]:
     from app.workflows.repository import get_supabase_client
 

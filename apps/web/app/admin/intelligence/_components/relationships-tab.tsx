@@ -16,13 +16,14 @@ import {
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
 import { entityTypeLabel, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
-import { Graph, ArrowRight, Archive, ArrowCounterClockwise } from "@phosphor-icons/react"
+import { Graph, ArrowRight, Archive, ArrowCounterClockwise, TreeStructure } from "@phosphor-icons/react"
 import { readNumber, SectionCard } from "./shared"
 
 type Row = Record<string, unknown>
 type SortKey = "recent" | "confidence" | "evidence"
 
 const PAGE_SIZE = 20
+const PRIMARY_NODE_TYPES = ["company", "employee", "customer", "vendor", "product"] as const
 
 function confidenceTone(value: number): string {
   if (value >= 0.75) return "border-emerald-300 text-emerald-700 dark:text-emerald-300"
@@ -153,8 +154,134 @@ export function RelationshipsTab({
 
   const loading = isLoading || listLoading
 
+  const nodesKey = enabled ? ["admin/intelligence/knowledge-nodes"] : null
+  const {
+    data: nodesData,
+    isLoading: nodesLoading,
+    mutate: mutateNodes,
+  } = useSWR(nodesKey, () => intelligenceApi.knowledgeNodes({ limit: 100 }))
+  const nodes = (nodesData?.nodes ?? []) as Row[]
+  const nodeTypes = nodesData?.primaryNodeTypes?.length
+    ? nodesData.primaryNodeTypes
+    : [...PRIMARY_NODE_TYPES]
+
+  const [nodeName, setNodeName] = useState("")
+  const [nodeType, setNodeType] = useState<string>("company")
+  const [nodeBusy, setNodeBusy] = useState(false)
+
+  async function createNode() {
+    const name = nodeName.trim()
+    if (!name) {
+      toast.error("Name is required")
+      return
+    }
+    setNodeBusy(true)
+    try {
+      await intelligenceApi.createKnowledgeNode({ nodeType, name })
+      toast.success("Knowledge node created")
+      setNodeName("")
+      await mutateNodes()
+    } catch {
+      toast.error("Could not create knowledge node")
+    } finally {
+      setNodeBusy(false)
+    }
+  }
+
+  async function removeNode(id: string) {
+    setNodeBusy(true)
+    try {
+      await intelligenceApi.deleteKnowledgeNode(id)
+      toast.success("Knowledge node removed")
+      await mutateNodes()
+    } catch {
+      toast.error("Could not delete knowledge node")
+    } finally {
+      setNodeBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <SectionCard
+        title="Org knowledge nodes"
+        description="Typed company, employee, customer, vendor, and product nodes used in the cognitive KNOWLEDGE stage. No pricing or entitlement toggles."
+        icon={<TreeStructure className="h-5 w-5" weight="duotone" aria-hidden />}
+        action={
+          <Badge variant="outline" className="font-normal tabular-nums">
+            {nodes.length} nodes
+          </Badge>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <label htmlFor="kn-name" className="text-xs font-medium text-muted-foreground">
+                Name
+              </label>
+              <Input
+                id="kn-name"
+                value={nodeName}
+                onChange={(e) => setNodeName(e.target.value)}
+                placeholder="e.g. Acme Corp"
+                className="max-w-md"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Type</span>
+              <Select value={nodeType} onValueChange={setNodeType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {nodeTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="button" size="sm" disabled={nodeBusy} onClick={() => void createNode()}>
+              Add node
+            </Button>
+          </div>
+          {nodesLoading ? (
+            <p className="text-sm text-muted-foreground">Loading knowledge nodes…</p>
+          ) : nodes.length === 0 ? (
+            <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+              No knowledge nodes yet. Add company, employee, customer, vendor, or product entities so agents
+              can ground answers in your org graph.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/70 rounded-xl border border-border/60">
+              {nodes.slice(0, 40).map((n) => {
+                const id = String(n.id ?? "")
+                return (
+                  <li key={id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <Badge variant="outline" className="mb-1 font-normal">
+                        {String(n.node_type ?? "")}
+                      </Badge>
+                      <p className="truncate font-medium text-foreground">{String(n.name ?? "")}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={nodeBusy || !id}
+                      onClick={() => void removeNode(id)}
+                    >
+                      Remove
+                    </Button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </SectionCard>
+
       <SectionCard
         title="Business relationships"
         description="Links Gravitre learned between terms, agents, and work. Archive noise; keep what helps agents stay consistent."

@@ -14,6 +14,7 @@ with workflow.unsafe.imports_passed_through():
         measure_outcome_after_window,
         run_company_intelligence_for_org,
         run_memory_promotion_evaluation,
+        run_standing_investigation_for_org,
         train_ml_model_for_org,
     )
 
@@ -46,6 +47,23 @@ class MemoryPromotionWorkflow:
             org_id,
             start_to_close_timeout=timedelta(minutes=15),
             retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+
+@workflow.defn
+class StandingInvestigatorWorkflow:
+    """Durable standing investigator scan (read-scoped, advisory-only, no auto-writes)."""
+
+    @workflow.run
+    async def run(self, org_id: str) -> dict[str, Any]:
+        return await workflow.execute_activity(
+            run_standing_investigation_for_org,
+            org_id,
+            start_to_close_timeout=timedelta(minutes=20),
+            retry_policy=RetryPolicy(
+                maximum_attempts=3,
+                initial_interval=timedelta(seconds=30),
+            ),
         )
 
 

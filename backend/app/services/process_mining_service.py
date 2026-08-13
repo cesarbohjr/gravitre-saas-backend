@@ -73,10 +73,173 @@ class ProcessMiningService:
         return {
             "status": "ok",
             "advisory_only": True,
+            "auto_adopted": False,
             "sinceDays": since_days,
             "workflowRunFeatures": len(features),
             "patterns": patterns,
             "conformanceNote": CONFORMANCE_NOTE,
+        }
+
+    async def suggest_process_sequences(
+        self,
+        org_id: str,
+        *,
+        since_days: int = 30,
+        min_occurrences: int = 3,
+        department: str = "Operations",
+    ) -> dict[str, Any]:
+        """Mine observed sequences → optimization_suggestions (pending_review, process_sequence).
+
+        SUGGEST-ONLY: never writes organization_process_inventory or auto-adopts
+        sequences as governing reality. Always advisory_only=True.
+        """
+        discovered = await self.discover_workflow_patterns(org_id, since_days=since_days)
+        client = self._client()
+        created: list[dict[str, Any]] = []
+        for pattern in discovered.get("patterns") or []:
+            occurrences = int(pattern.get("occurrences") or 0)
+            sequence = str(pattern.get("sequence") or "").strip()
+            if not sequence or occurrences < min_occurrences:
+                continue
+            steps = [s.strip() for s in sequence.split("→") if s.strip()]
+            evidence = {
+                "source": "process_mining_service.suggest_process_sequences",
+                "sequence": sequence,
+                "steps": steps,
+                "occurrences": occurrences,
+                "since_days": since_days,
+                "department": department,
+                "advisory_only": True,
+                "auto_adopted": False,
+            }
+            suggested_action = (
+                f'Observed process sequence "{sequence}" ({occurrences} times). '
+                "Review and accept to copy into organization_process_inventory. "
+                "Not governing reality until an admin accepts."
+            )
+            # Dedup pending suggestions for same sequence
+            existing = (
+                client.table("optimization_suggestions")
+                .select("id,status")
+                .eq("org_id", org_id)
+                .eq("suggestion_type", "process_sequence")
+                .eq("target_entity_id", sequence[:200])
+                .eq("status", "pending_review")
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if existing:
+                created.append({**existing[0], "deduped": True, "advisory_only": True})
+                continue
+            row = {
+                "org_id": org_id,
+                "target_entity_type": "process_sequence",
+                "target_entity_id": sequence[:200],
+                "suggestion_type": "process_sequence",
+                "evidence": evidence,
+                "suggested_action": suggested_action,
+                "estimated_impact": "Document observed process for conformance (advisory)",
+                "status": "pending_review",
+            }
+            inserted = client.table("optimization_suggestions").insert(row).execute()
+            if inserted.data:
+                created.append({**inserted.data[0], "advisory_only": True, "auto_adopted": False})
+        return {
+            "status": "ok",
+            "advisory_only": True,
+            "auto_adopted": False,
+            "suggestions_created": len([r for r in created if not r.get("deduped")]),
+            "suggestions": created,
+            "note": (
+                "Process-mining suggestions are pending_review only. "
+                "Admin accept copies into organization_process_inventory; never auto-adopted."
+            ),
+        }
+
+    async def accept_process_sequence_suggestion(
+        self,
+        org_id: str,
+        suggestion_id: str,
+        *,
+        reviewed_by: str | None = None,
+        department: str | None = None,
+        process_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Admin accept: copy process_sequence suggestion into organization_process_inventory.
+
+        Explicit human gate — never called automatically from mining.
+        """
+        client = self._client()
+        rows = (
+            client.table("optimization_suggestions")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("id", suggestion_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise ValueError("Optimization suggestion not found")
+        suggestion = rows[0]
+        if str(suggestion.get("suggestion_type") or "") != "process_sequence":
+            raise ValueError("Suggestion is not a process_sequence type")
+        if str(suggestion.get("status") or "") != "pending_review":
+            raise ValueError("Suggestion is not pending_review")
+
+        evidence = suggestion.get("evidence") if isinstance(suggestion.get("evidence"), dict) else {}
+        steps = evidence.get("steps") or []
+        if isinstance(steps, str):
+            steps = [s.strip() for s in steps.split("→") if s.strip()]
+        sequence = str(evidence.get("sequence") or suggestion.get("target_entity_id") or "")
+        if not steps and sequence:
+            steps = [s.strip() for s in sequence.split("→") if s.strip()]
+        dept = (department or evidence.get("department") or "Operations").strip() or "Operations"
+        name = (process_name or f"Observed: {sequence[:80]}").strip()
+
+        inventory_row = {
+            "org_id": org_id,
+            "department": dept,
+            "process_name": name,
+            "process_owner": reviewed_by,
+            "admin_entered_by": reviewed_by,
+            "declared_steps": steps,
+            "automation_level": "manual",
+        }
+        inv = client.table("organization_process_inventory").insert(inventory_row).execute()
+        if not inv.data:
+            raise ValueError("Failed to copy suggestion into organization_process_inventory")
+
+        update = {
+            "status": "applied",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "applied_change_summary": (
+                f"Admin accepted process_sequence into organization_process_inventory "
+                f"id={inv.data[0].get('id')} (advisory inventory entry; not auto-governed)."
+            ),
+        }
+        if reviewed_by:
+            update["reviewed_by"] = reviewed_by
+        updated = (
+            client.table("optimization_suggestions")
+            .update(update)
+            .eq("id", suggestion_id)
+            .eq("org_id", org_id)
+            .execute()
+        )
+        return {
+            "status": "ok",
+            "advisory_only": True,
+            "auto_adopted": False,
+            "suggestion": (updated.data or [suggestion])[0],
+            "inventoryEntry": inv.data[0],
+            "note": (
+                "Accepted into organization_process_inventory as declared reference. "
+                "Still advisory_only — not auto-governing agent operating model."
+            ),
         }
 
     async def detect_process_bottlenecks(self, org_id: str) -> dict[str, Any]:
