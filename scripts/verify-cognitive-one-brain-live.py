@@ -42,7 +42,16 @@ def _load_env() -> dict[str, str]:
         try:
             merged.update({k: v for k, v in dotenv_values(path).items() if v})
         except UnicodeDecodeError:
-            pass
+            # Some local env files are not UTF-8; parse with ignore for secrets we need.
+            text = path.read_bytes().decode("utf-8", errors="ignore")
+            for line in text.splitlines():
+                if "=" not in line or line.lstrip().startswith("#"):
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and value:
+                    merged[key] = value
     merged.update({k: v for k, v in os.environ.items() if v})
     return merged
 

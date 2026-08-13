@@ -27,9 +27,13 @@ Update by appending dated rows; do not erase prior evidence.
 | 15 | Migration applied in target Supabase | Remote table existence query | **PASS** | `information_schema` @ smyeexlrqdpymwjmgzqu lists `cognitive_turn_traces`, `org_metric_definitions`, `org_field_permissions`, `org_knowledge_nodes` after `apply_migration` cognitive_turn_kernel (2026-08-13) |
 | 16 | Prod chat turn persists `cognitive_turn_traces` row | Prod query after Railway tip | **PASS** | `turn_id=02beb5fd-fdc4-421e-8fc0-603ee62c9889` @ `2026-08-13T09:27:12.654717Z` surface=`ai_chat` conversation_id=`9db0616b-3a40-4286-9af9-a725e04be8ea` |
 | 17 | Streaming LIVE turn shows kernel stages then ACT | Trace stages + prod git_sha | **PASS** (ai_chat) | Stages RETRIEVE→RECALL→KNOWLEDGE→PLAN→VERIFY→GOVERN on turn above; prod `/health` `git_sha=0958772c…` @ `2026-08-13T09:32:21Z`; Railway run [31686266171](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31686266171) |
-| 18 | Extension enrich path records kernel stage | Prod extension request + trace | **LIVE PENDING** | Code wired; no `surface=extension_enrich` row yet |
-| 19 | Council turn records kernel stage | Prod council run + trace | **LIVE PENDING** | Code wired; no `surface=council` row yet |
-| 20 | Metric upsert + resolve round-trip in prod org | Admin API against live DB | **LIVE PENDING** | Schema ready; no seeded customer metrics inserted |
+| 18 | Extension enrich path records kernel stage | Ops smoke + enrich turn_id | **PASS** | `cognitiveTurnId=08b5e50e-4ee0-4765-b8bd-b7a5def92df4` (probe `onebrain-141fd47471`) @ tip `88a04469` |
+| 19 | Council turn records kernel stage | Ops smoke council surface | **PASS** | `turn_id=6d64364a-7c8e-4b3c-8b7f-d96599523c1c` surface=`council` |
+| 20 | Metric upsert + resolve round-trip in prod org | Dual-agent resolve same id | **PASS** | `definition_id=cc33a9f3-93cc-4b8d-90b1-2853c9d323f0` metric_key=`arr_onebrain` agents A/B identical |
+| 21 | Distinct `agent_chat` / `voice` traces | Ops smoke | **PASS** | agent `6470f0d2…`, voice `d87e0654…` stages RETRIEVE→GOVERN |
+| 22 | Cross-org isolation (zero foreign rows) | Ops smoke RECALL pack | **PASS** | turn `b683f4c3…` leaked_marker=false foreign_org_rows_in_pack=0 vs foreign_org `658c76b3…` |
+| 23 | Field-deny GOVERN + audit | Ops smoke + audit_events | **PASS** | `cognitive.govern.field_acl_deny` audit_id=`68b1461c-c6b8-47f5-9c4c-bb37254af2da` @ `2026-08-13T10:07:11.088726Z`; turn `4a5ac15e…` |
+| 24 | Outcome→PLAN bias after failure | Ops smoke closed loop | **PASS** | recommendation_id=`2ad66e6c…`; PLAN `outcome_bias` notes include `failed_negative_decline` on probe; turn `81aa4ecc…` |
 
 ---
 
@@ -52,18 +56,24 @@ Update by appending dated rows; do not erase prior evidence.
 - CODE — what-if honesty envelope: `confidenceSource=heuristic`, `confidenceIsEstimate=true`, `isFact=false` (local `simulate_business_scenario`)
 - Deploy — Railway backend production **success** [31686266171](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31686266171) for `0958772c`; prod health `git_sha=0958772cfe324033073a78e56c62498af0b398c5` @ `2026-08-13T09:32:21Z`
 - PASS #16/#17 — live `ai_chat` kernel pre-ACT: `turn_id=02beb5fd-fdc4-421e-8fc0-603ee62c9889` @ `2026-08-13T09:27:12.654717Z` stages RETRIEVE→GOVERN (`fabric_count=6`), conversation `9db0616b-3a40-4286-9af9-a725e04be8ea`
-- **Not claimed PASS:** agent/voice/extension/council surface parity rows, cross-org isolation live probe, dual-agent metric resolve, field ACL deny audit event, closed-loop before/after recommendation change
+### 2026-08-13 — residual LIVE PASS (ops smoke)
+
+- Tip — prod `/health` `git_sha=88a0446900bdb97b527951371a3fd03eb1affff7`
+- Artifact — `docs/delivery/one-brain-live-residuals.json` verdict **PASS** (probe `onebrain-141fd47471`, isolated org `f07e57c0…`)
+- Surfaces — agent_chat `6470f0d2…`, voice `d87e0654…`, extension_enrich `08b5e50e…`, extension_action `0bee573b…`, council `6d64364a…`
+- Cross-org — turn `b683f4c3…` foreign_org_rows_in_pack=0
+- Metrics — dual-agent `definition_id=cc33a9f3…`
+- Field ACL — audit `68b1461c…` @ `2026-08-13T10:07:11.088726Z` action=`cognitive.govern.field_acl_deny`
+- Outcome→PLAN — turn `81aa4ecc…` plan.outcome_bias notes include `failed_negative_decline` (recommendation `2ad66e6c…`)
 
 ### Final Part B residual (honest)
 
 | Surface | Kernel intake in code? | Live composition re-test |
 |---------|------------------------|--------------------------|
 | Main/TRY chat (`execute_task_streaming`) | Yes — `run_pre_act` before LIVE | **PASS** — turn `02beb5fd…` |
-| Agent / voice chat | Same streaming path; surface label differs | **PARTIAL** — no distinct `agent_chat`/`voice` trace sampled yet |
-| Jobs/swarm/handoff (`execute_task`) | Yes — kernel first | **LIVE PENDING** |
-| Extension enrich/actions/confirm | Yes — `cognitive_entry_adapters` | **LIVE PENDING** |
-| Council | Yes — evidence pack inject | **LIVE PENDING** |
+| Agent / voice chat | Same streaming path; surface label differs | **PASS** — `6470f0d2…` / `d87e0654…` |
+| Extension enrich/actions | Yes — `cognitive_entry_adapters` | **PASS** — `08b5e50e…` / `0bee573b…` |
+| Council | Yes — evidence pack inject | **PASS** — `6d64364a…` |
+| Jobs/swarm/handoff (`execute_task`) | Yes — kernel first | **LIVE PENDING** — no dedicated job-surface smoke row yet |
 | Meson | Plan adapter only (`meson_plan_adapter`); NL execution later hits kernel | N/A as NL brain |
 | Workflow deterministic steps | GOVERN on writes via existing authority; agent nodes via `execute_task` | **LIVE PENDING** |
-
-Residual gaps: need distinct live traces for agent_chat/voice/extension/council; deliberate cross-org memory probe; dual-agent ARR definition-id match; field-deny audit event; outcome→PLAN bias before/after. Promote those only with fresh pointers.

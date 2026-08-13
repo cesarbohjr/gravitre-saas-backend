@@ -1,0 +1,143 @@
+{
+  "generated_at": "2026-08-13T10:06:48.369157+00:00",
+  "base": "https://gravitre-saas-backend-production.up.railway.app",
+  "health_git_sha": "88a0446900bdb97b527951371a3fd03eb1affff7",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "smoke": {
+    "pass": true,
+    "verdict": "PASS",
+    "git_sha": "unknown",
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+    "checks": {
+      "agent_chat": true,
+      "voice": true,
+      "extension_enrich": true,
+      "extension_action": true,
+      "council": true,
+      "cross_org": true,
+      "metrics": true,
+      "field_acl": true,
+      "outcome_loop": true
+    },
+    "results": {
+      "probe_tag": "onebrain-141fd47471",
+      "agent_chat": {
+        "turn_id": "6470f0d2-7f65-4822-8e3e-808a3fd3010d",
+        "surface": "agent_chat",
+        "stages": [
+          "RETRIEVE",
+          "RECALL",
+          "KNOWLEDGE",
+          "PLAN",
+          "VERIFY",
+          "GOVERN"
+        ],
+        "ok": true
+      },
+      "voice": {
+        "turn_id": "d87e0654-296f-4ddf-a9d1-89b22450625f",
+        "surface": "voice",
+        "stages": [
+          "RETRIEVE",
+          "RECALL",
+          "KNOWLEDGE",
+          "PLAN",
+          "VERIFY",
+          "GOVERN"
+        ],
+        "ok": true
+      },
+      "extension_enrich": {
+        "cognitiveTurnId": "08b5e50e-4ee0-4765-b8bd-b7a5def92df4",
+        "ok": true
+      },
+      "extension_action": {
+        "turn_id": "0bee573b-7259-4e4f-88bc-8844c0a73485",
+        "ok": true
+      },
+      "council": {
+        "session_id": "8dc89ce5-0edf-4ea5-9fb4-8faece5b022c:onebrain-141fd47471 coun",
+        "turn_id": "6d64364a-7c8e-4b3c-8b7f-d96599523c1c",
+        "surface": "council",
+        "ok": true
+      },
+      "cross_org": {
+        "foreign_org_id": "658c76b3-04b7-489b-bb7e-64a5f3ec1cbe",
+        "foreign_memory_id": null,
+        "turn_id": "b683f4c3-a4f9-44cb-b526-75ae01e46517",
+        "leaked_marker": false,
+        "foreign_org_rows_in_pack": 0,
+        "ok": true
+      },
+      "metrics": {
+        "metric_key": "arr_onebrain",
+        "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+        "agent_a": {
+          "metric_key": "arr_onebrain",
+          "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+          "label": "Annual Recurring Revenue (smoke)",
+          "formula": "sum(mrr)*12",
+          "source_system": "billing",
+          "owner": "smoke",
+          "resolved_from": "org_metric_definitions",
+          "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+        },
+        "agent_b": {
+          "metric_key": "arr_onebrain",
+          "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+          "label": "Annual Recurring Revenue (smoke)",
+          "formula": "sum(mrr)*12",
+          "source_system": "billing",
+          "owner": "smoke",
+          "resolved_from": "org_metric_definitions",
+          "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+        },
+        "upserted_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+        "ok": true
+      },
+      "field_acl": {
+        "turn_id": "4a5ac15e-f123-4d24-8562-529ac633a9b9",
+        "blocked": true,
+        "govern": {
+          "ok": false,
+          "requires_approval": true,
+          "blocked": "field_acl_deny",
+          "field_checks": [
+            {
+              "field": "ssn",
+              "allowed": false
+            }
+          ],
+          "denied_fields": [
+            "ssn"
+          ],
+          "actions": []
+        },
+        "audit_id": "68b1461c-c6b8-47f5-9c4c-bb37254af2da",
+        "audit_at": "2026-08-13T10:07:11.088726+00:00",
+        "ok": true
+      },
+      "outcome_loop": {
+        "recommendation_id": "2ad66e6c-0ba4-4d47-b7f2-9fea9e3e0cb1",
+        "before_weight_delta": -0.1,
+        "after_weight_delta": -0.1,
+        "after_bias_notes": [
+          "Prior outcome failed_negative_decline on onebrain-141fd47471"
+        ],
+        "plan_outcome_bias": {
+          "bias_notes": [
+            "Prior outcome failed_negative_decline on onebrain-141fd47471"
+          ],
+          "weight_delta": -0.1
+        },
+        "turn_id": "81aa4ecc-ff81-45ec-8c0c-cd7e17f1c096",
+        "ok": true
+      }
+    },
+    "claim": "PASS \u2014 One Brain live residual probes"
+  },
+  "verdict": "PASS",
+  "claim": "PASS \u2014 One Brain live residual probes"
+}

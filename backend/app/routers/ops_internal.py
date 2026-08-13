@@ -884,6 +884,52 @@ async def cognitive_one_brain_smoke(
         results["outcome_loop_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
         checks["outcome_loop"] = False
 
+    # 8) Jobs / execute_task kernel-first intake (swarm/handoff share this path)
+    try:
+        from app.operators.agent_intelligence import AgentIntelligence
+
+        job_agent = agent_row or {"id": agent_id or "synthetic-default", "name": "OneBrain Smoke Agent"}
+        if not job_agent.get("id"):
+            job_agent = {"id": str(uuid_mod.uuid4()), "name": "OneBrain Smoke Agent"}
+        intelligence = AgentIntelligence(settings=settings)
+        await intelligence.execute_task(
+            settings=settings,
+            org_id=org_id,
+            agent=job_agent,
+            task=f"{probe_tag} execute_task job kernel probe — reply briefly",
+            parameters={"surface": "job", "intent": "job", "max_react_iterations": 1},
+            actor_id=actor_id,
+            environment_name=str(body.environment_name or "production"),
+            client=client,
+            max_iterations=1,
+        )
+        job_rows = (
+            client.table("cognitive_turn_traces")
+            .select("turn_id,surface,stages,created_at")
+            .eq("org_id", org_id)
+            .eq("surface", "job")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        job_turn = job_rows[0] if job_rows else {}
+        stage_names = []
+        for s in job_turn.get("stages") or []:
+            if isinstance(s, dict):
+                stage_names.append(s.get("stage"))
+        results["job_execute_task"] = {
+            "turn_id": job_turn.get("turn_id"),
+            "surface": job_turn.get("surface"),
+            "stages": stage_names,
+            "ok": bool(job_turn.get("turn_id")) and "RETRIEVE" in stage_names and "GOVERN" in stage_names,
+        }
+        checks["job_execute_task"] = bool(results["job_execute_task"]["ok"])
+    except Exception as exc:  # noqa: BLE001
+        results["job_execute_task_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
+        checks["job_execute_task"] = False
+
     overall = all(checks.values()) if checks else False
     return {
         "pass": overall,
