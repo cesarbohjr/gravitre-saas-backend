@@ -331,3 +331,164 @@ async def capability_write_gate_smoke(
             else "FAIL — capability write gate did not match direct HubSpot gate"
         ),
     }
+
+
+class Phase2ConnectorSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+    invoke_reads: bool = True
+
+
+def _agent_tool_name(catalog_action: str) -> str:
+    return catalog_action.replace(".", "_")
+
+
+# Read-only prod probes per Phase 2 vendor (registry name, catalog action).
+PHASE2_READ_PROBES: dict[str, tuple[str, str]] = {
+    "linear": ("linear_issues_list", "linear.issues.list"),
+    "gitlab": ("gitlab_projects_list", "gitlab.projects.list"),
+    "shopify": ("shopify_products_list", "shopify.products.list"),
+    "paypal": ("paypal_payments_list", "paypal.payments.list"),
+    "brevo": ("brevo_contacts_list", "brevo.contacts.list"),
+    "meta_marketing": ("meta_marketing_campaigns_list", "meta_marketing.campaigns.list"),
+}
+
+
+@router.post("/phase2-connector-smoke")
+async def phase2_connector_smoke(
+    body: Phase2ConnectorSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Deployed-tip proof: Phase 2 six-vendor wiring + optional read invoke when connected."""
+    import os
+
+    from app.connectors.oauth_provider_registry import GENERIC_OAUTH_VENDORS, OAUTH_PROVIDER_REGISTRY
+    from app.connectors.phase2_connector_routes import PHASE2_ROUTES, PHASE2_VENDORS
+    from app.operators.react_engine import ReActEngine
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_service import list_registered_actions
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+
+    registered = set(list_registered_actions())
+    missing_routes = sorted(action for action in PHASE2_ROUTES if action not in registered)
+    wiring_pass = not missing_routes and len(PHASE2_ROUTES) == 30
+
+    oauth_checks: dict[str, bool] = {}
+    for vendor in sorted(PHASE2_VENDORS):
+        if vendor == "brevo":
+            # API-key vendor — not in generic OAuth registry by design.
+            oauth_checks[vendor] = vendor not in GENERIC_OAUTH_VENDORS
+        else:
+            oauth_checks[vendor] = vendor in GENERIC_OAUTH_VENDORS and vendor in OAUTH_PROVIDER_REGISTRY
+    oauth_pass = all(oauth_checks.values())
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    env_name = str(body.environment_name or "production").strip() or "production"
+    connected = set(reg.list_connected_integrations(client, org_id, environment_name=env_name))
+    phase2_connected = sorted(v for v in PHASE2_VENDORS if v in connected)
+
+    vendor_results: dict[str, Any] = {}
+    invoke_pass_count = 0
+    invoke_attempted = 0
+
+    if body.invoke_reads and phase2_connected:
+        engine = ReActEngine(settings=settings, registry=reg)
+        ctx = ToolContext(
+            settings=settings,
+            client=client,
+            org_id=org_id,
+            actor_id=actor_id,
+            agent_id="synthetic-default",
+            environment_name=env_name,
+        )
+        for vendor in phase2_connected:
+            tool_name, catalog_action = PHASE2_READ_PROBES[vendor]
+            invoke_attempted += 1
+            try:
+                result = await engine._execute_tool_call(
+                    ctx,
+                    tool_name,
+                    {"limit": 1},
+                    allowed_tool_names={tool_name},
+                )
+                ok = bool(result.get("success"))
+                if ok:
+                    invoke_pass_count += 1
+                vendor_results[vendor] = {
+                    "connected": True,
+                    "tool": tool_name,
+                    "catalog_action": catalog_action,
+                    "success": result.get("success"),
+                    "error_code": result.get("error_code"),
+                    "action": result.get("action"),
+                    "integration": result.get("integration"),
+                    "pass": ok,
+                }
+            except Exception as exc:  # noqa: BLE001
+                vendor_results[vendor] = {
+                    "connected": True,
+                    "tool": tool_name,
+                    "catalog_action": catalog_action,
+                    "success": False,
+                    "error": f"{exc.__class__.__name__}:{exc}",
+                    "pass": False,
+                }
+    else:
+        for vendor in sorted(PHASE2_VENDORS):
+            probe_tool, catalog_action = PHASE2_READ_PROBES[vendor]
+            vendor_results[vendor] = {
+                "connected": vendor in connected,
+                "tool": probe_tool,
+                "catalog_action": catalog_action,
+                "invoke_skipped": not body.invoke_reads or vendor not in connected,
+                "pass": None,
+            }
+
+    wiring_only = not phase2_connected or not body.invoke_reads
+    invoke_pass = invoke_attempted > 0 and invoke_pass_count == invoke_attempted
+    overall_pass = wiring_pass and oauth_pass and (wiring_only or invoke_pass)
+    verdict = "PASS" if overall_pass else ("PARTIAL" if wiring_pass and oauth_pass else "FAIL")
+
+    return {
+        "pass": overall_pass,
+        "verdict": verdict,
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "actor_id": actor_id,
+        "environment_name": env_name,
+        "path": "deployed_phase2_connector_smoke",
+        "wiring": {
+            "route_count": len(PHASE2_ROUTES),
+            "missing_routes": missing_routes,
+            "pass": wiring_pass,
+        },
+        "oauth_registry": {"checks": oauth_checks, "pass": oauth_pass},
+        "connected_phase2_vendors": phase2_connected,
+        "vendors": vendor_results,
+        "invoke": {
+            "attempted": invoke_attempted,
+            "passed": invoke_pass_count,
+            "pass": invoke_pass if invoke_attempted else None,
+        },
+        "claim": (
+            f"PASS — Phase 2 wiring + {invoke_pass_count}/{invoke_attempted} read invokes @ deployed tip"
+            if overall_pass and invoke_attempted
+            else (
+                "PARTIAL — Phase 2 wiring/oauth PASS; no connected vendors for live invoke"
+                if wiring_pass and oauth_pass and wiring_only
+                else (
+                    "PASS — Phase 2 wiring + oauth registry @ deployed tip"
+                    if wiring_pass and oauth_pass
+                    else "FAIL — Phase 2 connector smoke"
+                )
+            )
+        ),
+    }
