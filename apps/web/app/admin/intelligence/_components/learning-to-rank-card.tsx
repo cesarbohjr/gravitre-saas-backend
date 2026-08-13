@@ -69,7 +69,7 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
   return (
     <SectionCard
       title="Search ranking improvement"
-      description="Whether Gravitre has learned how to reorder search results for your org — and the safe limits that protect quality."
+      description="Whether Gravitre has learned how to reorder search results for your org, within safe quality limits."
       icon={<ShieldCheck className="h-5 w-5" weight="duotone" aria-hidden />}
       delay={delay}
       action={
@@ -153,7 +153,7 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
               />
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              {trainingExamples} / {trainingThreshold} training examples collected — using default weight{" "}
+              {trainingExamples} / {trainingThreshold} training examples collected. Using default weight{" "}
               {defaultWeight.toFixed(2)} until then.
             </p>
           </div>

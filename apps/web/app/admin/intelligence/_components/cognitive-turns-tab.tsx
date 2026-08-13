@@ -146,7 +146,7 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <SectionCard
           title="Recent turns"
-          description="What happened on recent chat and agent turns — surface, timing, and step-by-step path."
+          description="Recent chat and agent turns: surface, timing, and step path."
           icon={<Brain className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           {traces.length === 0 ? (

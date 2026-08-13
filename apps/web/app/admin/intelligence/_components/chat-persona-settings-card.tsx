@@ -74,7 +74,7 @@ export function ChatPersonaSettingsCard({ enabled }: { enabled: boolean }) {
         </div>
         <CardDescription>
           Choose how Gravitre sounds by default in chat and agent conversations when someone has not set a personal
-          preference. Style only — never overrides approvals or governance.
+          preference. Style only. Never overrides approvals or governance.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

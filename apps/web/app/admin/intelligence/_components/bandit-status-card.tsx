@@ -51,7 +51,7 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
   return (
     <SectionCard
       title={SURFACE_COPY.learningAdmin.banditTitle}
-      description="Which answer approaches are winning for different question themes — measured from real outcomes."
+      description="Which answer approaches win for different question themes. Measured from real outcomes."
       action={
         <Badge variant="secondary" className="font-normal">
           {statusLabel(phaseStatus)}

@@ -48,7 +48,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
       <div className="space-y-6">
         <SectionCard
           title="Business outcomes"
-          description="See which agents are tied to real results in your connected tools — deal movement, subscriptions, and campaign metrics. Patterns need enough samples before we show a win rate."
+          description="Agents tied to real results in connected tools: deals, subscriptions, campaigns. Win rate appears after enough samples."
           icon={<ChartLineUp className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           <div className="grid gap-3 sm:grid-cols-3">
@@ -76,15 +76,14 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
 
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
             Gravitre links agent work to observable connector results (for example HubSpot deal amounts or Stripe
-            subscriptions). This shows correlation with enough history — not a guarantee that the agent caused the
-            outcome.
+            subscriptions). Correlation with enough history, not proof the agent caused the outcome.
           </p>
         </SectionCard>
 
         {summaries.length === 0 ? (
           <SectionCard title="Getting started" description="Outcomes appear after agents act on measurable work.">
             <NotYetPopulated>
-              No outcome history yet. Run agents against HubSpot deals, Stripe customers, or marketing publishes — then
+              No outcome history yet. Run agents against HubSpot deals, Stripe customers, or marketing publishes, then
               refresh this page.
             </NotYetPopulated>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -138,7 +137,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
             {building.length > 0 ? (
               <SectionCard
                 title="Building a reliable sample"
-                description="Each agent needs more measured results before a win rate is shown. Progress is toward that threshold — not a grade."
+                description="Each agent needs more measured results before a win rate is shown. Progress tracks the sample threshold, not a grade."
                 icon={<Hourglass className="h-5 w-5" weight="duotone" aria-hidden />}
               >
                 <ul className="space-y-3">
@@ -163,7 +162,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
                         <p className="mt-1.5 text-xs text-muted-foreground">
                           {min - sample > 0
                             ? `${min - sample} more measured result${min - sample === 1 ? "" : "s"} to unlock a win rate`
-                            : "Threshold met — refresh to see win rate"}
+                            : "Threshold met. Refresh to see win rate."}
                         </p>
                       </li>
                     )

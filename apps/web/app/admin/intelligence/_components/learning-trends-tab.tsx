@@ -52,7 +52,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
     <div className="space-y-6">
       <SectionCard
         title="How learning is trending"
-        description="Confidence by topic area and how outcomes are shaping future answers — measured from real usage, not estimates."
+        description="Confidence by topic area and how outcomes shape future answers. Measured from real usage."
         icon={<ChartLineUp className="h-5 w-5" weight="duotone" aria-hidden />}
       >
         {learningLoading ? (
@@ -102,7 +102,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
 
       <SectionCard
         title="Cross-cutting guidance"
-        description="Soft preferences across models, agents, and tools. Advisory only — nothing auto-executes."
+        description="Soft preferences across models, agents, and tools. Advisory only. Nothing auto-executes."
         icon={<Sparkle className="h-5 w-5" weight="duotone" aria-hidden />}
         delay={0.05}
       >
@@ -173,7 +173,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
           </dl>
         )}
         <Badge variant="outline" className="mt-4 border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
-          Suggestions only — never applied automatically
+          Suggestions only. Never applied automatically.
         </Badge>
       </SectionCard>
     </div>

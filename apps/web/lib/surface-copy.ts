@@ -19,7 +19,7 @@ export const SURFACE_COPY = {
     title: "Learning",
     shortTitle: "Learning",
     description:
-      "See how Gravitre improves from real work — knowledge readiness, relationships, quality, and business outcomes.",
+      "See how Gravitre improves from real work: knowledge readiness, relationships, quality, and outcomes.",
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
@@ -233,7 +233,7 @@ export const SURFACE_COPY = {
   },
   learningAdmin: {
     businessImpactTitle: "Business impact",
-    businessImpactHint: "How recommendations and measured outcomes add up for your org.",
+    businessImpactHint: "Recommendations and measured outcomes for your org.",
     revenueRiskTitle: "Items to review",
     knowledgeGapsTitle: "Where answers fall short",
     queryClustersTitle: "Common question themes",
@@ -241,7 +241,7 @@ export const SURFACE_COPY = {
     banditTitle: "Answer strategies",
     memoryConflictsTitle: "Conflicting memories",
     evaluationQualityTitle: "Answer quality",
-    evaluationQualityHint: "Overall score from search quality, grounding, and user feedback.",
+    evaluationQualityHint: "Score from search quality, grounding, and user feedback.",
     scoredResponsesTitle: "Recent scored answers",
     learningProgressHint: (logged: number, needed: number, runs: number, runsNeeded: number) =>
       `${logged} of ${needed} queries logged · ${runs} of ${runsNeeded} workflow runs observed`,

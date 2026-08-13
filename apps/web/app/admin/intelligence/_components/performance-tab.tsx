@@ -48,7 +48,7 @@ const MODE_OPTIONS: { value: PerformanceMode; label: string; hint: string }[] = 
   {
     value: "accuracy_priority",
     label: "Accuracy priority",
-    hint: "Full search and validation on every answer — slower, more careful.",
+    hint: "Full search and validation on every answer. Slower, more careful.",
   },
 ]
 

@@ -1,7 +1,9 @@
 /**
  * Operator-facing labels for Learning (all tabs).
- * Keep ICP language — avoid snake_case / backend jargon in the UI.
+ * Keep ICP language. Avoid snake_case / backend jargon in the UI.
  */
+
+export type KnowledgePackKind = "topic" | "tool"
 
 const PACK_LABELS: Record<string, string> = {
   cybersecurity: "Cybersecurity",
@@ -14,6 +16,29 @@ const PACK_LABELS: Record<string, string> = {
   cs: "Customer success",
   msp: "MSP",
   executive: "Executive",
+  unknown: "Other",
+}
+
+const TOOL_VENDOR_LABELS: Record<string, string> = {
+  hubspot: "HubSpot",
+  salesforce: "Salesforce",
+  stripe: "Stripe",
+  slack: "Slack",
+  gmail: "Gmail",
+  google_calendar: "Google Calendar",
+  google_drive: "Google Drive",
+  notion: "Notion",
+  linear: "Linear",
+  jira: "Jira",
+  asana: "Asana",
+  apollo: "Apollo",
+  clay: "Clay",
+  ahrefs: "Ahrefs",
+  gusto: "Gusto",
+  plaid: "Plaid",
+  pipedrive: "Pipedrive",
+  greenhouse: "Greenhouse",
+  microsoft_teams: "Microsoft Teams",
 }
 
 const TOPIC_LABELS: Record<string, string> = {
@@ -50,8 +75,34 @@ const STAGE_LABELS: Record<string, string> = {
   embed: "Embed",
 }
 
-export function packDisplayName(packId: string): string {
+export function knowledgePackKind(packId: string): KnowledgePackKind {
+  const raw = packId.trim().toLowerCase()
+  return raw.startsWith("pack.tool.") || raw.startsWith("tool.") ? "tool" : "topic"
+}
+
+/** Department slug for topic packs (`pack.legal` → `legal`). Null for tool packs. */
+export function knowledgePackDepartment(packId: string): string | null {
+  if (knowledgePackKind(packId) === "tool") return null
   const raw = packId.replace(/^pack\./i, "").trim().toLowerCase()
+  return raw || null
+}
+
+export function packDisplayName(packId: string): string {
+  const kind = knowledgePackKind(packId)
+  if (kind === "tool") {
+    const vendor = packId
+      .replace(/^pack\.tool\./i, "")
+      .replace(/^tool\./i, "")
+      .trim()
+      .toLowerCase()
+    return TOOL_VENDOR_LABELS[vendor] ?? vendor.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+  const raw = packId.replace(/^pack\./i, "").trim().toLowerCase()
+  return PACK_LABELS[raw] ?? raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function departmentDisplayName(department: string): string {
+  const raw = department.trim().toLowerCase()
   return PACK_LABELS[raw] ?? raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
@@ -137,7 +188,7 @@ export function statusLabel(value: unknown): string {
     insufficient_data: "Not enough data yet",
     ready: "Ready",
     healthy: "Healthy",
-    advisory_only: "Suggestions only — never auto-applied",
+    advisory_only: "Suggestions only. Never auto-applied.",
   }
   return map[raw] ?? snakeToTitle(raw)
 }

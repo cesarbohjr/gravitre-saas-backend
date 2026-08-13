@@ -26,7 +26,7 @@ export function ConnectorOpsCard() {
   return (
     <SectionCard
       title="Connector activity"
-      description="How connected tools performed over the last 7 days — requests, successes, and failures."
+      description="Connected tool performance over the last 7 days: requests, successes, and failures."
       action={
         <Badge variant={hasSpike ? "destructive" : "secondary"} className="font-normal">
           {hasSpike ? `${spikes.length} spike${spikes.length === 1 ? "" : "s"}` : "Healthy"}
@@ -47,13 +47,13 @@ export function ConnectorOpsCard() {
               <WarningCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" weight="duotone" aria-hidden />
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                  Failure spike detected — more than 10% of recent calls failed
+                  Failure spike: more than 10% of recent calls failed
                 </p>
                 <ul className="space-y-0.5 text-xs text-muted-foreground">
                   {spikes.slice(0, 5).map((s) => (
                     <li key={`${s.vendor}:${s.action}`} className="truncate">
                       <span className="font-medium text-foreground">{s.vendor}</span> ·{" "}
-                      {String(s.action).replace(/_/g, " ")} — {pct(s.failedRate)} failed ({s.failed}/{s.n})
+                      {String(s.action).replace(/_/g, " ")}: {pct(s.failedRate)} failed ({s.failed}/{s.n})
                     </li>
                   ))}
                 </ul>

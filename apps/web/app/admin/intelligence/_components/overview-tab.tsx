@@ -146,7 +146,7 @@ export function OverviewTab({
             <CardTitle>{SURFACE_COPY.learningAdmin.knowledgeGapsTitle}</CardTitle>
           </div>
           <CardDescription>
-            Themes where searches failed often — plus what documentation would help next.
+            Themes where searches failed often, plus what documentation would help next.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -188,7 +188,7 @@ export function OverviewTab({
             <Stack className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             <CardTitle>{SURFACE_COPY.learningAdmin.queryClustersTitle}</CardTitle>
           </div>
-          <CardDescription>Recurring question themes from real usage — useful for training and docs.</CardDescription>
+          <CardDescription>Recurring question themes from real usage. Useful for training and docs.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -275,7 +275,7 @@ export function OverviewTab({
             <ChatCircleDots className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             <CardTitle>Recent unanswered searches</CardTitle>
           </div>
-          <CardDescription>Latest questions that did not find a good answer — before they form a theme.</CardDescription>
+          <CardDescription>Latest questions that did not find a good answer, before they form a theme.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

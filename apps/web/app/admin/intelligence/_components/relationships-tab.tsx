@@ -145,7 +145,7 @@ export function RelationshipsTab({
       toast.success(archived ? "Relationship archived" : "Relationship restored")
       await mutateList()
     } catch {
-      toast.error("Request failed — try again")
+      toast.error("Request failed. Try again.")
     } finally {
       setBusyId(null)
     }
@@ -157,7 +157,7 @@ export function RelationshipsTab({
     <div className="space-y-6">
       <SectionCard
         title="Business relationships"
-        description="Connections Gravitre has learned between terms, agents, and work in your org. Archive noise; keep the links that help agents stay consistent."
+        description="Links Gravitre learned between terms, agents, and work. Archive noise; keep what helps agents stay consistent."
         icon={<Graph className="h-5 w-5" weight="duotone" aria-hidden />}
         action={
           <Badge variant="outline" className="font-normal tabular-nums">

@@ -59,7 +59,7 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
         <NotYetPopulated>No agent memories scanned yet.</NotYetPopulated>
       ) : conflictCount === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Scanned {scanned} memories — no opposing pairs detected.
+          Scanned {scanned} memories. No opposing pairs detected.
         </p>
       ) : (
         <div className="space-y-3">
