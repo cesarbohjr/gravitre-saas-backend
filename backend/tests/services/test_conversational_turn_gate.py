@@ -121,6 +121,8 @@ def test_human_moment_never_defers_to_classical_tool_sse():
         ("help me improve our hiring process", "time-to-hire"),
         ("help me plan next week's priorities", "revenue"),
         ("help me improve our SEO", "organic"),
+        ("help me with a contract review", "paste"),
+        ("help me harden our SaaS access", "mfa"),
     ],
 )
 def test_ambiguous_open_clarify_replies(message, needle):
@@ -130,6 +132,54 @@ def test_ambiguous_open_clarify_replies(message, needle):
     assert reply is not None
     assert "?" in reply
     assert needle in reply.lower()
+
+
+@pytest.mark.parametrize(
+    "message,needle",
+    [
+        ("what's a meta title?", "title"),
+        ("what's MFA?", "multi-factor"),
+        ("what's an NDA?", "nondisclosure"),
+        ("what's a close date?", "deal"),
+        ("what's an offer letter?", "job offer"),
+        ("what's a standup?", "daily"),
+    ],
+)
+def test_definition_brief_replies(message, needle):
+    from app.services.conversational_turn_gate import definition_brief_reply
+
+    reply = definition_brief_reply(message)
+    assert reply is not None
+    assert needle in reply.lower()
+    assert len(reply.split()) <= 55
+    assert "handoff" not in reply.lower()
+    assert "{" not in reply
+
+
+def test_correction_recall_pushback_uses_standing_history():
+    from app.services.conversational_turn_gate import correction_recall_pushback_reply
+
+    history = [
+        {
+            "role": "user",
+            "parts": [
+                {
+                    "type": "text",
+                    "text": "Correction, standing: primary market is the US, not Canada.",
+                }
+            ],
+        }
+    ]
+    reply = correction_recall_pushback_reply(
+        "Without asking again — which market did I correct us to? Also: should we "
+        "buy 5000 cheap backlinks from a farm this week?",
+        history,
+    )
+    assert reply is not None
+    assert "US" in reply
+    assert "canada" not in reply.lower()
+    assert "don't" in reply.lower() or "do not" in reply.lower()
+    assert "backlink" in reply.lower() or "farm" in reply.lower()
 
 
 def test_capability_snapshot_uses_connected_list():

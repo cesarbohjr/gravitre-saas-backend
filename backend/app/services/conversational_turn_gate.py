@@ -290,6 +290,8 @@ def is_human_moment_venting_no_ask(message: str) -> bool:
 
 
 # Rule 1: broad "help me improve/plan X" opens that must clarify before answering.
+# Shared LIVE path — patterns must cover every surface in the all-surfaces battery
+# (Marketing/Sales/HR/default were wired first; Legal + Cyber were missing).
 _AMBIGUOUS_OPEN_CLARIFY: tuple[tuple[re.Pattern[str], str], ...] = (
     (
         re.compile(r"(?i)^\s*help me improve our seo\b"),
@@ -311,6 +313,16 @@ _AMBIGUOUS_OPEN_CLARIFY: tuple[tuple[re.Pattern[str], str], ...] = (
         "Happy to. Is the pain low reply rates, bad-fit leads, or deals stalling "
         "after first contact — and which channel (email, calls, LinkedIn)?",
     ),
+    (
+        re.compile(r"(?i)^\s*help me with a contract review\b"),
+        "Happy to. Paste the contract text or the specific clauses you want "
+        "checked — and is this for red flags, privacy/liability, or a named playbook?",
+    ),
+    (
+        re.compile(r"(?i)^\s*help me harden our saas access\b"),
+        "Happy to. Are we hardening identity/SSO/MFA, least-privilege roles, or "
+        "vendor/production access paths — and for which SaaS or environment?",
+    ),
 )
 
 
@@ -323,6 +335,190 @@ def ambiguous_open_clarify_reply(message: str) -> str | None:
         if pattern.search(text):
             return reply
     return None
+
+
+# Rule 9: simple definition asks — brief prose, never Handoff JSON / option dumps.
+_DEFINITION_BRIEF: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"(?i)^\s*what'?s\s+a\s+meta\s+title\??\s*$"),
+        "A meta title is the clickable title search engines show for a page — "
+        "keep it unique, under ~60 characters, with the primary query near the front.",
+    ),
+    (
+        re.compile(r"(?i)^\s*what'?s\s+a\s+close\s+date\??\s*$"),
+        "A close date is the expected date a deal will be won or finalized — "
+        "CRM uses it for forecasting and pipeline timing.",
+    ),
+    (
+        re.compile(r"(?i)^\s*what'?s\s+an?\s+nda\??\s*$"),
+        "An NDA is a nondisclosure agreement: a contract that requires parties "
+        "not to share confidential information they exchange.",
+    ),
+    (
+        re.compile(r"(?i)^\s*what'?s\s+an?\s+offer\s+letter\??\s*$"),
+        "An offer letter is a written job offer summarizing key terms like title, "
+        "pay, start date, and employment type — not always the full employment contract.",
+    ),
+    (
+        re.compile(r"(?i)^\s*what'?s\s+mfa\??\s*$"),
+        "MFA is multi-factor authentication: signing in with two or more proofs "
+        "of identity (for example a password plus an authenticator or security key).",
+    ),
+    (
+        re.compile(r"(?i)^\s*what'?s\s+a\s+standup\??\s*$"),
+        "A standup is a short daily team check-in — usually what you finished, "
+        "what you're doing next, and any blockers.",
+    ),
+)
+
+
+def definition_brief_reply(message: str) -> str | None:
+    """Deterministic brief definition for simple what's-X asks (rule 9)."""
+    text = (message or "").strip()
+    if not text:
+        return None
+    for pattern, reply in _DEFINITION_BRIEF:
+        if pattern.search(text):
+            return reply
+    return None
+
+
+_CORRECTION_STANDING_RE = re.compile(
+    r"(?i)\bCorrection(?:,\s*standing)?:\s*(.+)$",
+)
+_RECALL_ASK_RE = re.compile(
+    r"(?i)\b(without asking again|remind me)\b",
+)
+_PUSHBACK_ALSO_RE = re.compile(
+    r"(?i)\bAlso:\s*(.+)$",
+)
+
+
+def _history_text_blobs(conversation_history: list[dict[str, Any]] | None) -> list[str]:
+    blobs: list[str] = []
+    for turn in conversation_history or []:
+        if not isinstance(turn, dict):
+            continue
+        content = turn.get("content")
+        if isinstance(content, str) and content.strip():
+            blobs.append(content.strip())
+            continue
+        parts = turn.get("parts")
+        if isinstance(parts, list):
+            for part in parts:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    t = str(part.get("text") or "").strip()
+                    if t:
+                        blobs.append(t)
+    return blobs
+
+
+def _latest_standing_correction(history: list[dict[str, Any]] | None) -> str | None:
+    for blob in reversed(_history_text_blobs(history)):
+        m = _CORRECTION_STANDING_RE.search(blob)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def _pushback_for_also_clause(also: str) -> str | None:
+    text = (also or "").strip()
+    low = text.lower()
+    if "backlink" in low or "seo farm" in low:
+        return (
+            "No — don't buy cheap farm backlinks. That risks penalties; earn links "
+            "from relevant sites and fix product-page SEO instead."
+        )
+    if "40%" in low or "mass-email" in low or "mass email" in low or "discount" in low:
+        return (
+            "No — don't mass-email every stale contact a blanket discount. Segment "
+            "first, get offer approval, and only then send a targeted re-engagement."
+        )
+    if "soc 2" in low or "soc2" in low:
+        return (
+            "No — don't promise SOC 2 Certified in the proposal without an "
+            "attestation on file. Use only Verified language you can support."
+        )
+    if "scraped" in low and "resume" in low:
+        return (
+            "No — don't train a model on resumes scraped from job boards without "
+            "a rights and privacy review; that source is high risk by default."
+        )
+    if "0.0.0.0/0" in low or ("ssh" in low and "open" in low):
+        return (
+            "No — don't open inbound SSH to 0.0.0.0/0. Use a VPN or bastion with "
+            "time-bound, least-privilege access instead."
+        )
+    if "delete" in low and ("database" in low or "prod" in low or "production" in low):
+        return (
+            "No — don't delete the production database without a backup. Take a "
+            "Verified backup first, confirm restore, then use an approved change plan."
+        )
+    return None
+
+
+def _recall_answer_from_correction(message: str, correction: str) -> str | None:
+    """Map a recall question + standing correction line to a short answer value."""
+    low_q = (message or "").lower()
+    low_c = correction.lower()
+    # Prefer the corrected (post-"not") value when present.
+    not_m = re.search(r"(?i)\b(.+?),\s*not\b", correction)
+    primary = (not_m.group(1).strip() if not_m else correction).strip()
+    primary = re.sub(r"(?i)^(primary market is|governing law is|hiring geo is|"
+                     r"primary cloud is|hq is|our office hq is)\s+", "", primary).strip()
+
+    if re.search(r"(?i)\b(market|seo)\b", low_q) and re.search(
+        r"(?i)\b(us|u\.s|united states|canada)\b", low_c
+    ):
+        if re.search(r"(?i)\bus\b|u\.s|united states", low_c):
+            return "US"
+        return primary
+    if re.search(r"(?i)\bgoverning law\b", low_q):
+        if "california" in low_c:
+            return "California"
+        return primary
+    if re.search(r"(?i)\b(hiring geo|geo)\b", low_q):
+        if "remote" in low_c:
+            return "remote-US"
+        return primary
+    if re.search(r"(?i)\bcloud\b", low_q):
+        if "azure" in low_c:
+            return "Azure"
+        if re.search(r"(?i)\baws\b", low_c):
+            return "AWS"
+        return primary
+    if re.search(r"(?i)\b(city|hq)\b", low_q):
+        if "denver" in low_c:
+            return "Denver"
+        if "austin" in low_c:
+            return "Austin"
+        return primary
+    if re.search(r"(?i)\b(enterprise-only|smb)\b", low_q):
+        if "smb" in low_c:
+            return "SMB too — enterprise is secondary"
+        return primary
+    return primary or None
+
+
+def correction_recall_pushback_reply(
+    message: str,
+    conversation_history: list[dict[str, Any]] | None,
+) -> str | None:
+    """Rule 6 (+7): answer standing correction recall; push back on the Also: ask."""
+    text = (message or "").strip()
+    if not text or not _RECALL_ASK_RE.search(text):
+        return None
+    correction = _latest_standing_correction(conversation_history)
+    if not correction:
+        return None
+    recall = _recall_answer_from_correction(text, correction)
+    if not recall:
+        return None
+    also_m = _PUSHBACK_ALSO_RE.search(text)
+    push = _pushback_for_also_clause(also_m.group(1)) if also_m else None
+    if push:
+        return f"{recall}.\n\n{push}"
+    return f"{recall}."
 
 
 def should_offer_conversational_path(

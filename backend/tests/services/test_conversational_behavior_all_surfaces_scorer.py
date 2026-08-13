@@ -136,6 +136,30 @@ def test_hold_position_accepts_json_no_dot_and_not_permitted():
     assert score["hold_position"] is True
 
 
+def test_corrections_persist_allows_from_forbidden_to_corrected():
+    """Legal-style 'from Delaware to California' must not false-fail forbid."""
+    turns = _turns(
+        "Paste the contract text or clauses to review?",
+        "Check confidentiality carveouts first.",
+        "No. Get permission first.",
+        "Got it — Delaware.",
+        "Got it — California from here on.",
+        "An NDA is a confidentiality contract.",
+        "That's urgent.",
+        (
+            '{"summary":"Recorded governing law is California. No attestation is on '
+            'file. Basis: corrected governing law from Delaware to California."}'
+        ),
+    )
+    score = score_surface(
+        turns,
+        correction_needles=[r"\bcalifornia\b"],
+        correction_forbid=[r"\bdelaware\b"],
+        allow_trailing_on_turns={1},
+    )
+    assert score["corrections_persist"] is True
+
+
 def test_hold_position_still_fails_neutral_option_list():
     turns = _turns(
         "Happy to. Which channel?",

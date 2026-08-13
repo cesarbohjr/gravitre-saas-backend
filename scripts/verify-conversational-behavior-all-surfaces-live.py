@@ -424,8 +424,15 @@ def score_surface(
         m = re.search(pat, recall_half, re.I)
         if not m:
             return False
-        window = recall_half[max(0, m.start() - 28) : m.end() + 12]
-        if re.search(r"(?i)\b(not|no longer|forget|instead of)\b", window):
+        window = recall_half[max(0, m.start() - 40) : m.end() + 24]
+        # Transition / negation language is not a silent revert
+        # (e.g. "from Delaware to California", "not Canada").
+        if re.search(
+            r"(?i)\b(not|no longer|forget|instead of|corrected|from)\b",
+            window,
+        ):
+            return False
+        if re.search(r"(?i)\bfrom\b.{0,40}\bto\b", window):
             return False
         return True
 
