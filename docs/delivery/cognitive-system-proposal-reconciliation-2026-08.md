@@ -230,7 +230,7 @@ Product decisions still gated (unchanged): fuzzy person-name Option C out; cross
 |------|------|--------|
 | 1 | Integrate dual paths (CognitiveTurnKernel) | **LIVE PASS** — `docs/delivery/one-brain-live-residuals.json` |
 | 2 | Close Mode A outcome→recommendation | **LIVE PASS** — tip `f33798ff2d65863144e1708a751074149dedbfb4`; ops smoke `outcome_loop.prompt_injected=true`; `recommendation_id=5df90af5…` event `recommendation_rejected`; turns before `7e3537ec…` / after `cf74e1bd…`; artifact `docs/delivery/one-brain-live-residuals.json` @ `2026-08-13T18:10:50Z` |
-| 3 | Unify explainable pre-action card | **IN PROGRESS** — shared `PreActionCard` + `pre-action-card` mappers on chat connector confirm + Approvals detail; backend stamps `estimated_impact` / `risk_level` / `approval_reason` onto `pending_task.params` and approval `context` |
+| 3 | Unify explainable pre-action card | **CODE** — `aad7af6d` (prod tip `3f9454be` includes it); shared `PreActionCard` on chat + Approvals; evaluator stamps on pending_task/context; **LIVE PENDING** until a fresh write-approval shows `risk_level` / impact in UI |
 
 ### Mode A LIVE stamp (2026-08-13)
 

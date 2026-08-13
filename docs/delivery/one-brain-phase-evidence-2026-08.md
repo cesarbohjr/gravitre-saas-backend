@@ -35,6 +35,7 @@ Update by appending dated rows; do not erase prior evidence.
 | 23 | Field-deny GOVERN + audit | Ops smoke + audit_events | **PASS** | `cognitive.govern.field_acl_deny` audit_id=`68b1461c-c6b8-47f5-9c4c-bb37254af2da` @ `2026-08-13T10:07:11.088726Z`; turn `4a5ac15e…` |
 | 24 | Outcome→PLAN bias after failure | Ops smoke closed loop | **PASS** | recommendation_id=`2ad66e6c…`; PLAN `outcome_bias` notes include `failed_negative_decline` on probe; turn `81aa4ecc…` |
 | 25 | Mode A bias reaches LIVE/classical prompts | Ops smoke `outcome_loop.prompt_injected` on tip `f33798ff` | **PASS** | tip `f33798ff2d65863144e1708a751074149dedbfb4`; `recommendation_id=5df90af5-cbf5-4198-986b-d9231b4691c5` event `recommendation_rejected`; turns `7e3537ec…`→`cf74e1bd…`; `prompt_injected=true`; artifact `one-brain-live-residuals.json` @ `2026-08-13T18:10:50Z` |
+| 26 | Shared explainable pre-action card (chat + Approvals) | Shared `PreActionCard` + evaluator field stamps | **CODE** | ship `aad7af6d` on `main` (prod tip `3f9454be` includes it); vitest `__tests__/lib/pre-action-card.test.ts` 3 passed; LIVE PENDING — needs a fresh connector write confirm / Approvals row with `context.risk_level` |
 
 ---
 
@@ -71,6 +72,13 @@ Update by appending dated rows; do not erase prior evidence.
 - Artifact — `docs/delivery/one-brain-live-residuals.json` verdict **PASS** (probe `onebrain-f160b6fe1d`)
 - PASS #25 — `outcome_loop.prompt_injected=true`; after notes cite `recommendation_rejected`; turn_after `cf74e1bd-91dd-450d-a542-461e9a9b9068`; job stages include `LEARN` on `3512f096…`
 - Honesty — bar is prompt-section + PLAN bias injection (not streaming-path assistant-text delta)
+
+### 2026-08-13 — Rank 3 pre-action card CODE ship
+
+- Ship — `aad7af6d` `feat(cognitive): unify explainable pre-action card on chat and Approvals`
+- Prod tip after follow-on — `/health` `git_sha=3f9454be…` (ancestor includes `aad7af6d`)
+- CODE — vitest `pre-action-card` mappers 3/3; UI mounts `PreActionCard` in chat connector confirm + Approvals detail; backend stamps `estimated_impact` / `risk_level` / `approval_reason` onto pending_task + approval context
+- LIVE PENDING #26 — no fresh connector-write approval exercised yet to prove `context.risk_level` on a prod Approvals row / chat confirm DOM
 
 ### Final Part B residual (honest)
 
