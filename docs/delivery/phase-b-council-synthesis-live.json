@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-08-13T20:59:49.264589+00:00",
+  "health_git_sha": "42c66f92cf45cfd755db84aba0c2384dd2da9923",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "probe": "phaseb-782039585e",
+  "session_id": "a0c2520f-fcf7-4158-8cba-72e54b490b9d:phaseb-782039585e Conten",
+  "final_recommendation": "freeze_outbound_30d",
+  "has_synthesis": true,
+  "synthesis_reasoning": "The council converged on a 30-day outbound spend freeze because all agents viewed 7 months of cash runway as a material constraint and found the evidence insufficient to justify doubling paid outbound. Pipeline coverage of 0.8 is a real Q3 risk, but the debate found no provided CAC, conversion rate, payback period, attribution, SDR productivity, current spend, or recent outbound ROI data proving that increased paid outbound would efficiently close the gap. Dissent remains around growth risk: freezing outbound could worsen pipeline if outbound is currently an efficient and material contributor. The recommendation is therefore a reversible cash-protection move with low-to-moderate confidence, not a claim that outbound is ineffective.",
+  "disagreement_trail": [
+    "Growth Advocate challenged CFO Analyst's implicit growth-safety framing, emphasizing that pipeline coverage of 0.8 makes a freeze commercially risky if outbound is a major pipeline source; this did not change the final option but shifted the synthesis toward low-to-moderate confidence and urgent review.",
+    "Risk Skeptic agreed with CFO Analyst's cash-risk argument but challenged any definitive claim that freeze is commercially optimal; Growth Advocate's pipeline-risk concern lowered Risk Skeptic's confidence while preserving support for freeze_outbound_30d."
+  ],
+  "peer_aware_language": true,
+  "debate_round_count": 2,
+  "verdict": "PASS",
+  "claim": "PASS \u2014 Phase B council synthesis session=a0c2520f-fcf7-4158-8cba-72e54b490b9d:phaseb-782039585e Conten tip=42c66f92cf45cfd755db84aba0c2384dd2da9923"
+}

@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-08-13T20:57:49.464862+00:00",
+  "base": "https://gravitre-saas-backend-production.up.railway.app",
+  "health_git_sha": "42c66f92cf45cfd755db84aba0c2384dd2da9923",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "probe_id": "phasea-4dff8d8494",
+  "cases": [
+    {
+      "message": "please scrap that CRM update; I've reconsidered the whole thing",
+      "fast_path": null,
+      "final_intent": "ambiguous",
+      "used_model_fallback": true,
+      "ok": true
+    },
+    {
+      "message": "Rewrite the pending HubSpot action as an internal memo and leave the contact record untouched",
+      "fast_path": null,
+      "final_intent": "ambiguous",
+      "used_model_fallback": true,
+      "ok": true
+    }
+  ],
+  "architecture_ok": true,
+  "verdict": "PASS",
+  "claim": "PASS \u2014 Phase A novel phrasing uses model fallback (fast miss \u2192 LLM), tip=42c66f92cf45cfd755db84aba0c2384dd2da9923"
+}

@@ -28,9 +28,11 @@ BASE = os.environ.get(
 OUT = REPO / "docs" / "delivery" / "phase-a-novel-pending-classify-live.json"
 ISOLATED_ORG = "f07e57c0-1501-4000-8000-c04e57a00001"
 
-# Novel — intentionally NOT in phrase banks (verify by grepping pending_reply_classifier).
+# Novel — intentionally NOT in phrase banks / _modify_hint tokens (skip/instead/just/only/…).
 NOVEL_CANCEL = "please scrap that CRM update; I've reconsidered the whole thing"
-NOVEL_MODIFY = "pivot the pending write to a draft note only, keep it internal"
+NOVEL_MODIFY = (
+    "Rewrite the pending HubSpot action as an internal memo and leave the contact record untouched"
+)
 
 
 def _load_env() -> dict[str, str]:
@@ -95,7 +97,8 @@ async def _classify(message: str, org_id: str) -> dict:
         "fast_path": fast,
         "final_intent": modeled,
         "used_model_fallback": fast is None,
-        "ok": fast is None and modeled in {"reject", "modify", "ambiguous", "unrelated"},
+        # Architecture bar: fast miss → model; never silent confirm/execute.
+        "ok": fast is None and modeled != "confirm",
     }
 
 
@@ -116,8 +119,9 @@ async def main() -> int:
     )
     # Architecture proof: fast path must miss; model must not silent-default to confirm.
     architecture_ok = all(c["used_model_fallback"] and c["final_intent"] != "confirm" for c in cases)
-    cancel_ok = cases[0]["final_intent"] in {"reject", "modify", "ambiguous"}
+    cancel_ok = cases[0]["final_intent"] in {"reject", "ambiguous"}
     modify_ok = cases[1]["final_intent"] in {"modify", "ambiguous", "unrelated"}
+    # Prefer reject/modify when model is confident; ambiguous still proves "ask, don't guess".
     verdict = "PASS" if architecture_ok and cancel_ok and modify_ok else "FAIL"
 
     payload = {

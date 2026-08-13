@@ -257,7 +257,7 @@ Append-only Phase D structural pass vs Part A standing list. Labels: **CODE** = 
 | 6 | Uniform evidence DTO | **CODE** | `cognitive_evidence_envelope.py` `{recommendation, why, sources, confidence}`; attached on classical finalize + LIVE `_unified_live_turn_payload` + `AssistantStreamComplete.evidence` | **LIVE PENDING** chat payload shows `evidence.evidence_schema=cognitive_evidence_v1` |
 | 7 | Confidence thresholds | **CODE (PARTIAL)** | Module C honesty unchanged; confidence join on traces (item 20) | No single behavior-policy table — still PARTIAL |
 | 8 | Autonomous research mode | **PARTIAL** | Embedded cascade only | No second research product surface / fake prices — intentionally not greenfielded |
-| 9 | Council cross-exam | **SKIPPED this pass** | Peer agent ownership of `council_service.py` | Do not double-edit |
+| 9 | Council cross-exam | **LIVE PASS** | Sequential peer cross-exam + synthesis in `council_service.py` | `docs/delivery/phase-b-council-synthesis-live.json` tip `42c66f92`; session `a0c2520f…`; `has_synthesis=true`; disagreement_trail present |
 | 10 | Dept sub-agents | **PARTIAL** | Unchanged — product model gap | **BLOCKED** on recursive dept-memory product decision |
 | 11 | Operating model inference | **PARTIAL** | Company intel / inventory unchanged | Auto-adopt sequences still not shipped |
 | 12 | Outcome learning | **CODE (Mode A)** | Prior LIVE PASS in Part C execution log | Mode A only — not automatic policy rewrite |
@@ -307,8 +307,37 @@ Append-only Phase D structural pass vs Part A standing list. Labels: **CODE** = 
 # COGNITIVE_REGRESSION_RUN_PYTEST=1 node scripts/cognitive-regression-suite.mjs
 ```
 
+### Phase A LIVE stamp (2026-08-13) — tip `42c66f92`
+
+- Artifact — `docs/delivery/phase-a-novel-pending-classify-live.json` verdict **PASS** @ `2026-08-13T20:57:49Z`
+- Probe — `phasea-4dff8d8494`
+- Novel cancel — fast_path=`null` → model → `ambiguous` (ask, not silent confirm/execute)
+- Novel modify — fast_path=`null` → model → `ambiguous` (same architecture bar)
+- Call-site fixes — `use_model=True` on platform + connector; pending always reaches `process_turn`; orphan unclear asks (no silent archive)
+
+### Phase B LIVE stamp (2026-08-13) — tip `42c66f92`
+
+- Artifact — `docs/delivery/phase-b-council-synthesis-live.json` verdict **PASS** @ `2026-08-13T20:59:49Z`
+- Session — `a0c2520f-fcf7-4158-8cba-72e54b490b9d:phaseb-782039585e Conten`
+- Final — `freeze_outbound_30d` with synthesis_reasoning + disagreement_trail (Growth Advocate vs CFO / Risk Skeptic)
+- `peer_aware_language=true`, `has_synthesis=true`
+
+### Phase C honesty finding (2026-08-13)
+
+- Within-session: LIVE history window raised to **48** (matches assistant); still token-summarized on classical when over 80% context — not retrieval-filtered
+- Cross-conversation: retrieval remains necessary at scale; empty/weak packs now emit low-confidence NOTE in `<memory_pack>` (CODE on tip)
+
+### Cesar decisions still required (cannot FULL without these)
+
+1. Cross-conversation memory product scope beyond ledger (Option C still **out**)
+2. Org knowledge graph as intentional product surface
+3. Authoritative MQL/CAC/ARR definition **content** ownership
+4. Recursive department sub-agent + shared dept memory model
+5. Standing unprompted investigators + free-form watchers→agents
+6. Auto-adopt process-mining sequences as operating model
+
 ### Honesty bar
 
 - No customer SKU prices or Enable toggles invented.
-- Items 1 (Option C), 2 (org graph product), 8 (second research surface), 10–11, 13 (metric **definitions content**), 14–15 remain product-gated or PARTIAL.
+- Items gated above remain **BLOCKED** for proposal-FULL — not silently marked PARTIAL as “done.”
 - Do **not** claim FULL for fuzzy memory or LIVE PASS without audit/conversation evidence pointers above.

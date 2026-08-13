@@ -36,6 +36,8 @@ Update by appending dated rows; do not erase prior evidence.
 | 24 | Outcome→PLAN bias after failure | Ops smoke closed loop | **PASS** | recommendation_id=`2ad66e6c…`; PLAN `outcome_bias` notes include `failed_negative_decline` on probe; turn `81aa4ecc…` |
 | 25 | Mode A bias reaches LIVE/classical prompts | Ops smoke `outcome_loop.prompt_injected` on tip `f33798ff` | **PASS** | tip `f33798ff2d65863144e1708a751074149dedbfb4`; `recommendation_id=5df90af5-cbf5-4198-986b-d9231b4691c5` event `recommendation_rejected`; turns `7e3537ec…`→`cf74e1bd…`; `prompt_injected=true`; artifact `one-brain-live-residuals.json` @ `2026-08-13T18:10:50Z` |
 | 26 | Shared explainable pre-action card (chat + Approvals) | Shared `PreActionCard` + evaluator field stamps | **CODE** | ship `aad7af6d` on `main` (prod tip `3f9454be` includes it); vitest `__tests__/lib/pre-action-card.test.ts` 3 passed; LIVE PENDING — needs a fresh connector write confirm / Approvals row with `context.risk_level` |
+| 27 | Phase A: novel pending phrasing → LLM fallback | Live classify probe on tip `42c66f92` | **PASS** | `phase-a-novel-pending-classify-live.json` @ `2026-08-13T20:57:49Z` probe `phasea-4dff8d8494`; both novel phrases `fast_path=null`, `final_intent≠confirm` |
+| 28 | Phase B: council synthesis cross-exam | Live council on tip `42c66f92` | **PASS** | `phase-b-council-synthesis-live.json` @ `2026-08-13T20:59:49Z`; session `a0c2520f…`; `has_synthesis=true`; disagreement_trail length 2 |
 
 ---
 
