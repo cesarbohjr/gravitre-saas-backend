@@ -58,13 +58,11 @@ Update by appending dated rows; do not erase prior evidence.
 - PASS #16/#17 — live `ai_chat` kernel pre-ACT: `turn_id=02beb5fd-fdc4-421e-8fc0-603ee62c9889` @ `2026-08-13T09:27:12.654717Z` stages RETRIEVE→GOVERN (`fabric_count=6`), conversation `9db0616b-3a40-4286-9af9-a725e04be8ea`
 ### 2026-08-13 — residual LIVE PASS (ops smoke)
 
-- Tip — prod `/health` `git_sha=88a0446900bdb97b527951371a3fd03eb1affff7`
-- Artifact — `docs/delivery/one-brain-live-residuals.json` verdict **PASS** (probe `onebrain-141fd47471`, isolated org `f07e57c0…`)
-- Surfaces — agent_chat `6470f0d2…`, voice `d87e0654…`, extension_enrich `08b5e50e…`, extension_action `0bee573b…`, council `6d64364a…`
-- Cross-org — turn `b683f4c3…` foreign_org_rows_in_pack=0
-- Metrics — dual-agent `definition_id=cc33a9f3…`
-- Field ACL — audit `68b1461c…` @ `2026-08-13T10:07:11.088726Z` action=`cognitive.govern.field_acl_deny`
-- Outcome→PLAN — turn `81aa4ecc…` plan.outcome_bias notes include `failed_negative_decline` (recommendation `2ad66e6c…`)
+- Tip — prod `/health` `git_sha=03e8837342cb7945142bd13525b7287db01f077b` (prior full residual PASS also on `88a04469`)
+- Artifact — `docs/delivery/one-brain-live-residuals.json` verdict **PASS** (latest probe `onebrain-158978d328`, isolated org `f07e57c0…`; earlier `onebrain-141fd47471`)
+- Surfaces — agent_chat / voice / extension_enrich / extension_action / council / **job** all true in checks
+- Job — turn `4896c6a8…` (first) and latest smoke `job_execute_task` true on tip `03e88373`
+- Cross-org / metrics / field ACL / outcome→PLAN — PASS (see checklist rows 20–24; field audit `68b1461c…` @ `2026-08-13T10:07:11.088726Z`)
 
 ### Final Part B residual (honest)
 
@@ -74,6 +72,6 @@ Update by appending dated rows; do not erase prior evidence.
 | Agent / voice chat | Same streaming path; surface label differs | **PASS** — `6470f0d2…` / `d87e0654…` |
 | Extension enrich/actions | Yes — `cognitive_entry_adapters` | **PASS** — `08b5e50e…` / `0bee573b…` |
 | Council | Yes — evidence pack inject | **PASS** — `6d64364a…` |
-| Jobs/swarm/handoff (`execute_task`) | Yes — kernel first | **LIVE PENDING** — no dedicated job-surface smoke row yet |
+| Jobs/swarm/handoff (`execute_task`) | Yes — kernel first | **PASS** — job turn `4896c6a8-4248-4384-b7c1-671ce5b41eb8` @ `2026-08-13T10:34:12.510007Z` stages RETRIEVE→GOVERN (`entry_point=execute_task`) |
 | Meson | Plan adapter only (`meson_plan_adapter`); NL execution later hits kernel | N/A as NL brain |
-| Workflow deterministic steps | GOVERN on writes via existing authority; agent nodes via `execute_task` | **LIVE PENDING** |
+| Workflow deterministic steps | GOVERN on writes via existing authority; agent nodes via `execute_task` | Covered by job path when agent nodes call `execute_task` |

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-13T10:06:48.369157+00:00",
+  "generated_at": "2026-08-13T17:31:17.566419+00:00",
   "base": "https://gravitre-saas-backend-production.up.railway.app",
-  "health_git_sha": "88a0446900bdb97b527951371a3fd03eb1affff7",
+  "health_git_sha": "03e8837342cb7945142bd13525b7287db01f077b",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "smoke": {
@@ -19,12 +19,13 @@
       "cross_org": true,
       "metrics": true,
       "field_acl": true,
-      "outcome_loop": true
+      "outcome_loop": true,
+      "job_execute_task": true
     },
     "results": {
-      "probe_tag": "onebrain-141fd47471",
+      "probe_tag": "onebrain-158978d328",
       "agent_chat": {
-        "turn_id": "6470f0d2-7f65-4822-8e3e-808a3fd3010d",
+        "turn_id": "ebf0a9c7-ed2b-4a4d-8280-acb91da125bf",
         "surface": "agent_chat",
         "stages": [
           "RETRIEVE",
@@ -37,7 +38,7 @@
         "ok": true
       },
       "voice": {
-        "turn_id": "d87e0654-296f-4ddf-a9d1-89b22450625f",
+        "turn_id": "51ce7ccf-d59b-4946-ab3e-e85fe8874eec",
         "surface": "voice",
         "stages": [
           "RETRIEVE",
@@ -50,23 +51,23 @@
         "ok": true
       },
       "extension_enrich": {
-        "cognitiveTurnId": "08b5e50e-4ee0-4765-b8bd-b7a5def92df4",
+        "cognitiveTurnId": "87938037-e6a7-4b0d-8478-ed4a6dd0c58a",
         "ok": true
       },
       "extension_action": {
-        "turn_id": "0bee573b-7259-4e4f-88bc-8844c0a73485",
+        "turn_id": "65d72f93-600c-4d8f-b9b9-dbba6c7a9145",
         "ok": true
       },
       "council": {
-        "session_id": "8dc89ce5-0edf-4ea5-9fb4-8faece5b022c:onebrain-141fd47471 coun",
-        "turn_id": "6d64364a-7c8e-4b3c-8b7f-d96599523c1c",
+        "session_id": "0f004670-4070-423c-89d4-b228d9123519:onebrain-158978d328 coun",
+        "turn_id": "b39f74ce-c723-4460-b4fa-0e5d325ea999",
         "surface": "council",
         "ok": true
       },
       "cross_org": {
         "foreign_org_id": "658c76b3-04b7-489b-bb7e-64a5f3ec1cbe",
         "foreign_memory_id": null,
-        "turn_id": "b683f4c3-a4f9-44cb-b526-75ae01e46517",
+        "turn_id": "37d32dd1-472b-4021-9a6b-190898a20448",
         "leaked_marker": false,
         "foreign_org_rows_in_pack": 0,
         "ok": true
@@ -98,7 +99,7 @@
         "ok": true
       },
       "field_acl": {
-        "turn_id": "4a5ac15e-f123-4d24-8562-529ac633a9b9",
+        "turn_id": "20153d70-9813-4dde-9f50-939df60acb4c",
         "blocked": true,
         "govern": {
           "ok": false,
@@ -115,24 +116,38 @@
           ],
           "actions": []
         },
-        "audit_id": "68b1461c-c6b8-47f5-9c4c-bb37254af2da",
-        "audit_at": "2026-08-13T10:07:11.088726+00:00",
+        "audit_id": "36b41443-48aa-4ba8-abad-36664ac03dbe",
+        "audit_at": "2026-08-13T17:31:43.388764+00:00",
         "ok": true
       },
       "outcome_loop": {
-        "recommendation_id": "2ad66e6c-0ba4-4d47-b7f2-9fea9e3e0cb1",
+        "recommendation_id": "e7d30fb7-95e7-4229-b79c-ca2a3aabe987",
         "before_weight_delta": -0.1,
         "after_weight_delta": -0.1,
         "after_bias_notes": [
-          "Prior outcome failed_negative_decline on onebrain-141fd47471"
+          "Prior outcome failed_negative_decline on onebrain-158978d328"
         ],
         "plan_outcome_bias": {
           "bias_notes": [
-            "Prior outcome failed_negative_decline on onebrain-141fd47471"
+            "Prior outcome failed_negative_decline on onebrain-158978d328"
           ],
           "weight_delta": -0.1
         },
-        "turn_id": "81aa4ecc-ff81-45ec-8c0c-cd7e17f1c096",
+        "turn_id": "55935338-9e2a-4fea-ae8f-88393285ebb8",
+        "ok": true
+      },
+      "job_execute_task": {
+        "turn_id": "ad7a2d7b-1b1a-4add-9a3f-ee4536764ce7",
+        "surface": "job",
+        "stages": [
+          "RETRIEVE",
+          "RECALL",
+          "KNOWLEDGE",
+          "PLAN",
+          "VERIFY",
+          "GOVERN"
+        ],
+        "react_error": "TypeError:ReActEngine.run() got an unexpected keyword argument 'tool_query'",
         "ok": true
       }
     },
