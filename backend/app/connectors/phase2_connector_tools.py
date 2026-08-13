@@ -199,6 +199,17 @@ def _exec_linear(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[
             data["outcome_effect"] = "updated"
         return data
 
+    if action == "linear.issues.search":
+        query_text = str(params.get("query") or params.get("q") or "").strip()
+        first = int(params.get("limit") or params.get("first") or 20)
+        if not query_text:
+            raise ToolValidationError("query is required")
+        return _linear_graphql(
+            token,
+            "query ($query: String!, $first: Int) { issueSearch(query: $query, first: $first) { nodes { id identifier title url state { name } } } }",
+            {"query": query_text, "first": first},
+        )
+
     raise ToolValidationError(f"Unsupported Linear action: {action}")
 
 
@@ -241,7 +252,12 @@ def _exec_gitlab(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[
         )
 
     project_id = params.get("project_id") or params.get("projectId")
-    if action in {"gitlab.issues.list", "gitlab.issues.create", "gitlab.merge_requests.create"}:
+    if action in {
+        "gitlab.issues.list",
+        "gitlab.issues.create",
+        "gitlab.merge_requests.create",
+        "gitlab.merge_requests.list",
+    }:
         if not project_id:
             raise ToolValidationError("project_id is required")
 
@@ -292,6 +308,15 @@ def _exec_gitlab(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[
             data["outcome_effect"] = "created"
         return data
 
+    if action == "gitlab.merge_requests.list":
+        per_page = int(params.get("limit") or params.get("per_page") or 20)
+        return _rest_request(
+            method="GET",
+            url=f"{base}/projects/{project_id}/merge_requests",
+            headers=headers,
+            params={"per_page": per_page, "state": params.get("state", "opened")},
+        )
+
     raise ToolValidationError(f"Unsupported GitLab action: {action}")
 
 
@@ -318,6 +343,10 @@ def _exec_shopify(ctx: ToolContext, params: dict[str, Any], action: str) -> dict
         if status:
             query["status"] = status
         return _rest_request(method="GET", url=f"{base}/orders.json", headers=headers, params=query)
+
+    if action == "shopify.customers.list":
+        limit = int(params.get("limit") or 50)
+        return _rest_request(method="GET", url=f"{base}/customers.json", headers=headers, params={"limit": limit})
 
     if action == "shopify.products.create":
         title = str(params.get("title") or "").strip()
@@ -431,6 +460,15 @@ def _exec_paypal(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[
             data["outcome_effect"] = "created"
         return data
 
+    if action == "paypal.disputes.list":
+        count = int(params.get("limit") or params.get("count") or 10)
+        return _rest_request(
+            method="GET",
+            url=f"{base}/v1/customer/disputes",
+            headers=headers,
+            params={"count": count, "start_index": params.get("start_index", 0)},
+        )
+
     raise ToolValidationError(f"Unsupported PayPal action: {action}")
 
 
@@ -499,6 +537,26 @@ def _exec_brevo(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[s
         if data.get("id"):
             data["entity_id"] = data["id"]
             data["outcome_effect"] = "created"
+        return data
+
+    if action == "brevo.contacts.update":
+        identifier = params.get("contact_id") or params.get("id") or params.get("email")
+        if not identifier:
+            raise ToolValidationError("contact_id or email is required")
+        body = {k: v for k, v in params.items() if k not in {"connector_id", "contact_id", "id", "email"}}
+        if params.get("attributes"):
+            body["attributes"] = params["attributes"]
+        if not body:
+            raise ToolValidationError("At least one field to update is required")
+        data = _rest_request(
+            method="PUT",
+            url=f"{base}/contacts/{identifier}",
+            headers=headers,
+            json_body=body,
+        )
+        if data.get("id"):
+            data["entity_id"] = data["id"]
+            data["outcome_effect"] = "updated"
         return data
 
     raise ToolValidationError(f"Unsupported Brevo action: {action}")
@@ -584,6 +642,24 @@ def _exec_meta_marketing(ctx: ToolContext, params: dict[str, Any], action: str) 
         )
         if data.get("success") or data.get("id"):
             data["entity_id"] = str(campaign_id)
+            data["outcome_effect"] = "updated"
+        return data
+
+    if action == "meta_marketing.adsets.update":
+        adset_id = params.get("adset_id") or params.get("id")
+        if not adset_id:
+            raise ToolValidationError("adset_id is required")
+        body = {k: v for k, v in params.items() if k not in {"connector_id", "adset_id", "id", "ad_account_id", "adAccountId"}}
+        if not body:
+            raise ToolValidationError("At least one field to update is required")
+        data = _rest_request(
+            method="POST",
+            url=f"{base}/{adset_id}",
+            headers={**headers, "Content-Type": "application/json"},
+            json_body=body,
+        )
+        if data.get("success") or data.get("id"):
+            data["entity_id"] = str(adset_id)
             data["outcome_effect"] = "updated"
         return data
 

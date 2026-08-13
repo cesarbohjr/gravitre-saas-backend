@@ -6,7 +6,7 @@ from app.connectors.phase2_connector_routes import PHASE2_ROUTES, PHASE2_VENDORS
 
 
 def test_phase2_route_count():
-    assert len(PHASE2_ROUTES) == 24
+    assert len(PHASE2_ROUTES) == 30
     assert PHASE2_VENDORS == frozenset(
         {"linear", "gitlab", "shopify", "paypal", "brevo", "meta_marketing"}
     )
