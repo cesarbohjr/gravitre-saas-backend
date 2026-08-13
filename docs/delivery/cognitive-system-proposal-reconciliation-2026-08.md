@@ -221,3 +221,15 @@ Append-only status vs the One Brain / CognitiveTurnKernel plan. Labels: **CODE**
 | 9 | Unit tests + evidence checklist | **CODE** — `test_cognitive_turn_kernel.py`; `docs/delivery/one-brain-phase-evidence-2026-08.md` |
 
 Product decisions still gated (unchanged): fuzzy person-name Option C out; cross-org memory never; metrics/what-if must not invent customer SKU prices.
+
+---
+
+## Part C execution log (2026-08-13)
+
+| Rank | Step | Status |
+|------|------|--------|
+| 1 | Integrate dual paths (CognitiveTurnKernel) | **LIVE PASS** — `docs/delivery/one-brain-live-residuals.json` |
+| 2 | Close Mode A outcome→recommendation | **IN PROGRESS** — `outcome_bias` now injected via `to_prompt_sections` into LIVE + classical prompts; LEARN wired on `execute_task`; measured prompt-injection check in ops smoke |
+| 3 | Unify explainable pre-action card | **QUEUED** |
+
+Append further dated notes; do not overwrite Part A/B.

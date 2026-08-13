@@ -576,7 +576,7 @@ class CognitiveTurnKernel:
 
 
 def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
-    """Build memory_section / knowledge_section strings for prompt assembly."""
+    """Build memory / knowledge / Mode A outcome-bias sections for prompt assembly."""
     memory_section = ""
     knowledge_section = ""
     if isinstance(ctx.memory_pack, dict):
@@ -588,10 +588,42 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
         if not knowledge_section:
             entity = str(ctx.knowledge_pack.get("entity_section") or "")
             knowledge_section = entity
+    outcome_bias_section = _outcome_bias_prompt_section(
+        (ctx.plan or {}).get("outcome_bias") if isinstance(ctx.plan, dict) else None
+    )
     return {
         "memory_section": memory_section,
         "knowledge_section": knowledge_section,
+        "outcome_bias_section": outcome_bias_section,
     }
+
+
+def _outcome_bias_prompt_section(bias: Any) -> str:
+    """Mode A advisory bias — steers recommendations; never auto-mutates org policy."""
+    if not isinstance(bias, dict):
+        return ""
+    notes = bias.get("bias_notes") or []
+    if not isinstance(notes, list):
+        notes = []
+    notes = [str(n).strip() for n in notes if str(n).strip()]
+    try:
+        weight = float(bias.get("weight_delta") or 0.0)
+    except (TypeError, ValueError):
+        weight = 0.0
+    if not notes and weight == 0.0:
+        return ""
+    lines = [
+        "<outcome_bias mode=\"A\" advisory_only=\"true\">",
+        "Prior recommendation outcomes (Mode A — human-approved learning only).",
+        "Use these as advisory bias when recommending next steps.",
+        "Do NOT invent policy changes, prices, or entitlements.",
+        "After negative/rejected outcomes, prefer safer alternatives and say what failed before.",
+        f"weight_delta={weight}",
+    ]
+    for note in notes[:8]:
+        lines.append(f"- {note[:300]}")
+    lines.append("</outcome_bias>")
+    return "\n".join(lines)
 
 
 def get_cognitive_turn_kernel(settings: Settings | None = None) -> CognitiveTurnKernel:

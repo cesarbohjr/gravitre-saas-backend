@@ -718,18 +718,23 @@ async def run_unified_turn_shadow(
             sections = to_prompt_sections(cognitive_context)
             mem = (sections.get("memory_section") or "").strip()
             know = (sections.get("knowledge_section") or "").strip()
+            bias = (sections.get("outcome_bias_section") or "").strip()
             if mem:
                 user_parts.append(mem)
             if know:
                 user_parts.append(know)
+            if bias:
+                user_parts.append(bias)
             if isinstance(unified_turn_knowledge_meta, dict):
                 unified_turn_knowledge_meta = {
                     **unified_turn_knowledge_meta,
                     "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                    "outcomeBiasInjected": bool(bias),
                 }
-            elif mem or know:
+            elif mem or know or bias:
                 unified_turn_knowledge_meta = {
                     "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                    "outcomeBiasInjected": bool(bias),
                 }
         except Exception:  # noqa: BLE001
             pass

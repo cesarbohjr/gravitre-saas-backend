@@ -6,8 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.cognitive_turn_kernel import (
+    CognitiveTurnContext,
     CognitiveTurnKernel,
     CognitiveTurnRequest,
+    to_prompt_sections,
 )
 
 
@@ -161,3 +163,26 @@ async def test_cross_org_memory_rows_excluded():
             assert str(row.get("org_id") or "org-1") == "org-1"
     assert "allowed memory" in contents
     assert "secret from other org" not in contents
+
+
+def test_to_prompt_sections_includes_mode_a_outcome_bias():
+    ctx = CognitiveTurnContext(
+        turn_id="t1",
+        plan={
+            "steps": [],
+            "summary": "x",
+            "source": "cognitive_planner",
+            "outcome_bias": {
+                "bias_notes": ["Prior outcome recommendation_rejected on crm outreach"],
+                "weight_delta": -0.1,
+            },
+        },
+        memory_pack={"working": [], "episodic": [], "prompt_section": ""},
+        knowledge_pack={"prompt_section": ""},
+    )
+    sections = to_prompt_sections(ctx)
+    bias = sections.get("outcome_bias_section") or ""
+    assert "outcome_bias" in bias
+    assert "Mode A" in bias
+    assert "recommendation_rejected" in bias
+    assert "weight_delta=-0.1" in bias

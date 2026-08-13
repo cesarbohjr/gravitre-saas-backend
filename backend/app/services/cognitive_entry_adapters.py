@@ -93,6 +93,7 @@ def attach_kernel_pack_to_evidence(evidence: dict[str, Any] | None, ctx: Any) ->
         bag["cognitiveTurnId"] = getattr(ctx, "turn_id", None)
         bag["cognitiveMemorySection"] = sections.get("memory_section") or ""
         bag["cognitiveKnowledgeSection"] = sections.get("knowledge_section") or ""
+        bag["cognitiveOutcomeBiasSection"] = sections.get("outcome_bias_section") or ""
         bag["cognitiveStages"] = [
             getattr(s, "stage", s) for s in (getattr(ctx, "stages", None) or [])
         ]

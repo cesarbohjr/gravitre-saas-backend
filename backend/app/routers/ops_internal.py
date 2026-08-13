@@ -840,44 +840,83 @@ async def cognitive_one_brain_smoke(
         results["field_acl_error"] = f"{exc.__class__.__name__}:{exc}"[:300]
         checks["field_acl"] = False
 
-    # 7) Outcome → PLAN bias before/after
+    # 7) Outcome → PLAN bias before/after + prompt injection (Mode A)
     try:
-        before = bias_from_outcomes(client, org_id, probe_tag, settings)
+        from app.services.cognitive_outcome_loop import record_closed_loop
+        from app.services.cognitive_turn_kernel import to_prompt_sections
+
+        situation = f"{probe_tag} recommend next CRM outreach step"
+        before = bias_from_outcomes(client, org_id, situation, settings)
+        ctx_before = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=actor_id,
+                message=situation,
+                surface="ai_chat",
+                entry_point="cognitive_one_brain_smoke_outcome_before",
+                intent="chat",
+                client=client,
+            )
+        )
+        before_sections = to_prompt_sections(ctx_before)
+        before_bias_prompt = (before_sections.get("outcome_bias_section") or "").strip()
+
         rec_id = str(uuid_mod.uuid4())
+        # Valid OUTCOME_EVENTS vocabulary (not synthetic smoke-only strings).
+        recorded = await record_closed_loop(
+            org_id=org_id,
+            recommendation_id=rec_id,
+            outcome_event="recommendation_rejected",
+            settings=settings,
+            confidence_score=0.4,
+            domain_context={"entity_id": situation, "probe": probe_tag},
+        )
+        # Ensure entity_id is searchable by bias_from_outcomes / PLAN notes.
         client.table("intelligence_outcome_events").insert(
             {
                 "org_id": org_id,
                 "recommendation_id": rec_id,
-                "outcome_event": "failed_negative_decline",
+                "outcome_event": "recommendation_rejected",
                 "entity_type": "recommendation",
-                "entity_id": probe_tag,
+                "entity_id": situation,
                 "confidence_score": 0.4,
+                "metadata": {"probe": probe_tag, "mode": "A"},
             }
         ).execute()
-        after = bias_from_outcomes(client, org_id, probe_tag, settings)
+
+        after = bias_from_outcomes(client, org_id, situation, settings)
         ctx_after = await kernel.run_pre_act(
             CognitiveTurnRequest(
                 org_id=org_id,
                 user_id=actor_id,
-                message=probe_tag,
+                message=situation,
                 surface="ai_chat",
-                entry_point="cognitive_one_brain_smoke_outcome",
+                entry_point="cognitive_one_brain_smoke_outcome_after",
                 intent="chat",
                 client=client,
             )
         )
         plan_bias = (ctx_after.plan or {}).get("outcome_bias") or {}
-        changed = float(after.get("weight_delta") or 0) != float(before.get("weight_delta") or 0) or bool(
-            after.get("bias_notes")
-        )
+        after_sections = to_prompt_sections(ctx_after)
+        after_bias_prompt = (after_sections.get("outcome_bias_section") or "").strip()
+        prompt_injected = bool(after_bias_prompt) and "outcome_bias" in after_bias_prompt and "Mode A" in after_bias_prompt
+        notes_grew = len(after.get("bias_notes") or []) > len(before.get("bias_notes") or [])
+        changed = notes_grew or bool(after.get("bias_notes"))
         results["outcome_loop"] = {
             "recommendation_id": rec_id,
+            "situation": situation,
+            "record_closed_loop": recorded,
             "before_weight_delta": before.get("weight_delta"),
             "after_weight_delta": after.get("weight_delta"),
+            "before_bias_notes": before.get("bias_notes"),
             "after_bias_notes": after.get("bias_notes"),
+            "before_bias_prompt_len": len(before_bias_prompt),
+            "after_bias_prompt_len": len(after_bias_prompt),
+            "prompt_injected": prompt_injected,
             "plan_outcome_bias": plan_bias,
-            "turn_id": ctx_after.turn_id,
-            "ok": changed and bool(plan_bias.get("bias_notes") or plan_bias.get("weight_delta") is not None),
+            "turn_id_before": ctx_before.turn_id,
+            "turn_id_after": ctx_after.turn_id,
+            "ok": changed and prompt_injected and bool(plan_bias.get("bias_notes")),
         }
         checks["outcome_loop"] = bool(results["outcome_loop"]["ok"])
     except Exception as exc:  # noqa: BLE001

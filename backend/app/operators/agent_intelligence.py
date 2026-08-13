@@ -1159,6 +1159,10 @@ class AgentIntelligence:
             memory_section = "\n\n".join(
                 p for p in (memory_section or "", cognitive_sections["memory_section"]) if p
             ).strip()
+        if cognitive_sections.get("outcome_bias_section"):
+            memory_section = "\n\n".join(
+                p for p in (memory_section or "", cognitive_sections["outcome_bias_section"]) if p
+            ).strip()
 
         effective_briefing = dict(briefing or {})
         if resolved_plan.upstream_context:
@@ -1239,8 +1243,6 @@ class AgentIntelligence:
             model=model,
             connected_integrations=list(connected),
             permitted_tools=resolved_plan.permitted_tools,
-            # Prefer short task text for keyword narrow (same as streaming path).
-            tool_query=task_text or task_prompt,
             max_iterations=max_iterations or int(params.get("max_react_iterations") or 10),
             audit_resource_type="workflow_run" if run_id else "agent_job",
             audit_resource_id=task_id or run_id or agent_id,
@@ -1281,6 +1283,45 @@ class AgentIntelligence:
                 "executionVerified": agent_result.execution_verified,
             },
         )
+
+        # LEARN stage — Mode A closed loop (best-effort; never blocks job return).
+        if cognitive_ctx is not None:
+            try:
+                from app.services.cognitive_turn_kernel import (
+                    CognitiveTurnRequest,
+                    get_cognitive_turn_kernel,
+                )
+
+                outcome_event = (
+                    "workflow_executed"
+                    if getattr(agent_result, "execution_verified", False)
+                    or str(getattr(agent_result, "react_status", "")).lower() in {"ok", "success", "completed"}
+                    else "workflow_failed"
+                )
+                await get_cognitive_turn_kernel(active_settings).run_learn(
+                    CognitiveTurnRequest(
+                        org_id=org_id,
+                        user_id=actor_id,
+                        agent_id=agent_id or None,
+                        message=task_text,
+                        surface=str(params.get("surface") or "job"),
+                        entry_point="execute_task_learn",
+                        intent=str(params.get("intent") or "job"),
+                        client=client,
+                        agent=agent,
+                    ),
+                    cognitive_ctx,
+                    act_result={
+                        "status": getattr(agent_result, "react_status", None),
+                        "success": bool(getattr(agent_result, "execution_verified", False)),
+                        "action": "execute_task",
+                    },
+                    recommendation_id=str(task_id or run_id or cognitive_ctx.turn_id),
+                    outcome_event=outcome_event,
+                )
+            except Exception as learn_exc:  # noqa: BLE001
+                logger.debug("cognitive_learn_execute_task_skipped error=%s", learn_exc)
+
         return agent_result
 
     async def execute_task_streaming(
@@ -2402,6 +2443,13 @@ class AgentIntelligence:
                         turn_ctx.entity_relationship_section = "\n\n".join(
                             p for p in (prior_k, _sections["knowledge_section"]) if p
                         ).strip()
+                # Mode A outcome→recommendation bias must reach classical prompts too.
+                bias = (_sections.get("outcome_bias_section") or "").strip()
+                if bias and hasattr(turn_ctx, "retrieval"):
+                    prior_m = getattr(turn_ctx.retrieval, "memory_section", "") or ""
+                    turn_ctx.retrieval.memory_section = "\n\n".join(
+                        p for p in (prior_m, bias) if p
+                    ).strip()
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_classical_merge_skipped error=%s", exc)
         agent = turn_ctx.agent
