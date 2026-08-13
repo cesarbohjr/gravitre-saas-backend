@@ -102,6 +102,25 @@ jobs:
           python ../scripts/smoke-react-write-live.py \
             --json ../docs/delivery/react-write-live-latest.json
 
+      - name: Run capability write-authority parity smoke
+        if: steps.secrets.outputs.skip != '1'
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+          OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
+          OAUTH_SMOKE_ENVIRONMENT: ${{ secrets.OAUTH_SMOKE_ENVIRONMENT || 'sandbox' }}
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://gravitre-saas-backend-production.up.railway.app' }}
+        run: |
+          mkdir -p ../docs/delivery
+          python ../scripts/verify-capability-write-authority-live.py \
+            --json ../docs/delivery/capability-write-authority-live.json
+
       - name: Upload live write report
         if: always() && steps.secrets.outputs.skip != '1'
         uses: actions/upload-artifact@v4
@@ -111,4 +130,5 @@ jobs:
             docs/delivery/verified-write-live-latest.json
             docs/delivery/verified-write-live-latest.csv
             docs/delivery/react-write-live-latest.json
+            docs/delivery/capability-write-authority-live.json
           if-no-files-found: ignore

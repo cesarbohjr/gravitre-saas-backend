@@ -230,3 +230,104 @@ async def memory_expiration_run_cron(
         except Exception as exc:  # noqa: BLE001
             results.append({"org_id": org_id, "error": str(exc)})
     return {"processed": len(results), "results": results}
+
+
+class CapabilityWriteGateSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+
+
+@router.post("/capability-write-gate-smoke")
+async def capability_write_gate_smoke(
+    body: CapabilityWriteGateSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Deployed-tip proof: capability-resolved CRM write hits same write gate as direct HubSpot."""
+    import os
+    import uuid
+
+    from app.capability_ontology.tool_bridge import capability_tool_name
+    from app.operators.react_engine import ReActEngine
+    from app.services.react_write_gate import WRITE_APPROVAL_REQUIRED
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    engine = ReActEngine(settings=settings, registry=reg)
+    env_name = str(body.environment_name or "production").strip() or "production"
+    ctx = ToolContext(
+        settings=settings,
+        client=client,
+        org_id=org_id,
+        actor_id=actor_id,
+        agent_id="synthetic-default",
+        environment_name=env_name,
+    )
+    connected = reg.list_connected_integrations(client, org_id, environment_name=env_name)
+    args = {"email": f"cap-write-gate-{uuid.uuid4().hex[:8]}@example.com"}
+    cap_tool = capability_tool_name("crm.contact.create")
+
+    async def _probe(tool_name: str, probe_args: dict[str, Any]) -> dict[str, Any]:
+        blocked = await engine._execute_tool_call(
+            ctx,
+            tool_name,
+            probe_args,
+            allowed_tool_names={tool_name},
+        )
+        return {
+            "tool": tool_name,
+            "success": blocked.get("success"),
+            "error_code": blocked.get("error_code"),
+            "pending_approval": blocked.get("pending_approval"),
+            "action": blocked.get("action"),
+            "integration": blocked.get("integration"),
+            "pass": (
+                blocked.get("error_code") == WRITE_APPROVAL_REQUIRED
+                and blocked.get("pending_approval") is True
+                and blocked.get("action") == "hubspot.contacts.create"
+            ),
+        }
+
+    direct = await _probe("hubspot_contacts_create", args)
+    capability = await _probe(
+        cap_tool,
+        {**args, "preferred_vendor": "hubspot"},
+    )
+    parity = (
+        direct.get("pass")
+        and capability.get("pass")
+        and direct.get("error_code") == capability.get("error_code") == "write_approval_required"
+        and direct.get("action") == capability.get("action") == "hubspot.contacts.create"
+    )
+
+    return {
+        "pass": parity,
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "actor_id": actor_id,
+        "connected_integrations": connected,
+        "path": "deployed_react_write_gate direct vs capability-resolved",
+        "direct_hubspot_tool": direct,
+        "capability_resolved_tool": capability,
+        "parity": {
+            "same_error_code": direct.get("error_code") == capability.get("error_code"),
+            "same_invoke_action": direct.get("action") == capability.get("action"),
+            "both_pending_approval": bool(
+                direct.get("pending_approval") and capability.get("pending_approval")
+            ),
+            "pass": parity,
+        },
+        "claim": (
+            "PASS — write_approval_required hubspot.contacts.create @ capability parity (deployed tip)"
+            if parity
+            else "FAIL — capability write gate did not match direct HubSpot gate"
+        ),
+    }

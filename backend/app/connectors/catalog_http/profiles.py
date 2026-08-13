@@ -74,6 +74,13 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "plaid": VendorHttpProfile("plaid", "plaid", "https://sandbox.plaid.com", "api_token"),
     "snowflake": VendorHttpProfile("snowflake", "snowflake", "https://{account}.snowflakecomputing.com", "api_token"),
     "shopify": VendorHttpProfile("shopify", "shopify", "https://{shop}.myshopify.com/admin/api/2024-01", "generic_oauth"),
+    "linear": VendorHttpProfile("linear", "linear", "https://api.linear.app/graphql", "api_token"),
+    "gitlab": VendorHttpProfile("gitlab", "gitlab", "https://gitlab.com/api/v4", "generic_oauth"),
+    "paypal": VendorHttpProfile("paypal", "paypal", "https://api-m.paypal.com", "generic_oauth"),
+    "brevo": VendorHttpProfile("brevo", "brevo", "https://api.brevo.com/v3", "api_token"),
+    "meta_marketing": VendorHttpProfile(
+        "meta_marketing", "meta_marketing", "https://graph.facebook.com/v21.0", "generic_oauth"
+    ),
     "twilio": VendorHttpProfile("twilio", "twilio", "https://api.twilio.com/2010-04-01", "api_token"),
     # External AI phone agents (Vapi) — distinct from internal staff chat voice.
     "vapi": VendorHttpProfile("vapi", "vapi", "https://api.vapi.ai", "api_token"),

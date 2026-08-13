@@ -698,8 +698,18 @@ class ReActEngine:
             tool_requires_user_write_approval,
         )
 
+        connected: list[str] = []
+        if ctx.client and ctx.org_id:
+            connected = self.registry.list_connected_integrations(
+                ctx.client,
+                ctx.org_id,
+                environment_name=ctx.environment_name,
+            )
+
         requires_write, invoke_action, *_rest = tool_requires_user_write_approval(
-            tool_name, self.registry
+            tool_name,
+            self.registry,
+            connected_integrations=connected,
         )
         # Canvas agent steps: when ToolContext.run_id is a workflow_runs row,
         # honor run-level catalog write authority (same SoT) instead of the
