@@ -2412,8 +2412,8 @@ export const settingsApi = {
   
   // Team
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
-  inviteMember: (email: string, role?: string) =>
-    postJson<{ member: User }>(apiUrl("/api/settings/team"), { email, role }),
+  inviteMember: (email: string, role?: string, sendInvite = true) =>
+    postJson<{ member: User }>(apiUrl("/api/settings/team"), { email, role, send_invite: sendInvite }),
   updateMember: (data: { id?: string; email?: string; role?: string; full_name?: string }) =>
     patchJson<{ member: User }>(apiUrl("/api/settings/team"), data),
   removeMember: async (userId: string) => {
@@ -2477,7 +2477,7 @@ export const settingsApi = {
       throw new Error(error.detail || `Request failed: ${response.status}`)
     }
   },
-  addDepartmentMember: (data: { department_id: string; user_email: string; role?: string }) =>
+  addDepartmentMember: (data: { department_id: string; user_email: string; role?: string; send_invite?: boolean }) =>
     postJson<{ member: Record<string, unknown> }>(apiUrl("/api/settings/lite-seats/members"), data),
   removeDepartmentMember: async (departmentId: string, userId: string) => {
     const response = await apiFetch(
@@ -2559,8 +2559,8 @@ export const organizationsApi = {
   switch: (id: string) => postJson<{ token: string }>(apiUrl(`/api/organizations/${id}/switch`), {}),
   listMembers: (orgId: string) =>
     fetcher<{ members: (User & { role: string })[] }>(apiUrl(`/api/organizations/${orgId}/members`)),
-  inviteMember: (orgId: string, email: string, role?: string) =>
-    postJson<void>(apiUrl(`/api/organizations/${orgId}/members/invite`), { email, role }),
+  inviteMember: (orgId: string, email: string, role?: string, sendInvite = true) =>
+    postJson<void>(apiUrl(`/api/organizations/${orgId}/members/invite`), { email, role, send_invite: sendInvite }),
   updateMemberRole: (orgId: string, userId: string, role: string) =>
     patchJson<void>(apiUrl(`/api/organizations/${orgId}/members/${userId}`), { role }),
   removeMember: (orgId: string, userId: string) =>

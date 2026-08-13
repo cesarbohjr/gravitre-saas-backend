@@ -78,6 +78,10 @@ max_frequency = "1s"
 otp_length = 6
 otp_expiry = 3600
 
+[auth.email.template.invite]
+subject = "You are invited to Gravitre"
+content_path = "./supabase/templates/invite.html"
+
 [auth.external.google]
 enabled = true
 client_id = "1058144333767-ndsmnr5vqu6vkscfrdj3bua55434e0ns.apps.googleusercontent.com"

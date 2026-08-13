@@ -12,6 +12,7 @@ from app.auth.dependencies import get_current_user, require_admin
 from app.auth.platform_admin import is_org_admin_role
 from app.auth.org_role_permissions import get_org_role_permissions_matrix
 from app.config import Settings, get_settings
+from app.services.org_member_invite_service import invite_org_member_by_email, normalize_org_member_role
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/org", tags=["org"])
@@ -25,7 +26,7 @@ AUDIT_ORG_MEMBER_REMOVED = "org.member.removed"
 
 
 class PatchMemberRequest(BaseModel):
-    role: str = Field(..., pattern="^(admin|member)$")
+    role: str = Field(..., pattern="^(admin|member|viewer)$")
 
 
 class InviteRequest(BaseModel):
@@ -46,11 +47,12 @@ class OrganizationUpdateRequest(BaseModel):
 
 class OrganizationMemberInviteRequest(BaseModel):
     email: str = Field(..., min_length=3)
-    role: str = Field(default="member", pattern="^(admin|member)$")
+    role: str = Field(default="member", pattern="^(admin|member|viewer)$")
+    send_invite: bool = Field(default=True, description="Send Supabase invite email")
 
 
 class OrganizationMemberRoleRequest(BaseModel):
-    role: str = Field(..., pattern="^(admin|member)$")
+    role: str = Field(..., pattern="^(admin|member|viewer)$")
 
 
 class TransferOwnershipRequest(BaseModel):
@@ -494,28 +496,32 @@ async def invite_organization_member(
     org_id_str = str(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     _require_org_admin(client, org_id_str, current_user["user_id"])
-
-    user_lookup = (
-        client.table("users")
-        .select("id, auth_user_id, email")
-        .eq("email", body.email.lower().strip())
-        .limit(1)
-        .execute()
+    invite_result = invite_org_member_by_email(
+        client,
+        settings,
+        org_id=org_id_str,
+        email=body.email,
+        role=normalize_org_member_role(body.role),
+        invited_by_user_id=current_user["user_id"],
+        send_invite=body.send_invite,
+        invite_context="organization_members_invite",
     )
-    if user_lookup.data:
-        user = user_lookup.data[0]
-        member_user_id = str(user.get("auth_user_id") or user.get("id"))
-        already_member = _is_member(client, org_id_str, member_user_id)
-        if not already_member:
-            client.table("organization_members").insert(
-                {
-                    "id": str(uuid4()),
-                    "org_id": org_id_str,
-                    "user_id": member_user_id,
-                    "role": body.role,
-                }
-            ).execute()
-    return {"ok": True}
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=current_user["user_id"],
+        action=AUDIT_ORG_MEMBER_INVITED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=invite_result["user_id"],
+        metadata={
+            "email": invite_result["email"],
+            "role": invite_result["role"],
+            "invite_email_sent": invite_result["invite_email_sent"],
+            "invite_email_status": invite_result["invite_email_status"],
+            "membership_created": invite_result["membership_created"],
+        },
+    )
+    return {"ok": True, "member": invite_result}
 
 
 @organizations_router.patch("/{org_id}/members/{user_id}")

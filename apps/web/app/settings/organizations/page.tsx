@@ -49,6 +49,8 @@ export default function ManageOrganizationsPage() {
   const [newOrgName, setNewOrgName] = useState("")
   const [newOrgSlug, setNewOrgSlug] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteRole, setInviteRole] = useState("member")
+  const [sendInviteEmail, setSendInviteEmail] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
 
   const { data, isLoading, mutate } = useSWR(
@@ -133,10 +135,10 @@ export default function ManageOrganizationsPage() {
     }
     try {
       setIsMutating(true)
-      await organizationsApi.inviteMember(selectedOrg.id, inviteEmail.trim())
+      await organizationsApi.inviteMember(selectedOrg.id, inviteEmail.trim(), inviteRole, sendInviteEmail)
       setInviteEmail("")
       await mutateMembers()
-      toast.success("Invitation sent")
+      toast.success(sendInviteEmail ? "Invitation sent" : "Member added without invite email")
     } catch (error) {
       console.error("Failed to invite member", error)
       toast.error(error instanceof Error ? error.message : "Failed to invite member")
@@ -460,16 +462,38 @@ export default function ManageOrganizationsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
               <Input
                 placeholder="member@company.com"
                 value={inviteEmail}
                 onChange={(event) => setInviteEmail(event.target.value)}
                 disabled={isMutating}
               />
+              <select
+                className="h-9 rounded-md border border-border bg-secondary px-2 text-sm sm:w-[180px]"
+                value={inviteRole}
+                disabled={isMutating}
+                onChange={(event) => setInviteRole(event.target.value)}
+              >
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="viewer">Viewer (Lite)</option>
+              </select>
               <Button onClick={() => void handleInviteMember()} disabled={isMutating || !inviteEmail.trim()}>
                 Invite
               </Button>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={sendInviteEmail}
+                  onChange={(event) => setSendInviteEmail(event.target.checked)}
+                  disabled={isMutating}
+                />
+                Send branded Gravitre invite email via Supabase
+              </label>
             </div>
             <div className="space-y-2">
               {membersLoading && <p className="text-sm text-muted-foreground">Loading members...</p>}

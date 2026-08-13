@@ -12,6 +12,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.core.supabase_response import response_error
+from app.services.org_member_invite_service import invite_org_member_by_email
 from app.services.model_policy_service import load_org_model_policy, normalize_model_policy, save_org_model_policy
 from app.services.memory_entity_embeddings_settings import (
     load_memory_entity_embeddings_settings,
@@ -43,7 +44,8 @@ class LiteSeatUpdateRequest(BaseModel):
 class DepartmentMemberAddRequest(BaseModel):
     department_id: str
     user_email: str = Field(..., min_length=3)
-    role: str = Field(default="viewer")
+    role: str = Field(default="viewer", pattern="^(viewer|admin)$")
+    send_invite: bool = True
 
 
 class DepartmentMemberRemoveRequest(BaseModel):
@@ -531,8 +533,24 @@ async def add_department_member_route(
     if not dept.data:
         raise HTTPException(status_code=404, detail="Department not found")
     user_id = _resolve_org_user_id(client, org_id, body.user_email)
+    invite_result: dict[str, Any] | None = None
+    if not user_id and body.send_invite:
+        invite_result = invite_org_member_by_email(
+            client,
+            settings,
+            org_id=org_id,
+            email=body.user_email,
+            role="viewer",
+            invited_by_user_id=_user["user_id"],
+            send_invite=True,
+            invite_context="lite_seat_assignment",
+        )
+        user_id = str(invite_result["user_id"])
     if not user_id:
-        raise HTTPException(status_code=404, detail="User not found in organization")
+        raise HTTPException(
+            status_code=404,
+            detail="User not found in organization. Enable invite email to create and invite this Lite user.",
+        )
     role = "admin" if body.role == "admin" else "viewer"
     inserted = (
         client.table("department_members")
@@ -574,9 +592,11 @@ async def add_department_member_route(
             "departmentId": body.department_id,
             "userId": user_id,
             "role": role,
+            "invite_email_sent": bool(invite_result and invite_result.get("invite_email_sent")),
+            "invite_email_status": (invite_result or {}).get("invite_email_status"),
         },
     )
-    return {"member": member_row}
+    return {"member": member_row, "invite": invite_result}
 
 
 @router.delete("/lite-seats/members")

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { proxyToFastApi } from "@/lib/backend-proxy"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
 function normalizeUserRole(role: unknown): "owner" | "admin" | "member" | "viewer" {
@@ -116,38 +117,7 @@ export async function POST(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
-    await ensureDemoDataForOrg(supabase, orgId)
-
-    const body = await request.json().catch(() => ({}))
-    const snake = camelToSnake(body as Record<string, unknown>)
-    const email = String(snake.email ?? "").trim().toLowerCase()
-    if (!email) {
-      return NextResponse.json({ error: "email is required" }, { status: 400 })
-    }
-
-    const role = normalizeUserRole(snake.role)
-    const fullName = String(snake.full_name ?? snake.name ?? "").trim() || email.split("@")[0]
-
-    const { data, error } = await supabase
-      .from("users")
-      .upsert(
-        {
-          org_id: orgId,
-          email,
-          full_name: fullName,
-          role,
-          status: "invited",
-        },
-        { onConflict: "org_id,email" }
-      )
-      .select("id, org_id, email, full_name, role, status, created_at, updated_at")
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ member: snakeToCamel<Record<string, unknown>>(data) }, { status: 201 })
+    return proxyToFastApi(request, `/api/organizations/${encodeURIComponent(orgId)}/members/invite`)
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

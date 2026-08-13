@@ -790,6 +790,7 @@ function TeamSettings({
   const [editRole, setEditRole] = useState("member")
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("member")
+  const [sendInviteEmail, setSendInviteEmail] = useState(true)
   const [isInviting, setIsInviting] = useState(false)
   const [isRemoving, setIsRemoving] = useState<string | null>(null)
   const [isSavingRole, setIsSavingRole] = useState(false)
@@ -798,8 +799,12 @@ function TeamSettings({
     if (!isAdmin) return
     setIsInviting(true)
     try {
-      await settingsApi.inviteMember(inviteEmail, inviteRole)
-      toast.success(`Invitation sent to ${inviteEmail}`)
+      await settingsApi.inviteMember(inviteEmail, inviteRole, sendInviteEmail)
+      toast.success(
+        sendInviteEmail
+          ? `Invite email sent to ${inviteEmail}`
+          : `${inviteEmail} added without sending invite email`,
+      )
       setInviteEmail("")
       setInviteDialog(false)
       await onUpdate()
@@ -951,8 +956,18 @@ function TeamSettings({
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
+                <option value="viewer">Viewer (Lite)</option>
               </select>
             </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                className="rounded border-border"
+                checked={sendInviteEmail}
+                onChange={(event) => setSendInviteEmail(event.target.checked)}
+              />
+              Send Gravitre invite email via Supabase
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteDialog(false)}>Cancel</Button>
@@ -1379,6 +1394,8 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   const [newDeptName, setNewDeptName] = useState("")
   const [newDeptSeats, setNewDeptSeats] = useState(0)
   const [memberEmailByDept, setMemberEmailByDept] = useState<Record<string, string>>({})
+  const [memberRoleByDept, setMemberRoleByDept] = useState<Record<string, "viewer" | "admin">>({})
+  const [sendInviteByDept, setSendInviteByDept] = useState<Record<string, boolean>>({})
   const [assignByDept, setAssignByDept] = useState<
     Record<string, { resource_type: "workflow" | "agent" | "council" | "knowledge_pack"; resource_id: string }>
   >({})
@@ -1438,14 +1455,26 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
 
   const handleInviteMember = async (departmentId: string) => {
     const email = (memberEmailByDept[departmentId] || "").trim()
+    const role = memberRoleByDept[departmentId] === "admin" ? "admin" : "viewer"
+    const sendInvite = sendInviteByDept[departmentId] ?? true
     if (!email) {
       toast.error("Enter a member email")
       return
     }
     setIsSaving(true)
     try {
-      await settingsApi.addDepartmentMember({ department_id: departmentId, user_email: email })
-      toast.success("Lite seat assigned")
+      const response = await settingsApi.addDepartmentMember({
+        department_id: departmentId,
+        user_email: email,
+        role,
+        send_invite: sendInvite,
+      })
+      const invitePayload = (response as { invite?: { invite_email_sent?: boolean } }).invite
+      toast.success(
+        invitePayload?.invite_email_sent
+          ? "Lite seat assigned and invite email sent"
+          : "Lite seat assigned",
+      )
       setMemberEmailByDept((prev) => ({ ...prev, [departmentId]: "" }))
       await mutate()
     } catch (err) {
@@ -1543,7 +1572,8 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                 </Button>
               </div>
             </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-3 flex flex-col gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={memberEmailByDept[department.id] ?? ""}
                 onChange={(event) =>
@@ -1555,6 +1585,20 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                 placeholder="Assign Lite user by email"
                 disabled={!isAdmin || isSaving}
               />
+              <select
+                className="h-9 rounded-md border border-border bg-secondary px-2 text-sm sm:w-[220px]"
+                value={memberRoleByDept[department.id] ?? "viewer"}
+                disabled={!isAdmin || isSaving}
+                onChange={(event) =>
+                  setMemberRoleByDept((prev) => ({
+                    ...prev,
+                    [department.id]: event.target.value === "admin" ? "admin" : "viewer",
+                  }))
+                }
+              >
+                <option value="viewer">Lite user</option>
+                <option value="admin">Department manager</option>
+              </select>
               <Button
                 size="sm"
                 variant="secondary"
@@ -1563,6 +1607,22 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
               >
                 Assign seat
               </Button>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={sendInviteByDept[department.id] ?? true}
+                  onChange={(event) =>
+                    setSendInviteByDept((prev) => ({
+                      ...prev,
+                      [department.id]: event.target.checked,
+                    }))
+                  }
+                  disabled={!isAdmin || isSaving}
+                />
+                Send Gravitre invite email so this user can verify and onboard
+              </label>
             </div>
             <div className="mt-3 space-y-2 border-t border-border pt-3">
               <p className="text-xs font-medium text-foreground">Assign workflow / agent / council / knowledge pack</p>

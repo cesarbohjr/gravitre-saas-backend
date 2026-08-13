@@ -63,6 +63,64 @@ async def test_add_department_member_writes_audit(mock_client, _resolve, mock_au
     assert mock_audit.call_args.kwargs["action"] == "department_member.added"
 
 
+@pytest.mark.asyncio
+@patch("app.routers.settings.write_audit_event")
+@patch(
+    "app.routers.settings.invite_org_member_by_email",
+    return_value={
+        "user_id": "user-3",
+        "email": "new.member@example.com",
+        "role": "viewer",
+        "invite_email_sent": True,
+        "invite_email_status": "sent",
+        "membership_created": True,
+    },
+)
+@patch("app.routers.settings._resolve_org_user_id", return_value=None)
+@patch("app.routers.settings.create_client")
+async def test_add_department_member_invites_when_user_missing(mock_client, _resolve, mock_invite, mock_audit):
+    client = MagicMock()
+    mock_client.return_value = client
+    dept = MagicMock()
+    dept.select.return_value = dept
+    dept.eq.return_value = dept
+    dept.limit.return_value = dept
+    dept.execute.return_value = MagicMock(data=[{"id": "dept-1", "lite_seat_allocation": 5}], error=None)
+
+    members = MagicMock()
+    members.upsert.return_value = members
+    members.select.return_value = members
+    members.eq.return_value = members
+    members.limit.return_value = members
+    members.execute.return_value = MagicMock(
+        data=[{"id": "mem-2", "department_id": "dept-1", "user_id": "user-3", "role": "admin"}],
+        error=None,
+    )
+
+    def table(name):
+        if name == "departments":
+            return dept
+        if name == "department_members":
+            return members
+        return MagicMock()
+
+    client.table.side_effect = table
+    admin = ({"user_id": "admin-1"}, "org-1")
+    body = DepartmentMemberAddRequest(
+        department_id="dept-1",
+        user_email="new.member@example.com",
+        role="admin",
+        send_invite=True,
+    )
+
+    result = await add_department_member_route(body, admin, _settings())
+    assert result["member"]["id"] == "mem-2"
+    assert result["invite"]["invite_email_sent"] is True
+    mock_invite.assert_called_once()
+    assert mock_invite.call_args.kwargs["invite_context"] == "lite_seat_assignment"
+    mock_audit.assert_called_once()
+
+
 def test_resolve_org_user_id_uses_organization_members_not_org_members():
     from app.routers.settings import _resolve_org_user_id
 
