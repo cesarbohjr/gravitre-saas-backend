@@ -410,7 +410,7 @@ async def test_parallel_independent_reads_share_one_batch(engine: ReActEngine, t
 
     engine.registry.execute_tool = AsyncMock(side_effect=_slow_exec)
 
-    def _requires(name, _reg):
+    def _requires(name, _reg, **kwargs):
         return (False, "", "", name)
 
     engine.router._openai.chat.completions.create = AsyncMock(
@@ -474,7 +474,7 @@ async def test_serial_force_runs_reads_sequentially(engine: ReActEngine, tool_ct
 
     engine.registry.execute_tool = AsyncMock(side_effect=_exec)
 
-    def _requires(name, _reg):
+    def _requires(name, _reg, **kwargs):
         return (False, "", "", name)
 
     engine.router._openai.chat.completions.create = AsyncMock(

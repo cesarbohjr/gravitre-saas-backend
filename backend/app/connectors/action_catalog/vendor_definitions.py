@@ -2333,7 +2333,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("linear", "issues.create", "Create issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
             action("linear", "issues.update", "Update issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
         ),
-        v3=(),
+        v3=(
+            action("linear", "issues.search", "Search issues", tier="v3", kind="advanced", scope_suffix="issues:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "gitlab",
@@ -2350,7 +2352,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("gitlab", "issues.create", "Create issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
             action("gitlab", "merge_requests.create", "Create merge request", tier="v2", kind="write", scope_suffix="merge_requests:write", destructive=True),
         ),
-        v3=(),
+        v3=(
+            action("gitlab", "merge_requests.list", "List merge requests", tier="v3", kind="advanced", scope_suffix="merge_requests:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "shopify",
@@ -2367,7 +2371,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("shopify", "products.create", "Create product", tier="v2", kind="write", scope_suffix="products:write", destructive=True),
             action("shopify", "orders.update", "Update order", tier="v2", kind="write", scope_suffix="orders:write", destructive=True),
         ),
-        v3=(),
+        v3=(
+            action("shopify", "customers.list", "List customers", tier="v3", kind="advanced", scope_suffix="customers:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "paypal",
@@ -2384,7 +2390,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("paypal", "refunds.create", "Issue refund", tier="v2", kind="write", scope_suffix="refunds:write", destructive=True, requires_approval=True),
             action("paypal", "payouts.create", "Create payout", tier="v2", kind="write", scope_suffix="payouts:write", destructive=True, requires_approval=True),
         ),
-        v3=(),
+        v3=(
+            action("paypal", "disputes.list", "List disputes", tier="v3", kind="advanced", scope_suffix="disputes:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "brevo",
@@ -2401,7 +2409,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("brevo", "email.send", "Send transactional email", tier="v2", kind="write", scope_suffix="email:send", destructive=True),
             action("brevo", "contacts.create", "Create contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
         ),
-        v3=(),
+        v3=(
+            action("brevo", "contacts.update", "Update contact", tier="v3", kind="advanced", scope_suffix="contacts:write"),
+        ),
     ),
     build_vendor(
         "meta_marketing",
@@ -2418,7 +2428,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("meta_marketing", "campaigns.create", "Create ad campaign", tier="v2", kind="write", scope_suffix="ads:write", destructive=True),
             action("meta_marketing", "campaigns.update", "Update ad campaign", tier="v2", kind="write", scope_suffix="ads:write", destructive=True),
         ),
-        v3=(),
+        v3=(
+            action("meta_marketing", "adsets.update", "Update ad set", tier="v3", kind="advanced", scope_suffix="ads:write"),
+        ),
     ),
     build_vendor(
         "platform",

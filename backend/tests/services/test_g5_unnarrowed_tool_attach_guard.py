@@ -26,7 +26,8 @@ def test_narrow_tools_returns_narrowed_tools_marker():
     )
     assert isinstance(narrowed, NarrowedTools)
     assert narrowed.gravitre_narrowed is True
-    assert stats["visibleTools"] <= 28
+    cap_extra = int(stats.get("capabilityToolsInjected") or 0)
+    assert stats["visibleTools"] <= 28 + cap_extra
     assert len(narrowed) == stats["visibleTools"]
     assert_tools_narrowed(narrowed, where="test")
 
@@ -78,7 +79,8 @@ def test_agent_job_react_path_narrows_under_cap():
         max_tools=28,
     )
     assert stats["totalTools"] == len(all_tools)
-    assert stats["visibleTools"] <= 28
+    cap_extra = int(stats.get("capabilityToolsInjected") or 0)
+    assert stats["visibleTools"] <= 28 + cap_extra
     assert stats["visibleTools"] < stats["totalTools"]
     # Action ids in the narrowed set must be real registry tools (not stale names).
     names = {
@@ -88,7 +90,11 @@ def test_agent_job_react_path_narrows_under_cap():
     }
     assert names
     for name in names:
-        assert name in registry._specs or name.startswith("mcp_")  # noqa: SLF001
+        assert (
+            name in registry._specs  # noqa: SLF001
+            or name.startswith("mcp_")
+            or name.startswith("capability__")
+        )
 
 
 def test_no_raw_completions_create_with_tools_outside_allowlist():

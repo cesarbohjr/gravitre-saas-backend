@@ -1460,6 +1460,22 @@
         "list"
       ]
     },
+    "brevo.contacts.update": {
+      "examples": [
+        "update Brevo contacts",
+        "change my Brevo contacts",
+        "Can you update contacts in Brevo?",
+        "Update contact in Brevo",
+        "I need to update a contacts on Brevo"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "brevo",
+        "contacts",
+        "update"
+      ]
+    },
     "brevo.email.send": {
       "examples": [
         "send Brevo email",
@@ -3611,6 +3627,23 @@
         "gitlab",
         "merge-requests",
         "create",
+        "devops"
+      ]
+    },
+    "gitlab.merge_requests.list": {
+      "examples": [
+        "list Gitlab merge requests",
+        "show me my Gitlab merge requests",
+        "Can you list merge requests in Gitlab?",
+        "List merge requests in Gitlab",
+        "I need to list merge requests on Gitlab"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "gitlab",
+        "merge-requests",
+        "list",
         "devops"
       ]
     },
@@ -6110,6 +6143,23 @@
         "project"
       ]
     },
+    "linear.issues.search": {
+      "examples": [
+        "search Linear issues",
+        "find my Linear issues",
+        "Can you search issues in Linear?",
+        "Search issues in Linear",
+        "I need to search issues on Linear"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "linear",
+        "issues",
+        "search",
+        "project"
+      ]
+    },
     "linear.issues.update": {
       "examples": [
         "update Linear issues",
@@ -6576,6 +6626,22 @@
         "meta_marketing",
         "adsets",
         "list"
+      ]
+    },
+    "meta_marketing.adsets.update": {
+      "examples": [
+        "update Meta Marketing adsets",
+        "change my Meta Marketing ad sets",
+        "Can you update adsets in Meta Marketing?",
+        "Update ad set in Meta Marketing",
+        "I need to update adsets on Meta Marketing"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "meta_marketing",
+        "adsets",
+        "update"
       ]
     },
     "meta_marketing.campaigns.create": {
@@ -8662,6 +8728,23 @@
         "list"
       ]
     },
+    "paypal.disputes.list": {
+      "examples": [
+        "list Paypal disputes",
+        "show me my Paypal disputes",
+        "Can you list disputes in Paypal?",
+        "List disputes in Paypal",
+        "I need to list disputes on Paypal"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "paypal",
+        "disputes",
+        "list",
+        "finance"
+      ]
+    },
     "paypal.orders.get": {
       "examples": [
         "get Paypal orders",
@@ -10303,6 +10386,23 @@
         "sendgrid",
         "templates",
         "list"
+      ]
+    },
+    "shopify.customers.list": {
+      "examples": [
+        "list Shopify customers",
+        "show me my Shopify customers",
+        "Can you list customers in Shopify?",
+        "List customers in Shopify",
+        "I need to list customers on Shopify"
+      ],
+      "tags": [
+        "advanced",
+        "workflow",
+        "shopify",
+        "customers",
+        "list",
+        "commerce"
       ]
     },
     "shopify.orders.list": {
