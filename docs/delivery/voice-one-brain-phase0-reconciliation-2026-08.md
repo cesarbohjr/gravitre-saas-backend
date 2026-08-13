@@ -50,3 +50,31 @@ Alternate (built, not FE-wired): `POST /api/voice/session/turn` → same `execut
 ## Dependency
 
 Part 2 proceeds only after Part 1 seven items report FULL with live evidence (this program).
+
+---
+
+## Part 1 clearance (prerequisite met)
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Seven gates FULL | **PASS** | `docs/delivery/part1-seven-gates-live.json` — tip `80cc17d90373f9ffb946be8cd1ef9be3051bc089`, verdict PASS, all seven `gate_*` PASS |
+
+Part 2 build unlocked after that tip.
+
+---
+
+## Part 2 build status (additive; does not fork intelligence)
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0 Reconciliation | **DONE** | This doc |
+| 1 Same One Brain path | **CODE** | FE duplex → `POST /api/voice/session/turn` → `execute_task_streaming(spoken_mode=True)` → CognitiveTurnKernel; shared `conversation_id` |
+| 2 Full-duplex + barge-in | **CODE** | Live Deepgram token + turn-taking + `POST /session/cancel`; acoustic barge-in on SpeechStarted while agent speaking |
+| 3 Governance | **CODE** | Same write-confirm policy header; modality stamped on session events |
+| 4 KF/RAG parity | **EXISTS** | Via kernel path (no voice bypass) |
+| 5 UX states + AnalyserNode | **CODE** | Expanded `VoicePresenceState`; `levels` from real AnalyserNode |
+| 6 Recovery states | **CODE** | `disconnected` / `error` presence |
+| 7 Latency stages | **CODE** | FE stage stamps + BE ttft/ttfa; live artifact via verify script |
+| 8 Provider abstraction | **EXISTS** | Thin adapters unchanged |
+
+Live prove script: `scripts/verify-voice-duplex-one-brain-live.py` → `docs/delivery/voice-duplex-one-brain-live.json`.

@@ -77,6 +77,19 @@ export type SharedChatComposerControlsProps = {
   textareaClassName?: string
   /** When false, omit the outer bordered shell (parent already wraps). Default true. */
   bordered?: boolean
+  /**
+   * Full-duplex One Brain voice session. When provided, waveform mic control
+   * drives live STT → session/turn instead of batch MediaRecorder STT.
+   */
+  duplex?: {
+    active: boolean
+    presence: VoicePresenceState
+    levels?: number[] | null
+    amplitude?: number | null
+    toggle: () => void
+    bargeIn: () => void
+    supported?: boolean
+  } | null
 }
 
 export function SharedChatComposerControls({
@@ -107,8 +120,10 @@ export function SharedChatComposerControls({
   textareaRows = 1,
   textareaClassName,
   bordered = true,
+  duplex = null,
 }: SharedChatComposerControlsProps) {
   const actions = trailingExtras ?? leadingExtras
+  const useDuplex = Boolean(duplex)
 
   // Presentation is local: expand/collapse must not interrupt audio or lose the
   // transcript. Text view vs orb is a view preference, not session state.
@@ -116,36 +131,73 @@ export function SharedChatComposerControls({
 
   const { isListening, isSupported, toggleListening, status } = useSpeechRecognition({
     value: input,
-    disabled: disabled || !voiceEntitled,
+    disabled: disabled || !voiceEntitled || useDuplex,
     onTranscript: (text) => onInputChange(text),
     onError: onVoiceInputError,
   })
 
   useEffect(() => {
+    if (useDuplex && duplex) {
+      const mapped: SpeechRecognitionStatus =
+        duplex.presence === "listening" ||
+        duplex.presence === "understanding" ||
+        duplex.presence === "interrupted"
+          ? "listening"
+          : duplex.presence === "error" || duplex.presence === "disconnected"
+            ? "audio-capture"
+            : "idle"
+      onMicStatusChange?.(mapped)
+      return
+    }
     onMicStatusChange?.(status)
-  }, [status, onMicStatusChange])
+  }, [status, onMicStatusChange, useDuplex, duplex])
+
+  const duplexListening =
+    useDuplex &&
+    duplex &&
+    (duplex.active ||
+      duplex.presence === "listening" ||
+      duplex.presence === "understanding" ||
+      duplex.presence === "thinking" ||
+      duplex.presence === "speaking" ||
+      duplex.presence === "interrupted")
+  const effectiveListening = useDuplex ? Boolean(duplexListening) : isListening
+  const effectivePresence = useDuplex && duplex ? duplex.presence : voicePresence
+  const duplexSupported = duplex?.supported !== false
 
   // 11a/11b speaker chrome only while Voice owns the floor (mic or TTS / voice stream).
   // Idle Text replies must not paint a graphite agent pill.
   const isLiveVoice =
-    voicePresence === "listening" ||
-    voicePresence === "speaking" ||
-    isListening ||
+    effectivePresence === "listening" ||
+    effectivePresence === "understanding" ||
+    effectivePresence === "thinking" ||
+    effectivePresence === "speaking" ||
+    effectivePresence === "interrupted" ||
+    effectiveListening ||
     ttsSpeaking ||
     (modality === "voice" && isStreaming)
   const speaker: VoiceSpeaker =
-    voicePresence === "speaking" || ttsSpeaking || (modality === "voice" && isStreaming && !isListening)
+    effectivePresence === "speaking" ||
+    effectivePresence === "thinking" ||
+    ttsSpeaking ||
+    (modality === "voice" && isStreaming && !effectiveListening)
       ? "agent"
       : "user"
   const waveActive = isLiveVoice
   const speakerLabel =
-    voicePresence === "listening" || isListening
+    effectivePresence === "listening" ||
+    effectivePresence === "understanding" ||
+    effectivePresence === "interrupted" ||
+    effectiveListening
       ? "You"
-      : voicePresence === "speaking" || ttsSpeaking || (modality === "voice" && isStreaming)
+      : effectivePresence === "speaking" ||
+          effectivePresence === "thinking" ||
+          ttsSpeaking ||
+          (modality === "voice" && isStreaming)
         ? agentLabel
         : null
 
-  const isBusy = isStreaming || ttsSpeaking || isListening
+  const isBusy = isStreaming || ttsSpeaking || effectiveListening
 
   // Orb cannot outlive a live floor — collapse when mic/TTS ends.
   useEffect(() => {
@@ -164,6 +216,29 @@ export function SharedChatComposerControls({
 
   const handleWaveformClick = () => {
     if (disabled || !voiceEntitled) return
+    if (useDuplex && duplex) {
+      if (!duplexSupported) {
+        onVoiceInputError?.("Live voice is not supported in this browser.")
+        return
+      }
+      if (
+        duplex.presence === "speaking" ||
+        duplex.presence === "thinking" ||
+        ttsSpeaking
+      ) {
+        duplex.bargeIn()
+        onStop?.()
+        armVoice()
+        return
+      }
+      if (duplex.active && duplex.presence === "listening") {
+        openVoiceView()
+        return
+      }
+      armVoice()
+      duplex.toggle()
+      return
+    }
     if (!isSupported) {
       onVoiceInputError?.("Voice input is not supported in this browser.")
       return
@@ -198,11 +273,11 @@ export function SharedChatComposerControls({
             aria-label={
               !voiceEntitled
                 ? "Voice unavailable"
-                : isListening
+                : effectiveListening
                   ? "Open voice view"
                   : "Start voice — speak your message"
             }
-            aria-pressed={isListening}
+            aria-pressed={effectiveListening}
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a374]/40",
@@ -219,6 +294,7 @@ export function SharedChatComposerControls({
                 speaker={speaker}
                 active={waveActive}
                 compact
+                levels={duplex?.levels}
               />
             )}
           </button>
@@ -226,7 +302,7 @@ export function SharedChatComposerControls({
         <TooltipContent className="max-w-xs text-xs">
           {!voiceEntitled
             ? unavailableReason
-            : isListening
+            : effectiveListening
               ? "Tap again for voice view (full-page orb). Use the stop button to finish speaking."
               : "Tap to speak. Waveform turns green while you talk; graphite when the agent replies."}
         </TooltipContent>
@@ -336,6 +412,7 @@ export function SharedChatComposerControls({
           agentLabel={agentLabel}
           onCollapse={returnToTextView}
           onExitVoice={returnToTextView}
+          amplitude={duplex?.amplitude}
         />
       ) : null}
     </div>

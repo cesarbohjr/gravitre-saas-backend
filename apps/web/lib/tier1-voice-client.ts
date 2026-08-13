@@ -202,3 +202,141 @@ export async function transcribeViaDeepgram(blob: Blob): Promise<{
   if (!result.ok) return null
   return { transcript: result.transcript, latencyMs: result.latencyMs }
 }
+
+export type LiveSttCredentials = {
+  ws_url: string
+  access_token: string
+  authorization: string
+  expires_in_seconds: number
+  encoding: string
+  sample_rate: number
+  provider: string
+}
+
+export async function mintDeepgramLiveToken(): Promise<LiveSttCredentials | null> {
+  const res = await apiFetch("/api/voice/stt/live-token", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+    timeoutMs: 12_000,
+  })
+  if (!res.ok) return null
+  return (await res.json()) as LiveSttCredentials
+}
+
+export type TurnTakingEventResult = {
+  state: Record<string, unknown>
+  finalized_transcript: string | null
+}
+
+export async function postTurnTakingEvent(body: {
+  sensitivity?: string
+  event: Record<string, unknown>
+  state?: Record<string, unknown> | null
+}): Promise<TurnTakingEventResult | null> {
+  const res = await apiFetch("/api/voice/turn-taking/event", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    timeoutMs: 8_000,
+  })
+  if (!res.ok) return null
+  return (await res.json()) as TurnTakingEventResult
+}
+
+export type VoiceSessionEvent = {
+  type: string
+  [key: string]: unknown
+}
+
+export type StreamVoiceSessionTurnOptions = {
+  text: string
+  conversationId?: string | null
+  agentId?: string | null
+  history?: Array<{ role: string; content: string }>
+  voice?: string
+  turnId?: string
+  signal?: AbortSignal
+  onEvent?: (event: VoiceSessionEvent) => void
+}
+
+export async function streamVoiceSessionTurn(
+  options: StreamVoiceSessionTurnOptions,
+): Promise<{ ok: boolean; events: VoiceSessionEvent[]; error?: string }> {
+  let res: Response
+  try {
+    res = await apiFetch("/api/voice/session/turn", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/x-ndjson",
+      },
+      body: JSON.stringify({
+        text: options.text,
+        conversation_id: options.conversationId || undefined,
+        agent_id: options.agentId || undefined,
+        history: options.history || undefined,
+        voice: options.voice || undefined,
+        turn_id: options.turnId || undefined,
+      }),
+      timeoutMs: 180_000,
+      signal: options.signal,
+    })
+  } catch (err) {
+    if (options.signal?.aborted) {
+      return { ok: true, events: [{ type: "voice.turn.cancelled", reason: "client_abort" }] }
+    }
+    return {
+      ok: false,
+      events: [],
+      error: err instanceof Error ? err.message : "Voice session request failed",
+    }
+  }
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "")
+    return { ok: false, events: [], error: detail.slice(0, 400) || `HTTP ${res.status}` }
+  }
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  const events: VoiceSessionEvent[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let nl = buffer.indexOf("\n")
+    while (nl >= 0) {
+      const line = buffer.slice(0, nl).trim()
+      buffer = buffer.slice(nl + 1)
+      if (line) {
+        try {
+          const event = JSON.parse(line) as VoiceSessionEvent
+          events.push(event)
+          options.onEvent?.(event)
+        } catch {
+          /* skip malformed */
+        }
+      }
+      nl = buffer.indexOf("\n")
+    }
+  }
+  return { ok: true, events }
+}
+
+export async function cancelVoiceSessionTurn(body: {
+  turnId: string
+  conversationId?: string | null
+  reason?: string
+}): Promise<boolean> {
+  const res = await apiFetch("/api/voice/session/cancel", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      turn_id: body.turnId,
+      conversation_id: body.conversationId || undefined,
+      reason: body.reason || "barge_in",
+    }),
+    timeoutMs: 8_000,
+  })
+  return res.ok
+}

@@ -29,7 +29,16 @@ import { AlertCircle, CreditCard, Maximize2, Mic } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GravitreVoiceWaveform } from "@/components/gravitre/assistant/voice-presentation"
 
-export type VoicePresenceState = "idle" | "listening" | "speaking" | "error"
+/** Full-duplex voice UX states (Part 2). Idle/listening/speaking/error preserved. */
+export type VoicePresenceState =
+  | "idle"
+  | "listening"
+  | "understanding"
+  | "thinking"
+  | "speaking"
+  | "interrupted"
+  | "disconnected"
+  | "error"
 
 type Props = {
   state: VoicePresenceState
@@ -53,6 +62,8 @@ type Props = {
    * button, and the orb has nothing real to depict when nobody holds the floor.
    */
   onExpand?: () => void
+  /** Real AnalyserNode bins when duplex session is live. */
+  levels?: number[] | null
   className?: string
 }
 
@@ -62,14 +73,17 @@ export function VoiceSessionPresence({
   detail,
   agentLabel = "Gravitre",
   onExpand,
+  levels,
   className,
 }: Props) {
   const reduceMotion = useReducedMotion()
 
-  const isError = state === "error"
-  const isListening = state === "listening"
+  const isError = state === "error" || state === "disconnected"
+  const isListening = state === "listening" || state === "interrupted"
+  const isUnderstanding = state === "understanding"
+  const isThinking = state === "thinking"
   const isSpeaking = state === "speaking"
-  const isLiveFloor = isListening || isSpeaking
+  const isLiveFloor = isListening || isUnderstanding || isThinking || isSpeaking
 
   // Speaker pills (11a/11b): emerald for You, graphite for the agent. Idle/error
   // keep the quieter status treatment so an open-but-silent session stays calm.
@@ -77,21 +91,29 @@ export function VoiceSessionPresence({
     ? billing
       ? "text-warning"
       : "text-muted-foreground"
-    : isListening
+    : isListening || isUnderstanding
       ? "text-[#16a374]"
-      : isSpeaking
+      : isSpeaking || isThinking
         ? "text-[#3f5b52] dark:text-[#e9e9e6]"
         : "text-muted-foreground"
 
   const label = isError
-    ? billing
-      ? "Voice paused — credits or payment needed"
-      : "Voice unavailable right now"
+    ? state === "disconnected"
+      ? "Reconnecting…"
+      : billing
+        ? "Voice paused — credits or payment needed"
+        : "Voice unavailable right now"
     : isListening
-      ? "You"
-      : isSpeaking
-        ? agentLabel
-        : "Voice mode on"
+      ? state === "interrupted"
+        ? "Interrupted"
+        : "You"
+      : isUnderstanding
+        ? "Understanding…"
+        : isThinking
+          ? "Thinking…"
+          : isSpeaking
+            ? agentLabel
+            : "Voice mode on"
 
   return (
     <motion.div
@@ -108,9 +130,9 @@ export function VoiceSessionPresence({
           ? "border-warning/30 bg-warning/[0.06]"
           : isError
             ? "border-border/70 bg-muted/40"
-            : isListening
+            : isListening || isUnderstanding
               ? "border-[#16a374]/30 bg-[#16a374]/[0.08]"
-              : isSpeaking
+              : isSpeaking || isThinking
                 ? "border-[#3f5b52]/25 bg-[#3f5b52]/[0.06] dark:border-[#e9e9e6]/20 dark:bg-[#e9e9e6]/[0.06]"
                 : "border-border/70 bg-muted/30",
         className,
@@ -130,8 +152,10 @@ export function VoiceSessionPresence({
             // Same seven-bar component the composer and orb use, rendered at icon
             // scale. Previously this was a separate five-bar implementation, which
             // is precisely the second-waveform drift this pass exists to remove.
-            speaker={isSpeaking ? "agent" : "user"}
+            speaker={isSpeaking || isThinking ? "agent" : "user"}
             compact
+            active={isLiveFloor}
+            levels={levels}
           />
         )}
       </span>

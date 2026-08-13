@@ -1,0 +1,552 @@
+"use client"
+
+/**
+ * Full-duplex voice session: live Deepgram STT → turn-taking →
+ * POST /api/voice/session/turn (CognitiveTurnKernel) → streaming TTS + barge-in.
+ * Shares conversation_id with text chat — not a parallel brain.
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analyser"
+import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
+import {
+  cancelVoiceSessionTurn,
+  mintDeepgramLiveToken,
+  postTurnTakingEvent,
+  streamVoiceSessionTurn,
+  type VoiceSessionEvent,
+} from "@/lib/tier1-voice-client"
+
+export type DuplexLatencyStages = {
+  mic_open_to_first_partial_ms?: number
+  partial_to_utterance_end_ms?: number
+  endpoint_to_finalize_ms?: number
+  finalize_to_session_request_ms?: number
+  session_ttft_ms?: number
+  session_ttfa_ms?: number
+  e2e_speech_end_to_audio_start_ms?: number
+  barge_in_cancel_ms?: number
+}
+
+export type DuplexTurnResult = {
+  userText: string
+  assistantText: string
+  conversationId: string | null
+  turnId: string | null
+  cancelled: boolean
+  events: VoiceSessionEvent[]
+  latency: DuplexLatencyStages
+}
+
+type Options = {
+  enabled?: boolean
+  conversationId?: string | null
+  agentId?: string | null
+  sensitivity?: string
+  getHistory?: () => Array<{ role: string; content: string }>
+  onUserFinal?: (text: string) => void
+  onAssistantDelta?: (text: string) => void
+  onTurnComplete?: (result: DuplexTurnResult) => void
+  onError?: (message: string, billing?: boolean) => void
+  onConversationId?: (id: string) => void
+}
+
+function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
+  if (inputRate === 16000) {
+    const out = new Int16Array(input.length)
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i] ?? 0))
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+    }
+    return out
+  }
+  const ratio = inputRate / 16000
+  const newLen = Math.max(1, Math.floor(input.length / ratio))
+  const out = new Int16Array(newLen)
+  for (let i = 0; i < newLen; i++) {
+    const s = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)] ?? 0))
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+  }
+  return out
+}
+
+export function useVoiceDuplexSession(options: Options) {
+  const [presence, setPresence] = useState<VoicePresenceState>("idle")
+  const [levels, setLevels] = useState<number[] | null>(null)
+  const [amplitude, setAmplitude] = useState<number | null>(null)
+  const [provisionalTranscript, setProvisionalTranscript] = useState("")
+  const [latency, setLatency] = useState<DuplexLatencyStages>({})
+  const [isActive, setIsActive] = useState(false)
+
+  const optsRef = useRef(options)
+  optsRef.current = options
+
+  const wsRef = useRef<WebSocket | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const analyserRef = useRef<VoiceAnalyserHandle | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const turnStateRef = useRef<Record<string, unknown> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const turnIdRef = useRef<string | null>(null)
+  const agentSpeakingRef = useRef(false)
+  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  const audioQueueRef = useRef<Blob[]>([])
+  const playingRef = useRef(false)
+  const marksRef = useRef<Record<string, number>>({})
+  const activeRef = useRef(false)
+
+  const stopPlayback = useCallback(() => {
+    playingRef.current = false
+    audioQueueRef.current = []
+    const el = audioElRef.current
+    if (el) {
+      try {
+        el.pause()
+        el.removeAttribute("src")
+        el.load()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [])
+
+  const playNext = useCallback(() => {
+    if (playingRef.current) return
+    const next = audioQueueRef.current.shift()
+    if (!next) return
+    playingRef.current = true
+    if (!audioElRef.current) {
+      audioElRef.current = new Audio()
+      audioElRef.current.onended = () => {
+        playingRef.current = false
+        playNext()
+      }
+      audioElRef.current.onerror = () => {
+        playingRef.current = false
+        playNext()
+      }
+    }
+    const el = audioElRef.current
+    const url = URL.createObjectURL(next)
+    el.src = url
+    if (analyserRef.current) {
+      try {
+        analyserRef.current.connectElement(el)
+      } catch {
+        /* already connected */
+      }
+    }
+    void el.play().catch(() => {
+      playingRef.current = false
+      URL.revokeObjectURL(url)
+    })
+  }, [])
+
+  const enqueueAudio = useCallback(
+    (b64: string) => {
+      const raw = atob(b64)
+      const bytes = new Uint8Array(raw.length)
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+      audioQueueRef.current.push(new Blob([bytes], { type: "audio/mpeg" }))
+      playNext()
+    },
+    [playNext],
+  )
+
+  const stopRaf = () => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+  }
+
+  const startRaf = () => {
+    stopRaf()
+    const tick = () => {
+      const a = analyserRef.current
+      if (a && activeRef.current) {
+        setLevels(a.getLevels())
+        setAmplitude(a.getAmplitude())
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  const teardownMic = useCallback(() => {
+    stopRaf()
+    try {
+      processorRef.current?.disconnect()
+    } catch {
+      /* ignore */
+    }
+    processorRef.current = null
+    try {
+      audioCtxRef.current?.close()
+    } catch {
+      /* ignore */
+    }
+    audioCtxRef.current = null
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    try {
+      wsRef.current?.close()
+    } catch {
+      /* ignore */
+    }
+    wsRef.current = null
+    analyserRef.current?.disconnect()
+    analyserRef.current = null
+    setLevels(null)
+    setAmplitude(null)
+  }, [])
+
+  const bargeIn = useCallback(async () => {
+    const t0 = performance.now()
+    setPresence("interrupted")
+    agentSpeakingRef.current = false
+    stopPlayback()
+    abortRef.current?.abort()
+    abortRef.current = null
+    const tid = turnIdRef.current
+    if (tid) {
+      await cancelVoiceSessionTurn({
+        turnId: tid,
+        conversationId: optsRef.current.conversationId,
+        reason: "barge_in",
+      }).catch(() => false)
+    }
+    const ms = Math.round(performance.now() - t0)
+    setLatency((prev) => ({ ...prev, barge_in_cancel_ms: ms }))
+    if (activeRef.current) setPresence("listening")
+  }, [stopPlayback])
+
+  const runSessionTurn = useCallback(
+    async (finalText: string) => {
+      const text = finalText.trim()
+      if (!text) return
+      optsRef.current.onUserFinal?.(text)
+      setPresence("thinking")
+      const turnId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `vt-${Date.now()}`
+      turnIdRef.current = turnId
+      const abort = new AbortController()
+      abortRef.current = abort
+      const tReq = performance.now()
+      marksRef.current.finalize_to_session = tReq
+      const utteranceEnd = marksRef.current.utterance_end
+      if (utteranceEnd) {
+        setLatency((prev) => ({
+          ...prev,
+          endpoint_to_finalize_ms: Math.round(tReq - utteranceEnd),
+          finalize_to_session_request_ms: 0,
+        }))
+      }
+
+      let assistantText = ""
+      let conversationId = optsRef.current.conversationId || null
+      let cancelled = false
+      const events: VoiceSessionEvent[] = []
+      const stage: DuplexLatencyStages = { ...latency }
+
+      const result = await streamVoiceSessionTurn({
+        text,
+        conversationId,
+        agentId: optsRef.current.agentId,
+        history: optsRef.current.getHistory?.() || [],
+        turnId,
+        signal: abort.signal,
+        onEvent: (event) => {
+          events.push(event)
+          if (typeof event.conversation_id === "string" && event.conversation_id) {
+            conversationId = event.conversation_id
+            optsRef.current.onConversationId?.(event.conversation_id)
+          }
+          if (event.type === "voice.ttft" && typeof event.ms === "number") {
+            stage.session_ttft_ms = event.ms
+            setLatency((p) => ({ ...p, session_ttft_ms: event.ms as number }))
+          }
+          if (event.type === "voice.ttfa" && typeof event.ms === "number") {
+            stage.session_ttfa_ms = event.ms
+            const e2e =
+              utteranceEnd != null
+                ? Math.round(performance.now() - utteranceEnd)
+                : undefined
+            stage.e2e_speech_end_to_audio_start_ms = e2e
+            setLatency((p) => ({
+              ...p,
+              session_ttfa_ms: event.ms as number,
+              e2e_speech_end_to_audio_start_ms: e2e,
+            }))
+          }
+          if (event.type === "voice.agent_speech.start") {
+            agentSpeakingRef.current = true
+            setPresence("speaking")
+          }
+          if (event.type === "voice.audio.delta" && typeof event.audio_base64 === "string") {
+            enqueueAudio(event.audio_base64)
+          }
+          if (event.type === "voice.turn.cancelled") {
+            cancelled = true
+            stopPlayback()
+          }
+          if (event.type === "voice.turn.complete" || event.type === "voice.session.ended") {
+            if (typeof event.text === "string") assistantText = event.text
+            if (typeof event.transcript === "string" && !assistantText) {
+              assistantText = event.transcript
+            }
+            if (event.cancelled) cancelled = true
+          }
+          if (event.type?.startsWith("voice.sse.") || event.type === "voice.intelligence") {
+            /* surface via events only */
+          }
+          if (typeof event.payload === "object" && event.payload && "delta" in (event.payload as object)) {
+            /* ignore */
+          }
+          // Accumulate spoken text from audio text_chunk when complete text missing
+          if (event.type === "voice.audio.delta" && typeof event.text_chunk === "string") {
+            optsRef.current.onAssistantDelta?.(String(event.text_chunk))
+          }
+          if (event.type === "voice.error") {
+            const billing = Boolean((event as { billing_issue?: boolean }).billing_issue)
+            optsRef.current.onError?.(
+              String((event as { detail?: string }).detail || "Voice turn failed"),
+              billing,
+            )
+            setPresence(billing ? "error" : "error")
+          }
+        },
+      })
+
+      if (!result.ok && !abort.signal.aborted) {
+        optsRef.current.onError?.(result.error || "Voice session failed")
+        setPresence("error")
+      }
+
+      const completeEv = result.events.find((e) => e.type === "voice.turn.complete")
+      const finalAssistant =
+        assistantText ||
+        (typeof completeEv?.text === "string" ? completeEv.text : "") ||
+        ""
+      optsRef.current.onTurnComplete?.({
+        userText: text,
+        assistantText: finalAssistant,
+        conversationId,
+        turnId,
+        cancelled: cancelled || abort.signal.aborted,
+        events: result.events.length ? result.events : events,
+        latency: stage,
+      })
+
+      agentSpeakingRef.current = false
+      turnIdRef.current = null
+      abortRef.current = null
+      if (activeRef.current && !cancelled) setPresence("listening")
+      else if (activeRef.current) setPresence("listening")
+    },
+    [enqueueAudio, latency, stopPlayback],
+  )
+
+  const handleDeepgramMessage = useCallback(
+    async (raw: MessageEvent) => {
+      let data: Record<string, unknown>
+      try {
+        data = JSON.parse(String(raw.data)) as Record<string, unknown>
+      } catch {
+        return
+      }
+      const type = String(data.type || "")
+      // Deepgram Results
+      const channel = data.channel as
+        | { alternatives?: Array<{ transcript?: string }> }
+        | undefined
+      const transcript = String(channel?.alternatives?.[0]?.transcript || "").trim()
+      const isFinal = Boolean(data.is_final || data.speech_final)
+
+      if (type === "SpeechStarted" || type === "speech_started") {
+        // Acoustic barge-in while agent holds the floor
+        if (agentSpeakingRef.current) {
+          await bargeIn()
+        }
+        marksRef.current.speech_started = performance.now()
+        setPresence("listening")
+      }
+
+      if (transcript) {
+        if (!marksRef.current.first_partial) {
+          marksRef.current.first_partial = performance.now()
+          const micOpen = marksRef.current.mic_open
+          if (micOpen) {
+            setLatency((p) => ({
+              ...p,
+              mic_open_to_first_partial_ms: Math.round(marksRef.current.first_partial! - micOpen),
+            }))
+          }
+        }
+        setProvisionalTranscript(transcript)
+      }
+
+      if (type === "UtteranceEnd" || type === "utterance_end" || (isFinal && transcript)) {
+        marksRef.current.utterance_end = performance.now()
+        if (marksRef.current.first_partial) {
+          setLatency((p) => ({
+            ...p,
+            partial_to_utterance_end_ms: Math.round(
+              marksRef.current.utterance_end! - marksRef.current.first_partial!,
+            ),
+          }))
+        }
+        setPresence("understanding")
+      }
+
+      const eventPayload: Record<string, unknown> = {
+        type:
+          type === "UtteranceEnd" || type === "utterance_end"
+            ? "utterance_end"
+            : type === "SpeechStarted" || type === "speech_started"
+              ? "speech_started"
+              : "transcript",
+        transcript,
+        is_final: isFinal,
+        speech_final: Boolean(data.speech_final),
+      }
+
+      const tt = await postTurnTakingEvent({
+        sensitivity: optsRef.current.sensitivity || "normal",
+        event: eventPayload,
+        state: turnStateRef.current,
+      })
+      if (!tt) return
+      turnStateRef.current = tt.state
+      if (tt.finalized_transcript) {
+        marksRef.current.first_partial = 0
+        await runSessionTurn(tt.finalized_transcript)
+      }
+    },
+    [bargeIn, runSessionTurn],
+  )
+
+  const start = useCallback(async () => {
+    if (activeRef.current) return
+    if (options.enabled === false) return
+    setPresence("listening")
+    setIsActive(true)
+    activeRef.current = true
+    marksRef.current = { mic_open: performance.now() }
+    turnStateRef.current = null
+
+    const creds = await mintDeepgramLiveToken()
+    if (!creds?.ws_url || !creds.access_token) {
+      setPresence("error")
+      optsRef.current.onError?.(
+        "Live speech recognition is not available. Check Deepgram configuration.",
+      )
+      activeRef.current = false
+      setIsActive(false)
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      })
+      streamRef.current = stream
+      analyserRef.current = createVoiceAnalyser()
+      analyserRef.current.connectStream(stream)
+      startRaf()
+
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AC) throw new Error("AudioContext unavailable")
+      const ctx = new AC()
+      audioCtxRef.current = ctx
+      const source = ctx.createMediaStreamSource(stream)
+      const processor = ctx.createScriptProcessor(4096, 1, 1)
+      processorRef.current = processor
+
+      // Temporary JWT from /v1/auth/grant uses bearer subprotocol (not Token master key).
+      const ws = new WebSocket(creds.ws_url, ["bearer", creds.access_token])
+      ws.binaryType = "arraybuffer"
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        setPresence("listening")
+      }
+      ws.onmessage = (ev) => {
+        void handleDeepgramMessage(ev)
+      }
+      ws.onerror = () => {
+        setPresence("disconnected")
+        optsRef.current.onError?.("Voice connection interrupted")
+      }
+      ws.onclose = () => {
+        if (activeRef.current) setPresence("disconnected")
+      }
+
+      processor.onaudioprocess = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        const input = e.inputBuffer.getChannelData(0)
+        const pcm = downsampleTo16k(input, ctx.sampleRate)
+        wsRef.current.send(pcm.buffer)
+      }
+      source.connect(processor)
+      processor.connect(ctx.destination)
+    } catch (err) {
+      teardownMic()
+      activeRef.current = false
+      setIsActive(false)
+      setPresence("error")
+      optsRef.current.onError?.(
+        err instanceof Error ? err.message : "Microphone permission denied",
+      )
+    }
+  }, [handleDeepgramMessage, options.enabled, teardownMic])
+
+  const stop = useCallback(() => {
+    activeRef.current = false
+    setIsActive(false)
+    abortRef.current?.abort()
+    stopPlayback()
+    teardownMic()
+    setPresence("idle")
+    setProvisionalTranscript("")
+  }, [stopPlayback, teardownMic])
+
+  const toggle = useCallback(() => {
+    if (activeRef.current) stop()
+    else void start()
+  }, [start, stop])
+
+  useEffect(() => {
+    return () => {
+      activeRef.current = false
+      abortRef.current?.abort()
+      stopPlayback()
+      teardownMic()
+    }
+  }, [stopPlayback, teardownMic])
+
+  return {
+    presence,
+    levels,
+    amplitude,
+    provisionalTranscript,
+    latency,
+    isActive,
+    start,
+    stop,
+    toggle,
+    bargeIn,
+    /** Inject a finalized utterance (tests / recovery) through the same session turn path. */
+    submitFinalTranscript: runSessionTurn,
+  }
+}

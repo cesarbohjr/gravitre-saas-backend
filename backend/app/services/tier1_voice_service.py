@@ -296,3 +296,66 @@ def deepgram_live_ws_url(settings: Settings) -> str:
         "&interim_results=true&punctuate=true&smart_format=true"
         "&vad_events=true&utterance_end_ms=1000&endpointing=300"
     )
+
+
+def mint_deepgram_live_credentials(
+    settings: Settings,
+    *,
+    ttl_seconds: int = 60,
+) -> dict[str, Any]:
+    """Mint a short-lived Deepgram JWT for browser WebSocket STT (no long-lived key leak)."""
+    key = (settings.deepgram_api_key or "").strip()
+    if not key:
+        raise VoiceProviderError(
+            "Deepgram API key not configured",
+            status_code=503,
+            error_class="not_configured",
+            provider="deepgram",
+        )
+    ttl = max(15, min(int(ttl_seconds or 60), 120))
+    url = deepgram_live_ws_url(settings)
+    try:
+        with httpx.Client(timeout=12.0) as client:
+            resp = client.post(
+                "https://api.deepgram.com/v1/auth/grant",
+                headers={
+                    "Authorization": f"Token {key}",
+                    "Content-Type": "application/json",
+                },
+                json={"ttl_seconds": ttl},
+            )
+    except httpx.HTTPError as exc:
+        raise VoiceProviderError(
+            f"Deepgram grant failed: {exc}",
+            status_code=502,
+            error_class="service_failure",
+            provider="deepgram",
+        ) from exc
+    if resp.status_code >= 400:
+        raise VoiceProviderError(
+            f"Deepgram grant HTTP {resp.status_code}",
+            status_code=502,
+            error_class="service_failure",
+            provider="deepgram",
+            upstream_status=resp.status_code,
+        )
+    data = resp.json() if resp.content else {}
+    access_token = str(data.get("access_token") or data.get("token") or "").strip()
+    if not access_token:
+        # Fallback: some projects lack grant — do not return the master key to browsers.
+        raise VoiceProviderError(
+            "Deepgram temporary token unavailable for this project",
+            status_code=503,
+            error_class="not_configured",
+            provider="deepgram",
+        )
+    return {
+        "ws_url": url,
+        "access_token": access_token,
+        "authorization": f"Bearer {access_token}",
+        "expires_in_seconds": int(data.get("expires_in") or ttl),
+        "encoding": "linear16",
+        "sample_rate": 16000,
+        "provider": "deepgram",
+        "pipeline": "live_ws_into_session_turn",
+    }

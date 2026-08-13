@@ -34,6 +34,7 @@ import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
+import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
@@ -235,10 +236,52 @@ export default function AgentChatPage({
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
 
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+  const voiceDuplex = useVoiceDuplexSession({
+    enabled: voiceEntitled,
+    agentId,
+    getHistory: () =>
+      messagesRef.current.slice(-24).map((m) => ({
+        role: m.role,
+        content: uiMessageText(m),
+      })),
+    onUserFinal: (text) => {
+      setInput(text)
+      modalityRef.current = "voice"
+      setModality("voice")
+    },
+    onTurnComplete: (result) => {
+      if (result.cancelled && !result.assistantText.trim()) return
+      const stamp = Date.now()
+      setMessages((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: `voice-user-${result.turnId || stamp}`,
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: result.userText }],
+          } as (typeof prev)[number],
+        ]
+        if (result.assistantText.trim()) {
+          next.push({
+            id: `voice-assistant-${result.turnId || stamp}`,
+            role: "assistant" as const,
+            parts: [{ type: "text" as const, text: result.assistantText }],
+          } as (typeof prev)[number])
+          lastSpokenMessageIdRef.current = `voice-assistant-${result.turnId || stamp}`
+        }
+        return next
+      })
+    },
+    onError: (message) => toast.error(message),
+  })
+
   // Auto-TTS after assistant reply completes — same /api/voice/tts pipeline as /ai Read aloud.
-  // Chat still uses execute_task_streaming(spoken_mode=True) via /api/chat body.
+  // Skip when full-duplex session already streamed progressive TTS.
   useEffect(() => {
     if (modality !== "voice" || !voiceEntitled) return
+    if (voiceDuplex.isActive) return
     if (isLoading || isStreaming) return
     const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
     if (!lastAssistant) return
@@ -260,27 +303,33 @@ export default function AgentChatPage({
     agentId,
     qaForceVoiceError,
     speakAgentVoice,
+    voiceDuplex.isActive,
   ])
 
+  const stopDuplex = voiceDuplex.stop
+  const duplexIsActive = voiceDuplex.isActive
   useEffect(() => {
     if (modality !== "voice") {
       stopAgentVoice()
       clearVoiceErrors()
       lastSpokenMessageIdRef.current = null
+      if (duplexIsActive) stopDuplex()
     }
-  }, [modality, stopAgentVoice, clearVoiceErrors])
+  }, [modality, stopAgentVoice, clearVoiceErrors, duplexIsActive, stopDuplex])
 
   // Live-floor chrome only when Voice is armed or mic/TTS owns the floor.
   const voicePresence: VoicePresenceState =
     voiceBilling || voiceServiceError
       ? "error"
-      : micStatus === "listening"
-        ? "listening"
-        : micStatus === "permission-denied" || micStatus === "audio-capture"
-          ? "error"
-          : ttsSpeaking || (modality === "voice" && isStreaming)
-            ? "speaking"
-            : "idle"
+      : voiceDuplex.isActive || voiceDuplex.presence !== "idle"
+        ? voiceDuplex.presence
+        : micStatus === "listening"
+          ? "listening"
+          : micStatus === "permission-denied" || micStatus === "audio-capture"
+            ? "error"
+            : ttsSpeaking || (modality === "voice" && isStreaming)
+              ? "speaking"
+              : "idle"
   const voicePresenceDetail = voiceBilling
     ? voiceBillingDetail
     : voiceServiceError
@@ -520,7 +569,7 @@ export default function AgentChatPage({
               // Real agent name, so the orb / pill read the agent rather than
               // the generic Gravitre default used by main chat.
               agentLabel={agent?.name || "Gravitre"}
-              input={input}
+              input={voiceDuplex.provisionalTranscript || input}
               onInputChange={setInput}
               inputRef={inputRef}
               onKeyDown={handleKeyDown}
@@ -530,9 +579,11 @@ export default function AgentChatPage({
                 CHAT_COMPOSER_CLASS,
               )}
               disabled={!user || isLoading}
-              isStreaming={isStreaming}
-              ttsSpeaking={ttsSpeaking}
+              isStreaming={isStreaming || voiceDuplex.presence === "thinking"}
+              ttsSpeaking={ttsSpeaking || voiceDuplex.presence === "speaking"}
               onStop={() => {
+                void voiceDuplex.bargeIn()
+                voiceDuplex.stop()
                 stop()
                 stopAgentVoice()
               }}
@@ -542,6 +593,17 @@ export default function AgentChatPage({
               voicePresence={voicePresence}
               voiceBilling={voiceBilling}
               voicePresenceDetail={voicePresenceDetail}
+              duplex={{
+                active: voiceDuplex.isActive,
+                presence: voiceDuplex.presence,
+                levels: voiceDuplex.levels,
+                amplitude: voiceDuplex.amplitude,
+                toggle: voiceDuplex.toggle,
+                bargeIn: () => {
+                  void voiceDuplex.bargeIn()
+                },
+                supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+              }}
               onVoiceInputError={(message) => {
                 if (message) toast.error(message)
               }}

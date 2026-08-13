@@ -16,12 +16,9 @@
  * The orb's centre tap moves the first axis; its "✕" and "Tap to switch to text"
  * move the second. Collapsing the orb by tapping it must not end the call.
  *
- * Amplitude: the handoff asks for real amplitude when available, keyframes as
- * fallback. No AnalyserNode exists in the pipeline yet, so these are keyframes
- * driven by real *discrete* state (who is speaking, from the session the caller
- * already tracks). No amplitude prop is exposed until there is a real signal to
- * feed it — a prop that silently receives nothing would be worse than its
- * absence, because it would read as wired.
+ * Amplitude: real AnalyserNode levels when the duplex session supplies `levels`
+ * (7 bins, 0–1). Keyframes remain the fallback when levels are omitted so idle /
+ * unsupported paths still read as a waveform.
  */
 
 import { useEffect, useRef } from "react"
@@ -56,6 +53,7 @@ export function GravitreVoiceWaveform({
   speaker,
   compact = false,
   active = true,
+  levels,
   className,
 }: {
   speaker: VoiceSpeaker
@@ -66,11 +64,18 @@ export function GravitreVoiceWaveform({
    * and speaker color only apply while someone holds the floor.
    */
   active?: boolean
+  /**
+   * Real AnalyserNode bins (length 7, 0–1). When provided and active, bar heights
+   * are driven by amplitude instead of CSS keyframes.
+   */
+  levels?: number[] | null
   className?: string
 }) {
+  const reactive = Boolean(active && levels && levels.length >= 7)
   return (
     <span
       aria-hidden
+      data-voice-waveform={reactive ? "analyser" : "keyframe"}
       className={cn(
         "flex items-center gap-[3px]",
         // Bars are `background-color: currentColor`, so speaker color is set here
@@ -81,7 +86,8 @@ export function GravitreVoiceWaveform({
             ? "text-[#16a374]"
             : "text-[#3f5b52] dark:text-[#e9e9e6]",
         // Animation is opt-in via this class — see globals.css `.gv-wave-active`.
-        active && "gv-wave-active",
+        // Skip keyframes when AnalyserNode levels drive height.
+        active && !reactive && "gv-wave-active",
         // Scaled, not re-declared at a second set of sizes: one waveform
         // implementation serves both the composer and the compact strip.
         compact && "scale-[0.55]",
@@ -89,9 +95,20 @@ export function GravitreVoiceWaveform({
       )}
       style={{ ["--gv-wave-duration" as string]: WAVE_DURATION[speaker] }}
     >
-      {Array.from({ length: 7 }, (_, i) => (
-        <span key={i} className="gv-wave-bar" />
-      ))}
+      {Array.from({ length: 7 }, (_, i) => {
+        const level = reactive ? Math.max(0, Math.min(1, levels![i] ?? 0)) : null
+        const minPx = compact ? 3 : 4
+        const maxPx = compact ? 14 : 18
+        const height =
+          level == null ? undefined : `${Math.round(minPx + level * (maxPx - minPx))}px`
+        return (
+          <span
+            key={i}
+            className="gv-wave-bar"
+            style={height ? { height, animation: "none" } : undefined}
+          />
+        )
+      })}
     </span>
   )
 }
@@ -109,6 +126,7 @@ export function VoiceOrbTakeover({
   agentLabel = "Gravitre",
   onCollapse,
   onExitVoice,
+  amplitude,
 }: {
   speaker: VoiceSpeaker
   agentLabel?: string
@@ -116,6 +134,8 @@ export function VoiceOrbTakeover({
   onCollapse: () => void
   /** Leave voice mode entirely, back to typed text. */
   onExitVoice: () => void
+  /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
+  amplitude?: number | null
 }) {
   // Escape collapses rather than exits. Escape conventionally dismisses the
   // overlay, and the overlay here is a *presentation*, so dismissing it must not
@@ -196,6 +216,7 @@ export function VoiceOrbTakeover({
         <div
           aria-hidden
           data-voice-orb-circle=""
+          data-voice-orb-reactive={amplitude != null ? "analyser" : "keyframe"}
           className={cn(
             "pointer-events-none relative z-0 h-[220px] w-[220px] rounded-full sm:h-[280px] sm:w-[280px]",
             isUser ? "gv-orb-user" : "gv-orb-agent",
@@ -204,6 +225,11 @@ export function VoiceOrbTakeover({
             backgroundImage: isUser
               ? "radial-gradient(circle at 35% 30%, #34d399, #16a374 55%, #0f5132 100%)"
               : "radial-gradient(circle at 35% 30%, #f2f2f0, #b9b9b6 55%, #6b6b68 100%)",
+            transform:
+              amplitude != null
+                ? `scale(${(1 + Math.min(1, Math.max(0, amplitude)) * 0.12).toFixed(3)})`
+                : undefined,
+            transition: amplitude != null ? "transform 80ms linear" : undefined,
           }}
         />
 

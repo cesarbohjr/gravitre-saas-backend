@@ -53,6 +53,7 @@ import { messageCreatedAt } from "@/lib/chat-message-time"
 import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
+import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
 import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
@@ -1656,9 +1657,94 @@ export function AiWorkspace({
   const isChatBusy = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
 
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+  const duplexActiveRef = useRef(false)
+
+  const voiceDuplex = useVoiceDuplexSession({
+    enabled: voiceEntitled,
+    conversationId: activeConversationId,
+    agentId:
+      voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
+        ? selectedVoiceAgent.id
+        : undefined,
+    getHistory: () =>
+      messagesRef.current.slice(-24).map((m) => ({
+        role: m.role,
+        content: uiMessageText(m),
+      })),
+    onUserFinal: (text) => {
+      setInput(text)
+      modalityRef.current = "voice"
+      setModality("voice")
+    },
+    onConversationId: (id) => {
+      if (!id) return
+      if (!activeConversationIdRef.current) {
+        activeConversationIdRef.current = id
+        setActiveConversationId(id)
+      }
+    },
+    onTurnComplete: (result) => {
+      if (result.cancelled && !result.assistantText.trim()) return
+      const stamp = Date.now()
+      const userId = `voice-user-${result.turnId || stamp}`
+      const assistantId = `voice-assistant-${result.turnId || stamp}`
+      setMessages((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: userId,
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: result.userText }],
+            metadata: {
+              originating_modality: "voice",
+              created_at: new Date(stamp).toISOString(),
+            },
+          } as (typeof prev)[number],
+        ]
+        if (result.assistantText.trim()) {
+          next.push({
+            id: assistantId,
+            role: "assistant" as const,
+            parts: [
+              {
+                type: "text" as const,
+                text: polishAssistantText(result.assistantText) || result.assistantText,
+              },
+            ],
+            metadata: {
+              originating_modality: "voice",
+              cancelled: result.cancelled,
+              created_at: new Date(stamp + 1).toISOString(),
+              latency: result.latency,
+            },
+          } as (typeof prev)[number])
+          lastSpokenMessageIdRef.current = assistantId
+        }
+        const conversationId = activeConversationIdRef.current || result.conversationId
+        if (conversationId && next.length > 0) {
+          writeCachedConversationMessages(conversationId, next)
+        }
+        return next
+      })
+      void mutateConversations()
+      if (result.latency?.e2e_speech_end_to_audio_start_ms != null) {
+        console.info("voice.duplex.latency", result.latency)
+      }
+    },
+    onError: (message, billing) => {
+      if (billing) toast.error(message)
+      else toast.error(message)
+    },
+  })
+  duplexActiveRef.current = voiceDuplex.isActive
+
   // Auto-TTS after assistant reply in Voice modality — same /api/voice/tts as agent chat.
+  // Skip when full-duplex session already streamed progressive TTS.
   useEffect(() => {
     if (modality !== "voice" || !voiceEntitled) return
+    if (duplexActiveRef.current || voiceDuplex.isActive) return
     if (isChatBusy) return
     const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
     if (!lastAssistant) return
@@ -1681,28 +1767,34 @@ export function AiWorkspace({
     speakAgentVoice,
     voiceAgentId,
     selectedVoiceAgent,
+    voiceDuplex.isActive,
   ])
 
+  const stopDuplex = voiceDuplex.stop
+  const duplexIsActive = voiceDuplex.isActive
   useEffect(() => {
     if (modality !== "voice") {
       stopAgentVoice()
       clearVoiceErrors()
       lastSpokenMessageIdRef.current = null
+      if (duplexIsActive) stopDuplex()
     }
-  }, [modality, stopAgentVoice, clearVoiceErrors])
+  }, [modality, stopAgentVoice, clearVoiceErrors, duplexIsActive, stopDuplex])
 
   // Live-floor chrome (11a/11b) only when Voice is armed or the mic/TTS owns
   // the floor — never treat ordinary Text streaming as "agent speaking".
   const voicePresence: VoicePresenceState =
     voiceBilling || voiceServiceError
       ? "error"
-      : micStatus === "listening"
-        ? "listening"
-        : micStatus === "permission-denied" || micStatus === "audio-capture"
-          ? "error"
-          : ttsSpeaking || (modality === "voice" && isStreaming)
-            ? "speaking"
-            : "idle"
+      : voiceDuplex.isActive || voiceDuplex.presence !== "idle"
+        ? voiceDuplex.presence
+        : micStatus === "listening"
+          ? "listening"
+          : micStatus === "permission-denied" || micStatus === "audio-capture"
+            ? "error"
+            : ttsSpeaking || (modality === "voice" && isStreaming)
+              ? "speaking"
+              : "idle"
   const voicePresenceDetail = voiceBilling
     ? voiceBillingDetail
     : voiceServiceError
@@ -2270,7 +2362,7 @@ export function AiWorkspace({
                 onModalityChange={handleModalityChange}
                 voiceEntitled={voiceEntitled}
                 unavailableReason={voiceUnavailableReason}
-                input={input}
+                input={voiceDuplex.provisionalTranscript || input}
                 onInputChange={setInput}
                 inputRef={inputRef}
                 onKeyDown={onKeyDown}
@@ -2281,9 +2373,11 @@ export function AiWorkspace({
                 }
                 textareaClassName={CHAT_COMPOSER_CLASS}
                 disabled={routing || isChatBusy}
-                isStreaming={isStreaming || ttsSpeaking}
-                ttsSpeaking={ttsSpeaking}
+                isStreaming={isStreaming || ttsSpeaking || voiceDuplex.presence === "thinking"}
+                ttsSpeaking={ttsSpeaking || voiceDuplex.presence === "speaking"}
                 onStop={() => {
+                  void voiceDuplex.bargeIn()
+                  voiceDuplex.stop()
                   stop()
                   stopAgentVoice()
                 }}
@@ -2294,6 +2388,17 @@ export function AiWorkspace({
                 voiceBilling={voiceBilling}
                 voicePresenceDetail={voicePresenceDetail}
                 agentLabel={assistantLabel}
+                duplex={{
+                  active: voiceDuplex.isActive,
+                  presence: voiceDuplex.presence,
+                  levels: voiceDuplex.levels,
+                  amplitude: voiceDuplex.amplitude,
+                  toggle: voiceDuplex.toggle,
+                  bargeIn: () => {
+                    void voiceDuplex.bargeIn()
+                  },
+                  supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+                }}
                 onVoiceInputError={(message) => {
                   if (message) toast.error(message)
                 }}

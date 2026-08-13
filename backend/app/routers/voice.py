@@ -75,6 +75,13 @@ class SessionTurnRequest(BaseModel):
     voice: str | None = None
     model: str | None = None
     history: list[dict[str, Any]] | None = None
+    turn_id: str | None = None
+
+
+class SessionCancelRequest(BaseModel):
+    turn_id: str = Field(..., min_length=1, max_length=128)
+    conversation_id: str | None = None
+    reason: str | None = "barge_in"
 
 
 class DesignVoiceRequest(BaseModel):
@@ -398,6 +405,42 @@ async def post_stt_form(
     }
 
 
+@router.post("/stt/live-token")
+def post_stt_live_token(
+    _user: Annotated[dict, Depends(get_current_user)],
+    _org: Annotated[str | None, Depends(get_org_context)],
+    seat: Annotated[dict, Depends(require_seat_context())],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Short-lived Deepgram JWT + live WS URL for browser full-duplex STT."""
+    from app.services.tier1_voice_service import mint_deepgram_live_credentials
+
+    _ = seat
+    try:
+        return mint_deepgram_live_credentials(settings, ttl_seconds=60)
+    except VoiceProviderError as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/session/cancel")
+def post_session_cancel(
+    body: SessionCancelRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    _org: Annotated[str | None, Depends(get_org_context)],
+) -> dict[str, Any]:
+    """Barge-in: mark an in-flight voice session turn cancelled."""
+    from app.services.voice_session_service import request_turn_cancel
+
+    request_turn_cancel(body.turn_id)
+    return {
+        "ok": True,
+        "turn_id": body.turn_id,
+        "conversation_id": body.conversation_id,
+        "reason": body.reason or "barge_in",
+        "originating_modality": "voice",
+    }
+
+
 @router.post("/turn-taking/event")
 def post_turn_taking_event(
     body: TurnEventRequest,
@@ -468,6 +511,17 @@ async def post_session_turn(
             forced = resolve_qa_force_voice_error(settings, header_value=qa_force_header)
             if forced:
                 raise forced_voice_provider_error(forced)
+
+            async def _client_gone() -> bool:
+                return await request.is_disconnected()
+
+            # FastAPI disconnect is async; poll via closure checked each event.
+            disconnected = {"v": False}
+
+            async def _poll_disconnect() -> None:
+                if await _client_gone():
+                    disconnected["v"] = True
+
             async for event in stream_voice_turn_events(
                 settings=settings,
                 org_id=org_id,
@@ -478,8 +532,14 @@ async def post_session_turn(
                 conversation_history=body.history,
                 voice_id=body.voice,
                 tts_model=body.model,
+                turn_id=body.turn_id,
+                should_cancel=lambda: disconnected["v"],
             ):
+                await _poll_disconnect()
                 yield (json.dumps(event) + "\n").encode("utf-8")
+                if event.get("type") in {"voice.turn.cancelled", "voice.session.ended"}:
+                    # Keep streaming terminal events; cancel flag already applied.
+                    pass
         except VoiceProviderError as exc:
             yield (json.dumps({"type": "voice.error", **error_public_payload(exc)}) + "\n").encode(
                 "utf-8"
@@ -504,6 +564,7 @@ async def post_session_turn(
             "Cache-Control": "no-store",
             "X-Voice-Session": "1",
             "X-Write-Confirm-Policy": "nl_yes_same_path_as_text",
+            "X-Originating-Modality": "voice",
         },
     )
 

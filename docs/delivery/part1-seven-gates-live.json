@@ -1,0 +1,246 @@
+{
+  "generated_at": "2026-08-13T22:35:14.895434+00:00",
+  "base": "https://gravitre-saas-backend-production.up.railway.app",
+  "health_git_sha": "80cc17d90373f9ffb946be8cd1ef9be3051bc089",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "scope": "part1_items_1_through_7",
+  "gates": {
+    "local": {
+      "probe": "part1-a1354a0b87",
+      "mode": "local_services",
+      "gate_1_workspace_memory": {
+        "status": "PASS",
+        "promoted_count": 1,
+        "recall_hit": true,
+        "foreign_hits": 0
+      },
+      "gate_2_knowledge_nodes": {
+        "status": "PASS",
+        "node_id": "bf18c341-7b97-43a0-97a0-6bbb2a5c3fd4",
+        "listed": 2
+      },
+      "gate_3_metrics": {
+        "status": "PASS",
+        "defaults": [
+          {
+            "metric_key": "mql",
+            "label": "Marketing Qualified Leads",
+            "formula": "count(leads where marketing_qualified=true)",
+            "source_system": "crm",
+            "owner": "platform"
+          },
+          {
+            "metric_key": "cac",
+            "label": "Customer Acquisition Cost",
+            "formula": "(sales_spend + marketing_spend) / new_customers",
+            "source_system": "finance",
+            "owner": "platform"
+          },
+          {
+            "metric_key": "arr",
+            "label": "Annual Recurring Revenue",
+            "formula": "sum(mrr) * 12",
+            "source_system": "billing",
+            "owner": "platform"
+          }
+        ],
+        "resolve_mql_before_override": {
+          "metric_key": "mql",
+          "definition_id": "2633f813-5a27-42a3-9da6-0b9a02da5492",
+          "label": "MQL org override (part1 stub)",
+          "formula": "count(leads where marketing_qualified=true) /* org override */",
+          "source_system": "crm",
+          "owner": "part1_stub",
+          "resolved_from": "org_metric_definitions",
+          "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+        },
+        "resolve_mql_after_override": {
+          "metric_key": "mql",
+          "definition_id": "2633f813-5a27-42a3-9da6-0b9a02da5492",
+          "label": "MQL org override (part1 stub)",
+          "formula": "count(leads where marketing_qualified=true) /* org override */",
+          "source_system": "crm",
+          "owner": "part1_stub",
+          "resolved_from": "org_metric_definitions",
+          "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+        },
+        "upserted_id": "2633f813-5a27-42a3-9da6-0b9a02da5492",
+        "note": "smoke key mql_part1-a1 unused; upserted canonical mql override"
+      },
+      "gate_4_department_memory": {
+        "status": "PASS",
+        "memory_id": "72a5b17a-92f4-4b9e-9e19-0bdb730db06a",
+        "department_id": "sales",
+        "hit_count": 1,
+        "subagent_service": "DepartmentSubagentService"
+      },
+      "gate_5_standing_investigators": {
+        "status": "PASS",
+        "standing_investigators_enabled": true,
+        "default_on": true,
+        "tick_keys": [
+          "status",
+          "orgs",
+          "results",
+          "advisory_only",
+          "writes_executed"
+        ],
+        "advisory_only": true
+      },
+      "gate_6_watcher_authority": {
+        "status": "PASS",
+        "write_without_approval_blocked": true,
+        "code": "WRITE_AUTHORITY_DENIED"
+      },
+      "gate_7_process_mining_suggest": {
+        "status": "PASS",
+        "advisory_only": true,
+        "auto_adopted": false,
+        "created_count": 0,
+        "note": "suggest-only \u2014 admin accept required before inventory"
+      }
+    },
+    "ops_smoke": {
+      "status": "PASS",
+      "http_status": 200,
+      "checks": {
+        "agent_chat": true,
+        "voice": true,
+        "extension_enrich": true,
+        "extension_action": true,
+        "council": true,
+        "cross_org": true,
+        "workspace_cross_conversation": true,
+        "metrics": true,
+        "knowledge_nodes": true,
+        "field_acl": true,
+        "outcome_loop": true,
+        "job_execute_task": true
+      },
+      "mapped_gates": {
+        "gate_1_from_ops": {
+          "workspace_cross_conversation": true,
+          "cross_org": true,
+          "result": {
+            "convo_a": "8a9606fa-31d6-4e58-b389-8e155433bc3c",
+            "convo_b": "6574eca3-433b-45ec-bd01-6a4488c8628a",
+            "promoted_ids": [
+              "18a0a298-ef5d-447b-90f3-256ab9b1f7e7"
+            ],
+            "recall_hit": true,
+            "kernel_hit": true,
+            "turn_id_b": "10a64509-9485-4afd-91f9-5d61912a4969",
+            "foreign_leak": false,
+            "ok": true
+          }
+        },
+        "gate_2_from_ops": {
+          "knowledge_nodes": true,
+          "result": {
+            "node_id": "86b028fe-dd68-4d1b-b8a1-7feeb5808ad2",
+            "node_name": "ProbeCo-onebrain",
+            "turn_id": "b0f166db-5c38-4617-b412-c94694ccc15b",
+            "in_knowledge_pack": true,
+            "ok": true
+          }
+        },
+        "gate_3_from_ops": {
+          "metrics": true,
+          "result": {
+            "metric_key": "arr_onebrain",
+            "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+            "agent_a": {
+              "metric_key": "arr_onebrain",
+              "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+              "label": "Annual Recurring Revenue (smoke)",
+              "formula": "sum(mrr)*12",
+              "source_system": "billing",
+              "owner": "smoke",
+              "resolved_from": "org_metric_definitions",
+              "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+            },
+            "agent_b": {
+              "metric_key": "arr_onebrain",
+              "definition_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+              "label": "Annual Recurring Revenue (smoke)",
+              "formula": "sum(mrr)*12",
+              "source_system": "billing",
+              "owner": "smoke",
+              "resolved_from": "org_metric_definitions",
+              "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+            },
+            "upserted_id": "cc33a9f3-93cc-4b8d-90b1-2853c9d323f0",
+            "platform_defaults": [
+              {
+                "metric_key": "mql",
+                "label": "Marketing Qualified Leads",
+                "formula": "count(leads where marketing_qualified=true)",
+                "source_system": "crm",
+                "owner": "platform"
+              },
+              {
+                "metric_key": "cac",
+                "label": "Customer Acquisition Cost",
+                "formula": "(sales_spend + marketing_spend) / new_customers",
+                "source_system": "finance",
+                "owner": "platform"
+              },
+              {
+                "metric_key": "arr",
+                "label": "Annual Recurring Revenue",
+                "formula": "sum(mrr) * 12",
+                "source_system": "billing",
+                "owner": "platform"
+              }
+            ],
+            "resolve_mql": {
+              "metric_key": "mql",
+              "definition_id": "2633f813-5a27-42a3-9da6-0b9a02da5492",
+              "label": "MQL org override (part1 stub)",
+              "formula": "count(leads where marketing_qualified=true) /* org override */",
+              "source_system": "crm",
+              "owner": "part1_stub",
+              "resolved_from": "org_metric_definitions",
+              "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+            },
+            "resolve_cac": {
+              "metric_key": "cac",
+              "definition_id": null,
+              "label": "Customer Acquisition Cost",
+              "formula": "(sales_spend + marketing_spend) / new_customers",
+              "source_system": "finance",
+              "owner": "platform",
+              "resolved_from": "platform_default",
+              "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+            },
+            "resolve_arr": {
+              "metric_key": "arr",
+              "definition_id": null,
+              "label": "Annual Recurring Revenue",
+              "formula": "sum(mrr) * 12",
+              "source_system": "billing",
+              "owner": "platform",
+              "resolved_from": "platform_default",
+              "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+            },
+            "ok": true
+          }
+        }
+      },
+      "claim": "PASS \u2014 One Brain live residual probes",
+      "git_sha": "unknown"
+    }
+  },
+  "gate_statuses": {
+    "gate_1_workspace_memory": "PASS",
+    "gate_2_knowledge_nodes": "PASS",
+    "gate_3_metrics": "PASS",
+    "gate_4_department_memory": "PASS",
+    "gate_5_standing_investigators": "PASS",
+    "gate_6_watcher_authority": "PASS",
+    "gate_7_process_mining_suggest": "PASS"
+  },
+  "verdict": "PASS",
+  "claim": "PASS \u2014 Part 1 seven gates FULL @ tip 80cc17d90373f9ffb946be8cd1ef9be3051bc089"
+}
