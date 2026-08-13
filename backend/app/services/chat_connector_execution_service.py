@@ -1382,6 +1382,12 @@ class ChatConnectorExecutionService:
             "status": "awaiting_confirm",
             "hitl_action_kind": hitl.action_kind,
             "hitl_policy_id": hitl.matched_policy_id,
+            # Explainable pre-action fields (Mode A / Rank 3) — from RiskApprovalEvaluator.
+            "estimated_impact": risk.get("estimated_impact")
+            or ("medium" if plan.kind == "write" else "low"),
+            "risk_level": risk.get("risk_level")
+            or ("high" if plan.destructive else "low"),
+            "conversation_id": conversation_id,
         }
 
         if DECLINE_PATTERN.match(message.strip()):
@@ -2584,6 +2590,14 @@ class ChatConnectorExecutionService:
                 "label": label,
                 "entity": vendor,
                 "action": label,
+                "impact": pending_params.get("estimated_impact")
+                or ("medium" if plan.kind == "write" else "low"),
+                "estimated_impact": pending_params.get("estimated_impact")
+                or ("medium" if plan.kind == "write" else "low"),
+                "risk_level": pending_params.get("risk_level")
+                or ("high" if plan.destructive else "low"),
+                "approval_reason": plan.approval_reason
+                or pending_params.get("approval_reason"),
             },
             parameters=dict(pending_params),
             payload={"args": dict(plan.args or {})},

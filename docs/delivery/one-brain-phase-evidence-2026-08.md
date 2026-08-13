@@ -34,6 +34,7 @@ Update by appending dated rows; do not erase prior evidence.
 | 22 | Cross-org isolation (zero foreign rows) | Ops smoke RECALL pack | **PASS** | turn `b683f4c3…` leaked_marker=false foreign_org_rows_in_pack=0 vs foreign_org `658c76b3…` |
 | 23 | Field-deny GOVERN + audit | Ops smoke + audit_events | **PASS** | `cognitive.govern.field_acl_deny` audit_id=`68b1461c-c6b8-47f5-9c4c-bb37254af2da` @ `2026-08-13T10:07:11.088726Z`; turn `4a5ac15e…` |
 | 24 | Outcome→PLAN bias after failure | Ops smoke closed loop | **PASS** | recommendation_id=`2ad66e6c…`; PLAN `outcome_bias` notes include `failed_negative_decline` on probe; turn `81aa4ecc…` |
+| 25 | Mode A bias reaches LIVE/classical prompts | Ops smoke `outcome_loop.prompt_injected` on tip `f33798ff` | **PASS** | tip `f33798ff2d65863144e1708a751074149dedbfb4`; `recommendation_id=5df90af5-cbf5-4198-986b-d9231b4691c5` event `recommendation_rejected`; turns `7e3537ec…`→`cf74e1bd…`; `prompt_injected=true`; artifact `one-brain-live-residuals.json` @ `2026-08-13T18:10:50Z` |
 
 ---
 
@@ -63,6 +64,13 @@ Update by appending dated rows; do not erase prior evidence.
 - Surfaces — agent_chat / voice / extension_enrich / extension_action / council / **job** all true in checks
 - Job — turn `4896c6a8…` (first) and latest smoke `job_execute_task` true on tip `03e88373`
 - Cross-org / metrics / field ACL / outcome→PLAN — PASS (see checklist rows 20–24; field audit `68b1461c…` @ `2026-08-13T10:07:11.088726Z`)
+
+### 2026-08-13 — Mode A prompt wire LIVE PASS (Part C rank 2)
+
+- Tip — prod `/health` `git_sha=f33798ff2d65863144e1708a751074149dedbfb4`
+- Artifact — `docs/delivery/one-brain-live-residuals.json` verdict **PASS** (probe `onebrain-f160b6fe1d`)
+- PASS #25 — `outcome_loop.prompt_injected=true`; after notes cite `recommendation_rejected`; turn_after `cf74e1bd-91dd-450d-a542-461e9a9b9068`; job stages include `LEARN` on `3512f096…`
+- Honesty — bar is prompt-section + PLAN bias injection (not streaming-path assistant-text delta)
 
 ### Final Part B residual (honest)
 

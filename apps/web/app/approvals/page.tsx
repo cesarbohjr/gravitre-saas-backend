@@ -16,6 +16,8 @@ import type { User as ApiUser } from "@/types/api"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ApprovalSlaCountdown } from "@/components/approvals/sla-countdown"
+import { PreActionCard } from "@/components/gravitre/pre-action-card"
+import { preActionFromApproval } from "@/lib/pre-action-card"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -75,6 +77,10 @@ interface Approval {
     entity: string
     action: string
     impact?: string
+    estimatedImpact?: string
+    riskLevel?: string
+    approvalReason?: string
+    conversationId?: string
     runId?: string
   }
 }
@@ -258,10 +264,39 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
                 "Workflow run",
             ),
             action: String((rawContext as Record<string, unknown>).action ?? "Review request"),
-            impact:
-              (rawContext as Record<string, unknown>).impact !== undefined
-                ? String((rawContext as Record<string, unknown>).impact)
-                : undefined,
+            impact: (() => {
+              const ctx = rawContext as Record<string, unknown>
+              const raw = ctx.impact ?? ctx.estimated_impact ?? ctx.estimatedImpact
+              return raw !== undefined && raw !== null && String(raw).trim()
+                ? String(raw)
+                : undefined
+            })(),
+            estimatedImpact: (() => {
+              const ctx = rawContext as Record<string, unknown>
+              const raw = ctx.estimated_impact ?? ctx.estimatedImpact ?? ctx.impact
+              return raw !== undefined && raw !== null && String(raw).trim()
+                ? String(raw)
+                : undefined
+            })(),
+            riskLevel: (() => {
+              const ctx = rawContext as Record<string, unknown>
+              const raw = ctx.risk_level ?? ctx.riskLevel
+              return raw !== undefined && raw !== null && String(raw).trim()
+                ? String(raw)
+                : undefined
+            })(),
+            approvalReason: (() => {
+              const ctx = rawContext as Record<string, unknown>
+              const raw = ctx.approval_reason ?? ctx.approvalReason
+              return raw !== undefined && raw !== null && String(raw).trim()
+                ? String(raw)
+                : undefined
+            })(),
+            conversationId: (() => {
+              const ctx = rawContext as Record<string, unknown>
+              const raw = ctx.conversation_id ?? ctx.conversationId
+              return raw ? String(raw) : undefined
+            })(),
             runId: (() => {
               const rid = (rawContext as Record<string, unknown>).run_id ?? (rawContext as Record<string, unknown>).runId
               return rid ? String(rid) : undefined
@@ -565,6 +600,12 @@ function DetailPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PreActionCard
+          payload={preActionFromApproval(approval)}
+          variant="approvals"
+          hideActions={false}
+        />
+
         {/* AI Recommendation */}
         {approval.aiRecommendation && (
           <div className={cn(

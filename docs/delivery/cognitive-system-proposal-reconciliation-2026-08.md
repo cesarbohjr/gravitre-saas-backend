@@ -229,7 +229,14 @@ Product decisions still gated (unchanged): fuzzy person-name Option C out; cross
 | Rank | Step | Status |
 |------|------|--------|
 | 1 | Integrate dual paths (CognitiveTurnKernel) | **LIVE PASS** — `docs/delivery/one-brain-live-residuals.json` |
-| 2 | Close Mode A outcome→recommendation | **IN PROGRESS** — `outcome_bias` now injected via `to_prompt_sections` into LIVE + classical prompts; LEARN wired on `execute_task`; measured prompt-injection check in ops smoke |
-| 3 | Unify explainable pre-action card | **QUEUED** |
+| 2 | Close Mode A outcome→recommendation | **LIVE PASS** — tip `f33798ff2d65863144e1708a751074149dedbfb4`; ops smoke `outcome_loop.prompt_injected=true`; `recommendation_id=5df90af5…` event `recommendation_rejected`; turns before `7e3537ec…` / after `cf74e1bd…`; artifact `docs/delivery/one-brain-live-residuals.json` @ `2026-08-13T18:10:50Z` |
+| 3 | Unify explainable pre-action card | **IN PROGRESS** — shared `PreActionCard` + `pre-action-card` mappers on chat connector confirm + Approvals detail; backend stamps `estimated_impact` / `risk_level` / `approval_reason` onto `pending_task.params` and approval `context` |
+
+### Mode A LIVE stamp (2026-08-13)
+
+- Ship — `feat(cognitive): Mode A outcome bias into LIVE/classical prompts` @ `f33798ff`
+- Smoke — `checks.outcome_loop=true`, `prompt_injected=true`, after_bias_notes cite `recommendation_rejected` on situation `onebrain-f160b6fe1d recommend next CRM outreach step`
+- Job LEARN — `job_execute_task` stages include `LEARN` on turn `3512f096…`
+- Honesty bar — measured as **prompt-section injection + PLAN bias notes**, not yet “assistant recommendation text changed for same situation” on streaming path
 
 Append further dated notes; do not overwrite Part A/B.

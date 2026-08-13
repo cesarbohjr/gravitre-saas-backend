@@ -1230,6 +1230,15 @@ export function AiWorkspace({
     [ensureConversation, sendMessage],
   )
 
+  const handleRejectExecution = useCallback(() => {
+    void runChat("no")
+  }, [runChat])
+
+  const handleModifyExecution = useCallback(() => {
+    setInput("I'd like to change: ")
+    toast.message("Tell me what to change in the composer, then send.")
+  }, [])
+
   const handleEditResend = useCallback(
     (messageId: string, text: string) => {
       const idx = messages.findIndex((message) => message.id === messageId)
@@ -2108,6 +2117,8 @@ export function AiWorkspace({
                     pendingTask={pendingTask}
                     confirmExecuting={confirmExecuting}
                     onConfirmExecution={() => void handleConfirmExecution()}
+                    onRejectExecution={handleRejectExecution}
+                    onModifyExecution={handleModifyExecution}
                     canApprove={canApproveWrites}
                     onEditResend={handleEditResend}
                     conversationId={activeConversationId}

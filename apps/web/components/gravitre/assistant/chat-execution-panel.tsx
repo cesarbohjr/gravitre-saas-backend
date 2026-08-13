@@ -27,6 +27,8 @@ import {
   hostedFilesFromUnknown,
 } from "@/components/gravitre/assistant/file-reference-chip"
 import { PreviewCodePane } from "@/components/gravitre/assistant/preview-code-pane"
+import { PreActionCard } from "@/components/gravitre/pre-action-card"
+import { preActionFromPendingTask } from "@/lib/pre-action-card"
 
 export type ChatArtifact = {
   artifact_id?: string
@@ -178,6 +180,12 @@ export type ChatPendingTask = {
     invoke_action?: string
     kind?: string
     integration?: string
+    requires_approval?: boolean
+    approval_reason?: string
+    estimated_impact?: string
+    risk_level?: string
+    approval_id?: string
+    conversation_id?: string
   }
   current_step?: OrchestrationStepPreview
 }
@@ -188,6 +196,8 @@ type ChatExecutionPanelProps = {
   pendingTask?: ChatPendingTask | null
   confirming?: boolean
   onConfirm?: () => void
+  onReject?: () => void
+  onModify?: () => void
   /** Admin/owner (or policy approver) — show Approve button; others see queued copy. */
   canApprove?: boolean
   className?: string
@@ -458,6 +468,8 @@ export function ChatExecutionPanel({
   pendingTask,
   confirming = false,
   onConfirm,
+  onReject,
+  onModify,
   canApprove = false,
   className,
 }: ChatExecutionPanelProps) {
@@ -721,6 +733,41 @@ export function ChatExecutionPanel({
       dialogueMode === "awaiting_approval" ||
       pendingTask.status === "awaiting_admin_approval" ||
       (dialogueMode === "confirm" && !canApprove && pendingTask.status !== "awaiting_confirm")
+
+    if (isConnector) {
+      const payload = preActionFromPendingTask(pendingTask, {
+        description: queuedForApprover
+          ? "Your request will be sent for approval."
+          : pendingDescription(pendingTask),
+      })
+      if (payload) {
+        return (
+          <div className={cn("mt-3", className)}>
+            <PreActionCard
+              payload={payload}
+              variant="chat"
+              confirming={Boolean(confirming)}
+              approveLabel={confirmButtonLabel(pendingTask, Boolean(confirming))}
+              onApprove={queuedForApprover ? undefined : onConfirm}
+              onReject={queuedForApprover ? undefined : onReject}
+              onModify={queuedForApprover ? undefined : onModify}
+              hideActions={queuedForApprover}
+            />
+            {queuedForApprover && pendingTask.params?.approval_id ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                <Link
+                  href={`/approvals?id=${encodeURIComponent(String(pendingTask.params.approval_id))}`}
+                  className="underline underline-offset-2"
+                >
+                  Open in Approvals
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        )
+      }
+    }
+
     return (
       <div
         className={cn(

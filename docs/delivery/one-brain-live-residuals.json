@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-13T17:31:17.566419+00:00",
+  "generated_at": "2026-08-13T18:10:50.339796+00:00",
   "base": "https://gravitre-saas-backend-production.up.railway.app",
-  "health_git_sha": "03e8837342cb7945142bd13525b7287db01f077b",
+  "health_git_sha": "f33798ff2d65863144e1708a751074149dedbfb4",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "smoke": {
@@ -23,9 +23,9 @@
       "job_execute_task": true
     },
     "results": {
-      "probe_tag": "onebrain-158978d328",
+      "probe_tag": "onebrain-f160b6fe1d",
       "agent_chat": {
-        "turn_id": "ebf0a9c7-ed2b-4a4d-8280-acb91da125bf",
+        "turn_id": "0ddb0b7f-230f-4c1e-9595-2ab41b8c6015",
         "surface": "agent_chat",
         "stages": [
           "RETRIEVE",
@@ -38,7 +38,7 @@
         "ok": true
       },
       "voice": {
-        "turn_id": "51ce7ccf-d59b-4946-ab3e-e85fe8874eec",
+        "turn_id": "46d9aa9c-41ac-4847-98a3-73023cbf7868",
         "surface": "voice",
         "stages": [
           "RETRIEVE",
@@ -51,23 +51,23 @@
         "ok": true
       },
       "extension_enrich": {
-        "cognitiveTurnId": "87938037-e6a7-4b0d-8478-ed4a6dd0c58a",
+        "cognitiveTurnId": "7179c1f3-e15a-41b4-9297-428ea2307a1d",
         "ok": true
       },
       "extension_action": {
-        "turn_id": "65d72f93-600c-4d8f-b9b9-dbba6c7a9145",
+        "turn_id": "f125f682-a2ca-4e7d-8775-5e421b682f6d",
         "ok": true
       },
       "council": {
-        "session_id": "0f004670-4070-423c-89d4-b228d9123519:onebrain-158978d328 coun",
-        "turn_id": "b39f74ce-c723-4460-b4fa-0e5d325ea999",
+        "session_id": "bf134b20-5dff-430b-a241-84c6628df95f:onebrain-f160b6fe1d coun",
+        "turn_id": "3fed684d-2a11-4d3b-8149-2d5f03617810",
         "surface": "council",
         "ok": true
       },
       "cross_org": {
         "foreign_org_id": "658c76b3-04b7-489b-bb7e-64a5f3ec1cbe",
         "foreign_memory_id": null,
-        "turn_id": "37d32dd1-472b-4021-9a6b-190898a20448",
+        "turn_id": "1735b63a-e4a0-47b8-9a02-9308fa460e50",
         "leaked_marker": false,
         "foreign_org_rows_in_pack": 0,
         "ok": true
@@ -99,7 +99,7 @@
         "ok": true
       },
       "field_acl": {
-        "turn_id": "20153d70-9813-4dde-9f50-939df60acb4c",
+        "turn_id": "f35fd24e-c89a-4d8f-ab2d-1b4961ddbed6",
         "blocked": true,
         "govern": {
           "ok": false,
@@ -116,28 +116,41 @@
           ],
           "actions": []
         },
-        "audit_id": "36b41443-48aa-4ba8-abad-36664ac03dbe",
-        "audit_at": "2026-08-13T17:31:43.388764+00:00",
+        "audit_id": "233a6252-98c1-4145-a78d-159537429ff1",
+        "audit_at": "2026-08-13T18:11:17.294593+00:00",
         "ok": true
       },
       "outcome_loop": {
-        "recommendation_id": "e7d30fb7-95e7-4229-b79c-ca2a3aabe987",
+        "recommendation_id": "5df90af5-cbf5-4198-986b-d9231b4691c5",
+        "situation": "onebrain-f160b6fe1d recommend next CRM outreach step",
+        "record_closed_loop": {
+          "ok": true,
+          "recommendation_id": "5df90af5-cbf5-4198-986b-d9231b4691c5",
+          "outcome_event": "recommendation_rejected"
+        },
         "before_weight_delta": -0.1,
         "after_weight_delta": -0.1,
-        "after_bias_notes": [
-          "Prior outcome failed_negative_decline on onebrain-158978d328"
+        "before_bias_notes": [
+          "Org has 25 recent outcome events (0 positive-leaning, 5 negative-leaning)."
         ],
+        "after_bias_notes": [
+          "Prior outcome recommendation_rejected on onebrain-f160b6fe1d recommend next CRM outreach "
+        ],
+        "before_bias_prompt_len": 426,
+        "after_bias_prompt_len": 440,
+        "prompt_injected": true,
         "plan_outcome_bias": {
           "bias_notes": [
-            "Prior outcome failed_negative_decline on onebrain-158978d328"
+            "Prior outcome recommendation_rejected on onebrain-f160b6fe1d recommend next CRM outreach "
           ],
           "weight_delta": -0.1
         },
-        "turn_id": "55935338-9e2a-4fea-ae8f-88393285ebb8",
+        "turn_id_before": "7e3537ec-0180-4390-a655-b83b7ba507e4",
+        "turn_id_after": "cf74e1bd-91dd-450d-a542-461e9a9b9068",
         "ok": true
       },
       "job_execute_task": {
-        "turn_id": "ad7a2d7b-1b1a-4add-9a3f-ee4536764ce7",
+        "turn_id": "3512f096-5c10-4fe0-9bb4-d4de0fe6ab17",
         "surface": "job",
         "stages": [
           "RETRIEVE",
@@ -145,9 +158,10 @@
           "KNOWLEDGE",
           "PLAN",
           "VERIFY",
-          "GOVERN"
+          "GOVERN",
+          "LEARN"
         ],
-        "react_error": "TypeError:ReActEngine.run() got an unexpected keyword argument 'tool_query'",
+        "react_error": null,
         "ok": true
       }
     },

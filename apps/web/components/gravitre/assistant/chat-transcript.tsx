@@ -99,6 +99,8 @@ type ChatTranscriptProps = {
   pendingTask?: ChatPendingTask | null
   confirmExecuting?: boolean
   onConfirmExecution?: () => void
+  onRejectExecution?: () => void
+  onModifyExecution?: () => void
   canApprove?: boolean
   /** Edit a prior user message and resend as a new turn (history not overwritten). */
   onEditResend?: (messageId: string, text: string) => void
@@ -154,6 +156,8 @@ export function ChatTranscript({
   pendingTask,
   confirmExecuting = false,
   onConfirmExecution,
+  onRejectExecution,
+  onModifyExecution,
   canApprove = false,
   onEditResend,
   conversationId,
@@ -341,6 +345,8 @@ export function ChatTranscript({
                             pendingTask={pendingTask}
                             confirming={confirmExecuting}
                             onConfirm={onConfirmExecution}
+                            onReject={onRejectExecution}
+                            onModify={onModifyExecution}
                             canApprove={canApprove}
                           />
                           <ExplainabilityPanel
