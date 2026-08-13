@@ -25,10 +25,10 @@ Update by appending dated rows; do not erase prior evidence.
 | 13 | Admin UI Cognitive turns tab | `cognitive-turns-tab.tsx` + `SURFACE_COPY.adminTabs.cognitive` | **CODE** | `/admin/intelligence` tab |
 | 14 | CI runs cognitive regression suite | `.github/workflows/ci.yml` step | **CODE** | Workflow step name "Cognitive regression suite" |
 | 15 | Migration applied in target Supabase | Remote table existence query | **PASS** | `information_schema` @ smyeexlrqdpymwjmgzqu lists `cognitive_turn_traces`, `org_metric_definitions`, `org_field_permissions`, `org_knowledge_nodes` after `apply_migration` cognitive_turn_kernel (2026-08-13) |
-| 16 | Prod chat turn persists `cognitive_turn_traces` row | Prod query / admin UI after deploy | **LIVE PENDING** | Needs authenticated chat after Railway tip `0958772c` |
-| 17 | Streaming LIVE turn shows kernel stages then ACT | Prod chat + audit / turn_id | **LIVE PENDING** | — |
-| 18 | Extension enrich path records kernel stage | Prod extension request + trace | **LIVE PENDING** | — |
-| 19 | Council turn records kernel stage | Prod council run + trace | **LIVE PENDING** | — |
+| 16 | Prod chat turn persists `cognitive_turn_traces` row | Prod query after Railway tip | **PASS** | `turn_id=02beb5fd-fdc4-421e-8fc0-603ee62c9889` @ `2026-08-13T09:27:12.654717Z` surface=`ai_chat` conversation_id=`9db0616b-3a40-4286-9af9-a725e04be8ea` |
+| 17 | Streaming LIVE turn shows kernel stages then ACT | Trace stages + prod git_sha | **PASS** (ai_chat) | Stages RETRIEVE→RECALL→KNOWLEDGE→PLAN→VERIFY→GOVERN on turn above; prod `/health` `git_sha=0958772c…` @ `2026-08-13T09:32:21Z`; Railway run [31686266171](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31686266171) |
+| 18 | Extension enrich path records kernel stage | Prod extension request + trace | **LIVE PENDING** | Code wired; no `surface=extension_enrich` row yet |
+| 19 | Council turn records kernel stage | Prod council run + trace | **LIVE PENDING** | Code wired; no `surface=council` row yet |
 | 20 | Metric upsert + resolve round-trip in prod org | Admin API against live DB | **LIVE PENDING** | Schema ready; no seeded customer metrics inserted |
 
 ---
@@ -46,22 +46,24 @@ Update by appending dated rows; do not erase prior evidence.
 
 ### 2026-08-13 — ship tip + schema
 
-- CODE ship — `git_sha=0958772c` pushed `main` (`feat(cognitive): ship CognitiveTurnKernel path-unify + Phases 1–9 scaffold`)
+- CODE ship — `git_sha=0958772c` pushed `main` (`feat(cognitive): ship CognitiveTurnKernel path-unify + Phases 1–9 scaffold`); evidence stamp tip `b34477b2`
 - PASS #15 — Supabase prod project `smyeexlrqdpymwjmgzqu`: tables `cognitive_turn_traces`, `org_metric_definitions`, `org_field_permissions`, `org_knowledge_nodes` present after migration
 - CODE — `node scripts/cognitive-regression-suite.mjs` → PASS; `pytest tests/services/test_cognitive_turn_kernel.py` → 4 passed
 - CODE — what-if honesty envelope: `confidenceSource=heuristic`, `confidenceIsEstimate=true`, `isFact=false` (local `simulate_business_scenario`)
-- Deploy — GitHub Actions: CI run `31686266141`, Railway backend production `31686266171` (watch for green before promoting #16–#19)
-- **Not claimed PASS:** multi-surface chat/voice/extension parity, cross-org isolation live probe, dual-agent metric resolve, field ACL block audit event, closed-loop before/after recommendation change
+- Deploy — Railway backend production **success** [31686266171](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31686266171) for `0958772c`; prod health `git_sha=0958772cfe324033073a78e56c62498af0b398c5` @ `2026-08-13T09:32:21Z`
+- PASS #16/#17 — live `ai_chat` kernel pre-ACT: `turn_id=02beb5fd-fdc4-421e-8fc0-603ee62c9889` @ `2026-08-13T09:27:12.654717Z` stages RETRIEVE→GOVERN (`fabric_count=6`), conversation `9db0616b-3a40-4286-9af9-a725e04be8ea`
+- **Not claimed PASS:** agent/voice/extension/council surface parity rows, cross-org isolation live probe, dual-agent metric resolve, field ACL deny audit event, closed-loop before/after recommendation change
 
 ### Final Part B residual (honest)
 
 | Surface | Kernel intake in code? | Live composition re-test |
 |---------|------------------------|--------------------------|
-| Main/TRY/agent/voice chat (`execute_task_streaming`) | Yes — `run_pre_act` before LIVE | **LIVE PENDING** |
+| Main/TRY chat (`execute_task_streaming`) | Yes — `run_pre_act` before LIVE | **PASS** — turn `02beb5fd…` |
+| Agent / voice chat | Same streaming path; surface label differs | **PARTIAL** — no distinct `agent_chat`/`voice` trace sampled yet |
 | Jobs/swarm/handoff (`execute_task`) | Yes — kernel first | **LIVE PENDING** |
 | Extension enrich/actions/confirm | Yes — `cognitive_entry_adapters` | **LIVE PENDING** |
 | Council | Yes — evidence pack inject | **LIVE PENDING** |
 | Meson | Plan adapter only (`meson_plan_adapter`); NL execution later hits kernel | N/A as NL brain |
 | Workflow deterministic steps | GOVERN on writes via existing authority; agent nodes via `execute_task` | **LIVE PENDING** |
 
-Residual gaps: no authenticated prod chat turn_id yet proving `cognitive_turn_traces.stages` sequence; no deliberate cross-org memory probe audit row; no dual-agent ARR definition-id live match; no field-deny audit event. Code paths are wired; promote each LIVE PENDING row only with a fresh post-deploy pointer.
+Residual gaps: need distinct live traces for agent_chat/voice/extension/council; deliberate cross-org memory probe; dual-agent ARR definition-id match; field-deny audit event; outcome→PLAN bias before/after. Promote those only with fresh pointers.
