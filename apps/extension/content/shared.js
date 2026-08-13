@@ -443,6 +443,19 @@
         chatInput.rows = 2
         chatInput.placeholder = "Quick question (page context included)…"
         chatBox.appendChild(chatInput)
+        const modeRow = el("div", "gvt-chat-mode")
+        const textModeBtn = el("button", "gvt-mode-btn active", "Text")
+        textModeBtn.type = "button"
+        const voiceModeBtn = el("button", "gvt-mode-btn", "Voice")
+        voiceModeBtn.type = "button"
+        voiceModeBtn.disabled = true
+        const micBtn = el("button", "gvt-mode-btn", "Mic")
+        micBtn.type = "button"
+        micBtn.disabled = true
+        modeRow.appendChild(textModeBtn)
+        modeRow.appendChild(voiceModeBtn)
+        modeRow.appendChild(micBtn)
+        chatBox.appendChild(modeRow)
         const chatReply = el("p", "gvt-muted", "")
         chatBox.appendChild(chatReply)
         const chatActions = el("div", "gvt-actions")
@@ -453,6 +466,158 @@
         continueBtn.style.display = "none"
         let lastHandoffUrl = result.openInGravitreUrl || result.openInGravitreeUrl || "/ai"
         let conversationId = null
+        let voiceMode = false
+        let voiceReady = false
+        let voiceReason = "Voice is unavailable in this workspace."
+        let isListening = false
+        let recognition = null
+        let playbackAudio = null
+
+        function setVoiceMode(nextVoice) {
+          voiceMode = Boolean(nextVoice && voiceReady)
+          textModeBtn.classList.toggle("active", !voiceMode)
+          voiceModeBtn.classList.toggle("active", voiceMode)
+          micBtn.disabled = !voiceMode || !voiceReady
+          if (!voiceMode) {
+            if (recognition && isListening) {
+              try {
+                recognition.stop()
+              } catch {}
+            }
+            isListening = false
+            micBtn.classList.remove("active")
+            micBtn.textContent = "Mic"
+          }
+        }
+
+        function stopPlayback() {
+          if (!playbackAudio) return
+          try {
+            playbackAudio.pause()
+          } catch {}
+          playbackAudio = null
+        }
+
+        function playVoiceReply(answerText) {
+          const text = String(answerText || "").trim()
+          if (!text || !voiceMode || !voiceReady) return
+          stopPlayback()
+          chrome.runtime.sendMessage(
+            {
+              type: "VOICE_TTS",
+              text,
+            },
+            (ttsRes) => {
+              if (!ttsRes?.ok || !ttsRes.audioBase64) {
+                if (ttsRes?.error) {
+                  status.textContent = `Voice output unavailable: ${ttsRes.error}`
+                }
+                return
+              }
+              const contentType = ttsRes.contentType || "audio/mpeg"
+              const src = `data:${contentType};base64,${ttsRes.audioBase64}`
+              const audio = new Audio(src)
+              playbackAudio = audio
+              audio.onended = () => {
+                if (playbackAudio === audio) playbackAudio = null
+              }
+              audio.onerror = () => {
+                if (playbackAudio === audio) playbackAudio = null
+                status.textContent = "Voice output failed to play."
+              }
+              void audio.play().catch(() => {
+                if (playbackAudio === audio) playbackAudio = null
+                status.textContent = "Voice output blocked by browser autoplay."
+              })
+            },
+          )
+        }
+
+        function setupRecognition() {
+          if (recognition) return recognition
+          const SpeechRecognitionCtor =
+            window.SpeechRecognition || window.webkitSpeechRecognition
+          if (!SpeechRecognitionCtor) return null
+          recognition = new SpeechRecognitionCtor()
+          recognition.continuous = false
+          recognition.interimResults = true
+          recognition.lang = "en-US"
+          recognition.onresult = (event) => {
+            const pieces = []
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+              const part = event.results[i]
+              if (!part || !part[0]) continue
+              pieces.push(part[0].transcript || "")
+            }
+            const spoken = pieces.join(" ").trim()
+            if (!spoken) return
+            const current = String(chatInput.value || "").trim()
+            chatInput.value = current ? `${current} ${spoken}` : spoken
+          }
+          recognition.onerror = () => {
+            isListening = false
+            micBtn.classList.remove("active")
+            micBtn.textContent = "Mic"
+            chatReply.textContent = "Mic error. You can still type."
+          }
+          recognition.onend = () => {
+            isListening = false
+            micBtn.classList.remove("active")
+            micBtn.textContent = "Mic"
+          }
+          return recognition
+        }
+
+        textModeBtn.addEventListener("click", () => setVoiceMode(false))
+        voiceModeBtn.addEventListener("click", () => {
+          if (!voiceReady) {
+            chatReply.textContent = voiceReason
+            return
+          }
+          setVoiceMode(true)
+        })
+        micBtn.addEventListener("click", () => {
+          if (!voiceMode || !voiceReady) return
+          const rec = setupRecognition()
+          if (!rec) {
+            chatReply.textContent = "Voice input is not supported in this browser."
+            return
+          }
+          if (isListening) {
+            try {
+              rec.stop()
+            } catch {}
+            isListening = false
+            micBtn.classList.remove("active")
+            micBtn.textContent = "Mic"
+            return
+          }
+          try {
+            rec.start()
+            isListening = true
+            micBtn.classList.add("active")
+            micBtn.textContent = "Listening…"
+            chatReply.textContent = "Listening…"
+          } catch {
+            chatReply.textContent = "Could not start microphone."
+          }
+        })
+
+        chrome.runtime.sendMessage({ type: "VOICE_STATUS" }, (voiceRes) => {
+          if (!voiceRes?.ok) {
+            voiceReady = false
+            voiceReason = voiceRes?.error || "Voice status unavailable."
+            voiceModeBtn.disabled = true
+            setVoiceMode(false)
+            return
+          }
+          voiceReady = Boolean(voiceRes.enabled)
+          voiceReason = voiceRes.reason || "Voice output is unavailable."
+          voiceModeBtn.disabled = !voiceReady
+          if (!voiceReady && voiceMode) {
+            setVoiceMode(false)
+          }
+        })
         askBtn.addEventListener("click", () => {
           const message = (chatInput.value || "").trim()
           if (!message) {
@@ -468,6 +633,7 @@
               pageUrl,
               pageContext,
               conversationId,
+              spokenMode: voiceMode && voiceReady,
             },
             (chatRes) => {
               askBtn.disabled = false
@@ -478,6 +644,7 @@
               const r = chatRes.result || {}
               conversationId = r.conversationId || conversationId
               chatReply.textContent = r.answer || "(no answer)"
+              playVoiceReply(r.answer || "")
               if (r.businessOutcome) {
                 renderBusinessOutcomeCard(card, r)
               }

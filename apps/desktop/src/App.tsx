@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   decideApproval,
+  fetchVoiceStatus,
   fetchActivity,
   fetchApprovals,
   openDeepLink,
   sendChat,
+  synthesizeVoiceReply,
   type ActivityEvent,
+  type DesktopChatTurn,
   type ApprovalItem,
 } from "./lib/api"
 import {
@@ -37,6 +40,13 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [approvals, setApprovals] = useState<ApprovalItem[]>([])
+  const [voiceEntitled, setVoiceEntitled] = useState(true)
+  const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | null>(null)
+  const [voiceListening, setVoiceListening] = useState(false)
+  const [voiceSpeaking, setVoiceSpeaking] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioUrlRef = useRef<string | null>(null)
+  const speechRecognitionRef = useRef<any>(null)
 
   const connected = Boolean(session?.accessToken && session.orgId)
 
@@ -44,6 +54,57 @@ export default function App() {
     saveSession(next)
     setSession(next)
   }, [])
+
+  const stopVoicePlayback = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause()
+      } catch {
+        // noop
+      }
+      audioRef.current.src = ""
+      audioRef.current = null
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+    }
+    setVoiceSpeaking(false)
+  }, [])
+
+  const stopVoiceListening = useCallback(() => {
+    const rec = speechRecognitionRef.current
+    if (rec) {
+      try {
+        rec.stop()
+      } catch {
+        // noop
+      }
+    }
+    setVoiceListening(false)
+  }, [])
+
+  const playVoiceReply = useCallback(
+    async (replyText: string) => {
+      if (!session || !voiceEntitled) return
+      const text = String(replyText || "").trim()
+      if (!text) return
+      stopVoicePlayback()
+      const blob = await synthesizeVoiceReply(session, text)
+      const objectUrl = URL.createObjectURL(blob)
+      const audio = new Audio(objectUrl)
+      audioRef.current = audio
+      audioUrlRef.current = objectUrl
+      setVoiceSpeaking(true)
+      audio.onended = () => stopVoicePlayback()
+      audio.onerror = () => {
+        stopVoicePlayback()
+        setError("Voice playback failed")
+      }
+      await audio.play()
+    },
+    [session, stopVoicePlayback, voiceEntitled],
+  )
 
   useEffect(() => {
     const cleanups: Array<() => void> = []
@@ -107,6 +168,50 @@ export default function App() {
   }, [session, refreshSidePanels])
 
   useEffect(() => {
+    if (!session) {
+      setVoiceEntitled(true)
+      setVoiceUnavailableReason(null)
+      return
+    }
+    let cancelled = false
+    void fetchVoiceStatus(session)
+      .then((status) => {
+        if (cancelled) return
+        setVoiceEntitled(Boolean(status.enabled))
+        setVoiceUnavailableReason(status.enabled ? null : status.reason || "Voice unavailable right now.")
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Keep voice available when status check fails transiently.
+        setVoiceEntitled(true)
+        setVoiceUnavailableReason(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session])
+
+  useEffect(() => {
+    return () => {
+      stopVoiceListening()
+      stopVoicePlayback()
+    }
+  }, [stopVoiceListening, stopVoicePlayback])
+
+  useEffect(() => {
+    if (tab === "chat") return
+    stopVoiceListening()
+    stopVoicePlayback()
+  }, [tab, stopVoiceListening, stopVoicePlayback])
+
+  useEffect(() => {
+    if (voiceEntitled || modality !== "voice") return
+    setModality("text")
+    stopVoiceListening()
+    stopVoicePlayback()
+  }, [modality, stopVoiceListening, stopVoicePlayback, voiceEntitled])
+
+  useEffect(() => {
     if (!session || approvals.length === 0) return
     ;(async () => {
       try {
@@ -135,20 +240,74 @@ export default function App() {
     return `Org ${session.orgId.slice(0, 8)}…`
   }, [session])
 
+  const toggleVoiceListening = useCallback(() => {
+    if (!voiceEntitled || modality !== "voice") return
+    const Ctor =
+      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
+        .SpeechRecognition ||
+      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
+        .webkitSpeechRecognition
+    if (!Ctor) {
+      setError("Voice input is not supported in this desktop runtime.")
+      return
+    }
+    let rec = speechRecognitionRef.current
+    if (!rec) {
+      rec = new Ctor()
+      rec.lang = "en-US"
+      rec.continuous = false
+      rec.interimResults = false
+      rec.onresult = (event: any) => {
+        const transcript = String(event?.results?.[0]?.[0]?.transcript || "").trim()
+        if (!transcript) return
+        setInput((prev) => {
+          const current = prev.trim()
+          return current ? `${current} ${transcript}` : transcript
+        })
+      }
+      rec.onerror = () => {
+        setVoiceListening(false)
+        setError("Microphone capture failed")
+      }
+      rec.onend = () => {
+        setVoiceListening(false)
+      }
+      speechRecognitionRef.current = rec
+    }
+    if (voiceListening) {
+      stopVoiceListening()
+      return
+    }
+    try {
+      rec.start()
+      setVoiceListening(true)
+      setError(null)
+    } catch {
+      setError("Could not start microphone")
+    }
+  }, [modality, stopVoiceListening, voiceEntitled, voiceListening])
+
   const onSend = async () => {
     if (!session || !input.trim() || busy) return
     const text = input.trim()
+    stopVoiceListening()
     setInput("")
     setBusy(true)
     setError(null)
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", text }
     setMessages((prev) => [...prev, userMsg])
     try {
-      const reply = await sendChat(session, text, modality === "voice")
+      const history: DesktopChatTurn[] = messages
+        .filter((row) => row.role === "user" || row.role === "assistant")
+        .map((row) => ({ role: row.role, text: row.text }))
+      const reply = await sendChat(session, text, modality === "voice", history)
       setMessages((prev) => [
         ...prev,
         { id: crypto.randomUUID(), role: "assistant", text: reply },
       ])
+      if (modality === "voice" && voiceEntitled) {
+        await playVoiceReply(reply)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chat failed")
     } finally {
@@ -217,6 +376,8 @@ export default function App() {
           className="btn ghost"
           type="button"
           onClick={() => {
+            stopVoiceListening()
+            stopVoicePlayback()
             clearSession()
             setSession(null)
           }}
@@ -253,23 +414,58 @@ export default function App() {
               <button
                 type="button"
                 className={modality === "text" ? "active" : ""}
-                onClick={() => setModality("text")}
+                onClick={() => {
+                  setModality("text")
+                  stopVoiceListening()
+                  stopVoicePlayback()
+                }}
               >
                 Text
               </button>
               <button
                 type="button"
                 className={modality === "voice" ? "active" : ""}
-                onClick={() => setModality("voice")}
+                disabled={!voiceEntitled}
+                title={!voiceEntitled && voiceUnavailableReason ? voiceUnavailableReason : "Voice mode"}
+                onClick={() => {
+                  if (!voiceEntitled) {
+                    if (voiceUnavailableReason) setError(voiceUnavailableReason)
+                    return
+                  }
+                  setModality("voice")
+                }}
               >
                 Voice
               </button>
             </div>
+            {!voiceEntitled && voiceUnavailableReason ? (
+              <p className="muted">{voiceUnavailableReason}</p>
+            ) : null}
             {modality === "voice" ? (
-              <div className={`wave ${busy ? "live" : ""}`} aria-hidden>
+              <div className={`wave ${busy || voiceListening || voiceSpeaking ? "live" : ""}`} aria-hidden>
                 {Array.from({ length: 7 }).map((_, i) => (
                   <span key={i} style={{ animationDelay: `${i * 0.08}s`, height: "40%" }} />
                 ))}
+              </div>
+            ) : null}
+            {modality === "voice" && voiceEntitled ? (
+              <div className="voice-controls">
+                <button
+                  className={`btn ghost ${voiceListening ? "active" : ""}`}
+                  type="button"
+                  onClick={toggleVoiceListening}
+                  disabled={busy}
+                >
+                  {voiceListening ? "Stop mic" : "Start mic"}
+                </button>
+                <button
+                  className="btn ghost"
+                  type="button"
+                  onClick={stopVoicePlayback}
+                  disabled={!voiceSpeaking}
+                >
+                  Stop audio
+                </button>
               </div>
             ) : null}
             <div className="messages">

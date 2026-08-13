@@ -193,6 +193,11 @@ textarea {
   color: var(--accent);
 }
 
+.modality button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .wave {
   display: flex;
   align-items: flex-end;
@@ -211,6 +216,18 @@ textarea {
 
 .wave.live span {
   background: var(--accent);
+}
+
+.voice-controls {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn.ghost.active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 @keyframes pulse {

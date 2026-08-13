@@ -56,6 +56,69 @@ async function apiFetch(path, { method = "GET", body } = {}) {
   return json
 }
 
+function _parseErrorDetail(rawText, parsedJson, status) {
+  if (parsedJson && typeof parsedJson === "object") {
+    if (typeof parsedJson.detail === "string" && parsedJson.detail.trim()) return parsedJson.detail
+    if (typeof parsedJson.message === "string" && parsedJson.message.trim()) return parsedJson.message
+    if (
+      parsedJson.detail &&
+      typeof parsedJson.detail === "object" &&
+      typeof parsedJson.detail.detail === "string"
+    ) {
+      return parsedJson.detail.detail
+    }
+  }
+  const text = String(rawText || "").trim()
+  if (text) return text
+  return `HTTP ${status}`
+}
+
+async function fetchVoiceTtsAudio({ text, agentId }) {
+  const cfg = await getSettings()
+  if (!cfg.accessToken || !cfg.orgId) {
+    const err = new Error("Not signed in. Open the extension and connect Gravitre.")
+    err.code = "not_authenticated"
+    throw err
+  }
+  const res = await fetch(`${cfg.apiBase}/api/voice/tts`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.accessToken}`,
+      "Content-Type": "application/json",
+      Accept: "audio/mpeg",
+      "X-Org-Id": cfg.orgId,
+      "X-Environment": cfg.environment,
+    },
+    body: JSON.stringify({
+      text: String(text || ""),
+      ...(agentId ? { agent_id: String(agentId) } : {}),
+    }),
+  })
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "")
+    let parsed = null
+    try {
+      parsed = raw ? JSON.parse(raw) : null
+    } catch {
+      parsed = null
+    }
+    const err = new Error(_parseErrorDetail(raw, parsed, res.status))
+    err.status = res.status
+    err.body = parsed
+    throw err
+  }
+  const buf = await res.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ""
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return {
+    contentType: res.headers.get("content-type") || "audio/mpeg",
+    audioBase64: btoa(binary),
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   if (chrome.sidePanel?.setPanelBehavior) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {})
@@ -159,10 +222,63 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             pageUrl: message.pageUrl,
             pageContext: message.pageContext || {},
             conversationId: message.conversationId || null,
+            spokenMode: Boolean(message.spokenMode),
             environment: (await getSettings()).environment,
           },
         })
         sendResponse({ ok: true, result })
+        return
+      }
+      if (message?.type === "VOICE_STATUS") {
+        try {
+          const result = await apiFetch("/api/voice/status")
+          const ttsEnabled = Boolean(result && result.tts_enabled)
+          sendResponse({
+            ok: true,
+            status: result,
+            enabled: ttsEnabled,
+            blocked: false,
+            reason: ttsEnabled ? null : "Voice output is not enabled for this workspace.",
+          })
+        } catch (err) {
+          const status = Number(err?.status || 0)
+          if (status === 403) {
+            sendResponse({
+              ok: true,
+              status: null,
+              enabled: false,
+              blocked: true,
+              reason: "Voice is turned off for this organization or your seat.",
+            })
+            return
+          }
+          sendResponse({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+            status,
+          })
+        }
+        return
+      }
+      if (message?.type === "VOICE_TTS") {
+        const voiceText = String(message.text || "").trim()
+        if (!voiceText) {
+          sendResponse({ ok: false, error: "Voice text is required." })
+          return
+        }
+        try {
+          const audio = await fetchVoiceTtsAudio({
+            text: voiceText,
+            agentId: message.agentId || null,
+          })
+          sendResponse({ ok: true, ...audio })
+        } catch (err) {
+          sendResponse({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+            status: Number(err?.status || 0),
+          })
+        }
         return
       }
       if (message?.type === "SIGN_OUT") {

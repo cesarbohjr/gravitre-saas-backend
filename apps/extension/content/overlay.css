@@ -261,3 +261,33 @@
   min-height: 52px;
   font-family: inherit;
 }
+
+.gvt-chat-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.gvt-mode-btn {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gvt-mode-btn.active {
+  border-color: rgba(22, 163, 116, 0.6);
+  background: rgba(22, 163, 116, 0.1);
+  color: #047857;
+}
+
+.gvt-mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

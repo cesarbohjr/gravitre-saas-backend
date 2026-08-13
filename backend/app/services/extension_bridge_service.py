@@ -1615,6 +1615,7 @@ async def chat_from_extension(
     page_url: str | None = None,
     page_context: dict[str, Any] | None = None,
     conversation_id: str | None = None,
+    spoken_mode: bool = False,
     environment_name: str = "production",
 ) -> dict[str, Any]:
     """Quick overlay Q&A via the same execute_task_streaming / unified-turn path as main chat."""
@@ -1759,6 +1760,7 @@ async def chat_from_extension(
         explicit_persona=None,
         environment_name=environment_name or "production",
         research_scope=None,
+        spoken_mode=bool(spoken_mode),
     ):
         if isinstance(event, AssistantStreamComplete):
             complete = event
@@ -1858,6 +1860,7 @@ async def chat_from_extension(
     return {
         "answer": answer,
         "conversationId": conv_id,
+        "spokenMode": bool(spoken_mode),
         "needsHandoff": needs_handoff,
         "handoffReason": handoff_reason,
         "openInGravitreUrl": handoff_url,

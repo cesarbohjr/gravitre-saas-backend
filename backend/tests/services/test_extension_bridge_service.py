@@ -141,6 +141,55 @@ async def test_extension_chat_write_intent_runs_execute_task_streaming():
     assert out["conversationId"] == "conv-write-1"
 
 
+@pytest.mark.asyncio
+async def test_extension_chat_forwards_spoken_mode_to_unified_turn():
+    from app.operators.stream_events import AssistantStreamComplete
+
+    captured_kwargs: dict[str, object] = {}
+
+    async def _stream(**kwargs):
+        captured_kwargs.update(kwargs)
+        yield AssistantStreamComplete(
+            full_content="Voice-ready answer",
+            tool_results=[],
+            react_result=None,
+            model="test",
+            pending_task=None,
+            message_id="msg-voice-1",
+        )
+
+    settings = MagicMock()
+    conv_svc = MagicMock()
+    conv_svc.ensure_owned_conversation = AsyncMock(return_value="conv-voice-1")
+    intel = MagicMock()
+    intel.execute_task_streaming = _stream
+
+    with (
+        patch("app.config.get_settings", return_value=settings),
+        patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=conv_svc,
+        ),
+        patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intel),
+        patch("app.routers.assistant._persist_conversation_turn"),
+        patch("app.workflows.audit.write_audit_event"),
+        patch("app.workflows.repository.get_supabase_client", return_value=MagicMock()),
+    ):
+        out = await chat_from_extension(
+            settings=settings,
+            org_id="org-1",
+            user_id="user-1",
+            message="Talk me through this profile",
+            page_context={"url": "https://example.com", "title": "probe"},
+            conversation_id="conv-voice-1",
+            spoken_mode=True,
+        )
+
+    assert captured_kwargs.get("spoken_mode") is True
+    assert out["spokenMode"] is True
+    assert out["conversationId"] == "conv-voice-1"
+
+
 def test_v1_allowlist_includes_apollo_hubspot_core():
     assert "apollo.people.match" in EXTENSION_ALLOWED_ACTIONS
     assert "apollo.lists.add" in EXTENSION_ALLOWED_ACTIONS

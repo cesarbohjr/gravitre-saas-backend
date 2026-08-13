@@ -70,6 +70,7 @@ class ExtensionChatBody(BaseModel):
     pageUrl: str | None = None
     pageContext: dict[str, Any] = Field(default_factory=dict)
     conversationId: str | None = None
+    spokenMode: bool = False
     environment: str = "production"
 
 
@@ -275,6 +276,7 @@ async def extension_chat(
             page_url=body.pageUrl,
             page_context=body.pageContext or {},
             conversation_id=body.conversationId,
+            spoken_mode=bool(body.spokenMode),
             environment_name=body.environment or "production",
         )
     except ValueError as exc:
