@@ -1,13 +1,13 @@
 {
-  "checkedAt": "2026-07-27T08:58:33.770780+00:00",
+  "checkedAt": "2026-08-13T18:47:07.029477+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
-  "expectSha": "4f451b80",
+  "git_sha": "3f9454beee6ecb10cf9fcfe96a0eb4363fc6360c",
+  "expectSha": "3f9454be",
   "tip_ok": true,
-  "caseCount": 24,
-  "passed": 24,
+  "caseCount": 27,
+  "passed": 27,
   "failed": [],
   "broad_pass": true,
   "verdict": "PASS",
@@ -16,18 +16,20 @@
       "id": "known_meta_email_or_name",
       "seed": "gmail",
       "user": "do you need the email address or name?",
-      "conversationId": "7ec5ab23-48f6-4bcb-b7e8-2abaecc9ff81",
+      "conversationId": "64c6e5e7-1eaf-46a4-ba6f-74a28dcb72c7",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:55:45.915197+00:00",
-        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "at": "2026-08-13T18:42:21.302393+00:00",
+        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "meta_clarify",
         "expect_intent": "meta_clarify",
-        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "followup": null
     },
@@ -35,18 +37,20 @@
       "id": "known_unrelated_workflows",
       "seed": "gmail",
       "user": "What workflows have been ran?",
-      "conversationId": "290823f8-f131-43a6-b776-574384e4d904",
+      "conversationId": "d41ca90a-c4d5-4f71-bb5f-fce4be359d14",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:55:51.096049+00:00",
-        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:42:30.188844+00:00",
+        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new"
+        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new",
+        "tools": []
       },
       "followup": null
     },
@@ -54,21 +58,92 @@
       "id": "known_stale_yes_after_unrelated",
       "seed": "orch",
       "user": "What workflows have been ran?",
-      "conversationId": "1bd2a965-a2ca-45ef-82a3-1b70328d8c20",
+      "conversationId": "5278a28c-6ea3-458d-a84a-fe8750c9a78e",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:55:56.372749+00:00",
-        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:42:37.829489+00:00",
+        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with t"
+        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with t",
+        "tools": []
       },
       "followup": {
         "assistant_snippet": "The orchestration plan is empty.",
+        "tools": [],
+        "ok": true,
+        "failures": []
+      }
+    },
+    {
+      "id": "known_drop_it_cancels_pending_plan",
+      "seed": "gmail",
+      "user": "drop it",
+      "conversationId": "58fd3580-31b5-4bfe-9dfc-d04f265534c3",
+      "turn": {
+        "http": 200,
+        "at": "2026-08-13T18:42:51.737991+00:00",
+        "assistant": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "judgment": {
+        "ok": true,
+        "failures": [],
+        "inferred_intent": null,
+        "expect_intent": "reject",
+        "assistant_snippet": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "followup": null
+    },
+    {
+      "id": "known_cancel_pending_plan_no_external_search",
+      "seed": "gmail",
+      "user": "cancel",
+      "conversationId": "97e12ee0-888b-4fa1-a226-ab58b20f0078",
+      "turn": {
+        "http": 200,
+        "at": "2026-08-13T18:42:58.734103+00:00",
+        "assistant": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "judgment": {
+        "ok": true,
+        "failures": [],
+        "inferred_intent": null,
+        "expect_intent": "reject",
+        "assistant_snippet": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "followup": null
+    },
+    {
+      "id": "known_reported_transcript_drop_it_then_cancel",
+      "seed": "gmail",
+      "user": "drop it",
+      "conversationId": "da7657c6-eae3-439a-ad7d-2429b6534b85",
+      "turn": {
+        "http": 200,
+        "at": "2026-08-13T18:43:06.615732+00:00",
+        "assistant": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "judgment": {
+        "ok": true,
+        "failures": [],
+        "inferred_intent": null,
+        "expect_intent": "reject",
+        "assistant_snippet": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
+      },
+      "followup": {
+        "assistant_snippet": "I don\u2019t have enough information yet. Tell me what you want canceled, and I\u2019ll continue.",
+        "tools": [],
         "ok": true,
         "failures": []
       }
@@ -77,18 +152,20 @@
       "id": "meta_what_format",
       "seed": "gmail",
       "user": "what format?",
-      "conversationId": "4d22edb8-476d-4eba-aa13-8cb7b0a6b981",
+      "conversationId": "f82ce6ca-6cff-458a-9392-ce806295ee5e",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:06.487027+00:00",
-        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "at": "2026-08-13T18:43:32.459926+00:00",
+        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "meta_clarify",
         "expect_intent": null,
-        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "followup": null
     },
@@ -96,18 +173,20 @@
       "id": "meta_which_one",
       "seed": "gmail",
       "user": "which one do you mean?",
-      "conversationId": "104076b3-6c66-4deb-8d1f-aadfdfe72627",
+      "conversationId": "16e34705-9b93-414a-a922-1eae1ce6502c",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:11.565234+00:00",
-        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "at": "2026-08-13T18:43:39.503828+00:00",
+        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "meta_clarify",
         "expect_intent": null,
-        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "followup": null
     },
@@ -115,18 +194,20 @@
       "id": "meta_why_need",
       "seed": "gmail",
       "user": "why do you need that?",
-      "conversationId": "3d8b6103-b731-4245-95c3-0745f06d5cc3",
+      "conversationId": "112b7b04-0626-40a7-9bfb-f30e1dba4ebe",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:17.580146+00:00",
-        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "at": "2026-08-13T18:43:46.524462+00:00",
+        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "meta_clarify",
         "expect_intent": null,
-        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "followup": null
     },
@@ -134,18 +215,20 @@
       "id": "meta_should_i_provide_email",
       "seed": "gmail",
       "user": "should I provide the email or a name?",
-      "conversationId": "9dc75988-5b38-4300-ad34-b3a97a19754a",
+      "conversationId": "459cfda2-58a5-45ff-a5b4-a321781252fb",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:22.535321+00:00",
-        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "at": "2026-08-13T18:43:54.319270+00:00",
+        "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "meta_clarify",
         "expect_intent": "meta_clarify",
-        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
+        "assistant_snippet": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body.",
+        "tools": []
       },
       "followup": null
     },
@@ -153,18 +236,20 @@
       "id": "meta_slack_what_message",
       "seed": "slack",
       "user": "what should I put in the message body?",
-      "conversationId": "9f5b18b6-0e60-4e73-820a-fa4d8aad3555",
+      "conversationId": "c296ab9f-19c6-4da9-a5d9-c7df576aab0c",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:27.255237+00:00",
-        "assistant": "For the **message body**, send the text you want delivered.\nStill needed for Post Slack message: message."
+        "at": "2026-08-13T18:44:03.532343+00:00",
+        "assistant": "For the **message body**, send the text you want delivered.\nStill needed for Post Slack message: message.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "For the **message body**, send the text you want delivered.\nStill needed for Post Slack message: message."
+        "assistant_snippet": "For the **message body**, send the text you want delivered.\nStill needed for Post Slack message: message.",
+        "tools": []
       },
       "followup": null
     },
@@ -172,18 +257,20 @@
       "id": "unrelated_connectors",
       "seed": "gmail",
       "user": "what connectors are Connected right now?",
-      "conversationId": "eddd5b51-5b1e-44b0-846d-3ed7ad64f6a3",
+      "conversationId": "fa46f60b-c65e-4928-847f-4d2a147fd374",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:33.464322+00:00",
-        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:44:13.449990+00:00",
+        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed w"
+        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed w",
+        "tools": []
       },
       "followup": null
     },
@@ -191,18 +278,20 @@
       "id": "unrelated_weather",
       "seed": "slack",
       "user": "what's the weather in Seattle?",
-      "conversationId": "b7e9e089-5afd-4dd9-b593-bd01db6e49f0",
+      "conversationId": "2a4e1a06-9f0d-4827-840a-b33d743a839b",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:38.737461+00:00",
-        "assistant": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:44:22.378483+00:00",
+        "assistant": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": null,
-        "assistant_snippet": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the ne"
+        "assistant_snippet": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the ne",
+        "tools": []
       },
       "followup": null
     },
@@ -210,18 +299,20 @@
       "id": "unrelated_apollo",
       "seed": "orch",
       "user": "Create an Apollo contact list named Battery Interrupt",
-      "conversationId": "10834724-524b-4bea-8f95-0f610bfd0460",
+      "conversationId": "cb4e60fd-2000-4a61-b8cf-f1355f2c8dcf",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:44.109560+00:00",
-        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cCreate an Apollo contact list named Battery Interrupt\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:44:29.980789+00:00",
+        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cCreate an Apollo contact list named Battery Interrupt\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cCreate an Apollo contact list named Battery Interrupt\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item "
+        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cCreate an Apollo contact list named Battery Interrupt\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item ",
+        "tools": []
       },
       "followup": null
     },
@@ -229,18 +320,20 @@
       "id": "unrelated_how_many_runs",
       "seed": "orch",
       "user": "how many runs happened this week?",
-      "conversationId": "08b83e9e-40d0-4fc7-9703-801c295e2d5b",
+      "conversationId": "36425073-79b7-446d-95b4-b493ffad5b44",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:49.586836+00:00",
-        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:44:37.121378+00:00",
+        "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed wi"
+        "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed wi",
+        "tools": []
       },
       "followup": null
     },
@@ -248,18 +341,20 @@
       "id": "unrelated_search_hubspot",
       "seed": "gmail",
       "user": "search HubSpot for Acme contacts",
-      "conversationId": "a1f5f64a-f45f-453b-b0a2-934eb6a5167a",
+      "conversationId": "862847ed-88a0-4691-afde-7ac36e850ff1",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:56:54.425879+00:00",
-        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201csearch HubSpot for Acme contacts\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-08-13T18:44:44.399202+00:00",
+        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201csearch HubSpot for Acme contacts\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": "unrelated",
-        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201csearch HubSpot for Acme contacts\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the "
+        "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201csearch HubSpot for Acme contacts\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the ",
+        "tools": []
       },
       "followup": null
     },
@@ -267,18 +362,20 @@
       "id": "modify_subject_q3",
       "seed": "gmail",
       "user": "actually make the subject about Q3 instead",
-      "conversationId": "2cfd2cca-0137-4d55-a92a-ea26169df318",
+      "conversationId": "2abc7a47-1c83-432a-b831-4fe05fcdfdeb",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:57:02.330058+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-08-13T18:44:59.799802+00:00",
+        "assistant": "Got it \u2014 updated to actually make the subject about Q3 instead. Continuing with that.\n\nI don\u2019t have enough information yet. Tell me what item\u2019s subject you want changed to Q3, and I\u2019ll continue.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Got it \u2014 updated to actually make the subject about Q3 instead. Continuing with that.\n\nI don\u2019t have enough information yet. Tell me what item\u2019s subject you want changed to Q3, and I\u2019ll continue.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or doc",
+        "tools": []
       },
       "followup": null
     },
@@ -286,18 +383,20 @@
       "id": "modify_skip_step",
       "seed": "orch",
       "user": "skip step 1 and just create the deal",
-      "conversationId": "9a8c37a8-7a91-4594-aded-4366293fc746",
+      "conversationId": "3c9465d5-fc20-44d6-83fc-2c8ced371d52",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:57:29.776019+00:00",
-        "assistant": "I can\u2019t create the deal yet. The request does not include enough deal details.\n\nHubSpot is listed as Connected in the provided org context, so the next move is to send the deal information:\n\n- Deal name\n- Amount, if known\n- Pipeline or stage, if required by your HubSpot setup\n- Associated company or contact, if needed\n- Close date or any custom properties\n\nSend those details and I\u2019ll create the deal.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?"
+        "at": "2026-08-13T18:45:29.770595+00:00",
+        "assistant": "I don\u2019t have enough information yet. Tell me the missing deal details and I\u2019ll continue.\n\nNeeded to create the HubSpot deal:\n- Deal name\n- Amount, if known\n- Pipeline/stage, if required by your HubSpot setup\n- Close date, if known\n- Associated company or contact, if you want it linked\n\nI won\u2019t skip any required validation or governance step, but I can create the deal once the required fields are provided.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I can\u2019t create the deal yet. The request does not include enough deal details.\n\nHubSpot is listed as Connected in the provided org context, so the next move is to send the deal information:\n\n- Deal name\n- Amount, if known\n- Pipeline or stage, if required by your HubSpot setup\n- A"
+        "assistant_snippet": "I don\u2019t have enough information yet. Tell me the missing deal details and I\u2019ll continue.\n\nNeeded to create the HubSpot deal:\n- Deal name\n- Amount, if known\n- Pipeline/stage, if required by your HubSpot setup\n- Close date, if known\n- Associated company or contact, if you want it l",
+        "tools": []
       },
       "followup": null
     },
@@ -305,18 +404,20 @@
       "id": "modify_change_channel",
       "seed": "slack",
       "user": "change the channel to #sales instead",
-      "conversationId": "69a7536f-c463-45fd-9487-9076ff30e7b5",
+      "conversationId": "c08ac0d3-fb61-4a9c-b1fc-4995c0496888",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:57:38.268939+00:00",
-        "assistant": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "at": "2026-08-13T18:45:43.749655+00:00",
+        "assistant": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors).",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "assistant_snippet": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors).",
+        "tools": []
       },
       "followup": null
     },
@@ -324,18 +425,20 @@
       "id": "modify_rather_cancel_body",
       "seed": "gmail",
       "user": "rather use a shorter body without the signature",
-      "conversationId": "1de32ac7-274d-47c3-88cd-fb730e096fd2",
+      "conversationId": "fa42c572-82ed-453f-9e83-81893ebc377c",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:57:45.443719+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-08-13T18:45:58.514692+00:00",
+        "assistant": "Use a shorter email body and remove the HTML signature.\n\nIf you need the cleanest result, keep the message plain text or use a minimal signature with no extra line breaks.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Use a shorter email body and remove the HTML signature.\n\nIf you need the cleanest result, keep the message plain text or use a minimal signature with no extra line breaks.",
+        "tools": []
       },
       "followup": null
     },
@@ -343,18 +446,20 @@
       "id": "modify_dont_include_cc",
       "seed": "gmail",
       "user": "don't include a CC, just the recipient",
-      "conversationId": "27712f07-1238-4c28-b04a-f2149c88f2e1",
+      "conversationId": "6756b7ea-a4cb-4323-9d1f-2037125e4a6e",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:57:53.159001+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-08-13T18:46:10.211033+00:00",
+        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "followup": null
     },
@@ -362,18 +467,20 @@
       "id": "ambiguous_hmm",
       "seed": "gmail",
       "user": "hmm",
-      "conversationId": "36b9863d-eafc-4e02-a789-98ebba35df13",
+      "conversationId": "a79ad4e5-b2b5-4af6-a390-f5ed52be6457",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:01.575325+00:00",
-        "assistant": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?"
+        "at": "2026-08-13T18:46:20.685790+00:00",
+        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?"
+        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "followup": null
     },
@@ -381,18 +488,20 @@
       "id": "ambiguous_maybe",
       "seed": "orch",
       "user": "maybe",
-      "conversationId": "21553d41-678c-4d71-bbbd-e18e8dbd53e1",
+      "conversationId": "1fba6918-e381-4662-8009-f2fbd08b2974",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:06.907202+00:00",
-        "assistant": "I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel** to drop it, or tell me what to change."
+        "at": "2026-08-13T18:46:28.564282+00:00",
+        "assistant": "I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel** to drop it, or tell me what to change.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel** to drop it, or tell me what to change."
+        "assistant_snippet": "I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel** to drop it, or tell me what to change.",
+        "tools": []
       },
       "followup": null
     },
@@ -400,18 +509,20 @@
       "id": "ambiguous_ok_then",
       "seed": "slack",
       "user": "ok then\u2026",
-      "conversationId": "d3ab65f3-9c68-4dc4-b424-c58c55f84029",
+      "conversationId": "9b4037d1-c435-4e6b-ad26-3b9130f0c830",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:15.452148+00:00",
-        "assistant": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "at": "2026-08-13T18:46:41.054351+00:00",
+        "assistant": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors).",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "assistant_snippet": "I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors).",
+        "tools": []
       },
       "followup": null
     },
@@ -419,18 +530,20 @@
       "id": "slot_email",
       "seed": "gmail",
       "user": "recipient is battery.probe@acme.test",
-      "conversationId": "cc50f849-cce4-499c-b22d-8e0f5d5d8be0",
+      "conversationId": "eb151a94-d85c-4d57-9cdc-ff0756fe1421",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:22.579977+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-08-13T18:46:52.664881+00:00",
+        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "slot_answer",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors).",
+        "tools": []
       },
       "followup": null
     },
@@ -438,18 +551,20 @@
       "id": "reject_cancel",
       "seed": "gmail",
       "user": "cancel that",
-      "conversationId": "dcb06705-ef8c-482f-a2e8-dd5972074bc8",
+      "conversationId": "b7a2bcaf-4bd9-497e-933f-78b8660bbab4",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:27.948216+00:00",
-        "assistant": "Cancelled the pending plan. What should we do instead?"
+        "at": "2026-08-13T18:46:59.724466+00:00",
+        "assistant": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "reject",
-        "assistant_snippet": "Cancelled the pending plan. What should we do instead?"
+        "assistant_snippet": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "tools": []
       },
       "followup": null
     },
@@ -457,18 +572,20 @@
       "id": "confirm_orch_yes",
       "seed": "orch",
       "user": "yes",
-      "conversationId": "54c4fb50-efa3-4e36-8ece-6470a8a44778",
+      "conversationId": "30af3a4d-001d-40c3-b22c-da95df038f32",
       "turn": {
         "http": 200,
-        "at": "2026-07-27T08:58:33.769804+00:00",
-        "assistant": "The orchestration plan is empty."
+        "at": "2026-08-13T18:47:07.028202+00:00",
+        "assistant": "The orchestration plan is empty.",
+        "tools": []
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "confirm",
-        "assistant_snippet": "The orchestration plan is empty."
+        "assistant_snippet": "The orchestration plan is empty.",
+        "tools": []
       },
       "followup": null
     }

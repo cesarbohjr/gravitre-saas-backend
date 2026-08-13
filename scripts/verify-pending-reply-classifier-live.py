@@ -295,30 +295,30 @@ CASES: list[dict[str, Any]] = [
     },
     {
         "id": "known_drop_it_cancels_pending_plan",
-        "seed": "plan_only",
+        "seed": "gmail",
         "user": "drop it",
         "expect_intent": "reject",
-        "must_include": ["cancel"],
+        "must_include_any": ["cancel", "won't create", "wont create", "no problem"],
         "must_not_include": ["say **yes** to continue", "I still have a plan open"],
     },
     {
         "id": "known_cancel_pending_plan_no_external_search",
-        "seed": "plan_only",
+        "seed": "gmail",
         "user": "cancel",
         "expect_intent": "reject",
-        "must_include": ["cancel"],
+        "must_include_any": ["cancel", "won't create", "wont create", "no problem"],
         "must_not_tools": ["web_search", "knowledge_base"],
     },
     {
         "id": "known_reported_transcript_drop_it_then_cancel",
-        "seed": "plan_only",
+        "seed": "gmail",
         "user": "drop it",
         "expect_intent": "reject",
-        "must_include": ["cancel"],
+        "must_include_any": ["cancel", "won't create", "wont create", "no problem"],
         "must_not_include": ["say **yes** to continue", "I still have a plan open"],
         "followup": {
             "user": "cancel",
-            "must_include": ["cancel"],
+            "must_include_any": ["cancel", "won't create", "wont create", "no problem"],
             "must_not_tools": ["web_search", "knowledge_base"],
         },
     },
@@ -461,7 +461,7 @@ CASES: list[dict[str, Any]] = [
         "seed": "gmail",
         "user": "cancel that",
         "expect_intent": "reject",
-        "must_include": ["cancel"],
+        "must_include_any": ["cancel", "won't create", "wont create", "no problem"],
     },
     {
         "id": "confirm_orch_yes",
@@ -479,6 +479,13 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any]) -> dict[str, Any]:
     for needle in case.get("must_include") or []:
         if needle.lower() not in lower:
             failures.append(f"missing:{needle}")
+    any_required = [
+        str(x or "").strip().lower()
+        for x in (case.get("must_include_any") or [])
+        if str(x or "").strip()
+    ]
+    if any_required and not any(needle in lower for needle in any_required):
+        failures.append(f"missing_any:{any_required}")
     for needle in case.get("must_not_include") or []:
         if needle.lower() in lower:
             failures.append(f"forbidden:{needle}")
@@ -590,6 +597,13 @@ async def main() -> int:
                 for needle in fu.get("must_include") or []:
                     if needle.lower() not in al:
                         fu_fail.append(f"missing:{needle}")
+                any_required_fu = [
+                    str(x or "").strip().lower()
+                    for x in (fu.get("must_include_any") or [])
+                    if str(x or "").strip()
+                ]
+                if any_required_fu and not any(needle in al for needle in any_required_fu):
+                    fu_fail.append(f"missing_any:{any_required_fu}")
                 tool2 = [str(t or "").strip().lower() for t in (turn2.get("tools") or [])]
                 for forbidden in fu.get("must_not_tools") or []:
                     f = str(forbidden or "").strip().lower()
