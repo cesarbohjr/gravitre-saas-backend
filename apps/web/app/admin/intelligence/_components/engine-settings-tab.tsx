@@ -69,33 +69,37 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <GearSix className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
+          <GearSix className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
           <CardTitle>Search & grounding</CardTitle>
         </div>
         <CardDescription>
-          Tune grounding validation, reranking, confidence gating, and retrieval limits for this organization.
+          Control how carefully answers are checked against sources, and how much context search can pull in.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label htmlFor="validation-enabled">Post-answer validation</Label>
-            <p className="text-xs text-muted-foreground">Run a grounding check in standard and reasoning modes.</p>
+            <Label htmlFor="validation-enabled">Check answers against sources</Label>
+            <p className="text-xs text-muted-foreground">
+              After answering, verify claims against retrieved material in standard and reasoning modes.
+            </p>
           </div>
           <Switch id="validation-enabled" checked={validationEnabled} onCheckedChange={setValidationEnabled} />
         </div>
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label htmlFor="reranking-enabled">Hybrid reranking</Label>
-            <p className="text-xs text-muted-foreground">Enable cross-encoder reranking on retrieved chunks.</p>
+            <Label htmlFor="reranking-enabled">Smart result reordering</Label>
+            <p className="text-xs text-muted-foreground">
+              Re-score search passages so the most relevant ones reach the answer first.
+            </p>
           </div>
           <Switch id="reranking-enabled" checked={rerankingEnabled} onCheckedChange={setRerankingEnabled} />
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <Label>Confidence threshold</Label>
+            <Label>Minimum source confidence</Label>
             <span className="text-xs tabular-nums text-muted-foreground">{confidenceThreshold.toFixed(2)}</span>
           </div>
           <Slider
@@ -109,7 +113,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="max-chunks">Max retrieval chunks</Label>
+            <Label htmlFor="max-chunks">Max passages per answer</Label>
             <Input
               id="max-chunks"
               type="number"
@@ -120,7 +124,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="connector-timeout">Connector timeout (seconds)</Label>
+            <Label htmlFor="connector-timeout">Tool call timeout (seconds)</Label>
             <Input
               id="connector-timeout"
               type="number"

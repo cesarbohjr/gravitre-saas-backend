@@ -70,12 +70,11 @@ export function ChatPersonaSettingsCard({ enabled }: { enabled: boolean }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <UserRound className="h-5 w-5 text-emerald-500" aria-hidden />
-          <CardTitle>Communication personas</CardTitle>
+          <CardTitle>Default response style</CardTitle>
         </div>
         <CardDescription>
-          Set the default response style for Workspace Chat, Gravitre AI, and agent conversations when users
-          have not chosen a personal preference. Personas adjust tone only — they never override approvals,
-          confidence, or governance.
+          Choose how Gravitre sounds by default in chat and agent conversations when someone has not set a personal
+          preference. Style only — never overrides approvals or governance.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

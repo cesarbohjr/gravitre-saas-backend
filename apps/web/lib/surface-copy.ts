@@ -19,7 +19,7 @@ export const SURFACE_COPY = {
     title: "Learning",
     shortTitle: "Learning",
     description:
-      "How Gravitre learns from queries, memory, and search quality — verified signals only.",
+      "See how Gravitre improves from real work — knowledge readiness, relationships, quality, and business outcomes.",
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
@@ -138,7 +138,7 @@ export const SURFACE_COPY = {
     learning: "Trends",
     engine: "Engine",
     performance: "Performance",
-    cognitive: "Cognitive turns",
+    cognitive: "Recent turns",
   },
   pages: {
     agents: {
@@ -233,16 +233,16 @@ export const SURFACE_COPY = {
   },
   learningAdmin: {
     businessImpactTitle: "Business impact",
-    businessImpactHint: "Score from pending recommendations and measured outcomes.",
-    revenueRiskTitle: "Revenue risk",
-    knowledgeGapsTitle: "Knowledge gaps",
-    queryClustersTitle: "Query clusters",
-    failedSearchesTitle: "Failed searches",
-    banditTitle: "Strategy bandit",
-    memoryConflictsTitle: "Memory conflicts",
+    businessImpactHint: "How recommendations and measured outcomes add up for your org.",
+    revenueRiskTitle: "Items to review",
+    knowledgeGapsTitle: "Where answers fall short",
+    queryClustersTitle: "Common question themes",
+    failedSearchesTitle: "Unanswered searches",
+    banditTitle: "Answer strategies",
+    memoryConflictsTitle: "Conflicting memories",
     evaluationQualityTitle: "Answer quality",
-    evaluationQualityHint: "Weighted score from retrieval, grounding, and user feedback.",
-    scoredResponsesTitle: "Scored responses",
+    evaluationQualityHint: "Overall score from search quality, grounding, and user feedback.",
+    scoredResponsesTitle: "Recent scored answers",
     learningProgressHint: (logged: number, needed: number, runs: number, runsNeeded: number) =>
       `${logged} of ${needed} queries logged · ${runs} of ${runsNeeded} workflow runs observed`,
   },

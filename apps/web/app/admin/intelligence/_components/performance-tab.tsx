@@ -38,17 +38,17 @@ const MODE_OPTIONS: { value: PerformanceMode; label: string; hint: string }[] = 
   {
     value: "speed_priority",
     label: "Speed priority",
-    hint: "Aggressive Tier 0 caching; validation on deep modes only.",
+    hint: "Faster replies via stronger caching; deeper checks only on advanced modes.",
   },
   {
     value: "balanced",
     label: "Balanced",
-    hint: "Default caching and validation on standard+ modes.",
+    hint: "Default blend of speed and source checks for everyday work.",
   },
   {
     value: "accuracy_priority",
     label: "Accuracy priority",
-    hint: "Disables Tier 0; full retrieval and validation on every mode.",
+    hint: "Full search and validation on every answer — slower, more careful.",
   },
 ]
 
@@ -155,18 +155,18 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-violet-500/[0.05] p-5 shadow-sm"
+        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-emerald-500/[0.05] p-5 shadow-sm"
       >
-        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
-              <Gauge className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+              <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Latency vs accuracy</h3>
+              <h3 className="text-base font-semibold text-foreground">Speed vs carefulness</h3>
               <p className="mt-0.5 max-w-xl text-xs text-muted-foreground text-pretty">
-                Controls Tier 0 instant answers and how often post-answer validation runs across org learning pipelines.
+                Choose how aggressively Gravitre caches fast answers versus how often it re-checks sources.
               </p>
             </div>
           </div>
@@ -184,8 +184,8 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               className={cn(
                 "rounded-xl border p-4 text-left transition-all",
                 mode === option.value
-                  ? "border-violet-500/40 bg-violet-500/10 shadow-sm ring-1 ring-violet-500/20"
-                  : "border-border/70 bg-background/50 hover:border-violet-500/25 hover:bg-background/80",
+                  ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/20"
+                  : "border-border/70 bg-background/50 hover:border-emerald-500/25 hover:bg-background/80",
               )}
             >
               <p className="text-sm font-medium text-foreground">{option.label}</p>
@@ -233,8 +233,8 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
             />
             <KpiTile
               icon={Timer}
-              tone="violet"
-              label="P95 response"
+              tone="sky"
+              label="Slow responses (P95)"
               value={`${readNumber(dashboard.p95TotalResponseMs)} ms`}
               delay={0.05}
             />
@@ -261,8 +261,8 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               transition={{ delay: 0.1 }}
               className="rounded-xl border border-border/60 bg-background/40 p-4 ring-1 ring-border/40"
             >
-              <p className="mb-1 text-sm font-medium text-foreground">Stage latency (avg ms)</p>
-              <p className="mb-3 text-xs text-muted-foreground">Pipeline stages for the selected period</p>
+              <p className="mb-1 text-sm font-medium text-foreground">Where time is spent</p>
+              <p className="mb-3 text-xs text-muted-foreground">Average milliseconds per step in the selected period</p>
               <div className="h-64">
                 {stageChart.length === 0 ? (
                   <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -321,7 +321,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
                 <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Cache hit rates</p>
-                  <p className="text-xs text-muted-foreground">Tier 0 through source summary</p>
+                  <p className="text-xs text-muted-foreground">How often fast paths reuse prior work</p>
                 </div>
               </div>
               {cacheEntries.length === 0 ? (
@@ -356,20 +356,20 @@ function KpiTile({
   delay,
 }: {
   icon: typeof Clock
-  tone: "emerald" | "violet" | "teal" | "amber"
+  tone: "emerald" | "sky" | "teal" | "amber"
   label: string
   value: string
   delay: number
 }) {
   const toneStyles = {
     emerald: "border-emerald-500/20 bg-emerald-500/5",
-    violet: "border-violet-500/20 bg-violet-500/5",
+    sky: "border-sky-500/20 bg-sky-500/5",
     teal: "border-teal-500/20 bg-teal-500/5",
     amber: "border-amber-500/20 bg-amber-500/5",
   }
   const iconStyles = {
     emerald: "text-emerald-600 dark:text-emerald-400",
-    violet: "text-violet-600 dark:text-violet-400",
+    sky: "text-sky-600 dark:text-sky-400",
     teal: "text-teal-600 dark:text-teal-400",
     amber: "text-amber-600 dark:text-amber-400",
   }

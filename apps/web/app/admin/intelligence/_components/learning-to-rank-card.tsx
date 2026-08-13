@@ -68,8 +68,8 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
 
   return (
     <SectionCard
-      title="Learning-to-rank status"
-      description="Whether the self-improving ranker is active for this org, and the safe bounds its weight is held within."
+      title="Search ranking improvement"
+      description="Whether Gravitre has learned how to reorder search results for your org — and the safe limits that protect quality."
       icon={<ShieldCheck className="h-5 w-5" weight="duotone" aria-hidden />}
       delay={delay}
       action={
@@ -80,7 +80,7 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
           )}
         >
           <Lightning className="h-3.5 w-3.5" weight="duotone" aria-hidden />
-          {active ? "Active" : "Default weight"}
+          {active ? "Learning active" : "Using defaults"}
         </span>
       }
     >
@@ -88,16 +88,15 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
         <div className="space-y-4">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
             <p className="text-sm text-emerald-900 dark:text-emerald-100">
-              Learned weight:{" "}
+              Learned ranking strength:{" "}
               <span className="font-semibold tabular-nums">{learnedWeight.toFixed(2)}</span>{" "}
               <span className="text-emerald-700 dark:text-emerald-300">
-                (bounded range: {weightBounds.min.toFixed(2)}–{weightBounds.max.toFixed(2)})
+                (safe range: {weightBounds.min.toFixed(2)}–{weightBounds.max.toFixed(2)})
               </span>
             </p>
             <WeightOnBoundsTrack value={learnedWeight} min={weightBounds.min} max={weightBounds.max} active />
             <p className="mt-2 text-xs leading-relaxed text-emerald-800 text-pretty dark:text-emerald-200">
-              This weight is learned from real feedback but clamped to the range above, so it can never
-              destabilize ranking the way an unbounded value could.
+              This setting comes from real feedback and stays inside the range above so ranking stays stable.
             </p>
           </div>
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -120,16 +119,15 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
         <div className="space-y-4">
           <div className="rounded-xl border border-border bg-secondary/40 p-4">
             <p className="text-sm text-foreground">
-              Using default weight{" "}
+              Using default ranking strength{" "}
               <span className="font-semibold tabular-nums">{defaultWeight.toFixed(2)}</span>{" "}
               <span className="text-muted-foreground">
-                (bounded range: {weightBounds.min.toFixed(2)}–{weightBounds.max.toFixed(2)})
+                (safe range: {weightBounds.min.toFixed(2)}–{weightBounds.max.toFixed(2)})
               </span>
             </p>
             <WeightOnBoundsTrack value={defaultWeight} min={weightBounds.min} max={weightBounds.max} active={false} />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground text-pretty">
-              The ranker hasn&apos;t trained yet, so it falls back to this fixed default. Once active, any
-              learned weight stays within the same safe bounds.
+              Not enough feedback yet to personalize ranking. Defaults stay in place until enough examples accumulate.
             </p>
           </div>
           <div>

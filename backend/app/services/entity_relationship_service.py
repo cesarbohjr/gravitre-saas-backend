@@ -43,6 +43,7 @@ async def get_related_entities(
         .eq("org_id", org_id)
         .eq("source_entity_type", entity_type)
         .eq("source_entity_id", entity_id)
+        .is_("archived_at", "null")
         .execute()
         .data
         or []
@@ -53,6 +54,7 @@ async def get_related_entities(
         .eq("org_id", org_id)
         .eq("target_entity_type", entity_type)
         .eq("target_entity_id", entity_id)
+        .is_("archived_at", "null")
         .execute()
         .data
         or []
@@ -299,18 +301,19 @@ async def load_entity_relationships_snapshot(
     settings: Settings | None = None,
     client: Any | None = None,
     limit: int = 100,
+    include_archived: bool = False,
 ) -> dict[str, Any]:
     db = client or get_supabase_client(settings or get_settings())
-    rows = (
+    query = (
         db.table("org_entity_relationships")
         .select("*")
         .eq("org_id", org_id)
         .order("last_observed_at", desc=True)
         .limit(limit)
-        .execute()
-        .data
-        or []
     )
+    if not include_archived:
+        query = query.is_("archived_at", "null")
+    rows = query.execute().data or []
     glossary = _load_glossary_terms(db, org_id)
     glossary_by_id = {str(row["id"]): row for row in glossary if row.get("id")}
     departments = {
@@ -341,4 +344,40 @@ async def load_entity_relationships_snapshot(
             gid: str(row.get("term") or "")
             for gid, row in glossary_by_id.items()
         },
+        "includeArchived": include_archived,
+    }
+
+
+async def set_entity_relationship_archived(
+    org_id: str,
+    relationship_id: str,
+    *,
+    archived: bool,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Soft-archive or restore a relationship edge for the Learning UI."""
+    from datetime import datetime, timezone
+
+    db = client or get_supabase_client(settings or get_settings())
+    rid = str(relationship_id or "").strip()
+    if not rid:
+        return {"ok": False, "error": "missing_id"}
+    stamp = datetime.now(timezone.utc).isoformat() if archived else None
+    updated = (
+        db.table("org_entity_relationships")
+        .update({"archived_at": stamp})
+        .eq("org_id", org_id)
+        .eq("id", rid)
+        .execute()
+        .data
+        or []
+    )
+    if not updated:
+        return {"ok": False, "error": "not_found"}
+    return {
+        "ok": True,
+        "id": rid,
+        "archived": archived,
+        "archivedAt": updated[0].get("archived_at"),
     }

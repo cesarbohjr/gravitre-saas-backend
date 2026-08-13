@@ -3,6 +3,8 @@
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
+import { snakeToTitle, statusLabel } from "@/lib/learning-ui-copy"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NotYetPopulated, SectionCard } from "./shared"
 
 type StrategyRow = {
@@ -28,14 +30,14 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
   if (!enabled) return null
   if (isLoading) {
     return (
-      <SectionCard title="Strategy bandit v3" description="Loading ledger stats…">
-        <p className="text-sm text-muted-foreground">Fetching strategy performance records…</p>
+      <SectionCard title={SURFACE_COPY.learningAdmin.banditTitle} description="Loading strategy performance…">
+        <p className="text-sm text-muted-foreground">Fetching which answer strategies are winning…</p>
       </SectionCard>
     )
   }
   if (error) {
     return (
-      <SectionCard title="Strategy bandit v3" description="Unable to load bandit status.">
+      <SectionCard title={SURFACE_COPY.learningAdmin.banditTitle} description="Unable to load strategy status.">
         <p className="text-sm text-muted-foreground">Try refreshing the page.</p>
       </SectionCard>
     )
@@ -48,39 +50,36 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
   const phaseStatus = String(data?.phase_e_status || "complete")
   return (
     <SectionCard
-      title="Strategy bandit v3"
-      description="Cluster-segment UCB with v2 fallback — active policy layer."
+      title={SURFACE_COPY.learningAdmin.banditTitle}
+      description="Which answer approaches are winning for different question themes — measured from real outcomes."
       action={
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="font-normal">
-            {String(data?.active_bandit_version || data?.bandit_version || summary.bandit_version || "v3")}
-          </Badge>
-          <Badge variant="secondary" className="font-normal capitalize">
-            {phaseStatus}
-          </Badge>
-        </div>
+        <Badge variant="secondary" className="font-normal">
+          {statusLabel(phaseStatus)}
+        </Badge>
       }
     >
       {recordCount === 0 ? (
-        <NotYetPopulated>No strategy performance records yet. Outcomes will populate the ledger.</NotYetPopulated>
+        <NotYetPopulated>
+          No strategy results yet. Win rates appear once agents produce enough measured outcomes.
+        </NotYetPopulated>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{scopeNote}</p>
+          {scopeNote ? <p className="text-sm text-muted-foreground text-pretty">{scopeNote}</p> : null}
           <div className="overflow-x-auto rounded-xl border border-border/60">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Strategy</th>
+                  <th className="px-3 py-2 font-medium">Approach</th>
                   <th className="px-3 py-2 font-medium">Wins</th>
                   <th className="px-3 py-2 font-medium">Losses</th>
                   <th className="px-3 py-2 font-medium">Win rate</th>
-                  <th className="px-3 py-2 font-medium">UCB</th>
+                  <th className="px-3 py-2 font-medium">Exploration score</th>
                 </tr>
               </thead>
               <tbody>
                 {top.slice(0, 6).map((row) => (
                   <tr key={row.strategy_key} className="border-b border-border/40 last:border-0">
-                    <td className="px-3 py-2 font-mono text-xs">{row.strategy_key}</td>
+                    <td className="px-3 py-2 text-sm">{snakeToTitle(row.strategy_key)}</td>
                     <td className="px-3 py-2 tabular-nums">{row.win ?? 0}</td>
                     <td className="px-3 py-2 tabular-nums">{row.loss ?? 0}</td>
                     <td className="px-3 py-2 tabular-nums">
@@ -97,22 +96,24 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
           {clusterSegments.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-border/60">
               <p className="border-b border-border/60 px-3 py-2 text-xs font-medium text-muted-foreground">
-                Cluster segments (v3 UCB)
+                By question theme
               </p>
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">Cluster</th>
-                    <th className="px-3 py-2 font-medium">Top strategy</th>
+                    <th className="px-3 py-2 font-medium">Theme</th>
+                    <th className="px-3 py-2 font-medium">Best approach</th>
                     <th className="px-3 py-2 font-medium">Samples</th>
-                    <th className="px-3 py-2 font-medium">UCB</th>
+                    <th className="px-3 py-2 font-medium">Score</th>
                   </tr>
                 </thead>
                 <tbody>
                   {clusterSegments.slice(0, 5).map((row) => (
                     <tr key={row.cluster_id} className="border-b border-border/40 last:border-0">
-                      <td className="px-3 py-2 font-mono text-xs">{row.cluster_id?.slice(0, 8) ?? "—"}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{row.top_strategy_key ?? "—"}</td>
+                      <td className="px-3 py-2 text-sm">
+                        {row.segment_prefix ? snakeToTitle(row.segment_prefix) : "Theme"}
+                      </td>
+                      <td className="px-3 py-2 text-sm">{snakeToTitle(row.top_strategy_key)}</td>
                       <td className="px-3 py-2 tabular-nums">{row.decided_samples ?? 0}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.ucb_score != null ? row.ucb_score.toFixed(2) : "—"}

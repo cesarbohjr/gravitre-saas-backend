@@ -25,18 +25,18 @@ export function ConnectorOpsCard() {
 
   return (
     <SectionCard
-      title="Connector ops"
-      description="tool.invoke requested / completed / failed by vendor · last 7 days"
+      title="Connector activity"
+      description="How connected tools performed over the last 7 days — requests, successes, and failures."
       action={
         <Badge variant={hasSpike ? "destructive" : "secondary"} className="font-normal">
-          {hasSpike ? `${spikes.length} spike${spikes.length === 1 ? "" : "s"}` : "healthy"}
+          {hasSpike ? `${spikes.length} spike${spikes.length === 1 ? "" : "s"}` : "Healthy"}
         </Badge>
       }
     >
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading connector invoke metrics…</p>
+        <p className="text-sm text-muted-foreground">Loading connector activity…</p>
       ) : error ? (
-        <p className="text-sm text-muted-foreground">Unable to load connector ops. Try refreshing.</p>
+        <p className="text-sm text-muted-foreground">Unable to load connector activity. Try refreshing.</p>
       ) : (
         <div className="space-y-4">
           {hasSpike ? (
@@ -47,14 +47,13 @@ export function ConnectorOpsCard() {
               <WarningCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" weight="duotone" aria-hidden />
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                  Failure spike detected (failedRate &gt; 10%, n ≥ 10)
+                  Failure spike detected — more than 10% of recent calls failed
                 </p>
                 <ul className="space-y-0.5 text-xs text-muted-foreground">
                   {spikes.slice(0, 5).map((s) => (
                     <li key={`${s.vendor}:${s.action}`} className="truncate">
-                      <span className="font-medium text-foreground">{s.vendor}</span> · {s.action} —{" "}
-                      {pct(s.failedRate)} failed ({s.failed}/{s.n})
-                      {s.topErrorCodes?.[0] ? ` · top: ${s.topErrorCodes[0].code}` : ""}
+                      <span className="font-medium text-foreground">{s.vendor}</span> ·{" "}
+                      {String(s.action).replace(/_/g, " ")} — {pct(s.failedRate)} failed ({s.failed}/{s.n})
                     </li>
                   ))}
                 </ul>
@@ -65,7 +64,7 @@ export function ConnectorOpsCard() {
           {rows.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Plugs className="h-4 w-4" weight="duotone" aria-hidden />
-              No tool.invoke events in this period.
+              No connector tool calls in this period.
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/60">
@@ -74,10 +73,10 @@ export function ConnectorOpsCard() {
                   <tr className="border-b border-border/60 text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Vendor</th>
                     <th className="px-3 py-2 font-medium">Action</th>
-                    <th className="px-3 py-2 font-medium">Req</th>
-                    <th className="px-3 py-2 font-medium">OK</th>
-                    <th className="px-3 py-2 font-medium">Fail</th>
-                    <th className="px-3 py-2 font-medium">Success</th>
+                    <th className="px-3 py-2 font-medium">Requested</th>
+                    <th className="px-3 py-2 font-medium">Succeeded</th>
+                    <th className="px-3 py-2 font-medium">Failed</th>
+                    <th className="px-3 py-2 font-medium">Success rate</th>
                     <th className="px-3 py-2 font-medium">Top error</th>
                   </tr>
                 </thead>
@@ -92,7 +91,7 @@ export function ConnectorOpsCard() {
                     >
                       <td className="px-3 py-2 font-medium">{row.vendor}</td>
                       <td className="max-w-[220px] truncate px-3 py-2 text-muted-foreground" title={row.action}>
-                        {row.action}
+                        {String(row.action).replace(/_/g, " ")}
                       </td>
                       <td className="px-3 py-2 tabular-nums">{row.requested}</td>
                       <td className="px-3 py-2 tabular-nums">{row.completed}</td>

@@ -2010,13 +2010,25 @@ export const intelligenceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<IntelligenceEvaluationsResponse>(apiUrl(`/api/admin/intelligence/evaluations${suffix}`))
   },
-  relationships: (params?: { entityType?: string; entityId?: string }) => {
+  relationships: (params?: {
+    entityType?: string
+    entityId?: string
+    includeArchived?: boolean
+    limit?: number
+  }) => {
     const query = new URLSearchParams()
     if (params?.entityType) query.set("entityType", params.entityType)
     if (params?.entityId) query.set("entityId", params.entityId)
+    if (params?.includeArchived) query.set("includeArchived", "true")
+    if (params?.limit != null) query.set("limit", String(params.limit))
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
   },
+  setRelationshipArchived: (relationshipId: string, archived: boolean) =>
+    patchJson<{ ok?: boolean; error?: string; id?: string; archived?: boolean }>(
+      apiUrl(`/api/admin/intelligence/relationships/${encodeURIComponent(relationshipId)}`),
+      { archived },
+    ),
   outcomes: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))

@@ -1,57 +1,122 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { intelligenceApi, type KnowledgeFabricPackQuality } from "@/lib/api"
-import { Books, WarningCircle } from "@phosphor-icons/react"
+import { humanizeKnowledgeGap, packDisplayName } from "@/lib/learning-ui-copy"
+import { Books, CaretDown, CaretUp, WarningCircle } from "@phosphor-icons/react"
 import { SectionCard } from "./shared"
+import { cn } from "@/lib/utils"
 
-function fmtPct(v: number | null | undefined): string {
-  if (v == null || Number.isNaN(v)) return "—"
-  return `${v}%`
+type HealthTone = "ready" | "watch" | "thin"
+
+function packHealth(pack: KnowledgeFabricPackQuality): {
+  tone: HealthTone
+  label: string
+  summary: string
+} {
+  const gaps = pack.gaps?.length ?? 0
+  const topic = pack.topic_coverage_pct ?? 0
+  const license = pack.license_verified_pct ?? 0
+  if (gaps === 0 && topic >= 85 && license >= 80) {
+    return {
+      tone: "ready",
+      label: "Ready",
+      summary: "Solid topic coverage and verified sources for agent answers.",
+    }
+  }
+  if (gaps >= 2 || topic < 50 || license < 50) {
+    return {
+      tone: "thin",
+      label: "Needs attention",
+      summary: "Agents in this area may answer with thinner grounding until coverage improves.",
+    }
+  }
+  return {
+    tone: "watch",
+    label: "Watch",
+    summary: "Usable, with a few named gaps worth improving when you can.",
+  }
 }
 
-function fmtNum(v: number | null | undefined, digits = 2): string {
-  if (v == null || Number.isNaN(v)) return "—"
-  return Number.isInteger(v) ? String(v) : v.toFixed(digits)
+const TONE_STYLES: Record<HealthTone, string> = {
+  ready: "border-emerald-500/25 bg-emerald-500/5",
+  watch: "border-amber-500/25 bg-amber-500/5",
+  thin: "border-rose-500/25 bg-rose-500/5",
 }
 
-function PackRow({ pack }: { pack: KnowledgeFabricPackQuality }) {
-  const gaps = pack.gaps ?? []
+const TONE_BADGE: Record<HealthTone, string> = {
+  ready: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
+  watch: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
+  thin: "bg-rose-500/15 text-rose-800 dark:text-rose-200",
+}
+
+function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
+  const health = packHealth(pack)
+  const gaps = (pack.gaps ?? []).map(humanizeKnowledgeGap).filter(Boolean)
+  const name = packDisplayName(pack.pack_id)
+
   return (
-    <tr className="border-b border-border/50 align-top last:border-0">
-      <td className="px-3 py-2 font-medium text-foreground">{pack.pack_id.replace("pack.", "")}</td>
-      <td className="px-3 py-2 tabular-nums">{pack.chunk_count}</td>
-      <td className="px-3 py-2 tabular-nums">{fmtPct(pack.topic_coverage_pct)}</td>
-      <td className="px-3 py-2 tabular-nums">
-        {pack.authoritative_source_count}/{pack.primary_source_count}
-      </td>
-      <td className="px-3 py-2 tabular-nums">{fmtNum(pack.avg_authority_score, 3)}</td>
-      <td className="px-3 py-2 tabular-nums">{fmtNum(pack.avg_freshness_days, 1)}</td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
-        {(pack.jurisdictions_covered || []).join(", ") || "—"}
-      </td>
-      <td className="px-3 py-2 tabular-nums">{pack.live_data_provider_count}</td>
-      <td className="px-3 py-2 tabular-nums">{fmtPct(pack.citation_coverage_pct)}</td>
-      <td className="px-3 py-2 tabular-nums">{fmtPct(pack.license_verified_pct)}</td>
-      <td className="px-3 py-2 text-xs">
-        {gaps.length === 0 ? (
-          <span className="text-muted-foreground">none named</span>
-        ) : (
-          <ul className="space-y-0.5">
-            {gaps.slice(0, 2).map((g) => (
-              <li key={g} className="text-amber-700 dark:text-amber-300">
-                {g}
-              </li>
-            ))}
-          </ul>
-        )}
-      </td>
-    </tr>
+    <article className={cn("rounded-2xl border p-4 shadow-sm", TONE_STYLES[health.tone])}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-foreground">{name}</h3>
+          <p className="mt-1 text-sm text-muted-foreground text-pretty">{health.summary}</p>
+        </div>
+        <Badge className={cn("font-normal hover:opacity-100", TONE_BADGE[health.tone])}>{health.label}</Badge>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div>
+          <dt className="text-xs text-muted-foreground">Topic coverage</dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+            {pack.topic_coverage_pct != null ? `${Math.round(pack.topic_coverage_pct)}%` : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">Trusted sources</dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+            {pack.authoritative_source_count}/{pack.primary_source_count}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">License-checked</dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+            {pack.license_verified_pct != null ? `${Math.round(pack.license_verified_pct)}%` : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">Knowledge pieces</dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums">{pack.chunk_count}</dd>
+        </div>
+      </dl>
+
+      {gaps.length > 0 ? (
+        <ul className="mt-3 space-y-1 border-t border-border/50 pt-3 text-sm text-muted-foreground">
+          {gaps.slice(0, 3).map((g) => (
+            <li key={g} className="flex gap-2 text-pretty">
+              <WarningCircle
+                className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
+                weight="duotone"
+                aria-hidden
+              />
+              <span>{g}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 border-t border-border/50 pt-3 text-sm text-muted-foreground">
+          No named gaps for this area.
+        </p>
+      )}
+    </article>
   )
 }
 
 export function KnowledgeFabricQualityCard() {
+  const [showDetails, setShowDetails] = useState(false)
   const { data, isLoading, error } = useSWR(
     "knowledge-fabric/admin/quality",
     () => intelligenceApi.knowledgeFabricQuality(),
@@ -59,85 +124,117 @@ export function KnowledgeFabricQualityCard() {
   )
 
   const packs = data?.packs ?? []
-  const gapCount = packs.reduce((n, p) => n + (p.gaps?.length || 0), 0)
+  const ranked = useMemo(() => {
+    const order: Record<HealthTone, number> = { thin: 0, watch: 1, ready: 2 }
+    return [...packs].sort(
+      (a, b) => order[packHealth(a).tone] - order[packHealth(b).tone] || a.pack_id.localeCompare(b.pack_id),
+    )
+  }, [packs])
+  const attention = ranked.filter((p) => packHealth(p).tone !== "ready").length
 
   return (
     <SectionCard
-      title="Knowledge Fabric quality"
-      description="Exact live per-pack metrics — coverage, authority, freshness, jurisdictions, citation & license-verified % (no rounding up)"
+      title="Knowledge readiness"
+      description="How well Gravitre can ground agent answers in each business area — coverage and source trust, not a vanity score."
       action={
-        <Badge variant={gapCount > 0 ? "secondary" : "outline"} className="font-normal">
-          {gapCount > 0 ? `${gapCount} gap signal${gapCount === 1 ? "" : "s"}` : "no named gaps"}
-        </Badge>
+        packs.length > 0 ? (
+          <Badge variant={attention > 0 ? "secondary" : "outline"} className="font-normal">
+            {attention > 0
+              ? `${attention} area${attention === 1 ? "" : "s"} need attention`
+              : "All areas look ready"}
+          </Badge>
+        ) : null
       }
     >
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading Knowledge Fabric quality…</p>
+        <p className="text-sm text-muted-foreground">Loading knowledge readiness…</p>
       ) : error ? (
         <p className="text-sm text-muted-foreground">
-          Unable to load quality dashboard (platform admin required). Try refreshing.
+          Knowledge readiness is unavailable right now. Refresh, or check that you have admin access.
         </p>
       ) : packs.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Books className="h-4 w-4" weight="duotone" aria-hidden />
-          No pack metrics yet.
+          No knowledge packs measured yet.
         </div>
       ) : (
-        <div className="space-y-3">
-          {data?.honesty ? (
-            <p className="text-xs text-muted-foreground">
-              Honesty: {data.honesty}
-              {data.as_of ? ` · as of ${data.as_of}` : ""}
-            </p>
-          ) : null}
-          {gapCount > 0 ? (
-            <div
-              role="status"
-              className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5"
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+            Use this when deciding whether agents in Sales, Legal, or other packs have enough trusted material to
+            answer confidently. Gaps mean thinner grounding — not that the product is broken.
+          </p>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {ranked.map((pack) => (
+              <PackHealthCard key={pack.pack_id} pack={pack} />
+            ))}
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 px-2"
+              onClick={() => setShowDetails((v) => !v)}
+              aria-expanded={showDetails}
             >
-              <WarningCircle
-                className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"
-                weight="duotone"
-                aria-hidden
-              />
-              <div className="min-w-0 space-y-1 text-xs text-muted-foreground">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Named coverage gaps (not an aggregate score)
-                </p>
-                <ul className="space-y-0.5">
-                  {packs
-                    .flatMap((p) => p.gaps)
-                    .slice(0, 6)
-                    .map((g) => (
-                      <li key={g}>{g}</li>
+              {showDetails ? (
+                <CaretUp className="h-4 w-4" weight="bold" aria-hidden />
+              ) : (
+                <CaretDown className="h-4 w-4" weight="bold" aria-hidden />
+              )}
+              {showDetails ? "Hide technical metrics" : "Show technical metrics"}
+            </Button>
+            {showDetails ? (
+              <div className="mt-3 overflow-x-auto rounded-xl border border-border/60">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Area</th>
+                      <th className="px-3 py-2 font-medium">Pieces</th>
+                      <th className="px-3 py-2 font-medium">Topics</th>
+                      <th className="px-3 py-2 font-medium">Authority</th>
+                      <th className="px-3 py-2 font-medium">Freshness (days)</th>
+                      <th className="px-3 py-2 font-medium">Regions</th>
+                      <th className="px-3 py-2 font-medium">Citations</th>
+                      <th className="px-3 py-2 font-medium">Licenses</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packs.map((p) => (
+                      <tr key={p.pack_id} className="border-b border-border/40 last:border-0">
+                        <td className="px-3 py-2 font-medium">{packDisplayName(p.pack_id)}</td>
+                        <td className="px-3 py-2 tabular-nums">{p.chunk_count}</td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {p.topic_coverage_pct != null ? `${Math.round(p.topic_coverage_pct)}%` : "—"}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {p.authoritative_source_count}/{p.primary_source_count}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {p.avg_freshness_days != null ? p.avg_freshness_days.toFixed(1) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {(p.jurisdictions_covered || []).join(", ") || "—"}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {p.citation_coverage_pct != null ? `${Math.round(p.citation_coverage_pct)}%` : "—"}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {p.license_verified_pct != null ? `${Math.round(p.license_verified_pct)}%` : "—"}
+                        </td>
+                      </tr>
                     ))}
-                </ul>
+                  </tbody>
+                </table>
+                {data?.as_of ? (
+                  <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">
+                    Snapshot updated {new Date(data.as_of).toLocaleString()}
+                  </p>
+                ) : null}
               </div>
-            </div>
-          ) : null}
-          <div className="overflow-x-auto rounded-xl border border-border/60">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Pack</th>
-                  <th className="px-3 py-2 font-medium">Chunks</th>
-                  <th className="px-3 py-2 font-medium">Topic cov</th>
-                  <th className="px-3 py-2 font-medium">Auth/prim</th>
-                  <th className="px-3 py-2 font-medium">Avg auth</th>
-                  <th className="px-3 py-2 font-medium">Fresh d</th>
-                  <th className="px-3 py-2 font-medium">Jurisdictions</th>
-                  <th className="px-3 py-2 font-medium">Live APIs</th>
-                  <th className="px-3 py-2 font-medium">Cite %</th>
-                  <th className="px-3 py-2 font-medium">Lic ver %</th>
-                  <th className="px-3 py-2 font-medium">Gaps</th>
-                </tr>
-              </thead>
-              <tbody>
-                {packs.map((p) => (
-                  <PackRow key={p.pack_id} pack={p} />
-                ))}
-              </tbody>
-            </table>
+            ) : null}
           </div>
         </div>
       )}

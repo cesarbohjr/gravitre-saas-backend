@@ -77,7 +77,7 @@ export default function AdminIntelligencePage() {
           title={copy.title}
           description={copy.description}
           icon={Brain}
-          iconColor="from-violet-500/20 to-emerald-500/20 ring-violet-500/20"
+          iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           className="rounded-2xl border border-border/70 bg-card/40 p-0 sm:p-0"
           actions={
             <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>

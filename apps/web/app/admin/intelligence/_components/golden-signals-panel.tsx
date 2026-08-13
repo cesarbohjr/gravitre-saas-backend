@@ -58,6 +58,12 @@ type GoldenSignalsResponse = {
   }
 }
 
+function passFail(pass: boolean | undefined, empty = "—"): string {
+  if (pass === true) return "Healthy"
+  if (pass === false) return "Needs attention"
+  return empty
+}
+
 export function GoldenSignalsPanel({ className }: { className?: string }) {
   const { data, error, isLoading } = useSWR(
     ["admin-golden-signals"],
@@ -76,68 +82,65 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   return (
     <section
       data-testid="golden-signals-panel"
-      className={cn("rounded-lg border border-border/60 bg-card/40 p-4", className)}
-      aria-label="Platform golden signals"
+      className={cn("rounded-2xl border border-border/60 bg-card/40 p-4 sm:p-5", className)}
+      aria-label="Platform health"
     >
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-medium tracking-tight">Golden signals</h3>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-medium tracking-tight">Platform health</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
+            Speed, reliability, and deploy checks for Gravitre in your org.
+          </p>
+        </div>
         <span className="text-xs text-muted-foreground">
-          {isLoading ? "Loading…" : error ? "Unavailable" : signals?.period ?? "24h"}
+          {isLoading ? "Loading…" : error ? "Unavailable" : `Last ${signals?.period ?? "24h"}`}
         </span>
       </div>
       <StatsGrid columns={3}>
         <StatCard
-          label="Deploy smoke"
+          label="Latest deploy check"
           value={
-            deploy?.pass === true
-              ? "PASS"
-              : deploy?.pass === false
-                ? "FAIL"
-                : deploy?.verdict?.slice(0, 12) ?? "—"
+            deploy?.pass != null
+              ? passFail(deploy.pass)
+              : deploy?.verdict?.replace(/_/g, " ").slice(0, 18) ?? "—"
           }
           variant={deploy?.pass === true ? "success" : deploy?.pass === false ? "danger" : "default"}
         />
         <StatCard
-          label="LIVE fallthrough (24h)"
+          label="Ungoverned fallback rate"
           value={ft?.fallthrough_pct != null ? `${ft.fallthrough_pct}%` : "—"}
           variant={ft?.alerts?.length ? "warning" : "default"}
         />
         <StatCard
-          label="Nightly hardening"
-          value={
-            hardening?.pass === true
-              ? "PASS"
-              : hardening?.pass === false
-                ? "FAIL"
-                : "—"
-          }
+          label="Nightly reliability check"
+          value={passFail(hardening?.pass)}
           variant={hardening?.pass === true ? "success" : hardening?.pass === false ? "danger" : "default"}
         />
         <StatCard
-          label="TTFT wall p50"
-          value={ttft?.wall_p50_ms != null ? `${ttft.wall_p50_ms}ms` : "—"}
+          label="Time to first token (typical)"
+          value={ttft?.wall_p50_ms != null ? `${ttft.wall_p50_ms} ms` : "—"}
           variant={ttft?.alerts?.length ? "warning" : "default"}
         />
         <StatCard
-          label="TTFT wall p99 / max"
+          label="Time to first token (slow / max)"
           value={
             ttft?.wall_p99_ms != null || ttft?.wall_max_ms != null
-              ? `${ttft?.wall_p99_ms ?? "—"} / ${ttft?.wall_max_ms ?? "—"}ms`
+              ? `${ttft?.wall_p99_ms ?? "—"} / ${ttft?.wall_max_ms ?? "—"} ms`
               : "—"
           }
           variant={ttft?.alerts?.length ? "warning" : "default"}
         />
         <StatCard
-          label="Mount /ai nav→TTI p50"
+          label="AI page ready time (typical)"
           value={
             mount?.ai_nav_to_interactive_p50_ms != null
-              ? `${mount.ai_nav_to_interactive_p50_ms}ms`
+              ? `${mount.ai_nav_to_interactive_p50_ms} ms`
               : "—"
           }
           variant={mount?.alerts?.length ? "warning" : "default"}
         />
         <StatCard
-          label="Prefix cache ratio"
+          label="Prompt reuse (cache)"
           value={
             cache?.avg_cached_prompt_ratio != null
               ? `${Math.round(cache.avg_cached_prompt_ratio * 100)}%`
@@ -145,28 +148,14 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           }
         />
         <StatCard
-          label="TTFT cache delta"
-          value={cache?.avg_ttft_delta_ms != null ? `${cache.avg_ttft_delta_ms}ms` : "—"}
+          label="Cache speed gain"
+          value={cache?.avg_ttft_delta_ms != null ? `${cache.avg_ttft_delta_ms} ms` : "—"}
         />
         <StatCard
-          label="R2 removal ready"
-          value={signals?.r2_removal_gates?.ready ? "Yes" : "No"}
-          variant={signals?.r2_removal_gates?.ready ? "success" : "default"}
-        />
-        <StatCard
-          label="Research Serper %"
+          label="Research lookups healthy"
           value={
             research?.sample_count
-              ? `${research.serper_pct ?? 0}% (${research.sample_count})`
-              : "—"
-          }
-          variant={research?.alerts?.length ? "warning" : "default"}
-        />
-        <StatCard
-          label="Research fallback %"
-          value={
-            research?.sample_count != null
-              ? `${research.fallback_pct ?? 0}%`
+              ? `${research.serper_pct ?? 0}% primary (${research.sample_count})`
               : "—"
           }
           variant={research?.alerts?.length ? "warning" : "default"}

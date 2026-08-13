@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NotYetPopulated, SectionCard } from "./shared"
 
 type ConflictRow = {
@@ -21,14 +22,20 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
   if (!enabled) return null
   if (isLoading) {
     return (
-      <SectionCard title="Memory conflicts" description="Scanning agent memories…">
+      <SectionCard
+        title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
+        description="Scanning agent memories…"
+      >
         <p className="text-sm text-muted-foreground">Checking for opposing statements…</p>
       </SectionCard>
     )
   }
   if (error) {
     return (
-      <SectionCard title="Memory conflicts" description="Unable to load conflict scan.">
+      <SectionCard
+        title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
+        description="Unable to load conflict scan."
+      >
         <p className="text-sm text-muted-foreground">Try refreshing the page.</p>
       </SectionCard>
     )
@@ -40,8 +47,8 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
 
   return (
     <SectionCard
-      title="Memory conflicts"
-      description="Opposing agent memories flagged for human review."
+      title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
+      description="When two agent memories disagree, they show up here for a human decision."
       action={
         <Badge variant={conflictCount > 0 ? "destructive" : "outline"} className="font-normal">
           {conflictCount} conflict{conflictCount === 1 ? "" : "s"}

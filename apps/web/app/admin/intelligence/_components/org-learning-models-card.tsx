@@ -132,12 +132,13 @@ export function OrgLearningModelsCard({ enabled }: { enabled: boolean }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
+              <Brain className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
               <CardTitle>Org learning models</CardTitle>
             </div>
             <CardDescription>
-              Retrain automatic intelligence models from this org&apos;s usage data. These are separate
-              from {SURFACE_COPY.training.title} (fine-tunes) and {SURFACE_COPY.models.title} (production deploy).
+              Retrain models that learn from your organization&apos;s real usage. Separate from{" "}
+              {SURFACE_COPY.training.title} (examples &amp; fine-tunes) and {SURFACE_COPY.models.title}{" "}
+              (production deploy).
             </CardDescription>
           </div>
           <Button

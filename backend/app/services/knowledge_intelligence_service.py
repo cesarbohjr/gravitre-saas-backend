@@ -400,6 +400,7 @@ async def load_admin_intelligence_snapshot(
         db.table("org_entity_relationships")
         .select("*")
         .eq("org_id", org_id)
+        .is_("archived_at", "null")
         .order("last_observed_at", desc=True)
         .limit(100)
         .execute()

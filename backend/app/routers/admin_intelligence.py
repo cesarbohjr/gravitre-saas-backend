@@ -13,6 +13,7 @@ from app.services.response_evaluation_service import load_admin_response_evaluat
 from app.services.entity_relationship_service import (
     list_relationships_for_entity,
     load_entity_relationships_snapshot,
+    set_entity_relationship_archived,
 )
 from app.services.outcome_attribution_service import get_outcome_attribution_service
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
@@ -61,12 +62,39 @@ async def get_entity_relationships(
     entity_type: str | None = Query(default=None, alias="entityType"),
     entity_id: str | None = Query(default=None, alias="entityId"),
     limit: int = Query(default=100, ge=1, le=500),
+    include_archived: bool = Query(default=False, alias="includeArchived"),
 ) -> dict[str, Any]:
     if entity_type and entity_id:
         return await list_relationships_for_entity(
             org_id, entity_type, entity_id, settings=settings
         )
-    return await load_entity_relationships_snapshot(org_id, settings=settings, limit=limit)
+    return await load_entity_relationships_snapshot(
+        org_id,
+        settings=settings,
+        limit=limit,
+        include_archived=include_archived,
+    )
+
+
+class RelationshipArchiveBody(BaseModel):
+    archived: bool = Field(..., description="True to hide from Learning; False to restore")
+
+
+@router.patch("/relationships/{relationship_id}")
+async def patch_entity_relationship(
+    relationship_id: str,
+    body: RelationshipArchiveBody,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Archive or restore a relationship edge (soft hide for operators)."""
+    return await set_entity_relationship_archived(
+        org_id,
+        relationship_id,
+        archived=bool(body.archived),
+        settings=settings,
+    )
 
 
 @router.get("/evaluations")

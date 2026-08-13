@@ -117,7 +117,7 @@ export function BusinessImpactCard() {
               <section id="revenue-risk" className="scroll-mt-24">
                 <h3 className="text-base font-semibold text-foreground">{SURFACE_COPY.learningAdmin.revenueRiskTitle}</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
-                  Pending business signals from optimization suggestions and outcome summaries.
+                  Suggestions and outcome signals worth a look before they become costly.
                 </p>
               </section>
             </div>
