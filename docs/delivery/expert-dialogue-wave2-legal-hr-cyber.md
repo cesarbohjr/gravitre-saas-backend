@@ -17,8 +17,12 @@ isolated smoke org when missing).
 
 ## Evidence
 
-Fill after live verify:
-
-- Tip:
+- Tip: `803c357f6d4cdcafb1a10a632dd3782be1bee936` (library tip `b8b40a72` ancestor; live tip advanced)
 - Artifact: `expert-dialogue-after-transcript.json` (label `after`)
-- Verdict:
+- Verdict: **PASS** `5/5` — marketing, sales, legal, hr, cybersecurity
+- Scorer note: practitioner_framing widened for enforce/preferably/reduce/review (cyber false-fail on a good MFA reply)
+
+## Deploy stamp
+
+Library commit: `b8b40a722e472547ba7f9d1c335fb9e43d7de844`  
+Live verify checkedAt: see artifact `checkedAt` field.

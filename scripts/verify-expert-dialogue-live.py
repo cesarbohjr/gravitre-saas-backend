@@ -173,7 +173,9 @@ def score_reply(text: str, term_patterns: list[str]) -> dict[str, Any]:
     actiony = bool(
         re.search(
             r"(?i)\b(check|verify|look( at| up)|confirm|first|before|don't|do not|"
-            r"won't|approval|stage|property|refund|associat)\b",
+            r"won't|approval|stage|property|refund|associat|"
+            r"enforce|prefer(?:ably)?|reduce|review|harden|rotate|revoke|"
+            r"least privilege|time-bound|just-in-time)\b",
             text or "",
         )
     )
