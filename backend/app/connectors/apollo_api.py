@@ -285,13 +285,28 @@ def list_labels(auth_headers: dict[str, str]) -> dict[str, Any]:
     return _request(auth_headers, "GET", "/labels")
 
 
+def normalize_apollo_lists_create_params(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Map catalog args to Apollo POST /labels body (name + modality required)."""
+    raw = dict(params or {})
+    name = str(raw.get("name") or raw.get("list_name") or "").strip()
+    if not name and isinstance(raw.get("payload"), dict):
+        name = str(raw["payload"].get("name") or raw["payload"].get("list_name") or "").strip()
+    modality = str(raw.get("modality") or "contacts").strip().lower() or "contacts"
+    out: dict[str, Any] = {"name": name, "modality": modality}
+    bob = raw.get("book_of_business")
+    if bob is not None:
+        out["book_of_business"] = bool(bob)
+    return out
+
+
 def create_label(
     auth_headers: dict[str, str],
     *,
     name: str,
     modality: str = "contacts",
+    book_of_business: bool | None = None,
 ) -> dict[str, Any]:
-    """Create an Apollo label (contact list). Uses POST /labels.
+    """Create an Apollo label (contact list). Uses POST /labels per Apollo OpenAPI.
 
     If Apollo returns 422 because the label already exists, return the existing
     label (idempotent create) so chat re-runs of the same name succeed.
@@ -302,12 +317,15 @@ def create_label(
     normalized_modality = str(modality or "contacts").strip().lower()
     if normalized_modality not in {"contacts", "accounts"}:
         raise ApolloAPIError("modality must be contacts or accounts")
+    body: dict[str, Any] = {"name": label_name, "modality": normalized_modality}
+    if book_of_business is not None and normalized_modality == "accounts":
+        body["book_of_business"] = bool(book_of_business)
     try:
         return _request(
             auth_headers,
             "POST",
             "/labels",
-            json_body={"name": label_name, "modality": normalized_modality},
+            json_body=body,
         )
     except ApolloAPIError as exc:
         if exc.status_code != 422:

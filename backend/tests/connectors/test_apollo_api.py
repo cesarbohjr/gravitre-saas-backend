@@ -84,6 +84,39 @@ def test_create_label_posts_name_and_modality():
     assert call[1]["json"] == {"name": "MSP Prospects", "modality": "contacts"}
 
 
+def test_create_label_accounts_book_of_business():
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=200, text='{"label":{"id":"l2"}}')
+        response.json.return_value = {"label": {"id": "l2"}}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        create_label(
+            {"X-Api-Key": "k"},
+            name="Enterprise BoB",
+            modality="accounts",
+            book_of_business=True,
+        )
+    body = client_cls.return_value.__enter__.return_value.request.call_args[1]["json"]
+    assert body == {
+        "name": "Enterprise BoB",
+        "modality": "accounts",
+        "book_of_business": True,
+    }
+
+
+def test_normalize_apollo_lists_create_params_list_name_alias():
+    from app.connectors.apollo_api import normalize_apollo_lists_create_params
+
+    out = normalize_apollo_lists_create_params({"list_name": "Q3 Targets"})
+    assert out == {"name": "Q3 Targets", "modality": "contacts"}
+
+
+def test_normalize_apollo_lists_create_params_requires_modality_default():
+    from app.connectors.apollo_api import normalize_apollo_lists_create_params
+
+    out = normalize_apollo_lists_create_params({"name": "MSP Prospects"})
+    assert out["modality"] == "contacts"
+
+
 def test_create_label_422_returns_existing_label_when_duplicate():
     with patch("app.connectors.apollo_api._request") as mock_request:
         mock_request.side_effect = [

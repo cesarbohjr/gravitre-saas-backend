@@ -649,17 +649,35 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     },
     "apollo.lists.create": {
         "type": "object",
+        "description": (
+            "Create an empty Apollo contact or account list (label). "
+            "Use when the user asks to create a new list by name."
+        ),
         "properties": {
-            "name": {"type": "string", "description": "Contact list name (Apollo label)."},
+            "name": {
+                "type": "string",
+                "description": "List name. Must be unique for the given modality within the team.",
+            },
             "list_name": {"type": "string", "description": "Alias for name."},
             "modality": {
                 "type": "string",
                 "enum": ["contacts", "accounts"],
+                "description": "contacts = people list; accounts = company list. Required by Apollo.",
                 "default": "contacts",
+            },
+            "book_of_business": {
+                "type": "boolean",
+                "description": (
+                    "When modality is accounts, set true to mark the list as Book of Business (BoB)."
+                ),
             },
             "connector_id": _CONNECTOR_ID,
         },
-        "required": ["name"],
+        "required": ["modality"],
+        "anyOf": [
+            {"required": ["name", "modality"]},
+            {"required": ["list_name", "modality"]},
+        ],
     },
     "apollo.lists.add": {
         "type": "object",

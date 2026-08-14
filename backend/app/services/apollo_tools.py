@@ -581,14 +581,21 @@ def _exec_lists_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResul
 
 def _exec_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, headers = _session(ctx, params)
-    name = params.get("name") or params.get("list_name")
-    if not name and isinstance(params.get("payload"), dict):
-        name = params["payload"].get("name")
+    from app.connectors.apollo_api import normalize_apollo_lists_create_params
+
+    normalized = normalize_apollo_lists_create_params(params)
+    name = normalized.get("name")
     if not name:
         raise ToolValidationError("apollo.lists.create requires name")
-    modality = params.get("modality") or "contacts"
+    modality = str(normalized.get("modality") or "contacts")
+    book_of_business = normalized.get("book_of_business")
     try:
-        data = create_label(headers, name=str(name), modality=str(modality))
+        data = create_label(
+            headers,
+            name=str(name),
+            modality=modality,
+            book_of_business=book_of_business if book_of_business is not None else None,
+        )
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     from app.services.connector_output_mappers.apollo import resolve_list_result_url

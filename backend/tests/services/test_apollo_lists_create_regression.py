@@ -106,3 +106,29 @@ async def test_tool_registry_execute_apollo_lists_create_under_synthetic_agent()
 
 def test_apollo_lists_create_executor_still_registered():
     assert "apollo.lists.create" in APOLLO_TOOL_EXECUTORS
+
+
+@patch("app.services.tool_service._write_tool_audit")
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.create_label")
+def test_invoke_tool_apollo_lists_create_accepts_list_name_alias_only(
+    mock_create_label,
+    mock_session,
+    _rate,
+    mock_audit,
+):
+    """Approved plans may carry list_name without name — must not validation_error."""
+    mock_session.return_value = ("cid-1", {"Authorization": "Bearer tok"})
+    mock_create_label.return_value = {"label": {"id": "l9", "name": "MSP Prospects"}}
+
+    result = invoke_tool(
+        _ctx(agent_id=None),
+        "apollo.lists.create",
+        {"list_name": "MSP Prospects", "modality": "contacts"},
+    )
+
+    assert result.success is True
+    mock_create_label.assert_called_once()
+    assert mock_create_label.call_args.kwargs["name"] == "MSP Prospects"
+    assert mock_create_label.call_args.kwargs["modality"] == "contacts"

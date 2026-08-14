@@ -32,8 +32,21 @@ ASANA_TASKS_CREATE_SCHEMA = ActionWorkflowSchema(
 
 APOLLO_LISTS_CREATE_SCHEMA = ActionWorkflowSchema(
     intent_label="Create Apollo contact list",
-    required_fields=(WorkflowFieldSpec("list name", ("name", "list_name")),),
-    optional_fields=(WorkflowFieldSpec("Modality", ("modality",)),),
+    required_fields=(
+        WorkflowFieldSpec("list name", ("name", "list_name")),
+        WorkflowFieldSpec(
+            "modality",
+            ("modality",),
+            inferrable=True,
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec(
+            "Book of Business",
+            ("book_of_business",),
+            inferrable=False,
+        ),
+    ),
 )
 
 APOLLO_LISTS_ADD_SCHEMA = ActionWorkflowSchema(
