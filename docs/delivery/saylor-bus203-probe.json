@@ -1,0 +1,93 @@
+{
+  "census_tos": {
+    "http": 200,
+    "snippets": [
+      " Developers Terms of Service Request an API Key Developers&#39; Forum Geography Contact Us View All Available APIs Guidance for Developers Census Data API User Guide Census Microdata API User Guide Census Data API Discovery Tool Workshop: B",
+      "tutes acceptance to this Agreement. Use You may use the Census Bureau API to develop a service or service to search, display, analyze, retrieve, view and otherwise &quot;get&quot; information from Census Bureau data. Federal law [13 U.S.C. ",
+      "cy Coordination Office at 301-763-6440. Attribution All services, which utilize or access the API, should display the following notice prominently within the application: &quot;This product uses the Census Bureau Data API but is not endorse"
+    ]
+  },
+  "saylor_bus203": {
+    "http": 200,
+    "final_url": "https://learn.saylor.org/course/view.php?id=72",
+    "license_snippets": [
+      "s available under a Creative Commons Attribution 3.0 Unported license . Third-party materials are the copyright of their respective owners and shared under various licenses. See detailed licensing information . Saylor University\u00ae, Saylor.or",
+      " Unported license . Third-party materials are the copyright of their respective owners and shared under various licenses. See detailed licensing information . Saylor University\u00ae, Saylor.org\u00ae, and Harnessing Technology to Make Education Free",
+      " Notice | Saylor University code here For CSS: For line numbers: add class \"linenums\" ============================================================ --> Skip to main content Side panel Home Calendar Main Site Courses &amp; Programs ",
+      "bution 3.0 Unported license . Third-party materials are the copyright of their respective owners and shared under various licenses. See detailed licensing information . Saylor University\u00ae, Saylor.org\u00ae, and Harnessing Technology to Make Educ"
+    ],
+    "units_sample": [],
+    "activities_sample": [
+      {
+        "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+        "title": "\u6587A Translate"
+      },
+      {
+        "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+        "title": "Verify Certificate"
+      },
+      {
+        "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+        "title": "\u6587A Translate"
+      },
+      {
+        "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+        "title": "Verify Certificate"
+      }
+    ]
+  },
+  "page_probe": [
+    {
+      "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+      "http": 200,
+      "markers": {
+        "has_cc_by": true,
+        "has_nc": false,
+        "mentions_third_party": true,
+        "mentions_openstax": false,
+        "mentions_boundless": false,
+        "mentions_lumen": false
+      },
+      "title_snip": " General Information: Translation FAQs | Saylor University code here For CSS: For line numbers: add class \"linenums\" ==="
+    },
+    {
+      "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+      "http": 200,
+      "markers": {
+        "has_cc_by": true,
+        "has_nc": false,
+        "mentions_third_party": true,
+        "mentions_openstax": false,
+        "mentions_boundless": false,
+        "mentions_lumen": false
+      },
+      "title_snip": " General Information: Certificate Verification | Saylor University code here For CSS: For line numbers: add class \"linen"
+    },
+    {
+      "url": "https://learn.saylor.org/mod/page/view.php?id=101593",
+      "http": 200,
+      "markers": {
+        "has_cc_by": true,
+        "has_nc": false,
+        "mentions_third_party": true,
+        "mentions_openstax": false,
+        "mentions_boundless": false,
+        "mentions_lumen": false
+      },
+      "title_snip": " General Information: Translation FAQs | Saylor University code here For CSS: For line numbers: add class \"linenums\" ==="
+    },
+    {
+      "url": "https://learn.saylor.org/mod/page/view.php?id=101601",
+      "http": 200,
+      "markers": {
+        "has_cc_by": true,
+        "has_nc": false,
+        "mentions_third_party": true,
+        "mentions_openstax": false,
+        "mentions_boundless": false,
+        "mentions_lumen": false
+      },
+      "title_snip": " General Information: Certificate Verification | Saylor University code here For CSS: For line numbers: add class \"linen"
+    }
+  ]
+}

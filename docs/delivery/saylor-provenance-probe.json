@@ -1,0 +1,118 @@
+{
+  "courses": {
+    "BUS203": {
+      "course_id": 1250,
+      "url": "https://learn.saylor.org/course/view.php?id=1250",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS633": {
+      "course_id": 881,
+      "url": "https://learn.saylor.org/course/view.php?id=881",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS630": {
+      "course_id": 789,
+      "url": "https://learn.saylor.org/course/view.php?id=789",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS631": {
+      "course_id": 878,
+      "url": "https://learn.saylor.org/course/view.php?id=878",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS632": {
+      "course_id": 1266,
+      "url": "https://learn.saylor.org/course/view.php?id=1266",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS634": {
+      "course_id": 1278,
+      "url": "https://learn.saylor.org/course/view.php?id=1278",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS502": {
+      "course_id": 669,
+      "url": "https://learn.saylor.org/course/view.php?id=669",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    },
+    "BUS615": {
+      "course_id": 796,
+      "url": "https://learn.saylor.org/course/view.php?id=796",
+      "http": 200,
+      "sections": [],
+      "resource_count": 0,
+      "resources_sample": [],
+      "included": [],
+      "excluded_sample": [],
+      "included_count": 0,
+      "excluded_count": 0,
+      "probes_sample": []
+    }
+  },
+  "resolved_ids": {
+    "BUS203": 1250,
+    "BUS633": 881,
+    "BUS630": 789,
+    "BUS631": 878,
+    "BUS632": 1266,
+    "BUS634": 1278,
+    "BUS502": 669,
+    "BUS615": 796
+  }
+}

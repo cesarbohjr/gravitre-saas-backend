@@ -1,0 +1,46 @@
+PHASE 4 — Degenerate and low-information output detection (new 
+capability, directly grounded in cmumulle72's finding, per Thread 1 
+above)
+═══════════════════════════════════════════════════
+1. EXPLICITLY REJECTED APPROACH, WITH STATED REASONING: do not implement 
+   this as "a second AI agent that reviews the first agent's output." 
+   cmumulle72's own, correct reasoning applies directly: a second agent 
+   reading the same output the first one wrote has no independent 
+   signal and will approve data that is well-formed, schema-valid, and 
+   individually complete, but functionally worthless because it's 
+   degenerate across the batch. This must be a real, statistical, 
+   independent check on the DATA ITSELF, never a second layer of AI 
+   judgment applied to the same evidence.
+2. For any batch or multi-record operation (bulk enrichment results, 
+   multi-row list population, any multi-item generation or write), add a 
+   real check on the SPREAD and DISTRIBUTION of the results, not merely 
+   their presence or schema-validity: flag when a suspiciously high 
+   proportion of records return an identical value, a known placeholder 
+   or non-answer pattern ("N/A", "cannot tell", "unknown", or similar), 
+   or otherwise show no realistic informational variance across a batch 
+   that should, by the nature of the real-world data involved, vary. 
+   This check must run and must be capable of flagging a result EVEN 
+   WHEN every individual record independently passes schema validation 
+   and even when Phase 3's per-record success check independently 
+   passes, that is precisely the scenario this phase exists to catch, 
+   exactly as in cmumulle72's real example: six rows, six passing schema 
+   checks, six identical, worthless values.
+3. Define a real, sensible, tunable threshold per action/batch type 
+   (e.g., flag if more than some real, considered percentage of a batch 
+   shares an identical or placeholder-pattern value). Do not hardcode a 
+   single, universal number without testing it against a real, 
+   representative sample of actual catalog action shapes and realistic 
+   batch sizes, report what threshold was chosen for which action 
+   classes and why.
+4. When flagged, the outcome must NOT be silently marked complete, 
+   verified, or successful under any circumstance. It moves to a real, 
+   distinct, honestly-labeled "flagged for review" state, different from 
+   verified, unverified, and failed, surfaced clearly to the user (built 
+   in Phase 6 below).
+5. Live test: construct a real, deliberate test case matching 
+   cmumulle72's exact scenario (a batch where every record independently 
+   validates but shares a degenerate, repeated, or placeholder value), 
+   confirm this new detector correctly flags it, and confirm this exact 
+   scenario is now a standing, permanent regression test, not a one-time 
+   manual check.
+═══════════════════════════════════════════════════

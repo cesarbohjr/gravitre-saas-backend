@@ -1,0 +1,40 @@
+{
+  "feature": "clarify_hr_default_t1",
+  "checkedAt": "2026-08-13T02:03:35.013302+00:00",
+  "git_sha": "3e6633e8fa23c61adb07d9661d27a7606a7150f6",
+  "verdict": "PASS",
+  "passed": 2,
+  "total": 2,
+  "results": [
+    {
+      "tag": "hr",
+      "agent_name": "HR Agent",
+      "agent_id": "ad468fdb-630c-4f18-9786-409727a10e6d",
+      "conversation_id": "e9c61fbb-4160-4739-9000-183f466d9e1a",
+      "question": "help me improve our hiring process",
+      "assistant": "Happy to. Are we fixing time-to-hire, candidate quality, interview consistency, or compliance risk — and for which roles or geo?",
+      "http_status": 200,
+      "score": {
+        "clarify": true,
+        "dump_without_q": false,
+        "pass": true
+      },
+      "ok": true
+    },
+    {
+      "tag": "default_assistant",
+      "agent_name": "default_assistant",
+      "agent_id": null,
+      "conversation_id": "b2b213c3-40fc-4ef7-99af-bcf8f6cb43bd",
+      "question": "help me plan next week's priorities",
+      "assistant": "Happy to. Are we prioritizing revenue closes, customer follow-ups, or clearing internal blockers — and what's the hard deadline?",
+      "http_status": 200,
+      "score": {
+        "clarify": true,
+        "dump_without_q": false,
+        "pass": true
+      },
+      "ok": true
+    }
+  ]
+}

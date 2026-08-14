@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "diagnosis": {
+    "stripe_account_id": "acct_19xPbEGkcGZTLqrP",
+    "stripe_key_prefix": "sk_live_51",
+    "broken_session": {
+      "id": "cs_live_a1aqtjqWeyvpOjDUrsLjETH0SHVZflG74vDWxGTGtHCaGlwyBDG7PUh2lL",
+      "status": "open",
+      "payment_status": "unpaid",
+      "livemode": true,
+      "created": 1786224647,
+      "expires_at": 1786311047,
+      "expired_by_clock": false,
+      "seconds_until_expiry": 85822,
+      "customer": "cus_UnCa4Z72rPXXu2",
+      "amount_total": 720,
+      "ui_mode": "hosted",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "url": "https://checkout.stripe.com/c/pay/cs_live_a1aqtjqWeyvpOjDUrsLjETH0SHVZflG74vDWxGTGtHCaGlwyBDG7PUh2lL#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWmlsc2BaMDQ8fVVnQEJuZkJfUUl0d1VTf01wfUZ8PTdhMVMwYDFUXTdDVnFUQGFSMUZTYmpuTDxCNGh1aGxtaT1dUjxyfVZSSzdAdkJCdFIzQDVudjNrcTZmdFRAYHc1NW11XzNqSGdnJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJjU1NTU1NScpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+    },
+    "broken_http_probe": {
+      "full_base": {
+        "http": 200,
+        "final_url": "https://checkout.stripe.com/c/pay/cs_live_a1aqtjqWeyvpOjDUrsLjETH0SHVZflG74vDWxGTGtHCaGlwyBDG7PUh2lL",
+        "content_type": "text/html; charset=utf-8",
+        "body_has_something_went_wrong": false,
+        "body_has_checkout": true,
+        "body_snippet": "<!doctype html><html lang=\"en\" translate=\"no\"><head><link rel=\"dns-prefetch\" href=\"https://api.stripe.com\"/><link rel=\"dns-prefetch\" href=\"https://merchant-ui-api.stripe.com\"/><link rel=\"preconnect\" href=\"https://api.stripe.com\" crossorigin/><link rel=\"preconnect\" href=\"https://m"
+      }
+    },
+    "cause_hypothesis": [
+      "api_says_open_unpaid \u2014 not expired/completed/cancelled; hosted URL broken independently"
+    ]
+  },
+  "fresh": {
+    "session_id": "cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd",
+    "status": "open",
+    "payment_status": "unpaid",
+    "amount_total": 720,
+    "url": "https://checkout.stripe.com/c/pay/cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWmlsc2BaMDQ8fVVnQEJuZkJfUUl0d1VTf01wfUZ8PTdhMVMwYDFUXTdDVnFUQGFSMUZTYmpuTDxCNGh1aGxtaT1dUjxyfVZSSzdAdkJCdFIzQDVudjNrcTZmdFRAYHc1NW11XzNqSGdnJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJjU1NTU1NScpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+    "created": {
+      "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWmlsc2BaMDQ8fVVnQEJuZkJfUUl0d1VTf01wfUZ8PTdhMVMwYDFUXTdDVnFUQGFSMUZTYmpuTDxCNGh1aGxtaT1dUjxyfVZSSzdAdkJCdFIzQDVudjNrcTZmdFRAYHc1NW11XzNqSGdnJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJjU1NTU1NScpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+      "session_id": "cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd",
+      "minutes": 60,
+      "amount_cents": 720,
+      "rate_cents_per_minute": 12,
+      "topup_event_id": "2e3c0b8c-59dc-4204-a40d-924eaa5cb348"
+    },
+    "http_probe": {
+      "full_base": {
+        "http": 200,
+        "final_url": "https://checkout.stripe.com/c/pay/cs_live_a1Oq4bdX0RU4LkBBVIod7qetQmxSTYBwRbWO2hdop460kNLKyhK7dborbd",
+        "content_type": "text/html; charset=utf-8",
+        "body_has_something_went_wrong": false,
+        "body_has_checkout": true,
+        "body_snippet": "<!doctype html><html lang=\"en\" translate=\"no\"><head><link rel=\"dns-prefetch\" href=\"https://api.stripe.com\"/><link rel=\"dns-prefetch\" href=\"https://merchant-ui-api.stripe.com\"/><link rel=\"preconnect\" href=\"https://api.stripe.com\" crossorigin/><link rel=\"preconnect\" href=\"https://m"
+      }
+    },
+    "fallback": null
+  },
+  "do_not_reuse": [
+    "cs_live_a1aqtjqWeyvpOjDUrsLjETH0SHVZflG74vDWxGTGtHCaGlwyBDG7PUh2lL",
+    "cs_live_a1iVSZjrnmg8ImcSLPgBUENisOH0MtncgNxyYRJxfFHmXCeRihucp7Qu1o"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "org_name": "Cesar Bohorquez Jr.'s Workspace",
+  "db": {
+    "org_billing.plan_code": "command",
+    "org_billing.billing_status": "active",
+    "org_billing.stripe_subscription_id": "sub_1TtIK9GkcGZTLqrPXl6bqczn",
+    "org_billing.stripe_customer_id": "cus_UnCa4Z72rPXXu2",
+    "subscriptions.tier": "command",
+    "subscriptions.status": "active",
+    "subscriptions.stripe_subscription_id": "sub_1TtIK9GkcGZTLqrPXl6bqczn"
+  },
+  "stripe": {},
+  "drift": {
+    "db_vs_stripe": null
+  },
+  "applied": false
+}

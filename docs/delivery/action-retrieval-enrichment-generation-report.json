@@ -1,16 +1,18 @@
 {
-  "generated_at": "2026-08-13T07:50:38.349067+00:00",
-  "catalog_action_count": 721,
+  "generated_at": "2026-08-13T08:32:00.083626+00:00",
+  "catalog_action_count": 727,
   "vendor_count": 84,
-  "enriched_action_count": 721,
+  "enriched_action_count": 727,
   "coverage_pct": 100.0,
   "missing": [],
   "stats": {
-    "deterministic": 721
+    "llm_batches": 61,
+    "llm_ok": 720,
+    "repaired": 7
   },
   "failure_count": 0,
   "failures_sample": [],
-  "elapsed_ms": 42,
+  "elapsed_ms": 1042853,
   "out": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\connectors\\action_catalog\\data\\action_retrieval_enrichment_full.json",
   "full_coverage": true
 }

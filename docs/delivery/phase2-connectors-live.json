@@ -1,0 +1,19 @@
+{
+  "recorded_at": "2026-08-13T09:13:41.593601+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "mode": "missing_internal_secret",
+  "deploy_sha": "b6acfac8f1e6f6e358df3e5fa0cd29c62c1ede7d",
+  "local_git_sha": "555725d6eb6b0a57196b1a20f951ed43477a1d88",
+  "deploy_sha_match": false,
+  "probe_error": null,
+  "probe": null,
+  "audit_tool_invoke_completed_since_probe": [
+    {
+      "error": "APIError:{'message': 'column audit_events.tool does not exist', 'code': '42703', 'hint': None, 'details': None}"
+    }
+  ],
+  "verdict": "NOT RUN",
+  "claim": "NOT RUN \u2014 missing_internal_secret"
+}

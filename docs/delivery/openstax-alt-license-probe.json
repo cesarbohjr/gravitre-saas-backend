@@ -1,0 +1,91 @@
+{
+  "catalog_business": {
+    "http": 200,
+    "url": "https://openstax.org/subjects/business",
+    "has_nc": false,
+    "hits": []
+  },
+  "pom_preface": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-marketing/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "intro_biz": {
+    "http": 200,
+    "url": "https://openstax.org/books/introduction-business/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution 4",
+      "Creative Commons Attribution License and you must attribute OpenStax",
+      "Creative Commons Attribution License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "principles_econ2e": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-economics-3e/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "principles_micro": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-microeconomics-3e/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "principles_macro": {
+    "http": 200,
+    "url": "https://openstax.org/books/principles-macroeconomics-3e/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "entrepreneurship": {
+    "http": 200,
+    "url": "https://openstax.org/books/entrepreneurship/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "org_behavior": {
+    "http": 200,
+    "url": "https://openstax.org/books/organizational-behavior/pages/preface",
+    "has_nc": true,
+    "hits": [
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License and you must attribute OpenStax",
+      "Creative Commons Attribution-NonCommercial-ShareAlike License ",
+      "Creative Commons license and may not be reproduced without the prior and express written consent of Rice University"
+    ]
+  },
+  "help_license": {
+    "http": 404,
+    "url": "https://help.openstax.org/s/article/OpenStax-textbook-licensing-and-customization",
+    "has_nc": false,
+    "hits": []
+  }
+}

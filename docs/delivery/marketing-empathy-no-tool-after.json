@@ -1,0 +1,18 @@
+{
+  "feature": "marketing_empathy_no_tool",
+  "checkedAt": "2026-08-12T23:38:56.601915+00:00",
+  "git_sha": "0ef7f1ab242d18d5d76706e9d0109216109ed39f",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "dda5b24d-26bd-4f04-be1c-bb717f00813c",
+  "agent": "Marketing Analyst",
+  "question": "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
+  "assistant": "That's a rough spot with a tight clock. What's the one first check you want to run?",
+  "http_status": 200,
+  "score": {
+    "empathy": true,
+    "tool_derail": false,
+    "word_count": 17,
+    "pass": true
+  },
+  "verdict": "PASS"
+}

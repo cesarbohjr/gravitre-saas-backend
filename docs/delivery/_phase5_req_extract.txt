@@ -1,0 +1,113 @@
+=== FROM LINE 3918 ===
+PHASE 5 — Extend honest, correlated data to EVERY reporting and insights 
+surface, not only Activity/Outcomes
+═══════════════════════════════════════════════════
+1. Produce a real, complete inventory of every dashboard or reporting 
+   surface in the platform: the consolidated Activity/Outcomes page 
+   (already covered by existing work), any Insights or Intelligence 
+   dashboard, agent-effectiveness reports, model training/confidence 
+   status displays (Module C's honesty/TRAINED-labeling work), the 
+   golden-signals operational dashboard, and any pack-specific KPI 
+   panel. Do not assume this list is complete, actively search for any 
+   other reporting or metrics surface not already named here.
+2. For EACH surface found, confirm two things directly and separately: 
+   first, does it read from a real, current, single, authoritative 
+   source of truth (per the "one source, many renderers" rule already 
+   proven for BusinessOutcome elsewhere in this program), and second, 
+   does it ever silently show stale, cached, placeholder, or otherwise 
+   non-current data while presenting it AS IF it were current, real, 
+   live information? Any surface found doing the latter is a direct, 
+   serious violation of the same honesty standard already enforced 
+   throughout this program (the knowledge-boundary rule, Module C's 
+   TRAINED-vs-heuristic labeling, BusinessOutcome's verified-vs-unproven 
+   distinction), fix it to that exact same bar, no exceptions carved out 
+   for "it's just a dashboard."
+3. Specifically, directly confirm that agent-effectiveness reports and 
+   model-training/confidence reports genuinely, computably correlate 
+   with real, current, underlying outcome data. A report claiming a 
+   given agent has a specific success rate, or that a given model is 
+   genuinely trained versus heuristic, must be a real, live computation 
+   over real BusinessOutcome and Module A records, never a separately- 
+   maintained number that could silently drift out of sync with the 
+   actual, current state of the system.
+4. Apply Phase 4's degenerate-output detection principle to this layer 
+   as well: if any report or dashboard metric would realistically be 
+   expected to show real variance over time (a success rate, an 
+   engagement number, a confidence score) and instead shows suspiciously 
+   static, unchanging, or repeated values across multiple real 
+   measurement periods, flag this as a real, direct finding of the exact 
+   same failure class, just manifesting in a report rather than a 
+   workflow output.
+═══════════════════════════════════════════════════
+PHASE 6 — Outcomes / Activity / Insights UI: real, honest assurance 
+states (functional work first, v0 visual handoff second, per this 
+program's standing v0 discipline)
+═══════════════════════════════════════════════════
+FUNCTIONAL WORK FIRST (Cursor, no visual design in this stage):
+1. Extend BusinessOutcome's existing verification states 
+   (verified/unverified/failed, per business-outcome-view.tsx's already- 
+   proven, honest state mapping) with a real, genuinely distinct 
+   "flagged for review" state, specifically for Phase 4's degenerate- 
+   output finding. This is not a new, parallel status system bolted on 
+   the side, it is a real, structural extension of the existing DTO, 
+   confirm it flows through the exact same single source already proven 
+   correct across chat, the consolidated Activity/Outcomes page, and the 
+   browser extension, all three surfaces must reflect this new state 
+   identically, reading from the same underlying record.
+2. The flagged state must carry real, specific, useful detail, not a 
+   generic warning: which check actually failed (Phase 3's missing 
+   follow-up proof, versus Phase 4's degenerate/uniform-output finding, 
+   these are different findings and must be distinguishable), what was 
+   actually, concretely found (e.g., the real example, "6 of 6 records 
+   returned the same value: 'cannot tell'"), and a clear, specific next 
+   action available to the user (retry the operation, review the 
+   specific records manually, open the real record directly in the 
+   source system). Reuse Module D's established voice standard for this 
+   copy throughout, direct and specific, never a vague "something may 
+   have gone wrong."
+3. Confirm this integrates fully and correctly with the existing, 
+   already-consolidated Activity/Outcomes page from the earlier 
+   information-architecture work: a flagged outcome mus
+
+--- header PHASE 0 @ 3918 ---
+Phase 0 is the highest priority and ships 
+first, in isolation, with independent live verification, before any 
+other phase begins, given its foundational severity, everything built 
+on top of the can
+
+--- header PHASE 1 @ 3918 ---
+PHASE 1 — Full wiring audit across every AI-logic-sequencing surface
+═══════════════════════════════════════════════════
+Extend the same rigor already applied to main chat (via the routing 
+decision m
+
+--- header PHASE 2 @ 3918 ---
+PHASE 2 — Department/template packs must ship fully pre-wired, verified 
+directly, not assumed
+═══════════════════════════════════════════════════
+1. For every currently published pack (per the pack-i
+
+--- header PHASE 3 @ 3918 ---
+PHASE 3 — Verified completion, generalized catalog-wide (the F6 pattern, 
+directly validated by real practitioner discussion, per Thread 1 above)
+═══════════════════════════════════════════════════
+1.
+
+--- header PHASE 4 @ 3918 ---
+PHASE 4 — Degenerate and low-information output detection (new 
+capability, directly grounded in cmumulle72's finding, per Thread 1 
+above)
+═══════════════════════════════════════════════════
+1. EXPLI
+
+--- header PHASE 5 @ 3918 ---
+PHASE 5 — Extend honest, correlated data to EVERY reporting and insights 
+surface, not only Activity/Outcomes
+═══════════════════════════════════════════════════
+1. Produce a real, complete inventory 
+
+--- header PHASE 6 @ 3918 ---
+Phase 6 below).
+5. Live test: construct a real, deliberate test case matching 
+   cmumulle72's exact scenario (a batch where every record independently 
+   validates but shares a degenerate, repeated,
