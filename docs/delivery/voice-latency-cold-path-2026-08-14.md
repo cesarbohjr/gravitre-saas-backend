@@ -36,3 +36,11 @@ Wall clocks from `voice.session` start (not including client STT):
 | bare `4` | present | **6764** | 5 | **PASS** — flush-before-complete |
 
 Fix: terminal punctuation without trailing whitespace in `split_speakable_chunks`, plus defer `voice.turn.complete` until TTS flush.
+
+## Phase 4 — human-spoken duplex (felt cold start)
+
+**BLOCKED (2026-08-14)** — not PASS.
+
+Browser session on `https://gravitre.app/ai` is on a **trial-ended** org: upgrade modal + `pointer-events: none` on Account menu (cannot switch to Command `cbbf993b-…`). Voice button is visible but a genuine mic duplex turn cannot complete on this org.
+
+API cold-path attribution above remains valid on tip `fe9828dc` (ancestor of live `d34660f3`); human-felt duplex still needs Cesar (or equivalent) on an active billed org to speak one uncached first-turn question and capture TTFT/TTFA from the duplex UI.
