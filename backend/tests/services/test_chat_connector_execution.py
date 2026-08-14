@@ -679,6 +679,8 @@ def test_summarize_apollo_list_create_already_existed_is_honest(connector_servic
 
 @pytest.mark.asyncio
 async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_service):
+    from app.services.tool_registry import get_tool_registry
+
     plan = ConnectorActionPlan(
         tool_name="apollo_lists_create",
         invoke_action="apollo.lists.create",
@@ -688,19 +690,17 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
         args={"name": "MSP Prospects", "modality": "contacts"},
         requires_approval=True,
     )
-    with patch.object(
-        connector_service,
-        "_registry",
-        MagicMock(
-            execute_tool=AsyncMock(
-                return_value={
-                    "success": True,
-                    "connector_id": "conn-apollo",
-                    "result": {"label": {"id": "list-123", "name": "MSP Prospects"}},
-                }
-            )
-        ),
-    ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
+    registry = get_tool_registry()
+    registry.execute_invoke_action = AsyncMock(
+        return_value={
+            "success": True,
+            "connector_id": "conn-apollo",
+            "result": {"label": {"id": "list-123", "name": "MSP Prospects"}},
+        }
+    )
+    with patch.object(connector_service, "_registry", registry), patch.object(
+        connector_service, "_record_outcomes", AsyncMock()
+    ), patch(
         "app.workflows.repository.create_run",
         return_value={"id": "run-test-1"},
     ), patch(
@@ -726,6 +726,8 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
 
 @pytest.mark.asyncio
 async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(connector_service):
+    from app.services.tool_registry import get_tool_registry
+
     plan = ConnectorActionPlan(
         tool_name="apollo_lists_create",
         invoke_action="apollo.lists.create",
@@ -735,19 +737,15 @@ async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(c
         args={"name": "Empty"},
         requires_approval=True,
     )
-    with patch.object(
-        connector_service,
-        "_registry",
-        MagicMock(
-            execute_tool=AsyncMock(
-                return_value={
-                    "success": True,
-                    "connector_id": "conn-apollo",
-                    "result": {},
-                }
-            )
-        ),
-    ), patch.object(
+    registry = get_tool_registry()
+    registry.execute_invoke_action = AsyncMock(
+        return_value={
+            "success": True,
+            "connector_id": "conn-apollo",
+            "result": {},
+        }
+    )
+    with patch.object(connector_service, "_registry", registry), patch.object(
         connector_service,
         "_summarize_result",
         return_value="",
@@ -784,7 +782,7 @@ async def test_execute_plan_orch_step_skips_module_a_fanout(connector_service):
         connector_service,
         "_registry",
         MagicMock(
-            execute_tool=AsyncMock(
+            execute_invoke_action=AsyncMock(
                 return_value={
                     "success": False,
                     "connector_id": "conn-slack",

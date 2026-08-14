@@ -453,6 +453,9 @@ class ChatActionMapper:
                 score -= 40.0
             elif "search" in entry.action_key and "lists.create" not in entry.action_key:
                 score -= 28.0
+        if entry.connector_id == "hubspot" and "contacts.create" in entry.action_key:
+            if re.search(r"\b(?:email\s+)?campaign(?:s)?\b|\bmarketing\s+email\b", text, re.I):
+                score -= 80.0
         if entry.connector_id == "hubspot" and LIST_CREATE_INTENT.search(text):
             # Part 3 — pack-common HubSpot static list create (MSP / Prospecting).
             if "lists.create" in entry.action_key:

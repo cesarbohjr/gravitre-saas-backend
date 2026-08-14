@@ -660,10 +660,6 @@ class ChatConnectorExecutionService:
         task_state: dict[str, Any],
         structured_plan: ConnectorActionPlan | None = None,
     ) -> ConnectorActionPlan | None:
-        # Wave 1: structured ReAct tool_calls win over NL phrase matching.
-        if structured_plan is not None and structured_plan.invoke_action:
-            return structured_plan
-
         from app.services.parameter_ledger import (
             apply_ledger_to_plan,
             is_awaiting_params,
@@ -671,7 +667,37 @@ class ChatConnectorExecutionService:
         )
 
         pending = task_state.get("pending_task") or {}
+        pending_status = str(pending.get("status") or "") if isinstance(pending, dict) else ""
+        pending_confirmed = pending_status in {
+            "awaiting_confirm",
+            "awaiting_admin_approval",
+        }
+        # Wave 1: structured ReAct tool_calls win over NL phrase matching — but never
+        # override a frozen approval card already staged in pending_task.
+        if (
+            structured_plan is not None
+            and structured_plan.invoke_action
+            and not (
+                isinstance(pending, dict)
+                and pending.get("type") == "connector_action"
+                and pending_confirmed
+            )
+        ):
+            return structured_plan
+
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
+            if pending_confirmed:
+                from app.services.approval_action_binding import plan_from_approved_params
+
+                raw_params = pending.get("params")
+                if isinstance(raw_params, dict):
+                    approved = plan_from_approved_params(
+                        raw_params,
+                        registry=self._registry,
+                    )
+                    if approved is not None:
+                        approved = apply_ledger_to_plan(approved, task_state)
+                        return self._sanitize_plan_message_bodies(approved)
             # Module B — generic multi-turn resume (all connectors, not Slack-only).
             if is_awaiting_params(task_state):
                 resumed, _ledger, patch = resume_awaiting_params(message, task_state)
@@ -855,7 +881,9 @@ class ChatConnectorExecutionService:
 
     @staticmethod
     def plan_to_dict(plan: ConnectorActionPlan) -> dict[str, Any]:
-        return {
+        from app.services.approval_action_binding import bind_plan_dict
+
+        payload = {
             "tool_name": plan.tool_name,
             "invoke_action": plan.invoke_action,
             "integration": plan.integration,
@@ -868,6 +896,7 @@ class ChatConnectorExecutionService:
             "inferred_fields": list(plan.inferred_fields),
             "inference_sources": dict(plan.inference_sources),
         }
+        return bind_plan_dict(payload)
 
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
@@ -1100,6 +1129,18 @@ class ChatConnectorExecutionService:
 
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
+
+        from app.services.connector_marketing_intent import hubspot_email_campaign_catalog_gap
+
+        marketing_gap = hubspot_email_campaign_catalog_gap(message)
+        if marketing_gap:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": marketing_gap,
+                "task_state": task_state,
+                "workflow_status": "catalog_gap",
+            }
 
         connected_integrations = self._live_connected_integrations(
             client,
@@ -1441,6 +1482,7 @@ class ChatConnectorExecutionService:
                     "pending_task": (refreshed or {}).get("pending_task"),
                     "workflow_status": clarification.status,
                 }
+            pending_params = (task_state.get("pending_task") or {}).get("params")
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -1449,6 +1491,7 @@ class ChatConnectorExecutionService:
                 client=client,
                 classification=classification,
                 environment_name=environment_name,
+                approved_params=pending_params if isinstance(pending_params, dict) else None,
             )
             self._promote_confirmed_workspace_memory(
                 client,
@@ -1571,7 +1614,27 @@ class ChatConnectorExecutionService:
                 title="No connector task",
                 body="No pending connector action to execute.",
             )
-        plan = self.plan_action("", connected_integrations=[], task_state=task_state)
+        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+        from app.services.approval_action_binding import (
+            ApprovalActionMismatchError,
+            format_approval_mismatch_message,
+            plan_from_approved_params,
+        )
+
+        try:
+            plan = plan_from_approved_params(params, registry=self._registry)
+        except ApprovalActionMismatchError as exc:
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                connector_management_url="/connectors",
+                title="Approval mismatch",
+                body=format_approval_mismatch_message(exc),
+                error_code=ApprovalActionMismatchError.code,
+            )
+        if not plan:
+            plan = self.plan_action("", connected_integrations=[], task_state=task_state)
         if not plan:
             return ExecutionResult(
                 success=False,
@@ -1614,6 +1677,7 @@ class ChatConnectorExecutionService:
             client=client,
             classification=classification or {},
             environment_name=environment_name,
+            approved_params=params if params else None,
         )
 
     async def execute_plan(
@@ -1627,6 +1691,7 @@ class ChatConnectorExecutionService:
         classification: dict[str, Any],
         environment_name: str = "production",
         own_terminal_outcome: bool = True,
+        approved_params: dict[str, Any] | None = None,
     ) -> ExecutionResult:
         """Execute a connector plan.
 
@@ -1641,12 +1706,47 @@ class ChatConnectorExecutionService:
             actor_id=user_id,
             environment_name=environment_name,
         )
+        from app.services.approval_action_binding import (
+            ApprovalActionMismatchError,
+            assert_plan_matches_binding,
+            format_approval_mismatch_message,
+        )
+
         try:
-            observation = await self._registry.execute_tool(
-                ctx=ctx,
-                tool_name=plan.tool_name,
-                args=plan.args,
+            assert_plan_matches_binding(
+                plan,
+                approved_params or {},
+                registry=self._registry,
             )
+            observation = await self._registry.execute_invoke_action(
+                ctx=ctx,
+                invoke_action=plan.invoke_action,
+                args=plan.args,
+                tool_name=plan.tool_name,
+            )
+        except ApprovalActionMismatchError as exc:
+            failed = ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                connector_management_url="/connectors",
+                result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
+                title=plan.label,
+                body=format_approval_mismatch_message(exc),
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code=ApprovalActionMismatchError.code,
+            )
+            if own_terminal_outcome:
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=failed,
+                )
+            return failed
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "chat connector execute failed org_id=%s action=%s error=%s",
