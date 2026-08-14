@@ -181,10 +181,9 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
             "clay.leads.push",
             connector="clay",
             param_sources={
-                # Prefer list members; people-search records are the empty-list fallback
-                # (resolved via runtime alias scan when contacts search returns []).
+                # Prefer people-search records (contacts.search returns ``contacts``, not ``records``).
                 "records": {
-                    "from_step": "apollo_contacts_search",
+                    "from_step": "apollo_people_search",
                     "path": ["records"],
                 },
             },

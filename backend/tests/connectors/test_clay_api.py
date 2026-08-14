@@ -59,3 +59,16 @@ def test_push_to_webhook_requires_url():
         assert exc.status_code == 400
     else:
         raise AssertionError("expected ClayAPIError")
+
+
+def test_push_rejects_shared_workbook_page_url():
+    try:
+        push_to_webhook(
+            "https://app.clay.com/shared-workbook/share_abc",
+            payload={"email": "a@b.com"},
+        )
+    except ClayAPIError as exc:
+        assert exc.status_code == 400
+        assert "shared workbook" in str(exc).lower()
+    else:
+        raise AssertionError("expected ClayAPIError")

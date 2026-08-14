@@ -177,6 +177,15 @@ def push_to_webhook(
     url = webhook_url.strip()
     if not url:
         raise ClayAPIError("Clay table webhook URL not configured", status_code=400)
+    # Shared workbook / share links are GET-only CloudFront pages — not ingest webhooks.
+    lowered = url.lower()
+    if "/shared-workbook/" in lowered or "/share_" in lowered:
+        raise ClayAPIError(
+            "Clay webhook_url looks like a shared workbook page (GET-only). "
+            "Paste the table's HTTP API / webhook ingest URL "
+            "(typically https://app.clay.com/api/v1/webhooks/...).",
+            status_code=400,
+        )
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if webhook_secret:
         headers["X-Webhook-Secret"] = webhook_secret.strip()
@@ -184,7 +193,7 @@ def push_to_webhook(
     if not rows:
         raise ClayAPIError("payload or records required", status_code=400)
     results: list[dict[str, Any]] = []
-    with httpx.Client(timeout=TIMEOUT_SEC) as http:
+    with httpx.Client(timeout=TIMEOUT_SEC, http2=False) as http:
         for row in rows:
             response = http.post(url, headers=headers, json=row)
             if response.status_code >= 400:
