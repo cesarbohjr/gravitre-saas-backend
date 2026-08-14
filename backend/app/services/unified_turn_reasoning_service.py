@@ -1235,6 +1235,7 @@ def _unified_live_turn_payload(
         "unified_outcome_kind": result.outcome_kind,
         "latency_ms": result.latency_ms,
         "first_token_ms": result.first_token_proxy_ms,
+        "latency_breakdown": dict(result.latency_breakdown or {}),
         "confidence": getattr(result, "confidence", None),
     }
     return attach_evidence_envelope(
