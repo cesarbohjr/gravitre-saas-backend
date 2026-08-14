@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-08-14T09:09:14Z",
+  "health_git_sha": "dc2590908b4a9e24b730c203eb3f589ef785584e",
+  "nonce": "420b4b1c",
+  "baselines": {
+    "user_stated": {
+      "ttft_ms": 4632,
+      "ttfa_ms": 4813
+    },
+    "phase0_pre_opt_simple": {
+      "ttft_ms": 4302,
+      "ttfa_ms": null
+    }
+  },
+  "probes": {
+    "simple1": {
+      "model": "gpt-5.4-mini",
+      "ttft_ms": 4778,
+      "ttfa_ms": 5012,
+      "reasoning_depth": "conversational",
+      "cognitive_stage_ms": {
+        "RETRIEVE": 0.0,
+        "RECALL": 718.6,
+        "KNOWLEDGE": 0.0,
+        "PLAN": 0.0,
+        "VERIFY": 0.0,
+        "GOVERN": 0.0
+      },
+      "cached_prompt_tokens": 3712,
+      "cached_prompt_ratio": 0.6203,
+      "preview": "17 plus 25 is 42.",
+      "error": null,
+      "ok": true
+    },
+    "simple2": {
+      "model": "gpt-5.4-mini",
+      "ttft_ms": 4593,
+      "ttfa_ms": 4861,
+      "reasoning_depth": "conversational",
+      "cognitive_stage_ms": {
+        "RETRIEVE": 0.0,
+        "RECALL": 181.2,
+        "KNOWLEDGE": 0.0,
+        "PLAN": 0.0,
+        "VERIFY": 0.0,
+        "GOVERN": 0.0
+      },
+      "cached_prompt_tokens": 4224,
+      "cached_prompt_ratio": 0.6867,
+      "preview": "Gravitre helps with workflow automation.",
+      "error": null,
+      "ok": true
+    },
+    "write": {
+      "model": "retrieve_plan_gate",
+      "ttft_ms": 3166,
+      "ttfa_ms": 3354,
+      "reasoning_depth": "full",
+      "cognitive_stage_ms": {
+        "RETRIEVE": 0.0,
+        "RECALL": 189.3,
+        "KNOWLEDGE": 773.9,
+        "PLAN": 0.0,
+        "VERIFY": 0.0,
+        "GOVERN": 0.0
+      },
+      "cached_prompt_tokens": null,
+      "cached_prompt_ratio": null,
+      "preview": "I can create a contact list named **gravitre-voice-lat-420b4b1c** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or ",
+      "error": null,
+      "ok": true
+    }
+  }
+}
