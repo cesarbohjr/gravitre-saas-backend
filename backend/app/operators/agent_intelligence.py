@@ -2015,6 +2015,30 @@ class AgentIntelligence:
                         "spokenStreamed": streamed_voice_text,
                         "cachedPromptTokens": lat_bd.get("cached_prompt_tokens"),
                         "cachedPromptRatio": lat_bd.get("cached_prompt_ratio"),
+                        # Cold-path voice latency attribution (same keys as unified audits).
+                        "modelTtftMs": lat_bd.get("model_ttft_ms"),
+                        "preModelMs": lat_bd.get("pre_model_ms"),
+                        "wallToFirstTokenMs": lat_bd.get("wall_to_first_token_ms")
+                        or live_turn.get("first_token_ms"),
+                        "unifiedLatencyMs": live_turn.get("latency_ms") or lat_bd.get("latency_ms"),
+                        "contextPromptMs": lat_bd.get("context_prompt_ms"),
+                        "registryToolsMs": lat_bd.get("registry_tools_ms"),
+                        "narrowToolsMs": lat_bd.get("narrow_tools_ms"),
+                        "latencyBreakdown": {
+                            k: lat_bd.get(k)
+                            for k in (
+                                "model_ttft_ms",
+                                "pre_model_ms",
+                                "wall_to_first_token_ms",
+                                "context_prompt_ms",
+                                "registry_tools_ms",
+                                "narrow_tools_ms",
+                                "cached_prompt_tokens",
+                                "cached_prompt_ratio",
+                                "conversational_no_tools",
+                            )
+                            if k in lat_bd
+                        },
                     },
                 )
                 if not streamed_voice_text:

@@ -40,6 +40,14 @@ def test_split_speakable_chunks_sentence_boundary():
     assert rem == "More coming"
 
 
+def test_split_speakable_chunks_terminal_punct_no_trailing_space():
+    """Short voice answers like 'Four.' must speak without waiting for whitespace."""
+    ready, rem = split_speakable_chunks("Four.")
+    assert ready == ["Four."]
+    assert rem == ""
+
+
+
 def test_acoustic_short_audio_insufficient():
     # Tiny buffer → not ok
     result = extract_acoustic_features(b"\x00\x01")

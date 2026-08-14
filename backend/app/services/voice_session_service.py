@@ -158,6 +158,13 @@ async def stream_voice_turn_events(
     effective_mode: str | None = None
     cached_prompt_tokens: int | None = None
     cached_prompt_ratio: float | None = None
+    pre_act_done_ms: int | None = None
+    model_ttft_ms: int | None = None
+    pre_model_ms: int | None = None
+    wall_to_first_token_ms: int | None = None
+    spoken_streamed: bool | None = None
+    unified_breakdown: dict[str, Any] = {}
+    classify_done_ms: int | None = None
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
         nonlocal first_audio_ms, agent_audio_started, cancelled
@@ -222,6 +229,8 @@ async def stream_voice_turn_events(
                 routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
                 if isinstance(routing.get("cognitiveStageMs"), dict):
                     stage_ms = dict(routing["cognitiveStageMs"])
+                    if pre_act_done_ms is None:
+                        pre_act_done_ms = int((time.perf_counter() - t_start) * 1000)
                 if routing.get("reasoningDepth"):
                     reasoning_depth = str(routing.get("reasoningDepth"))
                 if data.get("routingTier"):
@@ -238,6 +247,31 @@ async def stream_voice_turn_events(
                         cached_prompt_ratio = float(routing.get("cachedPromptRatio"))
                     except (TypeError, ValueError):
                         pass
+                if routing.get("modelTtftMs") is not None:
+                    try:
+                        model_ttft_ms = int(routing.get("modelTtftMs"))
+                    except (TypeError, ValueError):
+                        pass
+                if routing.get("preModelMs") is not None:
+                    try:
+                        pre_model_ms = int(routing.get("preModelMs"))
+                    except (TypeError, ValueError):
+                        pass
+                if routing.get("wallToFirstTokenMs") is not None:
+                    try:
+                        wall_to_first_token_ms = int(routing.get("wallToFirstTokenMs"))
+                    except (TypeError, ValueError):
+                        pass
+                if routing.get("spokenStreamed") is not None:
+                    spoken_streamed = bool(routing.get("spokenStreamed"))
+                if isinstance(routing.get("latencyBreakdown"), dict):
+                    unified_breakdown = dict(routing["latencyBreakdown"])
+                # First routing intelligence (before kernel) ≈ classify+setup wall.
+                if (
+                    classify_done_ms is None
+                    and data.get("answerExplanation") == "Analyzing your request…"
+                ):
+                    classify_done_ms = int((time.perf_counter() - t_start) * 1000)
             yield {"type": "voice.intelligence", "payload": event.payload}
             continue
         if event.sse_type != "text-delta":
@@ -306,17 +340,35 @@ async def stream_voice_turn_events(
             "conversation_id": resolved_conversation_id,
             "originating_modality": "voice",
             "cancelled": False,
-            "latency_ms": {
-                "total": int((time.perf_counter() - t_start) * 1000),
-                "ttft_ms": first_text_ms,
-                "ttfa_ms": first_audio_ms,
-                "cognitive_stage_ms": stage_ms,
-                "reasoning_depth": reasoning_depth,
-                "routing_tier": routing_tier,
-                "effective_mode": effective_mode,
-                "cached_prompt_tokens": cached_prompt_tokens,
-                "cached_prompt_ratio": cached_prompt_ratio,
-            },
+                "latency_ms": {
+                    "total": int((time.perf_counter() - t_start) * 1000),
+                    "ttft_ms": first_text_ms,
+                    "ttfa_ms": first_audio_ms,
+                    "cognitive_stage_ms": stage_ms,
+                    "reasoning_depth": reasoning_depth,
+                    "routing_tier": routing_tier,
+                    "effective_mode": effective_mode,
+                    "cached_prompt_tokens": cached_prompt_tokens,
+                    "cached_prompt_ratio": cached_prompt_ratio,
+                    # Cold-path attribution (wall clocks from voice session start).
+                    "classify_setup_ms": classify_done_ms,
+                    "pre_act_done_ms": pre_act_done_ms,
+                    "pre_act_to_ttft_ms": (
+                        None
+                        if first_text_ms is None or pre_act_done_ms is None
+                        else max(0, int(first_text_ms) - int(pre_act_done_ms))
+                    ),
+                    "ttft_to_ttfa_ms": (
+                        None
+                        if first_text_ms is None or first_audio_ms is None
+                        else max(0, int(first_audio_ms) - int(first_text_ms))
+                    ),
+                    "model_ttft_ms": model_ttft_ms,
+                    "pre_model_ms": pre_model_ms,
+                    "wall_to_first_token_ms": wall_to_first_token_ms,
+                    "spoken_streamed": spoken_streamed,
+                    "unified_breakdown": unified_breakdown or None,
+                },
         }
     yield {
         "type": "voice.session.ended",
