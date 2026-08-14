@@ -29,6 +29,8 @@ from app.services.voice_turn_taking import (
 )
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+_MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+_LEADING_FORMAT = re.compile(r"^\s*(?:#{1,6}\s+|[-*]\s+|\d+\.\s+)")
 
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
 # Prefer Redis so cancel works across Railway replicas; memory is local fallback.
@@ -100,6 +102,25 @@ def split_speakable_chunks(buffer: str, *, min_chars: int = 24) -> tuple[list[st
     return ready, parts[-1]
 
 
+def normalize_spoken_text(text: str) -> str:
+    """Strip visual markdown/list formatting for natural spoken delivery."""
+    lines: list[str] = []
+    for raw in (text or "").replace("\r\n", "\n").split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        line = _MARKDOWN_LINK.sub(r"\1", line)
+        line = _LEADING_FORMAT.sub("", line)
+        line = line.replace("**", "").replace("__", "").replace("`", "").strip()
+        line = re.sub(r"\s{2,}", " ", line).strip()
+        if not line:
+            continue
+        if line[-1] not in ".!?":
+            line = f"{line}."
+        lines.append(line)
+    return " ".join(lines).strip()
+
+
 async def stream_voice_turn_events(
     *,
     settings: Settings,
@@ -168,6 +189,10 @@ async def stream_voice_turn_events(
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
         nonlocal first_audio_ms, agent_audio_started, cancelled
+        spoken_chunk = normalize_spoken_text(chunk)
+        if not spoken_chunk:
+            return
+            yield  # pragma: no cover — keeps this an async generator
         if _cancelled():
             cancelled = True
             return
@@ -177,7 +202,7 @@ async def stream_voice_turn_events(
             yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
         for audio in synthesize_speech_stream(
             settings,
-            text=chunk,
+            text=spoken_chunk,
             voice_key=resolved_voice,
             model_id=model,
         ):
@@ -191,7 +216,7 @@ async def stream_voice_turn_events(
                 "type": "voice.audio.delta",
                 "content_type": "audio/mpeg",
                 "audio_base64": base64.b64encode(audio).decode("ascii"),
-                "text_chunk": chunk,
+                "text_chunk": spoken_chunk,
                 "turn_id": resolved_turn_id,
             }
 
@@ -294,11 +319,12 @@ async def stream_voice_turn_events(
         if cancelled:
             break
     if cancelled:
+        spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
         if agent_audio_started:
             yield {"type": "voice.agent_speech.end", "cancelled": True, "turn_id": resolved_turn_id}
         yield {
             "type": "voice.session.ended",
-            "transcript": "".join(full_text),
+            "transcript": spoken_partial,
             "cancelled": True,
             "turn_id": resolved_turn_id,
             "conversation_id": resolved_conversation_id,
@@ -312,16 +338,17 @@ async def stream_voice_turn_events(
             yield audio_ev
         text_buffer = ""
     if cancelled:
+        spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
         yield {
             "type": "voice.turn.cancelled",
             "turn_id": resolved_turn_id,
             "conversation_id": resolved_conversation_id,
             "reason": "barge_in_or_client_abort",
-            "partial_text": "".join(full_text),
+            "partial_text": spoken_partial,
         }
         yield {
             "type": "voice.session.ended",
-            "transcript": "".join(full_text),
+            "transcript": spoken_partial,
             "cancelled": True,
             "turn_id": resolved_turn_id,
             "conversation_id": resolved_conversation_id,
@@ -330,12 +357,13 @@ async def stream_voice_turn_events(
         return
     if agent_audio_started:
         yield {"type": "voice.agent_speech.end", "turn_id": resolved_turn_id}
+    spoken_full_text = normalize_spoken_text("".join(full_text)) or "".join(full_text)
     if pending_complete is not None:
         yield {
             "type": "voice.turn.complete",
             "message_id": pending_complete.message_id,
             "model": pending_complete.model,
-            "text": "".join(full_text),
+            "text": spoken_full_text,
             "turn_id": resolved_turn_id,
             "conversation_id": resolved_conversation_id,
             "originating_modality": "voice",
@@ -372,7 +400,7 @@ async def stream_voice_turn_events(
         }
     yield {
         "type": "voice.session.ended",
-        "transcript": "".join(full_text),
+        "transcript": spoken_full_text,
         "cancelled": False,
         "turn_id": resolved_turn_id,
         "conversation_id": resolved_conversation_id,

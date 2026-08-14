@@ -9,7 +9,7 @@ from app.billing.voice_minutes_plan_rates import (
 from app.services.module_d_unified_voice_spec import build_module_d_unified_system_prompt
 from app.services.voice_acoustic_signal import extract_acoustic_features
 from app.services.voice_agent_profile import agent_self_recognition_section
-from app.services.voice_session_service import split_speakable_chunks
+from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
 
 
 def test_spoken_register_in_prompt_when_spoken_mode():
@@ -45,6 +45,18 @@ def test_split_speakable_chunks_terminal_punct_no_trailing_space():
     ready, rem = split_speakable_chunks("Four.")
     assert ready == ["Four."]
     assert rem == ""
+
+
+def test_normalize_spoken_text_removes_visual_markdown():
+    source = (
+        "## Update\n"
+        "- First point\n"
+        "- second point\n"
+        "Reply **yes** to continue.\n"
+        "[Open run](https://example.com/run/123)\n"
+    )
+    spoken = normalize_spoken_text(source)
+    assert spoken == "Update. First point. second point. Reply yes to continue. Open run."
 
 
 
