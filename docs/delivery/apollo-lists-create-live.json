@@ -1,5 +1,30 @@
 {
-  "verdict": "NOT RUN",
-  "reason": "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
-  "at": "2026-08-14T04:02:23.614653+00:00"
+  "started_at": "2026-08-14T06:47:06.223779+00:00",
+  "finished_at": "2026-08-14T06:47:17.645985+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "run_id": "f90689cb-3e54-4830-b303-8a8ee2d2760b",
+  "list_name": "gravitre-lists-create-smoke-20260814064706",
+  "invoke": {
+    "success": true,
+    "error_code": null,
+    "error_message": null,
+    "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "list_id": "6a7eb9f4d63e0500141d5781",
+    "result_url": "https://app.apollo.io/#/lists/6a7eb9f4d63e0500141d5781"
+  },
+  "audit_invoke_events": [
+    {
+      "id": "8b4dad15-4a18-4ce6-88d8-fcce8c27881c",
+      "created_at": "2026-08-14T06:47:16.553228+00:00",
+      "action": "tool.invoke.completed",
+      "error_code": null
+    },
+    {
+      "id": "0dd11b70-2705-49a8-97d4-9dbbea760841",
+      "created_at": "2026-08-14T06:47:14.131143+00:00",
+      "action": "tool.invoke.requested",
+      "error_code": null
+    }
+  ],
+  "verdict": "PASS"
 }

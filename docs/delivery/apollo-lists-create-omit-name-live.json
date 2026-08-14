@@ -1,0 +1,31 @@
+{
+  "scenario": "omit-name: list_name only, modality defaulted to contacts",
+  "started_at": "2026-08-14T06:48:18.426714+00:00",
+  "finished_at": "2026-08-14T06:48:27.633201+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "run_id": "bff3ca9b-5b3c-42c6-b75c-39010a2de8a3",
+  "list_name": "gravitre-omit-name-smoke-20260814064818",
+  "invoke": {
+    "success": true,
+    "error_code": null,
+    "error_message": null,
+    "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "list_id": "6a7eba3a94f94e001818a2ed",
+    "result_url": "https://app.apollo.io/#/lists/6a7eba3a94f94e001818a2ed"
+  },
+  "audit_invoke_events": [
+    {
+      "id": "05e282eb-4c26-46e4-9338-a5780f11742e",
+      "created_at": "2026-08-14T06:48:26.831237+00:00",
+      "action": "tool.invoke.completed",
+      "error_code": null
+    },
+    {
+      "id": "c0b80a6f-57fc-4b98-8bf8-7f9a7727c159",
+      "created_at": "2026-08-14T06:48:24.801204+00:00",
+      "action": "tool.invoke.requested",
+      "error_code": null
+    }
+  ],
+  "verdict": "PASS"
+}
