@@ -260,7 +260,22 @@ def schedule_write_success_verification(
                 return
             from app.workflows.repository import merge_run_parameters, update_run
 
-            update_run(client, run_id, status)
+            # Stamp verify evidence always. Never terminalize an in-flight multi-step
+            # execute — mid-step writes (e.g. apollo.lists.add) used to mark the whole
+            # run ``completed`` while later agent/Clay/HubSpot steps were still pending.
+            current_status = ""
+            try:
+                row = (
+                    client.table("workflow_runs")
+                    .select("status")
+                    .eq("id", run_id)
+                    .limit(1)
+                    .execute()
+                )
+                current_status = str(((row.data or [{}])[0] or {}).get("status") or "")
+            except Exception:  # noqa: BLE001
+                current_status = ""
+
             merge_run_parameters(
                 client,
                 run_id,
@@ -275,6 +290,19 @@ def schedule_write_success_verification(
                     },
                 },
             )
+            if current_status in {"running", "pending_approval", "queued", "paused", "approved"}:
+                logger.info(
+                    "async_write_success_verify_params_only run_id=%s action=%s "
+                    "current_status=%s verified=%s detail=%s",
+                    run_id,
+                    invoke_action,
+                    current_status,
+                    verify.verified,
+                    verify.detail,
+                )
+                return
+
+            update_run(client, run_id, status)
             logger.info(
                 "async_write_success_verify run_id=%s action=%s verified=%s detail=%s",
                 run_id,

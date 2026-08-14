@@ -91,3 +91,89 @@ def test_schedule_write_success_verification_returns_immediately(monkeypatch):
     )
     elapsed_ms = (time.perf_counter() - started) * 1000
     assert elapsed_ms < 20, f"schedule blocked TTFT path ({elapsed_ms:.1f}ms)"
+
+
+def test_f6_verify_does_not_terminalize_running_workflow(monkeypatch):
+    """Mid-step membership verify must not stamp workflow_runs.status=completed."""
+    from app.services import write_success_verification as mod
+    from app.services.collection_population_verify import PopulationVerifyResult
+
+    calls: dict[str, list] = {"update": [], "merge": []}
+
+    class _FakeTable:
+        def __init__(self, name: str):
+            self.name = name
+
+        def select(self, *_a, **_k):
+            return self
+
+        def eq(self, *_a, **_k):
+            return self
+
+        def limit(self, *_a, **_k):
+            return self
+
+        def execute(self):
+            return type("R", (), {"data": [{"status": "running"}]})()
+
+    class _FakeClient:
+        def table(self, name: str):
+            return _FakeTable(name)
+
+    def _fake_apply(**kwargs):  # noqa: ANN003
+        return (
+            "completed",
+            "created",
+            PopulationVerifyResult(
+                verified=True,
+                effect="created",
+                membership_count=10,
+                detail="write_response_membership_proof",
+                follow_up_attempted=True,
+            ),
+        )
+
+    monkeypatch.setattr(mod, "apply_population_verify_to_status", _fake_apply)
+    monkeypatch.setattr(mod, "is_population_write_action", lambda _a: True)
+    monkeypatch.setattr(
+        "app.workflows.repository.update_run",
+        lambda *a, **k: calls["update"].append((a, k)),
+    )
+    monkeypatch.setattr(
+        "app.workflows.repository.merge_run_parameters",
+        lambda *a, **k: calls["merge"].append((a, k)),
+    )
+
+    class _Ctx:
+        connector_id = "c1"
+        settings = None
+        client = None
+        org_id = "o"
+        actor_id = "u"
+        environment_name = "production"
+
+    # Run _work synchronously by forcing no running loop path.
+    import threading
+
+    done = threading.Event()
+
+    def _capture_thread(target=None, name=None, daemon=None):  # noqa: ANN001
+        assert target is not None
+        target()
+        done.set()
+        return type("T", (), {"start": lambda self: None})()
+
+    monkeypatch.setattr(mod.threading, "Thread", _capture_thread)
+
+    mod.schedule_write_success_verification(
+        client=_FakeClient(),
+        org_id="o",
+        run_id="r-running",
+        invoke_action="apollo.lists.add",
+        result_data={"list_id": "x", "membership_count": 10},
+        settings=None,
+        ctx=_Ctx(),
+    )
+    assert done.wait(2)
+    assert calls["merge"], "expected population_verify merge"
+    assert not calls["update"], "must not update_run(status) while run is still running"

@@ -2775,16 +2775,21 @@ async def approve_run(
         definition = run.get("definition_snapshot") or {}
         parameters = run.get("parameters") or {}
         run_environment = (run.get("environment") or "default").strip() or "default"
-        final_status, step_rows, _, rate_limited = execute_workflow_steps(
-            settings=settings,
-            org_id=org_id,
-            user_id=current_user["user_id"],
-            run_id=run_id_str,
-            definition=definition,
-            parameters=parameters,
-            client=client,
-            environment_name=run_environment,
-            steps_exist=True,
+        # Run sync step engine off the event loop so gateway timeouts / F6 tasks
+        # are not starved while agent/Clay steps execute (MSP asyncio hang class).
+        import asyncio
+
+        final_status, step_rows, _, rate_limited = await asyncio.to_thread(
+            execute_workflow_steps,
+            settings,
+            org_id,
+            current_user["user_id"],
+            run_id_str,
+            definition,
+            parameters,
+            client,
+            run_environment,
+            True,
         )
         if rate_limited:
             raise HTTPException(
