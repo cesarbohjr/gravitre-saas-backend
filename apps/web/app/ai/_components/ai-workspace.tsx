@@ -2159,7 +2159,7 @@ export function AiWorkspace({
               <AiLanding
                 mode={mode}
                 onModeChange={setMode}
-                input={input}
+                input={voiceDuplex.provisionalTranscript || input}
                 onInputChange={setInput}
                 routing={routing}
                 routedTo={routedTo}
@@ -2169,6 +2169,17 @@ export function AiWorkspace({
                 onModalityChange={handleModalityChange}
                 voiceEntitled={voiceEntitled}
                 voiceUnavailableReason={voiceUnavailableReason}
+                duplex={{
+                  active: voiceDuplex.isActive,
+                  presence: voiceDuplex.presence,
+                  levels: voiceDuplex.levels,
+                  amplitude: voiceDuplex.amplitude,
+                  toggle: voiceDuplex.toggle,
+                  bargeIn: () => {
+                    void voiceDuplex.bargeIn()
+                  },
+                  supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+                }}
               />
             ) : null}
 

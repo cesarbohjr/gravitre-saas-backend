@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -37,6 +38,12 @@ DEFAULT_ACTOR = "a9f1240f-910a-42ca-aebf-38caeac288c3"
 
 USER_STATED_BASELINE = {"ttft_ms": 4632, "ttfa_ms": 4813}
 HALF_DUPLEX_BENCHMARK = {"ttft_ms_lo": 700, "ttft_ms_hi": 900}
+VISUAL_MARKDOWN_RE = re.compile(
+    r"(?m)^\s*(?:[-*]\s+|\d+\.\s+|#{1,6}\s+)|\*\*|__|`{1,3}|\[[^\]]+\]\([^)]+\)"
+)
+WRITTEN_LIST_PHRASE_RE = re.compile(
+    r"(?i)\b(?:here(?:'s| are)|key points|bullet points|in summary)\b"
+)
 
 
 def _load_env() -> dict[str, str]:
@@ -115,6 +122,14 @@ def _extract_routing(events: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _spoken_style_flags(text: str) -> dict[str, bool]:
+    preview = (text or "").strip()
+    return {
+        "visual_markdown": bool(VISUAL_MARKDOWN_RE.search(preview)),
+        "written_list_phrase": bool(WRITTEN_LIST_PHRASE_RE.search(preview)),
+    }
+
+
 def _run_turn(
     client: httpx.Client,
     *,
@@ -173,6 +188,7 @@ def _run_turn(
     lat = complete.get("latency_ms") if isinstance(complete.get("latency_ms"), dict) else {}
     routing = _extract_routing(events)
     types = [e.get("type") for e in events]
+    preview = str(complete.get("text") or "")
     return {
         "turn_id": turn_id,
         "http": status,
@@ -182,7 +198,8 @@ def _run_turn(
         "total_ms": lat.get("total"),
         "wall_ms": int((time.perf_counter() - t0) * 1000),
         "model": complete.get("model"),
-        "text_preview": str(complete.get("text") or "")[:220],
+        "text_preview": preview[:220],
+        "spoken_style_flags": _spoken_style_flags(preview),
         "latency_ms": lat,
         "routing": routing,
         "event_types": types,
@@ -306,6 +323,10 @@ def main() -> int:
     write_ok = bool(write.get("ok"))
     depth_simple = (simple.get("routing") or {}).get("reasoning_depth")
     depth_write = (write.get("routing") or {}).get("reasoning_depth")
+    simple_not_cache = str(simple.get("model") or "") != "cache"
+    simple2_not_cache = str(simple2.get("model") or "") != "cache"
+    simple_style_clean = not any((simple.get("spoken_style_flags") or {}).values())
+    simple2_style_clean = not any((simple2.get("spoken_style_flags") or {}).values())
     # Governance preserved: write stays full (or escalated); simple prefers conversational.
     governance_ok = depth_write in {None, "full"}  # None if tip predates field briefly
     faster = (
@@ -317,6 +338,12 @@ def main() -> int:
         "write_turn_completed": "PASS" if write_ok else "FAIL",
         "simple_depth_conversational": (
             "PASS" if depth_simple == "conversational" else "PARTIAL"
+        ),
+        "simple_turn_not_cache_fallback": (
+            "PASS" if simple_not_cache and simple2_not_cache else "FAIL"
+        ),
+        "simple_spoken_style_no_markdown_or_list_framing": (
+            "PASS" if simple_style_clean and simple2_style_clean else "FAIL"
         ),
         "write_depth_full": "PASS" if depth_write == "full" else "PARTIAL",
         "ttft_improved_vs_4632": "PASS" if faster else "FAIL",

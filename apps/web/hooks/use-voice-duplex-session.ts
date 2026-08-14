@@ -447,6 +447,12 @@ export function useVoiceDuplexSession(options: Options) {
         setPresence("listening")
       }
 
+      // Some providers/browsers occasionally miss an explicit SpeechStarted frame.
+      // Treat first real transcript while agent audio is active as immediate barge-in.
+      if (transcript && agentSpeakingRef.current) {
+        await bargeIn()
+      }
+
       if (transcript) {
         if (!marksRef.current.first_partial) {
           marksRef.current.first_partial = performance.now()

@@ -744,6 +744,7 @@ class AgentIntelligence:
         sentiment_adaptation: str | None = None,
         task_state_section: str | None = None,
         has_mcp_tools: bool = False,
+        spoken_mode: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         from app.services.conversational_behavior import conversational_behavior_section
@@ -753,6 +754,7 @@ class AgentIntelligence:
             domain_focus_section,
             voice_system_prompt_section,
         )
+        from app.services.voice_agent_profile import spoken_register_section
 
         org_dict = org_context if isinstance(org_context, dict) else None
         persona_section = self._get_persona_text(
@@ -791,6 +793,10 @@ class AgentIntelligence:
         ]
         if expert_section:
             sections.extend([expert_section, ""])
+        if spoken_mode:
+            # Spoken turns must be generated in Register 5 up front (not repaired
+            # after generation), otherwise markdown/list prose leaks into TTS.
+            sections.extend([spoken_register_section().strip(), ""])
         if anti_repeat:
             sections.extend([anti_repeat, ""])
 
@@ -1465,7 +1471,9 @@ class AgentIntelligence:
         )
 
         tier0_started = time.monotonic()
-        tier0_skip = mode_key in {"reasoning", "agent"}
+        # Voice turns must run the spoken-aware reasoning path. Tier-0 cache can
+        # return text-formatted copy (lists/markdown) that sounds like a transcriber.
+        tier0_skip = bool(spoken_mode) or mode_key in {"reasoning", "agent"}
         if not tier0_skip:
             from app.services.unified_turn_classical_fallback import (
                 message_requires_classical_tool_sse,
@@ -2880,6 +2888,7 @@ class AgentIntelligence:
             sentiment_adaptation=str(sentiment.get("recommended_adaptation") or "none"),
             task_state_section=task_state_section or None,
             has_mcp_tools=bool(mcp_tools_early),
+            spoken_mode=bool(spoken_mode),
         )
 
         prepared_context = await maybe_summarize_history(

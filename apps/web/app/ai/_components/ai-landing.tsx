@@ -8,6 +8,7 @@ import type { AiEngine } from "@/lib/ai-surface-handoff"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import { toast } from "sonner"
 
 function ModeIconBadge({
@@ -36,6 +37,15 @@ type AiLandingProps = {
   onModalityChange: (next: ChatModality) => void
   voiceEntitled: boolean
   voiceUnavailableReason?: string
+  duplex?: {
+    active: boolean
+    presence: VoicePresenceState
+    levels?: number[] | null
+    amplitude?: number | null
+    toggle: () => void
+    bargeIn: () => void
+    supported?: boolean
+  } | null
 }
 
 export function AiLanding({
@@ -51,6 +61,7 @@ export function AiLanding({
   onModalityChange,
   voiceEntitled,
   voiceUnavailableReason,
+  duplex = null,
 }: AiLandingProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
@@ -112,6 +123,7 @@ export function AiLanding({
                       : "Ask, delegate, or search — results appear here…"
             }
             textareaClassName="min-h-[88px] text-sm leading-relaxed"
+            duplex={duplex}
             onVoiceInputError={(message) => {
               if (message) toast.error(message)
             }}

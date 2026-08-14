@@ -414,6 +414,17 @@ def test_agent_result_to_handoff_dict():
     assert payload["confidence"] == 80
 
 
+def test_build_system_prompt_adds_spoken_register(intelligence: AgentIntelligence):
+    prompt = intelligence._build_system_prompt(
+        "assistant",
+        None,
+        [],
+        {"orgName": "Acme"},
+        spoken_mode=True,
+    )
+    assert "Register 5 — SPOKEN" in prompt
+
+
 @pytest.mark.asyncio
 async def test_streaming_emits_text_events_when_react_returns_answer_only(intelligence: AgentIntelligence):
     """ReAct may finish with answer text but no text_delta chunks; SSE contract still requires text-* events."""
@@ -463,6 +474,77 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
     assert "text-end" in sse_types
     complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
     assert complete.full_content == "smoke-ok"
+
+
+@pytest.mark.asyncio
+async def test_spoken_mode_skips_tier0_cache(intelligence: AgentIntelligence):
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = (
+        MagicMock(data=[])
+    )
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer="spoken-path-ok"),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    orchestrator = MagicMock()
+    orchestrator.get_context_for_prompt = AsyncMock(return_value="")
+    tier0_hit = {
+        "answer": "Tier0 cache should not be used for spoken turns.",
+        "confidence": {"score": 1.0, "needs_clarification": False},
+        "answer_explanation": "cached",
+    }
+
+    events: list[object] = []
+    with patch(
+        "app.operators.agent_intelligence.get_tier0_answer",
+        AsyncMock(return_value=tier0_hit),
+    ) as mock_tier0:
+        with patch("app.operators.agent_intelligence.tier0_enabled", return_value=True):
+            with patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc:
+                mcp_svc.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+                with patch(
+                    "app.operators.agent_intelligence.get_company_intelligence_orchestrator",
+                    return_value=orchestrator,
+                ):
+                    with patch(
+                        "app.operators.agent_intelligence.build_entity_context_section",
+                        AsyncMock(return_value=""),
+                    ):
+                        with patch("app.operators.agent_intelligence.get_org_context_service") as org_service:
+                            org_service.return_value.get_context_bundle.return_value = (
+                                {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
+                                "Org block",
+                            )
+                            with patch(
+                                "app.operators.agent_intelligence.maybe_summarize_history",
+                                AsyncMock(
+                                    return_value=SimpleNamespace(
+                                        messages=[],
+                                        summary=None,
+                                        summary_updated=False,
+                                    )
+                                ),
+                            ):
+                                with patch_agent_streaming_dialogue_pipeline():
+                                    async for event in intelligence.execute_task_streaming(
+                                        org_id="org-1",
+                                        user_id="user-1",
+                                        query="Say spoken-path-ok in one sentence.",
+                                        mode="fast",
+                                        requested_tools=["agent_status"],
+                                        client=client,
+                                        spoken_mode=True,
+                                    ):
+                                        events.append(event)
+
+    mock_tier0.assert_not_awaited()
+    complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
+    assert complete.model != "cache"
+    assert complete.full_content == "spoken-path-ok"
 
 
 @pytest.mark.asyncio
