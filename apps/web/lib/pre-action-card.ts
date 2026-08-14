@@ -68,7 +68,9 @@ export function preActionFromPendingTask(
     title: label,
     description: opts?.description,
     entity: integration,
-    action: label,
+    action:
+      (typeof params.invoke_action === "string" && params.invoke_action.trim()) ||
+      label,
     estimatedImpact: impact,
     riskLevel: risk,
     approvalReason: reason || undefined,

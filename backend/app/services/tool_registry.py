@@ -1377,6 +1377,109 @@ class ToolRegistry:
             "error_code": result.error_code,
         }
 
+    async def execute_invoke_action(
+        self,
+        *,
+        ctx: ToolContext,
+        invoke_action: str,
+        args: dict[str, Any] | None = None,
+        tool_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute an exact catalog action — never re-resolve from tool_name."""
+        from app.services.approval_action_binding import APPROVAL_ACTION_MISMATCH
+        from app.services.read_action_result_cache import (
+            get_cached_read_result,
+            is_read_invoke_action,
+            set_cached_read_result,
+        )
+        from app.services.tool_service import ToolError, ToolNotFoundError, invoke_tool
+
+        action = str(invoke_action or "").strip()
+        telemetry_tool = str(tool_name or action.replace(".", "_") or "").strip()
+        if not action:
+            return {
+                "success": False,
+                "tool": telemetry_tool,
+                "error": "Missing invoke_action for approved execution.",
+                "error_code": APPROVAL_ACTION_MISMATCH,
+            }
+
+        invoke_params = {
+            k: v for k, v in dict(args or {}).items() if not str(k).startswith("_")
+        }
+        if action not in self._registered:
+            return {
+                "success": False,
+                "tool": telemetry_tool,
+                "action": action,
+                "error": f"Backend action not implemented: {action}",
+            }
+
+        if is_read_invoke_action(action):
+            cached = get_cached_read_result(ctx.org_id, action, invoke_params)
+            if cached is not None:
+                return cached
+
+        try:
+            timeout_s = int(ctx.connector_timeout_seconds or 30)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(invoke_tool, ctx, action, invoke_params),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError:
+            from app.services.cache_service import get_cache_service
+
+            cache = get_cache_service(ctx.settings)
+            await cache.record_event("connector_timeout")
+            integration = action.split(".", 1)[0] if "." in action else "connector"
+            return {
+                "success": False,
+                "tool": telemetry_tool,
+                "action": action,
+                "error": (
+                    f"{integration} did not respond within {timeout_s}s. "
+                    "Partial results may omit this connected system."
+                ),
+                "error_code": "connector_timeout",
+                "partial": True,
+            }
+        except ToolNotFoundError as exc:
+            return {"success": False, "tool": telemetry_tool, "action": action, "error": str(exc)}
+        except ToolError as exc:
+            return {
+                "success": False,
+                "tool": telemetry_tool,
+                "action": action,
+                "error": str(exc),
+                "error_code": exc.code,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "tool_registry_execute_invoke_failed tool=%s action=%s",
+                telemetry_tool,
+                action,
+            )
+            return {"success": False, "tool": telemetry_tool, "action": action, "error": str(exc)}
+
+        if result.success:
+            payload = {
+                "success": True,
+                "tool": telemetry_tool,
+                "action": action,
+                "result": result.data,
+                "connector_id": result.connector_id,
+            }
+            if is_read_invoke_action(action):
+                set_cached_read_result(ctx.org_id, action, invoke_params, payload)
+            return payload
+        return {
+            "success": False,
+            "tool": telemetry_tool,
+            "action": action,
+            "error": result.error_message or "Tool invocation failed",
+            "error_code": result.error_code,
+        }
+
     async def _execute_assistant_platform_tool(
         self,
         ctx: ToolContext,

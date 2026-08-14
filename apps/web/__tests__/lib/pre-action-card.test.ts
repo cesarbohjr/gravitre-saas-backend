@@ -23,6 +23,7 @@ describe("pre-action-card mappers", () => {
     expect(payload?.estimatedImpact).toBe("medium")
     expect(payload?.riskLevel).toBe("high")
     expect(payload?.approvalReason).toBe("Destructive write")
+    expect(payload?.action).toBe("hubspot.notes.create")
     expect(payload?.source).toBe("chat_pending")
   })
 
