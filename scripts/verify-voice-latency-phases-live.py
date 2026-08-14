@@ -156,7 +156,16 @@ def _run_turn(
             except json.JSONDecodeError:
                 continue
             events.append(ev)
-            if ev.get("type") in {"voice.turn.complete", "voice.error"}:
+            if ev.get("type") == "voice.error":
+                return {
+                    "turn_id": turn_id,
+                    "http": status,
+                    "ok": False,
+                    "error": ev,
+                    "event_types": [e.get("type") for e in events],
+                    "routing": _extract_routing(events),
+                }
+            if ev.get("type") in {"voice.turn.complete"}:
                 break
             if time.perf_counter() - t0 > max_seconds:
                 break

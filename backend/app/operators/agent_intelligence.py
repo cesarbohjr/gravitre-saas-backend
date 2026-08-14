@@ -1919,8 +1919,6 @@ class AgentIntelligence:
         # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
         if _unified_live_ok:
-            import asyncio
-
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
 
