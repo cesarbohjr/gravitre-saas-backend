@@ -26,6 +26,9 @@ export type DuplexLatencyStages = {
   session_ttfa_ms?: number
   e2e_speech_end_to_audio_start_ms?: number
   barge_in_cancel_ms?: number
+  speculative_start_ms?: number
+  speculative_restart_ms?: number
+  speculative_saved_ms?: number
 }
 
 export type DuplexTurnResult = {
@@ -70,6 +73,28 @@ function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
   return out
 }
 
+function normalizeTranscript(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+/** True when final meaningfully diverges from the speculative partial (restart needed). */
+function speculativeTranscriptDiverged(partial: string, finalText: string): boolean {
+  const a = normalizeTranscript(partial)
+  const b = normalizeTranscript(finalText)
+  if (!a || !b) return true
+  if (a === b) return false
+  // Final is a short extension of the partial — keep speculative turn.
+  if (b.startsWith(a) && b.length - a.length <= 24) return false
+  if (a.startsWith(b) && a.length - b.length <= 12) return false
+  const wa = new Set(a.split(" ").filter(Boolean))
+  const wb = new Set(b.split(" ").filter(Boolean))
+  let inter = 0
+  for (const w of wa) if (wb.has(w)) inter += 1
+  const union = wa.size + wb.size - inter
+  if (union === 0) return true
+  return inter / union < 0.72
+}
+
 export function useVoiceDuplexSession(options: Options) {
   const [presence, setPresence] = useState<VoicePresenceState>("idle")
   const [levels, setLevels] = useState<number[] | null>(null)
@@ -96,6 +121,11 @@ export function useVoiceDuplexSession(options: Options) {
   const playingRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
   const activeRef = useRef(false)
+  const speculativeRef = useRef<{
+    text: string
+    turnId: string
+    startedAt: number
+  } | null>(null)
 
   const stopPlayback = useCallback(() => {
     playingRef.current = false
@@ -224,22 +254,56 @@ export function useVoiceDuplexSession(options: Options) {
   }, [stopPlayback])
 
   const runSessionTurn = useCallback(
-    async (finalText: string) => {
+    async (finalText: string, opts?: { speculative?: boolean }) => {
       const text = finalText.trim()
       if (!text) return
-      optsRef.current.onUserFinal?.(text)
+      // Avoid stacking a second turn while speculative reasoning is already in flight
+      // for the same (or near-same) transcript.
+      if (!opts?.speculative && speculativeRef.current) {
+        const spec = speculativeRef.current
+        if (!speculativeTranscriptDiverged(spec.text, text)) {
+          const saved = Math.round(performance.now() - spec.startedAt)
+          setLatency((p) => ({ ...p, speculative_saved_ms: saved }))
+          speculativeRef.current = null
+          return
+        }
+        // Final diverged — cancel speculative via existing Redis-backed cancel path.
+        const restartAt = performance.now()
+        abortRef.current?.abort()
+        await cancelVoiceSessionTurn({
+          turnId: spec.turnId,
+          conversationId: optsRef.current.conversationId,
+          reason: "speculative_transcript_mismatch",
+        }).catch(() => false)
+        stopPlayback()
+        speculativeRef.current = null
+        setLatency((p) => ({
+          ...p,
+          speculative_restart_ms: Math.round(performance.now() - restartAt),
+        }))
+      }
+      if (!opts?.speculative) {
+        optsRef.current.onUserFinal?.(text)
+      }
       setPresence("thinking")
       const turnId =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
           : `vt-${Date.now()}`
       turnIdRef.current = turnId
+      if (opts?.speculative) {
+        speculativeRef.current = { text, turnId, startedAt: performance.now() }
+        setLatency((p) => ({
+          ...p,
+          speculative_start_ms: Math.round(performance.now() - (marksRef.current.first_partial || performance.now())),
+        }))
+      }
       const abort = new AbortController()
       abortRef.current = abort
       const tReq = performance.now()
       marksRef.current.finalize_to_session = tReq
       const utteranceEnd = marksRef.current.utterance_end
-      if (utteranceEnd) {
+      if (utteranceEnd && !opts?.speculative) {
         setLatency((prev) => ({
           ...prev,
           endpoint_to_finalize_ms: Math.round(tReq - utteranceEnd),
@@ -251,7 +315,7 @@ export function useVoiceDuplexSession(options: Options) {
       let conversationId = optsRef.current.conversationId || null
       let cancelled = false
       const events: VoiceSessionEvent[] = []
-      const stage: DuplexLatencyStages = { ...latency }
+      const stage: DuplexLatencyStages = {}
 
       const result = await streamVoiceSessionTurn({
         text,
@@ -301,13 +365,6 @@ export function useVoiceDuplexSession(options: Options) {
             }
             if (event.cancelled) cancelled = true
           }
-          if (event.type?.startsWith("voice.sse.") || event.type === "voice.intelligence") {
-            /* surface via events only */
-          }
-          if (typeof event.payload === "object" && event.payload && "delta" in (event.payload as object)) {
-            /* ignore */
-          }
-          // Accumulate spoken text from audio text_chunk when complete text missing
           if (event.type === "voice.audio.delta" && typeof event.text_chunk === "string") {
             optsRef.current.onAssistantDelta?.(String(event.text_chunk))
           }
@@ -321,6 +378,10 @@ export function useVoiceDuplexSession(options: Options) {
           }
         },
       })
+
+      if (speculativeRef.current?.turnId === turnId) {
+        speculativeRef.current = null
+      }
 
       if (!result.ok && !abort.signal.aborted) {
         optsRef.current.onError?.(result.error || "Voice session failed")
@@ -348,7 +409,7 @@ export function useVoiceDuplexSession(options: Options) {
       if (activeRef.current && !cancelled) setPresence("listening")
       else if (activeRef.current) setPresence("listening")
     },
-    [enqueueAudio, latency, stopPlayback],
+    [enqueueAudio, stopPlayback],
   )
 
   const handleDeepgramMessage = useCallback(
@@ -360,11 +421,21 @@ export function useVoiceDuplexSession(options: Options) {
         return
       }
       const type = String(data.type || "")
-      // Deepgram Results
+      // Deepgram Results — alternatives expose transcript + confidence; some models
+      // also emit stability on interim Results (used for speculative reasoning).
       const channel = data.channel as
-        | { alternatives?: Array<{ transcript?: string }> }
+        | {
+            alternatives?: Array<{
+              transcript?: string
+              confidence?: number
+              stability?: number
+            }>
+          }
         | undefined
-      const transcript = String(channel?.alternatives?.[0]?.transcript || "").trim()
+      const alt = channel?.alternatives?.[0]
+      const transcript = String(alt?.transcript || "").trim()
+      const confidence = Number(alt?.confidence ?? data.confidence ?? 0)
+      const stability = Number(data.stability ?? alt?.stability ?? 0)
       const isFinal = Boolean(data.is_final || data.speech_final)
 
       if (type === "SpeechStarted" || type === "speech_started") {
@@ -390,6 +461,21 @@ export function useVoiceDuplexSession(options: Options) {
         setProvisionalTranscript(transcript)
       }
 
+      // Phase 2 — speculative reasoning on high-confidence interim STT before final.
+      if (
+        transcript &&
+        !isFinal &&
+        !agentSpeakingRef.current &&
+        !speculativeRef.current &&
+        !abortRef.current
+      ) {
+        const words = transcript.split(/\s+/).filter(Boolean)
+        const highConfidence = confidence >= 0.85 || stability >= 0.9
+        if (highConfidence && words.length >= 5) {
+          void runSessionTurn(transcript, { speculative: true })
+        }
+      }
+
       if (type === "UtteranceEnd" || type === "utterance_end" || (isFinal && transcript)) {
         marksRef.current.utterance_end = performance.now()
         if (marksRef.current.first_partial) {
@@ -413,6 +499,8 @@ export function useVoiceDuplexSession(options: Options) {
         transcript,
         is_final: isFinal,
         speech_final: Boolean(data.speech_final),
+        confidence,
+        stability,
       }
 
       const tt = await postTurnTakingEvent({

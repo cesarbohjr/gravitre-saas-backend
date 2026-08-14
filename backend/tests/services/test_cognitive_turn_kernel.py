@@ -186,3 +186,50 @@ def test_to_prompt_sections_includes_mode_a_outcome_bias():
     assert "Mode A" in bias
     assert "recommendation_rejected" in bias
     assert "weight_delta=-0.1" in bias
+
+
+@pytest.mark.asyncio
+async def test_conversational_depth_skips_knowledge_merge():
+    """Spoken simple depth keeps RECALL but skips heavy Knowledge Fabric merge."""
+    kernel = CognitiveTurnKernel(_settings(enabled=True))
+    client = MagicMock()
+    client.table.return_value = _chainable([])
+    merge_mock = AsyncMock(
+        return_value={
+            "fabric_chunks": [{"content": "should not load"}],
+            "entity_section": "",
+            "catalog_hints": [],
+            "prompt_section": "heavy",
+        }
+    )
+
+    with (
+        patch(
+            "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+            new_callable=AsyncMock,
+            return_value={"episodic_memories": [], "graph_context": []},
+        ),
+        patch(
+            "app.services.cognitive_knowledge_layer.merge",
+            new=merge_mock,
+        ),
+        patch(
+            "app.services.cognitive_outcome_loop.bias_from_outcomes",
+            return_value={"bias_notes": [], "weight_delta": 0.0},
+        ),
+    ):
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id="org-1",
+                message="what's the weather like",
+                spoken_mode=True,
+                reasoning_depth="conversational",
+                client=client,
+            )
+        )
+
+    merge_mock.assert_not_called()
+    knowledge = next(s for s in ctx.stages if s.stage == "KNOWLEDGE")
+    assert knowledge.meta.get("skipped") == "conversational_depth"
+    assert ctx.knowledge_pack.get("skipped") == "conversational_depth"
+

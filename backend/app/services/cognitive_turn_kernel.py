@@ -56,6 +56,9 @@ class CognitiveTurnRequest:
     conversation_history: list[Any] | None = None
     client: Any | None = None
     agent: dict[str, Any] | None = None
+    # full = every stage; conversational = spoken/simple — keep RECALL+GOVERN,
+    # skip heavy Knowledge Fabric merge (not a second brain; write turns stay full).
+    reasoning_depth: str = "full"
 
 
 @dataclass
@@ -149,27 +152,46 @@ class CognitiveTurnKernel:
                 StageRecord(stage="RECALL", ok=False, ms=_elapsed_ms(t0), meta={"error": str(exc)[:200]})
             )
 
-        # 3 KNOWLEDGE
+        # 3 KNOWLEDGE — full fabric merge for consequential/full turns only.
+        # Conversational spoken depth keeps RECALL + GOVERN; skips heavy retrieval.
+        conversational = (request.reasoning_depth or "full").strip().lower() == "conversational"
         t0 = time.perf_counter()
         try:
-            from app.services.cognitive_knowledge_layer import merge as merge_knowledge
-
-            ctx.knowledge_pack = await merge_knowledge(
-                client=client,
-                org_id=request.org_id,
-                query=request.message or "",
-                agent=request.agent or ({"id": request.agent_id} if request.agent_id else None),
-                settings=self.settings,
-                user_id=request.user_id,
-            )
-            ctx.stages.append(
-                StageRecord(
-                    stage="KNOWLEDGE",
-                    ok=True,
-                    ms=_elapsed_ms(t0),
-                    meta={"fabric_count": len(ctx.knowledge_pack.get("fabric_chunks") or [])},
+            if conversational:
+                ctx.knowledge_pack = {
+                    "fabric_chunks": [],
+                    "entity_section": "",
+                    "catalog_hints": [],
+                    "prompt_section": "",
+                    "skipped": "conversational_depth",
+                }
+                ctx.stages.append(
+                    StageRecord(
+                        stage="KNOWLEDGE",
+                        ok=True,
+                        ms=_elapsed_ms(t0),
+                        meta={"skipped": "conversational_depth", "fabric_count": 0},
+                    )
                 )
-            )
+            else:
+                from app.services.cognitive_knowledge_layer import merge as merge_knowledge
+
+                ctx.knowledge_pack = await merge_knowledge(
+                    client=client,
+                    org_id=request.org_id,
+                    query=request.message or "",
+                    agent=request.agent or ({"id": request.agent_id} if request.agent_id else None),
+                    settings=self.settings,
+                    user_id=request.user_id,
+                )
+                ctx.stages.append(
+                    StageRecord(
+                        stage="KNOWLEDGE",
+                        ok=True,
+                        ms=_elapsed_ms(t0),
+                        meta={"fabric_count": len(ctx.knowledge_pack.get("fabric_chunks") or [])},
+                    )
+                )
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_knowledge_failed error=%s", exc)
             ctx.knowledge_pack = {
@@ -182,41 +204,43 @@ class CognitiveTurnKernel:
                 StageRecord(stage="KNOWLEDGE", ok=False, ms=_elapsed_ms(t0), meta={"error": str(exc)[:200]})
             )
 
-        # Outcome bias for PLAN (best-effort)
+        # Outcome bias for PLAN (best-effort) — skip on conversational spoken depth.
         bias: dict[str, Any] = {"bias_notes": [], "weight_delta": 0.0}
-        try:
-            from app.services.cognitive_outcome_loop import bias_from_outcomes
+        if not conversational:
+            try:
+                from app.services.cognitive_outcome_loop import bias_from_outcomes
 
-            if client is not None:
-                bias = bias_from_outcomes(client, request.org_id, request.message or "", self.settings)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("cognitive_outcome_bias_skipped error=%s", exc)
+                if client is not None:
+                    bias = bias_from_outcomes(client, request.org_id, request.message or "", self.settings)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("cognitive_outcome_bias_skipped error=%s", exc)
 
         # Org metrics SoT — resolve mentioned KPI keys into knowledge/plan context
         metric_hits: list[dict[str, Any]] = []
-        try:
-            metric_hits = _resolve_mentioned_metrics(client, request.org_id, request.message or "")
-            if metric_hits and isinstance(ctx.knowledge_pack, dict):
-                ctx.knowledge_pack = dict(ctx.knowledge_pack)
-                ctx.knowledge_pack["org_metrics"] = metric_hits
-                section = str(ctx.knowledge_pack.get("prompt_section") or "")
-                metric_lines = [
-                    f"- {m.get('metric_key')}: {m.get('label')} "
-                    f"(formula={m.get('formula') or 'n/a'}; source={m.get('resolved_from')})"
-                    for m in metric_hits[:6]
-                ]
-                metric_block = (
-                    "<org_metric_definitions>\n"
-                    + "\n".join(metric_lines)
-                    + "\nUse these org-scoped definitions when discussing KPIs. "
-                    "Do not invent MQL/CAC/ARR formulas when a definition exists.\n"
-                    "</org_metric_definitions>"
-                )
-                ctx.knowledge_pack["prompt_section"] = (
-                    f"{section}\n\n{metric_block}".strip() if section else metric_block
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("cognitive_metrics_resolve_skipped error=%s", exc)
+        if not conversational:
+            try:
+                metric_hits = _resolve_mentioned_metrics(client, request.org_id, request.message or "")
+                if metric_hits and isinstance(ctx.knowledge_pack, dict):
+                    ctx.knowledge_pack = dict(ctx.knowledge_pack)
+                    ctx.knowledge_pack["org_metrics"] = metric_hits
+                    section = str(ctx.knowledge_pack.get("prompt_section") or "")
+                    metric_lines = [
+                        f"- {m.get('metric_key')}: {m.get('label')} "
+                        f"(formula={m.get('formula') or 'n/a'}; source={m.get('resolved_from')})"
+                        for m in metric_hits[:6]
+                    ]
+                    metric_block = (
+                        "<org_metric_definitions>\n"
+                        + "\n".join(metric_lines)
+                        + "\nUse these org-scoped definitions when discussing KPIs. "
+                        "Do not invent MQL/CAC/ARR formulas when a definition exists.\n"
+                        "</org_metric_definitions>"
+                    )
+                    ctx.knowledge_pack["prompt_section"] = (
+                        f"{section}\n\n{metric_block}".strip() if section else metric_block
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("cognitive_metrics_resolve_skipped error=%s", exc)
 
         # 4 PLAN
         t0 = time.perf_counter()
@@ -236,7 +260,7 @@ class CognitiveTurnKernel:
                 plan = dict(plan)
                 plan["org_metrics"] = metric_hits
             # Honest what-if (item 16) — product path into existing heuristic simulator
-            if _looks_like_what_if(request.message or ""):
+            if not conversational and _looks_like_what_if(request.message or ""):
                 plan = dict(plan)
                 try:
                     from app.services.cognitive_simulation_service import simulate_business_scenario
@@ -270,6 +294,7 @@ class CognitiveTurnKernel:
                         "steps": len(plan.get("steps") or []),
                         "org_metrics": len(metric_hits),
                         "what_if": bool(plan.get("what_if")),
+                        "reasoning_depth": request.reasoning_depth or "full",
                     },
                 )
             )

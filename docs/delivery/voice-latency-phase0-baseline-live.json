@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-08-14T08:06:03.255805+00:00",
+  "phase": "0_baseline_pre_opt",
+  "health_git_sha": "6b64c36623e66aef976e229e833e1706f6e361ff",
+  "unified_turn_live_enabled": true,
+  "user_stated_baseline": {
+    "ttft_ms": 4632,
+    "ttfa_ms": 4813
+  },
+  "probes": [
+    {
+      "label": "warm",
+      "turn_id": "3acede34-d4ef-4108-ac37-bc7cc6ee5490",
+      "ttft_ms": 12347,
+      "ttfa_ms": 12565,
+      "total_ms": 15000,
+      "wall_ms": 16537,
+      "event_types_sample": [
+        "voice.session.accepted",
+        "voice.session.started",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.tool-input-available",
+        "voice.sse.tool-output-available",
+        "voice.sse.text-start",
+        "voice.ttft",
+        "voice.agent_speech.start",
+        "voice.ttfa",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta"
+      ],
+      "has_text_start": true,
+      "audio_deltas": 171,
+      "intelligence_n": 5,
+      "model": "gpt-5.4-mini",
+      "text_preview": "A more polite version is:\n\n- \u201cHi \u2014 just following up to see how things are going.\u201d\n- \u201cHi \u2014 wanted to check in and see if you had any updates.\u201d\n- \u201cHi \u2014 hope you\u2019re doing well. I\u2019m f"
+    },
+    {
+      "label": "simple_convo",
+      "turn_id": "a5d99f21-0cd8-4a1c-9744-924aeea29362",
+      "ttft_ms": 5494,
+      "ttfa_ms": null,
+      "total_ms": 5499,
+      "wall_ms": 6559,
+      "event_types_sample": [
+        "voice.session.accepted",
+        "voice.session.started",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.text-start",
+        "voice.ttft",
+        "voice.sse.text-end",
+        "voice.turn.complete"
+      ],
+      "has_text_start": true,
+      "audio_deltas": 0,
+      "intelligence_n": 2,
+      "model": "gpt-5.4-mini",
+      "text_preview": "Four."
+    },
+    {
+      "label": "simple_convo2",
+      "turn_id": "60ead682-6b3a-4249-a98a-62c8e5ff864e",
+      "ttft_ms": 4302,
+      "ttfa_ms": null,
+      "total_ms": 4307,
+      "wall_ms": 5400,
+      "event_types_sample": [
+        "voice.session.accepted",
+        "voice.session.started",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.text-start",
+        "voice.ttft",
+        "voice.sse.text-end",
+        "voice.turn.complete"
+      ],
+      "has_text_start": true,
+      "audio_deltas": 0,
+      "intelligence_n": 2,
+      "model": "gpt-5.4-mini",
+      "text_preview": "Gravitre helps you run connected business workflows across your tools."
+    }
+  ]
+}

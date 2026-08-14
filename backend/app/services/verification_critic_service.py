@@ -157,7 +157,7 @@ class VerificationCriticService:
             return {"passed": True, "issues": [], "revised_answer": answer, "skipped": "error"}
 
 
-def _is_consequential_write(classification: dict[str, Any]) -> bool:
+def is_consequential_classification(classification: dict[str, Any]) -> bool:
     """True when the turn proposes / executes a consequential write or high-risk action."""
     if bool(classification.get("is_write")) or bool(classification.get("is_destructive")):
         return True
@@ -180,6 +180,10 @@ def _is_consequential_write(classification: dict[str, Any]) -> bool:
     if action and any(tok in action for tok in (".create", ".update", ".delete", ".upsert", ".write")):
         return True
     return False
+
+
+# Back-compat alias for internal call sites.
+_is_consequential_write = is_consequential_classification
 
 
 _service: VerificationCriticService | None = None

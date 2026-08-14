@@ -83,6 +83,11 @@ def split_speakable_chunks(buffer: str, *, min_chars: int = 24) -> tuple[list[st
     """Emit speakable chunks at sentence boundaries; keep remainder provisional."""
     parts = _SENTENCE_END.split(buffer)
     if len(parts) <= 1:
+        stripped = buffer.rstrip()
+        # Complete sentence with terminal punct but no trailing whitespace yet
+        # (common for short voice answers like "Four.").
+        if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
+            return [stripped], ""
         if len(buffer) >= max(min_chars * 3, 80) and (" " in buffer):
             # Long clause without terminal punctuation — flush a clause on comma/space.
             idx = buffer.rfind(", ", 0, len(buffer) - 10)
@@ -146,6 +151,42 @@ async def stream_voice_turn_events(
     first_audio_ms: int | None = None
     agent_audio_started = False
     cancelled = False
+    pending_complete: AssistantStreamComplete | None = None
+    stage_ms: dict[str, Any] = {}
+    reasoning_depth: str | None = None
+    routing_tier: str | None = None
+    effective_mode: str | None = None
+    cached_prompt_tokens: int | None = None
+    cached_prompt_ratio: float | None = None
+
+    async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
+        nonlocal first_audio_ms, agent_audio_started, cancelled
+        if _cancelled():
+            cancelled = True
+            return
+            yield  # pragma: no cover — keeps this an async generator
+        if not agent_audio_started:
+            agent_audio_started = True
+            yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
+        for audio in synthesize_speech_stream(
+            settings,
+            text=chunk,
+            voice_key=resolved_voice,
+            model_id=model,
+        ):
+            if _cancelled():
+                cancelled = True
+                return
+            if first_audio_ms is None:
+                first_audio_ms = int((time.perf_counter() - t_start) * 1000)
+                yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
+            yield {
+                "type": "voice.audio.delta",
+                "content_type": "audio/mpeg",
+                "audio_base64": base64.b64encode(audio).decode("ascii"),
+                "text_chunk": chunk,
+                "turn_id": resolved_turn_id,
+            }
 
     async for event in intelligence.execute_task_streaming(
         settings=settings,
@@ -156,6 +197,7 @@ async def stream_voice_turn_events(
         conversation_history=conversation_history,
         conversation_id=resolved_conversation_id,
         spoken_mode=True,
+        mode="fast",
     ):
         if _cancelled():
             cancelled = True
@@ -168,25 +210,34 @@ async def stream_voice_turn_events(
             }
             break
         if isinstance(event, AssistantStreamComplete):
-            yield {
-                "type": "voice.turn.complete",
-                "message_id": event.message_id,
-                "model": event.model,
-                "text": "".join(full_text),
-                "turn_id": resolved_turn_id,
-                "conversation_id": resolved_conversation_id,
-                "originating_modality": "voice",
-                "cancelled": False,
-                "latency_ms": {
-                    "total": int((time.perf_counter() - t_start) * 1000),
-                    "ttft_ms": first_text_ms,
-                    "ttfa_ms": first_audio_ms,
-                },
-            }
+            # Defer complete until TTS flush so ttfa is present on the same turn.
+            pending_complete = event
             continue
         if not isinstance(event, AssistantStreamEvent):
             continue
         if event.sse_type == "data-intelligence":
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+            if isinstance(data, dict):
+                routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
+                if isinstance(routing.get("cognitiveStageMs"), dict):
+                    stage_ms = dict(routing["cognitiveStageMs"])
+                if routing.get("reasoningDepth"):
+                    reasoning_depth = str(routing.get("reasoningDepth"))
+                if data.get("routingTier"):
+                    routing_tier = str(data.get("routingTier"))
+                if data.get("effectiveMode"):
+                    effective_mode = str(data.get("effectiveMode"))
+                if routing.get("cachedPromptTokens") is not None:
+                    try:
+                        cached_prompt_tokens = int(routing.get("cachedPromptTokens"))
+                    except (TypeError, ValueError):
+                        pass
+                if routing.get("cachedPromptRatio") is not None:
+                    try:
+                        cached_prompt_ratio = float(routing.get("cachedPromptRatio"))
+                    except (TypeError, ValueError):
+                        pass
             yield {"type": "voice.intelligence", "payload": event.payload}
             continue
         if event.sse_type != "text-delta":
@@ -202,31 +253,8 @@ async def stream_voice_turn_events(
         text_buffer += delta
         chunks, text_buffer = split_speakable_chunks(text_buffer)
         for chunk in chunks:
-            if _cancelled():
-                cancelled = True
-                break
-            if not agent_audio_started:
-                agent_audio_started = True
-                yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
-            for audio in synthesize_speech_stream(
-                settings,
-                text=chunk,
-                voice_key=resolved_voice,
-                model_id=model,
-            ):
-                if _cancelled():
-                    cancelled = True
-                    break
-                if first_audio_ms is None:
-                    first_audio_ms = int((time.perf_counter() - t_start) * 1000)
-                    yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
-                yield {
-                    "type": "voice.audio.delta",
-                    "content_type": "audio/mpeg",
-                    "audio_base64": base64.b64encode(audio).decode("ascii"),
-                    "text_chunk": chunk,
-                    "turn_id": resolved_turn_id,
-                }
+            async for audio_ev in _emit_tts(chunk):
+                yield audio_ev
             if cancelled:
                 break
         if cancelled:
@@ -243,27 +271,12 @@ async def stream_voice_turn_events(
             "originating_modality": "voice",
         }
         return
-    # Flush remainder
+    # Flush remainder before turn.complete so TTFA is measured on short answers.
     rem = text_buffer.strip()
     if rem and not _cancelled():
-        if not agent_audio_started:
-            yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
-        for audio in synthesize_speech_stream(
-            settings, text=rem, voice_key=resolved_voice, model_id=model
-        ):
-            if _cancelled():
-                cancelled = True
-                break
-            if first_audio_ms is None:
-                first_audio_ms = int((time.perf_counter() - t_start) * 1000)
-                yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
-            yield {
-                "type": "voice.audio.delta",
-                "content_type": "audio/mpeg",
-                "audio_base64": base64.b64encode(audio).decode("ascii"),
-                "text_chunk": rem,
-                "turn_id": resolved_turn_id,
-            }
+        async for audio_ev in _emit_tts(rem):
+            yield audio_ev
+        text_buffer = ""
     if cancelled:
         yield {
             "type": "voice.turn.cancelled",
@@ -283,6 +296,28 @@ async def stream_voice_turn_events(
         return
     if agent_audio_started:
         yield {"type": "voice.agent_speech.end", "turn_id": resolved_turn_id}
+    if pending_complete is not None:
+        yield {
+            "type": "voice.turn.complete",
+            "message_id": pending_complete.message_id,
+            "model": pending_complete.model,
+            "text": "".join(full_text),
+            "turn_id": resolved_turn_id,
+            "conversation_id": resolved_conversation_id,
+            "originating_modality": "voice",
+            "cancelled": False,
+            "latency_ms": {
+                "total": int((time.perf_counter() - t_start) * 1000),
+                "ttft_ms": first_text_ms,
+                "ttfa_ms": first_audio_ms,
+                "cognitive_stage_ms": stage_ms,
+                "reasoning_depth": reasoning_depth,
+                "routing_tier": routing_tier,
+                "effective_mode": effective_mode,
+                "cached_prompt_tokens": cached_prompt_tokens,
+                "cached_prompt_ratio": cached_prompt_ratio,
+            },
+        }
     yield {
         "type": "voice.session.ended",
         "transcript": "".join(full_text),

@@ -1376,6 +1376,10 @@ class AgentIntelligence:
         from app.services.mcp_client_service import get_mcp_client_service
 
         mcp_tools_early = await get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id)
+        # Voice: default to the same fast tier used for simple text turns unless caller
+        # pinned another mode. Consequential writes escalate after classification.
+        if spoken_mode and mode is None:
+            mode = "fast"
         requested_mode = normalize_mode(mode)
         mode_key = resolve_effective_intelligence_mode(
             mode,
@@ -1809,6 +1813,34 @@ class AgentIntelligence:
         if agent_id:
             early_agent = resolve_agent_record(client, org_id, str(agent_id))
 
+        # Voice latency Phase 1 — tiered reasoning depth (same brain; not a fork).
+        # Simple spoken turns skip heavy KNOWLEDGE merge + non-mandatory critic LLM.
+        # Consequential writes always keep full depth + escalate off pinned fast.
+        from app.services.verification_critic_service import is_consequential_classification
+
+        _cls_for_depth = pipeline_classification if isinstance(pipeline_classification, dict) else {}
+        _spoken_consequential = bool(spoken_mode) and is_consequential_classification(_cls_for_depth)
+        reasoning_depth = "full"
+        if spoken_mode:
+            if _spoken_consequential:
+                reasoning_depth = "full"
+                if mode_key == "fast":
+                    mode_key = "standard"
+                    tool_names = resolve_assistant_tool_names(mode_key, None, connected_early)
+                    permitted_registry = resolve_registry_permitted_tools(tool_names)
+                    max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
+                    pipeline_tier = mode_to_tier(mode_key)
+                    routing_control.escalate("multi_step", "spoken_consequential_write")
+                    max_iterations = routing_control.max_iterations
+                    routing_sse = {
+                        **routing_decision.to_sse(),
+                        "routingTier": routing_control.tier,
+                        "maxToolRounds": routing_control.max_iterations,
+                        "spokenConsequentialEscalation": True,
+                    }
+            elif routing_control.tier == "simple" or requested_mode == "fast":
+                reasoning_depth = "conversational"
+
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
         try:
@@ -1838,17 +1870,41 @@ class AgentIntelligence:
                     conversation_history=conversation_history,
                     client=client,
                     agent=early_agent,
+                    reasoning_depth=reasoning_depth,
                 )
             )
             if isinstance(task_state, dict):
                 task_state = {
                     **task_state,
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
+                    "_reasoning_depth": reasoning_depth,
                 }
             else:
                 task_state = {
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
+                    "_reasoning_depth": reasoning_depth,
                 }
+            # Emit per-stage kernel timings for voice latency Phase 0/6 evidence.
+            _stage_ms = {
+                str(getattr(s, "stage", "") or ""): round(float(getattr(s, "ms", 0) or 0), 1)
+                for s in (getattr(cognitive_ctx, "stages", None) or [])
+                if getattr(s, "stage", None)
+            }
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": 0.0, "needs_clarification": False},
+                answer_explanation="CognitiveTurnKernel pre-ACT complete",
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing={
+                    **(routing_sse if isinstance(routing_sse, dict) else {}),
+                    "reasoningDepth": reasoning_depth,
+                    "cognitiveStageMs": _stage_ms,
+                    "cognitiveTotalStageMs": round(sum(_stage_ms.values()), 1),
+                    "spokenMode": bool(spoken_mode),
+                },
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "cognitive_turn_kernel_pre_act_failed org_id=%s conversation_id=%s error=%s",
@@ -1859,7 +1915,12 @@ class AgentIntelligence:
 
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
         # LIVE is an ACT strategy only — never runs before kernel RECALL/KNOWLEDGE.
-        if getattr(active_settings, "unified_turn_live_enabled", False):
+        # Voice conversational depth: skip unified LIVE so progressive text→TTS can start
+        # before the full answer is verified (Phase 5). Consequential spoken keeps LIVE.
+        _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
+        if spoken_mode and reasoning_depth == "conversational":
+            _unified_live_ok = False
+        if _unified_live_ok:
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
 
@@ -3354,16 +3415,31 @@ class AgentIntelligence:
             or str(_cls.get("intent") or "").lower()
             in {"write_confirm", "enrich", "extension_action", "workflow_execution"}
         )
-        critic = await get_verification_critic_service(active_settings).verify_before_delivery(
-            query=task_text,
-            answer=full_content,
-            classification=_cls,
-            routing_tier=routing_control.tier,
-            rag_sources=rag_sources,
-            tool_results=tool_results,
-            org_id=org_id,
-            mandatory=_mandatory_critic,
-        )
+        # Voice conversational depth: skip non-mandatory critic LLM (does not skip
+        # mandatory critic on consequential writes — Phase 1 constraint).
+        if (
+            spoken_mode
+            and reasoning_depth == "conversational"
+            and not _mandatory_critic
+        ):
+            critic = {
+                "passed": True,
+                "issues": [],
+                "revised_answer": full_content,
+                "skipped": "spoken_conversational_depth",
+                "mandatory": False,
+            }
+        else:
+            critic = await get_verification_critic_service(active_settings).verify_before_delivery(
+                query=task_text,
+                answer=full_content,
+                classification=_cls,
+                routing_tier=routing_control.tier,
+                rag_sources=rag_sources,
+                tool_results=tool_results,
+                org_id=org_id,
+                mandatory=_mandatory_critic,
+            )
         if not critic.get("passed") and critic.get("revised_answer"):
             full_content = str(critic.get("revised_answer") or full_content)
         elif _mandatory_critic and not critic.get("passed"):
