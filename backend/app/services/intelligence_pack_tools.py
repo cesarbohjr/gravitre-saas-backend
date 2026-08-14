@@ -4,8 +4,6 @@ Thin wrappers over fetch_* + run_shared_ingestion. No parallel cache/normalize/K
 """
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 import os
 from typing import Any, Coroutine, TypeVar
 
@@ -13,6 +11,7 @@ from app.intelligence_packs.shared.auth_mode import AuthMode, get_auth_mode, res
 from app.intelligence_packs.shared.pipeline import run_shared_ingestion
 from app.services.tool_types import NormalizedResult, ToolContext, ToolValidationError
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.core.async_bridge import run_coro_sync
 
 ToolExecutor = Any
 T = TypeVar("T")
@@ -20,12 +19,7 @@ T = TypeVar("T")
 
 def _run_async(coro: Coroutine[Any, Any, T]) -> T:
     """Run async fetch from sync invoke_tool executors."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
+    return run_coro_sync(coro)
 
 
 def _platform_key_present(vendor: str, settings: Any) -> bool:

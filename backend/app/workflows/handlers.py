@@ -1,7 +1,6 @@
 """Step handler implementations for registry."""
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Any
 
@@ -17,6 +16,7 @@ from app.connectors.webhook import (
     sanitize_headers,
     validate_path,
 )
+from app.core.async_bridge import run_coro_sync
 from app.services.tool_service import (
     STEP_TYPE_TO_ACTION,
     invoke_tool,
@@ -73,7 +73,7 @@ def _rag_retrieve(
         return rows
 
     try:
-        rows = asyncio.run(_run())
+        rows = run_coro_sync(_run())
     except Exception as exc:
         raise ValueError(f"rag_retrieve failed: {exc}") from exc
 
@@ -191,18 +191,40 @@ class InvokeToolHandler(StepHandler):
         from app.services.action_selection_gate import gate_workflow_invoke
 
         resolved_action = gate_workflow_invoke(action=str(action), args=invoke_params)
+        tool_ctx = tool_context_from_step(context)
         result = invoke_tool(
-            tool_context_from_step(context),
+            tool_ctx,
             resolved_action,
             invoke_params,
         )
+        if not result.success:
+            detail = str(result.error_message or result.error_code or "tool invoke failed")
+            raise RuntimeError(f"{resolved_action} failed: {detail}")
+
+        # Reuse catalog-wide F6 write verification (same path as chat connector writes).
+        try:
+            from app.services.write_success_verification import schedule_write_success_verification
+
+            schedule_write_success_verification(
+                client=context.client,
+                org_id=context.org_id,
+                run_id=str(context.run_id) if context.run_id else None,
+                invoke_action=str(resolved_action),
+                result_data=result.data if isinstance(result.data, dict) else result.to_step_output(),
+                settings=context.settings,
+                ctx=tool_ctx,
+                environment_name=context.environment_name or "production",
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         from app.services.connector_output_refs import enrich_invoke_tool_snapshot
 
         return _truncate_output_snapshot(
             enrich_invoke_tool_snapshot(
                 action=resolved_action,
                 data=result.to_step_output(),
-                success=bool(result.success),
+                success=True,
             )
         )
 
@@ -399,7 +421,7 @@ class AgentStepHandler(StepHandler):
             )
         except Exception:  # noqa: BLE001
             pass
-        output = asyncio.run(
+        output = run_coro_sync(
             execute_agent_step_with_handoff(
                 context.settings,
                 org_id=context.org_id,
@@ -459,7 +481,7 @@ class CouncilStepHandler(StepHandler):
         if not context.client:
             raise ValueError("council step requires database client")
         workflow_id = str((context.parameters or {}).get("workflow_id") or context.run_id or "")
-        output = asyncio.run(
+        output = run_coro_sync(
             execute_council_step(
                 context.settings,
                 org_id=context.org_id,

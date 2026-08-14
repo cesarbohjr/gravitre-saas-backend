@@ -1,10 +1,10 @@
 """Workflow run queue dispatch helpers (STA-94)."""
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from app.config import Settings
+from app.core.async_bridge import run_coro_sync
 from app.services.data_residency_service import resolve_execution_region
 from app.workers.queue import is_queue_available
 from app.workers.workflow_queue import WorkflowRunJob, enqueue_workflow_run
@@ -77,9 +77,4 @@ def try_enqueue_workflow_run_sync(
             run_id=run_id,
         )
 
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(_enqueue())
-    # Nested loop: run in a fresh loop on this thread.
-    return asyncio.run(_enqueue())
+    return run_coro_sync(_enqueue())
