@@ -31,19 +31,30 @@ from app.services.voice_turn_taking import (
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
+# Prefer Redis so cancel works across Railway replicas; memory is local fallback.
 _CANCELLED_TURNS: dict[str, float] = {}
+_CANCEL_REDIS_PREFIX = "voice:turn:cancel:"
 
 
 def request_turn_cancel(turn_id: str, *, ttl_seconds: float = 120.0) -> None:
     tid = (turn_id or "").strip()
     if not tid:
         return
-    _CANCELLED_TURNS[tid] = time.time() + max(5.0, float(ttl_seconds))
-    # Opportunistic prune
+    ttl = max(5.0, float(ttl_seconds))
+    _CANCELLED_TURNS[tid] = time.time() + ttl
     now = time.time()
     stale = [k for k, exp in _CANCELLED_TURNS.items() if exp < now]
     for k in stale:
         _CANCELLED_TURNS.pop(k, None)
+    try:
+        from app.config import get_settings
+        from app.core.redis_client import get_sync_redis
+
+        client = get_sync_redis(get_settings())
+        if client is not None:
+            client.setex(f"{_CANCEL_REDIS_PREFIX}{tid}", int(ttl), "1")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def is_turn_cancelled(turn_id: str) -> bool:
@@ -51,12 +62,21 @@ def is_turn_cancelled(turn_id: str) -> bool:
     if not tid:
         return False
     exp = _CANCELLED_TURNS.get(tid)
-    if exp is None:
+    if exp is not None:
+        if exp < time.time():
+            _CANCELLED_TURNS.pop(tid, None)
+        else:
+            return True
+    try:
+        from app.config import get_settings
+        from app.core.redis_client import get_sync_redis
+
+        client = get_sync_redis(get_settings())
+        if client is not None:
+            return bool(client.get(f"{_CANCEL_REDIS_PREFIX}{tid}"))
+    except Exception:  # noqa: BLE001
         return False
-    if exp < time.time():
-        _CANCELLED_TURNS.pop(tid, None)
-        return False
-    return True
+    return False
 
 
 def split_speakable_chunks(buffer: str, *, min_chars: int = 24) -> tuple[list[str], str]:

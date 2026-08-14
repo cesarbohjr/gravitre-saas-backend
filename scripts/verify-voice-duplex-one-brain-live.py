@@ -138,6 +138,8 @@ def _read_ndjson_until(
 
                 def _cancel() -> None:
                     try:
+                        # Give the stream worker a moment to register turn_id, then cancel.
+                        time.sleep(0.15)
                         client.post(
                             f"{BASE}/api/voice/session/cancel",
                             headers=headers,
@@ -234,7 +236,7 @@ def main() -> int:
                 "turn_id": turn_a,
                 "history": [],
             },
-            cancel_after_types={"voice.ttft", "voice.agent_speech.start"},
+            cancel_after_types={"voice.session.started", "voice.ttft", "voice.agent_speech.start"},
             cancel_turn_id=turn_a,
             max_seconds=75.0,
         )
