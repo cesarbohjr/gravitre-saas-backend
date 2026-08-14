@@ -1,0 +1,5 @@
+{
+  "verdict": "NOT RUN",
+  "reason": "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+  "at": "2026-08-14T04:02:23.614653+00:00"
+}
