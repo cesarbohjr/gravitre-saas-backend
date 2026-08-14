@@ -116,6 +116,7 @@ async def _complete_unified_turn_stream(
     wall_start: float,
     model_start: float,
     timeout_s: float = 20.0,
+    on_text_delta: Any | None = None,
 ) -> _StreamedCompletion:
     """Stream the shadow completion; record wall TTFT and model-only TTFT."""
 
@@ -155,6 +156,13 @@ async def _complete_unified_turn_stream(
                     first_token_ms = int((now - wall_start) * 1000)
                     model_ttft_ms = int((now - model_start) * 1000)
                 content_parts.append(str(piece))
+                if on_text_delta is not None:
+                    try:
+                        maybe = on_text_delta(str(piece))
+                        if asyncio.iscoroutine(maybe):
+                            await maybe
+                    except Exception:  # noqa: BLE001
+                        pass
             for tc_delta in getattr(delta, "tool_calls", None) or []:
                 if first_token_ms is None:
                     now = time.perf_counter()
@@ -230,6 +238,7 @@ async def _complete_unified_turn(
     wall_start: float,
     model_start: float,
     timeout_s: float = 20.0,
+    on_text_delta: Any | None = None,
 ) -> _StreamedCompletion:
     """Dispatch tool completion to the agent's configured provider."""
     from app.services.providers.provider_tool_router import (
@@ -245,6 +254,7 @@ async def _complete_unified_turn(
             wall_start=wall_start,
             model_start=model_start,
             timeout_s=timeout_s,
+            on_text_delta=on_text_delta,
         )
 
     cap = max(5.0, float(timeout_s or 20.0))
@@ -442,6 +452,7 @@ async def run_unified_turn_shadow(
     classification: dict[str, Any] | None = None,
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
+    on_text_delta: Any | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -877,6 +888,7 @@ async def run_unified_turn_shadow(
                 wall_start=wall_start,
                 model_start=model_start if prog_round == 0 else time.perf_counter(),
                 timeout_s=stream_timeout_s,
+                on_text_delta=on_text_delta if prog_round == 0 else None,
             )
             progressive_round_ms.append(int((time.perf_counter() - round_start) * 1000))
             breakdown["progressive_round_ms"] = list(progressive_round_ms)
@@ -1295,6 +1307,7 @@ async def apply_unified_turn_live(
     spoken_mode: bool = False,
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
+    on_text_delta: Any | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1566,6 +1579,7 @@ async def apply_unified_turn_live(
             classification=classification,
             research_scope=None,
             cognitive_context=cognitive_context,
+            on_text_delta=on_text_delta,
         )
         text = (result.user_message or "").strip()
         if result.outcome_kind in {"skipped", "error"} or not text:
@@ -1627,6 +1641,7 @@ async def apply_unified_turn_live(
         classification=classification,
         research_scope=research_scope,
         cognitive_context=cognitive_context,
+        on_text_delta=on_text_delta,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

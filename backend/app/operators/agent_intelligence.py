@@ -1915,46 +1915,87 @@ class AgentIntelligence:
 
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
         # LIVE is an ACT strategy only — never runs before kernel RECALL/KNOWLEDGE.
-        # Voice conversational depth: skip unified LIVE so progressive text→TTS can start
-        # before the full answer is verified (Phase 5). Consequential spoken keeps LIVE.
+        # Spoken: stream unified text deltas into SSE as they arrive so TTS can start
+        # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
-        if spoken_mode and reasoning_depth == "conversational":
-            _unified_live_ok = False
         if _unified_live_ok:
+            import asyncio
+
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
 
-            live_turn = await apply_unified_turn_live(
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                message=task_text,
-                task_state=task_state,
-                conversation_history=conversation_history,
-                connected_integrations=list(connected_early or []),
-                client=client,
-                settings=active_settings,
-                environment_name=environment_name,
-                mode_key=mode_key,
-                classification=pipeline_classification,
-                qa_force_tool=qa_force_tool,
-                qa_force_outcome=qa_force_outcome,
-                agent=early_agent,
-                # Agent-row systems/tools win over FE tool lists (custom agent chat
-                # previously shipped a hardcoded 5-tool list that bypassed agent scope).
-                permitted_tools=resolve_permitted_tools(
-                    early_agent,
-                    None if early_agent else requested_tools,
-                ),
-                agent_id=agent_id,
-                spoken_mode=bool(spoken_mode),
-                research_scope=research_scope,
-                cognitive_context=cognitive_ctx,
-            )
+            delta_queue: asyncio.Queue[str | None] | None = None
+            on_text_delta = None
+            if spoken_mode:
+                delta_queue = asyncio.Queue()
+
+                async def _on_text_delta(piece: str) -> None:
+                    if piece and delta_queue is not None:
+                        await delta_queue.put(piece)
+
+                on_text_delta = _on_text_delta
+
+            async def _run_unified_live() -> dict[str, Any] | None:
+                try:
+                    return await apply_unified_turn_live(
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        message=task_text,
+                        task_state=task_state,
+                        conversation_history=conversation_history,
+                        connected_integrations=list(connected_early or []),
+                        client=client,
+                        settings=active_settings,
+                        environment_name=environment_name,
+                        mode_key=mode_key,
+                        classification=pipeline_classification,
+                        qa_force_tool=qa_force_tool,
+                        qa_force_outcome=qa_force_outcome,
+                        agent=early_agent,
+                        # Agent-row systems/tools win over FE tool lists (custom agent chat
+                        # previously shipped a hardcoded 5-tool list that bypassed agent scope).
+                        permitted_tools=resolve_permitted_tools(
+                            early_agent,
+                            None if early_agent else requested_tools,
+                        ),
+                        agent_id=agent_id,
+                        spoken_mode=bool(spoken_mode),
+                        research_scope=research_scope,
+                        cognitive_context=cognitive_ctx,
+                        on_text_delta=on_text_delta,
+                    )
+                finally:
+                    if delta_queue is not None:
+                        await delta_queue.put(None)
+
+            live_turn: dict[str, Any] | None
+            streamed_voice_text = False
+            text_id: str | None = None
+            if spoken_mode and delta_queue is not None:
+                live_task = asyncio.create_task(_run_unified_live())
+                while True:
+                    piece = await delta_queue.get()
+                    if piece is None:
+                        break
+                    if text_id is None:
+                        text_id, start_event = sse_text_start()
+                        yield start_event
+                    streamed_voice_text = True
+                    yield sse_text_delta(text_id, piece)
+                live_turn = await live_task
+            else:
+                live_turn = await _run_unified_live()
+
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state
                 response_text = str(live_turn.get("message") or "")
                 dialogue_mode = str(live_turn.get("dialogue_mode") or "answer")
+                lat_bd = (
+                    live_turn.get("latency_breakdown")
+                    if isinstance(live_turn.get("latency_breakdown"), dict)
+                    else {}
+                )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
@@ -1972,12 +2013,19 @@ class AgentIntelligence:
                         **(routing_sse if isinstance(routing_sse, dict) else {}),
                         "unifiedTurnLive": True,
                         "unifiedOutcomeKind": live_turn.get("unified_outcome_kind"),
+                        "reasoningDepth": reasoning_depth,
+                        "spokenStreamed": streamed_voice_text,
+                        "cachedPromptTokens": lat_bd.get("cached_prompt_tokens"),
+                        "cachedPromptRatio": lat_bd.get("cached_prompt_ratio"),
                     },
                 )
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                if not streamed_voice_text:
+                    text_id, start_event = sse_text_start()
+                    yield start_event
+                    yield sse_text_delta(text_id, response_text)
+                    yield sse_text_end(text_id)
+                elif text_id is not None:
+                    yield sse_text_end(text_id)
                 yield AssistantStreamComplete(
                     full_content=response_text,
                     tool_results=[],
