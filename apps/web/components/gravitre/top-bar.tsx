@@ -43,7 +43,7 @@ import {
   invalidateOrgCache,
   setSelectedOrgInStorage,
 } from "@/lib/org-context"
-import { formatChargedPlanPriceLabel, getPlan } from "@/lib/plans"
+import { formatPlanPrice, getPlan } from "@/lib/plans"
 
 interface TopBarProps {
   title?: string
@@ -86,8 +86,6 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     planCode?: string | null
     billingStatus?: string
     billingKnown?: boolean
-    planUnitAmountCents?: number | null
-    planBillingInterval?: string | null
     _auth_degraded?: boolean
   }>(user ? "/api/billing/status" : null, apiFetcher, {
     revalidateOnFocus: false,
@@ -104,11 +102,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       ? "Custom"
       : currentPlan.price === 0
         ? "Free"
-        : `${formatChargedPlanPriceLabel(
-            currentPlan,
-            billingStatus?.planUnitAmountCents,
-            billingStatus?.planBillingInterval,
-          )}/mo`
+        : `${formatPlanPrice(currentPlan)}/mo`
 
   const activeWorkflows =
     typeof overviewData?.activeWorkflows === "number" ? overviewData.activeWorkflows : null

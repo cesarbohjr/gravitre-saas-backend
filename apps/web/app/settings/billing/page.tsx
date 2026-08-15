@@ -77,7 +77,7 @@ import { billingApi, ApiRequestError } from "@/lib/api"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { Switch } from "@/components/ui/switch"
-import { SELECTABLE_PLANS, getPlan, formatPlanPrice, formatChargedPlanPriceLabel, planDirection, type PlanCode } from "@/lib/plans"
+import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 import { buildUsageForecast } from "@/lib/billing-usage-forecast"
 import { planLimitsFor } from "@/lib/plan-limits"
@@ -262,15 +262,7 @@ function BillingPageInner() {
   const currentTier = (resolvedTierRaw || null) as PlanCode | null
   const currentPlan = currentTier ? getPlan(currentTier) : null
   const planKnown = Boolean(currentPlan)
-  // Prefer the live Stripe Price amount so grandfathered customers do not see the new list price.
-  const chargedAmountCents = subscription?.plan_unit_amount_cents
-  const chargedInterval = (subscription?.plan_billing_interval || "month").toString().toLowerCase()
-  const chargedDisplay =
-    typeof chargedAmountCents === "number" && chargedAmountCents > 0
-      ? chargedInterval === "year"
-        ? `$${Math.round(chargedAmountCents / 100 / 12)}`
-        : `$${Math.round(chargedAmountCents / 100)}`
-      : null
+  // Customer-facing price always mirrors marketing / PLAN_CATALOG (voice-included list prices).
   // Never invent Active when status is missing — that left cancelled orgs looking live
   // after subscription.deleted wrote only a partial cancel. Prefer overview.billing_status.
   const rawStatus = (subscription?.status || overview?.billing_status || "unknown")
@@ -435,14 +427,7 @@ function BillingPageInner() {
     subStatus !== "canceled" &&
     subStatus !== "unknown" &&
     !subscription?.cancel_at_period_end
-  const chargedPriceLabel =
-    planKnown && currentPlan
-      ? formatChargedPlanPriceLabel(
-          currentPlan,
-          subscription?.plan_unit_amount_cents,
-          subscription?.plan_billing_interval,
-        )
-      : "—"
+  const chargedPriceLabel = planKnown && currentPlan ? formatPlanPrice(currentPlan) : "—"
   
   // Form states
   const [cardNumber, setCardNumber] = useState("")
@@ -782,11 +767,9 @@ function BillingPageInner() {
                     <p className="text-4xl font-bold text-foreground tracking-tight">
                       {chargedPriceLabel}
                     </p>
-                    {planKnown &&
-                      ((chargedDisplay != null) ||
-                        (currentPlan!.price !== null && currentPlan!.price > 0)) && (
+                    {planKnown && currentPlan!.price !== null && currentPlan!.price > 0 ? (
                       <p className="text-sm text-muted-foreground">/month</p>
-                    )}
+                    ) : null}
                   </div>
                   <div className="h-12 w-px bg-border" />
                   <div className="flex flex-col gap-2">

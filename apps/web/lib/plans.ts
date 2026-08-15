@@ -131,24 +131,12 @@ export function formatPlanPrice(plan: Plan, interval: BillingInterval = "monthly
   return `$${price}`
 }
 
-/**
- * Price label for the subscriber's actual Stripe Price (grandfathered vs list).
- * Falls back to catalog list price when live cents are unavailable.
- */
-export function formatChargedPlanPriceLabel(
+/** Customer-facing plan price — always the current marketing / catalog list price. */
+export function formatMarketingPlanPriceLabel(
   plan: Plan,
-  unitAmountCents?: number | null,
-  billingInterval?: string | null,
+  interval: BillingInterval = "monthly",
 ): string {
-  if (typeof unitAmountCents === "number" && unitAmountCents > 0) {
-    const interval = (billingInterval || "month").toLowerCase()
-    const amountUsd =
-      interval === "year"
-        ? Math.round(unitAmountCents / 100 / 12)
-        : Math.round(unitAmountCents / 100)
-    return `$${amountUsd}`
-  }
-  return formatPlanPrice(plan)
+  return formatPlanPrice(plan, interval)
 }
 
 /** Total charged once per year when billed annually (per-month rate × 12). */
