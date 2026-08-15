@@ -77,6 +77,10 @@ import {
 } from "@/components/gravitre/assistant/research-scope-prompt"
 import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-cascade-panel"
 import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
+import {
+  deriveAgentStatusLabel,
+  shouldHideProgressPanel,
+} from "@/lib/chat-agent-status"
 import { hostedFilesFromUnknown } from "@/components/gravitre/assistant/file-reference-chip"
 import {
   shouldShowTaskSidePanel,
@@ -311,6 +315,7 @@ export function AiWorkspace({
   } | null>(null)
   const [researchCascade, setResearchCascade] = useState<ResearchCascadePayload | null>(null)
   const [researchProgressSteps, setResearchProgressSteps] = useState<string[]>([])
+  const [agentStatusExplanation, setAgentStatusExplanation] = useState<string | null>(null)
   const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -485,6 +490,7 @@ export function AiWorkspace({
         taskState?: typeof taskState
         researchCascade?: ResearchCascadePayload
         progressSteps?: string[]
+        answerExplanation?: string
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
@@ -497,6 +503,9 @@ export function AiWorkspace({
       if (payload.researchCascade) setResearchCascade(payload.researchCascade)
       if (Array.isArray(payload.progressSteps) && payload.progressSteps.length > 0) {
         setResearchProgressSteps(payload.progressSteps)
+      }
+      if (typeof payload.answerExplanation === "string" && payload.answerExplanation.trim()) {
+        setAgentStatusExplanation(payload.answerExplanation.trim())
       }
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
@@ -1320,6 +1329,7 @@ export function AiWorkspace({
       researchScopeRef.current = scope
       setResearchCascade(null)
       setResearchProgressSteps([])
+      setAgentStatusExplanation(null)
       const prompt = lastUserPromptRef.current.trim()
       if (!prompt) return
       await runChat(prompt)
@@ -1462,6 +1472,7 @@ export function AiWorkspace({
       researchScopeRef.current = null
       setResearchCascade(null)
       setResearchProgressSteps([])
+      setAgentStatusExplanation(null)
       await ensureConversation(effectivePrompt)
       const engine = await resolveEngine(effectivePrompt, mode)
       setInput("")
@@ -1947,8 +1958,46 @@ export function AiWorkspace({
     !conversationLoading &&
     (sessionBusy || isChatBusy) &&
     messages.length > 0 &&
-    !isStreaming &&
     (lastMessage?.role === "user" || lastAssistantEmpty)
+
+  const activeToolName = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((row) => row.role === "assistant")
+    if (!lastAssistant?.parts) return null
+    for (const part of lastAssistant.parts) {
+      const row = part as { type?: string; toolName?: string; state?: string }
+      if (!row.type?.startsWith("tool-") && row.type !== "dynamic-tool") continue
+      if (row.state === "output-available") continue
+      return row.toolName || row.type?.replace(/^tool-/, "") || null
+    }
+    return null
+  }, [messages])
+
+  const agentStatusLabel = useMemo(
+    () =>
+      deriveAgentStatusLabel({
+        assistantLabel,
+        progressSteps: researchProgressSteps,
+        answerExplanation: agentStatusExplanation,
+        dialogueMode,
+        activeToolName,
+        isStreaming,
+        isBusy: sessionBusy || isChatBusy,
+        pendingTask,
+      }),
+    [
+      assistantLabel,
+      researchProgressSteps,
+      agentStatusExplanation,
+      dialogueMode,
+      activeToolName,
+      isStreaming,
+      sessionBusy,
+      isChatBusy,
+      pendingTask,
+    ],
+  )
+
+  const hideInlineProgressPanel = shouldHideProgressPanel(researchProgressSteps)
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 
@@ -2203,16 +2252,27 @@ export function AiWorkspace({
                     onSelectScope={(scope) => void handleResearchScopeSelect(scope)}
                     className="mb-4"
                   />
-                  <ResearchPlanPanel
-                    cascade={researchCascade}
-                    progressSteps={researchProgressSteps}
-                    strategicPlan={strategicPlan}
-                    className="mb-4"
-                  />
+                  {!hideInlineProgressPanel ? (
+                    <ResearchPlanPanel
+                      cascade={researchCascade}
+                      progressSteps={researchProgressSteps}
+                      strategicPlan={strategicPlan}
+                      className="mb-4"
+                    />
+                  ) : strategicPlan?.goal || (researchCascade?.stage_progress?.length ?? 0) > 0 ? (
+                    <ResearchPlanPanel
+                      cascade={researchCascade}
+                      progressSteps={[]}
+                      strategicPlan={strategicPlan}
+                      className="mb-4"
+                    />
+                  ) : null}
                   <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
                   <ChatTranscript
                     messages={messages}
                     showWaiting={showWaitingForReply && !conversationLoading}
+                    isStreaming={isStreaming || isChatBusy}
+                    agentStatusLabel={agentStatusLabel}
                     explainability={explainability}
                     contextExplanation={contextExplanation}
                     dialogueMode={dialogueMode}
