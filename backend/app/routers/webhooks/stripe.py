@@ -367,6 +367,7 @@ def _process_stripe_event(
                 "stripe_subscription_id": data.get("id"),
                 "billing_status": billing_status,
                 "current_period_end": _to_iso(data.get("current_period_end")),
+                "cancel_at_period_end": bool(data.get("cancel_at_period_end") or False),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             if plan_code:

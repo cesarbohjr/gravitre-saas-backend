@@ -1772,6 +1772,8 @@ export const billingApi = {
       trialEndsAt?: string | null
       currentPeriodEnd?: string | null
       cancelAtPeriodEnd?: boolean
+      planUnitAmountCents?: number | null
+      planBillingInterval?: string | null
       plan?: {
         code?: string
         workflow_runs_included?: number

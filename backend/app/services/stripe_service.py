@@ -75,6 +75,13 @@ def cancel_subscription(
     return dict(canceled)
 
 
+def reactivate_subscription(subscription_id: str, settings: Settings) -> dict[str, Any]:
+    """Resume auto-renew on a subscription scheduled to cancel at period end."""
+    _init_stripe(settings)
+    updated = stripe.Subscription.modify(subscription_id, cancel_at_period_end=False)
+    return dict(updated)
+
+
 def get_customer_portal_url(customer_id: str, return_url: str, settings: Settings) -> str:
     _init_stripe(settings)
     session = stripe.billing_portal.Session.create(customer=customer_id, return_url=return_url)

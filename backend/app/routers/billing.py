@@ -333,6 +333,7 @@ def _reconcile_plan_from_stripe(
         if data.get("status") in {None, "active", "trialing"}
         else normalize_billing_status(str(data.get("status") or "active"))
     )
+    cancel_at_period_end = bool(data.get("cancel_at_period_end") or False)
     org_billing_payload: dict = {
         "org_id": org_id,
         "plan_code": plan_code,
@@ -340,6 +341,7 @@ def _reconcile_plan_from_stripe(
         "stripe_customer_id": data.get("customer") or (subscription_row or {}).get("stripe_customer_id"),
         "billing_status": billing_status,
         "current_period_end": period_end,
+        "cancel_at_period_end": cancel_at_period_end,
         "updated_at": now,
     }
     if price_id:
@@ -670,6 +672,7 @@ async def billing_overview(
             "stripe_price_id": stripe_price_id,
             "plan_unit_amount_cents": plan_unit_amount_cents,
             "plan_billing_interval": plan_billing_interval,
+            "cancel_at_period_end": bool(billing_row.get("cancel_at_period_end") or False),
         },
         org_id,
         tier=canonical_tier,
@@ -759,6 +762,10 @@ async def get_billing_status(
             trial_ends_at=trial_ends_at,
             plan_code=plan_code,
         )
+    stripe_price_id = str(billing.get("stripe_price_id") or "").strip() or None
+    plan_unit_amount_cents = unit_amount_cents_for_plan_price(stripe_price_id)
+    plan_billing_interval = billing_interval_for_plan_price(stripe_price_id)
+
     return {
         "plan": plan,
         "basePlan": base_plan,
@@ -776,6 +783,8 @@ async def get_billing_status(
         "daysRemainingInTrial": billing_state.get("days_remaining_in_trial"),
         "currentPeriodEnd": billing.get("current_period_end"),
         "cancelAtPeriodEnd": billing.get("cancel_at_period_end") or False,
+        "planUnitAmountCents": plan_unit_amount_cents,
+        "planBillingInterval": plan_billing_interval,
         "usage": {
             "aiCredits": {
                 "used": ai_used,
@@ -1100,26 +1109,55 @@ async def cancel_subscription(
 ) -> dict:
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    status_value = "active" if body.at_period_end else "canceled"
-    response = (
+    billing = get_org_billing(client, org_id) or {}
+    sub_resp = (
         client.table("subscriptions")
-        .upsert(
-            {
-                "org_id": org_id,
-                "cancel_at_period_end": body.at_period_end,
-                "status": status_value,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            },
-            on_conflict="org_id",
-        )
+        .select("stripe_subscription_id")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    sub_row = (sub_resp.data or [{}])[0]
+    sub_id = str(
+        billing.get("stripe_subscription_id") or sub_row.get("stripe_subscription_id") or ""
+    ).strip()
+    now = datetime.now(timezone.utc).isoformat()
+
+    if sub_id and settings.stripe_secret_key:
+        from app.services.stripe_service import cancel_subscription as stripe_cancel_subscription
+
+        try:
+            stripe_cancel_subscription(sub_id, immediate=not body.at_period_end, settings=settings)
+        except stripe.error.StripeError as exc:
+            _raise_stripe_http_error(exc)
+
+    org_update: dict = {"cancel_at_period_end": body.at_period_end, "updated_at": now}
+    if not body.at_period_end:
+        org_update["billing_status"] = "cancelled"
+    client.table("org_billing").update(org_update).eq("org_id", org_id).execute()
+
+    sub_status = "active" if body.at_period_end else "canceled"
+    sub_resp2 = (
+        client.table("subscriptions")
+        .update({"status": sub_status, "updated_at": now})
+        .eq("org_id", org_id)
         .select("*")
         .limit(1)
         .execute()
     )
-    resp_err = getattr(response, "error", None)
-    if resp_err:
-        raise HTTPException(status_code=500, detail=str(resp_err))
-    return _normalize_subscription((response.data or [None])[0], org_id)
+    row = (sub_resp2.data or [None])[0]
+    billing_row = get_org_billing(client, org_id) or {}
+    stripe_price_id = str(billing_row.get("stripe_price_id") or "").strip() or None
+    return _normalize_subscription(
+        {
+            **(row or {}),
+            "cancel_at_period_end": body.at_period_end,
+            "stripe_price_id": stripe_price_id,
+            "plan_unit_amount_cents": unit_amount_cents_for_plan_price(stripe_price_id),
+            "plan_billing_interval": billing_interval_for_plan_price(stripe_price_id),
+        },
+        org_id,
+    )
 
 
 @router.post("/reactivate")
@@ -1129,25 +1167,57 @@ async def reactivate_subscription(
 ) -> dict:
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    billing = get_org_billing(client, org_id) or {}
+    sub_resp = (
         client.table("subscriptions")
-        .upsert(
-            {
-                "org_id": org_id,
-                "cancel_at_period_end": False,
-                "status": "active",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            },
-            on_conflict="org_id",
-        )
+        .select("stripe_subscription_id")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    sub_row = (sub_resp.data or [{}])[0]
+    sub_id = str(
+        billing.get("stripe_subscription_id") or sub_row.get("stripe_subscription_id") or ""
+    ).strip()
+    now = datetime.now(timezone.utc).isoformat()
+
+    if sub_id and settings.stripe_secret_key:
+        from app.services.stripe_service import reactivate_subscription as stripe_reactivate_subscription
+
+        try:
+            stripe_reactivate_subscription(sub_id, settings=settings)
+        except stripe.error.StripeError as exc:
+            _raise_stripe_http_error(exc)
+
+    client.table("org_billing").update(
+        {
+            "cancel_at_period_end": False,
+            "billing_status": "active",
+            "updated_at": now,
+        }
+    ).eq("org_id", org_id).execute()
+
+    sub_resp2 = (
+        client.table("subscriptions")
+        .update({"status": "active", "updated_at": now})
+        .eq("org_id", org_id)
         .select("*")
         .limit(1)
         .execute()
     )
-    resp_err = getattr(response, "error", None)
-    if resp_err:
-        raise HTTPException(status_code=500, detail=str(resp_err))
-    return _normalize_subscription((response.data or [None])[0], org_id)
+    row = (sub_resp2.data or [None])[0]
+    billing_row = get_org_billing(client, org_id) or {}
+    stripe_price_id = str(billing_row.get("stripe_price_id") or "").strip() or None
+    return _normalize_subscription(
+        {
+            **(row or {}),
+            "cancel_at_period_end": False,
+            "stripe_price_id": stripe_price_id,
+            "plan_unit_amount_cents": unit_amount_cents_for_plan_price(stripe_price_id),
+            "plan_billing_interval": billing_interval_for_plan_price(stripe_price_id),
+        },
+        org_id,
+    )
 
 
 @router.get("/invoices")

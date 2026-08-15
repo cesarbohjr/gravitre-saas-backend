@@ -77,7 +77,7 @@ import { billingApi, ApiRequestError } from "@/lib/api"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { Switch } from "@/components/ui/switch"
-import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
+import { SELECTABLE_PLANS, getPlan, formatPlanPrice, formatChargedPlanPriceLabel, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 import { buildUsageForecast } from "@/lib/billing-usage-forecast"
 import { planLimitsFor } from "@/lib/plan-limits"
@@ -429,6 +429,20 @@ function BillingPageInner() {
     if (subStatus === "trialing") return `Trial ends ${formatted}`
     return `Renews ${formatted}`
   })()
+
+  const autoRenewEnabled =
+    planKnown &&
+    subStatus !== "canceled" &&
+    subStatus !== "unknown" &&
+    !subscription?.cancel_at_period_end
+  const chargedPriceLabel =
+    planKnown && currentPlan
+      ? formatChargedPlanPriceLabel(
+          currentPlan,
+          subscription?.plan_unit_amount_cents,
+          subscription?.plan_billing_interval,
+        )
+      : "—"
   
   // Form states
   const [cardNumber, setCardNumber] = useState("")
@@ -555,12 +569,36 @@ function BillingPageInner() {
     try {
       await billingApi.cancelSubscription(true)
       toast.success("Subscription will cancel at period end")
+      await mutateOverview()
     } catch (error) {
       console.error("[v0] Cancel subscription failed:", error)
       toast.error("Failed to cancel subscription")
     } finally {
       setIsProcessing(false)
       setCancelModalOpen(false)
+    }
+  }
+
+  const handleAutoRenewToggle = async (enabled: boolean) => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
+    setIsProcessing(true)
+    try {
+      if (enabled) {
+        await billingApi.reactivateSubscription()
+        toast.success("Auto-renew enabled — your plan will renew automatically")
+      } else {
+        await billingApi.cancelSubscription(true)
+        toast.success("Auto-renew disabled — you keep access until the end of this billing period")
+      }
+      await mutateOverview()
+    } catch (error) {
+      console.error("[billing] auto-renew toggle failed:", error)
+      toast.error(enabled ? "Failed to enable auto-renew" : "Failed to disable auto-renew")
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -742,9 +780,7 @@ function BillingPageInner() {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-4xl font-bold text-foreground tracking-tight">
-                      {planKnown
-                        ? chargedDisplay ?? formatPlanPrice(currentPlan!)
-                        : "—"}
+                      {chargedPriceLabel}
                     </p>
                     {planKnown &&
                       ((chargedDisplay != null) ||
@@ -768,7 +804,7 @@ function BillingPageInner() {
                       variant="ghost" 
                       size="sm" 
                       className="text-xs text-muted-foreground"
-                      disabled={!planKnown}
+                      disabled={!planKnown || !autoRenewEnabled}
                       onClick={() => setCancelModalOpen(true)}
                     >
                       Cancel Subscription
@@ -776,6 +812,34 @@ function BillingPageInner() {
                   </div>
                 </div>
               </motion.div>
+
+              {planKnown && subStatus !== "canceled" ? (
+                <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">Auto-renew</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      {autoRenewEnabled ? (
+                        <>
+                          Your {currentPlan!.name} plan renews automatically
+                          {renewalLabel ? ` — ${renewalLabel.toLowerCase()}` : ""}.
+                        </>
+                      ) : (
+                        <>
+                          Auto-renew is off
+                          {renewalLabel ? ` — ${renewalLabel.toLowerCase()}` : ""}. Turn it back on
+                          anytime before access ends.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={autoRenewEnabled}
+                    disabled={isProcessing || overviewLoading}
+                    onCheckedChange={(checked) => void handleAutoRenewToggle(checked)}
+                    aria-label="Enable subscription auto-renew"
+                  />
+                </div>
+              ) : null}
           </div>
         </div>
 
@@ -1453,7 +1517,16 @@ function BillingPageInner() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel your subscription? You will lose access to all premium features at the end of your current billing period (May 1, 2024).
+              Are you sure you want to cancel your subscription? You will lose access to all premium
+              features at the end of your current billing period
+              {subscription?.current_period_end
+                ? ` (${new Date(subscription.current_period_end).toLocaleDateString(undefined, {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })})`
+                : ""}
+              .
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
