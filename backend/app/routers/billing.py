@@ -218,8 +218,8 @@ def _normalize_subscription(row: dict | None, org_id: str, *, tier: str | None =
         "stripe_subscription_id": row.get("stripe_subscription_id"),
         "tier": resolved_tier,
         "status": str(row.get("status") or "trialing"),
-        "seat_count": int(row.get("seat_count") or 1),
-        "lite_seats": int(row.get("lite_seats") or 0),
+        "seat_count": _safe_int(row.get("seat_count"), 1),
+        "lite_seats": _safe_int(row.get("lite_seats"), 0),
         "current_period_start": (row.get("current_period_start") or datetime.now(timezone.utc).isoformat()),
         "current_period_end": (row.get("current_period_end") or datetime.now(timezone.utc).isoformat()),
         "cancel_at_period_end": bool(row.get("cancel_at_period_end") or False),
@@ -477,6 +477,90 @@ class SeatsRequest(BaseModel):
 
 class CancelRequest(BaseModel):
     at_period_end: bool = Field(default=True)
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_subscription_tier(plan_code: str | None) -> str:
+    tier = str(plan_code or "free").strip().lower()
+    if tier in {"free", "node", "control", "command"}:
+        return tier
+    if tier == "starter":
+        return "node"
+    if tier == "growth":
+        return "control"
+    if tier in {"scale", "enterprise"}:
+        return "command"
+    return "free"
+
+
+def _supabase_response_error(response: object) -> str | None:
+    err = getattr(response, "error", None)
+    if err:
+        return str(err)
+    return None
+
+
+def _stripe_cancel_is_soft_fail(exc: Exception) -> bool:
+    msg = (getattr(exc, "user_message", None) or str(exc) or "").lower()
+    return any(
+        token in msg
+        for token in (
+            "no such subscription",
+            "does not exist",
+            "already canceled",
+            "already cancelled",
+            "canceled subscription",
+            "cancelled subscription",
+        )
+    )
+
+
+def _persist_subscription_status(
+    client,
+    org_id: str,
+    *,
+    status: str,
+    billing: dict,
+    sub_row: dict | None,
+    now: str,
+) -> dict | None:
+    tier = _normalize_subscription_tier(billing.get("plan_code") or (sub_row or {}).get("tier"))
+    payload: dict = {
+        "org_id": org_id,
+        "status": status,
+        "tier": tier,
+        "updated_at": now,
+    }
+    stripe_sub = billing.get("stripe_subscription_id") or (sub_row or {}).get("stripe_subscription_id")
+    if stripe_sub:
+        payload["stripe_subscription_id"] = stripe_sub
+    stripe_cus = billing.get("stripe_customer_id") or (sub_row or {}).get("stripe_customer_id")
+    if stripe_cus:
+        payload["stripe_customer_id"] = stripe_cus
+    period_end = billing.get("current_period_end") or (sub_row or {}).get("current_period_end")
+    if period_end:
+        payload["current_period_end"] = period_end
+
+    response = (
+        client.table("subscriptions")
+        .upsert(payload, on_conflict="org_id")
+        .select("*")
+        .limit(1)
+        .execute()
+    )
+    err = _supabase_response_error(response)
+    if err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(err, "DATABASE_ERROR"),
+        )
+    return (response.data or [None])[0]
 
 
 def _resolve_org_id_from_checkout_metadata(client, metadata: dict) -> str | None:
@@ -1134,7 +1218,28 @@ async def cancel_subscription(
         try:
             stripe_cancel_subscription(sub_id, immediate=not body.at_period_end, settings=settings)
         except stripe.error.StripeError as exc:
-            _raise_stripe_http_error(exc)
+            if body.at_period_end and _stripe_cancel_is_soft_fail(exc):
+                logger.warning(
+                    "stripe cancel soft-fail org_id=%s sub_id=%s err=%s",
+                    org_id,
+                    sub_id,
+                    exc,
+                )
+            else:
+                _raise_stripe_http_error(exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "stripe cancel unexpected org_id=%s sub_id=%s err=%s",
+                org_id,
+                sub_id,
+                exc,
+                exc_info=True,
+            )
+            if not body.at_period_end:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=error_detail("Stripe cancel failed", "STRIPE_ERROR"),
+                ) from exc
 
     org_update: dict = {
         "org_id": org_id,
@@ -1143,18 +1248,23 @@ async def cancel_subscription(
     }
     if not body.at_period_end:
         org_update["billing_status"] = "cancelled"
-    client.table("org_billing").upsert(org_update, on_conflict="org_id").execute()
+    upsert_resp = client.table("org_billing").upsert(org_update, on_conflict="org_id").execute()
+    upsert_err = _supabase_response_error(upsert_resp)
+    if upsert_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(upsert_err, "DATABASE_ERROR"),
+        )
 
     sub_status = "active" if body.at_period_end else "canceled"
-    sub_resp2 = (
-        client.table("subscriptions")
-        .update({"status": sub_status, "updated_at": now})
-        .eq("org_id", org_id)
-        .select("*")
-        .limit(1)
-        .execute()
+    row = _persist_subscription_status(
+        client,
+        org_id,
+        status=sub_status,
+        billing=billing,
+        sub_row=sub_row if sub_row else None,
+        now=now,
     )
-    row = (sub_resp2.data or [None])[0]
     billing_row = get_org_billing(client, org_id) or {}
     stripe_price_id = str(billing_row.get("stripe_price_id") or "").strip() or None
     return _normalize_subscription(
@@ -1196,9 +1306,29 @@ async def reactivate_subscription(
         try:
             stripe_reactivate_subscription(sub_id, settings=settings)
         except stripe.error.StripeError as exc:
-            _raise_stripe_http_error(exc)
+            if _stripe_cancel_is_soft_fail(exc):
+                logger.warning(
+                    "stripe reactivate soft-fail org_id=%s sub_id=%s err=%s",
+                    org_id,
+                    sub_id,
+                    exc,
+                )
+            else:
+                _raise_stripe_http_error(exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "stripe reactivate unexpected org_id=%s sub_id=%s err=%s",
+                org_id,
+                sub_id,
+                exc,
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_detail("Stripe reactivate failed", "STRIPE_ERROR"),
+            ) from exc
 
-    client.table("org_billing").upsert(
+    reactivate_resp = client.table("org_billing").upsert(
         {
             "org_id": org_id,
             "cancel_at_period_end": False,
@@ -1207,16 +1337,21 @@ async def reactivate_subscription(
         },
         on_conflict="org_id",
     ).execute()
+    reactivate_err = _supabase_response_error(reactivate_resp)
+    if reactivate_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(reactivate_err, "DATABASE_ERROR"),
+        )
 
-    sub_resp2 = (
-        client.table("subscriptions")
-        .update({"status": "active", "updated_at": now})
-        .eq("org_id", org_id)
-        .select("*")
-        .limit(1)
-        .execute()
+    row = _persist_subscription_status(
+        client,
+        org_id,
+        status="active",
+        billing=billing,
+        sub_row=sub_row if sub_row else None,
+        now=now,
     )
-    row = (sub_resp2.data or [None])[0]
     billing_row = get_org_billing(client, org_id) or {}
     stripe_price_id = str(billing_row.get("stripe_price_id") or "").strip() or None
     return _normalize_subscription(
