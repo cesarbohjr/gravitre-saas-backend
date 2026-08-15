@@ -204,7 +204,7 @@ export default function BillingPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <BillingPageInner />
+            <BillingPageInner isAdmin={isAdmin} />
           )}
         </SettingsShell>
       </Suspense>
@@ -212,7 +212,7 @@ export default function BillingPage() {
   )
 }
 
-function BillingPageInner() {
+function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -569,6 +569,10 @@ function BillingPageInner() {
       toast.error("Sign in required")
       return
     }
+    if (!isAdmin) {
+      toast.error("Only organization admins can change auto-renew settings")
+      return
+    }
     setIsProcessing(true)
     try {
       if (enabled) {
@@ -814,10 +818,13 @@ function BillingPageInner() {
                         </>
                       )}
                     </p>
+                    {!isAdmin ? (
+                      <p className="mt-1 text-xs text-muted-foreground">Admin access required to change auto-renew.</p>
+                    ) : null}
                   </div>
                   <Switch
                     checked={autoRenewEnabled}
-                    disabled={isProcessing || overviewLoading}
+                    disabled={isProcessing || overviewLoading || !isAdmin}
                     onCheckedChange={(checked) => void handleAutoRenewToggle(checked)}
                     aria-label="Enable subscription auto-renew"
                   />
