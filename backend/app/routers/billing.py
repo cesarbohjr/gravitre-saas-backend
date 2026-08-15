@@ -1,3 +1,4 @@
+"""Billing API — subscriptions, checkout, usage overview, cancel/reactivate."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
