@@ -31,8 +31,17 @@ type PendingLike = {
 /** Matches the status-prefixed strings the backend emits over SSE. */
 export const ACTION_STEP_PATTERN = /^(Running:|Completed:|Step \d+\/\d+:)/i
 
+/** Context-phase labels from `build_progress_steps(phase="context")` — agent bubble only. */
+const CONTEXT_STEP_PATTERN =
+  /^(classifying request|checking .+|loading memory and knowledge|preparing actions for .+|running .+ analysis)/i
+
 export function isActionProgressStep(step: string): boolean {
   return ACTION_STEP_PATTERN.test(String(step).trim())
+}
+
+export function isContextProgressStep(step: string): boolean {
+  const label = stripStepPrefix(String(step ?? "").trim())
+  return Boolean(label && CONTEXT_STEP_PATTERN.test(label))
 }
 
 /**
@@ -64,8 +73,8 @@ export function deriveNamedProgressSteps(
     if (!text) continue
 
     const label = stripStepPrefix(text)
-    // Drop internal routing lines and anything that reduces to an empty label.
-    if (!label || INTERNAL_LABEL_PATTERN.test(label)) continue
+    // Drop internal routing lines, context-phase chatter, and empty labels.
+    if (!label || INTERNAL_LABEL_PATTERN.test(label) || isContextProgressStep(text)) continue
 
     if (/^Completed:/i.test(text)) {
       fromProgress.push({ label, status: "done" })

@@ -210,8 +210,13 @@ export function formatAssignmentOutput(value: unknown): string {
 
 /** Polish assistant/operator copy for chat and insight panels. */
 export function polishAssistantText(text: string): string {
-  const normalized = humanizePlainEnglish(text, text).trim()
-  if (!normalized) return text.trim()
+  const stripped = text
+    .replace(/^\s*write_approval_required\s*$/gim, "")
+    .replace(/Tool failed\s*\([a-z0-9_]+\)/gi, "")
+    .replace(/^\s*[a-z][a-z0-9]*(?:_[a-z0-9]+)+\s*$/gim, "")
+    .trim()
+  const normalized = humanizePlainEnglish(stripped, stripped).trim()
+  if (!normalized) return stripped.trim()
 
   return normalized
     .replace(/\*\(Source:\s*[^)]+\)\*/gi, "")

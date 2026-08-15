@@ -517,9 +517,6 @@ export function ChatExecutionPanel({
             <p className="font-medium text-foreground">
               {executionResult.task_label || executionResult.title || "Action did not complete"}
             </p>
-            {code ? (
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">{code}</p>
-            ) : null}
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
                 {executionResult.body}

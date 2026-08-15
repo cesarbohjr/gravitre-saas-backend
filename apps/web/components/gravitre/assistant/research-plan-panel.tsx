@@ -48,8 +48,9 @@ export function ResearchPlanPanel({
   const namedSteps = deriveNamedProgressSteps(steps, null)
   const stepCounter = formatStepCounter(namedSteps)
   const panelTitle = actionSteps.length > 0 ? "Progress" : "Research plan"
+  const showNamedSteps = namedSteps.length > 0 && actionSteps.length > 0
 
-  if (!stages.length && !steps.length && !strategicPlan?.goal) return null
+  if (!stages.length && !showNamedSteps && !strategicPlan?.goal) return null
 
   return (
     <div
@@ -90,7 +91,7 @@ export function ResearchPlanPanel({
 
       {/* Named action pills. Labels come from the shared parser, so the raw
           "Running: " / "Completed: " SSE prefixes never reach the user. */}
-      {namedSteps.length > 0 ? (
+      {showNamedSteps ? (
         <ul className="mt-2 flex flex-wrap gap-1.5 border-t border-border/40 pt-2.5">
           {namedSteps.slice(0, 8).map((step, index) => (
             <li

@@ -38,7 +38,7 @@ import {
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
-import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { ToolChip, type ToolInvocation, isInternalToolGateResult } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
@@ -116,6 +116,8 @@ type ChatTranscriptProps = {
    */
   assistantLabel?: string
   waitingLabel?: string
+  isStreaming?: boolean
+  agentStatusLabel?: string
 }
 
 function ActionIconButton({
@@ -169,6 +171,8 @@ export function ChatTranscript({
   // uppercase chrome never paints a bare GRAVITRE when a caller forgets the prop.
   assistantLabel = "Friendly Assistant",
   waitingLabel,
+  isStreaming = false,
+  agentStatusLabel,
 }: ChatTranscriptProps) {
   // Which assistant message is currently being read aloud, so that message's
   // avatar can switch to the speaking waveform. Only one can speak at a time.
@@ -177,14 +181,32 @@ export function ChatTranscript({
     setSpeakingMessageId((current) => (isSpeaking ? messageId : current === messageId ? null : current))
   }, [])
 
-  const resolvedWaiting = waitingLabel ?? `${assistantLabel} is thinking…`
+  const resolvedWaiting = agentStatusLabel ?? waitingLabel ?? `${assistantLabel} is thinking…`
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
+  const lastMessage = messages[messages.length - 1]
+  const lastAssistantEmpty =
+    lastMessage?.role === "assistant" && !uiMessageText(lastMessage).trim()
+  const showAgentWorking =
+    showWaiting || (isStreaming && (lastMessage?.role === "user" || lastAssistantEmpty))
   const visible = messages
     .map((message, index) => ({ message, index }))
     .filter(({ message }) => {
       const isUser = message.role === "user"
       const text = uiMessageText(message)
-      const toolInvocations = !isUser ? extractToolInvocations(message) : []
+      const toolInvocations = !isUser
+        ? extractToolInvocations(message).filter((inv) => {
+            if (inv.state === "result" && isInternalToolGateResult(inv.result)) return false
+            // In-flight tool calls stay in the agent bubble status — not as chips.
+            if (
+              isStreaming &&
+              message.id === lastAssistantId &&
+              inv.state === "call"
+            ) {
+              return false
+            }
+            return true
+          })
+        : []
       if (isUser && !text.trim()) return false
       if (!isUser && !text.trim() && toolInvocations.length === 0) return false
       return true
@@ -197,9 +219,19 @@ export function ChatTranscript({
         {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
           const isUser = message.role === "user"
           const text = uiMessageText(message)
-          const toolInvocations = !isUser ? extractToolInvocations(message) : []
+          const toolInvocations = !isUser
+            ? extractToolInvocations(message).filter((inv) => {
+                if (inv.state === "result" && isInternalToolGateResult(inv.result)) return false
+                if (isStreamingAssistant && inv.state === "call") return false
+                return true
+              })
+            : []
           const displayText = isUser ? text : polishAssistantText(text)
           const isLastAssistant = message.id === lastAssistantId
+          const isStreamingAssistant =
+            isStreaming && isLastAssistant && message.role === "assistant"
+          const showInlineStatus =
+            isStreamingAssistant && !displayText.trim() && toolInvocations.length === 0
           const createdAt = messageCreatedAt(message)
           const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
           const showDay = shouldShowDayDivider(visibleMessages, visibleIndex)
@@ -231,20 +263,17 @@ export function ChatTranscript({
                 <UserAccountAvatar useCurrentUser size="md" />
               ) : (
                 <GravitreChatAvatar
-                  // Same Gravitre mark + states on every surface. Only the label
-                  // (persona / agent name) differs — not a per-agent icon disc.
                   state={
                     speakingMessageId === message.id
                       ? "speaking"
-                      : // A tool invocation still in "call" (no output yet) is
-                        // the already-proven in-flight signal that drives the
-                        // existing tool chips, so searching reuses it rather
-                        // than inventing new detection.
-                        toolInvocations.some((invocation) => invocation.state === "call")
+                      : isStreamingAssistant ||
+                          toolInvocations.some((invocation) => invocation.state === "call")
                         ? "searching"
-                        : "idle"
+                        : showAgentWorking && isLastAssistant
+                          ? "thinking"
+                          : "idle"
                   }
-                  title={`${assistantLabel} is working`}
+                  title={resolvedWaiting}
                 />
               )}
 
@@ -298,6 +327,9 @@ export function ChatTranscript({
                             <ToolChip key={invocation.toolCallId} invocation={invocation} />
                           ))}
                         </div>
+                      ) : null}
+                      {showInlineStatus ? (
+                        <p className={cn("not-prose", CHAT_WAITING_CLASS)}>{resolvedWaiting}</p>
                       ) : null}
                       {displayText.trim() ? (
                         <ReactMarkdown
@@ -417,14 +449,8 @@ export function ChatTranscript({
           )
         })}
 
-        {showWaiting ? (
+        {showAgentWorking && !visible.some(({ message }) => message.id === lastMessage?.id && message.role === "assistant" && isStreaming) ? (
           <div className="flex gap-2.5">
-            {/* The avatar carries the thinking state itself now (breathing mark +
-                expanding ring inside the circle). The previous gooey
-                GravitreThinkingLoader sat bare on the canvas, so against the new
-                filled circle the avatar would have appeared to morph into a
-                different shape mid-thread. That loader is untouched and still
-                used for route transitions. */}
             <GravitreChatAvatar state="thinking" title={resolvedWaiting} />
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>

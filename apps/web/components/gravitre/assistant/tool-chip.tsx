@@ -130,19 +130,39 @@ function getToolOutcome(toolName: string, result: unknown): ToolOutcome {
 
 function errorCodeLabel(result: unknown): string | null {
   const data = asRecord(result)
-  const code = data?.errorCode
+  const code = data?.errorCode ?? data?.error_code
   return typeof code === "string" && code.trim() ? code.trim() : null
+}
+
+export function isInternalToolGateResult(result: unknown): boolean {
+  const data = asRecord(result)
+  if (!data) return false
+  const code = String(data.errorCode ?? data.error_code ?? "").trim().toLowerCase()
+  if (code === "write_approval_required") return true
+  if (Boolean(data.pending_approval)) return true
+  const err = String(data.error ?? "").trim().toLowerCase()
+  return err.includes("write actions require explicit user approval")
+}
+
+function friendlyToolErrorLabel(toolName: string, result: unknown): string {
+  const code = (errorCodeLabel(result) || "").toLowerCase()
+  if (code === "write_approval_required") return "Awaiting your approval"
+  if (code === "validation_error") return "Needs a few more details"
+  if (code === "capability_ambiguous") return "Need you to pick a system"
+  switch (toolName) {
+    case "searchWeb":
+      return "Web search unavailable"
+    case "searchKnowledgeBase":
+      return "Knowledge search unavailable"
+    default:
+      return "That step did not complete"
+  }
 }
 
 function getToolLabel(name: string, result: unknown, outcome: ToolOutcome) {
   if (outcome === "error") {
-    const code = errorCodeLabel(result)
-    switch (name) {
-      case "searchWeb": return code ? `Web search failed (${code})` : "Web search unavailable"
-      case "searchKnowledgeBase":
-        return code ? `Knowledge search failed (${code})` : "Knowledge search failed"
-      default: return code ? `Tool failed (${code})` : "Tool failed"
-    }
+    if (isInternalToolGateResult(result)) return "Preparing approval"
+    return friendlyToolErrorLabel(name, result)
   }
   if (outcome === "warning") {
     switch (name) {
@@ -186,9 +206,11 @@ function renderToolDetails(toolName: string, result: unknown) {
   const error = typeof data.error === "string" ? data.error.trim() : ""
   const errorCode = typeof data.errorCode === "string" ? data.errorCode.trim() : ""
   if (error || errorCode) {
+    if (isInternalToolGateResult(data)) {
+      return <p className="text-muted-foreground">Waiting for your approval before running this.</p>
+    }
     return (
       <div className="space-y-1 text-red-300">
-        {errorCode ? <p className="font-mono text-[11px] text-red-400/90">{errorCode}</p> : null}
         {error ? <p>{error}</p> : null}
       </div>
     )
@@ -359,6 +381,9 @@ export function ToolChip({
   const expanded = expandedProp ?? internalExpanded
   const onToggle = onToggleProp ?? (() => setInternalExpanded((value) => !value))
   const isComplete = invocation.state === "result"
+  if (isComplete && isInternalToolGateResult(invocation.result)) {
+    return null
+  }
   const outcome = isComplete ? getToolOutcome(invocation.toolName, invocation.result) : "success"
   const Icon = toolIcons[invocation.toolName] || Database
   const duration = invocation.durationMs != null ? ` (${(invocation.durationMs / 1000).toFixed(1)}s)` : ""

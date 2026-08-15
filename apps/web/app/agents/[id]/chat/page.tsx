@@ -39,6 +39,7 @@ import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
 import { uiMessageText } from "@/lib/chat-messages"
+import { deriveAgentStatusLabel } from "@/lib/chat-agent-status"
 
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
 const AGENT_CHAT_HEADER_COLLAPSED_KEY = "gravitre:agent-chat-header-collapsed"
@@ -337,6 +338,35 @@ export default function AgentChatPage({
       : undefined
   const hasSentMessage = messages.some((m) => m.role === "user")
 
+  const activeToolName = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((row) => row.role === "assistant")
+    if (!lastAssistant?.parts) return null
+    for (const part of lastAssistant.parts) {
+      const row = part as { type?: string; toolName?: string; state?: string }
+      if (!row.type?.startsWith("tool-") && row.type !== "dynamic-tool") continue
+      if (row.state === "output-available") continue
+      return row.toolName || row.type?.replace(/^tool-/, "") || null
+    }
+    return null
+  }, [messages])
+
+  const agentStatusLabel = useMemo(
+    () =>
+      deriveAgentStatusLabel({
+        assistantLabel: agent?.name || "Gravitre",
+        activeToolName,
+        isStreaming,
+        isBusy: isLoading,
+      }),
+    [agent?.name, activeToolName, isStreaming, isLoading],
+  )
+
+  const lastMessage = messages[messages.length - 1]
+  const lastAssistantEmpty =
+    lastMessage?.role === "assistant" && !uiMessageText(lastMessage).trim()
+  const showWaitingForReply =
+    isLoading && messages.length > 0 && (lastMessage?.role === "user" || lastAssistantEmpty)
+
   useEffect(() => {
     if (messages.length > 0) {
       try {
@@ -538,7 +568,9 @@ export default function AgentChatPage({
             <>
               <ChatTranscript
                 messages={messages}
-                showWaiting={isLoading && !isStreaming}
+                showWaiting={showWaitingForReply}
+                isStreaming={isLoading}
+                agentStatusLabel={agentStatusLabel}
                 assistantLabel={agent.name}
                 waitingLabel={`${agent.name} is thinking…`}
                 onRegenerate={handleRegenerate}
