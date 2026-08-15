@@ -1067,7 +1067,11 @@ async def create_portal(
     if not customer_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stripe customer not found")
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
-    portal = create_customer_portal(settings=settings, customer_id=customer_id, return_url=f"{app_url}/billing")
+    portal = create_customer_portal(
+        settings=settings,
+        customer_id=customer_id,
+        return_url=f"{app_url}/settings/billing",
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -1132,10 +1136,14 @@ async def cancel_subscription(
         except stripe.error.StripeError as exc:
             _raise_stripe_http_error(exc)
 
-    org_update: dict = {"cancel_at_period_end": body.at_period_end, "updated_at": now}
+    org_update: dict = {
+        "org_id": org_id,
+        "cancel_at_period_end": body.at_period_end,
+        "updated_at": now,
+    }
     if not body.at_period_end:
         org_update["billing_status"] = "cancelled"
-    client.table("org_billing").update(org_update).eq("org_id", org_id).execute()
+    client.table("org_billing").upsert(org_update, on_conflict="org_id").execute()
 
     sub_status = "active" if body.at_period_end else "canceled"
     sub_resp2 = (
@@ -1190,13 +1198,15 @@ async def reactivate_subscription(
         except stripe.error.StripeError as exc:
             _raise_stripe_http_error(exc)
 
-    client.table("org_billing").update(
+    client.table("org_billing").upsert(
         {
+            "org_id": org_id,
             "cancel_at_period_end": False,
             "billing_status": "active",
             "updated_at": now,
-        }
-    ).eq("org_id", org_id).execute()
+        },
+        on_conflict="org_id",
+    ).execute()
 
     sub_resp2 = (
         client.table("subscriptions")
