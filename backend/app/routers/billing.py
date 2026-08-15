@@ -6,6 +6,7 @@ from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from postgrest.exceptions import APIError
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 
@@ -506,6 +507,18 @@ def _supabase_response_error(response: object) -> str | None:
     return None
 
 
+def _execute_billing_query(query: object, *, action: str):
+    """Run PostgREST query; supabase-py v2 raises APIError instead of response.error."""
+    try:
+        return query.execute()
+    except APIError as exc:
+        logger.error("billing supabase %s failed err=%s", action, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(str(exc), "DATABASE_ERROR"),
+        ) from exc
+
+
 def _stripe_cancel_is_soft_fail(exc: Exception) -> bool:
     msg = (getattr(exc, "user_message", None) or str(exc) or "").lower()
     return any(
@@ -547,12 +560,13 @@ def _persist_subscription_status(
     if period_end:
         payload["current_period_end"] = period_end
 
-    response = (
-        client.table("subscriptions")
-        .upsert(payload, on_conflict="org_id")
-        .select("*")
-        .limit(1)
-        .execute()
+    _execute_billing_query(
+        client.table("subscriptions").upsert(payload, on_conflict="org_id"),
+        action="subscriptions.upsert",
+    )
+    response = _execute_billing_query(
+        client.table("subscriptions").select("*").eq("org_id", org_id).limit(1),
+        action="subscriptions.select",
     )
     err = _supabase_response_error(response)
     if err:
@@ -1248,7 +1262,10 @@ async def cancel_subscription(
     }
     if not body.at_period_end:
         org_update["billing_status"] = "cancelled"
-    upsert_resp = client.table("org_billing").upsert(org_update, on_conflict="org_id").execute()
+    upsert_resp = _execute_billing_query(
+        client.table("org_billing").upsert(org_update, on_conflict="org_id"),
+        action="org_billing.upsert_cancel",
+    )
     upsert_err = _supabase_response_error(upsert_resp)
     if upsert_err:
         raise HTTPException(
@@ -1328,15 +1345,18 @@ async def reactivate_subscription(
                 detail=error_detail("Stripe reactivate failed", "STRIPE_ERROR"),
             ) from exc
 
-    reactivate_resp = client.table("org_billing").upsert(
-        {
-            "org_id": org_id,
-            "cancel_at_period_end": False,
-            "billing_status": "active",
-            "updated_at": now,
-        },
-        on_conflict="org_id",
-    ).execute()
+    reactivate_resp = _execute_billing_query(
+        client.table("org_billing").upsert(
+            {
+                "org_id": org_id,
+                "cancel_at_period_end": False,
+                "billing_status": "active",
+                "updated_at": now,
+            },
+            on_conflict="org_id",
+        ),
+        action="org_billing.upsert_reactivate",
+    )
     reactivate_err = _supabase_response_error(reactivate_resp)
     if reactivate_err:
         raise HTTPException(
