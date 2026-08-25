@@ -1,6 +1,6 @@
 # Phase 3 — Capability recipes / dependency graph reconciliation (2026-08-13)
 
-**Status:** CODE shipped — extends Phase 1 capability ontology; **LIVE PENDING** recipe resolve API on deployed tip.
+**Status:** CODE shipped + Phase 3.1 Meson/dependency hints @ `da88fa08`; **LIVE PENDING** until push + Supabase egress restored.
 
 ## Phase 0 finding (Recipes / Dependency Graph overlap)
 
@@ -32,15 +32,23 @@ Same recipe id resolves differently when connected stack is HubSpot+Slack+Drive 
 
 ## Not in this pass (explicit backlog)
 
-- Meson `generate_workflow` prompt rewrite to prefer capability recipes (Phase 3.1)
-- DependencyImpactService edges for capability recipe steps
-- Phase 4 conversational grace tests (separate gate per original proposal)
-- Phase 2 connector live invoke evidence (`verify-phase2-connectors-live.py` — deferred per user)
+- ~~Meson `generate_workflow` prompt rewrite to prefer capability recipes (Phase 3.1)~~ **DONE** — `meson_recipe_hints.py` + `goal_service._analyze_goal` prompt section @ `da88fa08`
+- ~~DependencyImpactService edges for capability recipe steps~~ **DONE** — `capabilityRecipesAffected` on connector removal @ `da88fa08`
+- Phase 4 conversational grace — **CODE DONE** @ `da88fa08`; live via `verify-capability-conversational-grace-live.py` (**LIVE PENDING** deploy + Supabase)
+- Phase 2 connector live invoke — `verify-phase2-connectors-live.py` (**LIVE PENDING** deploy + Supabase)
 
-## Verification (when run)
+## Verification
 
 ```bash
-cd backend && python -m pytest tests/capability_ontology/test_capability_recipes.py -q
+cd backend && python -m pytest tests/capability_ontology/ tests/test_capability_ops_smokes.py tests/test_phase2_connector_smoke.py -q
+node scripts/cognitive-regression-suite.mjs   # One Brain non-regression
 ```
 
-Live (after deploy): authenticated `GET /api/connectors/catalog/capability-recipes` and `POST .../sales.new-lead-enrichment/resolve` with org that has HubSpot + Slack connected — expect `status: fully_resolved` with concrete actions in response.
+Live (after deploy + Supabase restored):
+
+```bash
+python scripts/verify-phase2-connectors-live.py
+python scripts/verify-capability-recipes-live.py
+python scripts/verify-capability-conversational-grace-live.py
+python scripts/verify-pre-action-card-live.py
+```
