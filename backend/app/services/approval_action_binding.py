@@ -82,6 +82,8 @@ def binding_fields(binding: ApprovalActionBinding) -> dict[str, str]:
 
 def bind_plan_dict(plan_dict: dict[str, Any]) -> dict[str, Any]:
     """Attach stable approval identity fields to a pending-task params dict."""
+    from app.core.safe_dict import safe_normalize_stored_dict
+
     plan = ConnectorActionPlan(
         tool_name=str(plan_dict.get("tool_name") or ""),
         invoke_action=str(plan_dict.get("invoke_action") or ""),
@@ -93,7 +95,7 @@ def bind_plan_dict(plan_dict: dict[str, Any]) -> dict[str, Any]:
         approval_reason=plan_dict.get("approval_reason"),
         destructive=bool(plan_dict.get("destructive")),
         inferred_fields=tuple(str(item) for item in (plan_dict.get("inferred_fields") or [])),
-        inference_sources=dict(plan_dict.get("inference_sources") or {}),
+        inference_sources=safe_normalize_stored_dict(plan_dict, key="inference_sources"),
     )
     binding = build_binding_from_plan(plan)
     return {**plan_dict, **binding_fields(binding)}

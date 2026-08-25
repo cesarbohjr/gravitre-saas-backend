@@ -747,10 +747,11 @@ async def materialize_react_write_approval_turn(
         client=client,
     )
     refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+    grace_prefix = str(pending_result.get("user_message") or "").strip() or None
     return {
         "stop_pipeline": True,
         "dialogue_mode": "confirm",
-        "message": format_write_approval_message(plan),
+        "message": format_write_approval_message(plan, grace_prefix=grace_prefix),
         "task_state": refreshed,
         "pending_task": refreshed.get("pending_task"),
     }

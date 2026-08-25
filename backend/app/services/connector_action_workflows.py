@@ -97,7 +97,11 @@ def missing_params_stage_patch(
     return clarification, patch
 
 
-def format_write_approval_message(plan: ConnectorActionPlan) -> str:
+def format_write_approval_message(
+    plan: ConnectorActionPlan,
+    *,
+    grace_prefix: str | None = None,
+) -> str:
     """Chat-native approval prompt — copy owned by Module D gravitre_voice."""
     from app.services.gravitre_voice import format_operator_message
 
@@ -106,7 +110,7 @@ def format_write_approval_message(plan: ConnectorActionPlan) -> str:
     label = (plan.label or plan.invoke_action or "this action").strip()
     details = _approval_details(plan)
     list_name = str((plan.args or {}).get("name") or details.get("Name") or "").strip()
-    return format_operator_message(
+    base = format_operator_message(
         "write_approval",
         vendor=vendor,
         label=label,
@@ -114,6 +118,10 @@ def format_write_approval_message(plan: ConnectorActionPlan) -> str:
         list_name=list_name,
         invoke_action=plan.invoke_action or "",
     )
+    grace = str(grace_prefix or "").strip()
+    if grace:
+        return f"{grace}\n\n{base}"
+    return base
 
 
 def _arg_present(args: dict[str, Any], key: str) -> bool:

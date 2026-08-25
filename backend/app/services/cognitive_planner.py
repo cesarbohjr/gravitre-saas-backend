@@ -22,6 +22,9 @@ class CognitivePlanner:
         task_state: dict[str, Any] | None,
         memory_pack: dict[str, Any] | None,
         knowledge_pack: dict[str, Any] | None,
+        *,
+        connected_integrations: list[str] | None = None,
+        department: str | None = None,
     ) -> dict[str, Any]:
         state = task_state if isinstance(task_state, dict) else {}
         existing = state.get("current_plan")
@@ -67,11 +70,19 @@ class CognitivePlanner:
                 }
             )
 
-        return {
+        plan = {
             "steps": steps,
             "summary": summary,
             "source": "cognitive_planner",
         }
+        from app.capability_ontology.cognitive_recipe_planner import enrich_plan_with_recipe
+
+        return enrich_plan_with_recipe(
+            plan,
+            query=text,
+            connected_integrations=connected_integrations,
+            department=department,
+        )
 
 
 def _pack_hit_count(pack: dict[str, Any] | None) -> int:

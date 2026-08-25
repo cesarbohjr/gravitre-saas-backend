@@ -35,6 +35,8 @@ Same recipe id resolves differently when connected stack is HubSpot+Slack+Drive 
 - ~~Meson `generate_workflow` prompt rewrite to prefer capability recipes (Phase 3.1)~~ **DONE** — `meson_recipe_hints.py` + `goal_service._analyze_goal` prompt section @ `da88fa08`
 - ~~DependencyImpactService edges for capability recipe steps~~ **DONE** — `capabilityRecipesAffected` on connector removal @ `da88fa08`
 - Phase 4 conversational grace — **CODE DONE** @ `da88fa08`; live via `verify-capability-conversational-grace-live.py` (**LIVE PENDING** deploy + Supabase)
+- Phase 4 chat multi-turn grace — **CODE DONE**; `verify-capability-conversational-grace-chat-live.py` (**LIVE PENDING**)
+- CognitivePlanner recipe wiring — **CODE DONE**; `cognitive_recipe_planner.py` enriches PLAN stage (**LIVE PENDING** kernel trace)
 - Phase 2 connector live invoke — `verify-phase2-connectors-live.py` (**LIVE PENDING** deploy + Supabase)
 
 ## Verification
@@ -50,5 +52,6 @@ Live (after deploy + Supabase restored):
 python scripts/verify-phase2-connectors-live.py
 python scripts/verify-capability-recipes-live.py
 python scripts/verify-capability-conversational-grace-live.py
+python scripts/verify-capability-conversational-grace-chat-live.py
 python scripts/verify-pre-action-card-live.py
 ```

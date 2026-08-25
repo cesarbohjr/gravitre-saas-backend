@@ -158,6 +158,21 @@ def test_apollo_list_approval_message_is_conversational():
     assert "yes" in message.lower()
 
 
+def test_write_approval_message_prepends_grace_prefix():
+    plan = ConnectorActionPlan(
+        tool_name="capability__crm__contact__create",
+        invoke_action="hubspot.contacts.create",
+        integration="hubspot",
+        kind="write",
+        label="Create HubSpot contact",
+        args={"email": "test@example.com"},
+    )
+    grace = "I'll create that in your HubSpot (Create HubSpot contact)."
+    message = format_write_approval_message(plan, grace_prefix=grace)
+    assert message.startswith(grace)
+    assert "capability__" not in message.lower()
+
+
 def test_capability_fallback_for_apollo_list_when_create_unavailable():
     available = [
         "people.search — Search people",

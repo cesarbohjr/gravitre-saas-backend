@@ -1252,8 +1252,10 @@ async def capability_conversational_grace_smoke(
         "result": blocked,
     }
     plan = plan_from_react_write(pending, reg)
-    approval_message = format_write_approval_message(plan) if plan else ""
     user_message = str(blocked.get("user_message") or "")
+    approval_message = (
+        format_write_approval_message(plan, grace_prefix=user_message or None) if plan else ""
+    )
 
     checks = {
         "write_gate_parity": blocked.get("error_code") == WRITE_APPROVAL_REQUIRED
@@ -1264,6 +1266,7 @@ async def capability_conversational_grace_smoke(
         and message_mentions_vendor(user_message, "hubspot"),
         "approval_message_graceful": message_is_graceful(approval_message)
         and message_mentions_vendor(approval_message, "hubspot"),
+        "approval_includes_grace_prefix": bool(user_message) and approval_message.startswith(user_message),
         "no_capability_tool_leak": "capability__" not in approval_message.lower(),
     }
     overall = all(checks.values())

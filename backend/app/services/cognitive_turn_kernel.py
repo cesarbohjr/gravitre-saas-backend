@@ -247,11 +247,32 @@ class CognitiveTurnKernel:
         try:
             from app.services.cognitive_planner import CognitivePlanner
 
+            connected_integrations: list[str] = []
+            department: str | None = None
+            if client is not None:
+                try:
+                    from app.services.tool_registry import get_tool_registry
+
+                    reg = get_tool_registry()
+                    connected_integrations = reg.list_connected_integrations(
+                        client,
+                        request.org_id,
+                        environment_name=request.environment_name,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("cognitive_plan_connected_integrations_skipped error=%s", exc)
+                agent_row = request.agent if isinstance(request.agent, dict) else {}
+                dept_name = str(agent_row.get("department") or "").strip().lower()
+                if dept_name:
+                    department = dept_name
+
             plan = CognitivePlanner().plan(
                 request.message or "",
                 request.task_state,
                 ctx.memory_pack,
                 ctx.knowledge_pack,
+                connected_integrations=connected_integrations or None,
+                department=department,
             )
             if bias.get("bias_notes"):
                 plan = dict(plan)
