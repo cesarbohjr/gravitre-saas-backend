@@ -173,6 +173,10 @@ def assert_plan_matches_binding(
                 },
             )
 
+    # Legacy pending_task rows without binding fields trust staged invoke_action as-is.
+    if binding is None:
+        return
+
     if registry is None:
         return
 

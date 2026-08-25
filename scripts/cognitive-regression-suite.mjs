@@ -43,7 +43,7 @@ function mustContain(rel, needle, label = needle) {
 // --- 1) Key files exist ---
 mustExist("backend/app/services/cognitive_turn_kernel.py")
 mustExist("backend/app/services/cognitive_planner.py")
-mustExist("supabase/migrations/20260813120000_cognitive_turn_kernel.sql")
+mustExist("supabase/migrations/20260813092023_cognitive_turn_kernel.sql")
 
 // --- 2) agent_intelligence: run_pre_act present; kernel before apply_unified_turn_live in streaming ---
 {
@@ -101,13 +101,13 @@ mustContain(
 // --- 6) Phase D structural wiring ---
 mustExist("backend/app/services/cognitive_evidence_envelope.py")
 mustExist("backend/app/knowledge_fabric/temporal.py")
-mustExistAny(
-  [
-    "supabase/migrations/20260813140000_cognitive_phase_d_aliases.sql",
-    "supabase/migrations/20260813140000_org_entity_relationships_archived_at.sql",
-  ],
-  "phase-d migration",
-)
+  mustExistAny(
+    [
+      "supabase/migrations/20260813150000_cognitive_phase_d_aliases.sql",
+      "supabase/migrations/20260813093326_org_entity_relationships_archived_at.sql",
+    ],
+    "phase-d migration",
+  )
 mustContain(
   "backend/app/services/cognitive_turn_kernel.py",
   "confidence_summary",

@@ -198,14 +198,14 @@ def recall_workspace(
             continue
         content = str(row.get("content") or "")
         content_l = content.lower()
-        score = 0.35
+        score = 0.35  # confidence-honesty-ok: internal relevance rank, not user-facing confidence
         if needle:
             if needle in content_l:
-                score = 0.92
+                score = 0.92  # confidence-honesty-ok
             elif any(tok and tok in content_l for tok in needle.split() if len(tok) > 2):
-                score = 0.62
+                score = 0.62  # confidence-honesty-ok
             else:
-                score = 0.25
+                score = 0.25  # confidence-honesty-ok
         # Slight preference for workspace (null agent) and matching agent.
         row_agent = row.get("agent_id")
         if row_agent is None:

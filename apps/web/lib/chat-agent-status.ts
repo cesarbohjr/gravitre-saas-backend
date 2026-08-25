@@ -6,6 +6,7 @@
 import {
   deriveNamedProgressSteps,
   type NamedProgressStep,
+  type PendingTaskLike,
 } from "@/lib/chat-progress-steps"
 import { mapToolNameToModeLabel } from "@/components/gravitre/assistant/dialogue-mode-chip"
 
@@ -98,7 +99,7 @@ export type AgentStatusInput = {
   activeToolName?: string | null
   isStreaming?: boolean
   isBusy?: boolean
-  pendingTask?: { type?: string; status?: string } | null
+  pendingTask?: PendingTaskLike
 }
 
 export function deriveAgentStatusLabel(input: AgentStatusInput): string {

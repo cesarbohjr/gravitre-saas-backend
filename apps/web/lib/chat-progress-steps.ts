@@ -21,12 +21,19 @@ export type NamedProgressStep = {
   status: ProgressStepStatus
 }
 
-type PendingLike = {
-  params?: {
-    steps?: unknown[] | null
-    current_step_index?: unknown
-  } | null
-} | null | undefined
+export type PendingTaskLike =
+  | {
+      params?: {
+        steps?: unknown[] | null
+        current_step_index?: unknown
+      } | null
+      type?: string
+      status?: string
+    }
+  | null
+  | undefined
+
+type PendingLike = PendingTaskLike
 
 /** Matches the status-prefixed strings the backend emits over SSE. */
 export const ACTION_STEP_PATTERN = /^(Running:|Completed:|Step \d+\/\d+:)/i
