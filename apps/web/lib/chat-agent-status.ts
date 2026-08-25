@@ -8,7 +8,7 @@ import {
   type NamedProgressStep,
   type PendingTaskLike,
 } from "@/lib/chat-progress-steps"
-import { mapToolNameToModeLabel } from "@/components/gravitre/assistant/dialogue-mode-chip"
+import { mapToolNameToModeLabel } from "@/lib/dialogue-mode-labels"
 
 const INTERNAL_ANSWER_PATTERN =
   /^(routing classified|reAct write gated|orphan_plan|governed connector|unified turn|tier_|engine_)/i

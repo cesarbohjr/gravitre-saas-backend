@@ -219,6 +219,9 @@ export function ChatTranscript({
         {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
           const isUser = message.role === "user"
           const text = uiMessageText(message)
+          const isLastAssistant = message.id === lastAssistantId
+          const isStreamingAssistant =
+            isStreaming && isLastAssistant && message.role === "assistant"
           const toolInvocations = !isUser
             ? extractToolInvocations(message).filter((inv) => {
                 if (inv.state === "result" && isInternalToolGateResult(inv.result)) return false
@@ -227,9 +230,6 @@ export function ChatTranscript({
               })
             : []
           const displayText = isUser ? text : polishAssistantText(text)
-          const isLastAssistant = message.id === lastAssistantId
-          const isStreamingAssistant =
-            isStreaming && isLastAssistant && message.role === "assistant"
           const showInlineStatus =
             isStreamingAssistant && !displayText.trim() && toolInvocations.length === 0
           const createdAt = messageCreatedAt(message)
