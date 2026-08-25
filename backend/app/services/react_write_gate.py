@@ -111,6 +111,8 @@ def tool_requires_user_write_approval(
     from app.services.tool_service import list_registered_actions
 
     if is_capability_tool_name(name):
+        from app.capability_ontology.conversational_grace import resolved_capability_label
+
         resolution = resolve_capability_tool_execution(
             name,
             connected_integrations=connected_integrations,
@@ -119,7 +121,11 @@ def tool_requires_user_write_approval(
             args=args,
         )
         definition = get_capability(resolution.capability_id)
-        label = definition.label if definition else name.replace("_", " ")
+        label = (
+            resolved_capability_label(definition, resolution)
+            if definition
+            else name.replace("_", " ")
+        )
         if resolution.ok and resolution.resolved_action:
             invoke_action = resolution.resolved_action
             requires = invoke_action_requires_write_approval(invoke_action)
@@ -262,6 +268,32 @@ def block_react_write_execution(
     # chat confirmation uses pending_task, not a model-supplied approval_id.
     raw_args.pop("approval_id", None)
     raw_args.pop("approvalId", None)
+    user_message: str | None = None
+    from app.capability_ontology.tool_bridge import is_capability_tool_name, resolve_capability_tool_execution
+
+    if is_capability_tool_name(tool_name):
+        from app.capability_ontology.conversational_grace import (
+            format_capability_resolved_user_message,
+        )
+        from app.capability_ontology.registry import get_capability
+
+        connected_for_cap: list[str] = []
+        if client is not None and org_id and registry is not None:
+            try:
+                connected_for_cap = registry.list_connected_integrations(client, org_id)
+            except Exception:  # noqa: BLE001
+                connected_for_cap = []
+        cap_resolution = resolve_capability_tool_execution(
+            tool_name,
+            connected_integrations=connected_for_cap or None,
+            args=raw_args,
+        )
+        cap_definition = get_capability(cap_resolution.capability_id)
+        user_message = format_capability_resolved_user_message(
+            definition=cap_definition,
+            resolution=cap_resolution,
+            action_verb="create that after you confirm",
+        )
     return {
         "success": False,
         "tool": tool_name,
@@ -274,6 +306,7 @@ def block_react_write_execution(
             "Write actions require explicit user approval before execution. "
             "Do not retry this tool; the user will confirm or edit the plan."
         ),
+        "user_message": user_message,
         "args": raw_args,
     }
 

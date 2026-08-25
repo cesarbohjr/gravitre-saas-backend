@@ -1127,3 +1127,245 @@ async def cognitive_one_brain_smoke(
             else f"PARTIAL — failed checks: {[k for k, v in checks.items() if not v]}"
         ),
     }
+
+
+class CapabilityRecipesSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+    recipe_id: str = "sales.new-lead-enrichment"
+
+
+@router.post("/capability-recipes-smoke")
+async def capability_recipes_smoke(
+    body: CapabilityRecipesSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Deployed-tip proof: Phase 3 capability recipe list + org-connected resolve."""
+    import os
+
+    from app.capability_ontology.recipe_resolver import resolve_recipe
+    from app.capability_ontology.recipes import list_recipes
+    from app.services.tool_registry import get_tool_registry
+
+    org_id = str(body.org_id or "").strip()
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    env_name = str(body.environment_name or "production").strip() or "production"
+    connected = reg.list_connected_integrations(client, org_id, environment_name=env_name)
+
+    catalog = [recipe.to_dict() for recipe in list_recipes()]
+    resolved = resolve_recipe(
+        body.recipe_id,
+        connected_integrations=connected,
+        query="new lead enrichment",
+    ).to_dict()
+
+    list_ok = len(catalog) >= 3
+    resolve_ok = resolved.get("status") in {"fully_resolved", "partially_resolved", "ambiguous"}
+    fully = resolved.get("status") == "fully_resolved"
+    overall = list_ok and resolve_ok
+
+    return {
+        "pass": overall,
+        "verdict": "PASS" if fully else ("PARTIAL" if overall else "FAIL"),
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "connected_integrations": connected,
+        "recipe_count": len(catalog),
+        "recipes": catalog,
+        "resolved": resolved,
+        "claim": (
+            f"PASS — capability recipes list={len(catalog)} resolve={resolved.get('status')}"
+            if fully
+            else (
+                f"PARTIAL — recipes list OK; resolve={resolved.get('status')} (connected={connected})"
+                if overall
+                else "FAIL — capability recipes smoke"
+            )
+        ),
+    }
+
+
+class CapabilityConversationalGraceSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+
+
+@router.post("/capability-conversational-grace-smoke")
+async def capability_conversational_grace_smoke(
+    body: CapabilityConversationalGraceSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Phase 4: capability-resolved writes use vendor-natural labels and approval copy."""
+    import os
+    import uuid
+
+    from app.capability_ontology.conversational_grace import (
+        message_is_graceful,
+        message_mentions_vendor,
+    )
+    from app.capability_ontology.tool_bridge import capability_tool_name
+    from app.operators.react_engine import ReActEngine
+    from app.services.connector_action_workflows import format_write_approval_message
+    from app.services.react_write_gate import (
+        WRITE_APPROVAL_REQUIRED,
+        plan_from_react_write,
+    )
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    env_name = str(body.environment_name or "production").strip() or "production"
+    ctx = ToolContext(
+        settings=settings,
+        client=client,
+        org_id=org_id,
+        actor_id=actor_id,
+        agent_id="synthetic-default",
+        environment_name=env_name,
+    )
+    cap_tool = capability_tool_name("crm.contact.create")
+    args = {"email": f"cap-grace-{uuid.uuid4().hex[:8]}@example.com", "preferred_vendor": "hubspot"}
+
+    blocked = await ReActEngine(settings=settings, registry=reg)._execute_tool_call(
+        ctx,
+        cap_tool,
+        args,
+        allowed_tool_names={cap_tool},
+    )
+    pending = {
+        "tool": cap_tool,
+        "args": args,
+        "result": blocked,
+    }
+    plan = plan_from_react_write(pending, reg)
+    approval_message = format_write_approval_message(plan) if plan else ""
+    user_message = str(blocked.get("user_message") or "")
+
+    checks = {
+        "write_gate_parity": blocked.get("error_code") == WRITE_APPROVAL_REQUIRED
+        and blocked.get("action") == "hubspot.contacts.create",
+        "integration_is_vendor": str(blocked.get("integration") or "").lower() == "hubspot",
+        "label_vendor_natural": "hubspot" in str(blocked.get("label") or "").lower(),
+        "user_message_graceful": message_is_graceful(user_message)
+        and message_mentions_vendor(user_message, "hubspot"),
+        "approval_message_graceful": message_is_graceful(approval_message)
+        and message_mentions_vendor(approval_message, "hubspot"),
+        "no_capability_tool_leak": "capability__" not in approval_message.lower(),
+    }
+    overall = all(checks.values())
+
+    return {
+        "pass": overall,
+        "verdict": "PASS" if overall else "FAIL",
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "actor_id": actor_id,
+        "blocked": blocked,
+        "approval_message": approval_message,
+        "checks": checks,
+        "claim": (
+            "PASS — capability-resolved HubSpot write uses graceful vendor copy"
+            if overall
+            else f"FAIL — grace checks failed: {[k for k, v in checks.items() if not v]}"
+        ),
+    }
+
+
+class PreActionCardSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+
+
+@router.post("/pre-action-card-smoke")
+async def pre_action_card_smoke(
+    body: PreActionCardSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """One Brain #26: pre-action card fields on capability-resolved write plan."""
+    import os
+    import uuid
+
+    from app.capability_ontology.tool_bridge import capability_tool_name
+    from app.operators.react_engine import ReActEngine
+    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    from app.services.react_write_gate import plan_from_react_write
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    env_name = str(body.environment_name or "production").strip() or "production"
+    ctx = ToolContext(
+        settings=settings,
+        client=client,
+        org_id=org_id,
+        actor_id=actor_id,
+        agent_id="synthetic-default",
+        environment_name=env_name,
+    )
+    cap_tool = capability_tool_name("crm.contact.create")
+    args = {"email": f"pre-action-{uuid.uuid4().hex[:8]}@example.com", "preferred_vendor": "hubspot"}
+    blocked = await ReActEngine(settings=settings, registry=reg)._execute_tool_call(
+        ctx,
+        cap_tool,
+        args,
+        allowed_tool_names={cap_tool},
+    )
+    pending = {"tool": cap_tool, "args": args, "result": blocked}
+    plan = plan_from_react_write(pending, reg)
+    if plan is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="plan_missing")
+
+    chat_svc = ChatConnectorExecutionService(settings=settings)
+    risk = await chat_svc._evaluate_risk(org_id, actor_id, plan, classification={})
+    pending_params = {
+        **ChatConnectorExecutionService.plan_to_dict(plan),
+        "estimated_impact": risk.get("estimated_impact"),
+        "risk_level": risk.get("risk_level"),
+        "approval_reason": risk.get("approval_reason"),
+    }
+
+    checks = {
+        "risk_level_present": bool(pending_params.get("risk_level")),
+        "estimated_impact_present": bool(pending_params.get("estimated_impact")),
+        "integration_hubspot": str(plan.integration or "").lower() == "hubspot",
+        "bound_invoke_action": pending_params.get("bound_invoke_action") == "hubspot.contacts.create",
+    }
+    overall = all(checks.values())
+
+    return {
+        "pass": overall,
+        "verdict": "PASS" if overall else "FAIL",
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "actor_id": actor_id,
+        "pending_params": pending_params,
+        "risk": risk,
+        "checks": checks,
+        "claim": (
+            "PASS — pre-action card fields stamped on capability-resolved HubSpot write"
+            if overall
+            else f"FAIL — pre-action checks: {[k for k, v in checks.items() if not v]}"
+        ),
+    }

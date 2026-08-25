@@ -88,6 +88,13 @@ class GoalService:
         org_context: str | None,
         org_id: str | None,
     ) -> GoalAnalysis:
+        from app.capability_ontology.meson_recipe_hints import format_recipe_prompt_section
+
+        recipe_section = format_recipe_prompt_section(
+            department=department,
+            connected_integrations=connectors,
+            query=goal,
+        )
         prompt = (
             "Analyze this business goal for workflow generation.\n"
             f"Goal: {goal}\n"
@@ -95,6 +102,10 @@ class GoalService:
             f"Available connectors: {connectors or []}\n"
             f"Success metric: {success_metric or 'none'}\n"
             f"Context: {org_context or 'none'}\n"
+        )
+        if recipe_section:
+            prompt += f"\n{recipe_section}\n"
+        prompt += (
             "Return ONLY strict JSON matching this schema (no markdown, no prose):\n"
             '{"intent": "<concise restatement of the goal>", '
             '"department": "<owning department, e.g. sales, marketing, operations, finance, support>", '

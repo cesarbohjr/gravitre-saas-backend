@@ -66,12 +66,21 @@ class DependencyImpactService:
 
         declared = await self._find_direct_dependents(org_id, normalized_type, entity_id)
         observed: list[dict[str, Any]] = []
+        capability_recipes: list[dict[str, Any]] = []
         if normalized_type == ENTITY_CONNECTOR:
             observed = await self._find_dynamic_connector_usage(
                 org_id,
                 entity_id,
                 lookback_days=lookback_days,
             )
+            try:
+                from app.capability_ontology.meson_recipe_hints import (
+                    recipes_affected_by_connector_removal,
+                )
+
+                capability_recipes = recipes_affected_by_connector_removal(entity_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("capability_recipe_impact_skipped error=%s", exc)
         indirect = await self._find_one_hop_further(org_id, declared)
         declared = await self._attach_next_run_times(org_id, declared)
         observed = await self._attach_next_run_times(org_id, observed)
@@ -83,6 +92,7 @@ class DependencyImpactService:
                 "observedInExecutionHistory": observed,
             },
             "indirectImpactOneHop": indirect,
+            "capabilityRecipesAffected": capability_recipes,
             "scopeNote": build_scope_note(lookback_days),
             "lookbackDays": lookback_days,
         }
