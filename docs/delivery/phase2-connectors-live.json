@@ -1,0 +1,19 @@
+{
+  "recorded_at": "2026-08-25T18:25:28.345764+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": null,
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "mode": "missing_actor_id",
+  "deploy_sha": "4ed150ccb74e835b45d7940300a6ea124db29201",
+  "local_git_sha": "da88fa086b64f33425e93ae86585b20be8de6b0a",
+  "deploy_sha_match": false,
+  "probe_error": null,
+  "probe": null,
+  "audit_tool_invoke_completed_since_probe": [
+    {
+      "error": "APIError:{'message': 'JSON could not be generated', 'code': 402, 'hint': 'Refer to full message for details', 'details': 'b\\'{\"message\":\"Service for this project is restricted due to the following violations: exceed_egress_quota. The project owner must upgrade their plan or remove spend caps to restore service.\"}\\''}"
+    }
+  ],
+  "verdict": "NOT RUN",
+  "claim": "NOT RUN \u2014 missing_actor_id"
+}
