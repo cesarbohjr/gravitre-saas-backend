@@ -1,39 +1,55 @@
 {
-  "generated_at": "2026-08-14T10:26:30+00:00",
-  "verdict": "PARTIAL — asyncio/F6 fixed and proven on agent step; full Clay→HubSpot E2E blocked on Clay connector webhook config",
+  "generated_at": "2026-08-25T21:05:00+00:00",
+  "verdict": "NOT PASS — asyncio/F6 proven on agent step (2026-08-14); full E2E still blocked",
   "prod_tip_at_agent_pass": "1589eb5725e7fdb3d1a920f9463dd881242f7d54",
+  "prod_tip_at_retest_attempt": "794ee295920536866d2d378800d13232ee98271d",
+  "prod_health_at_retest": {
+    "status": "degraded",
+    "database": "unhealthy: APIError",
+    "checked_at": "2026-08-25T21:03:09Z"
+  },
   "commits": {
     "asyncio_bridge": "890db4a4",
     "f6_mid_run_stamp_fix": "1589eb57",
-    "clay_webhook_guard": "74ed0b2b"
+    "clay_webhook_guard": "74ed0b2b",
+    "msp_debug_scripts": "2c905ae6"
   },
   "original_failed_run_id": "978a2a90-6562-4290-8f42-10dcf9de42ad",
+  "asyncio_fix_proven": {
+    "run_id": "0a392924-5a39-44c5-8550-7be949ad9522",
+    "prepare_clay_batch": "completed",
+    "audit": "workflow.execute.step_completed prepare_clay_batch @ 2026-08-14T10:22:08.015261Z",
+    "asyncio_regression": false
+  },
   "live_runs": [
     {
       "run_id": "94c1199f-3b61-45a1-b080-f3716baeab5e",
-      "note": "pre-F6-fix: false completed + hung prepare_clay_batch (unresolved agent_seed overwrite + F6 mid-run stamp)"
+      "note": "pre-F6-fix: false completed + hung prepare_clay_batch"
     },
     {
       "run_id": "cd970041-a1c6-497a-8140-cc116225558c",
       "tip": "1589eb57",
-      "approve_http": 200,
       "failed_step": "apollo_list_add",
-      "audit": "tool.invoke.failed apollo.lists.add @ 2026-08-14T10:08:34.549286+00:00 ConnectionTerminated (transport flake)"
+      "audit": "tool.invoke.failed apollo.lists.add @ 2026-08-14T10:08:34.549286Z ConnectionTerminated"
     },
     {
       "run_id": "0a392924-5a39-44c5-8550-7be949ad9522",
       "tip": "1589eb57",
-      "approve_http": 200,
       "prepare_clay_batch": "completed",
-      "asyncio_regression": false,
-      "evidence": "workflow.execute.step_completed prepare_clay_batch @ 2026-08-14T10:22:08.015261+00:00",
       "failed_step": "clay_push",
-      "audit": "tool.invoke.failed clay.leads.push @ 2026-08-14T10:22:09.940549+00:00 CloudFront 403 on shared-workbook URL (not an ingest webhook)",
-      "clay_connector_id": "17a942d4-d5cf-44da-9ad2-c0bdb4faf729",
-      "clay_webhook_host_path": "app.clay.com/shared-workbook/share_…"
+      "audit": "tool.invoke.failed clay.leads.push @ 2026-08-14T10:22:09.940549Z CloudFront 403 shared-workbook URL"
     }
   ],
+  "retest_attempt_2026_08_25": {
+    "status": "NOT RUN",
+    "error": "Supabase project restricted: exceed_egress_quota (402). Local script fails at fetch_publisher_id before execute.",
+    "script": "scripts/live-msp-clay-hubspot-asyncio-fix.py"
+  },
   "pass": false,
-  "blocked_on": "Update Clay connector 17a942d4… webhook_url from shared-workbook page to a real table ingest URL (app.clay.com/api/v1/webhooks/…), then re-run.",
+  "blocked_on": [
+    "Restore Supabase service (egress quota / plan upgrade)",
+    "Set Clay connector 17a942d4… webhook to real ingest URL (app.clay.com/api/v1/webhooks/…) via scripts/patch-clay-connector-webhook.py + CLAY_TABLE_WEBHOOK_URL",
+    "Re-run: HUBSPOT_LIST_ID=48 python scripts/live-msp-clay-hubspot-asyncio-fix.py"
+  ],
   "phases_2_7": "NOT STARTED — gated on full Clay+HubSpot vendor read-back PASS"
 }
