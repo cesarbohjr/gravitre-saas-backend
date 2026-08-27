@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-08-27T18:50:00+00:00",
+  "phase": "0_reconciliation",
+  "live_api_git_sha": "794ee295920536866d2d378800d13232ee98271d",
+  "live_web_git_sha": "882b0a3e (TDZ fix; voice/load fixes pending deploy)",
+  "prior_pass_cited_sha": "74ed0b2b3fcb68cf175a37272e4679e77619b4b6",
+  "prior_pass_verdict": "PASS — API voice latency phases @ 74ed0b2b (2026-08-14)",
+  "intermediate_fail_sha": "4ed150cc — duplex probe FAIL (403 live_token smoke org auth)",
+  "current_api_duplex_probe": {
+    "verdict": "PASS",
+    "tip": "794ee295920536866d2d378800d13232ee98271d",
+    "artifact": "docs/delivery/voice-duplex-one-brain-live.json"
+  },
+  "honest_reconciliation": {
+    "summary": "Prior PASS was API/session-turn level with service credentials — not the browser mic pipeline. User-reported broken voice (listening UI, no capture/response) matches a client-side gap: ScriptProcessor AudioContext never resumed while waveform analyser context did resume. API gates can PASS while real /ai voice is silent.",
+    "gap": "API probe exercises POST /api/voice/session/turn directly; browser path requires getUserMedia → AudioContext.resume → ScriptProcessor PCM → Deepgram WS → turn-taking → session/turn → TTS playback. Failure at AudioContext resume produces exactly 'listening indicators, nothing happens'.",
+    "regression_vs_prior_fix": "Backend voice fixes (spoken register, duplex on /ai landing) remain in ancestry and API probes PASS at current tip; browser regression class is client audio pipeline + silent turn-taking fallback, not missing backend deploy.",
+    "page_crash_note": "882b0a3e fixed /ai TDZ crash (isStreamingAssistant) — separate from voice silence"
+  },
+  "root_cause_voice": {
+    "confirmed": "use-voice-duplex-session.ts created a separate AudioContext for ScriptProcessor without ctx.resume(); voice-analyser.ts resumed its own context — waveform animates while zero PCM reaches Deepgram.",
+    "secondary": "postTurnTakingEvent failure returned silently with no runSessionTurn fallback on final transcript"
+  },
+  "root_cause_load": {
+    "confirmed": "Chat history SWR gated on orgReady && user; ensureSelectedOrg did not seed cachedOrgId from localStorage so first paint could wait on organizations list; initial fetch used limit=100",
+    "fixes": "Fetch history on user auth alone; seed cachedOrgId from storage via getQuickOrgId; reduce initial limit to 50"
+  }
+}

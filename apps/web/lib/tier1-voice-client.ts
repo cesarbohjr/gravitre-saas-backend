@@ -213,15 +213,44 @@ export type LiveSttCredentials = {
   provider: string
 }
 
-export async function mintDeepgramLiveToken(): Promise<LiveSttCredentials | null> {
+export type MintLiveTokenResult =
+  | { ok: true; creds: LiveSttCredentials }
+  | { ok: false; status: number; detail: string }
+
+export async function mintDeepgramLiveTokenDetailed(): Promise<MintLiveTokenResult> {
   const res = await apiFetch("/api/voice/stt/live-token", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: "{}",
     timeoutMs: 12_000,
   })
-  if (!res.ok) return null
-  return (await res.json()) as LiveSttCredentials
+  let payload: Record<string, unknown> = {}
+  try {
+    payload = (await res.json()) as Record<string, unknown>
+  } catch {
+    payload = {}
+  }
+  if (!res.ok) {
+    const detail =
+      (typeof payload.detail === "string" && payload.detail) ||
+      (typeof payload.error === "string" && payload.error) ||
+      `Live speech token failed (HTTP ${res.status})`
+    return { ok: false, status: res.status, detail }
+  }
+  const creds = payload as LiveSttCredentials
+  if (!creds.ws_url || !creds.access_token) {
+    return {
+      ok: false,
+      status: res.status,
+      detail: "Live speech token response was incomplete.",
+    }
+  }
+  return { ok: true, creds }
+}
+
+export async function mintDeepgramLiveToken(): Promise<LiveSttCredentials | null> {
+  const result = await mintDeepgramLiveTokenDetailed()
+  return result.ok ? result.creds : null
 }
 
 export type TurnTakingEventResult = {

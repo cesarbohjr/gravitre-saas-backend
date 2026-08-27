@@ -44,7 +44,9 @@ export function invalidateOrgCache() {
 export function getQuickOrgId(): string | null {
   if (typeof window === "undefined") return null
   if (cachedOrgId) return cachedOrgId
-  return getSelectedOrgFromStorage()?.id ?? null
+  const stored = getSelectedOrgFromStorage()?.id ?? null
+  if (stored) cachedOrgId = stored
+  return stored
 }
 
 export function getSelectedOrgFromStorage(): SelectedOrg | null {

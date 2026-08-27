@@ -11,7 +11,7 @@ import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analy
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
   cancelVoiceSessionTurn,
-  mintDeepgramLiveToken,
+  mintDeepgramLiveTokenDetailed,
   postTurnTakingEvent,
   streamVoiceSessionTurn,
   type VoiceSessionEvent,
@@ -514,11 +514,20 @@ export function useVoiceDuplexSession(options: Options) {
         event: eventPayload,
         state: turnStateRef.current,
       })
-      if (!tt) return
+      if (!tt) {
+        if (isFinal && transcript) {
+          marksRef.current.first_partial = 0
+          setProvisionalTranscript("")
+          await runSessionTurn(transcript)
+        }
+        return
+      }
       turnStateRef.current = tt.state
-      if (tt.finalized_transcript) {
+      const finalized = tt.finalized_transcript || (isFinal ? transcript : "")
+      if (finalized) {
         marksRef.current.first_partial = 0
-        await runSessionTurn(tt.finalized_transcript)
+        setProvisionalTranscript("")
+        await runSessionTurn(finalized)
       }
     },
     [bargeIn, runSessionTurn],
@@ -527,22 +536,16 @@ export function useVoiceDuplexSession(options: Options) {
   const start = useCallback(async () => {
     if (activeRef.current) return
     if (options.enabled === false) return
-    setPresence("listening")
-    setIsActive(true)
-    activeRef.current = true
     marksRef.current = { mic_open: performance.now() }
     turnStateRef.current = null
 
-    const creds = await mintDeepgramLiveToken()
-    if (!creds?.ws_url || !creds.access_token) {
+    const tokenResult = await mintDeepgramLiveTokenDetailed()
+    if (!tokenResult.ok) {
       setPresence("error")
-      optsRef.current.onError?.(
-        "Live speech recognition is not available. Check Deepgram configuration.",
-      )
-      activeRef.current = false
-      setIsActive(false)
+      optsRef.current.onError?.(tokenResult.detail)
       return
     }
+    const creds = tokenResult.creds
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -563,6 +566,9 @@ export function useVoiceDuplexSession(options: Options) {
       if (!AC) throw new Error("AudioContext unavailable")
       const ctx = new AC()
       audioCtxRef.current = ctx
+      if (ctx.state === "suspended") {
+        await ctx.resume()
+      }
       const source = ctx.createMediaStreamSource(stream)
       const processor = ctx.createScriptProcessor(4096, 1, 1)
       processorRef.current = processor
@@ -573,6 +579,8 @@ export function useVoiceDuplexSession(options: Options) {
       wsRef.current = ws
 
       ws.onopen = () => {
+        activeRef.current = true
+        setIsActive(true)
         setPresence("listening")
       }
       ws.onmessage = (ev) => {

@@ -371,12 +371,12 @@ export function AiWorkspace({
     isLoading: conversationsLoading,
     mutate: mutateConversations,
   } = useSWR(
-    user && orgReady ? ["ai-conversations", deferredHistorySearch] : null,
+    user ? ["ai-conversations", deferredHistorySearch] : null,
     async () => {
       startChatPerf("conversation_list")
       try {
         return await conversationsApi.list({
-          limit: 100,
+          limit: 50,
           includeArchived: true,
           search: deferredHistorySearch || undefined,
         })
@@ -384,7 +384,7 @@ export function AiWorkspace({
         endChatPerf("conversation_list")
       }
     },
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: false, dedupingInterval: 15_000 },
   )
   const conversations = conversationsData?.conversations ?? []
 
