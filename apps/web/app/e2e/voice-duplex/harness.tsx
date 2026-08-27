@@ -64,9 +64,11 @@ export function VoiceDuplexHarness() {
       }
 
       send(data: ArrayBuffer | ArrayBufferView | Blob | string) {
-        if (typeof data !== "string") {
-          const buf = data instanceof ArrayBuffer ? data : data.buffer
-          pcm.bytes += buf.byteLength
+        if (typeof data === "string") return
+        if (data instanceof ArrayBuffer) {
+          pcm.bytes += data.byteLength
+        } else if (ArrayBuffer.isView(data)) {
+          pcm.bytes += data.byteLength
         }
       }
 
