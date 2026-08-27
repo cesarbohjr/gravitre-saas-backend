@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-08-11T21:49:12.975121+00:00",
+  "ran_at": "2026-08-27T20:56:45.452655+00:00",
   "cisa_query": "What does CISA StopRansomware recommend for ransomware prevention?",
   "cisa_results": [
     {
@@ -118,11 +118,51 @@
       "recommended": false
     },
     {
+      "pack_id": "pack.tool.github",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.google_analytics",
+      "recommended": false
+    },
+    {
       "pack_id": "pack.hr",
       "recommended": false
     },
     {
+      "pack_id": "pack.tool.hubspot",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.jira",
+      "recommended": false
+    },
+    {
       "pack_id": "pack.legal",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.notion",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.salesforce",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.sendgrid",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.slack",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.stripe",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.zendesk",
       "recommended": false
     }
   ],
@@ -140,7 +180,23 @@
       "recommended": false
     },
     {
+      "pack_id": "pack.tool.github",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.google_analytics",
+      "recommended": false
+    },
+    {
       "pack_id": "pack.hr",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.hubspot",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.jira",
       "recommended": false
     },
     {
@@ -148,7 +204,31 @@
       "recommended": false
     },
     {
+      "pack_id": "pack.tool.notion",
+      "recommended": false
+    },
+    {
       "pack_id": "pack.sales",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.salesforce",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.sendgrid",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.slack",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.stripe",
+      "recommended": false
+    },
+    {
+      "pack_id": "pack.tool.zendesk",
       "recommended": false
     }
   ],

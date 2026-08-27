@@ -1,0 +1,96 @@
+{
+  "probe_started_at": "2026-08-27T20:40:54.885804+00:00",
+  "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-08-27T20:38:41.407890+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "794ee295920536866d2d378800d13232ee98271d",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "git_sha": "794ee295920536866d2d378800d13232ee98271d",
+  "local_git_sha": "5201210051260d4882a711e2992d4ba309dfe39f",
+  "deploy_sha_match": false,
+  "evidence_source": "deployed_http",
+  "deploy_http_error": null,
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "connected_integrations": [
+    "apollo",
+    "hubspot"
+  ],
+  "path": "deployed_react_write_gate direct vs capability-resolved",
+  "direct_hubspot_tool": {
+    "tool": "hubspot_contacts_create",
+    "success": false,
+    "error_code": "write_approval_required",
+    "pending_approval": true,
+    "action": "hubspot.contacts.create",
+    "integration": "hubspot",
+    "pass": true
+  },
+  "capability_resolved_tool": {
+    "tool": "capability__crm__contact__create",
+    "success": false,
+    "error_code": "write_approval_required",
+    "pending_approval": true,
+    "action": "hubspot.contacts.create",
+    "integration": "hubspot",
+    "pass": true
+  },
+  "parity": {
+    "same_error_code": true,
+    "same_invoke_action": true,
+    "both_pending_approval": true,
+    "pass": true
+  },
+  "local_fallback": {
+    "direct_hubspot_tool": {
+      "at": "2026-08-27T20:40:14.741537+00:00",
+      "latency_ms": 30415,
+      "tool": "hubspot_contacts_create",
+      "success": false,
+      "error_code": "write_approval_required",
+      "pending_approval": true,
+      "action": "hubspot.contacts.create",
+      "integration": "hubspot",
+      "label": "Create contact",
+      "pass": true
+    },
+    "capability_resolved_tool": {
+      "at": "2026-08-27T20:40:54.885678+00:00",
+      "latency_ms": 38167,
+      "tool": "capability__crm__contact__create",
+      "success": false,
+      "error_code": "write_approval_required",
+      "pending_approval": true,
+      "action": "hubspot.contacts.create",
+      "integration": "hubspot",
+      "label": "HubSpot contact",
+      "pass": true
+    },
+    "parity": {
+      "same_error_code": true,
+      "same_invoke_action": true,
+      "both_pending_approval": true,
+      "pass": true
+    }
+  },
+  "pass": false,
+  "claim": "PARTIAL \u2014 deployed HTTP gate OK but health git_sha != local commit"
+}

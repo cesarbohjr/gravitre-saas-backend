@@ -1,0 +1,64 @@
+{
+  "probe": "chat_history_hygiene_live",
+  "started_at": "2026-08-27T21:03:16.966620+00:00",
+  "base_url": "https://api.gravitre.app",
+  "prod_health": {
+    "http": 200,
+    "git_sha": "794ee295920536866d2d378800d13232ee98271d",
+    "status": "ok"
+  },
+  "list_budget_ms": 2000,
+  "checks": {
+    "operator_list": {
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "http": 200,
+      "ms": 704,
+      "visible_count": 3,
+      "titles": [
+        "Create an email campaign in HubSpot called outreach",
+        "I want you to help me build a list in Apollo.io for MSPs.",
+        "What agents are currently active?"
+      ],
+      "empty_message_count_rows": 0,
+      "probe_title_rows": 0,
+      "probe_title_samples": [],
+      "pass_no_empties": true,
+      "pass_no_probe_titles": true,
+      "pass_latency": true
+    },
+    "isolated_list": {
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "http": 200,
+      "ms": 1147,
+      "visible_count": 100,
+      "empty_message_count_rows": 0,
+      "pass_no_empties": true,
+      "pass_latency": true
+    },
+    "deferred_create": {
+      "conversation_id": "ed807f6f-8a2b-40a2-9161-b0c769129446",
+      "pre_list_had_id": false,
+      "chat_http": 200,
+      "chat_ms": 11404,
+      "chat_text_head": "history-hygiene-ok (ed807f6f)",
+      "post_list_http": 200,
+      "post_list_ms": 535,
+      "listed_after_chat": true,
+      "listed_message_count": 2,
+      "db_row": {
+        "id": "ed807f6f-8a2b-40a2-9161-b0c769129446",
+        "message_count": 2,
+        "deleted_at": null,
+        "title": "Reply with exactly: history-hygiene-ok (ed807f6f)"
+      },
+      "db_message_rows": 2,
+      "pass_not_listed_before_send": true,
+      "pass_list_agrees_with_messages": true,
+      "pass_chat_streamed": true
+    }
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-08-27T21:03:33.164521+00:00"
+}

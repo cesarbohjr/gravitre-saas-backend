@@ -13,8 +13,8 @@
     10
   ],
   "label": "after",
-  "checkedAt": "2026-08-13T07:23:29.923086+00:00",
-  "git_sha": "6100842c817aa686fb7bae99c8e45a15db94db20",
+  "checkedAt": "2026-08-27T20:54:55.678700+00:00",
+  "git_sha": "794ee295920536866d2d378800d13232ee98271d",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "inventory": [
     {
@@ -67,7 +67,7 @@
       "tag": "marketing",
       "agent_id": "c4940fc5-357d-5b3e-9bbc-704febe7d86c",
       "agent_name": "Marketing Analyst",
-      "conversation_id": "e3f9aece-7d1c-4c8e-b3ac-334c422e9721",
+      "conversation_id": "2bed9766-f82d-4d1d-b892-36f4bdb17082",
       "turns": [
         {
           "turn": 1,
@@ -79,30 +79,30 @@
         {
           "turn": 2,
           "user": "organic traffic for our US product site — one priority only",
-          "assistant": "What is the single priority for the US product site—organic traffic growth, fixing a ranking drop, or improving content/SEO performance?",
+          "assistant": "Product pages first. Optimize those for commercial intent and clear CTAs — they drive conversions and set the foundation for organic growth. Blog content can support later, but product pages are the main lever for your US site right now.",
           "http_status": 200,
-          "word_count": 20
+          "word_count": 40
         },
         {
           "turn": 3,
           "user": "blog series or product-page SEO first for a new ICP?",
-          "assistant": "For a new ICP, do you want me to prioritize a blog series or product-page SEO first? If you want one recommendation, tell me whether the immediate goal is qualified traffic, conversion on product pages, or fastest content production.",
+          "assistant": "Product-page SEO first. Those pages carry commercial intent and convert — they should be your lead bet for a new ICP on the US product site. Use blog content to support those pages with relevant query clusters, but don’t lead with the blog.",
           "http_status": 200,
-          "word_count": 39
+          "word_count": 43
         },
         {
           "turn": 4,
           "user": "Primary market is Canada.",
-          "assistant": "For a new ICP in Canada, do you want me to prioritize a blog series or product-page SEO first?",
+          "assistant": "Got it — primary market is Canada from here on. Product-page SEO should still be your lead priority for the Canadian product site.",
           "http_status": 200,
-          "word_count": 19
+          "word_count": 23
         },
         {
           "turn": 5,
           "user": "Correction, standing: primary market is the US, not Canada.",
-          "assistant": "Understood — the primary market is the US, not Canada.\n\nI’ll treat that as the corrected standing context for the SEO discussion. Based on that, the best next move is to choose between:\n- product-page SEO first, if you want faster conversion impact for a new ICP in the US market\n- blog series first, if you need top-of-funnel demand generation and topic discovery\n\nIf you want, I can give a single recommendation for the US market now.",
+          "assistant": "Understood — primary market is now the US. All recommendations from here will focus on the US product site. If you want to revisit Canadian targeting, just say the word.",
           "http_status": 200,
-          "word_count": 78
+          "word_count": 30
         },
         {
           "turn": 6,
@@ -149,7 +149,7 @@
       "tag": "sales",
       "agent_id": "2ad4151d-1ebf-5e2a-99c7-070747ea4085",
       "agent_name": "Sales Agent",
-      "conversation_id": "f3f07b9a-b2b2-47e6-91a3-53cf0eeda836",
+      "conversation_id": "736b4418-917a-4c03-b040-1b4d08d6cfbc",
       "turns": [
         {
           "turn": 1,
@@ -161,30 +161,30 @@
         {
           "turn": 2,
           "user": "enterprise SDR motion — one next step only",
-          "assistant": "{\n  \"summary\": \"Outbound fix should start with stakeholder clarity, not more volume. User-provided context points to an enterprise SDR motion where 1–2 meaningful conversations per day should each produce a clear next step.\",\n  \"decision\": {\n    \"status\": \"Executable\",\n    \"next_step_selected\": \"Map 15–20 stakeholders for one target enterprise account before new outreach.\",\n    \"crm_changes\": \"none\"\n  },\n  \"recommended_actions\": [\n    \"Pick one priority enterprise account and build a stakeholder map with 15–20 people across economic buyer, technical buyer, champion, blockers, procurement, security, and executive sponsor roles.\"\n  ],\n  \"next_step\": \"Send me the target account/domain and I will build the stakeholder map.\",\n  \"risk_flags\": [\n    \"Current outbound may be too contact-volume focused and not account-clarity focused.\",\n    \"No target account was provided, so execution cannot start yet.\"\n  ],\n  \"confidence\": 82\n}",
+          "assistant": "Map 15–20 stakeholders at your target account and pick one to start a meaningful conversation with. Don’t blast — focus on one real next step with a single contact.",
           "http_status": 200,
-          "word_count": 121
+          "word_count": 29
         },
         {
           "turn": 3,
           "user": "email first or call first for cold outbound?",
-          "assistant": "{\n  \"summary\": \"For cold outbound, start with email, then use calls to create urgency and direct follow-up. In enterprise SDR motions, email is the cleaner first touch because it scales, leaves a paper trail, and warms the account before a call.\",\n  \"decision\": {\n    \"status\": \"Executable\",\n    \"recommendation\": \"Email first, then call within the same sequence.\",\n    \"why\": \"Email gets the initial message into the account with low friction; calls work better after there is some recognition or signal to reference.\"\n  },\n  \"recommended_actions\": [\n    \"Send a short, pain-led email first.\",\n    \"Call 24–48 hours later with the same angle and a specific reason to reach out.\",\n    \"Use both channels on the same target account so the touchpoints reinforce each other.\"\n  ],\n  \"confidence\": 88,\n  \"risk_flags\": [\n    \"If the account is high-intent or already engaged, call first can be justified.\",\n    \"If the list is weakly matched, neither channel will fix poor fit.\"\n  ]\n}",
+          "assistant": "Email first. It’s the department preference and matches best practice for enterprise SDRs — email warms up the contact, then call if there’s engagement.",
           "http_status": 200,
-          "word_count": 148
+          "word_count": 24
         },
         {
           "turn": 4,
           "user": "We're targeting enterprise only — no SMB.",
-          "assistant": "{\n  \"summary\": \"Enterprise-only outbound should filter hard on fit before volume. The next best move is to define an enterprise ICP gate so SMB never enters the sequence.\",\n  \"decision\": {\n    \"status\": \"Executable\",\n    \"recommendation\": \"Use an enterprise-only qualification gate before any outbound touch.\",\n    \"definition\": {\n      \"must_have\": [\n        \"Company size above your SMB cutoff\",\n        \"Enterprise buying complexity: multiple stakeholders or procurement/security review\",\n        \"Clear use case with budget signal or active initiative\"\n      ],\n      \"must_not_have\": [\n        \"Single-owner SMB sales cycle\",\n        \"Low ACV / no expansion potential\",\n        \"No evidence of multi-threaded buying process\"\n      ]\n    }\n  },\n  \"recommended_actions\": [\n    \"Update your prospecting list criteria so SMB titles, small-company domains, and low-complexity accounts are excluded upstream.\",\n    \"Route only enterprise-fit accounts into the SDR queue.\",\n    \"Use one enterprise pain statement per sequence, tied to stakeholder risk or operational impact.\"\n  ],\n  \"risk_flags\": [\n    \"If SMB remains in the list, reply rates may improve briefly but pipeline quality will degrade.\",\n    \"A weak ICP gate creates false positives that stall after first contact.\"\n  ],\n  \"confidence\": 91\n}",
+          "assistant": "Understood — enterprise only, no SMB. For cold outbound, start with email first to warm up the contact, then follow with a call if there’s engagement. That matches your department’s preference and best practice for enterprise SDRs.",
           "http_status": 200,
-          "word_count": 166
+          "word_count": 37
         },
         {
           "turn": 5,
           "user": "Correction: we ARE taking SMB now; enterprise is secondary.",
-          "assistant": "{\n  \"summary\": \"Outbound should be reoriented to SMB-first qualification, with enterprise as secondary. The prior enterprise-only gate should be inverted so SMB-fit accounts enter the top of funnel and enterprise accounts remain a lower-priority segment.\",\n  \"decision\": {\n    \"status\": \"Executable\",\n    \"recommendation\": \"Revise the ICP gate so SMB is the primary outbound segment and enterprise is secondary.\",\n    \"crm_changes\": \"none\"\n  },\n  \"recommended_actions\": [\n    \"Update prospecting criteria so SMB accounts are prioritized in list building and sequencing.\",\n    \"Keep enterprise accounts in a secondary segment with different messaging and follow-up cadence.\",\n    \"Review existing outbound lists for misrouted enterprise-only targeting and re-sort by SMB fit.\"\n  ],\n  \"risk_flags\": [\n    \"The current motion may be misaligned with your actual market priority if enterprise-only rules are still active.\",\n    \"If list routing is not updated, outbound will continue to optimize for the wrong segment.\"\n  ],\n  \"confidence\": 94\n}",
+          "assistant": "Got it — SMB is now primary, enterprise is secondary. For cold outbound, still start with email first to warm up the contact, then call if there’s engagement. This approach works for both SMB and enterprise targets.",
           "http_status": 200,
-          "word_count": 138
+          "word_count": 37
         },
         {
           "turn": 6,
@@ -231,7 +231,7 @@
       "tag": "legal",
       "agent_id": "1b481927-3bee-43ab-9e97-ba8bcf10a3b8",
       "agent_name": "Legal Agent",
-      "conversation_id": "4f06ece2-c039-47cd-b00b-eaa79ca138e1",
+      "conversation_id": "8faae5e4-5357-40f6-a77a-da59895356fd",
       "turns": [
         {
           "turn": 1,
@@ -243,30 +243,30 @@
         {
           "turn": 2,
           "user": "NDA for a US vendor — one priority only",
-          "assistant": "Please paste the NDA text or the specific clause(s) you want reviewed. If you want, I can do a one-priority review focused on a single issue, such as mutuality, confidentiality scope, term, liability, or governing law.\n\n{\n  \"summary\": \"The request is for a one-priority NDA review for a US vendor, but the contract text is not provided. The available context only indicates the topic and that the organization prefers a one-way NDA first, which is not enough to perform a substantive review.\",\n  \"decision\": {\n    \"status\": \"blocked\",\n    \"reason\": \"Insufficient contract content to review.\"\n  },\n  \"recommended_actions\": [\n    \"Paste the NDA text or upload the clauses you want reviewed.\",\n    \"Tell me the single priority issue to check first, such as mutuality, confidentiality scope, term, liability, or governing law.\",\n    \"If you want a fast pass, specify whether this is a one-way NDA or if the vendor is asking for mutual terms.\"\n  ],\n  \"confidence\": 96\n}",
+          "assistant": "Check residual-use language first. That’s the clause most likely to quietly widen disclosure risk in an NDA.",
           "http_status": 200,
-          "word_count": 151
+          "word_count": 17
         },
         {
           "turn": 3,
           "user": "reuse a customer quote in a case study without asking — yes or no?",
-          "assistant": "No.\n\nReusing a customer quote in a case study without asking is not permitted. A quote is customer content and typically requires explicit permission for public use, especially in marketing collateral.\n\n{\n  \"summary\": \"Customer quotes should not be reused in a case study without the customer's permission.\",\n  \"decision\": {\n    \"status\": \"blocked\",\n    \"reason\": \"Public reuse of a customer quote requires explicit approval or a license/authorization already on file.\"\n  },\n  \"recommended_actions\": [\n    \"Ask the customer for written approval to use the quote in the case study.\",\n    \"If you cannot get approval, use an anonymized summary instead of a direct quote.\",\n    \"Check whether your contract or prior release already grants public marketing use.\"\n  ],\n  \"confidence\": 98\n}",
+          "assistant": "No. Not as a default. Use it only if you have written permission or the contract clearly allows public marketing use.",
           "http_status": 200,
-          "word_count": 114
+          "word_count": 21
         },
         {
           "turn": 4,
           "user": "Governing law is Delaware.",
-          "assistant": "NO.\n\nUsing a customer quote in a case study without asking is not permitted unless you already have explicit written permission or a contract release that covers public marketing use.\n\n{\n  \"summary\": \"Public reuse of a customer quote in a case study requires permission or an existing authorization; none was provided.\",\n  \"decision\": {\n    \"status\": \"blocked\",\n    \"reason\": \"Customer content cannot be used publicly without consent or a contractual release.\"\n  },\n  \"recommended_actions\": [\n    \"Request written approval from the customer before publishing the quote.\",\n    \"If approval is not available, replace the quote with an anonymized summary.\",\n    \"Check the customer agreement for any public testimonial or marketing-use clause.\"\n  ],\n  \"confidence\": 98\n}",
+          "assistant": "Delaware.",
           "http_status": 200,
-          "word_count": 108
+          "word_count": 1
         },
         {
           "turn": 5,
           "user": "Correction, standing: governing law is California, not Delaware.",
-          "assistant": "{\n  \"summary\": \"Standing corrected: the governing law is California, not Delaware.\",\n  \"decision\": {\n    \"status\": \"verified\",\n    \"reason\": \"The user clarified the governing law jurisdiction.\"\n  },\n  \"recommended_actions\": [\n    \"Update the contract review notes to reflect California governing law.\",\n    \"Recheck any clause analysis that depends on governing law, including enforceability, venue, and any California-specific restrictions.\",\n    \"If you want, paste the NDA clause set and I’ll review it under California law.\"\n  ],\n  \"confidence\": 99\n}",
+          "assistant": "California.",
           "http_status": 200,
-          "word_count": 71
+          "word_count": 1
         },
         {
           "turn": 6,
@@ -313,7 +313,7 @@
       "tag": "hr",
       "agent_id": "ad468fdb-630c-4f18-9786-409727a10e6d",
       "agent_name": "HR Agent",
-      "conversation_id": "acceb57a-0dad-4a14-91f8-fd4e36bde441",
+      "conversation_id": "92d52c75-99b7-4edd-920c-fed04aa49cca",
       "turns": [
         {
           "turn": 1,
@@ -325,30 +325,30 @@
         {
           "turn": 2,
           "user": "US software ICs — one recruiting priority only",
-          "assistant": "Which one recruiting priority should I optimize for US software ICs: time-to-hire, candidate quality, interview consistency, or compliance risk?",
+          "assistant": "Referral quality. It usually moves the fastest without broadening process risk.",
           "http_status": 200,
-          "word_count": 19
+          "word_count": 11
         },
         {
           "turn": 3,
           "user": "should we score candidates with AI on scraped resumes from job boards?",
-          "assistant": "Handoff JSON:\n{\n  \"summary\": \"Do not use AI to score candidates from scraped job-board resumes as a default hiring practice. That path raises compliance, bias, and data-quality risk, and scraped resumes are often incomplete or stale. The safer approach is to use AI only as a decision-support layer on consented, first-party application data, with human review and documented criteria.\",\n  \"decision\": {\n    \"recommendation\": \"No for scraped resumes; yes only for controlled, consented inputs with human-in-the-loop review.\",\n    \"basis\": [\n      \"Scraped resumes are not a reliable source of truth for candidate evaluation.\",\n      \"Automated scoring can create disparate-impact and explainability risk in hiring.\",\n      \"The provided org context shows no approved legal or governance workflow for this use case.\"\n    ],\n    \"confidence\": 86\n  },\n  \"recommended_actions\": [\n    \"Use ATS/application-form data as the primary source instead of scraped resumes.\",\n    \"Define job-related, measurable criteria before any automation.\",\n    \"Keep AI to summarization, tagging, and ranking assistance; require recruiter final review.\",\n    \"Add compliance review for adverse-impact, notice/consent, retention, and auditability requirements.\",\n    \"Run a pilot on one US software IC role with offline validation before any production rollout.\"\n  ],\n  \"confidence\": 86\n}",
+          "assistant": "No as a default. Scraped job-board resumes are a bad base for automated scoring: you inherit privacy and consent risk, and you can drift into unlawful discrimination if the model learns proxy patterns. Use first-party applications, a documented job-related scorecard, and human review before any rejection. EEOC guidance also bars discriminatory recruiting and hiring practices, including on protected traits.",
           "http_status": 200,
-          "word_count": 180
+          "word_count": 59
         },
         {
           "turn": 4,
           "user": "We're hiring for NYC only.",
-          "assistant": "Handoff JSON:\n{\n  \"summary\": \"The hiring scope is now NYC only. The earlier guidance still applies: do not use AI to score candidates from scraped job-board resumes by default. For NYC hiring, the safer path is to use consented, first-party application data and keep AI in a support role with human review and documented criteria.\",\n  \"decision\": {\n    \"recommendation\": \"No for scraped resumes; yes only for controlled, consented inputs with human-in-the-loop review.\",\n    \"basis\": [\n      \"The user clarified the hiring geography is NYC only.\",\n      \"Scraped resumes remain an unreliable and high-risk source of truth for candidate evaluation.\",\n      \"Automated scoring in hiring creates bias, explainability, and compliance risk.\",\n      \"No approved governance workflow for this use case is present in the provided org context.\"\n    ],\n    \"confidence\": 87\n  },\n  \"recommended_actions\": [\n    \"Use ATS or application-form data as the primary candidate source for NYC roles.\",\n    \"Define job-related, measurable criteria before any automation.\",\n    \"Limit AI to summarization, tagging, and recruiter-assist ranking, with final human review.\",\n    \"Add a compliance review for notice, consent, retention, and adverse-impact controls.\",\n    \"Pilot on one NYC software IC role with offline validation before any production use.\"\n  ],\n  \"confidence\": 87\n}",
+          "assistant": "NYC only changes the compliance lane, not the core advice.\n\nFor AI screening, don’t score scraped job-board resumes by default. Use first-party applicants, a job-related scorecard, and human review. If you want automation, keep it to sourcing/triage support, not rejection decisions.",
           "http_status": 200,
-          "word_count": 187
+          "word_count": 41
         },
         {
           "turn": 5,
           "user": "Correction, standing: hiring geo is remote-US, not NYC-only.",
-          "assistant": "Handoff JSON:\n{\n  \"summary\": \"Correction accepted: the hiring geo is remote-US, not NYC-only. The earlier recommendation still stands: do not use AI to score candidates from scraped job-board resumes by default. For remote-US software IC hiring, the safer path is consented, first-party application data with AI limited to support tasks and a human final decision.\",\n  \"decision\": {\n    \"recommendation\": \"No for scraped resumes; yes only for controlled, consented inputs with human-in-the-loop review.\",\n    \"basis\": [\n      \"The user corrected the hiring geography to remote-US.\",\n      \"Scraped resumes remain an unreliable and high-risk source of truth for candidate evaluation.\",\n      \"Automated scoring in hiring creates bias, explainability, and compliance risk.\",\n      \"No approved governance workflow for this use case is present in the provided org context.\"\n    ],\n    \"confidence\": 88\n  },\n  \"recommended_actions\": [\n    \"Use ATS or application-form data as the primary candidate source for remote-US roles.\",\n    \"Define job-related, measurable criteria before any automation.\",\n    \"Limit AI to summarization, tagging, and recruiter-assist ranking, with final human review.\",\n    \"Add a compliance review for notice, consent, retention, and adverse-impact controls.\",\n    \"Pilot on one remote-US software IC role with offline validation before any production use.\"\n  ],\n  \"confidence\": 88\n}",
+          "assistant": "Got it — remote-US is the standing hiring geo.",
           "http_status": 200,
-          "word_count": 186
+          "word_count": 9
         },
         {
           "turn": 6,
@@ -395,7 +395,7 @@
       "tag": "cybersecurity",
       "agent_id": "4b0a1583-86a2-4b25-9ab2-f4914e1869d3",
       "agent_name": "Cybersecurity Agent",
-      "conversation_id": "865814af-6dbf-4de3-bc73-02b6f4216663",
+      "conversation_id": "6cfd2b18-def0-44fc-977f-8d9dee2027ac",
       "turns": [
         {
           "turn": 1,
@@ -407,30 +407,30 @@
         {
           "turn": 2,
           "user": "vendor debug access for production — one priority only",
-          "assistant": "Do you want a policy recommendation, an access review, or an approval workflow for production vendor debug access?",
+          "assistant": "No. Don’t give standing production debug access.\n\nUse time-bound, approved access through a bastion or VPN, with MFA, logging, and an expiry. If they need to inspect data, prefer a masked prod copy or a lower environment first.",
           "http_status": 200,
-          "word_count": 18
+          "word_count": 38
         },
         {
           "turn": 3,
           "user": "VPN/bastion time-bound access or open inbound SSH to the world?",
-          "assistant": "{\n  \"summary\": \"Use VPN or bastion with time-bound access for production vendor debug access. Do not open inbound SSH to the world. The supplied context supports a controlled access path, and the internet-exposed SSH option materially increases attack surface.\",\n  \"decision\": {\n    \"recommendation\": \"VPN/bastion time-bound access\",\n    \"rationale\": [\n      \"Production vendor debug access should be constrained to authenticated, auditable entry points.\",\n      \"Open inbound SSH to the world creates unnecessary exposure to scanning, brute force, and bot-driven attacks.\",\n      \"A bastion or VPN allows central logging, session control, and revocation.\"\n    ],\n    \"policy\": [\n      \"Allow SSH only from corporate VPN exit nodes or a bastion host.\",\n      \"Use time-bound approval for vendor access.\",\n      \"Disable direct public SSH exposure.\",\n      \"Require MFA and non-root, least-privilege accounts.\"\n    ]\n  },\n  \"recommended_actions\": [\n    \"Implement a bastion or VPN-only production access path.\",\n    \"Add just-in-time, time-boxed approvals for vendor sessions.\",\n    \"Restrict SSH source IPs to approved network ranges only.\",\n    \"Turn on full session logging and alerting for production access.\",\n    \"Require MFA, key-based auth, and root login disabled.\"\n  ],\n  \"confidence\": 93\n}",
+          "assistant": "VPN or bastion, time-bound.\n\nOpen inbound SSH to the world is the wrong move. Use MFA, approval, logging, and expiry; if you need tighter control, prefer a bastion over raw VPN.",
           "http_status": 200,
-          "word_count": 168
+          "word_count": 31
         },
         {
           "turn": 4,
           "user": "Primary cloud is AWS.",
-          "assistant": "{\n  \"summary\": \"Use VPN or a bastion host with time-bound access for vendor production debugging. Do not open inbound SSH to the world. This reduces exposure while keeping access auditable and revocable.\",\n  \"decision\": {\n    \"recommendation\": \"VPN/bastion time-bound access\",\n    \"rationale\": [\n      \"Production vendor access should flow through authenticated, logged entry points.\",\n      \"Public SSH materially increases attack surface from scanning, brute force, and bot traffic.\",\n      \"A bastion or VPN supports centralized control, session logging, and quick revocation.\"\n    ],\n    \"policy\": [\n      \"Allow SSH only from approved VPN ranges or a bastion host.\",\n      \"Require time-boxed approval for vendor access.\",\n      \"Disable direct public SSH exposure.\",\n      \"Require MFA, key-based authentication, and disabled root login.\"\n    ]\n  },\n  \"recommended_actions\": [\n    \"Implement a bastion or VPN-only production access path.\",\n    \"Add just-in-time, time-boxed approvals for vendor sessions.\",\n    \"Restrict SSH source IPs to approved network ranges only.\",\n    \"Turn on full session logging and alerting for production access.\",\n    \"Require MFA, key-based auth, and root login disabled.\"\n  ],\n  \"confidence\": 93\n}",
+          "assistant": "AWS.",
           "http_status": 200,
-          "word_count": 158
+          "word_count": 1
         },
         {
           "turn": 5,
           "user": "Correction, standing: primary cloud is Azure, not AWS.",
-          "assistant": "{\n  \"summary\": \"Correction applied: the primary cloud is Azure, not AWS. The access-control recommendation is unchanged: use VPN or bastion with time-bound production vendor debug access, not open inbound SSH to the world.\",\n  \"decision\": {\n    \"recommendation\": \"VPN/bastion time-bound access\",\n    \"rationale\": [\n      \"Production vendor access should flow through authenticated, logged entry points.\",\n      \"Public SSH materially increases attack surface from scanning, brute force, and bot traffic.\",\n      \"A bastion or VPN supports centralized control, session logging, and quick revocation.\"\n    ],\n    \"policy\": [\n      \"Allow SSH only from approved VPN ranges or a bastion host.\",\n      \"Require time-boxed approval for vendor access.\",\n      \"Disable direct public SSH exposure.\",\n      \"Require MFA, key-based authentication, and disabled root login.\"\n    ]\n  },\n  \"recommended_actions\": [\n    \"Implement a bastion or VPN-only production access path.\",\n    \"Add just-in-time, time-boxed approvals for vendor sessions.\",\n    \"Restrict SSH source IPs to approved network ranges only.\",\n    \"Turn on full session logging and alerting for production access.\",\n    \"Require MFA, key-based auth, and root login disabled.\"\n  ],\n  \"confidence\": 95\n}",
+          "assistant": "Azure.",
           "http_status": 200,
-          "word_count": 159
+          "word_count": 1
         },
         {
           "turn": 6,
@@ -477,7 +477,7 @@
       "tag": "default_assistant",
       "agent_id": null,
       "agent_name": "default_assistant",
-      "conversation_id": "3dabab9f-14c9-43f8-a906-d271934159db",
+      "conversation_id": "1f94b556-d157-46b1-abf7-e68ce4a6d185",
       "turns": [
         {
           "turn": 1,
@@ -489,30 +489,30 @@
         {
           "turn": 2,
           "user": "ops + customer follow-ups — one priority only",
-          "assistant": "One priority for next week: customer follow-ups.\n\nThat’s the best single focus because it protects repeat business, keeps deals warm, and prevents opportunities from going stale. If you want, I can turn that into a one-week plan with daily actions and a simple tracking list.",
+          "assistant": "Customer follow-ups. They’re the tighter revenue and retention path, and email is the right motion here.",
           "http_status": 200,
-          "word_count": 45
+          "word_count": 16
         },
         {
           "turn": 3,
           "user": "should we batch all customer emails into one blast or send personalized notes?",
-          "assistant": "To do that, I need to know a specific target — reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+          "assistant": "Personalized notes. A blast is the wrong move for follow-ups unless it’s a true announcement. Use the batch only for admin work, not relationship work.",
           "http_status": 200,
-          "word_count": 33
+          "word_count": 25
         },
         {
           "turn": 4,
           "user": "Our office HQ is Austin.",
-          "assistant": "Personalized notes.\n\nThat is the better move for customer follow-ups because it keeps responses relevant and reduces the risk of sounding generic. If you want, I can help you turn that into a simple outreach sequence for next week.",
+          "assistant": "Austin noted. I’ll use that going forward.",
           "http_status": 200,
-          "word_count": 39
+          "word_count": 7
         },
         {
           "turn": 5,
           "user": "Correction, standing: HQ is Denver, not Austin.",
-          "assistant": "Correction noted: HQ is Denver, not Austin.",
+          "assistant": "Got it — HQ is Denver from here on.",
           "http_status": 200,
-          "word_count": 7
+          "word_count": 9
         },
         {
           "turn": 6,

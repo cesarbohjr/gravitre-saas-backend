@@ -1,0 +1,92 @@
+{
+  "probe": "frontend_ia_chat_battery_live",
+  "started_at": "2026-08-27T20:55:03.494460+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": null,
+  "cases": [
+    {
+      "id": "activity",
+      "message": "I'm new here. Where do I look up completed workflow work and failure alerts in the app navigation? Name the primary page.",
+      "must_include_any": [
+        "activity",
+        "/activity"
+      ],
+      "must_not_include_any": [
+        "/outcomes",
+        "multi-agent run as top",
+        "failure alerts as a separate top"
+      ],
+      "conversation_id": "a3431013-f195-4f20-95eb-bbf747f1faff",
+      "http_status": 200,
+      "assistant": "Open **Activity** (`/activity`) in the primary sidebar. Completed work lives there; failure alerts are under the **Failures** tab.",
+      "stream_errors": [],
+      "passed": true,
+      "matched_include": true,
+      "hard_bad_hits": [],
+      "verdict": "PASS"
+    },
+    {
+      "id": "agents",
+      "message": "Where should I go to manage my AI agents, multi-agent runs, and agent training? Name the primary navigation destination.",
+      "must_include_any": [
+        "agents",
+        "/agents"
+      ],
+      "must_not_include_any": [
+        "/intelligence/agents",
+        "agent intelligence"
+      ],
+      "conversation_id": "6ee4c92f-75b6-485a-950c-831fdcc0b616",
+      "http_status": 200,
+      "assistant": "Open **Agents** (`/agents`). Roster, Multi-agent, and Training are tabs inside that hub \u2014 not separate top-level nav items.",
+      "stream_errors": [],
+      "passed": true,
+      "matched_include": true,
+      "hard_bad_hits": [],
+      "verdict": "PASS"
+    },
+    {
+      "id": "settings",
+      "message": "Product UI question only (no tools): In the Gravitre sidebar, which primary nav item holds Enterprise, Federation, and Environments? Reply with the hub name and that they are under Admin.",
+      "must_include_any": [
+        "settings",
+        "/settings"
+      ],
+      "must_not_include_any": [],
+      "conversation_id": "0f5faa72-bbde-44a1-b84b-f7750e783013",
+      "http_status": 200,
+      "assistant": "Open **Settings** (`/settings`). Enterprise, Federation, and Environments are under **Settings \u2192 Admin** \u2014 not separate primary sidebar items.",
+      "stream_errors": [],
+      "passed": true,
+      "matched_include": true,
+      "hard_bad_hits": [],
+      "verdict": "PASS"
+    },
+    {
+      "id": "intelligence",
+      "message": "Product UI question only (no tools): In the Gravitre sidebar, which primary hub holds operational metrics, ROI reports, and learning signals? Reply with one hub name.",
+      "must_include_any": [
+        "intelligence",
+        "/intelligence"
+      ],
+      "must_not_include_any": [],
+      "conversation_id": "c4e5c3a2-5623-40c5-beff-d0d3ccf13440",
+      "http_status": 200,
+      "assistant": "Open **Intelligence** (`/intelligence`). That hub covers operational health/metrics, ROI reports, learning signals, models, memory, and predictive ops.",
+      "stream_errors": [],
+      "passed": true,
+      "matched_include": true,
+      "hard_bad_hits": [],
+      "verdict": "PASS"
+    }
+  ],
+  "health": {
+    "git_sha": "794ee295920536866d2d378800d13232ee98271d",
+    "unified_turn_live_enabled": true
+  },
+  "passed": 4,
+  "total": 4,
+  "finished_at": "2026-08-27T20:55:09.503107+00:00",
+  "verdict": "PASS \u2014 4/4 IA path answers mention consolidated hubs"
+}
