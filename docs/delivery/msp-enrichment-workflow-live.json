@@ -1,7 +1,7 @@
 {
-  "pass": false,
+  "pass": true,
   "partial": false,
-  "ran_at": "2026-08-27T20:46:23.579562+00:00",
+  "ran_at": "2026-08-28T19:03:08.497342+00:00",
   "prod_git_sha": "794ee295920536866d2d378800d13232ee98271d",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "prospecting-intelligence-pack",
@@ -89,5 +89,5 @@
   },
   "msp_list_found": true,
   "blockers": [],
-  "note": "FULL PASS requires Apollo + Clay + HubSpot connected and apollo.lists.list + clay.tables.list success. Bulk HubSpot list membership (hubspot.lists.add_contact) remains agent-step / NOT RUN here to avoid writing without an explicit HUBSPOT_LIST_ID."
+  "note": "FULL PASS requires Apollo + Clay + HubSpot connected and apollo.lists.list + clay.tables.list success. hubspot.lists.add_contact is a deterministic invoke_tool step binding a single primary_contact_id (not a bulk add); this smoke stays read-only and does not execute it, so its F6 membership read-back is NOT exercised here. Use scripts/live-msp-clay-hubspot-asyncio-fix.py with HUBSPOT_LIST_ID for that."
 }

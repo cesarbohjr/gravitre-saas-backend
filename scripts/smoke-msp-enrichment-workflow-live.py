@@ -234,7 +234,13 @@ def main() -> int:
 
     catalog_ok = catalog_asset is not None and catalog_asset.asset_type == "workflow"
     install_ok = bool(bundle.get("workflowId")) and bool(enrichment_workflow_id)
-    wf_ok = bool(wf_row) and wf_row.get("step_count") == 6 and wf_row.get("name") == WORKFLOW_NAME
+    # Compare against the canonical builder, not a literal: the workflow has grown
+    # from 6 to 10 steps and the hardcoded count failed every run regardless of health.
+    wf_ok = (
+        bool(wf_row)
+        and wf_row.get("step_count") == len(steps)
+        and wf_row.get("name") == WORKFLOW_NAME
+    )
     actions_ok = all(actions_registered.values())
     apollo_ok = bool(apollo_id) and bool(invokes["apollo.lists.list"].get("success"))
     clay_connected = bool(clay_id)
@@ -297,8 +303,10 @@ def main() -> int:
         ],
         "note": (
             "FULL PASS requires Apollo + Clay + HubSpot connected and apollo.lists.list + clay.tables.list success. "
-            "Bulk HubSpot list membership (hubspot.lists.add_contact) remains agent-step / NOT RUN here "
-            "to avoid writing without an explicit HUBSPOT_LIST_ID."
+            "hubspot.lists.add_contact is a deterministic invoke_tool step binding a single "
+            "primary_contact_id (not a bulk add); this smoke stays read-only and does not "
+            "execute it, so its F6 membership read-back is NOT exercised here. "
+            "Use scripts/live-msp-clay-hubspot-asyncio-fix.py with HUBSPOT_LIST_ID for that."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
