@@ -14,6 +14,7 @@ from app.services.entity_get_verify import (
     EntityGetVerifyResult,
     extract_entity_id,
     id_param_candidates,
+    read_confirms_entity_id,
     verify_entity_get,
 )
 
@@ -56,6 +57,45 @@ def test_extract_entity_id_searches_nested_envelopes():
     assert extract_entity_id({"id": "123"}) == "123"
     assert extract_entity_id({"data": {"id": "456"}}) == "456"
     assert extract_entity_id({"result": {"contactId": "789"}}, "contact_id") == "789"
+
+
+def test_verified_against_the_real_hubspot_read_shape():
+    """The live shape that broke this adapter: the id is under the resource key.
+
+    hubspot.contacts.get returns {"contact": {"id": ...}}. The first cut searched
+    a fixed envelope list (data/result/record/...), missed it, and reported a
+    successful write as unverified — mocks returning a flat {"id": ...} hid it.
+    """
+    live_read = {
+        "contact": {
+            "id": "273899549679",
+            "properties": {
+                "email": "f6.dbg@gravitre-smoke.example.com",
+                "hs_object_id": "273899549679",
+                "lastname": "Debug",
+            },
+            "archived": False,
+            "url": "https://app-na3.hubspot.com/contacts/343328749/record/0-1/273899549679",
+        }
+    }
+    assert read_confirms_entity_id(live_read, "273899549679") is True
+    assert extract_entity_id(live_read) == "273899549679"
+
+    invoke = MagicMock(return_value=_result(True, live_read))
+    out = _run(invoke, result_data={"id": "273899549679", "contact": live_read["contact"]})
+    assert out.verified is True
+    assert out.detail == "follow_up_entity_get_confirmed"
+
+
+def test_read_confirms_only_the_written_id_not_a_neighbouring_one():
+    """Walking the payload must not let an unrelated nested id confirm the write."""
+    payload = {"contact": {"id": "111"}, "owner": {"id": "999"}}
+    assert read_confirms_entity_id(payload, "111") is True
+    assert read_confirms_entity_id(payload, "222") is False
+
+    invoke = MagicMock(return_value=_result(True, payload))
+    out = _run(invoke, result_data={"id": "222"})
+    assert out.verified is False
 
 
 def test_extract_entity_id_rejects_sentinels():

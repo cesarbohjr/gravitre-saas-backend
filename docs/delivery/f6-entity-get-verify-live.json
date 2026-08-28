@@ -1,0 +1,39 @@
+{
+  "started_at": "2026-08-28T21:32:45.641199+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "vendor": "hubspot",
+  "write_action": "hubspot.contacts.create",
+  "pass": true,
+  "live_git_sha": "b7776ba4c182c48610701e235edaf8d833a13d79",
+  "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+  "test_contact_email": "f6.entityget.0bb203a1357a@gravitre-smoke.example.com",
+  "write": {
+    "success": true,
+    "error_code": null,
+    "error_message": null
+  },
+  "written_entity_id": "273898624974",
+  "positive": {
+    "verified": true,
+    "effect": "created",
+    "detail": "follow_up_entity_get_confirmed",
+    "read_action": "hubspot.contacts.get",
+    "entity_id": "273898624974",
+    "follow_up_attempted": true
+  },
+  "negative_control": {
+    "fabricated_id": "99178939302488",
+    "verified": false,
+    "effect": "accepted_async",
+    "detail": "follow_up_read_returned_no_entity",
+    "read_action": "hubspot.contacts.get",
+    "entity_id": "99178939302488",
+    "follow_up_attempted": true
+  },
+  "cleanup_deleted_test_contact": {
+    "success": true,
+    "error": null
+  },
+  "verdict": "PASS \u2014 live vendor read-back confirmed the written id, and a fabricated id was correctly refused.",
+  "finished_at": "2026-08-28T21:33:40.746822+00:00"
+}

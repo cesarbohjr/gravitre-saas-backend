@@ -27,7 +27,14 @@ logger = logging.getLogger(__name__)
 # than the F6 membership window (~81s), which exists for list-index lag.
 _SETTLE_BACKOFF_S = (1.0, 2.0, 4.0)
 
-_NESTED_KEYS = ("data", "structured", "result", "record", "entity", "object")
+# Vendors nest the record under their own resource name, not a fixed envelope:
+# hubspot.contacts.get returns {"contact": {"id": ...}}. A fixed key list missed
+# that and reported the write unverified while the read had returned it, so the
+# search walks the response instead.
+_MAX_DEPTH = 4
+# Ignore obvious non-entity ids so a nested owner/pipeline cannot be mistaken
+# for the written record.
+_ID_KEY_EXTRAS = ("hs_object_id",)
 
 
 @dataclass(frozen=True)
@@ -72,27 +79,72 @@ def _singularize(resource: str) -> str:
     return resource
 
 
+def _id_key_names(assert_field: str) -> tuple[str, ...]:
+    field = str(assert_field or "id").strip() or "id"
+    parts = field.split("_")
+    camel = parts[0] + "".join(p.title() for p in parts[1:])
+    return (field, camel, "id", "Id", *_ID_KEY_EXTRAS)
+
+
+def _clean_id(value: Any) -> str | None:
+    if value is None or isinstance(value, (dict, list, bool)):
+        return None
+    text = str(value).strip()
+    # Guard against booleans/sentinels masquerading as an id.
+    if not text or text.lower() in {"true", "false", "none", "null", "0"}:
+        return None
+    return text
+
+
+def _dict_nodes(data: Any) -> list[dict[str, Any]]:
+    """Every dict in the payload, shallowest first."""
+    nodes: list[dict[str, Any]] = []
+    frontier: list[tuple[Any, int]] = [(data, 0)]
+    while frontier:
+        node, depth = frontier.pop(0)
+        if depth > _MAX_DEPTH:
+            continue
+        if isinstance(node, dict):
+            nodes.append(node)
+            for value in node.values():
+                if isinstance(value, (dict, list)):
+                    frontier.append((value, depth + 1))
+        elif isinstance(node, list):
+            for value in node[:20]:
+                if isinstance(value, (dict, list)):
+                    frontier.append((value, depth + 1))
+    return nodes
+
+
 def extract_entity_id(data: dict[str, Any] | None, assert_field: str = "id") -> str | None:
-    """Find the written entity id, searching common nested result envelopes."""
+    """Find the written entity id, preferring the shallowest match."""
     if not isinstance(data, dict):
         return None
-    field = str(assert_field or "id").strip() or "id"
-    bags: list[dict[str, Any]] = [data]
-    for key in _NESTED_KEYS:
-        nested = data.get(key)
-        if isinstance(nested, dict):
-            bags.append(nested)
-    camel = field.split("_")[0] + "".join(p.title() for p in field.split("_")[1:])
-    for bag in bags:
-        for candidate in (field, camel, "id", "Id"):
-            value = bag.get(candidate)
-            if value is None:
-                continue
-            text = str(value).strip()
-            # Guard against booleans/sentinels masquerading as an id.
-            if text and text.lower() not in {"true", "false", "none", "null", "0"}:
-                return text
+    keys = _id_key_names(assert_field)
+    for node in _dict_nodes(data):
+        for candidate in keys:
+            found = _clean_id(node.get(candidate))
+            if found:
+                return found
     return None
+
+
+def read_confirms_entity_id(
+    data: dict[str, Any] | None, expected: str, assert_field: str = "id"
+) -> bool:
+    """Does the read-back carry the id that was written, at any nesting depth?
+
+    Matching against a known value rather than picking "the" id out of the
+    response, so an unrelated nested object cannot produce a false confirmation.
+    """
+    if not isinstance(data, dict) or not expected:
+        return False
+    keys = _id_key_names(assert_field)
+    for node in _dict_nodes(data):
+        for candidate in keys:
+            if _clean_id(node.get(candidate)) == str(expected).strip():
+                return True
+    return False
 
 
 def id_param_candidates(read_action: str) -> list[str]:
@@ -170,8 +222,9 @@ def verify_entity_get(
                 out = invoke_tool(ctx, read_action, params)
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
                 if getattr(out, "success", False):
-                    returned = extract_entity_id(payload, spec.assert_field or "id")
-                    if returned and returned == entity_id:
+                    if read_confirms_entity_id(
+                        payload, entity_id, spec.assert_field or "id"
+                    ):
                         return EntityGetVerifyResult(
                             verified=True,
                             effect="created",
@@ -180,6 +233,7 @@ def verify_entity_get(
                             entity_id=entity_id,
                             follow_up_attempted=True,
                         )
+                    returned = extract_entity_id(payload, spec.assert_field or "id")
                     if returned:
                         return EntityGetVerifyResult(
                             verified=False,
