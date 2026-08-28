@@ -2274,6 +2274,7 @@ class ChatConnectorExecutionService:
                     settings=self.settings,
                     ctx=verify_ctx,
                     environment_name=getattr(tool_ctx, "environment_name", None) or "production",
+                    request_params=dict(plan.args or {}),
                 )
             except Exception as sched_exc:  # noqa: BLE001
                 logger.warning(

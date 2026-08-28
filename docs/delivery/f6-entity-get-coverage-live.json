@@ -51,9 +51,31 @@
     "consequence": "Coverage stays at 21.7%. Going higher needs a field-assert verification mode (compare the requested value against the read-back value), which is a new mode rather than a new declaration."
   },
 
+  "field_assert_mode": {
+    "status": "BUILT and PROVEN LIVE for 1 of 28 actions",
+    "authorized_by": "Cesar, 2026-08-28",
+    "module": "backend/app/services/field_assert_verify.py",
+    "why": "An id read-back proves a deal exists, not that its stage moved. This mode compares the STORED value against the REQUESTED value, so verified=True means the vendor is holding what the user asked for.",
+    "live_proof": {
+      "status": "PASS",
+      "artifact": "docs/delivery/f6-field-assert-verify-live.json",
+      "action": "hubspot.deals.update_stage",
+      "positive": "deal 222860683241 moved appointmentscheduled -> qualifiedtobuy, dealstage read back as qualifiedtobuy, follow_up_field_assert_confirmed at 2026-08-28T23:00Z",
+      "negative_control": "asking for appointmentscheduled (the stage it moved away from) returned field_value_mismatch with observed=qualifiedtobuy — exactly the case an id read-back would have called verified",
+      "cleanup": "test deal deleted"
+    },
+    "remaining_27_not_declared": {
+      "reason": "The mode is generic, but each action needs the vendor's STORED field name (hubspot dealstage, salesforce StageName, pipedrive stage_id). The param schema gives the request side only; the stored side is a vendor fact this pass cannot verify without a live connector for each.",
+      "decision": "Declaring untested mappings is the exact pattern that just produced a silently broken entity_get adapter, so they stay accepted_async rather than being bulk-declared on recall.",
+      "failure_direction_if_wrong": "A wrong assert_field yields a false MISMATCH (under-claim), never a false confirmation.",
+      "unblocks_on": "a live connector per vendor to verify the field mapping the same way HubSpot was verified"
+    }
+  },
+
   "remaining_accepted_async": {
     "total": 282,
-    "state_change_with_get_sibling_needs_field_assert_mode": 28,
+    "now_field_assert_proven_live": 1,
+    "state_change_with_get_sibling_needs_field_assert_mode": 27,
     "list_sibling_only_needs_scan_pattern": 47,
     "no_read_sibling_registered": 164,
     "not_wireable_from_the_bad_heuristic": 26,
@@ -61,7 +83,7 @@
   },
 
   "status": {
-    "3_1_read_back_for_every_supported_action": "PARTIAL — the mechanism is built and now proven against a live vendor, and 75 inert declarations execute. But coverage is 21.7%, and every remaining action needs either a field-assert mode, a list-scan mode, or vendor-by-vendor investigation.",
+    "3_1_read_back_for_every_supported_action": "PARTIAL — two mechanisms now exist and both are proven against a live vendor with negative controls (entity_get and field_assert). 75 inert declarations execute, plus 1 field_assert. Coverage is 79/360 = 21.9%. The remaining 27 state changes need a per-vendor stored-field mapping verified live, 47 need a list-scan mode, and 164 need vendor-capability investigation.",
     "3_2_honest_lower_confidence_labelling": "PARTIAL — backend projection and the shared outcome component carry three states and it is mutation-proven, but the user-visible result is UNVERIFIED at the deployed tip; the outcome card only renders behind auth. Handed to Cesar for a screenshot.",
     "3_3_final_coverage_number_and_per_action_reasons": "PARTIAL — real coverage number established (0.8% -> 21.7%) and the remainder categorised with reasons, but per-vendor capability for the 164 is not established."
   }

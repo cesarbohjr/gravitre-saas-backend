@@ -214,6 +214,7 @@ class InvokeToolHandler(StepHandler):
                 settings=context.settings,
                 ctx=tool_ctx,
                 environment_name=context.environment_name or "production",
+                request_params=invoke_params,
             )
         except Exception:  # noqa: BLE001
             pass

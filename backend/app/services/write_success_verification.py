@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 VerificationMode = Literal[
     "follow_up_membership",
     "follow_up_entity_get",
+    # State changes, where reading the id back proves existence but not that the
+    # change applied — the stored value has to be compared to the requested one.
+    "follow_up_field_assert",
     "accepted_async",
 ]
 
@@ -54,6 +57,9 @@ class SuccessVerification:
     read_action: str | None = None
     assert_field: str | None = None
     reason: str | None = None
+    # follow_up_field_assert only: which write parameter carries the requested
+    # value, when it is not named the same as the field being asserted.
+    request_field: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"action": self.action, "mode": self.mode}
@@ -61,6 +67,8 @@ class SuccessVerification:
             out["read_action"] = self.read_action
         if self.assert_field:
             out["assert_field"] = self.assert_field
+        if self.request_field:
+            out["request_field"] = self.request_field
         if self.reason:
             out["reason"] = self.reason
         return out
@@ -156,13 +164,19 @@ def resolve_success_verification(action: str) -> SuccessVerification:
     row = success_verification_catalog().get(key)
     if row:
         mode = str(row.get("mode") or "accepted_async")
-        if mode not in {"follow_up_membership", "follow_up_entity_get", "accepted_async"}:
+        if mode not in {
+            "follow_up_membership",
+            "follow_up_entity_get",
+            "follow_up_field_assert",
+            "accepted_async",
+        }:
             mode = "accepted_async"
         return SuccessVerification(
             action=key,
             mode=mode,  # type: ignore[arg-type]
             read_action=(str(row["read_action"]) if row.get("read_action") else None),
             assert_field=(str(row["assert_field"]) if row.get("assert_field") else None),
+            request_field=(str(row["request_field"]) if row.get("request_field") else None),
             reason=(str(row["reason"]) if row.get("reason") else None),
         )
     return build_default_verification(key)
@@ -236,17 +250,28 @@ def schedule_write_success_verification(
     settings: Any,
     ctx: Any = None,
     environment_name: str = "production",
+    request_params: dict[str, Any] | None = None,
 ) -> None:
     """Fire-and-forget post-stream verification (must not block TTFT)."""
     if not run_id or ctx is None:
         return
     if not is_population_write_action(invoke_action):
-        if resolve_success_verification(invoke_action).mode == "follow_up_entity_get":
+        mode = resolve_success_verification(invoke_action).mode
+        if mode == "follow_up_entity_get":
             _schedule_entity_get_verification(
                 client=client,
                 run_id=run_id,
                 invoke_action=invoke_action,
                 result_data=result_data,
+                ctx=ctx,
+            )
+        elif mode == "follow_up_field_assert":
+            _schedule_field_assert_verification(
+                client=client,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                result_data=result_data,
+                request_params=request_params,
                 ctx=ctx,
             )
         return
@@ -338,6 +363,56 @@ def _dispatch_background(work: Any, name: str) -> None:
         loop.create_task(_ago())
     except RuntimeError:
         threading.Thread(target=work, name=name, daemon=True).start()
+
+
+def _schedule_field_assert_verification(
+    *,
+    client: Any,
+    run_id: str,
+    invoke_action: str,
+    result_data: dict[str, Any] | None,
+    request_params: dict[str, Any] | None,
+    ctx: Any,
+) -> None:
+    """Read the changed field back and compare it to what was requested."""
+
+    def _work() -> None:
+        try:
+            from app.services.field_assert_verify import verify_field_assert
+
+            verify = verify_field_assert(
+                invoke_action=invoke_action,
+                result_data=result_data,
+                request_params=request_params,
+                ctx=ctx,
+            )
+            from app.workflows.repository import merge_run_parameters
+
+            # Params only — never terminalize a run from a verification adapter.
+            merge_run_parameters(
+                client,
+                run_id,
+                {
+                    "outcome_effect": verify.effect,
+                    "field_assert_verify": {**verify.as_dict(), "async": True},
+                },
+            )
+            logger.info(
+                "async_field_assert_verify run_id=%s action=%s verified=%s detail=%s",
+                run_id,
+                invoke_action,
+                verify.verified,
+                verify.detail,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "async_field_assert_verify_failed run_id=%s action=%s err=%s",
+                run_id,
+                invoke_action,
+                exc,
+            )
+
+    _dispatch_background(_work, "field-assert-verify")
 
 
 def _schedule_entity_get_verification(
