@@ -179,6 +179,165 @@ async def test_execute_plan_uses_bound_invoke_action():
     assert call["tool_name"] == "hubspot_contacts_create"
 
 
+"""Cross-vendor divergence: (approved tool, approved action, executed tool, executed action).
+
+First pair is the originally reported failure — a HubSpot action approved, an
+Apollo action executed. All specs below exist in the live catalog.
+"""
+VENDOR_DIVERGENCE_PAIRS = [
+    (
+        "hubspot_contacts_create",
+        "hubspot.contacts.create",
+        "hubspot",
+        "apollo_lists_create",
+        "apollo.lists.create",
+        "apollo",
+    ),
+    (
+        "slack_post_message",
+        "slack.post_message",
+        "slack",
+        "gmail_messages_send",
+        "gmail.messages.send",
+        "gmail",
+    ),
+    (
+        "notion_pages_create",
+        "notion.pages.create",
+        "notion",
+        "asana_tasks_create",
+        "asana.tasks.create",
+        "asana",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "approved_tool",
+        "approved_action",
+        "approved_integration",
+        "executed_tool",
+        "executed_action",
+        "executed_integration",
+    ),
+    VENDOR_DIVERGENCE_PAIRS,
+)
+async def test_execute_plan_refuses_divergence_against_live_registry(
+    approved_tool,
+    approved_action,
+    approved_integration,
+    executed_tool,
+    executed_action,
+    executed_integration,
+):
+    """Fail closed on the real registry, so catalog resolution genuinely runs."""
+    service = ChatConnectorExecutionService()
+    registry = get_tool_registry()
+    service._registry = registry
+    service._finalize_connector_outcome = MagicMock()
+
+    approved = ChatConnectorExecutionService.plan_to_dict(
+        _sample_plan(
+            tool_name=approved_tool,
+            invoke_action=approved_action,
+            integration=approved_integration,
+            label=f"Approved {approved_integration}",
+        )
+    )
+    executed = _sample_plan(
+        tool_name=executed_tool,
+        invoke_action=executed_action,
+        integration=executed_integration,
+        label=f"Executed {executed_integration}",
+        args={"name": "divergence-probe"},
+    )
+
+    with patch.object(registry, "execute_invoke_action", AsyncMock()) as invoke:
+        result = await service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=executed,
+            client=MagicMock(),
+            classification={},
+            approved_params=approved,
+        )
+        # The vendor must never be reached — refusing after the write would be
+        # a report, not a safety net.
+        invoke.assert_not_awaited()
+
+    assert result.success is False
+    assert result.error_code == APPROVAL_ACTION_MISMATCH
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "approved_tool",
+        "approved_action",
+        "approved_integration",
+        "executed_tool",
+        "executed_action",
+        "executed_integration",
+    ),
+    VENDOR_DIVERGENCE_PAIRS,
+)
+async def test_execute_confirmed_task_refuses_tampered_staged_action(
+    approved_tool,
+    approved_action,
+    approved_integration,
+    executed_tool,
+    executed_action,
+    executed_integration,
+):
+    """Gate the confirm path too: staged fields swapped, sealed binding intact."""
+    service = ChatConnectorExecutionService()
+    registry = get_tool_registry()
+    service._registry = registry
+    service._finalize_connector_outcome = MagicMock()
+
+    approved = ChatConnectorExecutionService.plan_to_dict(
+        _sample_plan(
+            tool_name=approved_tool,
+            invoke_action=approved_action,
+            integration=approved_integration,
+            label=f"Approved {approved_integration}",
+        )
+    )
+    tampered = {
+        **approved,
+        "tool_name": executed_tool,
+        "invoke_action": executed_action,
+        "integration": executed_integration,
+    }
+
+    service._state = MagicMock()
+    service._state.get_task_state = AsyncMock(
+        return_value={
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": tampered,
+            }
+        }
+    )
+    service._state.update_task_state = AsyncMock(return_value={})
+
+    with patch.object(registry, "execute_invoke_action", AsyncMock()) as invoke:
+        result = await service.execute_confirmed_task(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            client=MagicMock(),
+        )
+        invoke.assert_not_awaited()
+
+    assert result.success is False
+    assert result.error_code == APPROVAL_ACTION_MISMATCH
+
+
 def test_hubspot_email_campaign_reports_catalog_gap():
     message = "Create an email campaign in HubSpot called outreach"
     gap = hubspot_email_campaign_catalog_gap(message)
