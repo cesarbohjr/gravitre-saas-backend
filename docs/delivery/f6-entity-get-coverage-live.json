@@ -1,0 +1,53 @@
+{
+  "phase": "Phase 3 — F6 verified-completion coverage",
+  "generated_at": "2026-08-27T20:45:00Z",
+  "tip": "b7776ba4c182c48610701e235edaf8d833a13d79",
+  "deployed": {
+    "api": "https://api.gravitre.app",
+    "git_sha": "b7776ba4c182c48610701e235edaf8d833a13d79",
+    "observed_at": "2026-08-27T20:32:10Z",
+    "note": "Previous live sha was 794ee295 — Phases 1, 4, 6 and 2 were also undeployed until this push."
+  },
+
+  "premise_correction": {
+    "audit_claimed": "78 of 360 mutating actions had vendor read-back (~22%); 282 rested on accepted_async.",
+    "actually_found": "The 78 were catalog DECLARATIONS. Only 3 executed at runtime — schedule_write_success_verification returned early for every non-membership action, so the 75 follow_up_entity_get declarations were inert.",
+    "real_coverage_before": "3/360 = 0.8%"
+  },
+
+  "delivered": {
+    "runtime_read_back_wired_after": "78/360 = 21.7%",
+    "breakdown": {
+      "follow_up_membership": 3,
+      "follow_up_entity_get": 75,
+      "entity_get_reads_executable": 75
+    },
+    "alias_bug_found_and_fixed": "The executability gate checked raw registry membership while invoke_tool resolves aliases first, so 5 Google reads (google_drive.files.get -> drive.files.get) were being rejected as read_action_not_registered despite executing fine.",
+    "honesty_fix": "accepted_async set verified=True, so an unproven write rendered the green 'Verified' pill and reached the 'verified' lifecycle state, with 'completion is not yet proven' demoted to a collapsed detail line. Split into three states; a vendor acknowledgement now reads 'Accepted — not yet confirmed'."
+  },
+
+  "evidence": {
+    "local_tests": "PASS — 13 entity_get, 14 business_outcome, 182 across outcome/verification/honesty suites",
+    "mutation_proof": "PASS — removing confidence='accepted_unproven' from the projector fails test_async_accepted_write_is_not_labelled_verified with \"assert 'verified' == 'accepted_unproven'\"; restored and re-run green",
+    "adapter_dispatch_probe": "PASS — backend/scripts/scratch_probe_entity_get_google.py, all 5 previously-rejected Google actions dispatch their resolved read (google_drive.files.get {'file_id': ...})",
+    "prod_deploy": "PASS — api.gravitre.app /health git_sha b7776ba4 at 2026-08-27T20:32:10Z",
+    "live_vendor_read_back": "NOT RUN — proving the adapter end-to-end needs a real write into a live vendor, which is not authorized. No production audit_events trace exists for an entity_get verification yet.",
+    "web_ui_label": "INCONCLUSIVE — scripts/_verify_outcome_confidence_web_bundle.py could not reach the outcome component in any unauthenticated chunk. The control string 'Flagged for review' (present in the component before this change) was also absent, so the scan proves nothing either way. Needs an authenticated session."
+  },
+
+  "remaining_accepted_async": {
+    "total": 282,
+    "direct_get_sibling_already_executable": 71,
+    "of_those_delete_type_needing_absence_proof": 17,
+    "straightforward_with_todays_adapter": 54,
+    "list_sibling_only_needs_scan_pattern": 47,
+    "no_read_sibling_registered": 164,
+    "honest_caveat": "'No read sibling registered' means Gravitre does not register one. It is NOT evidence the vendor API cannot confirm the write. The per-vendor determination Phase 3.3 asks for has NOT been done for these 164."
+  },
+
+  "status": {
+    "3_1_read_back_for_every_supported_action": "PARTIAL — the mechanism is built and 75 inert declarations now execute, but 54 more actions with an existing GET sibling are not yet declared, and 164 have had no vendor-capability review.",
+    "3_2_honest_lower_confidence_labelling": "PARTIAL — backend projection and the shared outcome component now carry three states and it is mutation-proven, but the user-visible result is unverified at the deployed tip (see web_ui_label).",
+    "3_3_final_coverage_number_and_per_action_reasons": "PARTIAL — real coverage number established (0.8% -> 21.7%) and the remainder is categorised, but per-action vendor reasons for the 164 are not established."
+  }
+}
