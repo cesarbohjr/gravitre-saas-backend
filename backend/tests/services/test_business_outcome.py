@@ -348,3 +348,71 @@ def test_follow_up_proof_phase3_distinct_from_batch_degeneracy():
     assert ver.get("reviewState") in (None, "")
     assert "Phase 3" in (ver.get("finding") or ver.get("detail") or "")
     assert VIEW_PATH.read_text(encoding="utf-8").count("Flagged for review") >= 1
+
+
+def test_async_accepted_write_is_not_labelled_verified():
+    """A vendor ack is not a read-back, and must not render as "Verified".
+
+    Regression: accepted_async set verified=True, so the outcome card showed the
+    green "Verified" pill and reached the `verified` lifecycle state, with
+    "completion is not yet proven" demoted to a collapsed detail line.
+    """
+    outcome = project_business_outcome(
+        org_id="org-1",
+        run=_sample_run(
+            status="completed",
+            parameters={
+                "invoke_action": "asana.tasks.create",
+                "integration": "asana",
+                "label": "Create task",
+                "outcome_effect": "accepted_async",
+            },
+        ),
+        execution_result={
+            "success": True,
+            "title": "Create task",
+            "body": "Accepted",
+            "result_url": "/runs/r",
+            "structured": {"outcome_effect": "accepted_async"},
+        },
+        invoke_action="asana.tasks.create",
+    )
+    d = outcome.to_dict()
+    ver = d["sections"]["verification"]
+
+    assert ver["confidence"] == "accepted_unproven"
+    # The prominent surfaces are the pill and the lifecycle chips, not the detail.
+    assert "verified" not in d["lifecycleStatesReached"]
+    assert ver["nextActions"]
+
+    view = VIEW_PATH.read_text(encoding="utf-8")
+    assert "accepted_unproven" in view
+    assert view.count("Accepted — not yet confirmed") >= 1
+
+
+def test_verified_write_still_reaches_the_verified_lifecycle_state():
+    """Guard the fix from over-correcting: real proof must still read as verified."""
+    outcome = project_business_outcome(
+        org_id="org-1",
+        run=_sample_run(
+            status="completed",
+            parameters={
+                "invoke_action": "hubspot.contacts.create",
+                "integration": "hubspot",
+                "label": "Create contact",
+                "outcome_effect": "created",
+            },
+        ),
+        execution_result={
+            "success": True,
+            "title": "Create contact",
+            "body": "Created contact",
+            "result_url": "/runs/r",
+            "external_url": "https://app.hubspot.com/contacts/1/contact/42",
+            "structured": {"outcome_effect": "created", "id": "42"},
+        },
+        invoke_action="hubspot.contacts.create",
+    )
+    d = outcome.to_dict()
+    assert d["sections"]["verification"]["confidence"] == "verified"
+    assert "verified" in d["lifecycleStatesReached"]

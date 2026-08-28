@@ -5,8 +5,8 @@
  * Zero business logic — displays exactly what the DTO provides.
  * Shared by chat, timeline, Activity, and export preview surfaces.
  *
- * Four honest presentation states derived from DTO fields only:
- * `status` + `sections.verification` (verified / reviewState / finding).
+ * Five honest presentation states derived from DTO fields only:
+ * `status` + `sections.verification` (confidence / reviewState / finding).
  */
 
 import { createContext, useContext, useState, type ReactNode } from "react"
@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDashed,
+  Clock,
   Flag,
   ShieldAlert,
 } from "lucide-react"
@@ -45,6 +46,7 @@ export type BusinessOutcomeDto = {
     }
     verification?: {
       verified?: boolean
+      confidence?: "verified" | "accepted_unproven" | "unverified"
       method?: string
       detail?: string | null
       reviewState?: string | null
@@ -98,9 +100,12 @@ type Props = {
  * - failed:   the action did not happen (destructive).
  * - flagged:  Phase 4 degenerate batch (or review_state) — calm concern, not failure.
  * - verified: it happened AND was independently verified (success).
+ * - accepted: the vendor acknowledged the write, but nothing has confirmed it
+ *   landed. Distinct from `verified` on purpose — this used to render as
+ *   "Verified" with the caveat buried in a collapsed detail line.
  * - unproven: it happened but carries no verification proof — calm/neutral.
  */
-type OutcomeState = "verified" | "unproven" | "failed" | "flagged"
+type OutcomeState = "verified" | "accepted" | "unproven" | "failed" | "flagged"
 
 const STATE_STYLES: Record<
   OutcomeState,
@@ -120,6 +125,14 @@ const STATE_STYLES: Record<
     surface: "border-success/25",
     pillClass: "bg-success/10 text-success ring-1 ring-inset ring-success/20",
     pillLabel: "Verified",
+  },
+  accepted: {
+    icon: Clock,
+    iconClass: "text-muted-foreground",
+    accent: "border-l-border",
+    surface: "border-border/80",
+    pillClass: "bg-muted text-muted-foreground ring-1 ring-inset ring-border",
+    pillLabel: "Accepted — not yet confirmed",
   },
   unproven: {
     icon: CircleDashed,
@@ -156,7 +169,11 @@ function resolveOutcomeState(outcome: BusinessOutcomeDto): OutcomeState {
   const reviewState = (outcome.sections?.verification?.reviewState || "").toLowerCase()
   if (status === "failed") return "failed"
   if (status === "flagged_for_review" || reviewState === "flagged_for_review") return "flagged"
-  if (outcome.sections?.verification?.verified === true) return "verified"
+  const verification = outcome.sections?.verification
+  const confidence =
+    verification?.confidence ?? (verification?.verified ? "verified" : "unverified")
+  if (confidence === "verified") return "verified"
+  if (confidence === "accepted_unproven") return "accepted"
   return "unproven"
 }
 
@@ -232,6 +249,9 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
   const style = STATE_STYLES[state]
   const Icon = style.icon
   const verification = sections.verification
+  // Fall back for outcomes projected before `confidence` existed.
+  const confidence =
+    verification?.confidence ?? (verification?.verified ? "verified" : "unverified")
   // Only the inspector surface collapses; chat and export stay fully expanded.
   const collapsibleSections = density === "timeline"
 
@@ -348,13 +368,18 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {verification ? (
-            <Section title="Verification" defaultOpen={state === "flagged"}>
+            <Section
+              title="Verification"
+              defaultOpen={state === "flagged" || confidence !== "verified"}
+            >
               <p>
                 {state === "flagged"
                   ? "Flagged for review"
-                  : verification.verified
+                  : confidence === "verified"
                     ? "Verified"
-                    : "Not verified"}
+                    : confidence === "accepted_unproven"
+                      ? "Accepted — not yet confirmed"
+                      : "Not verified"}
                 {verification.method ? ` · ${verification.method}` : ""}
                 {verification.checkFailed ? ` · check: ${verification.checkFailed}` : ""}
               </p>

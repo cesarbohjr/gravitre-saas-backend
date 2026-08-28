@@ -69,6 +69,17 @@ class VerificationSection:
     check_failed: str | None = None  # batch_degeneracy | follow_up_proof | effect_unproven
     finding: str | None = None
     next_actions: list[str] | None = None
+    # A vendor that only acknowledged a write is not the same as a vendor read-back
+    # confirming it, but `verified` is a boolean and both landed on True — so the UI
+    # printed "Verified" over a detail line saying completion was not proven.
+    # Set explicitly to keep the three real states distinguishable.
+    confidence: str | None = None  # verified | accepted_unproven | unverified
+
+    @property
+    def resolved_confidence(self) -> str:
+        if self.confidence:
+            return self.confidence
+        return "verified" if self.verified else "unverified"
 
 
 @dataclass
@@ -194,6 +205,7 @@ def _sections_to_dict(sections: BusinessOutcomeSections) -> dict[str, Any]:
         ver = sections.verification
         verification: dict[str, Any] = {
             "verified": ver.verified,
+            "confidence": ver.resolved_confidence,
             "method": ver.method,
         }
         if ver.detail:

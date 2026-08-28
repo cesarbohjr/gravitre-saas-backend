@@ -238,10 +238,17 @@ def schedule_write_success_verification(
     environment_name: str = "production",
 ) -> None:
     """Fire-and-forget post-stream verification (must not block TTFT)."""
-    if not run_id or not is_population_write_action(invoke_action):
-        # Phase 3: membership class runs async settle; entity_get reserved for later adapters.
+    if not run_id or ctx is None:
         return
-    if ctx is None:
+    if not is_population_write_action(invoke_action):
+        if resolve_success_verification(invoke_action).mode == "follow_up_entity_get":
+            _schedule_entity_get_verification(
+                client=client,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                result_data=result_data,
+                ctx=ctx,
+            )
         return
 
     def _work() -> None:
@@ -318,12 +325,62 @@ def schedule_write_success_verification(
                 exc,
             )
 
+    _dispatch_background(_work, "write-success-verify")
+
+
+def _dispatch_background(work: Any, name: str) -> None:
     try:
         loop = asyncio.get_running_loop()
 
         async def _ago() -> None:
-            await asyncio.to_thread(_work)
+            await asyncio.to_thread(work)
 
         loop.create_task(_ago())
     except RuntimeError:
-        threading.Thread(target=_work, name="write-success-verify", daemon=True).start()
+        threading.Thread(target=work, name=name, daemon=True).start()
+
+
+def _schedule_entity_get_verification(
+    *,
+    client: Any,
+    run_id: str,
+    invoke_action: str,
+    result_data: dict[str, Any] | None,
+    ctx: Any,
+) -> None:
+    """Run the declared sibling GET and stamp the evidence on the run."""
+
+    def _work() -> None:
+        try:
+            from app.services.entity_get_verify import verify_entity_get
+
+            verify = verify_entity_get(
+                invoke_action=invoke_action, result_data=result_data, ctx=ctx
+            )
+            from app.workflows.repository import merge_run_parameters
+
+            # Params only — never terminalize a run from a verification adapter.
+            merge_run_parameters(
+                client,
+                run_id,
+                {
+                    "outcome_effect": verify.effect,
+                    "entity_get_verify": {**verify.as_dict(), "async": True},
+                },
+            )
+            logger.info(
+                "async_entity_get_verify run_id=%s action=%s verified=%s detail=%s",
+                run_id,
+                invoke_action,
+                verify.verified,
+                verify.detail,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "async_entity_get_verify_failed run_id=%s action=%s err=%s",
+                run_id,
+                invoke_action,
+                exc,
+            )
+
+    _dispatch_background(_work, "entity-get-verify")

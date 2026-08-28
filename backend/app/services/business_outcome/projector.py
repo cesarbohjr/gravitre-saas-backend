@@ -103,7 +103,7 @@ def project_business_outcome(
         status=status,
         verified=bool(
             verification
-            and verification.verified
+            and verification.resolved_confidence == "verified"
             and str(status).lower() != "flagged_for_review"
         ),
         presented=notification_emitted or bool(er),
@@ -390,8 +390,13 @@ def _verification(
     ):
         return VerificationSection(
             verified=True,
+            confidence="accepted_unproven",
             method="module_a_async_accepted",
             detail="Vendor accepted the write asynchronously; completion is not yet proven.",
+            next_actions=[
+                "Open the record in the source system to confirm it exists.",
+                "Re-check shortly — the vendor may still be processing the write.",
+            ],
         )
     if effect == "noop" or (
         str(status).lower() == "partial_success" and effect == "noop"
