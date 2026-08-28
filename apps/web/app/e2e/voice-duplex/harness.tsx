@@ -36,7 +36,7 @@ export function VoiceDuplexHarness() {
     if (patchedRef.current || typeof window === "undefined") return
     patchedRef.current = true
 
-    const pcm = { bytes: 0, open: false, ctxState: "unknown", sessionTurn: false }
+    const pcm = { bytes: 0, open: false, sessionTurn: false }
 
     window.WebSocket = class MockDeepgramWS {
       static OPEN = 1
@@ -115,19 +115,61 @@ export function VoiceDuplexHarness() {
       return origFetch(input, init)
     }
 
+    const OrigAudioContext = window.AudioContext
+
+    // `state` lives on BaseAudioContext.prototype, so walk the chain for it.
+    let nativeStateGetter: (() => AudioContextState) | undefined
+    for (let proto: object | null = OrigAudioContext.prototype; proto; proto = Object.getPrototypeOf(proto)) {
+      const descriptor = Object.getOwnPropertyDescriptor(proto, "state")
+      if (descriptor?.get) {
+        nativeStateGetter = descriptor.get as () => AudioContextState
+        break
+      }
+    }
+
+    const capture: { ctx: AudioContext | null } = { ctx: null }
+
+    /**
+     * Reproduces Chrome's autoplay policy: a freshly constructed AudioContext is
+     * suspended. A capture graph that never calls resume() therefore starves its
+     * ScriptProcessor and streams zero PCM — the exact regression under guard.
+     * Without this, the harness click counts as a user gesture, the context
+     * starts "running", and the bug cannot reproduce.
+     */
+    class AutoplayBlockedAudioContext extends OrigAudioContext {
+      private blocked = true
+      private readonly suspended: Promise<void>
+
+      constructor(options?: AudioContextOptions) {
+        super(options)
+        this.suspended = OrigAudioContext.prototype.suspend.call(this)
+        Object.defineProperty(this, "state", {
+          configurable: true,
+          get: () => (this.blocked ? "suspended" : (nativeStateGetter?.call(this) ?? "unknown")),
+        })
+        capture.ctx = this
+      }
+
+      async resume(): Promise<void> {
+        await this.suspended.catch(() => {})
+        this.blocked = false
+        return OrigAudioContext.prototype.resume.call(this)
+      }
+    }
+
+    window.AudioContext = AutoplayBlockedAudioContext as unknown as typeof AudioContext
+
     const origGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
-    navigator.mediaDevices.getUserMedia = async (constraints) => {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      const ctx = new AC!()
-      pcm.ctxState = ctx.state
+    navigator.mediaDevices.getUserMedia = async () => {
+      // Deliberately the unwrapped context: only the hook's capture graph is
+      // subject to the autoplay block, so the assertion targets the hook.
+      const ctx = new OrigAudioContext()
       const dest = ctx.createMediaStreamDestination()
       const osc = ctx.createOscillator()
       osc.frequency.value = 440
       osc.connect(dest)
       osc.start()
-      void ctx.resume().then(() => {
-        pcm.ctxState = ctx.state
-      })
+      await ctx.resume().catch(() => {})
       return dest.stream
     }
 
@@ -135,7 +177,9 @@ export function VoiceDuplexHarness() {
       setMetrics({
         pcmBytesSent: pcm.bytes,
         wsOpen: pcm.open,
-        audioContextState: pcm.ctxState,
+        audioContextState: capture.ctx
+          ? (nativeStateGetter?.call(capture.ctx) ?? "unknown")
+          : "absent",
         sessionTurnRequested: pcm.sessionTurn,
       })
     }, 100)
@@ -143,6 +187,7 @@ export function VoiceDuplexHarness() {
     return () => {
       window.clearInterval(interval)
       window.fetch = origFetch
+      window.AudioContext = OrigAudioContext
       navigator.mediaDevices.getUserMedia = origGUM
     }
   }, [])
@@ -171,6 +216,7 @@ export function VoiceDuplexHarness() {
       data-pcm-bytes={metrics.pcmBytesSent}
       data-ws-open={metrics.wsOpen ? "true" : "false"}
       data-session-turn={metrics.sessionTurnRequested ? "true" : "false"}
+      data-capture-ctx-state={metrics.audioContextState}
       className="p-6"
     >
       <p className="text-sm">Voice duplex harness — presence: {duplex.presence}</p>

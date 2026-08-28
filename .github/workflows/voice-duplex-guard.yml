@@ -1,0 +1,63 @@
+name: Voice duplex browser guard
+
+# Standing regression guard for live STT capture on chat surfaces.
+# Mutation-proven: removing the AudioContext resume in use-voice-duplex-session
+# fails this suite on data-capture-ctx-state.
+#
+# Schedule + dispatch only, matching the other standing checks in this program:
+# a main-push check that fails still blocks Railway "Wait for CI" and pins the tip.
+on:
+  schedule:
+    - cron: "0 7 * * *" # Daily 07:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: voice-duplex-guard
+  cancel-in-progress: false
+
+jobs:
+  voice-duplex:
+    name: Voice duplex capture guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install root + web dependencies
+        run: |
+          npm install
+          cd apps/web && pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run voice duplex guard
+        run: npx playwright test --config=playwright.voice.config.ts
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://localhost:3021
+          NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
+          PLAYWRIGHT_E2E: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-duplex-guard-artifacts
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            test-results/
+            playwright-report/

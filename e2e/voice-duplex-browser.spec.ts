@@ -14,6 +14,12 @@ test.describe("Voice duplex browser pipeline", () => {
       .poll(async () => harness.getAttribute("data-ws-open"), { timeout: 15_000 })
       .toBe("true")
 
+    // The harness constructs the capture context autoplay-blocked, so this only
+    // reaches "running" if the hook explicitly resumes it.
+    await expect
+      .poll(async () => harness.getAttribute("data-capture-ctx-state"), { timeout: 15_000 })
+      .toBe("running")
+
     await expect
       .poll(async () => Number(await harness.getAttribute("data-pcm-bytes")), { timeout: 15_000 })
       .toBeGreaterThan(0)
