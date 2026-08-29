@@ -2041,7 +2041,7 @@ class ChatConnectorExecutionService:
         )
         # F6/Phase 3 — sync path only uses inline membership proof (no settle sleep).
         # Follow-up vendor re-reads are scheduled after finalize so chat TTFT stays clean.
-        schedule_async_population = False
+        schedule_async_verification = False
         try:
             from app.services.collection_population_verify import (
                 apply_population_verify_to_status,
@@ -2069,13 +2069,32 @@ class ChatConnectorExecutionService:
                         "detail": pop_verify.detail,
                     },
                 }
-                schedule_async_population = is_population_write_action(plan.invoke_action)
+                schedule_async_verification = is_population_write_action(plan.invoke_action)
         except Exception as pop_exc:  # noqa: BLE001
             logger.warning(
                 "collection population verify skipped action=%s err=%s",
                 plan.invoke_action,
                 pop_exc,
             )
+        # entity_get / field_assert prove themselves only by re-reading the vendor,
+        # and nothing above schedules them: the population branch fires solely for
+        # membership writes whose inline check already failed. Left as-is, every
+        # such write is reported to the user with nothing having verified it.
+        if not schedule_async_verification and result.success:
+            try:
+                from app.services.write_success_verification import (
+                    action_requires_followup_read,
+                )
+
+                schedule_async_verification = action_requires_followup_read(
+                    plan.invoke_action
+                )
+            except Exception as mode_exc:  # noqa: BLE001
+                logger.warning(
+                    "write verification mode lookup skipped action=%s err=%s",
+                    plan.invoke_action,
+                    mode_exc,
+                )
         # Phase 4 — statistical batch degeneracy (independent of schema / Phase 3).
         try:
             from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
@@ -2088,7 +2107,7 @@ class ChatConnectorExecutionService:
             if deg and deg.flagged:
                 outcome_effect = "flagged_for_review"
                 structured = {**structured, "batch_degeneracy": deg.as_dict()}
-                schedule_async_population = False  # do not upgrade a flagged batch later
+                schedule_async_verification = False  # do not upgrade a flagged batch later
         except Exception as deg_exc:  # noqa: BLE001
             logger.warning(
                 "batch degeneracy check skipped action=%s err=%s",
@@ -2247,7 +2266,7 @@ class ChatConnectorExecutionService:
             )
 
         # Phase 3 — schedule F6 settle AFTER user-visible finalize (non-blocking).
-        if schedule_async_population and run_id and tool_ctx is not None:
+        if schedule_async_verification and run_id and tool_ctx is not None:
             try:
                 from app.services.tool_types import ToolContext as _TC
                 from app.services.write_success_verification import (
@@ -2278,7 +2297,7 @@ class ChatConnectorExecutionService:
                 )
             except Exception as sched_exc:  # noqa: BLE001
                 logger.warning(
-                    "async population verify schedule skipped action=%s err=%s",
+                    "async write verification schedule skipped action=%s err=%s",
                     plan.invoke_action,
                     sched_exc,
                 )

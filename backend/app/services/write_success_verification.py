@@ -34,6 +34,13 @@ VerificationMode = Literal[
     "accepted_async",
 ]
 
+# Modes whose proof is a vendor re-read *after* the write returns, so a caller
+# has to schedule them explicitly. Membership is excluded: it has its own
+# inline-then-settle path in collection_population_verify.
+_FOLLOW_UP_READ_MODES: frozenset[str] = frozenset(
+    {"follow_up_entity_get", "follow_up_field_assert"}
+)
+
 _DATA_PATH = (
     Path(__file__).resolve().parents[1]
     / "connectors"
@@ -180,6 +187,16 @@ def resolve_success_verification(action: str) -> SuccessVerification:
             reason=(str(row["reason"]) if row.get("reason") else None),
         )
     return build_default_verification(key)
+
+
+def action_requires_followup_read(action: str) -> bool:
+    """Whether this action's proof only arrives from a post-write vendor re-read.
+
+    Call sites that execute writes must consult this: declaring a mode in the
+    catalog does nothing on its own, and an unscheduled action is reported at
+    full confidence with nothing having checked it.
+    """
+    return resolve_success_verification(action).mode in _FOLLOW_UP_READ_MODES
 
 
 def coverage_report() -> dict[str, Any]:
