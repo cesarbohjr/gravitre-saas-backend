@@ -1,10 +1,10 @@
 {
-  "started_at": "2026-08-28T22:59:53.978616+00:00",
+  "started_at": "2026-08-29T03:28:06.427006+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "vendor": "hubspot",
   "action": "hubspot.deals.update_stage",
   "pass": true,
-  "live_git_sha": "b7776ba4c182c48610701e235edaf8d833a13d79",
+  "live_git_sha": "3d544d6504f1c234da3175fd8114ddda7cbfda24",
   "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
   "pipeline_id": "default",
   "stages_available": [
@@ -21,7 +21,7 @@
     "success": true,
     "error": null
   },
-  "deal_id": "222860683241",
+  "deal_id": "222800541678",
   "update_stage": {
     "success": true,
     "error": null
@@ -31,7 +31,7 @@
     "effect": "updated",
     "detail": "follow_up_field_assert_confirmed",
     "read_action": "hubspot.deals.get",
-    "entity_id": "222860683241",
+    "entity_id": "222800541678",
     "field": "dealstage",
     "expected": "qualifiedtobuy",
     "observed": "qualifiedtobuy",
@@ -42,7 +42,7 @@
     "effect": "unknown",
     "detail": "field_value_mismatch",
     "read_action": "hubspot.deals.get",
-    "entity_id": "222860683241",
+    "entity_id": "222800541678",
     "field": "dealstage",
     "expected": "appointmentscheduled",
     "observed": "qualifiedtobuy",
@@ -53,5 +53,5 @@
     "error": null
   },
   "verdict": "PASS \u2014 the stored stage matched the requested one, and asking for the stage the deal had moved away from was correctly reported as a mismatch.",
-  "finished_at": "2026-08-28T23:00:53.607819+00:00"
+  "finished_at": "2026-08-29T03:29:41.594161+00:00"
 }
