@@ -16,6 +16,11 @@ from app.services.chat_connector_models import ConnectorActionPlan
 
 APPROVAL_ACTION_MISMATCH = "APPROVAL_ACTION_MISMATCH"
 
+#: audit_events.action emitted whenever the fail-closed net actually refuses an
+#: execution. Without this a real production occurrence leaves no trace, and the
+#: net is only ever observable in the deliberate test that provokes it.
+APPROVAL_MISMATCH_AUDIT_ACTION = "connector.approval.action_mismatch"
+
 
 class ApprovalActionMismatchError(Exception):
     """Raised when execution would diverge from the approved action identity."""
@@ -25,6 +30,47 @@ class ApprovalActionMismatchError(Exception):
     def __init__(self, message: str, *, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.details = dict(details or {})
+
+
+@dataclass(frozen=True)
+class MismatchAuditContext:
+    """Who/where to record a refusal against. Optional so pure callers still work."""
+
+    client: Any
+    org_id: str
+    actor_id: str
+    conversation_id: str | None = None
+
+
+def record_approval_mismatch(
+    audit: MismatchAuditContext | None,
+    *,
+    reason: str,
+    details: dict[str, Any],
+) -> None:
+    """Emit the standing audit trace for a refusal. Never raises."""
+    if audit is None or audit.client is None:
+        return
+    try:
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            audit.client,
+            audit.org_id,
+            audit.actor_id,
+            APPROVAL_MISMATCH_AUDIT_ACTION,
+            "connector_action",
+            audit.conversation_id or str(uuid.uuid4()),
+            {
+                "code": APPROVAL_ACTION_MISMATCH,
+                "reason": reason,
+                "refused": True,
+                **details,
+            },
+        )
+    except Exception:  # noqa: BLE001
+        # Observability must never convert a safe refusal into a crash.
+        pass
 
 
 @dataclass(frozen=True)
@@ -138,6 +184,7 @@ def assert_plan_matches_binding(
     params: dict[str, Any],
     *,
     registry: Any | None = None,
+    audit: MismatchAuditContext | None = None,
 ) -> None:
     """Fail closed when live plan fields diverge from the approved binding."""
     binding = binding_from_params(params)
@@ -157,22 +204,24 @@ def assert_plan_matches_binding(
         if current_digest != binding.bound_args_digest:
             mismatches["args_digest"] = "approved args no longer match staged args"
         if mismatches:
+            details = {
+                "approval_action_id": binding.approval_action_id,
+                "mismatches": mismatches,
+                "approved": {
+                    "tool_name": binding.bound_tool_name,
+                    "invoke_action": binding.bound_invoke_action,
+                    "integration": binding.bound_integration,
+                },
+                "current": {
+                    "tool_name": current_tool,
+                    "invoke_action": current_invoke,
+                    "integration": current_integration,
+                },
+            }
+            record_approval_mismatch(audit, reason="binding_divergence", details=details)
             raise ApprovalActionMismatchError(
                 "The approved action no longer matches what is about to execute. Please try again.",
-                details={
-                    "approval_action_id": binding.approval_action_id,
-                    "mismatches": mismatches,
-                    "approved": {
-                        "tool_name": binding.bound_tool_name,
-                        "invoke_action": binding.bound_invoke_action,
-                        "integration": binding.bound_integration,
-                    },
-                    "current": {
-                        "tool_name": current_tool,
-                        "invoke_action": current_invoke,
-                        "integration": current_integration,
-                    },
-                },
+                details=details,
             )
 
     # Legacy pending_task rows without binding fields trust staged invoke_action as-is.
@@ -188,13 +237,15 @@ def assert_plan_matches_binding(
         args=plan.args,
     )
     if resolved and current_invoke and resolved != current_invoke:
+        details = {
+            "tool_name": current_tool,
+            "invoke_action": current_invoke,
+            "resolved_invoke_action": resolved,
+        }
+        record_approval_mismatch(audit, reason="live_resolution_divergence", details=details)
         raise ApprovalActionMismatchError(
             "The approved action no longer matches what is about to execute. Please try again.",
-            details={
-                "tool_name": current_tool,
-                "invoke_action": current_invoke,
-                "resolved_invoke_action": resolved,
-            },
+            details=details,
         )
 
 
@@ -202,6 +253,7 @@ def plan_from_approved_params(
     params: dict[str, Any],
     *,
     registry: Any | None = None,
+    audit: MismatchAuditContext | None = None,
 ) -> ConnectorActionPlan | None:
     """Restore the exact approved plan from pending_task.params."""
     from app.services.chat_connector_execution_service import ChatConnectorExecutionService
@@ -209,7 +261,7 @@ def plan_from_approved_params(
     if not isinstance(params, dict) or not params.get("invoke_action"):
         return None
     plan = ChatConnectorExecutionService.plan_from_dict(params)
-    assert_plan_matches_binding(plan, params, registry=registry)
+    assert_plan_matches_binding(plan, params, registry=registry, audit=audit)
     return plan
 
 

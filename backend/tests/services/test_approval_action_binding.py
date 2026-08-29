@@ -377,3 +377,70 @@ async def test_process_turn_surfaces_hubspot_campaign_gap():
     assert turn is not None
     assert turn.get("workflow_status") == "catalog_gap"
     assert "not available" in str(turn.get("message") or "").lower()
+
+
+# ── Phase 4: the refusal must leave a production-visible trace ──────────────
+#
+# The net was already proven load-bearing, but a real occurrence on live
+# traffic wrote nothing anywhere — it was only ever observable inside the
+# deliberate test that provoked it.
+
+
+def _audit_ctx():
+    from app.services.approval_action_binding import MismatchAuditContext
+
+    return MismatchAuditContext(
+        client=MagicMock(), org_id="org-1", actor_id="user-1", conversation_id="conv-1"
+    )
+
+
+def test_refusal_emits_a_standing_audit_event():
+    from app.services.approval_action_binding import APPROVAL_MISMATCH_AUDIT_ACTION
+
+    approved = ChatConnectorExecutionService.plan_to_dict(_sample_plan())
+    diverged = _sample_plan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+    )
+
+    with patch("app.workflows.audit.write_audit_event") as writer:
+        with pytest.raises(ApprovalActionMismatchError):
+            assert_plan_matches_binding(diverged, approved, audit=_audit_ctx())
+
+    writer.assert_called_once()
+    args = writer.call_args.args
+    assert args[3] == APPROVAL_MISMATCH_AUDIT_ACTION
+    metadata = args[6]
+    assert metadata["code"] == APPROVAL_ACTION_MISMATCH
+    assert metadata["refused"] is True
+    assert metadata["reason"] == "binding_divergence"
+    assert metadata["approved"]["invoke_action"] == "hubspot.contacts.create"
+    assert metadata["current"]["invoke_action"] == "apollo.lists.create"
+
+
+def test_matching_plan_emits_no_audit_noise():
+    approved = ChatConnectorExecutionService.plan_to_dict(_sample_plan())
+    with patch("app.workflows.audit.write_audit_event") as writer:
+        assert_plan_matches_binding(_sample_plan(), approved, audit=_audit_ctx())
+    writer.assert_not_called()
+
+
+def test_audit_failure_never_converts_a_refusal_into_a_crash():
+    """A broken audit sink must not let a refused execution through."""
+    approved = ChatConnectorExecutionService.plan_to_dict(_sample_plan())
+    diverged = _sample_plan(
+        invoke_action="apollo.lists.create", tool_name="apollo_lists_create"
+    )
+    with patch("app.workflows.audit.write_audit_event", side_effect=RuntimeError("sink down")):
+        with pytest.raises(ApprovalActionMismatchError):
+            assert_plan_matches_binding(diverged, approved, audit=_audit_ctx())
+
+
+def test_refusal_without_audit_context_still_refuses():
+    approved = ChatConnectorExecutionService.plan_to_dict(_sample_plan())
+    diverged = _sample_plan(
+        invoke_action="apollo.lists.create", tool_name="apollo_lists_create"
+    )
+    with pytest.raises(ApprovalActionMismatchError):
+        assert_plan_matches_binding(diverged, approved)

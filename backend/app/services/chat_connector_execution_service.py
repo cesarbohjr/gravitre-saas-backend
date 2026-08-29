@@ -1617,12 +1617,22 @@ class ChatConnectorExecutionService:
         params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,
+            MismatchAuditContext,
             format_approval_mismatch_message,
             plan_from_approved_params,
         )
 
         try:
-            plan = plan_from_approved_params(params, registry=self._registry)
+            plan = plan_from_approved_params(
+                params,
+                registry=self._registry,
+                audit=MismatchAuditContext(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                ),
+            )
         except ApprovalActionMismatchError as exc:
             return ExecutionResult(
                 success=False,
@@ -1708,6 +1718,7 @@ class ChatConnectorExecutionService:
         )
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,
+            MismatchAuditContext,
             assert_plan_matches_binding,
             format_approval_mismatch_message,
         )
@@ -1717,6 +1728,12 @@ class ChatConnectorExecutionService:
                 plan,
                 approved_params or {},
                 registry=self._registry,
+                audit=MismatchAuditContext(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                ),
             )
             observation = await self._registry.execute_invoke_action(
                 ctx=ctx,
