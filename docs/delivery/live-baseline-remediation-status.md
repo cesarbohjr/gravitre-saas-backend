@@ -134,12 +134,42 @@ the 33 each fail their guard
 Vendor contracts: 20 machine-readable locations verified by live fetch
 (`docs/delivery/vendor-contract-probe.json`), covering 271 actions.
 
-Live spot-check (`docs/delivery/api-reference-spotcheck-live.json`): 23 actions
-across 8 vendors invoked through the normal `invoke_tool` path with the outbound
-request read off the wire. 23 of 23 hit the recorded endpoint; 1 skipped for lack
-of a live record id. Negative control
-(`docs/delivery/api-reference-spotcheck-negative.json`): 6 deliberately wrong
-endpoints, all 6 rejected.
+Live spot-check (`docs/delivery/api-reference-spotcheck-live.json`): 24 sampled
+actions across 8 vendors invoked through the normal `invoke_tool` path with the
+outbound request read off the wire. 23 of 23 attempted hit the recorded endpoint.
+The 24th, `pipedrive.deals.get`, is skipped because the Pipedrive sandbox holds
+zero deals — `GET /deals` returns `data: null` with
+`more_items_in_collection: false`, so there is no record to fetch. Negative
+control (`docs/delivery/api-reference-spotcheck-negative.json`): 6 deliberately
+wrong endpoints — a neighbouring object, a wrong verb, a wrong API version — all
+6 rejected.
+
+**One of those 23 was a false pass, and the harness found it, not the map.**
+`invoke_tool` evaluates connector availability before dispatching, and that
+evaluation live-probes other vendors' credentials: Apollo's profile endpoint plus
+two Apollo discovery searches, HubSpot token introspection, and so on. That
+traffic is real and outbound, so filtering by host or by OAuth path does not
+remove it. Apollo's discovery probe calls `POST /mixed_people/api_search` — the
+exact endpoint `apollo.people.search` records — so that row had been passing on
+pre-flight traffic whether or not the action itself ever ran. The first run after
+excluding pre-flight by call origin reported it as `NO_REQUEST`, and the retry
+then matched it on its own request, distinguishable by query
+(`?query=engineer&limit=1` versus the probe's `?per_page=1`). The same defect was
+also mis-attributing another vendor's probe traffic to three unrelated rows as
+`MISMATCH`. Pre-flight is now excluded by call stack
+(`PREFLIGHT_MODULES` in `backend/scripts/spot_check_api_reference_live.py`) and
+each recorded request carries the row and thread it was issued under.
+
+Two smaller harness defects were fixed in the same pass: a `--only` subset run
+was overwriting the full-sample artifact, and a local Windows socket failure
+(`WinError 10035`) before the request left the machine was being reported as the
+endpoint not being reached, rather than retried once and labelled as a runner
+problem.
+
+Incidental live finding, recorded for the future drift scan rather than acted on
+here: Pipedrive's `GET /deals` returns `deprecation_warning` — "this endpoint will
+be removed soon". That is precisely the class of signal Phase 5 is meant to
+catch, observed by hand here because the scan does not exist yet.
 
 Deployed-tip readback (`docs/delivery/api-reference-deployed-verify.json`): the
 mapping is generated locally, so a green extractor proves nothing about what

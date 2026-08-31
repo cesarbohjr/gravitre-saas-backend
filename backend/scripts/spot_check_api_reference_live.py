@@ -20,6 +20,8 @@ Matching rules
   * the observed base URL is reported but not required to match, because base
     URLs are per-tenant for several of these vendors (Jira cloud id, Workday
     tenant, HubSpot regions)
+  * requests issued by invoke_tool's connector-availability pre-flight are
+    excluded by call origin, not by host — see PREFLIGHT_MODULES
 
 Run: python scripts/spot_check_api_reference_live.py
 """
@@ -29,7 +31,9 @@ import json
 import os
 import re
 import sys
+import threading
 import time
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -148,6 +152,32 @@ OBSERVED: list[dict[str, Any]] = []
 INFRA_HOST_MARKERS = ("supabase.co", "supabase.in", "railway.app", "localhost", "127.0.0.1")
 
 
+ACTIVE_ROW: dict[str, str] = {"action": "-"}
+
+# invoke_tool evaluates connector availability before dispatching, and that
+# evaluation live-probes other vendors' credentials: Apollo's profile endpoint
+# plus two Apollo discovery searches, HubSpot token introspection, and so on.
+# That traffic is real and outbound, so host and OAuth filters do not remove it.
+# It has to be excluded by origin instead, and the reason is not cosmetic:
+# Apollo's discovery probe calls POST /mixed_people/api_search, which is exactly
+# the endpoint apollo.people.search records. Counting pre-flight traffic would
+# let that row "pass" without the action ever having run.
+PREFLIGHT_MODULES = (
+    "connector_availability_service",
+    "connector_snapshot_cache",
+    "connection_health",
+    "apollo_discovery_capability",
+)
+
+
+def _is_preflight() -> bool:
+    for frame in traceback.extract_stack():
+        name = Path(frame.filename).stem
+        if name in PREFLIGHT_MODULES:
+            return True
+    return False
+
+
 def _record(request, response, started: float) -> None:
     OBSERVED.append(
         {
@@ -159,6 +189,12 @@ def _record(request, response, started: float) -> None:
             "status": response.status_code,
             "started": started,
             "ms": round((time.monotonic() - started) * 1000),
+            # Which row was executing, and on which thread. A request recorded
+            # under one action but issued for another is how a neighbouring
+            # vendor's traffic could otherwise satisfy a match.
+            "row": ACTIVE_ROW["action"],
+            "thread": threading.current_thread().name,
+            "preflight": _is_preflight(),
         }
     )
 
@@ -246,12 +282,20 @@ NEGATIVE_CONTROL: dict[str, str] = {
 
 def main() -> int:
     negative = "--negative-control" in sys.argv
+    # --only a,b,c narrows the run to named actions. Used when re-checking a
+    # specific failure without paying for the whole sample again.
+    only: set[str] = set()
+    for arg in sys.argv[1:]:
+        if arg.startswith("--only="):
+            only = {a.strip() for a in arg.split("=", 1)[1].split(",") if a.strip()}
     settings = get_settings()
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
     rows: list[dict[str, Any]] = []
     last_vendor: str | None = None
     for action, org_id, raw_params in SAMPLE:
+        if only and action not in only:
+            continue
         entry = api_reference_entry(action)
         if entry is None or not entry.get("api_reference"):
             rows.append({"action": action, "result": "NO_REFERENCE"})
@@ -296,6 +340,7 @@ def main() -> int:
         last_vendor = vendor
 
         OBSERVED.clear()
+        ACTIVE_ROW["action"] = action
         invoke_started = time.monotonic()
         ctx = ToolContext(
             settings=settings,
@@ -304,23 +349,39 @@ def main() -> int:
             actor_id="api-reference-spot-check",
             environment_name="production",
         )
-        error: str | None = None
-        result = None
-        try:
-            result = invoke_tool(ctx, action, params)
-            success = bool(getattr(result, "success", False))
-            if not success:
-                error = " ".join(
-                    str(part)
-                    for part in (
-                        getattr(result, "error_code", None),
-                        getattr(result, "error_message", None),
-                    )
-                    if part
-                ) or "action returned success=False with no error detail"
-        except Exception as exc:  # noqa: BLE001
-            success = False
-            error = f"{type(exc).__name__}: {exc}"
+        def attempt() -> tuple[Any, bool, str | None]:
+            try:
+                res = invoke_tool(ctx, action, params)
+                ok = bool(getattr(res, "success", False))
+                err = None
+                if not ok:
+                    err = " ".join(
+                        str(part)
+                        for part in (
+                            getattr(res, "error_code", None),
+                            getattr(res, "error_message", None),
+                        )
+                        if part
+                    ) or "action returned success=False with no error detail"
+                return res, ok, err
+            except Exception as exc:  # noqa: BLE001
+                return None, False, f"{type(exc).__name__}: {exc}"
+
+        result, success, error = attempt()
+
+        # WinError 10035 / ConnectionTerminated: the local socket layer gave up
+        # before the request left the machine, so nothing is observed and the row
+        # would read as "never reached its endpoint". That is a property of this
+        # runner, not of the endpoint, so retry once and say that it was retried.
+        retried = False
+        if error and any(
+            marker in error for marker in ("10035", "ConnectionTerminated", "ConnectError")
+        ):
+            time.sleep(3.0)
+            OBSERVED.clear()
+            invoke_started = time.monotonic()
+            retried = True
+            result, success, error = attempt()
 
         # Background connector health checks run on their own loop and land in
         # the same recorder, so restrict to requests that began after this
@@ -330,10 +391,12 @@ def main() -> int:
             c
             for c in OBSERVED
             if c["started"] >= invoke_started
+            and not c["preflight"]
             and not any(m in (c["host"] or "") for m in INFRA_HOST_MARKERS)
             and "oauth" not in c["url"].lower()
             and not c["path"].lower().endswith("/token")
         ]
+        preflight_calls = [c for c in OBSERVED if c["preflight"]]
         hit = match(reference, vendor_calls)
 
         if hit:
@@ -351,14 +414,24 @@ def main() -> int:
             "result": outcome,
             "action_success": success,
             "error": error,
+            "retried_after_local_socket_error": retried,
             "matched_request": (
                 {"method": hit["method"], "url": hit["url"], "status": hit["status"]}
                 if hit
                 else None
             ),
             "all_vendor_requests": [
-                {"method": c["method"], "url": c["url"], "status": c["status"]}
+                {
+                    "method": c["method"],
+                    "url": c["url"],
+                    "status": c["status"],
+                    "recorded_under_row": c["row"],
+                    "thread": c["thread"],
+                }
                 for c in vendor_calls
+            ],
+            "preflight_requests_excluded": [
+                {"method": c["method"], "url": c["url"]} for c in preflight_calls
             ],
         }
         rows.append(row)
@@ -371,7 +444,10 @@ def main() -> int:
             print(f"          -> {hit['method']} {hit['url']}  [{hit['status']}]")
         else:
             for c in vendor_calls[:4]:
-                print(f"          ?  {c['method']} {c['url']}  [{c['status']}]")
+                print(
+                    f"          ?  {c['method']} {c['url']}  [{c['status']}]"
+                    f"  (row={c['row']} thread={c['thread']})"
+                )
             if error:
                 print(f"          !  {error}")
         if outcome == "MATCH" and not success and error:
@@ -398,7 +474,18 @@ def main() -> int:
         "rows": rows,
     }
     out["mode"] = "negative_control" if negative else "live"
-    name = "api-reference-spotcheck-negative.json" if negative else "api-reference-spotcheck-live.json"
+    if only:
+        # A subset run must not overwrite the full-sample artifact; a partial
+        # file that looks like the canonical one is how a 24-row proof quietly
+        # becomes a 2-row proof.
+        out["subset_of_sample"] = sorted(only)
+        name = "api-reference-spotcheck-subset.json"
+    else:
+        name = (
+            "api-reference-spotcheck-negative.json"
+            if negative
+            else "api-reference-spotcheck-live.json"
+        )
     dest = REPO / "docs" / "delivery" / name
     dest.write_text(json.dumps(out, indent=2), encoding="utf-8")
 

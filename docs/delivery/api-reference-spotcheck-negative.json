@@ -1,5 +1,5 @@
 {
-  "started_at": "2026-08-31T04:48:13.621654+00:00",
+  "started_at": "2026-08-31T08:03:09.901366+00:00",
   "sample_size": 6,
   "vendors": [
     "apollo",
@@ -20,27 +20,173 @@
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
           "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
+          "url": "https://api.hubapi.com/crm/v3/objects/contacts?limit=1&properties=email%2Cfirstname%2Clastname%2Ccompany",
+          "status": 200,
+          "recorded_under_row": "hubspot.contacts.list",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
         {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
         },
         {
           "method": "GET",
-          "url": "https://api.hubapi.com/crm/v3/objects/contacts?limit=1&properties=email%2Cfirstname%2Clastname%2Ccompany",
-          "status": 200
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.ac7be550-d4dc-431c-a32a-60f58c0f2143"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     },
@@ -48,31 +194,201 @@
       "action": "hubspot.contacts.search",
       "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
       "recorded_api_reference": "GET /crm/v3/objects/contacts/search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
-          "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
-        },
-        {
           "method": "POST",
           "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
-          "status": 200
+          "status": 200,
+          "recorded_under_row": "hubspot.contacts.search",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://oauth2.googleapis.com/token"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.5ed2e1ff-537f-4ffc-97f3-e87eb780feba"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://oauth2.googleapis.com/token"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.2ae4fedc-46a6-4bad-bd66-88fb7d0374ef"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     },
@@ -80,31 +396,161 @@
       "action": "apollo.lists.list",
       "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
       "recorded_api_reference": "GET /lists",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
           "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
+          "url": "https://api.apollo.io/api/v1/labels",
+          "status": 200,
+          "recorded_under_row": "apollo.lists.list",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
         {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
         },
         {
           "method": "GET",
-          "url": "https://api.apollo.io/api/v1/labels",
-          "status": 200
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     },
@@ -116,27 +562,173 @@
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
           "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
+          "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
+          "status": 200,
+          "recorded_under_row": "gmail.labels.list",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
         {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
         },
         {
           "method": "GET",
-          "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
-          "status": 200
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.ac7be550-d4dc-431c-a32a-60f58c0f2143"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     },
@@ -148,27 +740,193 @@
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
-          "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
-        },
-        {
           "method": "POST",
           "url": "https://googleads.googleapis.com/v25/customers/9904974542/googleAds:search",
-          "status": 200
+          "status": 200,
+          "recorded_under_row": "google_ads.campaigns.list",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://oauth2.googleapis.com/token"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.521e3936-99ef-4162-9cc3-5df860d06a60"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.ac7be550-d4dc-431c-a32a-60f58c0f2143"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     },
@@ -180,27 +938,173 @@
       "result": "MISMATCH",
       "action_success": true,
       "error": null,
+      "retried_after_local_socket_error": false,
       "matched_request": null,
       "all_vendor_requests": [
         {
           "method": "GET",
-          "url": "https://api.apollo.io/api/v1/users/api_profile",
-          "status": 200
-        },
+          "url": "https://gravitreai-sandbox.pipedrive.com/api/v1/deals?limit=1",
+          "status": 200,
+          "recorded_under_row": "pipedrive.deals.list",
+          "thread": "MainThread"
+        }
+      ],
+      "preflight_requests_excluded": [
         {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
-          "status": 200
-        },
-        {
-          "method": "POST",
-          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
-          "status": 422
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Cname%2Ctype%2Cvendor%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&order=created_at.desc"
         },
         {
           "method": "GET",
-          "url": "https://gravitreai-sandbox.pipedrive.com/api/v1/deals?limit=1",
-          "status": 200
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.c283f76a-deed-41d0-9f2d-2b98e9f95dd9&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.fa83bbd1-327b-465e-82f1-0b00ceab9590&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a726bcae-9710-45fd-bec2-5667c4f22686&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.105ac874-acd0-43d3-abde-696523139f8d&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.bcd1645e-b099-41f8-bb78-9d6e5273cbf2&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=id%2Corg_id%2Ctype%2Cstatus%2Cconfig%2Cenvironment%2Ccreated_at%2Cupdated_at&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&environment=eq.production&deleted_at=is.null&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_token&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.api_key&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&id=eq.30f734a2-dbdb-45aa-9112-19c6d604d451&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1"
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/oauth/v1/access-tokens/CI3YxLeFNBIaQlNQMl8kQEwrAg0ACAUECAwCEgkhAQEBC8AY7Y_bowEg3bGYfyiNvOcTMhR1Fi_3gclUiZp6zuRn56VeEFIPHDrHAUJTUDJfJEBMKwNvAARHBY4CBMkCC_UCBgsZHyCKAYsBkAHLAcwB3gHjAeQB5QH6AfsB_AGWAu0CyAODBMMGogejB6QHtwe6B74HvwfGB8cHywfPB9EH0gfUB9cH2gfhB-MH6gfsB-4H8wf4B_4HgAiKCIsIkAiRCJYImAibCJ8IqQixCL4IxQjHCMkIzwjTCNsI3gjhCO8I8QjzCPcI-giACYUJjwmQCZgJoAmOoQWPoQXHwwWi-AXjjwjaqAiM7wiokgmukglCFBkVGE6ERVinVVk0FdXDxNUzXJpcSgNuYTNSAFoAYABozcPALHABeAA"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/organizations?select=settings%2Cdata_region&id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connectors?select=config&org_id=eq.cbbf993b-b22f-41ce-964b-1fc25e0dd9ea&id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&limit=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=id&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
+        },
+        {
+          "method": "PATCH",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?id=eq.ac7be550-d4dc-431c-a32a-60f58c0f2143"
+        },
+        {
+          "method": "GET",
+          "url": "https://smyeexlrqdpymwjmgzqu.supabase.co/rest/v1/connector_secrets?select=encrypted_value&connector_id=eq.547cdda5-2637-4a2b-b087-d5ea89486575&key_name=eq.oauth_tokens&limit=1"
         }
       ]
     }
