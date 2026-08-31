@@ -71,7 +71,15 @@ class ConsensusEngine:
             start = raw.find("{")
             end = raw.rfind("}")
             parsed = json.loads(raw[start : end + 1]) if start >= 0 and end > start else {}
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            # A persona that silently votes "revise" looks like deliberation.
+            # Say why, so a dead model call cannot masquerade as consensus.
+            logger.warning(
+                "consensus_stance_failed persona=%s org_id=%s error=%s",
+                persona_key,
+                org_id,
+                exc,
+            )
             used_fallback = True
             parsed = {"vote": "revise", "summary": "Unable to parse stance."}
         confidence = float(parsed.get("confidence") or 0.5)

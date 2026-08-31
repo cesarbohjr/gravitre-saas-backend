@@ -1,0 +1,70 @@
+[
+  {
+    "site": "answer_validator.validate_grounded_answer:74",
+    "capability_silently_absent": "detect ungrounded/hallucinated claims against retrieved context",
+    "observed_fallback": {
+      "is_valid": true,
+      "issues": [],
+      "requires_human": false,
+      "confidence": 0.5,
+      "confidence_is_estimate": true,
+      "confidenceIsEstimate": true,
+      "confidence_source": "heuristic",
+      "confidenceSource": "heuristic"
+    },
+    "verdict": "FAILS OPEN \u2014 unsupported answer declared is_valid=True"
+  },
+  {
+    "site": "conversational_turn_gate.classify_turn_shape:240",
+    "capability_silently_absent": "tell genuine small talk apart from casually-phrased data asks",
+    "observed_fallback": {
+      "obvious_greeting": {
+        "shape": "conversational",
+        "used_model": false,
+        "reason": "social_no_task_signal"
+      },
+      "ambiguous_case": {
+        "shape": "task_shaped",
+        "used_model": false,
+        "reason": "data_or_connector_signal"
+      }
+    },
+    "verdict": "DORMANT \u2014 model never consulted on either; heuristics carry every turn"
+  },
+  {
+    "site": "query_rewriter.refine_query_for_retrieval:52",
+    "capability_silently_absent": "resolve pronouns into a standalone retrieval query",
+    "observed_fallback": {
+      "original_query": "and what about their renewal?",
+      "refined_query": "and what about their renewal?"
+    },
+    "verdict": "DORMANT \u2014 follow-up left unresolved, retrieval sees the raw pronoun"
+  },
+  {
+    "site": "pending_reply_classifier:500",
+    "capability_silently_absent": "comprehend approve/reject replies that regex could not classify",
+    "observed_fallback": "ambiguous",
+    "verdict": "DORMANT \u2014 every regex-unmatched reply collapses to 'ambiguous'"
+  },
+  {
+    "site": "conversation_turn_controller:273",
+    "capability_silently_absent": "comprehend continue/modify/cancel replies to a pending plan",
+    "observed_fallback": "unclear",
+    "verdict": "DORMANT \u2014 every reply collapses to 'unclear'"
+  },
+  {
+    "site": "domain_intelligence_service:208",
+    "capability_silently_absent": "model-based business-domain classification over keyword rules",
+    "observed_fallback": {
+      "source": "rules",
+      "department": "Support"
+    },
+    "verdict": "DORMANT \u2014 rules-only classification, source never 'llm'"
+  },
+  {
+    "site": "contextual_understanding_service:225",
+    "capability_silently_absent": "extract explicit goal + constraints from the message",
+    "observed_fallback": {},
+    "verdict": "DORMANT \u2014 returns {} so goal/constraints are always empty"
+  }
+]

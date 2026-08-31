@@ -350,7 +350,7 @@ async def extract_action_args(
             if text_val and not str(heuristic.get(key) or "").strip():
                 heuristic[key] = text_val
     except Exception as exc:  # noqa: BLE001
-        logger.debug("schema_param_extractor model skipped: %s", exc)
+        logger.warning("schema_param_extractor model skipped: %s", exc)
 
     return heuristic
 

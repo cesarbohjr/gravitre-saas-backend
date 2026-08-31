@@ -96,7 +96,7 @@ async def validate_grounded_answer(
                 ),
             }
     except Exception as exc:  # noqa: BLE001
-        logger.debug("answer validation skipped org_id=%s error=%s", org_id, exc)
+        logger.warning("answer validation skipped org_id=%s error=%s", org_id, exc)
 
     return {
         "is_valid": True,

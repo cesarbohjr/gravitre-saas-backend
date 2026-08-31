@@ -47,7 +47,7 @@ async def label_cluster(
         label = (response.content or "").strip().strip('"').strip("'")
         return label[:120] if label else "Recurring query theme"
     except Exception as exc:  # noqa: BLE001
-        logger.debug("cluster_label_fallback org_id=%s error=%s", org_id, exc)
+        logger.warning("cluster_label_fallback org_id=%s error=%s", org_id, exc)
         return samples[0][:80]
 
 
@@ -77,7 +77,7 @@ async def suggest_gap_content(
         )
         return (response.content or "").strip()[:500]
     except Exception as exc:  # noqa: BLE001
-        logger.debug("gap_suggestion_fallback org_id=%s error=%s", org_id, exc)
+        logger.warning("gap_suggestion_fallback org_id=%s error=%s", org_id, exc)
         return f"Consider adding documentation covering {cluster_label}."
 
 

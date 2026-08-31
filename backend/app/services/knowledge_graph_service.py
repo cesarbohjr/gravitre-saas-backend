@@ -144,7 +144,7 @@ class KnowledgeGraphService:
                 entity_type = str(parsed.get("entity_type") or "unknown")
                 entity_id = str(parsed.get("entity_id") or "unknown")
         except Exception as exc:  # noqa: BLE001
-            logger.debug("knowledge_graph_entity_identify_failed org_id=%s error=%s", org_id, exc)
+            logger.warning("knowledge_graph_entity_identify_failed org_id=%s error=%s", org_id, exc)
 
         if entity_type == "unknown" or entity_id == "unknown":
             return {

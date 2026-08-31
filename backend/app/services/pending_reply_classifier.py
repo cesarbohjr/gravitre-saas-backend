@@ -523,7 +523,7 @@ async def _model_pending_reply_intent(
         if intent in _VALID_INTENTS:
             return intent  # type: ignore[return-value]
     except Exception as exc:  # noqa: BLE001
-        logger.debug("pending_reply model classify skipped: %s", exc)
+        logger.warning("pending_reply model classify skipped: %s", exc)
     return "ambiguous"
 
 

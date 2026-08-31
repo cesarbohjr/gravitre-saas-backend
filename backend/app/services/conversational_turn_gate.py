@@ -270,7 +270,7 @@ async def classify_turn_shape(
             used_model=True,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.debug("conversational turn gate model skipped: %s", exc)
+        logger.warning("conversational turn gate model skipped: %s", exc)
         # Fail closed into task pipeline — never drop real work into chitchat.
         return ConversationalGateDecision(
             shape="task_shaped",

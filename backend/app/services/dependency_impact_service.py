@@ -218,7 +218,7 @@ class DependencyImpactService:
             if entity_type in SUPPORTED_ENTITY_TYPES and entity_id:
                 return entity_type, entity_id
         except Exception as exc:  # noqa: BLE001
-            logger.debug("dependency_llm_parse_failed error=%s", exc)
+            logger.warning("dependency_llm_parse_failed error=%s", exc)
         return None
 
     async def _find_direct_dependents(

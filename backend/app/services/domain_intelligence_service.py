@@ -237,7 +237,7 @@ class DomainIntelligenceService:
                 "profile_id": None,
             }
         except Exception as exc:  # noqa: BLE001
-            logger.debug("domain_llm_classify_skipped error=%s", exc)
+            logger.warning("domain_llm_classify_skipped error=%s", exc)
             return rule_result
 
     @staticmethod

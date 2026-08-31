@@ -247,7 +247,7 @@ async def detect_contradictions(
             return []
         parsed = json.loads(match.group(0))
     except Exception as exc:  # noqa: BLE001
-        logger.debug("contradiction_detect_failed org_id=%s error=%s", org_id, exc)
+        logger.warning("contradiction_detect_failed org_id=%s error=%s", org_id, exc)
         return []
 
     found: list[Contradiction] = []

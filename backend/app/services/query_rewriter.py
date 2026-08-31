@@ -65,6 +65,6 @@ async def rewrite_for_retrieval(
             if refined and refined.lower() != original.lower():
                 return {"original_query": original, "refined_query": refined[:2000]}
     except Exception as exc:  # noqa: BLE001
-        logger.debug("query rewrite skipped org_id=%s error=%s", org_id, exc)
+        logger.warning("query rewrite skipped org_id=%s error=%s", org_id, exc)
 
     return {"original_query": original, "refined_query": original}

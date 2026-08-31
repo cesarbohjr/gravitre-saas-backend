@@ -4,7 +4,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 from app.operators.agent_prompts import infer_task_persona_key
+
+logger = get_logger(__name__)
 
 
 SUPPORTED_TASKS = frozenset(
@@ -80,8 +83,15 @@ class GenerativeAgentCoordinator:
             text = str(getattr(response, "content", "") or "").strip()
             if text:
                 return text[:4000]
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # The outline fallback reads like a real draft, so a failure here is
+            # invisible in the output. It must not also be invisible in the logs.
+            logger.warning(
+                "generative_draft_failed task_type=%s org_id=%s error=%s",
+                task_type,
+                org_id,
+                exc,
+            )
         return f"Review-ready {task_type.replace('_', ' ')} outline for: {goal[:500]}"
 
 

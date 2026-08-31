@@ -241,7 +241,7 @@ class ContextualUnderstandingService:
             if isinstance(parsed, dict):
                 return parsed
         except Exception as exc:  # noqa: BLE001
-            logger.debug("contextual model extract skipped: %s", exc)
+            logger.warning("contextual model extract skipped: %s", exc)
         return {}
 
     @staticmethod

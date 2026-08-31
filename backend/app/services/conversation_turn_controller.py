@@ -293,7 +293,7 @@ async def _model_pending_intent(
         if intent in {"continue", "modify", "cancel", "unclear"}:
             return intent  # type: ignore[return-value]
     except Exception as exc:  # noqa: BLE001
-        logger.debug("pending plan intent model skipped: %s", exc)
+        logger.warning("pending plan intent model skipped: %s", exc)
     return "unclear"
 
 

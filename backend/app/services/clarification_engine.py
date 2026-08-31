@@ -780,7 +780,7 @@ class ClarificationEngine:
             text = (response.content or "").strip()
             return text if text else None
         except Exception as exc:  # noqa: BLE001
-            logger.debug("clarification polish skipped: %s", exc)
+            logger.warning("clarification polish skipped: %s", exc)
             return None
 
     async def load_clarification_state(self, conversation_id: str, org_id: str) -> dict[str, Any]:

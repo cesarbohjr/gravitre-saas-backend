@@ -316,7 +316,7 @@ async def _generate_followup_suggestions(
         if isinstance(suggestions, list):
             return [str(item) for item in suggestions[:3]]
     except Exception as exc:  # noqa: BLE001
-        logger.debug("followup suggestion generation failed: %s", exc)
+        logger.warning("followup suggestion generation failed: %s", exc)
     return []
 
 

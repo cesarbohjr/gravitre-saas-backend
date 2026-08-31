@@ -1,0 +1,246 @@
+{
+  "factories_scanned": 318,
+  "bad_call_sites": 16,
+  "hits": [
+    {
+      "file": "app\\services\\org_context_service.py",
+      "line": 95,
+      "factory": "_load",
+      "arg_count": 5,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\connectors\\action_catalog\\api_reference_map.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\services\\org_context_service.py",
+      "line": 107,
+      "factory": "_load",
+      "arg_count": 5,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\connectors\\action_catalog\\api_reference_map.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\services\\org_context_service.py",
+      "line": 119,
+      "factory": "_load",
+      "arg_count": 5,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\connectors\\action_catalog\\api_reference_map.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\operators\\agent_intelligence.py",
+      "line": 931,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\services\\answer_validator.py",
+      "line": 74,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\clarification_engine.py",
+      "line": 769,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\contextual_understanding_service.py",
+      "line": 225,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\conversation_turn_controller.py",
+      "line": 273,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\conversational_turn_gate.py",
+      "line": 240,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\domain_intelligence_service.py",
+      "line": 208,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\pending_reply_classifier.py",
+      "line": 500,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\query_rewriter.py",
+      "line": 52,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\services\\schema_param_extractor.py",
+      "line": 319,
+      "factory": "get_model_router",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\model_router.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": false,
+          "log_level": "debug"
+        }
+      ],
+      "silently_swallowed": true,
+      "swallowed_at_all": true
+    },
+    {
+      "file": "app\\schedulers\\cache_warming_scheduler.py",
+      "line": 48,
+      "factory": "get_rag_service",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\rag_service.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\services\\unified_turn_knowledge_context.py",
+      "line": 201,
+      "factory": "get_rag_service",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\rag_service.py",
+      "enclosing_handlers": [],
+      "silently_swallowed": false,
+      "swallowed_at_all": false
+    },
+    {
+      "file": "app\\services\\ai_tracing.py",
+      "line": 39,
+      "factory": "get_tracer",
+      "arg_count": 1,
+      "defined_in": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\services\\ai_tracing.py",
+      "enclosing_handlers": [
+        {
+          "catches": [
+            "Exception"
+          ],
+          "logs_visibly": true,
+          "log_level": "warning"
+        }
+      ],
+      "silently_swallowed": false,
+      "swallowed_at_all": true
+    }
+  ]
+}
