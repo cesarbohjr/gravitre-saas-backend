@@ -6,7 +6,14 @@ live artifact behind it; local test suites do not qualify on their own, because
 this program has already found six cases where a green suite was the reason a
 bug survived rather than the reason it was found.
 
-Last updated: 2026-08-29.
+Last updated: 2026-08-31.
+
+Deploy state for this pass: live `git_sha` is `123c1960`, confirmed at
+`/health`, and every runtime artifact below was verified against it. The later
+commit `bdcd6c89` touches only `backend/scripts/spot_check_api_reference_live.py`
+and evidence files under `docs/delivery/` — no application code and no served
+data — so Railway did not cut a new deploy for it, and there is nothing in it for
+a deployed-tip check to read.
 
 | Phase | Subject | Status |
 |-------|---------|--------|
