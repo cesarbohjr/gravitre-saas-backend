@@ -309,22 +309,32 @@ async def assess_evidence_sufficiency(
             confidence=None,
         )
 
-    structural_gaps: list[str] = []
+    # Only one structural veto: a regulatory answer with nothing attributable
+    # behind it is unusable regardless of what it says.
+    #
+    # Missing freshness deliberately is NOT a veto. Live traffic showed why: web
+    # results carry no date from the provider, so a dated-source requirement made
+    # every web-answered regulatory question fail the gate before any reasoning
+    # happened, which both skipped the real assessment and guaranteed the loop
+    # burned its whole round budget for nothing. Currency matters, so it is
+    # passed to the assessor as a weighted input instead of a dead end.
     if bar.require_citable_source and not _has_citable_source(substantive):
-        structural_gaps.append("no_citable_source")
-    if bar.require_freshness_signal and not _has_freshness_signal(substantive):
-        structural_gaps.append("no_freshness_signal")
-    if structural_gaps:
-        missing = " and ".join(g.replace("_", " ") for g in structural_gaps)
         return SufficiencyVerdict(
             sufficient=False,
             bar=bar,
             assessor="deterministic",
-            reason=f"{bar.name} bar requires {missing}; retrieved evidence has neither",
-            gaps=structural_gaps,
+            reason=(
+                f"{bar.name} bar requires an attributable source, and none of the "
+                f"{len(substantive)} retrieved excerpts carry a citation, URL, or "
+                "authority score"
+            ),
+            gaps=["no_citable_source"],
             confidence=None,
         )
 
+    freshness_missing = bar.require_freshness_signal and not _has_freshness_signal(
+        substantive
+    )
     digest = _evidence_digest(substantive)
     tried = ", ".join(sources_tried or []) or "unknown"
     prompt = (
@@ -340,6 +350,15 @@ async def assess_evidence_sufficiency(
             if bar.name == BAR_REGULATORY
             else "A business standard means: the evidence must directly address the "
             "question well enough to answer without guessing.\n"
+        )
+        + (
+            "NOTE: none of the retrieved evidence carries an effective date or "
+            "last-updated signal. Decide whether currency actually matters for "
+            "THIS question — a question asking for a current effective date, rate, "
+            "or deadline is not answerable dependably without it, while a stable "
+            "definitional or structural question may be.\n"
+            if freshness_missing
+            else ""
         )
         + f"\nRetrieved evidence:\n{digest or '(none)'}\n\n"
         "Judge three things: (1) does the evidence directly address what was asked, "
@@ -373,12 +392,19 @@ async def assess_evidence_sufficiency(
         confidence = None
         if isinstance(raw_conf, (int, float)):
             confidence = max(0.0, min(1.0, float(raw_conf)))
+        sufficient = bool(parsed.get("sufficient", True))
+        gaps = [str(g) for g in (parsed.get("gaps") or []) if g]
+        # Keep the undated-evidence fact visible in the shortfall record when the
+        # assessor concluded the evidence falls short, so the reported reason
+        # includes it even if the model phrased the gap differently.
+        if not sufficient and freshness_missing and "no_freshness_signal" not in gaps:
+            gaps.append("no_freshness_signal")
         return SufficiencyVerdict(
-            sufficient=bool(parsed.get("sufficient", True)),
+            sufficient=sufficient,
             bar=bar,
             assessor="llm",
             reason=str(parsed.get("reason") or "").strip() or "model returned no reason",
-            gaps=[str(g) for g in (parsed.get("gaps") or []) if g],
+            gaps=gaps,
             confidence=confidence,
         )
     except Exception as exc:  # noqa: BLE001

@@ -125,6 +125,16 @@ def revert_authority_scale_fix() -> str:
     )
 
 
+def restore_freshness_dead_end() -> str:
+    """The dead end live traffic exposed: undated evidence vetoed before reasoning."""
+    return _sub(
+        SUFF,
+        "    freshness_missing = bar.require_freshness_signal and not _has_freshness_signal(\n        substantive\n    )",
+        "    freshness_missing = bar.require_freshness_signal and not _has_freshness_signal(\n        substantive\n    )\n    if freshness_missing:\n        return SufficiencyVerdict(\n            sufficient=False,\n            bar=bar,\n            assessor='deterministic',\n            reason='no freshness signal',\n            gaps=['no_freshness_signal'],\n            confidence=None,\n        )",
+        "restored the hard freshness veto (undated web evidence never reaches the assessor)",
+    )
+
+
 def always_report_process() -> str:
     return _sub(
         SUFF,
@@ -141,6 +151,7 @@ MUTATIONS = [
     (CTX, LOOP_TESTS, "test_insufficient_evidence_escalates_to_a_source_not_yet_tried", escalate_to_an_already_tried_source),
     (CTX, LOOP_TESTS, "test_iteration_is_hard_bounded_and_the_shortfall_is_stated", silence_the_shortfall),
     (SUFF, LOOP_TESTS, "test_regulatory_questions_get_a_higher_bar_than_business_questions", flatten_the_regulatory_bar),
+    (SUFF, LOOP_TESTS, "test_undated_evidence_is_not_a_dead_end", restore_freshness_dead_end),
     (CONTRA, CONTRA_TESTS, "test_unresolved_conflict_is_surfaced_with_both_claims", always_pick_a_winner),
     (CONTRA, CONTRA_TESTS, "test_authority_works_on_the_scale_the_real_corpus_actually_uses", revert_authority_scale_fix),
     (SUFF, LOOP_TESTS, "test_clean_single_pass_produces_no_process_noise", always_report_process),

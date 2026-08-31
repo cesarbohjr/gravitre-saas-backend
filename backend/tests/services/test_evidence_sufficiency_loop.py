@@ -119,7 +119,55 @@ async def test_regulatory_bar_rejects_evidence_with_no_citable_source() -> None:
     )
     assert verdict.sufficient is False
     assert verdict.assessor == "deterministic"
-    assert "no_citable_source" in verdict.gaps
+    assert verdict.gaps == ["no_citable_source"]
+    # The reason has to read as a statement a human can act on.
+    assert "requires an attributable source" in verdict.reason
+    assert "has neither" not in verdict.reason
+
+
+@pytest.mark.asyncio
+async def test_undated_evidence_is_not_a_dead_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Missing freshness must reach the assessor, not veto before reasoning.
+
+    Live traffic found this: web results carry no provider date, so treating a
+    freshness signal as a hard structural requirement made every web-answered
+    regulatory question fail the gate before any judgement happened, and the
+    loop then spent its entire round budget on a bar that could not be met.
+    """
+    seen: dict[str, str] = {}
+
+    class _Resp:
+        content = '{"sufficient": true, "reason": "structural rule, currency not material", "gaps": [], "confidence": 0.7}'
+
+    class _Router:
+        async def complete(self, *a: Any, **kw: Any):
+            seen["prompt"] = a[1] if len(a) > 1 else kw.get("prompt", "")
+            return _Resp()
+
+    import app.services.model_router as mr
+
+    monkeypatch.setattr(mr, "get_model_router", lambda *_a, **_k: _Router())
+
+    bar = sufficiency_bar_for(
+        query="What does the ESA require for mass terminations?",
+        route_departments=["legal"],
+        route_jurisdictions=["CA-ON"],
+    )
+    # Cited, but undated — exactly the shape a Serper result arrives in.
+    rows = [
+        {"kind": "internet", "content": "ESA mass termination rules...", "url": "https://x", "last_updated": None},
+        {"kind": "internet", "content": "Notice thresholds are 8, 12, 16 weeks", "url": "https://y", "last_updated": None},
+    ]
+    verdict = await assess_evidence_sufficiency(
+        query="What does the ESA require for mass terminations?",
+        rows=rows,
+        bar=bar,
+        settings=_settings(),
+    )
+    assert verdict.assessor == "llm", "undated evidence must still be reasoned about"
+    assert verdict.sufficient is True
+    # The assessor was told currency was unverifiable so it can weigh it.
+    assert "effective date or last-updated signal" in seen["prompt"]
 
 
 @pytest.mark.asyncio

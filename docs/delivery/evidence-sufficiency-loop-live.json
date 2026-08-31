@@ -1,0 +1,156 @@
+{
+  "probe": "evidence_sufficiency_loop_live",
+  "started_at": "2026-08-31T20:07:16.302077+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "704631eb",
+  "pass_criteria": {
+    "hard_query": "assessor == 'llm' and bounds respected",
+    "simple_query": "loop does not engage",
+    "bounds": "additional_rounds_used <= max_additional_rounds"
+  },
+  "turns": [
+    {
+      "label": "hard",
+      "conversation_id": "0f47e5ab-353b-452c-bf5b-d545a898cddf",
+      "message": "What are Ontario's statutory mass-termination notice requirements under the Employment Standards Act, what is the current effective date of those provisions, and how do they differ from the US federal WARN Act thresholds?",
+      "http_status": 200,
+      "wall_ms": 17927,
+      "assistant_chars": 967,
+      "assistant_excerpt": "I can answer the Ontario piece from the excerpts, but not the \u201ccurrent effective date\u201d as fully verified \u2014 the retrieved sources don\u2019t give a fresh, authoritative date.\n\nWhat the excerpts support:\n- Ontario\u2019s mass-termination rules under the ESA require **8, 12, or 16 weeks of notice**, depending on how many employees are being terminated.\n- That is an **ESA minimum**; the statutory notice is not the whole severance picture.\n\nWhat I can\u2019t substantiate from the retrieved material:\n- The **current effective date** of those Ontario provisions.\n- A fully verified, current comparison to the **US federal WARN Act** thresholds from a sourced legal text.\n\nOn the general comparison: Ontario\u2019s regime ",
+      "stream_errors": [],
+      "unified_turn_live": null,
+      "reasoning_depth": null,
+      "audit_event_id": "6bb645fa-4259-4dc5-b488-0737e2fe5da8",
+      "audit_action": "unified_turn.live.completed",
+      "audit_created_at": "2026-08-31T20:07:34.785377+00:00",
+      "unifiedTurnKnowledge": {
+        "pack_ids": [],
+        "route_reason": "departments=['unspecified']; jurisdictions=['CA-ON', 'US-federal']; packs=[]",
+        "internal_thin": true,
+        "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
+        "research_scope": "internal_only",
+        "cognitiveTurnId": "04beddb4-f180-492f-946f-425936b06589",
+        "fabric_hit_count": 0,
+        "internet_provider": "serper",
+        "internet_hit_count": 2,
+        "evidenceSufficiency": {
+          "ms": 2101,
+          "bar": "regulatory",
+          "enabled": true,
+          "final_gaps": [
+            "no_freshness_signal"
+          ],
+          "assessments": [
+            {
+              "bar": "regulatory",
+              "gaps": [
+                "no_freshness_signal"
+              ],
+              "reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+              "assessor": "deterministic",
+              "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
+              "sufficient": false,
+              "min_sources": 2,
+              "confidenceSource": "insufficient_data",
+              "confidence_source": "insufficient_data",
+              "confidenceIsEstimate": false,
+              "assessment_confidence": null,
+              "confidence_is_estimate": false,
+              "require_citable_source": true,
+              "require_freshness_signal": true
+            },
+            {
+              "bar": "regulatory",
+              "gaps": [
+                "no_freshness_signal"
+              ],
+              "reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+              "assessor": "deterministic",
+              "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
+              "sufficient": false,
+              "min_sources": 2,
+              "confidenceSource": "insufficient_data",
+              "confidence_source": "insufficient_data",
+              "confidenceIsEstimate": false,
+              "assessment_confidence": null,
+              "confidence_is_estimate": false,
+              "require_citable_source": true,
+              "require_freshness_signal": true
+            }
+          ],
+          "final_reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+          "sources_tried": [
+            "org_rag",
+            "internet",
+            "business_graph"
+          ],
+          "stopped_because": "no_untried_source",
+          "final_sufficient": false,
+          "max_additional_rounds": 2,
+          "additional_rounds_used": 1
+        },
+        "org_rag_chunk_count": 0,
+        "outcomeBiasInjected": true,
+        "business_graph_status": "insufficient_entity_match",
+        "internet_raw_hit_count": 5,
+        "auto_internet_when_thin": true
+      }
+    },
+    {
+      "label": "simple",
+      "conversation_id": "9a49a457-0912-4feb-b15d-7770f47451b1",
+      "message": "thanks, that helps",
+      "http_status": 200,
+      "wall_ms": 13957,
+      "assistant_chars": 78,
+      "assistant_excerpt": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "stream_errors": [],
+      "unified_turn_live": null,
+      "reasoning_depth": null,
+      "audit_event_id": "0064df8e-f730-4871-9002-553620aaaaed",
+      "audit_action": "unified_turn.live.fallthrough",
+      "audit_created_at": "2026-08-31T20:07:49.729568+00:00",
+      "unifiedTurnKnowledge": {
+        "skipped": "not_informational",
+        "pack_ids": [],
+        "route_reason": "",
+        "research_scope": "internal_only",
+        "cognitiveTurnId": "fbab9c01-2549-43e7-a1ca-f9f40879e152",
+        "fabric_hit_count": 0,
+        "internet_hit_count": 0,
+        "org_rag_chunk_count": 0,
+        "outcomeBiasInjected": true
+      }
+    }
+  ],
+  "health": {
+    "git_sha": "704631eb2051e97090f6fe25b0b4b20cc957c769",
+    "unified_turn_live_enabled": true
+  },
+  "checks": {
+    "hard_turn_reached_live": false,
+    "hard_loop_meta_present": true,
+    "hard_model_judged_sufficiency": false,
+    "hard_assessors": [
+      "deterministic",
+      "deterministic"
+    ],
+    "hard_additional_rounds_used": 1,
+    "hard_bar": "regulatory",
+    "hard_final_sufficient": false,
+    "hard_stopped_because": "no_untried_source",
+    "hard_sources_tried": [
+      "org_rag",
+      "internet",
+      "business_graph"
+    ],
+    "bounds_respected": true,
+    "simple_loop_did_not_engage": true,
+    "simple_skip_reason": "not_informational",
+    "hard_wall_ms": 17927,
+    "simple_wall_ms": 13957,
+    "conflicts": null
+  },
+  "verdict": "PARTIAL \u2014 loop ran; see checks for which criterion missed"
+}
