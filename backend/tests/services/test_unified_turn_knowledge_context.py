@@ -57,6 +57,12 @@ async def test_auto_internet_when_internal_thin():
             "google_genai_use_vertexai": False,
             "google_cloud_project": "",
             "google_cloud_location": "us-central1",
+            # This test covers the original thinness escalation on its own.
+            # The sufficiency loop has its own suite in
+            # test_evidence_sufficiency_loop.py; keeping it off here means a
+            # failure points at one mechanism, not two.
+            "evidence_sufficiency_loop_enabled": False,
+            "evidence_contradiction_check_enabled": False,
         },
     )()
 
@@ -70,6 +76,7 @@ async def test_auto_internet_when_internal_thin():
                 return_value=(
                     "INTERNET RESEARCH (metered; cite URLs when used):\n<internet_research>[]",
                     {"internet_hit_count": 1},
+                    [{"kind": "internet", "content": "web result"}],
                 )
             ),
         ) as mock_internet,

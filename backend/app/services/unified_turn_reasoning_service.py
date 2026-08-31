@@ -453,6 +453,7 @@ async def run_unified_turn_shadow(
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
+    reasoning_depth: str = "full",
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -717,6 +718,7 @@ async def run_unified_turn_shadow(
             agent=agent,
             knowledge_assignments=knowledge_assignments,
             research_scope=research_scope,
+            reasoning_depth=reasoning_depth,
         )
         if knowledge_block:
             user_parts.append(knowledge_block)
@@ -1238,13 +1240,23 @@ def _unified_live_turn_payload(
         "latency_breakdown": dict(result.latency_breakdown or {}),
         "confidence": getattr(result, "confidence", None),
     }
-    return attach_evidence_envelope(
+    out = attach_evidence_envelope(
         payload,
         recommendation=result.user_message,
         why=f"Unified turn live ({result.outcome_kind})",
         sources=getattr(result, "sources", None) or getattr(result, "citations", None),
         confidence=getattr(result, "confidence", None),
     )
+    # Only present when iteration or a source conflict actually happened, so a
+    # clean single-pass answer is not cluttered with process detail.
+    from app.services.evidence_sufficiency_service import summarize_evidence_process
+
+    process = summarize_evidence_process(
+        (result.latency_breakdown or {}).get("unifiedTurnKnowledge")
+    )
+    if process and isinstance(out.get("evidence"), dict):
+        out["evidence"]["evidence_process"] = process
+    return out
 
 
 async def _maybe_prepend_mixed_social_ack(
@@ -1309,6 +1321,7 @@ async def apply_unified_turn_live(
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
+    reasoning_depth: str = "full",
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -1579,6 +1592,7 @@ async def apply_unified_turn_live(
             spoken_mode=bool(spoken_mode),
             classification=classification,
             research_scope=None,
+            reasoning_depth=reasoning_depth,
             cognitive_context=cognitive_context,
             on_text_delta=on_text_delta,
         )
@@ -1641,6 +1655,7 @@ async def apply_unified_turn_live(
         spoken_mode=bool(spoken_mode),
         classification=classification,
         research_scope=research_scope,
+        reasoning_depth=reasoning_depth,
         cognitive_context=cognitive_context,
         on_text_delta=on_text_delta,
     )

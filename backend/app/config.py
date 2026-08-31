@@ -113,6 +113,30 @@ class Settings(BaseSettings):
         default=True,
         validation_alias=AliasChoices("COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"),
     )
+    # Evidence-sufficiency replan loop: evaluate whether retrieval actually answers
+    # the question, and retrieve from a different source when it does not.
+    # Kill-switch returns the single-pass behaviour exactly.
+    evidence_sufficiency_loop_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "EVIDENCE_SUFFICIENCY_LOOP_ENABLED", "evidence_sufficiency_loop_enabled"
+        ),
+    )
+    # Hard bound on ADDITIONAL retrieval rounds beyond the first pass. Clamped
+    # to 0..3 at the call site; unbounded iteration is never permitted.
+    evidence_sufficiency_max_rounds: int = Field(
+        default=2,
+        validation_alias=AliasChoices(
+            "EVIDENCE_SUFFICIENCY_MAX_ROUNDS", "evidence_sufficiency_max_rounds"
+        ),
+    )
+    # Cross-source contradiction detection over the retrieved evidence set.
+    evidence_contradiction_check_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "EVIDENCE_CONTRADICTION_CHECK_ENABLED", "evidence_contradiction_check_enabled"
+        ),
+    )
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,

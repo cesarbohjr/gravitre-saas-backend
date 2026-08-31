@@ -1968,6 +1968,9 @@ class AgentIntelligence:
                         agent_id=agent_id,
                         spoken_mode=bool(spoken_mode),
                         research_scope=research_scope,
+                        # Same tiering that skips the heavy KNOWLEDGE merge also keeps
+                        # the sufficiency loop off simple spoken turns.
+                        reasoning_depth=reasoning_depth,
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
                     )
