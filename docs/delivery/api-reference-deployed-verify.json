@@ -1,0 +1,22 @@
+{
+  "claim": "the deployed catalog API serves the per-action api_reference mapping",
+  "started_at": "2026-08-31T06:57:58.211247+00:00",
+  "api_base": "https://api.gravitre.app",
+  "live_git_sha": "6947d67086ad84967c01e8c90ffe7e9c53c074ca",
+  "catalog_actions_served": 727,
+  "local_map_entries": 727,
+  "served_with_api_reference": 708,
+  "matched_against_local_map": 708,
+  "actions_in_map_missing_from_deployed_catalog": [],
+  "endpoint_or_provenance_drift": [],
+  "provenance_breakdown_as_served": {
+    "dedicated": 453,
+    "manual_verified": 34,
+    "name_inferred": 233,
+    "route_table": 7
+  },
+  "served_with_vendor_contract": 271,
+  "finished_at": "2026-08-31T06:57:59.295141+00:00",
+  "pass": true,
+  "verdict": "PASS \u2014 708 of 727 deployed catalog actions carry an apiReference, byte-identical to the committed map, at git_sha 6947d670"
+}

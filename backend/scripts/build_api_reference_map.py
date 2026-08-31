@@ -972,6 +972,10 @@ def main() -> int:
                 "vendor_validated": False,
             }
             if manual.api_reference is None:
+                # Distinct from manual_verified: there is no vendor endpoint to
+                # verify at all. Collapsing the two would tell a drift scan an
+                # SMTP send is a hand-read REST route with a missing path.
+                entry["provenance"] = "no_vendor_endpoint"
                 entry["no_vendor_endpoint"] = True
                 no_endpoint.append(entry)
                 counts[f"no_endpoint_{manual.kind}"] += 1
@@ -1049,7 +1053,10 @@ def main() -> int:
             )
         entries[action] = {
             "action": action,
-            "provenance": "dedicated",
+            # Multi-hit actions keep their own label all the way to the served
+            # payload: the primary endpoint is a reviewed choice among several,
+            # not the only thing the code can reach.
+            "provenance": "dedicated" if len(ordered) == 1 else "dedicated_multi",
             "method": primary.method,
             "path": primary.path,
             "base_url": primary.base,

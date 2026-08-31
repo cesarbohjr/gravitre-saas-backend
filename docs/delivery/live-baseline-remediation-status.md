@@ -107,19 +107,29 @@ against. That mapping now exists.
 
 Coverage, 727 of 727 actions accounted for:
 
-| Provenance | Count | What it means |
+| Provenance (as served) | Count | What it means |
 |------------|------:|---------------|
 | `dedicated` | 420 | read from the executor that issues the request |
 | `name_inferred` | 233 | generic `catalog_http` executor; route derived from the action suffix — real, but **never checked against the vendor** |
 | `dedicated_multi` | 33 | reaches more than one endpoint; each individually reviewed |
+| `no_vendor_endpoint` | 19 | SMTP, in-process, browser-driven, or no executor — no endpoint, reason carried in `apiReferenceNote` |
 | `manual_verified` | 15 | hand-read where static analysis cannot see (SDK calls, non-literal paths) |
 | `route_table` | 7 | hand-written method+path table |
-| no vendor endpoint | 19 | SMTP, in-process, browser-driven, or no executor — recorded with the reason |
 
 The 233 `name_inferred` routes are the honest weak spot and are flagged as such
 in the served payload. They are what Gravitre sends; nothing has confirmed the
 vendor accepts them. A drift scan must treat them as unproven rather than as
 agreement.
+
+Two of those labels only became visible in the served payload on 2026-08-31. The
+generator had been stamping `manual_verified` on the 19 actions that have no
+vendor endpoint at all, and flattening `dedicated_multi` to `dedicated`, so a
+drift scan reading the shipped data would have been told an SMTP send was a
+hand-read route with a missing path, and that a reviewed pick among several
+endpoints was the only one reachable. Both labels are now emitted precisely and
+guarded by tests that were mutation-proven — relabelling the 19 and flattening
+the 33 each fail their guard
+(`backend/scripts/scratch_mutate_provenance_labels.py`).
 
 Vendor contracts: 20 machine-readable locations verified by live fetch
 (`docs/delivery/vendor-contract-probe.json`), covering 271 actions.
@@ -130,6 +140,14 @@ request read off the wire. 23 of 23 hit the recorded endpoint; 1 skipped for lac
 of a live record id. Negative control
 (`docs/delivery/api-reference-spotcheck-negative.json`): 6 deliberately wrong
 endpoints, all 6 rejected.
+
+Deployed-tip readback (`docs/delivery/api-reference-deployed-verify.json`): the
+mapping is generated locally, so a green extractor proves nothing about what
+production serves. `scripts/verify-api-reference-deployed.py` pulls
+`/api/connectors/catalog/actions` off the deployed backend and diffs every action
+field-by-field against the committed map — 727 of 727 actions present, 708
+carrying an `apiReference` byte-identical to the map, 19 correctly carrying none,
+zero endpoint or provenance drift.
 
 **Phase 5's drift scan itself is not built by this work and remains separately
 scoped.** This is the foundation it was gated on, nothing more.

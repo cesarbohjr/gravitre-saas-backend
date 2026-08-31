@@ -226,25 +226,25 @@
       "vendor_validated": false
     },
     "ai_visibility_ui.captures.export": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_captures_export",
       "vendor_validated": false,
       "note": "Formats captures already held in memory; no outbound call."
     },
     "ai_visibility_ui.mentions.check": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_mentions_check",
       "vendor_validated": false,
       "note": "Drives a browser session against an AI surface. There is no vendor API contract to diff \u2014 the 'endpoint' is a rendered web page."
     },
     "ai_visibility_ui.prompts.batch": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_prompts_batch",
       "vendor_validated": false,
       "note": "Batch form of ai_visibility_ui.mentions.check; same browser path."
     },
     "ai_visibility_ui.surfaces.list": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_surfaces_list",
       "vendor_validated": false,
       "note": "Returns the static list of supported AI surfaces."
@@ -345,7 +345,7 @@
     },
     "apollo.contacts.search": {
       "api_reference": "POST /contacts/search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/apollo_api.py:368",
       "style": "rest",
       "base_url": "https://api.apollo.io/api/v1",
@@ -389,7 +389,7 @@
     },
     "apollo.lists.create": {
       "api_reference": "POST /labels",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/apollo_api.py:306",
       "style": "rest",
       "base_url": "https://api.apollo.io/api/v1",
@@ -403,7 +403,7 @@
     },
     "apollo.lists.list": {
       "api_reference": "GET /labels",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/apollo_api.py:285",
       "style": "rest",
       "base_url": "https://api.apollo.io/api/v1",
@@ -904,7 +904,7 @@
     },
     "clay.crm.sync": {
       "api_reference": "POST /crm/v3/objects/contacts",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:238",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -937,13 +937,13 @@
       "vendor_validated": false
     },
     "clay.tables.list": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/clay_tools.py:_exec_tables_list",
       "vendor_validated": false,
       "note": "Returns the tables recorded in connector config. Clay publishes no list-tables API for webhook-based connections."
     },
     "clay.workflows.output.get": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/clay_tools.py:_exec_workflows_output_get",
       "vendor_validated": false,
       "note": "Reads configured destinations plus records passed from the upstream step. No Clay API call."
@@ -974,7 +974,7 @@
     },
     "clickup.members.list": {
       "api_reference": "GET /team/{tid}/member",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/clickup_api.py:194",
       "style": "rest",
       "base_url": "https://api.clickup.com/api/v2",
@@ -986,7 +986,7 @@
     },
     "clickup.spaces.list": {
       "api_reference": "GET /team/{tid}/space",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/clickup_api.py:110",
       "style": "rest",
       "base_url": "https://api.clickup.com/api/v2",
@@ -1030,7 +1030,7 @@
     },
     "clickup.tasks.list": {
       "api_reference": "GET /list/{list_id}/task",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/clickup_api.py:123",
       "style": "rest",
       "base_url": "https://api.clickup.com/api/v2",
@@ -1051,7 +1051,7 @@
     },
     "clickup.time_entries.create": {
       "api_reference": "POST /team/{tid}/time",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/clickup_api.py:162",
       "style": "rest",
       "base_url": "https://api.clickup.com/api/v2",
@@ -1063,7 +1063,7 @@
     },
     "clickup.webhooks.create": {
       "api_reference": "POST /team/{tid}/webhook",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/clickup_api.py:178",
       "style": "rest",
       "base_url": "https://api.clickup.com/api/v2",
@@ -1082,7 +1082,7 @@
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
     "clio.conflict.checklist": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/clio_tools.py:_exec_clio_conflict_checklist",
       "vendor_validated": false,
       "note": "Builds a static conflict-check checklist in process."
@@ -1104,7 +1104,7 @@
       "vendor_validated": false
     },
     "clio.intake.tasks": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/clio_tools.py:_exec_clio_intake_tasks",
       "vendor_validated": false,
       "note": "Builds a static intake task list in process."
@@ -1233,7 +1233,7 @@
     },
     "confluence.search_files": {
       "api_reference": "GET /spaces",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/confluence.py:100",
       "style": "rest",
       "endpoints": [
@@ -1351,31 +1351,31 @@
       "vendor_validated": false
     },
     "email.batch.send": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/connectors/email.py:32 (send_email_smtp, per recipient)",
       "vendor_validated": false,
       "note": "Loops the SMTP send. No REST endpoint exists."
     },
     "email.delivery.status": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/tool_service.py:2688",
       "vendor_validated": false,
       "note": "Returns status 'unknown' with a note that delivery status needs provider webhooks. It makes no outbound call at all."
     },
     "email.messages.queue": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/tool_service.py:2660",
       "vendor_validated": false,
       "note": "Queues in-process for the SMTP sender; no vendor call at queue time."
     },
     "email.send": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/connectors/email.py:32 (send_email_smtp)",
       "vendor_validated": false,
       "note": "Sends over SMTP to the connector's configured host. No REST endpoint exists."
     },
     "email.send.template": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/tool_service.py:2692",
       "vendor_validated": false,
       "note": "Renders a template then delegates to the same SMTP send path."
@@ -1390,7 +1390,7 @@
     },
     "engagebay.contacts.get": {
       "api_reference": "GET /contacts/contact/{contact_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/engagebay_api.py:84",
       "style": "rest",
       "base_url": "https://app.engagebay.com/dev/api",
@@ -1464,7 +1464,7 @@
       "vendor_validated": false
     },
     "fhir.prior_auth.checklist": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/fhir_tools.py:_exec_fhir_prior_auth_checklist",
       "vendor_validated": false,
       "note": "Static prior-authorisation checklist; no FHIR server call."
@@ -1575,7 +1575,7 @@
     },
     "finseo.metrics.overview": {
       "api_reference": "GET /projects/{pid}/metrics",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/finseo_api.py:146",
       "style": "rest",
       "base_url": "https://api.finseo.ai/v1",
@@ -2037,7 +2037,7 @@
     },
     "google_ads.campaigns.update_budget": {
       "api_reference": "POST /v25/customers/{cid}/campaignBudgets:mutate",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/google_ads.py:454",
       "style": "rest",
       "base_url": "https://googleads.googleapis.com/v25",
@@ -2065,7 +2065,7 @@
     },
     "google_ads.structure.create": {
       "api_reference": "POST /v25/customers/{cid}/campaigns:mutate",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/google_ads.py:430",
       "style": "rest",
       "base_url": "https://googleads.googleapis.com/v25",
@@ -2367,7 +2367,7 @@
     },
     "google_drive.get_file_content": {
       "api_reference": "GET /drive/v3/files/{file_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/google_drive.py:46",
       "style": "rest",
       "base_url": "https://www.googleapis.com/drive/v3",
@@ -2661,7 +2661,7 @@
     },
     "gusto.companies.get": {
       "api_reference": "GET /companies/{company_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/services/gusto_tools.py:131",
       "style": "rest",
       "endpoints": [
@@ -2802,7 +2802,7 @@
     },
     "hubspot.companies.get": {
       "api_reference": "GET /crm/v3/objects/companies/{company_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:595",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2846,7 +2846,7 @@
     },
     "hubspot.contacts.get": {
       "api_reference": "GET /crm/v3/objects/contacts/{contact_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:88",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2870,7 +2870,7 @@
     },
     "hubspot.contacts.search": {
       "api_reference": "POST /crm/v3/objects/contacts/search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:257",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2894,7 +2894,7 @@
     },
     "hubspot.deals.create": {
       "api_reference": "POST /crm/v3/objects/deals",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:312",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2948,7 +2948,7 @@
     },
     "hubspot.deals.update": {
       "api_reference": "PATCH /crm/v3/objects/deals/{deal_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:335",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2962,7 +2962,7 @@
     },
     "hubspot.deals.update_stage": {
       "api_reference": "PATCH /crm/v3/objects/deals/{deal_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:227",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -2996,7 +2996,7 @@
     },
     "hubspot.lists.get": {
       "api_reference": "GET /crm/v3/lists/{list_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:376",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -3010,7 +3010,7 @@
     },
     "hubspot.notes.create": {
       "api_reference": "POST /crm/v3/objects/notes",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:150",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
@@ -3400,7 +3400,7 @@
     },
     "linkedin.prospect.enrich": {
       "api_reference": "GET /me",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/linkedin.py:122",
       "style": "rest",
       "base_url": "https://api.linkedin.com/rest",
@@ -3643,7 +3643,7 @@
     },
     "microsoft365.get_file_content": {
       "api_reference": "GET /drives/{drive_id}/items/{item_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/microsoft365.py:420",
       "style": "rest",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -3657,7 +3657,7 @@
     },
     "microsoft365.get_file_metadata": {
       "api_reference": "GET /drives/{drive_id}/items/{item_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/microsoft365.py:420",
       "style": "rest",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -3691,7 +3691,7 @@
     },
     "microsoft365.search_files": {
       "api_reference": "GET /drives/{drive_id}/root/search(q='{text}')",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/microsoft365.py:435",
       "style": "rest",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -4380,7 +4380,7 @@
     },
     "notion.get_file_content": {
       "api_reference": "GET /pages/{page_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/notion.py:81",
       "style": "rest",
       "base_url": "https://api.notion.com/v1",
@@ -4619,7 +4619,7 @@
     },
     "pagerduty.incidents.escalate": {
       "api_reference": "PUT /incidents",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/pagerduty.py:102",
       "style": "rest",
       "base_url": "https://api.pagerduty.com",
@@ -4940,7 +4940,7 @@
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
     "platform.health.snapshot": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/platform_health_tools.py",
       "vendor_validated": false,
       "note": "Reads Gravitre's own audit_events / health tables. Internal, not a vendor API."
@@ -5114,7 +5114,7 @@
       "vendor_validated": false
     },
     "real_estate.handoff.brief": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/real_estate_tools.py:_exec_real_estate_handoff_brief",
       "vendor_validated": false,
       "note": "Static handoff checklist built from HANDOFF_CHECKLIST."
@@ -5127,7 +5127,7 @@
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
     "real_estate.mls.note": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/real_estate_tools.py:_exec_real_estate_mls_note",
       "vendor_validated": false,
       "note": "Static MLS note sections built from MLS_NOTE_SECTIONS."
@@ -5364,7 +5364,7 @@
     },
     "semrush.exports.run": {
       "api_reference": "GET /?type=domain_organic",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/semrush_api.py:141",
       "style": "rest",
       "base_url": "https://api.semrush.com/",
@@ -5965,7 +5965,7 @@
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
     "webhook.connectors.get": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/tool_service.py:_TOOL_REGISTRY (absent)",
       "vendor_validated": false,
       "note": "Declared in the catalog but has no executor, so invoke_tool cannot run it. Reported rather than mapped."
@@ -5978,7 +5978,7 @@
       "note": "Host comes from the connector's allowed_hosts and the path from call params. There is no fixed vendor endpoint to diff."
     },
     "webhook.post.replay": {
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/tool_service.py:_TOOL_REGISTRY (absent)",
       "vendor_validated": false,
       "note": "Declared in the catalog but has no executor, so invoke_tool cannot run it. Reported rather than mapped."
@@ -6023,7 +6023,7 @@
     },
     "workday.timeoff.balance.get": {
       "api_reference": "GET /workers/{wid}/timeOffPlans/{time_off_plan_id}/timeOffBalances",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/workday.py:241",
       "style": "rest",
       "endpoints": [
@@ -6043,7 +6043,7 @@
     },
     "workday.workers.get": {
       "api_reference": "GET /workers/{worker_id}",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/workday.py:164",
       "style": "rest",
       "endpoints": [

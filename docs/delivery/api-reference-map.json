@@ -511,7 +511,7 @@
     },
     "ai_visibility_ui.captures.export": {
       "action": "ai_visibility_ui.captures.export",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -526,7 +526,7 @@
     },
     "ai_visibility_ui.mentions.check": {
       "action": "ai_visibility_ui.mentions.check",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "browser_agent",
       "method": null,
       "path": null,
@@ -541,7 +541,7 @@
     },
     "ai_visibility_ui.prompts.batch": {
       "action": "ai_visibility_ui.prompts.batch",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "browser_agent",
       "method": null,
       "path": null,
@@ -556,7 +556,7 @@
     },
     "ai_visibility_ui.surfaces.list": {
       "action": "ai_visibility_ui.surfaces.list",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -757,7 +757,7 @@
     },
     "apollo.contacts.search": {
       "action": "apollo.contacts.search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/contacts/search",
       "base_url": "https://api.apollo.io/api/v1",
@@ -885,7 +885,7 @@
     },
     "apollo.lists.create": {
       "action": "apollo.lists.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/labels",
       "base_url": "https://api.apollo.io/api/v1",
@@ -923,7 +923,7 @@
     },
     "apollo.lists.list": {
       "action": "apollo.lists.list",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/labels",
       "base_url": "https://api.apollo.io/api/v1",
@@ -2293,7 +2293,7 @@
     },
     "clay.crm.sync": {
       "action": "clay.crm.sync",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/contacts",
       "base_url": "https://api.hubapi.com",
@@ -2379,7 +2379,7 @@
     },
     "clay.tables.list": {
       "action": "clay.tables.list",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -2394,7 +2394,7 @@
     },
     "clay.workflows.output.get": {
       "action": "clay.workflows.output.get",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -2484,7 +2484,7 @@
     },
     "clickup.members.list": {
       "action": "clickup.members.list",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/team/{tid}/member",
       "base_url": "https://api.clickup.com/api/v2",
@@ -2517,7 +2517,7 @@
     },
     "clickup.spaces.list": {
       "action": "clickup.spaces.list",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/team/{tid}/space",
       "base_url": "https://api.clickup.com/api/v2",
@@ -2650,7 +2650,7 @@
     },
     "clickup.tasks.list": {
       "action": "clickup.tasks.list",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/list/{list_id}/task",
       "base_url": "https://api.clickup.com/api/v2",
@@ -2712,7 +2712,7 @@
     },
     "clickup.time_entries.create": {
       "action": "clickup.time_entries.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/team/{tid}/time",
       "base_url": "https://api.clickup.com/api/v2",
@@ -2745,7 +2745,7 @@
     },
     "clickup.webhooks.create": {
       "action": "clickup.webhooks.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/team/{tid}/webhook",
       "base_url": "https://api.clickup.com/api/v2",
@@ -2790,7 +2790,7 @@
     },
     "clio.conflict.checklist": {
       "action": "clio.conflict.checklist",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -2855,7 +2855,7 @@
     },
     "clio.intake.tasks": {
       "action": "clio.intake.tasks",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -3115,7 +3115,7 @@
     },
     "confluence.search_files": {
       "action": "confluence.search_files",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/spaces",
       "base_url": null,
@@ -3470,7 +3470,7 @@
     },
     "email.batch.send": {
       "action": "email.batch.send",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -3485,7 +3485,7 @@
     },
     "email.delivery.status": {
       "action": "email.delivery.status",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -3500,7 +3500,7 @@
     },
     "email.messages.queue": {
       "action": "email.messages.queue",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -3515,7 +3515,7 @@
     },
     "email.send": {
       "action": "email.send",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -3530,7 +3530,7 @@
     },
     "email.send.template": {
       "action": "email.send.template",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -3570,7 +3570,7 @@
     },
     "engagebay.contacts.get": {
       "action": "engagebay.contacts.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/contacts/contact/{contact_id}",
       "base_url": "https://app.engagebay.com/dev/api",
@@ -3790,7 +3790,7 @@
     },
     "fhir.prior_auth.checklist": {
       "action": "fhir.prior_auth.checklist",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -4130,7 +4130,7 @@
     },
     "finseo.metrics.overview": {
       "action": "finseo.metrics.overview",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/projects/{pid}/metrics",
       "base_url": "https://api.finseo.ai/v1",
@@ -5415,7 +5415,7 @@
     },
     "google_ads.campaigns.update_budget": {
       "action": "google_ads.campaigns.update_budget",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/v25/customers/{cid}/campaignBudgets:mutate",
       "base_url": "https://googleads.googleapis.com/v25",
@@ -5498,7 +5498,7 @@
     },
     "google_ads.structure.create": {
       "action": "google_ads.structure.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/v25/customers/{cid}/campaigns:mutate",
       "base_url": "https://googleads.googleapis.com/v25",
@@ -6412,7 +6412,7 @@
     },
     "google_drive.get_file_content": {
       "action": "google_drive.get_file_content",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/drive/v3/files/{file_id}",
       "base_url": "https://www.googleapis.com/drive/v3",
@@ -7133,7 +7133,7 @@
     },
     "gusto.companies.get": {
       "action": "gusto.companies.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/companies/{company_id}",
       "base_url": null,
@@ -7420,7 +7420,7 @@
     },
     "hubspot.companies.get": {
       "action": "hubspot.companies.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/crm/v3/objects/companies/{company_id}",
       "base_url": "https://api.hubapi.com",
@@ -7548,7 +7548,7 @@
     },
     "hubspot.contacts.get": {
       "action": "hubspot.contacts.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/crm/v3/objects/contacts/{contact_id}",
       "base_url": "https://api.hubapi.com",
@@ -7616,7 +7616,7 @@
     },
     "hubspot.contacts.search": {
       "action": "hubspot.contacts.search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/contacts/search",
       "base_url": "https://api.hubapi.com",
@@ -7684,7 +7684,7 @@
     },
     "hubspot.deals.create": {
       "action": "hubspot.deals.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/deals",
       "base_url": "https://api.hubapi.com",
@@ -7842,7 +7842,7 @@
     },
     "hubspot.deals.update": {
       "action": "hubspot.deals.update",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "PATCH",
       "path": "/crm/v3/objects/deals/{deal_id}",
       "base_url": "https://api.hubapi.com",
@@ -7880,7 +7880,7 @@
     },
     "hubspot.deals.update_stage": {
       "action": "hubspot.deals.update_stage",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "PATCH",
       "path": "/crm/v3/objects/deals/{deal_id}",
       "base_url": "https://api.hubapi.com",
@@ -7978,7 +7978,7 @@
     },
     "hubspot.lists.get": {
       "action": "hubspot.lists.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/crm/v3/lists/{list_id}",
       "base_url": "https://api.hubapi.com",
@@ -8016,7 +8016,7 @@
     },
     "hubspot.notes.create": {
       "action": "hubspot.notes.create",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/notes",
       "base_url": "https://api.hubapi.com",
@@ -9133,7 +9133,7 @@
     },
     "linkedin.prospect.enrich": {
       "action": "linkedin.prospect.enrich",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/me",
       "base_url": "https://api.linkedin.com/rest",
@@ -9714,7 +9714,7 @@
     },
     "microsoft365.get_file_content": {
       "action": "microsoft365.get_file_content",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/drives/{drive_id}/items/{item_id}",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -9752,7 +9752,7 @@
     },
     "microsoft365.get_file_metadata": {
       "action": "microsoft365.get_file_metadata",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/drives/{drive_id}/items/{item_id}",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -9828,7 +9828,7 @@
     },
     "microsoft365.search_files": {
       "action": "microsoft365.search_files",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/drives/{drive_id}/root/search(q='{text}')",
       "base_url": "https://graph.microsoft.com/v1.0",
@@ -11512,7 +11512,7 @@
     },
     "notion.get_file_content": {
       "action": "notion.get_file_content",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/pages/{page_id}",
       "base_url": "https://api.notion.com/v1",
@@ -12172,7 +12172,7 @@
     },
     "pagerduty.incidents.escalate": {
       "action": "pagerduty.incidents.escalate",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "PUT",
       "path": "/incidents",
       "base_url": "https://api.pagerduty.com",
@@ -13078,7 +13078,7 @@
     },
     "platform.health.snapshot": {
       "action": "platform.health.snapshot",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -13589,7 +13589,7 @@
     },
     "real_estate.handoff.brief": {
       "action": "real_estate.handoff.brief",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -13616,7 +13616,7 @@
     },
     "real_estate.mls.note": {
       "action": "real_estate.mls.note",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -14289,7 +14289,7 @@
     },
     "semrush.exports.run": {
       "action": "semrush.exports.run",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/?type=domain_organic",
       "base_url": "https://api.semrush.com/",
@@ -15600,7 +15600,7 @@
     },
     "webhook.connectors.get": {
       "action": "webhook.connectors.get",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "unregistered",
       "method": null,
       "path": null,
@@ -15629,7 +15629,7 @@
     },
     "webhook.post.replay": {
       "action": "webhook.post.replay",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "unregistered",
       "method": null,
       "path": null,
@@ -15730,7 +15730,7 @@
     },
     "workday.timeoff.balance.get": {
       "action": "workday.timeoff.balance.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/workers/{wid}/timeOffPlans/{time_off_plan_id}/timeOffBalances",
       "base_url": null,
@@ -15779,7 +15779,7 @@
     },
     "workday.workers.get": {
       "action": "workday.workers.get",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "GET",
       "path": "/workers/{worker_id}",
       "base_url": null,
@@ -16945,7 +16945,7 @@
   "no_vendor_endpoint": [
     {
       "action": "ai_visibility_ui.captures.export",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -16960,7 +16960,7 @@
     },
     {
       "action": "ai_visibility_ui.mentions.check",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "browser_agent",
       "method": null,
       "path": null,
@@ -16975,7 +16975,7 @@
     },
     {
       "action": "ai_visibility_ui.prompts.batch",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "browser_agent",
       "method": null,
       "path": null,
@@ -16990,7 +16990,7 @@
     },
     {
       "action": "ai_visibility_ui.surfaces.list",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17005,7 +17005,7 @@
     },
     {
       "action": "clay.tables.list",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17020,7 +17020,7 @@
     },
     {
       "action": "clay.workflows.output.get",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17035,7 +17035,7 @@
     },
     {
       "action": "clio.conflict.checklist",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17050,7 +17050,7 @@
     },
     {
       "action": "clio.intake.tasks",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17065,7 +17065,7 @@
     },
     {
       "action": "email.batch.send",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -17080,7 +17080,7 @@
     },
     {
       "action": "email.delivery.status",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17095,7 +17095,7 @@
     },
     {
       "action": "email.messages.queue",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17110,7 +17110,7 @@
     },
     {
       "action": "email.send",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -17125,7 +17125,7 @@
     },
     {
       "action": "email.send.template",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "smtp",
       "method": null,
       "path": null,
@@ -17140,7 +17140,7 @@
     },
     {
       "action": "fhir.prior_auth.checklist",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17155,7 +17155,7 @@
     },
     {
       "action": "platform.health.snapshot",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17170,7 +17170,7 @@
     },
     {
       "action": "real_estate.handoff.brief",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17185,7 +17185,7 @@
     },
     {
       "action": "real_estate.mls.note",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "local",
       "method": null,
       "path": null,
@@ -17200,7 +17200,7 @@
     },
     {
       "action": "webhook.connectors.get",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "unregistered",
       "method": null,
       "path": null,
@@ -17215,7 +17215,7 @@
     },
     {
       "action": "webhook.post.replay",
-      "provenance": "manual_verified",
+      "provenance": "no_vendor_endpoint",
       "kind": "unregistered",
       "method": null,
       "path": null,

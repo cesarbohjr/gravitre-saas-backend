@@ -7,13 +7,21 @@ send a vendor shows up as a reviewable diff.
 
 Provenance travels with the endpoint and is not cosmetic:
 
-  dedicated / dedicated_multi / route_table / manual_verified
+  dedicated / route_table / manual_verified
       transcribed from the implementation that issues the request.
+  dedicated_multi
+      same, but the code reaches more than one endpoint; the served one is a
+      reviewed choice (``api_reference_review.py``) and the rest are in
+      ``endpoints``.
   name_inferred
       the generic catalog_http executor derives method+path from the action's
       suffix. That IS what we send, but nothing has ever checked it against the
       vendor's published API. Serving it without the flag would let a future
       drift scan report agreement it never established.
+  no_vendor_endpoint
+      there is no vendor call to diff — SMTP, in-process, or browser-driven.
+      ``note`` carries the reason. Never labelled ``manual_verified``, because a
+      drift scan must not read "hand-read route with a missing path".
 """
 from __future__ import annotations
 

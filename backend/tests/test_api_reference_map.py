@@ -119,6 +119,52 @@ def test_actions_without_an_endpoint_explain_why(payload: dict) -> None:
     )
 
 
+def test_no_endpoint_actions_are_not_labelled_as_hand_verified_routes(
+    payload: dict,
+) -> None:
+    """An SMTP send and a hand-read REST route must not share a provenance label.
+
+    They did share one until 2026-08-31: the generator stamped ``manual_verified``
+    on both, so the served payload said "verified against the implementation" for
+    19 actions that have no vendor endpoint at all. A drift scan reading that
+    would look for a route that was never supposed to exist.
+    """
+    mislabelled = [
+        f"{action}: provenance={entry.get('provenance')}"
+        for action, entry in payload["actions"].items()
+        if not entry.get("api_reference") and entry.get("provenance") != "no_vendor_endpoint"
+    ]
+    assert not mislabelled, mislabelled
+    endpointless_but_claimed = [
+        action
+        for action, entry in payload["actions"].items()
+        if entry.get("provenance") == "no_vendor_endpoint" and entry.get("api_reference")
+    ]
+    assert not endpointless_but_claimed, endpointless_but_claimed
+    assert "no_vendor_endpoint" not in SOURCE_VERIFIED_PROVENANCE
+
+
+def test_multi_endpoint_actions_keep_their_own_provenance(payload: dict) -> None:
+    """``dedicated_multi`` reached the served payload; before, it was flattened.
+
+    The primary endpoint of a multi-hit action is a reviewed pick, not the only
+    reachable one, and a consumer cannot tell that from ``dedicated`` alone.
+    """
+    multi = {
+        action: entry
+        for action, entry in payload["actions"].items()
+        if entry.get("provenance") == "dedicated_multi"
+    }
+    assert multi, "expected reviewed multi-endpoint actions to still exist"
+    for action, entry in multi.items():
+        endpoints = entry.get("endpoints") or []
+        assert len(endpoints) > 1, f"{action} labelled multi with {endpoints}"
+        assert entry.get("api_reference") in endpoints, action
+    for action, entry in payload["actions"].items():
+        if entry.get("provenance") == "dedicated":
+            assert not entry.get("endpoints"), f"{action} has siblings but reads as single"
+
+
 def test_name_inferred_routes_are_not_labelled_source_verified(payload: dict) -> None:
     """name_inferred is what we send, but nothing checked it against the vendor.
 
