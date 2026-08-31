@@ -91,6 +91,45 @@ def test_authority_resolves_only_on_a_decisive_gap() -> None:
     assert marginal.resolution == "unresolved"
 
 
+def test_authority_works_on_the_scale_the_real_corpus_actually_uses() -> None:
+    """Real fabric rows score authority in 0..1, not 0..100.
+
+    Found by running against the live corpus: chunks read 0.97, so a threshold
+    written as "10 points apart" could never fire on real data, and the rung
+    looked healthy only because the other tests fed it synthetic 0..100 values.
+    Both scales are pinned here so a future edit cannot quietly kill it again.
+    """
+    real_scale = resolve_contradiction(
+        Contradiction(
+            subject="control requirement",
+            claims=[
+                _claim(0, authority_score=0.97),  # NIST-grade, as stored
+                _claim(1, authority_score=0.52),
+            ],
+        )
+    )
+    assert real_scale.resolution == "resolved_authority"
+    assert real_scale.winner_index == 0
+
+    real_scale_near_tie = resolve_contradiction(
+        Contradiction(
+            subject="control requirement",
+            claims=[_claim(0, authority_score=0.71), _claim(1, authority_score=0.68)],
+        )
+    )
+    assert real_scale_near_tie.resolution == "unresolved"
+
+    # Mixed scales must not resolve by accident of unit: 0..100 and 0..1 inputs
+    # both land in the same normalized space.
+    mixed = resolve_contradiction(
+        Contradiction(
+            subject="control requirement",
+            claims=[_claim(0, authority_score=97), _claim(1, authority_score=0.95)],
+        )
+    )
+    assert mixed.resolution == "unresolved", "97 and 0.95 are the same authority"
+
+
 def test_org_record_wins_on_a_question_about_the_org() -> None:
     con = resolve_contradiction(
         Contradiction(

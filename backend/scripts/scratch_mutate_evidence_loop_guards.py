@@ -115,6 +115,16 @@ def always_pick_a_winner() -> str:
     )
 
 
+def revert_authority_scale_fix() -> str:
+    """The exact bug real corpus data exposed: a 0..100 threshold on 0..1 data."""
+    return _sub(
+        CONTRA,
+        "    return score / 100.0 if score > 1.0 else score",
+        "    return score",
+        "removed 0..1 / 0..100 authority normalization (rung dies on real data)",
+    )
+
+
 def always_report_process() -> str:
     return _sub(
         SUFF,
@@ -132,6 +142,7 @@ MUTATIONS = [
     (CTX, LOOP_TESTS, "test_iteration_is_hard_bounded_and_the_shortfall_is_stated", silence_the_shortfall),
     (SUFF, LOOP_TESTS, "test_regulatory_questions_get_a_higher_bar_than_business_questions", flatten_the_regulatory_bar),
     (CONTRA, CONTRA_TESTS, "test_unresolved_conflict_is_surfaced_with_both_claims", always_pick_a_winner),
+    (CONTRA, CONTRA_TESTS, "test_authority_works_on_the_scale_the_real_corpus_actually_uses", revert_authority_scale_fix),
     (SUFF, LOOP_TESTS, "test_clean_single_pass_produces_no_process_noise", always_report_process),
 ]
 

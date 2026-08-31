@@ -341,3 +341,68 @@ Append-only Phase D structural pass vs Part A standing list. Labels: **CODE** = 
 - No customer SKU prices or Enable toggles invented.
 - Items gated above remain **BLOCKED** for proposal-FULL — not silently marked PARTIAL as “done.”
 - Do **not** claim FULL for fuzzy memory or LIVE PASS without audit/conversation evidence pointers above.
+
+---
+
+## Item 4 — replan loop: evidence-sufficiency iteration (2026-08-31, tip `b57b3790`)
+
+Append-only. Addresses the Part A item 4 / Phase D item 4 remainder: *“No
+first-class mid-flight cognitive replan”* and *“Mid-flight replan product still
+PARTIAL.”*
+
+### Phase 0 finding — what actually existed (code-traced)
+
+| Question | Real answer |
+|---|---|
+| Where do retrieval decisions happen? | `build_unified_turn_knowledge_context` (`backend/app/services/unified_turn_knowledge_context.py`), called once from `run_unified_turn_shadow` (`unified_turn_reasoning_service.py:711`) while assembling the generation prompt. `run_unified_turn_shadow` is the executor for LIVE too — `apply_unified_turn_live` calls it at `:1565` / `:1630`. |
+| Once per turn, or iterative? | **Once.** Sequence was classify → packs → org RAG → thinness check → optional web. No loop. |
+| Was there *any* escalation? | **Yes, one shallow rung** — honest correction to the framing that there was none. `assess_internal_retrieval_thinness` (`adaptive_research_cascade.py:99`) escalated to web when `source_count <= THIN_SOURCE_COUNT` or `retrieval_score` was low. It counts rows; four irrelevant chunks cleared it. |
+| Does the kernel VERIFY stage gate the answer? | **No.** Pre-ACT VERIFY returns `skipped: pre_act_no_draft` (`cognitive_turn_kernel.py:634-648`) because no draft exists yet. `ctx.verify` has no downstream control-flow consumer. |
+| Does the real critic trigger re-retrieval? | **No.** Post-ACT critic (`agent_intelligence.py:3512`) only replaces `full_content` with `revised_answer` or appends a caveat (`:3524-3531`). |
+| Closest thing to a replan signal? | `reflection_loop_service.py:52` appends **`"retrieve_more"`** to `actions` on low confidence — and **nothing consumes `actions`** anywhere in `backend/`. Only `revised_answer` / `phase` are read. That dead signal was the gap, precisely. |
+
+**Insertion point used:** inside `build_unified_turn_knowledge_context`, whose
+return value *is* the evidence block injected into the generation prompt — so a
+loop there sits literally between retrieval and final answer generation, and
+reuses the existing Router rather than adding a parallel one.
+
+### What shipped
+
+- `evidence_sufficiency_service.py` — reasoned sufficiency judgement with a bar derived from the **existing** `KnowledgeRoute.departments` / `.jurisdictions` (no second classifier). Regulatory bar requires ≥2 sources, a citable source, and a freshness signal; business bar does not; conversational depth short-circuits to a casual bar that never calls a model.
+- `unified_turn_knowledge_context.py` — round 1 unchanged; rounds 2+ escalate to a source **not yet tried** (`internet` → `business_graph`) only when sufficiency fails. Cap `EVIDENCE_SUFFICIENCY_MAX_ROUNDS` (default 2, clamped 0..3). Shortfall emits an explicit prompt warning.
+- `evidence_contradiction_service.py` — resolution ladder over signals that already exist: supersession → complete effective dating → decisive authority gap → org-record precedence on org-specific questions → **unresolved** (surfaced, not guessed).
+- Pack rows now carry `citation` / `authority_score` / `effective_at` / `superseded_*` through the hand-off; previously only `kind` / `content` / `score` survived.
+- Kill switches: `EVIDENCE_SUFFICIENCY_LOOP_ENABLED`, `EVIDENCE_CONTRADICTION_CHECK_ENABLED`.
+
+### Evidence
+
+**Mutation-tested — 9/9 deliberate breaks caught** (`backend/scripts/scratch_mutate_evidence_loop_guards.py`, run at tip `b57b3790`). Two findings that a green suite alone would have hidden:
+
+1. **Removing the iteration cap entirely changed nothing.** With only two escalation sources, source exhaustion was doing the bounding, so every “bounded” assertion still passed. Adding a third source later would have silently removed the only real bound. `test_the_cap_binds_even_when_more_sources_remain_untried` now proves the cap binds on its own.
+2. **The authority rung was dead on real data.** Threshold was written as a 10-point gap, but `knowledge_chunks.authority_score` is stored **0..1** (real corpus values 0.84–0.99); the rung looked healthy only because tests fed it synthetic 0..100 values. Fixed with normalization + `test_authority_works_on_the_scale_the_real_corpus_actually_uses`.
+
+**Real-corpus proof** (`docs/delivery/evidence-sufficiency-real-data-proof.json`, `backend/scripts/scratch_evidence_loop_real_data_proof.py`):
+
+- Real router classification on real queries: `legal` + `US-CA` + compliance marker → regulatory bar; `cybersecurity` → regulatory bar.
+- 6/6 real corpus rows carry both `authority_score` and `citation` through the new hand-off (sample `0.97`, `NIST CSF 2.0 (NIST.CSWP.29)`).
+- **Before/after on the same real rows:** old stripped hand-off shape → `sufficient=False`, gaps `["no_citable_source","no_freshness_signal"]`; new shape carrying metadata clears the structural gate. This is the concrete difference the metadata carry buys.
+- Contradiction ladder on real chunk pairs: supersession → resolved; freshness `2026-01-01` over `2019-01-01` → resolved; **real** authority `0.99` vs `0.84` → resolved; **real** near-tie `0.97` vs `0.96` → correctly **unresolved**; org precedence → resolved.
+- Fast path: casual bar returns `assessor="skipped_casual_bar"` with **zero** model calls.
+
+### Status — PARTIAL, not CONFIRMED WORKING
+
+| Layer | Status |
+|---|---|
+| Loop mechanics, bounds, bar selection, shortfall honesty | **PASS** — mutation-proven, 27 tests |
+| Metadata carry + contradiction ladder on real corpus rows | **PASS** — real-data artifact above |
+| Model-based sufficiency judgement | **NOT RUN** — no model provider key on the verification host; fails open by design, observed as `assessor="assessor_error"` |
+| Model-based contradiction *detector* | **NOT RUN** — same reason |
+| Ranked fabric retrieval in this harness | **NOT RUN** locally — query embedding needs a provider key (`knowledge_fabric.vector_failed`); corpus read directly instead, ranking not under test here |
+| End-to-end prod chat turn at deployed tip | **NOT RUN** — push/deploy not completed this pass |
+
+Item 4 therefore moves from *“no first-class replan loop”* to **replan loop
+built and mutation-proven, live model-path verification outstanding.** It does
+**not** become LIVE PASS until a real prod chat turn shows
+`latency_breakdown.unifiedTurnKnowledge.evidenceSufficiency` with
+`additional_rounds_used >= 1` on a hard query, and `assessor="llm"` rather than
+`assessor_error`.

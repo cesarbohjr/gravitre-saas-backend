@@ -1,0 +1,228 @@
+{
+  "checked_at": "2026-08-31T18:53:27.581302+00:00",
+  "git_sha": "b57b3790",
+  "scope": {
+    "proven_here": [
+      "real Knowledge Fabric retrieval through the real router",
+      "authority/effective-date metadata survives into the evidence rows",
+      "deterministic sufficiency gate over real rows",
+      "contradiction resolution ladder over real rows"
+    ],
+    "not_run_here": [
+      "model-based sufficiency judgement (no provider key on this host)",
+      "model-based contradiction detector (same reason)",
+      "end-to-end prod chat turn at the deployed tip"
+    ]
+  },
+  "model_provider_configured": false,
+  "queries": [
+    {
+      "query": "What does NIST CSF 2.0 require under the Govern function?",
+      "route": {
+        "departments": [
+          "cybersecurity"
+        ],
+        "jurisdictions": [],
+        "packs": [
+          "pack.cybersecurity"
+        ]
+      },
+      "real_rows_retrieved": 0,
+      "rows_with_citation": 0,
+      "rows_with_authority": 0,
+      "rows_with_date_signal": 0,
+      "bar": "regulatory",
+      "bar_reason": "department=cybersecurity",
+      "bar_requires_citable": true,
+      "sufficiency": {
+        "sufficient": false,
+        "assessor": "deterministic",
+        "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+        "gaps": [
+          "insufficient_source_count"
+        ],
+        "bar": "regulatory",
+        "min_sources": 2,
+        "require_citable_source": true,
+        "require_freshness_signal": true,
+        "bar_reason": "department=cybersecurity",
+        "assessment_confidence": null,
+        "confidence_is_estimate": false,
+        "confidenceIsEstimate": false,
+        "confidence_source": "insufficient_data",
+        "confidenceSource": "insufficient_data"
+      },
+      "old_thinness_signal_would_escalate": true
+    },
+    {
+      "query": "What are the FTC requirements for endorsement disclosures?",
+      "route": {
+        "departments": [
+          "legal",
+          "marketing"
+        ],
+        "jurisdictions": [
+          "US-federal"
+        ],
+        "packs": [
+          "pack.legal"
+        ]
+      },
+      "real_rows_retrieved": 0,
+      "rows_with_citation": 0,
+      "rows_with_authority": 0,
+      "rows_with_date_signal": 0,
+      "bar": "regulatory",
+      "bar_reason": "department=legal; jurisdiction=US-federal",
+      "bar_requires_citable": true,
+      "sufficiency": {
+        "sufficient": false,
+        "assessor": "deterministic",
+        "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+        "gaps": [
+          "insufficient_source_count"
+        ],
+        "bar": "regulatory",
+        "min_sources": 2,
+        "require_citable_source": true,
+        "require_freshness_signal": true,
+        "bar_reason": "department=legal; jurisdiction=US-federal",
+        "assessment_confidence": null,
+        "confidence_is_estimate": false,
+        "confidenceIsEstimate": false,
+        "confidence_source": "insufficient_data",
+        "confidenceSource": "insufficient_data"
+      },
+      "old_thinness_signal_would_escalate": true
+    },
+    {
+      "query": "What notice period does California employment law require?",
+      "route": {
+        "departments": [
+          "legal"
+        ],
+        "jurisdictions": [
+          "US-CA"
+        ],
+        "packs": [
+          "pack.legal"
+        ]
+      },
+      "real_rows_retrieved": 0,
+      "rows_with_citation": 0,
+      "rows_with_authority": 0,
+      "rows_with_date_signal": 0,
+      "bar": "regulatory",
+      "bar_reason": "department=legal; jurisdiction=US-CA; compliance/regulatory language in query",
+      "bar_requires_citable": true,
+      "sufficiency": {
+        "sufficient": false,
+        "assessor": "deterministic",
+        "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+        "gaps": [
+          "insufficient_source_count"
+        ],
+        "bar": "regulatory",
+        "min_sources": 2,
+        "require_citable_source": true,
+        "require_freshness_signal": true,
+        "bar_reason": "department=legal; jurisdiction=US-CA; compliance/regulatory language in query",
+        "assessment_confidence": null,
+        "confidence_is_estimate": false,
+        "confidenceIsEstimate": false,
+        "confidence_source": "insufficient_data",
+        "confidenceSource": "insufficient_data"
+      },
+      "old_thinness_signal_would_escalate": true
+    }
+  ],
+  "metadata_survival": {
+    "ranked_retrieval_ran_locally": false,
+    "row_source": "direct_corpus_read",
+    "why_direct_read": "vector search needs a query embedding and this host has no embedding provider key (knowledge_fabric.vector_failed / fts_unavailable in the log); ranking is not what this check is testing",
+    "real_corpus_rows": 6,
+    "raw_has_authority": 6,
+    "raw_has_citation": 6,
+    "sample_authority_scores": [
+      0.97,
+      0.97,
+      0.97
+    ],
+    "sample_citations": [
+      "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+      "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29",
+      "NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29"
+    ],
+    "note": "Before this change the hand-off kept only kind/content/score, so these fields were dropped before any sufficiency or conflict logic could see them."
+  },
+  "contradiction_ladder": [
+    {
+      "case": "supersession",
+      "resolution": "resolved_supersession",
+      "winner_index": 1,
+      "rationale": "1 conflicting claim(s) come from documents marked superseded; kept the live source 'NIST CSF 2.0 (NIST.CSWP.29) \u2014 https://doi.org/10.6028/NIST.CSWP.29'",
+      "surfaced_to_model": true
+    },
+    {
+      "case": "freshness",
+      "resolution": "resolved_freshness",
+      "winner_index": 1,
+      "rationale": "most recent effective date 2026-01-01 beats 2019-01-01",
+      "surfaced_to_model": true
+    },
+    {
+      "case": "authority_decisive_REAL_SCORES",
+      "resolution": "resolved_authority",
+      "winner_index": 0,
+      "rationale": "authority 0.99 vs 0.84 (normalized) \u2014 kept the higher-authority source",
+      "surfaced_to_model": true
+    },
+    {
+      "case": "authority_near_tie_REAL_SCORES_must_not_resolve",
+      "resolution": "unresolved",
+      "winner_index": null,
+      "rationale": "no supersession marker, no complete effective dating, no decisive authority gap, and not an org-specific question \u2014 conflict surfaced rather than guessed",
+      "surfaced_to_model": true
+    },
+    {
+      "case": "org_precedence",
+      "resolution": "resolved_org_precedence",
+      "winner_index": 0,
+      "rationale": "question is about this organization, so its own record takes precedence over general knowledge",
+      "surfaced_to_model": true
+    }
+  ],
+  "fast_path": {
+    "query": "thanks, that's helpful",
+    "bar": "casual",
+    "assessor": "skipped_casual_bar",
+    "no_model_call": true
+  },
+  "deterministic_gate_over_real_rows": {
+    "rows": 6,
+    "with_metadata_carried": {
+      "sufficient": true,
+      "assessor": "assessor_error",
+      "reason": "sufficiency assessor unavailable: get_model_router() takes 0 positional arguments but 1 was given",
+      "gaps": [
+        "assessor_unavailable"
+      ]
+    },
+    "with_old_stripped_shape": {
+      "sufficient": false,
+      "assessor": "deterministic",
+      "reason": "regulatory bar requires no citable source and no freshness signal; retrieved evidence has neither",
+      "gaps": [
+        "no_citable_source",
+        "no_freshness_signal"
+      ]
+    },
+    "interpretation": "Same real rows, two hand-off shapes. The old shape cannot clear the regulatory bar because citation/authority were dropped in transit, which is the concrete before/after this change buys."
+  },
+  "real_authority_pairs": {
+    "high": 0.99,
+    "low": 0.84,
+    "near_a": 0.97,
+    "near_b": 0.96
+  }
+}

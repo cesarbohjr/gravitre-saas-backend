@@ -78,12 +78,30 @@ def _as_of(row: dict[str, Any]) -> str | None:
     return None
 
 
+# Authority is decisive only when the gap is real rather than ranking noise.
+# Expressed in normalized 0..1 space — see _authority for why that matters.
+AUTHORITY_DECISIVE_GAP = 0.10
+
+
 def _authority(row: dict[str, Any]) -> float | None:
+    """Authority normalized to 0..1.
+
+    Two scales are live in this codebase: knowledge_fabric stores chunk and
+    source ``authority_score`` in 0..1 (real corpus rows read 0.97), while
+    ``research_manager._KIND_AUTHORITY`` ranks source *kinds* on 0..100. A
+    threshold written for one silently never fires on the other, which is
+    exactly what happened here: a 10-point gap is unreachable when every real
+    value sits below 1.0, so the authority rung was dead on real data and only
+    looked alive under synthetic scores.
+    """
     value = row.get("authority_score")
+    if value is None:
+        return None
     try:
-        return float(value) if value is not None else None
+        score = float(value)
     except (TypeError, ValueError):
         return None
+    return score / 100.0 if score > 1.0 else score
 
 
 def _is_org_specific(query: str) -> bool:
@@ -141,12 +159,12 @@ def resolve_contradiction(
         with_scores.sort(key=lambda pair: pair[1], reverse=True)
         top, top_score = with_scores[0]
         _, second_score = with_scores[1]
-        if top_score - second_score >= 10.0:
+        if top_score - second_score >= AUTHORITY_DECISIVE_GAP:
             contradiction.resolution = "resolved_authority"
             contradiction.winner_index = top.get("index")
             contradiction.rationale = (
-                f"authority_score {top_score:g} vs {second_score:g} — kept the "
-                f"higher-authority source"
+                f"authority {top_score:.2f} vs {second_score:.2f} (normalized) — "
+                f"kept the higher-authority source"
             )
             return contradiction
 
