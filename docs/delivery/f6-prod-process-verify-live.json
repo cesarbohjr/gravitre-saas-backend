@@ -1,18 +1,18 @@
 {
   "claim": "production process executes F6 write verification",
-  "started_at": "2026-08-29T04:21:06.007229+00:00",
+  "started_at": "2026-08-29T05:27:04.693963+00:00",
   "api_base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "action": "hubspot.contacts.create",
   "pass": true,
-  "live_git_sha": "3d544d6504f1c234da3175fd8114ddda7cbfda24",
+  "live_git_sha": "b4afc3658fd5b18a95c52a671d469ba0247629a6",
   "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
-  "marker": "8a8827dd82",
+  "marker": "20dc6b195e",
   "workflow_id": "c993590b-a542-468c-bfda-c697a99c181b",
   "cleared_active_runs": [],
   "execute": {
     "http": 200,
-    "run_id": "ba48b060-6b8c-4011-97cb-c1f0cdd24074",
+    "run_id": "8ca2e994-718d-4af5-9c8c-c61009e8335b",
     "status": "pending_approval"
   },
   "approval": {
@@ -26,7 +26,7 @@
     "detail": "follow_up_entity_get_confirmed",
     "effect": "created",
     "verified": true,
-    "entity_id": "273893594055",
+    "entity_id": "273893648376",
     "read_action": "hubspot.contacts.get",
     "follow_up_attempted": true
   },
@@ -34,7 +34,7 @@
     "success": true,
     "error": null
   },
-  "verdict": "PASS \u2014 production run ba48b060-6b8c-4011-97cb-c1f0cdd24074 stamped entity_get_verify.verified=true for contact 273893594055 after re-reading HubSpot inside the deployed process.",
+  "verdict": "PASS \u2014 production run 8ca2e994-718d-4af5-9c8c-c61009e8335b stamped entity_get_verify.verified=true for contact 273893648376 after re-reading HubSpot inside the deployed process.",
   "negative_control_note": "Refusal of a fabricated id is proven at this same git tip by scripts/live-f6-entity-get-verify.py; not re-faked here.",
-  "finished_at": "2026-08-29T04:21:26.942749+00:00"
+  "finished_at": "2026-08-29T05:27:33.664258+00:00"
 }

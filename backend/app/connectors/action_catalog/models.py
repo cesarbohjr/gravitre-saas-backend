@@ -57,6 +57,7 @@ class ActionSpec:
 
     def to_dict(self, *, vendor: str, implemented: bool) -> dict[str, Any]:
         from app.connectors.action_catalog.action_parameters import resolve_action_schema
+        from app.connectors.action_catalog.api_reference_map import api_reference_entry
 
         tool_key = self.id if "." in self.id and self.id.split(".", 1)[0] == vendor else (
             self.id if self.id.startswith(f"{vendor}.") else f"{vendor}.{self.id}"
@@ -72,6 +73,11 @@ class ActionSpec:
         # MCP-style hints derived from the SAME kind/destructive fields (not a
         # parallel marking system) — principle 6 of the schema standard.
         read_only_hint = self.kind == "read" and not self.destructive
+        # A hand-set api_reference on the spec wins; otherwise use the endpoint
+        # transcribed from the connector source. Provenance is served alongside
+        # it so a name-inferred route is never mistaken for a verified one.
+        ref_entry = api_reference_entry(tool_key) or {}
+        api_reference = self.api_reference or ref_entry.get("api_reference")
         payload: dict[str, Any] = {
             "id": self.id.split(".", 1)[-1] if self.id.startswith(f"{vendor}.") else self.id,
             "tool": tool_key,
@@ -80,7 +86,14 @@ class ActionSpec:
             "tier": self.tier,
             "kind": self.kind,
             "scopes": list(self.scopes),
-            "apiReference": self.api_reference,
+            "apiReference": api_reference,
+            "apiReferenceProvenance": ref_entry.get("provenance"),
+            "apiReferenceSource": ref_entry.get("source"),
+            "apiReferenceEndpoints": ref_entry.get("endpoints"),
+            "apiReferenceBaseUrl": ref_entry.get("base_url"),
+            "apiReferenceNote": ref_entry.get("note"),
+            "vendorContract": ref_entry.get("vendor_contract"),
+            "vendorContractType": ref_entry.get("vendor_contract_type"),
             "idempotent": self.idempotent,
             "destructive": self.destructive,
             "requiresApproval": self.requires_approval,

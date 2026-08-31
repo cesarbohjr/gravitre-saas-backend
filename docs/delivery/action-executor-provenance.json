@@ -1,0 +1,5139 @@
+{
+  "catalog_action_total": 727,
+  "by_class": {
+    "name_inferred": 233,
+    "dedicated": 462,
+    "route_table": 30,
+    "unregistered": 2
+  },
+  "dedicated_modules": {
+    "app.services.tool_service": 150,
+    "app.services.priority_connector_tools": 47,
+    "app.services.microsoft365_teams_tools": 21,
+    "app.services.apollo_tools": 17,
+    "app.services.connected_files_tools": 15,
+    "app.services.clickup_tools": 13,
+    "app.services.ahrefs_tools": 12,
+    "app.services.asana_tools": 12,
+    "app.services.constant_contact_tools": 12,
+    "app.services.intercom_tools": 12,
+    "app.services.odoo_tools": 12,
+    "app.services.canva_tools": 11,
+    "app.services.figma_tools": 11,
+    "app.services.monday_tools": 11,
+    "app.services.pipedrive_tools": 11,
+    "app.services.netsuite_tools": 9,
+    "app.services.semrush_tools": 8,
+    "app.services.clay_tools": 7,
+    "app.connectors.twilio_api": 7,
+    "app.services.engagebay_tools": 6,
+    "app.services.finseo_tools": 6,
+    "app.services.marketo_tools": 6,
+    "app.services.clio_tools": 5,
+    "app.services.ai_visibility_ui_tools": 4,
+    "app.services.bamboohr_tools": 4,
+    "app.services.intelligence_pack_tools": 4,
+    "app.services.fhir_tools": 4,
+    "app.services.workday_tools": 4,
+    "app.services.greenhouse_tools": 3,
+    "app.services.gusto_tools": 3,
+    "app.services.plaid_tools": 3,
+    "app.services.segment_tools": 3,
+    "app.services.xero_tools": 3,
+    "app.services.pdl_tools": 2,
+    "app.services.real_estate_tools": 2,
+    "app.services.linkedin_tools": 1,
+    "app.services.platform_health_tools": 1
+  },
+  "rows": [
+    {
+      "action": "absorb_lms.batch.enroll",
+      "registry_key": "absorb_lms.batch.enroll",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.certificates.issue",
+      "registry_key": "absorb_lms.certificates.issue",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.courses.create",
+      "registry_key": "absorb_lms.courses.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.courses.list",
+      "registry_key": "absorb_lms.courses.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.enrollments.create",
+      "registry_key": "absorb_lms.enrollments.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.enrollments.list",
+      "registry_key": "absorb_lms.enrollments.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.reports.completion",
+      "registry_key": "absorb_lms.reports.completion",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "absorb_lms.users.get",
+      "registry_key": "absorb_lms.users.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.batch.workers.sync",
+      "registry_key": "adp.batch.workers.sync",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.benefits.elect",
+      "registry_key": "adp.benefits.elect",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.events.list",
+      "registry_key": "adp.events.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.payroll.preview",
+      "registry_key": "adp.payroll.preview",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.paystatements.list",
+      "registry_key": "adp.paystatements.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.profile.update",
+      "registry_key": "adp.profile.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.timecards.submit",
+      "registry_key": "adp.timecards.submit",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "adp.workers.get",
+      "registry_key": "adp.workers.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "ahrefs.backlinks.list",
+      "registry_key": "ahrefs.backlinks.list",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_backlinks_list"
+    },
+    {
+      "action": "ahrefs.brand_radar.competitors.compare",
+      "registry_key": "ahrefs.brand_radar.competitors.compare",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_brand_radar_competitors_compare"
+    },
+    {
+      "action": "ahrefs.brand_radar.exports.run",
+      "registry_key": "ahrefs.brand_radar.exports.run",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_brand_radar_exports_run"
+    },
+    {
+      "action": "ahrefs.brand_radar.overview",
+      "registry_key": "ahrefs.brand_radar.overview",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_brand_radar_overview"
+    },
+    {
+      "action": "ahrefs.brand_radar.prompts.list",
+      "registry_key": "ahrefs.brand_radar.prompts.list",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_brand_radar_prompts_list"
+    },
+    {
+      "action": "ahrefs.brand_radar.prompts.track",
+      "registry_key": "ahrefs.brand_radar.prompts.track",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_brand_radar_prompts_track"
+    },
+    {
+      "action": "ahrefs.competitors.compare",
+      "registry_key": "ahrefs.competitors.compare",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_competitors_compare"
+    },
+    {
+      "action": "ahrefs.domain.rating",
+      "registry_key": "ahrefs.domain.rating",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_domain_rating"
+    },
+    {
+      "action": "ahrefs.keywords.list",
+      "registry_key": "ahrefs.keywords.list",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_keywords_list"
+    },
+    {
+      "action": "ahrefs.projects.create",
+      "registry_key": "ahrefs.projects.create",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_projects_create"
+    },
+    {
+      "action": "ahrefs.rank_tracker.add",
+      "registry_key": "ahrefs.rank_tracker.add",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_rank_tracker_add"
+    },
+    {
+      "action": "ahrefs.top_pages.list",
+      "registry_key": "ahrefs.top_pages.list",
+      "class": "dedicated",
+      "module": "app.services.ahrefs_tools",
+      "qualname": "_exec_top_pages_list"
+    },
+    {
+      "action": "ai_visibility_ui.captures.export",
+      "registry_key": "ai_visibility_ui.captures.export",
+      "class": "dedicated",
+      "module": "app.services.ai_visibility_ui_tools",
+      "qualname": "_exec_captures_export"
+    },
+    {
+      "action": "ai_visibility_ui.mentions.check",
+      "registry_key": "ai_visibility_ui.mentions.check",
+      "class": "dedicated",
+      "module": "app.services.ai_visibility_ui_tools",
+      "qualname": "_exec_mentions_check"
+    },
+    {
+      "action": "ai_visibility_ui.prompts.batch",
+      "registry_key": "ai_visibility_ui.prompts.batch",
+      "class": "dedicated",
+      "module": "app.services.ai_visibility_ui_tools",
+      "qualname": "_exec_prompts_batch"
+    },
+    {
+      "action": "ai_visibility_ui.surfaces.list",
+      "registry_key": "ai_visibility_ui.surfaces.list",
+      "class": "dedicated",
+      "module": "app.services.ai_visibility_ui_tools",
+      "qualname": "_exec_surfaces_list"
+    },
+    {
+      "action": "airtable.bases.list",
+      "registry_key": "airtable.bases.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.batch.records",
+      "registry_key": "airtable.batch.records",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.records.create",
+      "registry_key": "airtable.records.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.records.delete",
+      "registry_key": "airtable.records.delete",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.records.get",
+      "registry_key": "airtable.records.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.records.list",
+      "registry_key": "airtable.records.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.records.update",
+      "registry_key": "airtable.records.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "airtable.webhooks.create",
+      "registry_key": "airtable.webhooks.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "apollo.contacts.create",
+      "registry_key": "apollo.contacts.create",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_contacts_create"
+    },
+    {
+      "action": "apollo.contacts.delete",
+      "registry_key": "apollo.contacts.delete",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_contacts_delete"
+    },
+    {
+      "action": "apollo.contacts.get",
+      "registry_key": "apollo.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_contacts_get"
+    },
+    {
+      "action": "apollo.contacts.search",
+      "registry_key": "apollo.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_contacts_search"
+    },
+    {
+      "action": "apollo.contacts.update",
+      "registry_key": "apollo.contacts.update",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_contacts_update"
+    },
+    {
+      "action": "apollo.enrichment.bulk",
+      "registry_key": "apollo.enrichment.bulk",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_enrichment_bulk"
+    },
+    {
+      "action": "apollo.lists.add",
+      "registry_key": "apollo.lists.add",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_lists_add"
+    },
+    {
+      "action": "apollo.lists.create",
+      "registry_key": "apollo.lists.create",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_lists_create"
+    },
+    {
+      "action": "apollo.lists.list",
+      "registry_key": "apollo.lists.list",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_lists_list"
+    },
+    {
+      "action": "apollo.organizations.enrich",
+      "registry_key": "apollo.organizations.enrich",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_organizations_enrich"
+    },
+    {
+      "action": "apollo.organizations.search",
+      "registry_key": "apollo.organizations.search",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_organizations_search"
+    },
+    {
+      "action": "apollo.people.match",
+      "registry_key": "apollo.people.match",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_people_match"
+    },
+    {
+      "action": "apollo.people.search",
+      "registry_key": "apollo.people.search",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_people_search"
+    },
+    {
+      "action": "apollo.sequences.add",
+      "registry_key": "apollo.sequences.add",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_sequences_add"
+    },
+    {
+      "action": "apollo.sequences.remove",
+      "registry_key": "apollo.sequences.remove",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_sequences_remove"
+    },
+    {
+      "action": "apollo.signals.subscribe",
+      "registry_key": "apollo.signals.subscribe",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_signals_subscribe"
+    },
+    {
+      "action": "apollo.tasks.create",
+      "registry_key": "apollo.tasks.create",
+      "class": "dedicated",
+      "module": "app.services.apollo_tools",
+      "qualname": "_exec_tasks_create"
+    },
+    {
+      "action": "asana.batch.tasks",
+      "registry_key": "asana.batch.tasks",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_batch_tasks"
+    },
+    {
+      "action": "asana.projects.list",
+      "registry_key": "asana.projects.list",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_projects_list"
+    },
+    {
+      "action": "asana.sections.move",
+      "registry_key": "asana.sections.move",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_sections_move"
+    },
+    {
+      "action": "asana.stories.create",
+      "registry_key": "asana.stories.create",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_stories_create"
+    },
+    {
+      "action": "asana.tasks.add_project",
+      "registry_key": "asana.tasks.add_project",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_add_project"
+    },
+    {
+      "action": "asana.tasks.create",
+      "registry_key": "asana.tasks.create",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_create"
+    },
+    {
+      "action": "asana.tasks.delete",
+      "registry_key": "asana.tasks.delete",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_delete"
+    },
+    {
+      "action": "asana.tasks.get",
+      "registry_key": "asana.tasks.get",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_get"
+    },
+    {
+      "action": "asana.tasks.search",
+      "registry_key": "asana.tasks.search",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_search"
+    },
+    {
+      "action": "asana.tasks.update",
+      "registry_key": "asana.tasks.update",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_tasks_update"
+    },
+    {
+      "action": "asana.users.list",
+      "registry_key": "asana.users.list",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_users_list"
+    },
+    {
+      "action": "asana.workspaces.list",
+      "registry_key": "asana.workspaces.list",
+      "class": "dedicated",
+      "module": "app.services.asana_tools",
+      "qualname": "_exec_asana_workspaces_list"
+    },
+    {
+      "action": "aws_s3.batch.delete",
+      "registry_key": "aws_s3.batch.delete",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.buckets.list",
+      "registry_key": "aws_s3.buckets.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.multipart.upload",
+      "registry_key": "aws_s3.multipart.upload",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.objects.delete",
+      "registry_key": "aws_s3.objects.delete",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.objects.head",
+      "registry_key": "aws_s3.objects.head",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.objects.list",
+      "registry_key": "aws_s3.objects.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.objects.put",
+      "registry_key": "aws_s3.objects.put",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "aws_s3.presigned.get",
+      "registry_key": "aws_s3.presigned.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "bamboohr.employees.create",
+      "registry_key": "bamboohr.employees.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "bamboohr.employees.get",
+      "registry_key": "bamboohr.employees.get",
+      "class": "dedicated",
+      "module": "app.services.bamboohr_tools",
+      "qualname": "_exec_bamboohr_employees_get"
+    },
+    {
+      "action": "bamboohr.employees.list",
+      "registry_key": "bamboohr.employees.list",
+      "class": "dedicated",
+      "module": "app.services.bamboohr_tools",
+      "qualname": "_exec_bamboohr_employees_list"
+    },
+    {
+      "action": "bamboohr.onboarding.tasks.assign",
+      "registry_key": "bamboohr.onboarding.tasks.assign",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "bamboohr.reports.run",
+      "registry_key": "bamboohr.reports.run",
+      "class": "dedicated",
+      "module": "app.services.bamboohr_tools",
+      "qualname": "_exec_bamboohr_reports_run"
+    },
+    {
+      "action": "bamboohr.timeoff.requests.create",
+      "registry_key": "bamboohr.timeoff.requests.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "bamboohr.timeoff.requests.list",
+      "registry_key": "bamboohr.timeoff.requests.list",
+      "class": "dedicated",
+      "module": "app.services.bamboohr_tools",
+      "qualname": "_exec_bamboohr_timeoff_requests_list"
+    },
+    {
+      "action": "bamboohr.webhooks.create",
+      "registry_key": "bamboohr.webhooks.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "brevo.campaigns.list",
+      "registry_key": "brevo.campaigns.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "brevo.contacts.create",
+      "registry_key": "brevo.contacts.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "brevo.contacts.list",
+      "registry_key": "brevo.contacts.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "brevo.contacts.update",
+      "registry_key": "brevo.contacts.update",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "brevo.email.send",
+      "registry_key": "brevo.email.send",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "canva.autofill.create",
+      "registry_key": "canva.autofill.create",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_autofill_create"
+    },
+    {
+      "action": "canva.batch.exports",
+      "registry_key": "canva.batch.exports",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_batch_exports"
+    },
+    {
+      "action": "canva.brand.templates.get",
+      "registry_key": "canva.brand.templates.get",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_brand_templates_get"
+    },
+    {
+      "action": "canva.brand.templates.list",
+      "registry_key": "canva.brand.templates.list",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_brand_templates_list"
+    },
+    {
+      "action": "canva.designs.create",
+      "registry_key": "canva.designs.create",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_designs_create"
+    },
+    {
+      "action": "canva.designs.delete",
+      "registry_key": "canva.designs.delete",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_designs_delete"
+    },
+    {
+      "action": "canva.designs.get",
+      "registry_key": "canva.designs.get",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_designs_get"
+    },
+    {
+      "action": "canva.designs.list",
+      "registry_key": "canva.designs.list",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_designs_list"
+    },
+    {
+      "action": "canva.exports.create",
+      "registry_key": "canva.exports.create",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_exports_create"
+    },
+    {
+      "action": "canva.exports.get",
+      "registry_key": "canva.exports.get",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_exports_get"
+    },
+    {
+      "action": "canva.folders.list",
+      "registry_key": "canva.folders.list",
+      "class": "dedicated",
+      "module": "app.services.canva_tools",
+      "qualname": "_exec_canva_folders_list"
+    },
+    {
+      "action": "cisa_kev.cve.lookup",
+      "registry_key": "cisa_kev.cve.lookup",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "cisa_kev.feed.diff",
+      "registry_key": "cisa_kev.feed.diff",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "cisa_kev.feed.get",
+      "registry_key": "cisa_kev.feed.get",
+      "class": "dedicated",
+      "module": "app.services.intelligence_pack_tools",
+      "qualname": "_exec_cisa_kev_feed_get"
+    },
+    {
+      "action": "clay.companies.enrich",
+      "registry_key": "clay.companies.enrich",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_companies_enrich"
+    },
+    {
+      "action": "clay.crm.sync",
+      "registry_key": "clay.crm.sync",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_crm_sync"
+    },
+    {
+      "action": "clay.enrichments.request",
+      "registry_key": "clay.enrichments.request",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_enrichments_request"
+    },
+    {
+      "action": "clay.leads.push",
+      "registry_key": "clay.leads.push",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_leads_push"
+    },
+    {
+      "action": "clay.people.enrich",
+      "registry_key": "clay.people.enrich",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_people_enrich"
+    },
+    {
+      "action": "clay.tables.list",
+      "registry_key": "clay.tables.list",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_tables_list"
+    },
+    {
+      "action": "clay.workflows.output.get",
+      "registry_key": "clay.workflows.output.get",
+      "class": "dedicated",
+      "module": "app.services.clay_tools",
+      "qualname": "_exec_workflows_output_get"
+    },
+    {
+      "action": "clickup.comments.create",
+      "registry_key": "clickup.comments.create",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_comments_create"
+    },
+    {
+      "action": "clickup.goals.update",
+      "registry_key": "clickup.goals.update",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_goals_update"
+    },
+    {
+      "action": "clickup.lists.get",
+      "registry_key": "clickup.lists.get",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_lists_get"
+    },
+    {
+      "action": "clickup.members.list",
+      "registry_key": "clickup.members.list",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_members_list"
+    },
+    {
+      "action": "clickup.spaces.list",
+      "registry_key": "clickup.spaces.list",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_spaces_list"
+    },
+    {
+      "action": "clickup.tasks.bulk_update",
+      "registry_key": "clickup.tasks.bulk_update",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_bulk_update"
+    },
+    {
+      "action": "clickup.tasks.create",
+      "registry_key": "clickup.tasks.create",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_create"
+    },
+    {
+      "action": "clickup.tasks.delete",
+      "registry_key": "clickup.tasks.delete",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_delete"
+    },
+    {
+      "action": "clickup.tasks.get",
+      "registry_key": "clickup.tasks.get",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_get"
+    },
+    {
+      "action": "clickup.tasks.list",
+      "registry_key": "clickup.tasks.list",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_list"
+    },
+    {
+      "action": "clickup.tasks.update",
+      "registry_key": "clickup.tasks.update",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_tasks_update"
+    },
+    {
+      "action": "clickup.time_entries.create",
+      "registry_key": "clickup.time_entries.create",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_time_entries_create"
+    },
+    {
+      "action": "clickup.webhooks.create",
+      "registry_key": "clickup.webhooks.create",
+      "class": "dedicated",
+      "module": "app.services.clickup_tools",
+      "qualname": "_exec_clickup_webhooks_create"
+    },
+    {
+      "action": "clio.calendar_entries.list",
+      "registry_key": "clio.calendar_entries.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "clio.conflict.checklist",
+      "registry_key": "clio.conflict.checklist",
+      "class": "dedicated",
+      "module": "app.services.clio_tools",
+      "qualname": "_exec_clio_conflict_checklist"
+    },
+    {
+      "action": "clio.contacts.get",
+      "registry_key": "clio.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.clio_tools",
+      "qualname": "_exec_clio_contacts_get"
+    },
+    {
+      "action": "clio.contacts.search",
+      "registry_key": "clio.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.clio_tools",
+      "qualname": "_exec_clio_contacts_search"
+    },
+    {
+      "action": "clio.intake.tasks",
+      "registry_key": "clio.intake.tasks",
+      "class": "dedicated",
+      "module": "app.services.clio_tools",
+      "qualname": "_exec_clio_intake_tasks"
+    },
+    {
+      "action": "clio.matters.create",
+      "registry_key": "clio.matters.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "clio.matters.search",
+      "registry_key": "clio.matters.search",
+      "class": "dedicated",
+      "module": "app.services.clio_tools",
+      "qualname": "_exec_clio_matters_search"
+    },
+    {
+      "action": "clio.tasks.create",
+      "registry_key": "clio.tasks.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.attachments.upload",
+      "registry_key": "confluence.attachments.upload",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.export.pdf",
+      "registry_key": "confluence.export.pdf",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.get_file_content",
+      "registry_key": "confluence.get_file_content",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_confluence_get_file_content"
+    },
+    {
+      "action": "confluence.get_file_metadata",
+      "registry_key": "confluence.get_file_metadata",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_confluence_get_file_metadata"
+    },
+    {
+      "action": "confluence.labels.add",
+      "registry_key": "confluence.labels.add",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.pages.create",
+      "registry_key": "confluence.pages.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.pages.get",
+      "registry_key": "confluence.pages.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.pages.move",
+      "registry_key": "confluence.pages.move",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.pages.search",
+      "registry_key": "confluence.pages.search",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.pages.update",
+      "registry_key": "confluence.pages.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "confluence.search_files",
+      "registry_key": "confluence.search_files",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_confluence_search_files"
+    },
+    {
+      "action": "confluence.spaces.list",
+      "registry_key": "confluence.spaces.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "constant_contact.campaigns.create",
+      "registry_key": "constant_contact.campaigns.create",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_campaigns_create"
+    },
+    {
+      "action": "constant_contact.campaigns.list",
+      "registry_key": "constant_contact.campaigns.list",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_campaigns_list"
+    },
+    {
+      "action": "constant_contact.campaigns.schedule",
+      "registry_key": "constant_contact.campaigns.schedule",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_campaigns_schedule"
+    },
+    {
+      "action": "constant_contact.contact_lists.list",
+      "registry_key": "constant_contact.contact_lists.list",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contact_lists_list"
+    },
+    {
+      "action": "constant_contact.contacts.create",
+      "registry_key": "constant_contact.contacts.create",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contacts_create"
+    },
+    {
+      "action": "constant_contact.contacts.delete",
+      "registry_key": "constant_contact.contacts.delete",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contacts_delete"
+    },
+    {
+      "action": "constant_contact.contacts.get",
+      "registry_key": "constant_contact.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contacts_get"
+    },
+    {
+      "action": "constant_contact.contacts.list",
+      "registry_key": "constant_contact.contacts.list",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contacts_list"
+    },
+    {
+      "action": "constant_contact.contacts.update",
+      "registry_key": "constant_contact.contacts.update",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_contacts_update"
+    },
+    {
+      "action": "constant_contact.lists.add_contacts",
+      "registry_key": "constant_contact.lists.add_contacts",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_lists_add_contacts"
+    },
+    {
+      "action": "constant_contact.segments.list",
+      "registry_key": "constant_contact.segments.list",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_segments_list"
+    },
+    {
+      "action": "constant_contact.tags.apply",
+      "registry_key": "constant_contact.tags.apply",
+      "class": "dedicated",
+      "module": "app.services.constant_contact_tools",
+      "qualname": "_exec_constant_contact_tags_apply"
+    },
+    {
+      "action": "email.batch.send",
+      "registry_key": "email.batch.send",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_email_batch_send"
+    },
+    {
+      "action": "email.delivery.status",
+      "registry_key": "email.delivery.status",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_email_delivery_status"
+    },
+    {
+      "action": "email.messages.queue",
+      "registry_key": "email.messages.queue",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_email_messages_queue"
+    },
+    {
+      "action": "email.send",
+      "registry_key": "email.send",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_email_send"
+    },
+    {
+      "action": "email.send.template",
+      "registry_key": "email.send.template",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_email_send_template"
+    },
+    {
+      "action": "engagebay.contacts.create",
+      "registry_key": "engagebay.contacts.create",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_contacts_create"
+    },
+    {
+      "action": "engagebay.contacts.get",
+      "registry_key": "engagebay.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_contacts_get"
+    },
+    {
+      "action": "engagebay.contacts.search",
+      "registry_key": "engagebay.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_contacts_search"
+    },
+    {
+      "action": "engagebay.contacts.update",
+      "registry_key": "engagebay.contacts.update",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_contacts_update"
+    },
+    {
+      "action": "engagebay.deals.list",
+      "registry_key": "engagebay.deals.list",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_deals_list"
+    },
+    {
+      "action": "engagebay.tasks.create",
+      "registry_key": "engagebay.tasks.create",
+      "class": "dedicated",
+      "module": "app.services.engagebay_tools",
+      "qualname": "_exec_tasks_create"
+    },
+    {
+      "action": "fhir.appointments.search",
+      "registry_key": "fhir.appointments.search",
+      "class": "dedicated",
+      "module": "app.services.fhir_tools",
+      "qualname": "_exec_fhir_appointments_search"
+    },
+    {
+      "action": "fhir.coverage.eligibility",
+      "registry_key": "fhir.coverage.eligibility",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "fhir.patients.get",
+      "registry_key": "fhir.patients.get",
+      "class": "dedicated",
+      "module": "app.services.fhir_tools",
+      "qualname": "_exec_fhir_patients_get"
+    },
+    {
+      "action": "fhir.patients.search",
+      "registry_key": "fhir.patients.search",
+      "class": "dedicated",
+      "module": "app.services.fhir_tools",
+      "qualname": "_exec_fhir_patients_search"
+    },
+    {
+      "action": "fhir.prior_auth.checklist",
+      "registry_key": "fhir.prior_auth.checklist",
+      "class": "dedicated",
+      "module": "app.services.fhir_tools",
+      "qualname": "_exec_fhir_prior_auth_checklist"
+    },
+    {
+      "action": "figma.batch.images.export",
+      "registry_key": "figma.batch.images.export",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_batch_images_export"
+    },
+    {
+      "action": "figma.comments.create",
+      "registry_key": "figma.comments.create",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_comments_create"
+    },
+    {
+      "action": "figma.comments.delete",
+      "registry_key": "figma.comments.delete",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_comments_delete"
+    },
+    {
+      "action": "figma.comments.list",
+      "registry_key": "figma.comments.list",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_comments_list"
+    },
+    {
+      "action": "figma.dev_resources.create",
+      "registry_key": "figma.dev_resources.create",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_dev_resources_create"
+    },
+    {
+      "action": "figma.files.get",
+      "registry_key": "figma.files.get",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_files_get"
+    },
+    {
+      "action": "figma.files.meta",
+      "registry_key": "figma.files.meta",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_files_meta"
+    },
+    {
+      "action": "figma.files.versions.list",
+      "registry_key": "figma.files.versions.list",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_files_versions_list"
+    },
+    {
+      "action": "figma.projects.files.list",
+      "registry_key": "figma.projects.files.list",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_projects_files_list"
+    },
+    {
+      "action": "figma.projects.list",
+      "registry_key": "figma.projects.list",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_projects_list"
+    },
+    {
+      "action": "figma.users.me",
+      "registry_key": "figma.users.me",
+      "class": "dedicated",
+      "module": "app.services.figma_tools",
+      "qualname": "_exec_figma_users_me"
+    },
+    {
+      "action": "finseo.competitors.compare",
+      "registry_key": "finseo.competitors.compare",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_competitors_compare"
+    },
+    {
+      "action": "finseo.exports.run",
+      "registry_key": "finseo.exports.run",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_exports_run"
+    },
+    {
+      "action": "finseo.metrics.overview",
+      "registry_key": "finseo.metrics.overview",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_metrics_overview"
+    },
+    {
+      "action": "finseo.projects.list",
+      "registry_key": "finseo.projects.list",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_projects_list"
+    },
+    {
+      "action": "finseo.prompts.list",
+      "registry_key": "finseo.prompts.list",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_prompts_list"
+    },
+    {
+      "action": "finseo.prompts.track",
+      "registry_key": "finseo.prompts.track",
+      "class": "dedicated",
+      "module": "app.services.finseo_tools",
+      "qualname": "_exec_prompts_track"
+    },
+    {
+      "action": "fred.series.get",
+      "registry_key": "fred.series.get",
+      "class": "dedicated",
+      "module": "app.services.intelligence_pack_tools",
+      "qualname": "_exec_fred_series_get"
+    },
+    {
+      "action": "fred.series.observations.get",
+      "registry_key": "fred.series.observations.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "fred.series.search",
+      "registry_key": "fred.series.search",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.automations.trigger",
+      "registry_key": "freshdesk.automations.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.contacts.get",
+      "registry_key": "freshdesk.contacts.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.notes.create",
+      "registry_key": "freshdesk.notes.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.satisfaction.send",
+      "registry_key": "freshdesk.satisfaction.send",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.tickets.create",
+      "registry_key": "freshdesk.tickets.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.tickets.get",
+      "registry_key": "freshdesk.tickets.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.tickets.list",
+      "registry_key": "freshdesk.tickets.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.tickets.merge",
+      "registry_key": "freshdesk.tickets.merge",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "freshdesk.tickets.update",
+      "registry_key": "freshdesk.tickets.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "github.actions.dispatch",
+      "registry_key": "github.actions.dispatch",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_actions_dispatch"
+    },
+    {
+      "action": "github.actions.runs.list",
+      "registry_key": "github.actions.runs.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_actions_runs_list"
+    },
+    {
+      "action": "github.issues.comment",
+      "registry_key": "github.issues.comment",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_issues_comment"
+    },
+    {
+      "action": "github.issues.create",
+      "registry_key": "github.issues.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_issues_create"
+    },
+    {
+      "action": "github.issues.get",
+      "registry_key": "github.issues.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_issues_get"
+    },
+    {
+      "action": "github.issues.list",
+      "registry_key": "github.issues.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_issues_list"
+    },
+    {
+      "action": "github.issues.update",
+      "registry_key": "github.issues.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_issues_update"
+    },
+    {
+      "action": "github.pulls.close",
+      "registry_key": "github.pulls.close",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_close"
+    },
+    {
+      "action": "github.pulls.create",
+      "registry_key": "github.pulls.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_create"
+    },
+    {
+      "action": "github.pulls.get",
+      "registry_key": "github.pulls.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_get"
+    },
+    {
+      "action": "github.pulls.list",
+      "registry_key": "github.pulls.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_list"
+    },
+    {
+      "action": "github.pulls.merge",
+      "registry_key": "github.pulls.merge",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_merge"
+    },
+    {
+      "action": "github.pulls.request_reviewer",
+      "registry_key": "github.pulls.request_reviewer",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_pulls_request_reviewer"
+    },
+    {
+      "action": "github.releases.create",
+      "registry_key": "github.releases.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_releases_create"
+    },
+    {
+      "action": "github.repos.get",
+      "registry_key": "github.repos.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_github_repos_get"
+    },
+    {
+      "action": "gitlab.issues.create",
+      "registry_key": "gitlab.issues.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "gitlab.issues.list",
+      "registry_key": "gitlab.issues.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "gitlab.merge_requests.create",
+      "registry_key": "gitlab.merge_requests.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "gitlab.merge_requests.list",
+      "registry_key": "gitlab.merge_requests.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "gitlab.projects.list",
+      "registry_key": "gitlab.projects.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "gmail.drafts.create",
+      "registry_key": "gmail.drafts.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "gmail.labels.create",
+      "registry_key": "gmail.labels.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "gmail.labels.list",
+      "registry_key": "gmail.labels.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_gmail_labels_list"
+    },
+    {
+      "action": "gmail.messages.batch",
+      "registry_key": "gmail.messages.batch",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "gmail.messages.get",
+      "registry_key": "gmail.messages.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_gmail_messages_get"
+    },
+    {
+      "action": "gmail.messages.list",
+      "registry_key": "gmail.messages.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_gmail_messages_list"
+    },
+    {
+      "action": "gmail.messages.send",
+      "registry_key": "gmail.messages.send",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_gmail_messages_send"
+    },
+    {
+      "action": "gmail.threads.modify",
+      "registry_key": "gmail.threads.modify",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "gmail.watch.create",
+      "registry_key": "gmail.watch.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_ads.accounts.list",
+      "registry_key": "googleads.accounts.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_accounts_list"
+    },
+    {
+      "action": "google_ads.ad_groups.list",
+      "registry_key": "googleads.ad_groups.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_ad_groups_list"
+    },
+    {
+      "action": "google_ads.campaigns.get",
+      "registry_key": "googleads.campaigns.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_campaigns_get"
+    },
+    {
+      "action": "google_ads.campaigns.list",
+      "registry_key": "googleads.campaigns.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_campaigns_list"
+    },
+    {
+      "action": "google_ads.campaigns.pause",
+      "registry_key": "googleads.campaigns.pause",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_campaigns_pause"
+    },
+    {
+      "action": "google_ads.campaigns.resume",
+      "registry_key": "googleads.campaigns.resume",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_campaigns_resume"
+    },
+    {
+      "action": "google_ads.campaigns.update_budget",
+      "registry_key": "googleads.campaigns.update_budget",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_campaigns_update_budget"
+    },
+    {
+      "action": "google_ads.keywords.list",
+      "registry_key": "googleads.keywords.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_keywords_list"
+    },
+    {
+      "action": "google_ads.reports.performance",
+      "registry_key": "googleads.reports.performance",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_reports_performance"
+    },
+    {
+      "action": "google_ads.structure.create",
+      "registry_key": "googleads.structure.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_googleads_structure_create"
+    },
+    {
+      "action": "google_analytics.audiences.create",
+      "registry_key": "google_analytics.audiences.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_analytics.conversions.create",
+      "registry_key": "google_analytics.conversions.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_analytics.metadata.list",
+      "registry_key": "analytics.metadata.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_analytics_metadata_list"
+    },
+    {
+      "action": "google_analytics.properties.list",
+      "registry_key": "analytics.properties.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_analytics_properties_list"
+    },
+    {
+      "action": "google_analytics.realtime.run",
+      "registry_key": "google_analytics.realtime.run",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_analytics.reports.batch",
+      "registry_key": "google_analytics.reports.batch",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_analytics.reports.run",
+      "registry_key": "analytics.reports.run",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_analytics_reports_run"
+    },
+    {
+      "action": "google_calendar.acl.list",
+      "registry_key": "google_calendar.acl.list",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_calendar.batch.events",
+      "registry_key": "google_calendar.batch.events",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_calendar.calendars.list",
+      "registry_key": "calendar.calendars.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_calendar_calendars_list"
+    },
+    {
+      "action": "google_calendar.events.create",
+      "registry_key": "calendar.events.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_calendar_events_create"
+    },
+    {
+      "action": "google_calendar.events.delete",
+      "registry_key": "google_calendar.events.delete",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_calendar.events.list",
+      "registry_key": "calendar.events.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_calendar_events_list"
+    },
+    {
+      "action": "google_calendar.events.quick_add",
+      "registry_key": "google_calendar.events.quick_add",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_calendar.events.update",
+      "registry_key": "google_calendar.events.update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_calendar.freebusy",
+      "registry_key": "calendar.freebusy",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_calendar_freebusy"
+    },
+    {
+      "action": "google_docs.documents.batch_get",
+      "registry_key": "docs.documents.batch_get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_docs_documents_batch_get"
+    },
+    {
+      "action": "google_docs.documents.batch_update",
+      "registry_key": "google_docs.documents.batch_update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_docs.documents.create",
+      "registry_key": "google_docs.documents.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_docs.documents.get",
+      "registry_key": "docs.documents.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_docs_documents_get"
+    },
+    {
+      "action": "google_docs.documents.insert_table",
+      "registry_key": "google_docs.documents.insert_table",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_docs.documents.replace_text",
+      "registry_key": "google_docs.documents.replace_text",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_docs.export.pdf",
+      "registry_key": "google_docs.export.pdf",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.batch.permissions",
+      "registry_key": "google_drive.batch.permissions",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.changes.list",
+      "registry_key": "google_drive.changes.list",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.files.create",
+      "registry_key": "google_drive.files.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.files.export",
+      "registry_key": "google_drive.files.export",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.files.get",
+      "registry_key": "drive.files.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_drive_files_get"
+    },
+    {
+      "action": "google_drive.files.list",
+      "registry_key": "drive.files.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_drive_files_list"
+    },
+    {
+      "action": "google_drive.files.update",
+      "registry_key": "google_drive.files.update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.get_file_content",
+      "registry_key": "google_drive.get_file_content",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_google_drive_get_file_content"
+    },
+    {
+      "action": "google_drive.get_file_metadata",
+      "registry_key": "google_drive.get_file_metadata",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_google_drive_get_file_metadata"
+    },
+    {
+      "action": "google_drive.permissions.create",
+      "registry_key": "google_drive.permissions.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_drive.permissions.list",
+      "registry_key": "drive.permissions.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_drive_permissions_list"
+    },
+    {
+      "action": "google_drive.search_files",
+      "registry_key": "google_drive.search_files",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_google_drive_search_files"
+    },
+    {
+      "action": "google_search_console.searchAnalytics.query",
+      "registry_key": "searchconsole.searchAnalytics.query",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_searchconsole_search_analytics_query"
+    },
+    {
+      "action": "google_search_console.sitemaps.list",
+      "registry_key": "google_search_console.sitemaps.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "google_search_console.sites.get",
+      "registry_key": "google_search_console.sites.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "google_search_console.sites.list",
+      "registry_key": "searchconsole.sites.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_searchconsole_sites_list"
+    },
+    {
+      "action": "google_sheets.charts.add",
+      "registry_key": "google_sheets.charts.add",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_sheets.pivot.create",
+      "registry_key": "google_sheets.pivot.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_sheets.spreadsheets.create",
+      "registry_key": "google_sheets.spreadsheets.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_sheets.spreadsheets.get",
+      "registry_key": "sheets.spreadsheets.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_sheets_spreadsheets_get"
+    },
+    {
+      "action": "google_sheets.values.append",
+      "registry_key": "google_sheets.values.append",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_sheets.values.batch_get",
+      "registry_key": "sheets.values.batch_get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_sheets_values_batch_get"
+    },
+    {
+      "action": "google_sheets.values.batch_update",
+      "registry_key": "google_sheets.values.batch_update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "google_sheets.values.get",
+      "registry_key": "sheets.values.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_sheets_values_get"
+    },
+    {
+      "action": "google_sheets.values.update",
+      "registry_key": "google_sheets.values.update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_google_exec.<locals>._exec"
+    },
+    {
+      "action": "gorgias.customers.get",
+      "registry_key": "gorgias.customers.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.macros.apply",
+      "registry_key": "gorgias.macros.apply",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.rules.trigger",
+      "registry_key": "gorgias.rules.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.satisfaction.request",
+      "registry_key": "gorgias.satisfaction.request",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.tags.apply",
+      "registry_key": "gorgias.tags.apply",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.tickets.create",
+      "registry_key": "gorgias.tickets.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.tickets.get",
+      "registry_key": "gorgias.tickets.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.tickets.list",
+      "registry_key": "gorgias.tickets.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gorgias.tickets.reply",
+      "registry_key": "gorgias.tickets.reply",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "greenhouse.applications.list",
+      "registry_key": "greenhouse.applications.list",
+      "class": "dedicated",
+      "module": "app.services.greenhouse_tools",
+      "qualname": "_exec_greenhouse_applications_list"
+    },
+    {
+      "action": "greenhouse.candidates.create",
+      "registry_key": "greenhouse.candidates.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "greenhouse.candidates.get",
+      "registry_key": "greenhouse.candidates.get",
+      "class": "dedicated",
+      "module": "app.services.greenhouse_tools",
+      "qualname": "_exec_greenhouse_candidates_get"
+    },
+    {
+      "action": "greenhouse.jobs.list",
+      "registry_key": "greenhouse.jobs.list",
+      "class": "dedicated",
+      "module": "app.services.greenhouse_tools",
+      "qualname": "_exec_greenhouse_jobs_list"
+    },
+    {
+      "action": "greenhouse.offers.create",
+      "registry_key": "greenhouse.offers.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gusto.benefits.enroll",
+      "registry_key": "gusto.benefits.enroll",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gusto.companies.get",
+      "registry_key": "gusto.companies.get",
+      "class": "dedicated",
+      "module": "app.services.gusto_tools",
+      "qualname": "_exec_companies_get"
+    },
+    {
+      "action": "gusto.contractors.pay",
+      "registry_key": "gusto.contractors.pay",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gusto.employees.create",
+      "registry_key": "gusto.employees.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gusto.employees.get",
+      "registry_key": "gusto.employees.get",
+      "class": "dedicated",
+      "module": "app.services.gusto_tools",
+      "qualname": "_exec_employees_get"
+    },
+    {
+      "action": "gusto.payrolls.list",
+      "registry_key": "gusto.payrolls.list",
+      "class": "dedicated",
+      "module": "app.services.gusto_tools",
+      "qualname": "_exec_payrolls_list"
+    },
+    {
+      "action": "gusto.payrolls.run",
+      "registry_key": "gusto.payrolls.run",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "gusto.reports.generate",
+      "registry_key": "gusto.reports.generate",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.analytics.summary",
+      "registry_key": "hootsuite.analytics.summary",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.approvals.submit",
+      "registry_key": "hootsuite.approvals.submit",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.bulk.schedule",
+      "registry_key": "hootsuite.bulk.schedule",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.inbox.reply",
+      "registry_key": "hootsuite.inbox.reply",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.messages.list",
+      "registry_key": "hootsuite.messages.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.messages.schedule",
+      "registry_key": "hootsuite.messages.schedule",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.messages.update",
+      "registry_key": "hootsuite.messages.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hootsuite.organizations.list",
+      "registry_key": "hootsuite.organizations.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "hubspot.associations.create",
+      "registry_key": "hubspot.associations.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_associations_create"
+    },
+    {
+      "action": "hubspot.companies.create",
+      "registry_key": "hubspot.companies.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_companies_create"
+    },
+    {
+      "action": "hubspot.companies.get",
+      "registry_key": "hubspot.companies.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_companies_get"
+    },
+    {
+      "action": "hubspot.companies.search",
+      "registry_key": "hubspot.companies.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_companies_search"
+    },
+    {
+      "action": "hubspot.contacts.create",
+      "registry_key": "hubspot.contacts.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_create"
+    },
+    {
+      "action": "hubspot.contacts.delete",
+      "registry_key": "hubspot.contacts.delete",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_delete"
+    },
+    {
+      "action": "hubspot.contacts.get",
+      "registry_key": "hubspot.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_get"
+    },
+    {
+      "action": "hubspot.contacts.list",
+      "registry_key": "hubspot.contacts.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_list"
+    },
+    {
+      "action": "hubspot.contacts.search",
+      "registry_key": "hubspot.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_search"
+    },
+    {
+      "action": "hubspot.contacts.update",
+      "registry_key": "hubspot.contacts.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_contacts_update"
+    },
+    {
+      "action": "hubspot.deals.create",
+      "registry_key": "hubspot.deals.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_create"
+    },
+    {
+      "action": "hubspot.deals.delete",
+      "registry_key": "hubspot.deals.delete",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_delete"
+    },
+    {
+      "action": "hubspot.deals.get",
+      "registry_key": "hubspot.deals.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_get"
+    },
+    {
+      "action": "hubspot.deals.list",
+      "registry_key": "hubspot.deals.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_list"
+    },
+    {
+      "action": "hubspot.deals.search",
+      "registry_key": "hubspot.deals.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_search"
+    },
+    {
+      "action": "hubspot.deals.update",
+      "registry_key": "hubspot.deals.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_update"
+    },
+    {
+      "action": "hubspot.deals.update_stage",
+      "registry_key": "hubspot.deals.update_stage",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_deals_update_stage"
+    },
+    {
+      "action": "hubspot.lists.add_contact",
+      "registry_key": "hubspot.lists.add_contact",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_lists_add_contact"
+    },
+    {
+      "action": "hubspot.lists.create",
+      "registry_key": "hubspot.lists.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_lists_create"
+    },
+    {
+      "action": "hubspot.lists.get",
+      "registry_key": "hubspot.lists.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_lists_get"
+    },
+    {
+      "action": "hubspot.notes.create",
+      "registry_key": "hubspot.notes.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_notes_create"
+    },
+    {
+      "action": "hubspot.notes.delete",
+      "registry_key": "hubspot.notes.delete",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_notes_delete"
+    },
+    {
+      "action": "hubspot.owners.list",
+      "registry_key": "hubspot.owners.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_owners_list"
+    },
+    {
+      "action": "hubspot.pipelines.list",
+      "registry_key": "hubspot.pipelines.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_pipelines_list"
+    },
+    {
+      "action": "hubspot.sequences.enroll",
+      "registry_key": "hubspot.sequences.enroll",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_sequences_enroll"
+    },
+    {
+      "action": "hubspot.tickets.create",
+      "registry_key": "hubspot.tickets.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_tickets_create"
+    },
+    {
+      "action": "hubspot.tickets.get",
+      "registry_key": "hubspot.tickets.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_tickets_get"
+    },
+    {
+      "action": "hubspot.tickets.search",
+      "registry_key": "hubspot.tickets.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_hubspot_tickets_search"
+    },
+    {
+      "action": "intercom.companies.list",
+      "registry_key": "intercom.companies.list",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_companies_list"
+    },
+    {
+      "action": "intercom.contacts.create",
+      "registry_key": "intercom.contacts.create",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_contacts_create"
+    },
+    {
+      "action": "intercom.contacts.delete",
+      "registry_key": "intercom.contacts.delete",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_contacts_delete"
+    },
+    {
+      "action": "intercom.contacts.get",
+      "registry_key": "intercom.contacts.get",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_contacts_get"
+    },
+    {
+      "action": "intercom.contacts.search",
+      "registry_key": "intercom.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_contacts_search"
+    },
+    {
+      "action": "intercom.conversations.list",
+      "registry_key": "intercom.conversations.list",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_conversations_list"
+    },
+    {
+      "action": "intercom.conversations.reply",
+      "registry_key": "intercom.conversations.reply",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_conversations_reply"
+    },
+    {
+      "action": "intercom.notes.create",
+      "registry_key": "intercom.notes.create",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_notes_create"
+    },
+    {
+      "action": "intercom.series.trigger",
+      "registry_key": "intercom.series.trigger",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_series_trigger"
+    },
+    {
+      "action": "intercom.tags.apply",
+      "registry_key": "intercom.tags.apply",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_tags_apply"
+    },
+    {
+      "action": "intercom.tickets.create",
+      "registry_key": "intercom.tickets.create",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_tickets_create"
+    },
+    {
+      "action": "intercom.tickets.list",
+      "registry_key": "intercom.tickets.list",
+      "class": "dedicated",
+      "module": "app.services.intercom_tools",
+      "qualname": "_exec_intercom_tickets_list"
+    },
+    {
+      "action": "jira.issues.assign",
+      "registry_key": "jira.issues.assign",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_assign"
+    },
+    {
+      "action": "jira.issues.comment",
+      "registry_key": "jira.issues.comment",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_comment"
+    },
+    {
+      "action": "jira.issues.create",
+      "registry_key": "jira.issues.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_create"
+    },
+    {
+      "action": "jira.issues.get",
+      "registry_key": "jira.issues.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_get"
+    },
+    {
+      "action": "jira.issues.search",
+      "registry_key": "jira.issues.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_search"
+    },
+    {
+      "action": "jira.issues.transition",
+      "registry_key": "jira.issues.transition",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_transition"
+    },
+    {
+      "action": "jira.issues.transitions.list",
+      "registry_key": "jira.issues.transitions.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_transitions_list"
+    },
+    {
+      "action": "jira.issues.update",
+      "registry_key": "jira.issues.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_issues_update"
+    },
+    {
+      "action": "jira.projects.list",
+      "registry_key": "jira.projects.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_projects_list"
+    },
+    {
+      "action": "jira.users.search",
+      "registry_key": "jira.users.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_jira_users_search"
+    },
+    {
+      "action": "linear.issues.create",
+      "registry_key": "linear.issues.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "linear.issues.get",
+      "registry_key": "linear.issues.get",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "linear.issues.list",
+      "registry_key": "linear.issues.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "linear.issues.search",
+      "registry_key": "linear.issues.search",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "linear.issues.update",
+      "registry_key": "linear.issues.update",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.ads.accounts.list",
+      "registry_key": "linkedin.ads.accounts.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.audience.update",
+      "registry_key": "linkedin.audience.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.batch.enrich",
+      "registry_key": "linkedin.batch.enrich",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.campaigns.optimize",
+      "registry_key": "linkedin.campaigns.optimize",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.conversions.track",
+      "registry_key": "linkedin.conversions.track",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.leads.submit",
+      "registry_key": "linkedin.leads.submit",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.organizations.get",
+      "registry_key": "linkedin.organizations.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "linkedin.prospect.enrich",
+      "registry_key": "linkedin.prospect.enrich",
+      "class": "dedicated",
+      "module": "app.services.linkedin_tools",
+      "qualname": "_exec_linkedin_prospect_enrich"
+    },
+    {
+      "action": "mailchimp.audiences.list",
+      "registry_key": "mailchimp.audiences.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.automations.trigger",
+      "registry_key": "mailchimp.automations.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.batch.subscribe",
+      "registry_key": "mailchimp.batch.subscribe",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.campaigns.create",
+      "registry_key": "mailchimp.campaigns.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.campaigns.list",
+      "registry_key": "mailchimp.campaigns.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.members.add",
+      "registry_key": "mailchimp.members.add",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.members.get",
+      "registry_key": "mailchimp.members.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.segments.add_member",
+      "registry_key": "mailchimp.segments.add_member",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mailchimp.tags.add",
+      "registry_key": "mailchimp.tags.add",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "marketo.campaigns.list",
+      "registry_key": "marketo.campaigns.list",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_campaigns_list"
+    },
+    {
+      "action": "marketo.campaigns.schedule",
+      "registry_key": "marketo.campaigns.schedule",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "marketo.leads.create",
+      "registry_key": "marketo.leads.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "marketo.leads.get",
+      "registry_key": "marketo.leads.get",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_leads_get"
+    },
+    {
+      "action": "marketo.leads.merge",
+      "registry_key": "marketo.leads.merge",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "marketo.leads.update",
+      "registry_key": "marketo.leads.update",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_leads_update"
+    },
+    {
+      "action": "marketo.lists.add_to_static_list",
+      "registry_key": "marketo.lists.add_to_static_list",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_lists_add_to_static_list"
+    },
+    {
+      "action": "marketo.lists.get_leads",
+      "registry_key": "marketo.lists.get_leads",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_lists_get_leads"
+    },
+    {
+      "action": "marketo.programs.members.add",
+      "registry_key": "marketo.programs.members.add",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "marketo.programs.status",
+      "registry_key": "marketo.programs.status",
+      "class": "dedicated",
+      "module": "app.services.marketo_tools",
+      "qualname": "_exec_marketo_programs_status"
+    },
+    {
+      "action": "meta_marketing.adsets.list",
+      "registry_key": "meta_marketing.adsets.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "meta_marketing.adsets.update",
+      "registry_key": "meta_marketing.adsets.update",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "meta_marketing.campaigns.create",
+      "registry_key": "meta_marketing.campaigns.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "meta_marketing.campaigns.list",
+      "registry_key": "meta_marketing.campaigns.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "meta_marketing.campaigns.update",
+      "registry_key": "meta_marketing.campaigns.update",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "microsoft365.batch.mail",
+      "registry_key": "microsoft365.batch.mail",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_batch_mail"
+    },
+    {
+      "action": "microsoft365.calendar.events.create",
+      "registry_key": "microsoft365.calendar.events.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_calendar_events_create"
+    },
+    {
+      "action": "microsoft365.calendar.events.list",
+      "registry_key": "microsoft365.calendar.events.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_microsoft365_calendar_events_list"
+    },
+    {
+      "action": "microsoft365.excel.workbook.update",
+      "registry_key": "microsoft365.excel.workbook.update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_excel_workbook_update"
+    },
+    {
+      "action": "microsoft365.files.upload",
+      "registry_key": "microsoft365.files.upload",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_files_upload"
+    },
+    {
+      "action": "microsoft365.get_file_content",
+      "registry_key": "microsoft365.get_file_content",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_m365_get_file_content"
+    },
+    {
+      "action": "microsoft365.get_file_metadata",
+      "registry_key": "microsoft365.get_file_metadata",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_m365_get_file_metadata"
+    },
+    {
+      "action": "microsoft365.mail.messages.list",
+      "registry_key": "microsoft365.mail.messages.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_microsoft365_mail_messages_list"
+    },
+    {
+      "action": "microsoft365.mail.send",
+      "registry_key": "microsoft365.mail.send",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_mail_send"
+    },
+    {
+      "action": "microsoft365.search_files",
+      "registry_key": "microsoft365.search_files",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_m365_search_files"
+    },
+    {
+      "action": "microsoft365.sharepoint.drives.list",
+      "registry_key": "microsoft365.sharepoint.drives.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_sharepoint_drives_list"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.delete",
+      "registry_key": "microsoft365.sharepoint.files.delete",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_sharepoint_files_delete"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.list",
+      "registry_key": "microsoft365.sharepoint.files.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_sharepoint_files_list"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.upload",
+      "registry_key": "microsoft365.sharepoint.files.upload",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_sharepoint_files_upload"
+    },
+    {
+      "action": "microsoft365.sharepoint.sites.list",
+      "registry_key": "microsoft365.sharepoint.sites.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_sharepoint_sites_list"
+    },
+    {
+      "action": "microsoft365.teams.channels.list",
+      "registry_key": "microsoft365.teams.channels.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_channels_list"
+    },
+    {
+      "action": "microsoft365.teams.list",
+      "registry_key": "microsoft365.teams.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_list"
+    },
+    {
+      "action": "microsoft365.teams.meetings.create",
+      "registry_key": "microsoft365.teams.meetings.create",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_meetings_create"
+    },
+    {
+      "action": "microsoft365.teams.members.add",
+      "registry_key": "microsoft365.teams.members.add",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_members_add"
+    },
+    {
+      "action": "microsoft365.teams.messages.list",
+      "registry_key": "microsoft365.teams.messages.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_messages_list"
+    },
+    {
+      "action": "microsoft365.teams.messages.send",
+      "registry_key": "microsoft365.teams.messages.send",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_messages_send"
+    },
+    {
+      "action": "microsoft365.teams.notify",
+      "registry_key": "microsoft365.teams.notify",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_teams_notify"
+    },
+    {
+      "action": "microsoft365.teams.presence.set",
+      "registry_key": "microsoft365.teams.presence.set",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_presence_set"
+    },
+    {
+      "action": "microsoft365.teams.tabs.create",
+      "registry_key": "microsoft365.teams.tabs.create",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_tabs_create"
+    },
+    {
+      "action": "microsoft365.users.get",
+      "registry_key": "microsoft365.users.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_microsoft365_users_get"
+    },
+    {
+      "action": "microsoft_teams.channels.list",
+      "registry_key": "microsoft_teams.channels.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_channels_list"
+    },
+    {
+      "action": "microsoft_teams.meetings.create",
+      "registry_key": "microsoft_teams.meetings.create",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_meetings_create"
+    },
+    {
+      "action": "microsoft_teams.members.add",
+      "registry_key": "microsoft_teams.members.add",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_members_add"
+    },
+    {
+      "action": "microsoft_teams.messages.list",
+      "registry_key": "microsoft_teams.messages.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_messages_list"
+    },
+    {
+      "action": "microsoft_teams.messages.send",
+      "registry_key": "microsoft_teams.messages.send",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_messages_send"
+    },
+    {
+      "action": "microsoft_teams.presence.set",
+      "registry_key": "microsoft_teams.presence.set",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_presence_set"
+    },
+    {
+      "action": "microsoft_teams.tabs.create",
+      "registry_key": "microsoft_teams.tabs.create",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_tabs_create"
+    },
+    {
+      "action": "microsoft_teams.teams.list",
+      "registry_key": "microsoft_teams.teams.list",
+      "class": "dedicated",
+      "module": "app.services.microsoft365_teams_tools",
+      "qualname": "_exec_teams_list"
+    },
+    {
+      "action": "mixpanel.annotations.create",
+      "registry_key": "mixpanel.annotations.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.cohorts.export",
+      "registry_key": "mixpanel.cohorts.export",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.cohorts.list",
+      "registry_key": "mixpanel.cohorts.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.engage.query",
+      "registry_key": "mixpanel.engage.query",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.events.query",
+      "registry_key": "mixpanel.events.query",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.events.track",
+      "registry_key": "mixpanel.events.track",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.funnels.list",
+      "registry_key": "mixpanel.funnels.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mixpanel.profiles.set",
+      "registry_key": "mixpanel.profiles.set",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "monday.automations.trigger",
+      "registry_key": "monday.automations.trigger",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_automations_trigger"
+    },
+    {
+      "action": "monday.batch.items",
+      "registry_key": "monday.batch.items",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_batch_items"
+    },
+    {
+      "action": "monday.boards.get",
+      "registry_key": "monday.boards.get",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_boards_get"
+    },
+    {
+      "action": "monday.boards.list",
+      "registry_key": "monday.boards.list",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_boards_list"
+    },
+    {
+      "action": "monday.items.create",
+      "registry_key": "monday.items.create",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_items_create"
+    },
+    {
+      "action": "monday.items.delete",
+      "registry_key": "monday.items.delete",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_items_delete"
+    },
+    {
+      "action": "monday.items.get",
+      "registry_key": "monday.items.get",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_items_get"
+    },
+    {
+      "action": "monday.items.update",
+      "registry_key": "monday.items.update",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_items_update"
+    },
+    {
+      "action": "monday.updates.create",
+      "registry_key": "monday.updates.create",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_updates_create"
+    },
+    {
+      "action": "monday.users.list",
+      "registry_key": "monday.users.list",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_users_list"
+    },
+    {
+      "action": "monday.workspaces.list",
+      "registry_key": "monday.workspaces.list",
+      "class": "dedicated",
+      "module": "app.services.monday_tools",
+      "qualname": "_exec_monday_workspaces_list"
+    },
+    {
+      "action": "mongodb.aggregation.run",
+      "registry_key": "mongodb.aggregation.run",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.batch.bulk_write",
+      "registry_key": "mongodb.batch.bulk_write",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.change_streams.watch",
+      "registry_key": "mongodb.change_streams.watch",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.collections.list",
+      "registry_key": "mongodb.collections.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.documents.find",
+      "registry_key": "mongodb.documents.find",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.documents.insert",
+      "registry_key": "mongodb.documents.insert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.documents.update",
+      "registry_key": "mongodb.documents.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "mongodb.indexes.list",
+      "registry_key": "mongodb.indexes.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.batch.reschedule",
+      "registry_key": "motion.batch.reschedule",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.calendar.optimize",
+      "registry_key": "motion.calendar.optimize",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.focus.block",
+      "registry_key": "motion.focus.block",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.projects.list",
+      "registry_key": "motion.projects.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.schedules.get",
+      "registry_key": "motion.schedules.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.tasks.create",
+      "registry_key": "motion.tasks.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.tasks.list",
+      "registry_key": "motion.tasks.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "motion.tasks.update",
+      "registry_key": "motion.tasks.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.batch.executions",
+      "registry_key": "n8n.batch.executions",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.credentials.list",
+      "registry_key": "n8n.credentials.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.executions.list",
+      "registry_key": "n8n.executions.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.executions.retry",
+      "registry_key": "n8n.executions.retry",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.webhooks.trigger",
+      "registry_key": "n8n.webhooks.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.workflows.activate",
+      "registry_key": "n8n.workflows.activate",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.workflows.create",
+      "registry_key": "n8n.workflows.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "n8n.workflows.list",
+      "registry_key": "n8n.workflows.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "netsuite.customers.get",
+      "registry_key": "netsuite.customers.get",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_customers_get"
+    },
+    {
+      "action": "netsuite.customers.update",
+      "registry_key": "netsuite.customers.update",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_customers_update"
+    },
+    {
+      "action": "netsuite.fulfillment.create",
+      "registry_key": "netsuite.fulfillment.create",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_fulfillment_create"
+    },
+    {
+      "action": "netsuite.invoices.get",
+      "registry_key": "netsuite.invoices.get",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_invoices_get"
+    },
+    {
+      "action": "netsuite.invoices.list",
+      "registry_key": "netsuite.invoices.list",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_invoices_list"
+    },
+    {
+      "action": "netsuite.items.get",
+      "registry_key": "netsuite.items.get",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_items_get"
+    },
+    {
+      "action": "netsuite.journalentries.create",
+      "registry_key": "netsuite.journalentries.create",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_journalentries_create"
+    },
+    {
+      "action": "netsuite.salesorders.create",
+      "registry_key": "netsuite.salesorders.create",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_salesorders_create"
+    },
+    {
+      "action": "netsuite.salesorders.get",
+      "registry_key": "netsuite.salesorders.get",
+      "class": "dedicated",
+      "module": "app.services.netsuite_tools",
+      "qualname": "_exec_netsuite_salesorders_get"
+    },
+    {
+      "action": "notion.blocks.append",
+      "registry_key": "notion.blocks.append",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.comments.create",
+      "registry_key": "notion.comments.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.databases.create",
+      "registry_key": "notion.databases.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.databases.query",
+      "registry_key": "notion.databases.query",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.get_file_content",
+      "registry_key": "notion.get_file_content",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_notion_get_file_content"
+    },
+    {
+      "action": "notion.get_file_metadata",
+      "registry_key": "notion.get_file_metadata",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_notion_get_file_metadata"
+    },
+    {
+      "action": "notion.pages.create",
+      "registry_key": "notion.pages.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.pages.get",
+      "registry_key": "notion.pages.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.pages.update",
+      "registry_key": "notion.pages.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.search",
+      "registry_key": "notion.search",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "notion.search_files",
+      "registry_key": "notion.search_files",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_notion_search_files"
+    },
+    {
+      "action": "notion.users.list",
+      "registry_key": "notion.users.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "nvd.cve.get",
+      "registry_key": "nvd.cve.get",
+      "class": "dedicated",
+      "module": "app.services.intelligence_pack_tools",
+      "qualname": "_exec_nvd_cve_get"
+    },
+    {
+      "action": "nvd.cve.recent",
+      "registry_key": "nvd.cve.recent",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "nvd.cve.search",
+      "registry_key": "nvd.cve.search",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "odoo.batch.partners",
+      "registry_key": "odoo.batch.partners",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_batch_partners"
+    },
+    {
+      "action": "odoo.crm.leads.convert",
+      "registry_key": "odoo.crm.leads.convert",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_crm_leads_convert"
+    },
+    {
+      "action": "odoo.inventory.products.list",
+      "registry_key": "odoo.inventory.products.list",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_inventory_products_list"
+    },
+    {
+      "action": "odoo.invoices.create",
+      "registry_key": "odoo.invoices.create",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_invoices_create"
+    },
+    {
+      "action": "odoo.invoices.post",
+      "registry_key": "odoo.invoices.post",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_invoices_post"
+    },
+    {
+      "action": "odoo.manufacturing.orders.create",
+      "registry_key": "odoo.manufacturing.orders.create",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_manufacturing_orders_create"
+    },
+    {
+      "action": "odoo.partners.create",
+      "registry_key": "odoo.partners.create",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_partners_create"
+    },
+    {
+      "action": "odoo.partners.get",
+      "registry_key": "odoo.partners.get",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_partners_get"
+    },
+    {
+      "action": "odoo.partners.update",
+      "registry_key": "odoo.partners.update",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_partners_update"
+    },
+    {
+      "action": "odoo.sales.orders.confirm",
+      "registry_key": "odoo.sales.orders.confirm",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_sales_orders_confirm"
+    },
+    {
+      "action": "odoo.sales.orders.create",
+      "registry_key": "odoo.sales.orders.create",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_sales_orders_create"
+    },
+    {
+      "action": "odoo.sales.orders.list",
+      "registry_key": "odoo.sales.orders.list",
+      "class": "dedicated",
+      "module": "app.services.odoo_tools",
+      "qualname": "_exec_odoo_sales_orders_list"
+    },
+    {
+      "action": "outlook.batch.send",
+      "registry_key": "microsoft365.batch.mail",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_batch_mail"
+    },
+    {
+      "action": "outlook.messages.list",
+      "registry_key": "microsoft365.mail.messages.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_microsoft365_mail_messages_list"
+    },
+    {
+      "action": "outlook.messages.send",
+      "registry_key": "microsoft365.mail.send",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_m365_mail_send"
+    },
+    {
+      "action": "pagerduty.incidents.acknowledge",
+      "registry_key": "pagerduty.incidents.acknowledge",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_acknowledge"
+    },
+    {
+      "action": "pagerduty.incidents.add_note",
+      "registry_key": "pagerduty.incidents.add_note",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_add_note"
+    },
+    {
+      "action": "pagerduty.incidents.escalate",
+      "registry_key": "pagerduty.incidents.escalate",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_escalate"
+    },
+    {
+      "action": "pagerduty.incidents.get",
+      "registry_key": "pagerduty.incidents.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_get"
+    },
+    {
+      "action": "pagerduty.incidents.list",
+      "registry_key": "pagerduty.incidents.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_list"
+    },
+    {
+      "action": "pagerduty.incidents.notes.list",
+      "registry_key": "pagerduty.incidents.notes.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_notes_list"
+    },
+    {
+      "action": "pagerduty.incidents.reassign",
+      "registry_key": "pagerduty.incidents.reassign",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_reassign"
+    },
+    {
+      "action": "pagerduty.incidents.resolve",
+      "registry_key": "pagerduty.incidents.resolve",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_incidents_resolve"
+    },
+    {
+      "action": "pagerduty.oncalls.list",
+      "registry_key": "pagerduty.oncalls.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_oncalls_list"
+    },
+    {
+      "action": "pagerduty.services.list",
+      "registry_key": "pagerduty.services.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_pagerduty_services_list"
+    },
+    {
+      "action": "paypal.disputes.list",
+      "registry_key": "paypal.disputes.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "paypal.orders.get",
+      "registry_key": "paypal.orders.get",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "paypal.payments.list",
+      "registry_key": "paypal.payments.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "paypal.payouts.create",
+      "registry_key": "paypal.payouts.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "paypal.refunds.create",
+      "registry_key": "paypal.refunds.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "pdl.company.enrich",
+      "registry_key": "pdl.company.enrich",
+      "class": "dedicated",
+      "module": "app.services.pdl_tools",
+      "qualname": "_exec_company_enrich"
+    },
+    {
+      "action": "pdl.person.enrich",
+      "registry_key": "pdl.person.enrich",
+      "class": "dedicated",
+      "module": "app.services.pdl_tools",
+      "qualname": "_exec_person_enrich"
+    },
+    {
+      "action": "pdl.person.identify",
+      "registry_key": "pdl.person.identify",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "pdl.person.prefetch",
+      "registry_key": "pdl.person.prefetch",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "pipedrive.deals.create",
+      "registry_key": "pipedrive.deals.create",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_deals_create"
+    },
+    {
+      "action": "pipedrive.deals.get",
+      "registry_key": "pipedrive.deals.get",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_deals_get"
+    },
+    {
+      "action": "pipedrive.deals.list",
+      "registry_key": "pipedrive.deals.list",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_deals_list"
+    },
+    {
+      "action": "pipedrive.deals.update",
+      "registry_key": "pipedrive.deals.update",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_deals_update"
+    },
+    {
+      "action": "pipedrive.deals.update_stage",
+      "registry_key": "pipedrive.deals.update_stage",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_deals_update_stage"
+    },
+    {
+      "action": "pipedrive.organizations.list",
+      "registry_key": "pipedrive.organizations.list",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_organizations_list"
+    },
+    {
+      "action": "pipedrive.persons.create",
+      "registry_key": "pipedrive.persons.create",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_persons_create"
+    },
+    {
+      "action": "pipedrive.persons.get",
+      "registry_key": "pipedrive.persons.get",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_persons_get"
+    },
+    {
+      "action": "pipedrive.persons.search",
+      "registry_key": "pipedrive.persons.search",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_persons_search"
+    },
+    {
+      "action": "pipedrive.persons.update",
+      "registry_key": "pipedrive.persons.update",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_persons_update"
+    },
+    {
+      "action": "pipedrive.pipelines.list",
+      "registry_key": "pipedrive.pipelines.list",
+      "class": "dedicated",
+      "module": "app.services.pipedrive_tools",
+      "qualname": "_exec_pipedrive_pipelines_list"
+    },
+    {
+      "action": "plaid.accounts.get",
+      "registry_key": "plaid.accounts.get",
+      "class": "dedicated",
+      "module": "app.services.plaid_tools",
+      "qualname": "_exec_accounts_get"
+    },
+    {
+      "action": "plaid.balances.get",
+      "registry_key": "plaid.balances.get",
+      "class": "dedicated",
+      "module": "app.services.plaid_tools",
+      "qualname": "_exec_balances_get"
+    },
+    {
+      "action": "plaid.identity.get",
+      "registry_key": "plaid.identity.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "plaid.investments.holdings",
+      "registry_key": "plaid.investments.holdings",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "plaid.link.token.create",
+      "registry_key": "plaid.link.token.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "plaid.public_token.exchange",
+      "registry_key": "plaid.public_token.exchange",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "plaid.transactions.list",
+      "registry_key": "plaid.transactions.list",
+      "class": "dedicated",
+      "module": "app.services.plaid_tools",
+      "qualname": "_exec_transactions_list"
+    },
+    {
+      "action": "plaid.transactions.sync",
+      "registry_key": "plaid.transactions.sync",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "platform.approval.latency.report",
+      "registry_key": "platform.approval.latency.report",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "platform.connector_ops.summary",
+      "registry_key": "platform.connector_ops.summary",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "platform.health.snapshot",
+      "registry_key": "platform.health.snapshot",
+      "class": "dedicated",
+      "module": "app.services.platform_health_tools",
+      "qualname": "exec_platform_health_snapshot"
+    },
+    {
+      "action": "postgresql.batch.upsert",
+      "registry_key": "postgresql.batch.upsert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.migrations.apply",
+      "registry_key": "postgresql.migrations.apply",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.query.explain",
+      "registry_key": "postgresql.query.explain",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.query.insert",
+      "registry_key": "postgresql.query.insert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.query.select",
+      "registry_key": "postgresql.query.select",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.query.update",
+      "registry_key": "postgresql.query.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.schemas.list",
+      "registry_key": "postgresql.schemas.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "postgresql.tables.list",
+      "registry_key": "postgresql.tables.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "quickbooks.accounts.list",
+      "registry_key": "quickbooks.accounts.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_accounts_list"
+    },
+    {
+      "action": "quickbooks.bills.get",
+      "registry_key": "quickbooks.bills.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_bills_get"
+    },
+    {
+      "action": "quickbooks.bills.list",
+      "registry_key": "quickbooks.bills.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_bills_list"
+    },
+    {
+      "action": "quickbooks.companyinfo.get",
+      "registry_key": "quickbooks.companyinfo.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_companyinfo_get"
+    },
+    {
+      "action": "quickbooks.customers.create",
+      "registry_key": "quickbooks.customers.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_customers_create"
+    },
+    {
+      "action": "quickbooks.customers.get",
+      "registry_key": "quickbooks.customers.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_customers_get"
+    },
+    {
+      "action": "quickbooks.customers.list",
+      "registry_key": "quickbooks.customers.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_customers_list"
+    },
+    {
+      "action": "quickbooks.customers.search",
+      "registry_key": "quickbooks.customers.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_customers_search"
+    },
+    {
+      "action": "quickbooks.invoices.create",
+      "registry_key": "quickbooks.invoices.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_invoices_create"
+    },
+    {
+      "action": "quickbooks.invoices.get",
+      "registry_key": "quickbooks.invoices.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_invoices_get"
+    },
+    {
+      "action": "quickbooks.invoices.list",
+      "registry_key": "quickbooks.invoices.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_invoices_list"
+    },
+    {
+      "action": "quickbooks.journalentries.create",
+      "registry_key": "quickbooks.journalentries.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_journalentries_create"
+    },
+    {
+      "action": "quickbooks.payments.create",
+      "registry_key": "quickbooks.payments.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_payments_create"
+    },
+    {
+      "action": "quickbooks.payments.list",
+      "registry_key": "quickbooks.payments.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_payments_list"
+    },
+    {
+      "action": "quickbooks.vendors.get",
+      "registry_key": "quickbooks.vendors.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_vendors_get"
+    },
+    {
+      "action": "quickbooks.vendors.list",
+      "registry_key": "quickbooks.vendors.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_quickbooks_vendors_list"
+    },
+    {
+      "action": "real_estate.handoff.brief",
+      "registry_key": "real_estate.handoff.brief",
+      "class": "dedicated",
+      "module": "app.services.real_estate_tools",
+      "qualname": "_exec_real_estate_handoff_brief"
+    },
+    {
+      "action": "real_estate.listing.publish",
+      "registry_key": "real_estate.listing.publish",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "real_estate.mls.note",
+      "registry_key": "real_estate.mls.note",
+      "class": "dedicated",
+      "module": "app.services.real_estate_tools",
+      "qualname": "_exec_real_estate_mls_note"
+    },
+    {
+      "action": "real_estate.mls.sync",
+      "registry_key": "real_estate.mls.sync",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "salesforce.accounts.create",
+      "registry_key": "salesforce.accounts.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_accounts_create"
+    },
+    {
+      "action": "salesforce.accounts.get",
+      "registry_key": "salesforce.accounts.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_accounts_get"
+    },
+    {
+      "action": "salesforce.accounts.update",
+      "registry_key": "salesforce.accounts.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_accounts_update"
+    },
+    {
+      "action": "salesforce.contacts.search",
+      "registry_key": "salesforce.contacts.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_contacts_search"
+    },
+    {
+      "action": "salesforce.leads.create",
+      "registry_key": "salesforce.leads.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_leads_create"
+    },
+    {
+      "action": "salesforce.leads.get",
+      "registry_key": "salesforce.leads.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_leads_get"
+    },
+    {
+      "action": "salesforce.leads.search",
+      "registry_key": "salesforce.leads.search",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_leads_search"
+    },
+    {
+      "action": "salesforce.leads.update",
+      "registry_key": "salesforce.leads.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_leads_update"
+    },
+    {
+      "action": "salesforce.opportunities.create",
+      "registry_key": "salesforce.opportunities.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_opportunities_create"
+    },
+    {
+      "action": "salesforce.opportunities.get",
+      "registry_key": "salesforce.opportunities.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_opportunities_get"
+    },
+    {
+      "action": "salesforce.opportunities.update",
+      "registry_key": "salesforce.opportunities.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_opportunities_update"
+    },
+    {
+      "action": "salesforce.opportunities.update_stage",
+      "registry_key": "salesforce.opportunities.update_stage",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_opportunities_update_stage"
+    },
+    {
+      "action": "salesforce.query",
+      "registry_key": "salesforce.query",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_query"
+    },
+    {
+      "action": "salesforce.tasks.create",
+      "registry_key": "salesforce.tasks.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_salesforce_tasks_create"
+    },
+    {
+      "action": "sec_edgar.company.get",
+      "registry_key": "sec_edgar.company.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sec_edgar.filings.recent",
+      "registry_key": "sec_edgar.filings.recent",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sec_edgar.filings.search",
+      "registry_key": "sec_edgar.filings.search",
+      "class": "dedicated",
+      "module": "app.services.intelligence_pack_tools",
+      "qualname": "_exec_sec_edgar_filings_search"
+    },
+    {
+      "action": "segment.alias",
+      "registry_key": "segment.alias",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "segment.batch",
+      "registry_key": "segment.batch",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "segment.destinations.list",
+      "registry_key": "segment.destinations.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "segment.group",
+      "registry_key": "segment.group",
+      "class": "dedicated",
+      "module": "app.services.segment_tools",
+      "qualname": "_exec_segment_group"
+    },
+    {
+      "action": "segment.identify",
+      "registry_key": "segment.identify",
+      "class": "dedicated",
+      "module": "app.services.segment_tools",
+      "qualname": "_exec_segment_identify"
+    },
+    {
+      "action": "segment.page",
+      "registry_key": "segment.page",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "segment.sources.list",
+      "registry_key": "segment.sources.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "segment.track",
+      "registry_key": "segment.track",
+      "class": "dedicated",
+      "module": "app.services.segment_tools",
+      "qualname": "_exec_segment_track"
+    },
+    {
+      "action": "segment.trackingplans.list",
+      "registry_key": "segment.trackingplans.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "semrush.backlinks.list",
+      "registry_key": "semrush.backlinks.list",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_backlinks_list"
+    },
+    {
+      "action": "semrush.batch.domain",
+      "registry_key": "semrush.batch.domain",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_batch_domain"
+    },
+    {
+      "action": "semrush.competitors.compare",
+      "registry_key": "semrush.competitors.compare",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_competitors_compare"
+    },
+    {
+      "action": "semrush.domain.overview",
+      "registry_key": "semrush.domain.overview",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_domain_overview"
+    },
+    {
+      "action": "semrush.exports.run",
+      "registry_key": "semrush.exports.run",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_exports_run"
+    },
+    {
+      "action": "semrush.keywords.list",
+      "registry_key": "semrush.keywords.list",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_keywords_list"
+    },
+    {
+      "action": "semrush.position_tracking.add",
+      "registry_key": "semrush.position_tracking.add",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_position_tracking_add"
+    },
+    {
+      "action": "semrush.projects.create",
+      "registry_key": "semrush.projects.create",
+      "class": "dedicated",
+      "module": "app.services.semrush_tools",
+      "qualname": "_exec_projects_create"
+    },
+    {
+      "action": "sendgrid.batch.send",
+      "registry_key": "sendgrid.batch.send",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.campaigns.schedule",
+      "registry_key": "sendgrid.campaigns.schedule",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.contacts.upsert",
+      "registry_key": "sendgrid.contacts.upsert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.mail.send",
+      "registry_key": "sendgrid.mail.send",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.messages.list",
+      "registry_key": "sendgrid.messages.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.stats.get",
+      "registry_key": "sendgrid.stats.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.suppressions.add",
+      "registry_key": "sendgrid.suppressions.add",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "sendgrid.templates.list",
+      "registry_key": "sendgrid.templates.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "shopify.customers.list",
+      "registry_key": "shopify.customers.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "shopify.orders.list",
+      "registry_key": "shopify.orders.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "shopify.orders.update",
+      "registry_key": "shopify.orders.update",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "shopify.products.create",
+      "registry_key": "shopify.products.create",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "shopify.products.list",
+      "registry_key": "shopify.products.list",
+      "class": "route_table",
+      "module": "app.connectors.phase2_connector_tools",
+      "qualname": "make_phase2_executor.<locals>._exec"
+    },
+    {
+      "action": "slack.chat.update",
+      "registry_key": "slack.chat.update",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_slack_chat_update"
+    },
+    {
+      "action": "slack.conversations.create",
+      "registry_key": "slack.conversations.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_slack_conversations_create"
+    },
+    {
+      "action": "slack.conversations.history",
+      "registry_key": "slack.conversations.history",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_conversations_history"
+    },
+    {
+      "action": "slack.conversations.join",
+      "registry_key": "slack.conversations.join",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_conversations_join"
+    },
+    {
+      "action": "slack.conversations.list",
+      "registry_key": "slack.conversations.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_conversations_list"
+    },
+    {
+      "action": "slack.files.upload",
+      "registry_key": "slack.files.upload",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_slack_files_upload"
+    },
+    {
+      "action": "slack.get_file_content",
+      "registry_key": "slack.get_file_content",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_slack_get_file_content"
+    },
+    {
+      "action": "slack.get_file_metadata",
+      "registry_key": "slack.get_file_metadata",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_slack_get_file_metadata"
+    },
+    {
+      "action": "slack.post_message",
+      "registry_key": "slack.post_message",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_post_message"
+    },
+    {
+      "action": "slack.reactions.add",
+      "registry_key": "slack.reactions.add",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_slack_reactions_add"
+    },
+    {
+      "action": "slack.search_files",
+      "registry_key": "slack.search_files",
+      "class": "dedicated",
+      "module": "app.services.connected_files_tools",
+      "qualname": "_exec_slack_search_files"
+    },
+    {
+      "action": "slack.users.info",
+      "registry_key": "slack.users.info",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_users_info"
+    },
+    {
+      "action": "slack.users.list",
+      "registry_key": "slack.users.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_slack_users_list"
+    },
+    {
+      "action": "slack.workflows.trigger",
+      "registry_key": "slack.workflows.trigger",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_slack_workflows_trigger"
+    },
+    {
+      "action": "snowflake.batch.copy",
+      "registry_key": "snowflake.batch.copy",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.pipes.refresh",
+      "registry_key": "snowflake.pipes.refresh",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.query.execute",
+      "registry_key": "snowflake.query.execute",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.query.insert",
+      "registry_key": "snowflake.query.insert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.stages.put",
+      "registry_key": "snowflake.stages.put",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.tables.describe",
+      "registry_key": "snowflake.tables.describe",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.tasks.run",
+      "registry_key": "snowflake.tasks.run",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "snowflake.warehouses.list",
+      "registry_key": "snowflake.warehouses.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.audiences.sync",
+      "registry_key": "stackadapt.audiences.sync",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.campaigns.create",
+      "registry_key": "stackadapt.campaigns.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.campaigns.get",
+      "registry_key": "stackadapt.campaigns.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.campaigns.list",
+      "registry_key": "stackadapt.campaigns.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.campaigns.update",
+      "registry_key": "stackadapt.campaigns.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.creatives.upload",
+      "registry_key": "stackadapt.creatives.upload",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.reports.export",
+      "registry_key": "stackadapt.reports.export",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stackadapt.stats.summary",
+      "registry_key": "stackadapt.stats.summary",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.checkout.sessions.create",
+      "registry_key": "stripe.checkout.sessions.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.customers.create",
+      "registry_key": "stripe.customers.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.customers.get",
+      "registry_key": "stripe.customers.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.invoices.create",
+      "registry_key": "stripe.invoices.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.invoices.list",
+      "registry_key": "stripe.invoices.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_stripe_invoices_list"
+    },
+    {
+      "action": "stripe.payment_intents.confirm",
+      "registry_key": "stripe.payment_intents.confirm",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.refunds.create",
+      "registry_key": "stripe.refunds.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "stripe.subscriptions.get",
+      "registry_key": "stripe.subscriptions.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_stripe_subscriptions_get"
+    },
+    {
+      "action": "stripe.subscriptions.update",
+      "registry_key": "stripe.subscriptions.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_stripe_subscriptions_update"
+    },
+    {
+      "action": "twilio.accounts.get",
+      "registry_key": "twilio.accounts.get",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.calls.create",
+      "registry_key": "twilio.calls.create",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.calls.get",
+      "registry_key": "twilio.calls.get",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.calls.list",
+      "registry_key": "twilio.calls.list",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.conversations.create",
+      "registry_key": "twilio.conversations.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.messages.create",
+      "registry_key": "twilio.messages.create",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.messages.get",
+      "registry_key": "twilio.messages.get",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.messages.list",
+      "registry_key": "twilio.messages.list",
+      "class": "dedicated",
+      "module": "app.connectors.twilio_api",
+      "qualname": "make_twilio_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.studio.flows.execute",
+      "registry_key": "twilio.studio.flows.execute",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "twilio.verify.check",
+      "registry_key": "twilio.verify.check",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "vapi.calls.create",
+      "registry_key": "vapi.calls.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "vapi.calls.end",
+      "registry_key": "vapi.calls.end",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "vapi.calls.get",
+      "registry_key": "vapi.calls.get",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "vapi.calls.list",
+      "registry_key": "vapi.calls.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "webhook.connectors.get",
+      "registry_key": null,
+      "class": "unregistered",
+      "module": "",
+      "qualname": ""
+    },
+    {
+      "action": "webhook.post",
+      "registry_key": "webhook.post",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_webhook_post"
+    },
+    {
+      "action": "webhook.post.replay",
+      "registry_key": null,
+      "class": "unregistered",
+      "module": "",
+      "qualname": ""
+    },
+    {
+      "action": "workday.batch.workers.export",
+      "registry_key": "workday.batch.workers.export",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "workday.jobs.update",
+      "registry_key": "workday.jobs.update",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "workday.learning.enroll",
+      "registry_key": "workday.learning.enroll",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "workday.orgunits.list",
+      "registry_key": "workday.orgunits.list",
+      "class": "dedicated",
+      "module": "app.services.workday_tools",
+      "qualname": "_exec_workday_orgunits_list"
+    },
+    {
+      "action": "workday.positions.list",
+      "registry_key": "workday.positions.list",
+      "class": "dedicated",
+      "module": "app.services.workday_tools",
+      "qualname": "_exec_workday_positions_list"
+    },
+    {
+      "action": "workday.timeoff.balance.get",
+      "registry_key": "workday.timeoff.balance.get",
+      "class": "dedicated",
+      "module": "app.services.workday_tools",
+      "qualname": "_exec_workday_timeoff_balance_get"
+    },
+    {
+      "action": "workday.timeoff.request",
+      "registry_key": "workday.timeoff.request",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "workday.workers.get",
+      "registry_key": "workday.workers.get",
+      "class": "dedicated",
+      "module": "app.services.workday_tools",
+      "qualname": "_exec_workday_workers_get"
+    },
+    {
+      "action": "xero.accounts.list",
+      "registry_key": "xero.accounts.list",
+      "class": "dedicated",
+      "module": "app.services.xero_tools",
+      "qualname": "_exec_xero_accounts_list"
+    },
+    {
+      "action": "xero.banktransactions.import",
+      "registry_key": "xero.banktransactions.import",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "xero.batch.invoices",
+      "registry_key": "xero.batch.invoices",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "xero.contacts.create",
+      "registry_key": "xero.contacts.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "xero.contacts.list",
+      "registry_key": "xero.contacts.list",
+      "class": "dedicated",
+      "module": "app.services.xero_tools",
+      "qualname": "_exec_xero_contacts_list"
+    },
+    {
+      "action": "xero.invoices.create",
+      "registry_key": "xero.invoices.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "xero.invoices.list",
+      "registry_key": "xero.invoices.list",
+      "class": "dedicated",
+      "module": "app.services.xero_tools",
+      "qualname": "_exec_xero_invoices_list"
+    },
+    {
+      "action": "xero.payments.create",
+      "registry_key": "xero.payments.create",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "xero.reports.profitloss",
+      "registry_key": "xero.reports.profitloss",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.actions.list",
+      "registry_key": "zapier.actions.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.batch.trigger",
+      "registry_key": "zapier.batch.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.hooks.trigger",
+      "registry_key": "zapier.hooks.trigger",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.interfaces.submit",
+      "registry_key": "zapier.interfaces.submit",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.runs.list",
+      "registry_key": "zapier.runs.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.tables.rows.upsert",
+      "registry_key": "zapier.tables.rows.upsert",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.zaps.enable",
+      "registry_key": "zapier.zaps.enable",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zapier.zaps.list",
+      "registry_key": "zapier.zaps.list",
+      "class": "name_inferred",
+      "module": "app.connectors.catalog_http.executor",
+      "qualname": "make_catalog_http_executor.<locals>._exec"
+    },
+    {
+      "action": "zendesk.macros.apply",
+      "registry_key": "zendesk.macros.apply",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_zendesk_macros_apply"
+    },
+    {
+      "action": "zendesk.side_conversations.create",
+      "registry_key": "zendesk.side_conversations.create",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_zendesk_side_conversations_create"
+    },
+    {
+      "action": "zendesk.tickets.add_tags",
+      "registry_key": "zendesk.tickets.add_tags",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_add_tags"
+    },
+    {
+      "action": "zendesk.tickets.close",
+      "registry_key": "zendesk.tickets.close",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_close"
+    },
+    {
+      "action": "zendesk.tickets.create",
+      "registry_key": "zendesk.tickets.create",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_create"
+    },
+    {
+      "action": "zendesk.tickets.get",
+      "registry_key": "zendesk.tickets.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_get"
+    },
+    {
+      "action": "zendesk.tickets.list",
+      "registry_key": "zendesk.tickets.list",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_list"
+    },
+    {
+      "action": "zendesk.tickets.merge",
+      "registry_key": "zendesk.tickets.merge",
+      "class": "dedicated",
+      "module": "app.services.priority_connector_tools",
+      "qualname": "_exec_zendesk_tickets_merge"
+    },
+    {
+      "action": "zendesk.tickets.update",
+      "registry_key": "zendesk.tickets.update",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_tickets_update"
+    },
+    {
+      "action": "zendesk.users.get",
+      "registry_key": "zendesk.users.get",
+      "class": "dedicated",
+      "module": "app.services.tool_service",
+      "qualname": "_exec_zendesk_users_get"
+    }
+  ]
+}

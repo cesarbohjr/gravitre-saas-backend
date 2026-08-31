@@ -43,8 +43,13 @@ def test_quickbooks_invoices_list_success():
                 "app.services.tool_service.ensure_quickbooks_session",
                 return_value=("access-token", "realm-1", "https://quickbooks.api.intuit.com/v3/company/realm-1", None),
             ):
+                # Must be the QuickBooks binding specifically. This test used to
+                # patch the bare `list_invoices`, which tool_service had rebound
+                # to Stripe's function via a duplicate import — so the mock stood
+                # in for a call that could never have succeeded in production,
+                # and the suite stayed green while the action was broken.
                 with patch(
-                    "app.services.tool_service.list_invoices",
+                    "app.services.tool_service.quickbooks_list_invoices",
                     return_value={"QueryResponse": {"Invoice": [{"Id": "1"}]}},
                 ):
                     with patch("app.services.tool_service.write_audit_event"):

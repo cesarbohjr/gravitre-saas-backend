@@ -1,0 +1,209 @@
+{
+  "started_at": "2026-08-31T04:48:13.621654+00:00",
+  "sample_size": 6,
+  "vendors": [
+    "apollo",
+    "gmail",
+    "google_ads",
+    "hubspot",
+    "pipedrive"
+  ],
+  "counts": {
+    "MISMATCH": 6
+  },
+  "rows": [
+    {
+      "action": "hubspot.contacts.list",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "GET /crm/v3/objects/companies",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "GET",
+          "url": "https://api.hubapi.com/crm/v3/objects/contacts?limit=1&properties=email%2Cfirstname%2Clastname%2Ccompany",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "action": "hubspot.contacts.search",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "GET /crm/v3/objects/contacts/search",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "POST",
+          "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "action": "apollo.lists.list",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "GET /lists",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/labels",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "action": "gmail.labels.list",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "GET /users/{user_id}/drafts",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "GET",
+          "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "action": "google_ads.campaigns.list",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "POST /v24/customers/{cid}/googleAds:search",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "POST",
+          "url": "https://googleads.googleapis.com/v25/customers/9904974542/googleAds:search",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "action": "pipedrive.deals.list",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "recorded_api_reference": "GET /deals/{deal_id}",
+      "provenance": "dedicated",
+      "result": "MISMATCH",
+      "action_success": true,
+      "error": null,
+      "matched_request": null,
+      "all_vendor_requests": [
+        {
+          "method": "GET",
+          "url": "https://api.apollo.io/api/v1/users/api_profile",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_people/api_search?per_page=1",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "url": "https://api.apollo.io/api/v1/mixed_companies/search?per_page=1",
+          "status": 422
+        },
+        {
+          "method": "GET",
+          "url": "https://gravitreai-sandbox.pipedrive.com/api/v1/deals?limit=1",
+          "status": 200
+        }
+      ]
+    }
+  ],
+  "mode": "negative_control"
+}

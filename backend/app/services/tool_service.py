@@ -95,7 +95,7 @@ from app.connectors.quickbooks import (
     list_accounts,
     list_bills,
     list_customers,
-    list_invoices,
+    list_invoices as quickbooks_list_invoices,
     list_payments,
     list_vendors,
     search_customers,
@@ -129,13 +129,13 @@ from app.connectors.jira import (
     add_issue_comment,
     assign_issue,
     create_issue as jira_create_issue,
-    get_issue,
+    get_issue as jira_get_issue,
     list_issue_transitions,
     list_projects,
     search_issues,
     search_users,
     transition_issue,
-    update_issue,
+    update_issue as jira_update_issue,
 )
 from app.connectors.jira_oauth import ensure_jira_session
 from app.connectors.salesforce_oauth import ensure_salesforce_session
@@ -1444,7 +1444,7 @@ def _handle_quickbooks_error(exc: QuickBooksAPIError) -> ToolError:
 def _exec_quickbooks_invoices_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
     try:
-        data = list_invoices(
+        data = quickbooks_list_invoices(
             api_base,
             token,
             max_results=int(params.get("max_results") or params.get("limit") or 25),
@@ -2286,7 +2286,7 @@ def _exec_jira_issues_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     fields = params.get("fields")
     field_list = fields if isinstance(fields, list) else None
     try:
-        data = get_issue(cloud_id, token, issue_id, fields=field_list)
+        data = jira_get_issue(cloud_id, token, issue_id, fields=field_list)
     except JiraAPIError as exc:
         raise _handle_jira_error(exc) from exc
     return NormalizedResult(
@@ -2347,7 +2347,7 @@ def _exec_jira_issues_update(ctx: ToolContext, params: dict[str, Any]) -> Normal
     if not fields:
         raise ToolValidationError("jira.issues.update requires fields object or summary/description")
     try:
-        data = update_issue(cloud_id, token, issue_id, fields)
+        data = jira_update_issue(cloud_id, token, issue_id, fields)
     except JiraAPIError as exc:
         raise _handle_jira_error(exc) from exc
     return NormalizedResult(

@@ -1,0 +1,162 @@
+{
+  "stripe": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{   \"components\": {     \"schemas\": {       \"account\": {         \"description\": \"For new integrations, we recommend using the [Accounts v2 API](/api/v2/core/acco"
+  },
+  "slack": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/slackapi/slack-api-specs/master/web-api/slack_web_openapi_v2.json",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{     \"basePath\": \"/api\",     \"definitions\": {         \"blocks\": {             \"description\": \"This is a very loose definition, in the future, we'll populate th"
+  },
+  "github": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{   \"openapi\": \"3.0.3\",   \"info\": {     \"version\": \"1.1.4\",     \"title\": \"GitHub v3 REST API\",     \"description\": \"GitHub's v3 REST API.\",     \"license\": {     "
+  },
+  "twilio": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{   \"components\": {     \"securitySchemes\": {       \"accountSid_authToken\": {         \"scheme\": \"basic\",         \"type\": \"http\"       }     },     \"schemas\": {  "
+  },
+  "asana": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "openapi: 3.0.0 info:   description: >-     This is the interface for interacting with the [Asana     Platform](https://developers.asana.com). Our API reference "
+  },
+  "microsoft365": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "openapi: 3.0.4 info:   title: OData Service for namespace microsoft.graph   description: This OData service is located at https://graph.microsoft.com/v1.0   ver"
+  },
+  "pagerduty": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/PagerDuty/api-schema/main/reference/REST/openapiv3.json",
+    "status": 206,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{   \"openapi\": \"3.0.2\",   \"info\": {     \"description\": \"This document describes the PagerDuty REST APIs.\\n\\nFor guides and examples please visit our [Documentat"
+  },
+  "jira": {
+    "contract_type": "openapi",
+    "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
+    "status": 200,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{\"components\":{\"schemas\":{\"ActorInputBean\":{\"additionalProperties\":false,\"properties\":{\"group\":{\"description\":\"The name of the group to add as a default actor. "
+  },
+  "confluence": {
+    "contract_type": "openapi",
+    "url": "https://developer.atlassian.com/cloud/confluence/swagger.v3.json",
+    "status": 200,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": true,
+    "snippet": "{\"openapi\":\"3.0.1\",\"info\":{\"title\":\"The Confluence Cloud REST API\",\"description\":\"This document describes the REST API and resources provided by Confluence. The"
+  },
+  "google_drive": {
+    "contract_type": "discovery",
+    "url": "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+    "status": 200,
+    "content_type": "application/json; charset=UTF-8",
+    "ok": true,
+    "snippet": "{   \"parameters\": {     \"oauth_token\": {       \"type\": \"string\",       \"description\": \"OAuth 2.0 token for the current user.\",       \"location\": \"query\"     }, "
+  },
+  "gmail": {
+    "contract_type": "discovery",
+    "url": "https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest",
+    "status": 200,
+    "content_type": "application/json; charset=UTF-8",
+    "ok": true,
+    "snippet": "{   \"parameters\": {     \"key\": {       \"type\": \"string\",       \"description\": \"API key. Your API key identifies your project and provides you with API access, q"
+  },
+  "google_calendar": {
+    "contract_type": "discovery",
+    "url": "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+    "status": 200,
+    "content_type": "application/json; charset=UTF-8",
+    "ok": true,
+    "snippet": "{   \"documentationLink\": \"https://developers.google.com/workspace/calendar/firstapp\",   \"title\": \"Calendar API\",   \"icons\": {     \"x16\": \"http://fonts.gstatic.c"
+  },
+  "google_sheets": {
+    "contract_type": "discovery",
+    "url": "https://www.googleapis.com/discovery/v1/apis/sheets/v4/rest",
+    "status": 200,
+    "content_type": "application/json; charset=UTF-8",
+    "ok": true,
+    "snippet": "{   \"protocol\": \"rest\",   \"auth\": {     \"oauth2\": {       \"scopes\": {         \"https://www.googleapis.com/auth/drive.file\": {           \"description\": \"See, edi"
+  },
+  "zendesk": {
+    "contract_type": "openapi",
+    "url": "https://developer.zendesk.com/zendesk/oas.yaml",
+    "status": 206,
+    "content_type": "application/octet-stream",
+    "ok": true,
+    "snippet": "openapi: 3.0.3 info:   title: Support API   description: Zendesk Support API endpoints   version: 2.0.0 tags:   - name: Attachments   - name: Sessions   - name:"
+  },
+  "shopify": {
+    "contract_type": "openapi",
+    "url": "https://raw.githubusercontent.com/Shopify/shopify-api-ruby/main/openapi.json",
+    "status": 404,
+    "content_type": "text/plain; charset=utf-8",
+    "ok": false,
+    "snippet": "404: Not Found"
+  },
+  "gitlab": {
+    "contract_type": "openapi",
+    "url": "https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/openapi/openapi.yaml",
+    "status": 404,
+    "content_type": "text/html; charset=utf-8",
+    "ok": false,
+    "snippet": "<!DOCTYPE html> <html class=\"gl-system\" lang=\"en\"> <head> <meta content=\"width=device-width, initial-scale=1\" name=\"viewport\"> <title>Not Found</title> <script "
+  },
+  "hubspot": {
+    "contract_type": "openapi",
+    "url": "https://api.hubspot.com/api-catalog-public/v1/apis",
+    "status": 404,
+    "content_type": "text/html;charset=iso-8859-1",
+    "ok": false,
+    "snippet": "<html> <head> <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/> <title>Error 404 Not Found</title> </head> <body><h2>HTTP ERROR 404</h2> <p>Re"
+  },
+  "linear": {
+    "contract_type": "graphql",
+    "url": "https://api.linear.app/graphql",
+    "status": 400,
+    "content_type": "application/json; charset=utf-8",
+    "ok": false,
+    "snippet": "{\"errors\":[{\"message\":\"This operation has been blocked as a potential Cross-Site Request Forgery (CSRF). Please either specify a 'content-type' header (with a t"
+  },
+  "notion": {
+    "contract_type": "reference_docs",
+    "url": "https://developers.notion.com/reference/intro",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "ok": true,
+    "snippet": "<!DOCTYPE html><html lang=\"en\" class=\"inter_1d81deff-module__CYM0aG__variable papermono_89c757f2-module__6aS5zq__variable dark\" data-banner-state=\"visible\" data"
+  },
+  "apollo": {
+    "contract_type": "reference_docs",
+    "url": "https://docs.apollo.io/reference",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "ok": true,
+    "snippet": "<!DOCTYPE html><html lang=\"en\" style=\"\" data-color-mode=\"system\" class=\" useReactApp isRefPage \"><head><meta charset=\"utf-8\"><link rel=\"preconnect\" href=\"https:"
+  }
+}
