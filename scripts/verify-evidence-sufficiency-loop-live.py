@@ -104,6 +104,10 @@ def parse_sse(raw: str) -> dict[str, Any]:
     texts: list[str] = []
     errors: list[str] = []
     routing: dict[str, Any] = {}
+    # Phase 4's summary rides the evidence envelope in the stream — there is no
+    # metadata column on conversation_messages, so the stream is the only place
+    # the user-visible form can be observed.
+    evidence: dict[str, Any] = {}
     for block in re.split(r"\n\n+", raw):
         data_lines = [ln[5:].lstrip() for ln in block.splitlines() if ln.startswith("data:")]
         if not data_lines:
@@ -123,10 +127,21 @@ def parse_sse(raw: str) -> dict[str, Any]:
             candidate = obj.get(key)
             if isinstance(candidate, dict) and candidate.get("unifiedTurnLive") is not None:
                 routing = candidate
+
+        for candidate in (obj, obj.get("data") if isinstance(obj.get("data"), dict) else {}):
+            if not isinstance(candidate, dict):
+                continue
+            env = candidate.get("evidence")
+            if isinstance(env, dict):
+                evidence = env
+
     return {
         "assistant": "".join(texts).strip(),
         "errors": errors,
         "routing": routing,
+        "evidence": evidence,
+        "evidence_keys": sorted(evidence.keys()) if evidence else None,
+        "evidence_process": evidence.get("evidence_process") if evidence else None,
     }
 
 
@@ -180,6 +195,8 @@ async def run_turn(
         "stream_errors": parsed["errors"],
         "unified_turn_live": parsed["routing"].get("unifiedTurnLive"),
         "reasoning_depth": parsed["routing"].get("reasoningDepth"),
+        "evidence_keys": parsed["evidence_keys"],
+        "evidence_process": parsed["evidence_process"],
     }
 
 
@@ -219,6 +236,8 @@ def read_loop_meta(sb: Any, org_id: str, conversation_id: str) -> dict[str, Any]
         "audit_rows_seen": len(rows),
         "audit_actions_seen": [r.get("action") for r in rows],
     }
+
+
 
 
 async def main() -> int:
@@ -313,7 +332,10 @@ async def main() -> int:
     rich_cap = rich_loop.get("max_additional_rounds")
 
     checks = {
-        "hard_turn_reached_live": hard.get("unified_turn_live") is True,
+        # The SSE stream does not carry a unifiedTurnLive flag, so reading one
+        # reported False for turns that had plainly run the live path. The audit
+        # action is the real signal: live.completed vs live.fallthrough.
+        "hard_turn_reached_live": hard.get("audit_action") == "unified_turn.live.completed",
         "hard_loop_meta_present": bool(hard_loop),
         "hard_model_judged_sufficiency": "llm" in assessors,
         "hard_assessors": assessors,
@@ -343,6 +365,13 @@ async def main() -> int:
         "model_judged_sufficiency_anywhere": (
             "llm" in assessors or "llm" in rich_assessors
         ),
+        # Phase 4: the summary must reach the user-visible envelope on the turn
+        # where iteration and a conflict actually happened, and stay absent from
+        # the clean conversational turn.
+        "rich_process_summary_delivered": bool(rich.get("evidence_process")),
+        "rich_process_summary": rich.get("evidence_process"),
+        "rich_evidence_keys": rich.get("evidence_keys"),
+        "simple_process_summary_absent": not simple.get("evidence_process"),
         "simple_loop_did_not_engage": (
             simple_knowledge.get("skipped") is not None
             or not simple_loop
@@ -363,8 +392,29 @@ async def main() -> int:
         and checks["rich_bounds_respected"]
     )
     simple_pass = bool(checks["simple_loop_did_not_engage"])
-    if hard_pass and simple_pass:
+    # Phase 4 is a separate claim from the loop mechanics and must not be carried
+    # by them: the loop can iterate correctly while the user still sees nothing
+    # about it. Reporting these together would let a working loop mask an
+    # undelivered transparency surface.
+    phase4_pass = bool(
+        checks["rich_process_summary_delivered"]
+        and checks["simple_process_summary_absent"]
+    )
+    report["phase_verdicts"] = {
+        "loop_mechanics_1_2_3_5": "PASS" if (hard_pass and simple_pass) else "PARTIAL",
+        "process_output_4": (
+            "PASS"
+            if phase4_pass
+            else "NOT DELIVERED — no evidence envelope observed on the chat stream"
+        ),
+    }
+    if hard_pass and simple_pass and phase4_pass:
         report["verdict"] = "PASS"
+    elif hard_pass and simple_pass:
+        report["verdict"] = (
+            "PARTIAL — loop mechanics proven live; Phase 4 process summary "
+            "not delivered to the client"
+        )
     elif checks["hard_loop_meta_present"]:
         report["verdict"] = "PARTIAL — loop ran; see checks for which criterion missed"
     else:
@@ -398,6 +448,9 @@ async def main() -> int:
     print(f"  wall ms        : {rich.get('wall_ms')}")
     print()
     print(f"MODEL PATH PROVEN: {checks['model_judged_sufficiency_anywhere']}")
+    print(f"PROCESS SUMMARY DELIVERED (rich): {checks['rich_process_summary_delivered']}")
+    print(f"  summary        : {checks['rich_process_summary']}")
+    print(f"  keys in stream : {checks['rich_evidence_keys']}")
     print()
     print("SIMPLE QUERY")
     print(f"  loop engaged   : {not checks['simple_loop_did_not_engage']}")

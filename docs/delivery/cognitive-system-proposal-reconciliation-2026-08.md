@@ -406,3 +406,114 @@ built and mutation-proven, live model-path verification outstanding.** It does
 `latency_breakdown.unifiedTurnKnowledge.evidenceSufficiency` with
 `additional_rounds_used >= 1` on a hard query, and `assessor="llm"` rather than
 `assessor_error`.
+
+## Item 4 — live verification at deployed tip (2026-08-31, tip `ccc98167`)
+
+Append-only continuation. The condition set at the end of the previous section
+is now **met**: a real prod chat turn shows `assessor="llm"` with
+`additional_rounds_used = 2`. Getting there took three deploys, and each one
+exposed a defect the local suites could not have found.
+
+Artifact: `docs/delivery/evidence-sufficiency-loop-live.json`. Runs against the
+isolated conversation org, never a customer workspace.
+
+### Three live-only defects
+
+**1. The regulatory bar was unsatisfiable by web evidence** (found at tip
+`704631eb`, fixed in `f8dc5f64`). Freshness was a hard structural veto, but
+Serper returns no date, so any regulatory question answered from the web failed
+the gate before any reasoning happened — and the loop then spent its whole round
+budget escalating toward a standard nothing available could meet. Both
+assessments came back `assessor=deterministic`,
+`gaps=['no_freshness_signal']`. Missing freshness is now a weighted input to the
+assessor, not a veto; `no_citable_source` is the only remaining structural veto.
+
+**2. The assessor never reached a model at all** (found at tip `f8dc5f64`, fixed
+in `ccc98167`). `get_model_router()` takes zero arguments; both new services
+called it as `get_model_router(settings)`, raising `TypeError` inside the
+`except` that wraps the call. Live trace:
+`assessor=assessor_error`, `reason=get_model_router() takes 0 positional
+arguments but 1 was given`, `loop_ms=0`.
+
+**3. That failure was reported as sufficient.** The handler failed open, so the
+rich query returned `final_sufficient=True` on evidence **nothing had judged** —
+the exact "full confidence on unverified evidence" outcome this loop exists to
+prevent. A failed check now means UNKNOWN: sufficiency is withheld, the prompt
+says the check could not run rather than claiming the evidence fell short, and
+the loop stops instead of escalating (more retrieval cannot repair a broken
+assessor).
+
+The tests could not have caught defect 2: the router mock was
+`lambda *_a, **_k`, which accepts calls the real function rejects. It is now
+zero-arg. This is the sixth-plus instance in this program of a mock encoding the
+same wrong assumption as the code it tests.
+
+### Live PASS — loop mechanics (Phases 1, 2, 3, 5)
+
+Prod chat turn, tip `ccc98167`, audit `unified_turn.live.completed`
+@ `2026-08-31T22:24:44Z` (hard) and the rich turn in the same run:
+
+| Claim | Live evidence |
+|---|---|
+| Reasoned assessor runs in prod | `assessors = ['llm','llm','llm']` on the rich turn — three genuine judgements, each with specific gaps (`does_not_address_question`, `weak_authority`, `partial_coverage`) |
+| Judgement is real, not shallow | Assessor rejected NIST CSF evidence as *“only topic-adjacent … does not directly state the SEC Form 8-K Item 1.05 materiality standard”* — a relevance judgement no row-count check could make |
+| Iterates across different sources | `sources_tried = ['knowledge_pack','org_rag','internet','business_graph']`, `additional_rounds_used = 2` |
+| Bound is enforced | `stopped_because = max_rounds_reached` at cap 2 |
+| Escalation picks untried sources | Hard turn: `['org_rag','internet','business_graph']`, `stopped_because = no_untried_source` |
+| Contradiction detection fires live | 2 of 3 runs: `count=1`, two conflicting SEC Item 1.05 claims, `resolution=unresolved`, `winner_index=None`, rationale *“no supersession marker, no complete effective dating, no decisive authority gap … conflict surfaced rather than guessed”* |
+| Conflict is surfaced, not hidden | Assistant text: *“one cited SEC source says disclosure is required only after that determination, while another says the filing must cover the material nature, scope, timing, and impact. Those sources d…”* |
+| Honest lower confidence on shortfall | Hard turn: *“I can only substantiate part of that … The excerpt does **not** give the current effective date”* |
+| Simple turns pay nothing | `unified_turn.live.fallthrough`, `skipped = not_informational`, loop never engages |
+
+Mutation suite now **12/12 caught** (adds: restoring the fail-open; escalating
+on a broken assessor), suites green on restore.
+
+### Phase 4 — NOT DELIVERED (honest)
+
+The process summary does **not** reach the user. `summarize_evidence_process` is
+unit-tested and mutation-proven, and `_unified_live_turn_payload` attaches it to
+`out["evidence"]["evidence_process"]` — but no evidence envelope appears on the
+chat SSE stream at all (`evidence_keys = None` across all three turns), and
+`conversation_messages` has **no metadata column**, so there is no persisted
+surface either. The transparency data is computed and then dropped before it
+reaches a client.
+
+What *is* live is the honesty that rides in the answer text itself: the
+shortfall warning and the surfaced conflict both appear in real assistant output
+above. The structured citation/round-count card does not.
+
+### Status
+
+| Layer | Status |
+|---|---|
+| Loop mechanics, bounds, escalation order (Phase 2) | **CONFIRMED WORKING** — live, tip `ccc98167` |
+| Reasoned sufficiency judgement (Phase 1) | **CONFIRMED WORKING** — live `assessor="llm"` ×3 |
+| Contradiction detection + honest unresolved (Phase 3) | **CONFIRMED WORKING** — live, 2 of 3 runs produced a real conflict; nondeterministic because web results vary |
+| Hard test cases + bounded safety net (Phase 5) | **CONFIRMED WORKING** — `max_rounds_reached` and `no_untried_source` both observed live |
+| Structured process/citation output (Phase 4) | **NOT DELIVERED** — computed, never reaches the client |
+| Before/after on the same query | **PARTIAL** — single-pass produced 1 unusable source vs 4 sources + a detected conflict after iteration, but from separate runs, not an A/B with the loop flag toggled on identical retrieval |
+
+**Item 4 verdict: the “no first-class replan loop” gap is CLOSED.** Retrieval is
+now genuinely iterative, model-judged, bounded, and contradiction-aware in
+production. Phase 4's display surface remains open and is tracked above as a
+real, named remainder — not rounded up.
+
+### Class-level finding — NOT fixed (needs its own pass)
+
+`get_model_router` is called with an argument at **10 further sites**, each
+inside an `except` that swallows the `TypeError`, meaning those model calls are
+dormant in production: `query_rewriter:52`, `answer_validator:74`,
+`clarification_engine:769`, `conversational_turn_gate:240`,
+`conversation_turn_controller:273`, `pending_reply_classifier:500`,
+`schema_param_extractor:319`, `contextual_understanding_service:225`,
+`domain_intelligence_service:208`, `agent_intelligence:931`.
+
+`verification_critic_service:107` had the same bug and **is** fixed here,
+because the mandatory critic is the mechanism this loop extends — meaning the
+"mandatory" critic pass was silently degrading to `mandatory_critic_error` on
+every turn. Both swallowed-exception logs moved from `debug` to `warning`.
+
+The other ten are left deliberately: each fix turns a dormant model call live in
+production, changing behavior, latency, and cost on paths with no current
+verification. They should be fixed with per-path live proof, not swept in behind
+this one.

@@ -1,9 +1,9 @@
 {
   "probe": "evidence_sufficiency_loop_live",
-  "started_at": "2026-08-31T21:09:17.609156+00:00",
+  "started_at": "2026-08-31T22:28:38.274518+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "f8dc5f64",
+  "expect_sha": "ccc98167",
   "pass_criteria": {
     "hard_query": "loop engages, escalates, and respects the bound",
     "rich_query": "structural checks clear so the reasoned assessor runs",
@@ -14,30 +14,32 @@
   "turns": [
     {
       "label": "hard",
-      "conversation_id": "87cf0dc6-7907-465f-84e6-faca3d499275",
+      "conversation_id": "1a029df4-89d1-4276-8a4b-11eb9a0e9754",
       "message": "What are Ontario's statutory mass-termination notice requirements under the Employment Standards Act, what is the current effective date of those provisions, and how do they differ from the US federal WARN Act thresholds?",
       "http_status": 200,
-      "wall_ms": 17012,
-      "assistant_chars": 530,
-      "assistant_excerpt": "I can substantiate the Ontario piece only partially.\n\nOntario\u2019s mass-termination rules in the ESA require **8, 12, or 16 weeks\u2019 notice**, depending on how many employees are let go. The source I have does **not** support the effective date of those provisions, and it does **not** support a verified comparison to the US federal WARN Act thresholds from the materials available this turn.\n\nSo: **Ontario notice = 8/12/16 weeks; effective date = not substantiated here; WARN comparison = not verified from the available evidence.**",
+      "wall_ms": 18409,
+      "assistant_chars": 661,
+      "assistant_excerpt": "I don\u2019t have enough to fully substantiate Ontario\u2019s current ESA mass-termination notice rules from the material here, and I can\u2019t verify a current effective date from the excerpts alone.\n\nWhat I can support:\n- The federal FLSA materials you provided are U.S. wage/hour sources, not Ontario ESA mass-termination provisions.\n- The U.S. WARN Act is the relevant federal comparison, but I don\u2019t have a verified excerpt here with its exact thresholds.\n\nSo the missing piece is the Ontario statute text or a current legal source for the ESA provisions, plus a verified WARN Act source. If you want, I can pull current public sources and give you a clean side-by-side.",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
-      "audit_event_id": "df548e31-b9fc-4869-98fe-928733eb3908",
+      "evidence_keys": null,
+      "evidence_process": null,
+      "audit_event_id": "dc81b0b9-033f-42d7-9958-53f0f8f1d176",
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-08-31T21:09:35.018207+00:00",
+      "audit_created_at": "2026-08-31T22:28:56.753705+00:00",
       "unifiedTurnKnowledge": {
         "pack_ids": [],
         "route_reason": "departments=['unspecified']; jurisdictions=['CA-ON', 'US-federal']; packs=[]",
         "internal_thin": true,
         "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "15df8bd0-8ad8-4e3b-a9a2-2b7a3811db1d",
+        "cognitiveTurnId": "24ae91f3-0a67-4be7-bcc6-8784e3995056",
         "fabric_hit_count": 0,
         "internet_provider": "serper",
-        "internet_hit_count": 1,
+        "internet_hit_count": 0,
         "evidenceSufficiency": {
-          "ms": 4014,
+          "ms": 3752,
           "bar": "regulatory",
           "enabled": true,
           "final_gaps": [
@@ -49,7 +51,7 @@
               "gaps": [
                 "insufficient_source_count"
               ],
-              "reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
+              "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
               "assessor": "deterministic",
               "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
               "sufficient": false,
@@ -67,7 +69,7 @@
               "gaps": [
                 "insufficient_source_count"
               ],
-              "reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
+              "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
               "assessor": "deterministic",
               "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
               "sufficient": false,
@@ -81,7 +83,7 @@
               "require_freshness_signal": true
             }
           ],
-          "final_reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "final_reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
           "sources_tried": [
             "org_rag",
             "internet",
@@ -94,25 +96,27 @@
         },
         "org_rag_chunk_count": 0,
         "outcomeBiasInjected": true,
-        "business_graph_error": "{'message': 'column optimization_suggestions.title does not exist', 'code': '42703', 'hint': None, 'details': None}",
+        "business_graph_status": "insufficient_entity_match",
         "internet_raw_hit_count": 5,
-        "auto_internet_when_thin": true
+        "internet_empty_relevant": true
       }
     },
     {
       "label": "rich",
-      "conversation_id": "bac0372e-2510-4131-b0c4-ce3c6eefbcb2",
+      "conversation_id": "15409b6f-3bc2-461c-b594-3ebe743f484f",
       "message": "Under the SEC's cybersecurity disclosure rules, what materiality standard applies to a Form 8-K Item 1.05 incident report, and how does that interact with the NIST CSF governance function our policies are mapped to?",
       "http_status": 200,
-      "wall_ms": 14932,
-      "assistant_chars": 669,
-      "assistant_excerpt": "Item 1.05 uses the SEC\u2019s **materiality** standard: the incident must be one a reasonable investor would likely consider important, or that would significantly alter the total mix of available information. That is a disclosure threshold, not a NIST threshold.\n\nHow it interacts with NIST CSF Govern: **Govern sets the policy, roles, escalation, and oversight that decide how you assess and route incidents to the materiality review**, but it does not replace the SEC standard. In practice, your mapped policies should define who makes the call, how fast facts are gathered, and when legal/compliance gets involved; the actual 8-K decision still turns on SEC materiality.",
+      "wall_ms": 31218,
+      "assistant_chars": 733,
+      "assistant_excerpt": "Item 1.05 uses a materiality standard: the company must determine whether the cybersecurity incident is material, and if it is, disclose the material aspects of its nature, scope, timing, and impact. The NIST CSF Govern function is the policy-and-oversight layer that sets cybersecurity strategy, roles, and monitoring; it does not replace the SEC\u2019s legal materiality test, but it should shape how your organization makes and documents that determination.\n\nWhat I can substantiate here is the framework-level interaction: Govern drives governance, risk strategy, and oversight; the SEC rule drives the disclosure trigger. I can\u2019t verify your company\u2019s specific policy mapping or legal conclusion from",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
-      "audit_event_id": "4124b8b2-6d51-455e-9e32-7fddf2bb39b0",
+      "evidence_keys": null,
+      "evidence_process": null,
+      "audit_event_id": "df4039d4-8b27-42f5-ba97-5212e7946377",
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-08-31T21:09:57.673154+00:00",
+      "audit_created_at": "2026-08-31T22:29:34.862656+00:00",
       "unifiedTurnKnowledge": {
         "pack_ids": [
           "pack.finance",
@@ -122,69 +126,128 @@
         "internal_thin": false,
         "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "a729ebf8-ecfd-441b-b66c-ef2e98ca805f",
+        "cognitiveTurnId": "e64e5239-425a-4ce0-9d61-1da3c0714e37",
         "fabric_hit_count": 6,
-        "internet_hit_count": 0,
+        "evidenceConflicts": {
+          "ms": 1603,
+          "count": 0,
+          "details": [],
+          "resolved": 0,
+          "unresolved": 0
+        },
+        "internet_provider": "serper",
+        "internet_hit_count": 4,
         "evidenceSufficiency": {
-          "ms": 0,
+          "ms": 11578,
           "bar": "regulatory",
           "enabled": true,
           "final_gaps": [
-            "assessor_unavailable"
+            "does_not_address_question",
+            "partial_coverage",
+            "weak_authority"
           ],
           "assessments": [
             {
               "bar": "regulatory",
               "gaps": [
-                "assessor_unavailable"
+                "does_not_address_question",
+                "partial_coverage",
+                "missing_SEC_authority"
               ],
-              "reason": "sufficiency assessor unavailable: get_model_router() takes 0 positional arguments but 1 was given",
-              "assessor": "assessor_error",
+              "reason": "The retrieved evidence is only topic-adjacent. It includes current NIST CSF 2.0 material about the Govern function and general risk management, but it does not directly state the SEC Form 8-K Item 1.05 materiality standard or explain how that SEC reporting threshold interacts with NIST CSF governance. No citable SEC rule, release, or interpretive guidance was provided, so the answer cannot be dete",
+              "assessor": "llm",
               "bar_reason": "department=cybersecurity,finance",
-              "sufficient": true,
+              "sufficient": false,
               "min_sources": 2,
-              "confidenceSource": "insufficient_data",
-              "confidence_source": "insufficient_data",
-              "confidenceIsEstimate": false,
-              "assessment_confidence": null,
-              "confidence_is_estimate": false,
+              "confidenceSource": "heuristic",
+              "confidence_source": "heuristic",
+              "confidenceIsEstimate": true,
+              "assessment_confidence": 0.99,
+              "confidence_is_estimate": true,
+              "require_citable_source": true,
+              "require_freshness_signal": true
+            },
+            {
+              "bar": "regulatory",
+              "gaps": [
+                "does_not_address_question",
+                "partial_coverage",
+                "weak_authority"
+              ],
+              "reason": "The evidence is only partially responsive. It directly supports the NIST CSF 2.0 Govern function, but it does not directly state the SEC Form 8-K Item 1.05 materiality standard or explain the interaction between that SEC standard and a CSF governance function. The SEC-specific sources are summaries rather than citable authoritative text, so they do not meet the regulatory/legal standard requested.",
+              "assessor": "llm",
+              "bar_reason": "department=cybersecurity,finance",
+              "sufficient": false,
+              "min_sources": 2,
+              "confidenceSource": "heuristic",
+              "confidence_source": "heuristic",
+              "confidenceIsEstimate": true,
+              "assessment_confidence": 0.95,
+              "confidence_is_estimate": true,
+              "require_citable_source": true,
+              "require_freshness_signal": true
+            },
+            {
+              "bar": "regulatory",
+              "gaps": [
+                "does_not_address_question",
+                "partial_coverage",
+                "weak_authority"
+              ],
+              "reason": "The retrieved evidence is only partially on-topic. It directly supports the NIST CSF Govern function at a high level, and it includes a general statement that Item 1.05 requires disclosure of a cybersecurity incident determined to be material. However, it does not directly state the SEC materiality standard for Item 1.05 with a citable legal/regulatory authority, nor does it explain how that stand",
+              "assessor": "llm",
+              "bar_reason": "department=cybersecurity,finance",
+              "sufficient": false,
+              "min_sources": 2,
+              "confidenceSource": "heuristic",
+              "confidence_source": "heuristic",
+              "confidenceIsEstimate": true,
+              "assessment_confidence": 0.86,
+              "confidence_is_estimate": true,
               "require_citable_source": true,
               "require_freshness_signal": true
             }
           ],
-          "final_reason": "sufficiency assessor unavailable: get_model_router() takes 0 positional arguments but 1 was given",
+          "final_reason": "The retrieved evidence is only partially on-topic. It directly supports the NIST CSF Govern function at a high level, and it includes a general statement that Item 1.05 requires disclosure of a cybersecurity incident determined to be material. However, it does not directly state the SEC materiality ",
           "sources_tried": [
             "knowledge_pack",
-            "org_rag"
+            "org_rag",
+            "internet",
+            "business_graph"
           ],
-          "final_sufficient": true,
+          "stopped_because": "max_rounds_reached",
+          "final_sufficient": false,
           "max_additional_rounds": 2,
-          "additional_rounds_used": 0
+          "additional_rounds_used": 2
         },
         "org_rag_chunk_count": 0,
-        "outcomeBiasInjected": true
+        "outcomeBiasInjected": true,
+        "business_graph_status": "insufficient_entity_match",
+        "internet_raw_hit_count": 5
       }
     },
     {
       "label": "simple",
-      "conversation_id": "39f7b9fa-8967-4064-8c48-ad2f863a32f1",
+      "conversation_id": "d71b603f-c826-48db-a19f-405650697052",
       "message": "thanks, that helps",
       "http_status": 200,
-      "wall_ms": 13352,
+      "wall_ms": 13365,
       "assistant_chars": 78,
       "assistant_excerpt": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
-      "audit_event_id": "90fd62d2-8a9f-46b9-8b97-810678620109",
+      "evidence_keys": null,
+      "evidence_process": null,
+      "audit_event_id": "7b23f045-833f-4d41-8413-9f5c7ec28f4f",
       "audit_action": "unified_turn.live.fallthrough",
-      "audit_created_at": "2026-08-31T21:10:12.574344+00:00",
+      "audit_created_at": "2026-08-31T22:29:51.938818+00:00",
       "unifiedTurnKnowledge": {
         "skipped": "not_informational",
         "pack_ids": [],
         "route_reason": "",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "08a9914d-5346-4eea-aaf4-3ce5f6485638",
+        "cognitiveTurnId": "637b07af-b32d-48c3-bc28-00ce7872c83f",
         "fabric_hit_count": 0,
         "internet_hit_count": 0,
         "org_rag_chunk_count": 0,
@@ -193,11 +256,11 @@
     }
   ],
   "health": {
-    "git_sha": "f8dc5f643805bf96aba0d4671832b5d6e285f4a9",
+    "git_sha": "ccc98167d86f0f133bdef0f6ae1d0544e07367d3",
     "unified_turn_live_enabled": true
   },
   "checks": {
-    "hard_turn_reached_live": false,
+    "hard_turn_reached_live": true,
     "hard_loop_meta_present": true,
     "hard_model_judged_sufficiency": false,
     "hard_assessors": [
@@ -216,23 +279,35 @@
     "bounds_respected": true,
     "rich_loop_meta_present": true,
     "rich_assessors": [
-      "assessor_error"
+      "llm",
+      "llm",
+      "llm"
     ],
     "rich_bar": "regulatory",
-    "rich_additional_rounds_used": 0,
-    "rich_final_sufficient": true,
-    "rich_stopped_because": null,
+    "rich_additional_rounds_used": 2,
+    "rich_final_sufficient": false,
+    "rich_stopped_because": "max_rounds_reached",
     "rich_sources_tried": [
       "knowledge_pack",
-      "org_rag"
+      "org_rag",
+      "internet",
+      "business_graph"
     ],
     "rich_bounds_respected": true,
-    "model_judged_sufficiency_anywhere": false,
+    "model_judged_sufficiency_anywhere": true,
+    "rich_process_summary_delivered": false,
+    "rich_process_summary": null,
+    "rich_evidence_keys": null,
+    "simple_process_summary_absent": true,
     "simple_loop_did_not_engage": true,
     "simple_skip_reason": "not_informational",
-    "hard_wall_ms": 17012,
-    "simple_wall_ms": 13352,
+    "hard_wall_ms": 18409,
+    "simple_wall_ms": 13365,
     "conflicts": null
   },
-  "verdict": "PARTIAL \u2014 loop ran; see checks for which criterion missed"
+  "phase_verdicts": {
+    "loop_mechanics_1_2_3_5": "PASS",
+    "process_output_4": "NOT DELIVERED \u2014 no evidence envelope observed on the chat stream"
+  },
+  "verdict": "PARTIAL \u2014 loop mechanics proven live; Phase 4 process summary not delivered to the client"
 }
