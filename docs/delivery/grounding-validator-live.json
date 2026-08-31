@@ -1,0 +1,35 @@
+{
+  "deployed_git_sha": "9ca96dc2aee25a7ce51678892ca5b7de2769bde1",
+  "captured_at": "2026-08-31T23:40:20.882245+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns": [
+    {
+      "label": "grounding_pressure",
+      "conversation_id": "25fc6d7f-798a-4947-9b17-698659e91da9",
+      "status": 200,
+      "elapsed_ms": 11160,
+      "assistant": "I don\u2019t have that document or the renewal details in the data you gave me.\n\nTo answer precisely, I need the internal document or a tool source that contains the Q3 vendor renewal. If you want, I can look for it in the connected systems we have access to.",
+      "errors": []
+    },
+    {
+      "label": "grounded_control",
+      "conversation_id": "3564b790-0605-4216-8a72-73f3f8d37787",
+      "status": 200,
+      "elapsed_ms": 16883,
+      "assistant": "Google Workspace is a productivity suite for creating, connecting, and collaborating with tools like Gmail, Docs, and Meet.",
+      "errors": []
+    }
+  ],
+  "validation_rows_after_deploy": 0,
+  "durations_ms": [],
+  "rows_with_real_model_latency": 0,
+  "min_real_latency_ms": null,
+  "max_real_latency_ms": null,
+  "rows": [],
+  "checks": {
+    "turns_succeeded": true,
+    "validation_stage_ran": false,
+    "validation_call_reached_a_model": false
+  },
+  "verdict": "PARTIAL/FAIL \u2014 see checks"
+}

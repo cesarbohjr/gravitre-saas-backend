@@ -140,3 +140,38 @@ Two honest limits on that figure. n=1 is thin. And the latency row is only
 written when `message_id` is present, so 1 is a **lower bound on invocations,
 not a count of them** — it does not establish how often the validator was
 reached, only that where it was recorded, it took no measurable time.
+
+### After — live run at deployed tip `9ca96dc2`: PARTIAL, execution NOT CONFIRMED
+
+Artifact: `docs/delivery/grounding-validator-live.json`.
+
+Two standard-mode turns ran against the isolated conversation org at the
+deployed tip. Both returned 200 with no stream errors. **Zero validation-stage
+rows were written**, so the intended discriminator produced nothing to read.
+
+This is reported as NOT CONFIRMED rather than as a failure, because the evidence
+does not distinguish the two possibilities:
+
+- The validator is on this path. `/api/assistant/chat` calls
+  `intelligence.execute_task_streaming`, which reaches
+  `_finalize_assistant_response` at `agent_intelligence.py:3463`. Defaults are
+  `validation_enabled=True` and `performance_mode="balanced"`, which covers
+  `standard`. The org has no `org_intelligence_engine_settings` row, so defaults
+  apply. On that reading the validator ran and simply was not recorded.
+- The latency row is gated on `message_id` being truthy. This org's history
+  contains **only** `generation` rows and has never contained a `validation`
+  row, which is consistent with `message_id` being absent on this path — in
+  which case no validation row could ever appear, before or after the fix.
+
+So the chosen signal cannot prove execution here, and no claim of live execution
+is made. What is established: the fix is deployed at `9ca96dc2`, and locally the
+call now reaches the router (`MODEL_CALL_START` emitted, failing only for want
+of provider keys) where previously it raised `TypeError` before getting there.
+
+Next probe options, none yet run: read Railway logs for `MODEL_CALL_START`
+with `task_type=classification` or the newly-raised
+`answer validation skipped` warning during a live turn; or add a temporary
+audit event recording the validation verdict, which would also give the
+before/after quality comparison Phase 2 asks for.
+
+**Status: site 1+3 SHIPPED and DEPLOYED, live execution NOT CONFIRMED.**
