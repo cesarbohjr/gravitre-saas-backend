@@ -78,9 +78,11 @@ def _imported_names(tree: ast.AST) -> set[str]:
 # a stale entry means someone fixed a site without claiming credit, which the
 # test also reports so the baseline cannot silently rot.
 KNOWN_DORMANT = {
-    "app/operators/agent_intelligence.py:931",
+    # Fixed 2026-08-31 (site 1+3, atomic — the validator failing open is what
+    # made the regeneration TypeError unreachable, so they could not be split):
+    #   app/operators/agent_intelligence.py:931
+    #   app/services/answer_validator.py:74
     "app/schedulers/cache_warming_scheduler.py:48",
-    "app/services/answer_validator.py:74",
     "app/services/clarification_engine.py:769",
     "app/services/contextual_understanding_service.py:225",
     "app/services/conversation_turn_controller.py:273",

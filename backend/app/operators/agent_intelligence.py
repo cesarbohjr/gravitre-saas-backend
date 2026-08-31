@@ -928,14 +928,24 @@ class AgentIntelligence:
             f"QUESTION:\n{query}\n\n"
             f"DRAFT:\n{draft[:3000]}"
         )
-        response = await get_model_router(settings).complete(
-            task_type=TaskType.RAG_ANSWERING,
-            prompt=prompt,
-            system_prompt="Ground answers strictly in provided context.",
-            org_id=org_id,
-            temperature=0.0,
-            max_tokens=1200,
-        )
+        # This path was unreachable while the grounding validator failed open, so
+        # it has never run in production. An empty return lands on the caller's
+        # existing SAFE_FALLBACK branch, which is the honest outcome: a turn whose
+        # answer could not be grounded should not become a 500.
+        try:
+            response = await get_model_router().complete(
+                task_type=TaskType.RAG_ANSWERING,
+                prompt=prompt,
+                system_prompt="Ground answers strictly in provided context.",
+                org_id=org_id,
+                temperature=0.0,
+                max_tokens=1200,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "grounded_regeneration_failed org_id=%s error=%s", org_id, exc
+            )
+            return ""
         return (response.content or "").strip()
 
     async def _finalize_assistant_response(

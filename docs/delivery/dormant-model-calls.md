@@ -105,7 +105,38 @@ problem, not an arity bug.
 This change is observability-only: no control flow, fallback values, or model
 behavior altered.
 
-## Phase 2 — status
+## Phase 2 — site 1 + 3 (grounding validator and regeneration)
 
-Not started. Each site is to be re-enabled individually with live before/after
-proof and its own deploy, in the severity order above.
+Fixed together, not as a batch of convenience: the validator failing open is
+precisely what made the regeneration `TypeError` unreachable. Fixing the
+validator alone would have converted a silent no-op into a **hard turn failure**,
+because `agent_intelligence.py:972` calls `_regenerate_grounded_answer` outside
+any `try`. Repairing one without the other leaves production strictly worse.
+
+Changes:
+
+- `answer_validator.py:74` — `get_model_router()`.
+- `agent_intelligence.py:931` — `get_model_router()`, plus a handler so a
+  regeneration failure returns `""` and lands on the caller's existing
+  `SAFE_FALLBACK` branch rather than raising. This path has never executed in
+  production, so it is newly exposed and should degrade, not 500.
+
+### Severity correction (honest)
+
+The Phase 0 table called this "every answer declared grounded". That overstates
+it. `validation_enabled_for_mode` gates the check: it requires
+`validation_enabled`, and by default covers only `standard` and `reasoning`
+modes (`speed_priority` narrows it further to `reasoning`/`agent`). The accurate
+claim is **every _validated_ answer was declared grounded without a check** — a
+smaller blast radius than first written, still a failed correctness gate.
+
+### Before baseline — `docs/delivery/validation-stage-latency.json`
+
+`ai_pipeline_latency` where `stage_name='validation'`, 30-day window, captured
+before deploy: **1 sample, 0 ms**. A swallowed `TypeError` returns in about a
+millisecond; a real model call does not, so 0 ms is consistent with the no-op.
+
+Two honest limits on that figure. n=1 is thin. And the latency row is only
+written when `message_id` is present, so 1 is a **lower bound on invocations,
+not a count of them** — it does not establish how often the validator was
+reached, only that where it was recorded, it took no measurable time.

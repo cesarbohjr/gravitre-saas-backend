@@ -71,7 +71,7 @@ async def validate_grounded_answer(
         '"requires_human": true/false}'
     )
     try:
-        router = get_model_router(settings)
+        router = get_model_router()
         response = await router.complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,

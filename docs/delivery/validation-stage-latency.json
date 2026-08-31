@@ -1,0 +1,24 @@
+{
+  "before": {
+    "phase": "before",
+    "captured_at": "2026-08-31T23:28:38.445721+00:00",
+    "window": "last 30 days",
+    "samples": 1,
+    "min_ms": 0,
+    "median_ms": 0,
+    "max_ms": 0,
+    "under_5ms": 1,
+    "over_100ms": 0,
+    "newest_rows": [
+      {
+        "id": "6260e96a-ae9e-4ee4-89bc-f8d4b1a1899c",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "stage_name": "validation",
+        "duration_ms": 0,
+        "tier": "tier_3",
+        "created_at": "2026-08-12T03:42:18.125403+00:00"
+      }
+    ],
+    "reading": "1/1 samples under 5ms (100%) \u2014 consistent with a swallowed error, not a model call"
+  }
+}
