@@ -146,7 +146,10 @@ async def test_undated_evidence_is_not_a_dead_end(monkeypatch: pytest.MonkeyPatc
 
     import app.services.model_router as mr
 
-    monkeypatch.setattr(mr, "get_model_router", lambda *_a, **_k: _Router())
+    # Deliberately zero-arg, matching the real factory. A permissive
+    # lambda *_a, **_k here is what let a get_model_router(settings) TypeError
+    # reach production green: the mock accepted a call the real function rejects.
+    monkeypatch.setattr(mr, "get_model_router", lambda: _Router())
 
     bar = sufficiency_bar_for(
         query="What does the ESA require for mass terminations?",
@@ -168,6 +171,45 @@ async def test_undated_evidence_is_not_a_dead_end(monkeypatch: pytest.MonkeyPatc
     assert verdict.sufficient is True
     # The assessor was told currency was unverifiable so it can weigh it.
     assert "effective date or last-updated signal" in seen["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_a_broken_assessor_withholds_sufficiency_rather_than_granting_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An assessor that cannot run means UNKNOWN, never "sufficient".
+
+    A live prod run at tip f8dc5f64 returned final_sufficient=True for a
+    regulatory question because the assessor raised a TypeError and the handler
+    failed open. That told the rest of the turn the evidence had cleared its bar
+    when nothing had judged it — the exact outcome this loop exists to prevent.
+    """
+
+    class _Boom:
+        async def complete(self, *a: Any, **kw: Any):
+            raise RuntimeError("model unavailable")
+
+    import app.services.model_router as mr
+
+    monkeypatch.setattr(mr, "get_model_router", lambda: _Boom())
+
+    bar = sufficiency_bar_for(
+        query="What is the SEC materiality standard for Item 1.05?",
+        route_departments=["finance"],
+    )
+    rows = [
+        {"kind": "knowledge_pack", "content": "Item 1.05 materiality...", "citation": "SEC", "last_updated": "2024-07-01"},
+        {"kind": "knowledge_pack", "content": "Reasonable investor test...", "citation": "SEC", "last_updated": "2024-07-01"},
+    ]
+    verdict = await assess_evidence_sufficiency(
+        query="What is the SEC materiality standard for Item 1.05?",
+        rows=rows,
+        bar=bar,
+        settings=_settings(),
+    )
+    assert verdict.assessor == "assessor_error"
+    assert verdict.sufficient is False, "a failed check must not certify evidence"
+    assert "assessor_unavailable" in verdict.gaps
 
 
 @pytest.mark.asyncio
@@ -289,6 +331,50 @@ async def test_insufficient_evidence_escalates_to_a_source_not_yet_tried(
     assert loop["additional_rounds_used"] == 2
     assert loop["sources_tried"][-2:] == ["internet", "business_graph"]
     assert "WEB" in block and "GRAPH" in block
+
+
+@pytest.mark.asyncio
+async def test_a_broken_assessor_stops_the_loop_instead_of_burning_the_budget(
+    monkeypatch: pytest.MonkeyPatch, stub_sources: dict[str, list[str]]
+) -> None:
+    """Withholding sufficiency must not turn every turn into a full escalation.
+
+    Once a failed assessor reports sufficient=False (correctly, since nothing
+    judged the evidence), a naive loop would escalate through every remaining
+    source on every turn whenever the fast model hiccups. More evidence cannot
+    fix an assessor that is not running, so the loop stops and says so.
+    """
+    import app.services.evidence_sufficiency_service as suff
+
+    async def _errored(*, query, rows, bar, settings=None, org_id=None, routing_tier="multi_step", sources_tried=None):
+        return SufficiencyVerdict(
+            sufficient=False,
+            bar=bar,
+            assessor="assessor_error",
+            reason="sufficiency assessor unavailable: boom",
+            gaps=["assessor_unavailable"],
+            confidence=None,
+        )
+
+    monkeypatch.setattr(suff, "assess_evidence_sufficiency", _errored)
+
+    block, meta = await ctx_mod.build_unified_turn_knowledge_context(
+        org_id="org-1",
+        query="What are the statutory breach notification deadlines in Ontario?",
+        client=object(),
+        settings=_settings(),
+        classification={"department": "legal"},
+        knowledge_assignments=[
+            {"source_type": "knowledge_pack", "source_id": "pack.legal", "enabled": True}
+        ],
+    )
+    loop = meta["evidenceSufficiency"]
+    assert loop["additional_rounds_used"] == 0
+    assert loop["stopped_because"] == "assessor_unavailable"
+    assert "internet" not in stub_sources["order"]
+    # And the model is told the check did not run, not that evidence fell short.
+    assert "EVIDENCE SUFFICIENCY UNVERIFIED" in block
+    assert "EVIDENCE SUFFICIENCY WARNING" not in block
 
 
 @pytest.mark.asyncio

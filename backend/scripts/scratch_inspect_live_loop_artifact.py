@@ -35,5 +35,7 @@ for turn in data["turns"]:
         print(f"  assessment[{i}] sufficient={a.get('sufficient')} assessor={a.get('assessor')}")
         print(f"      bar={a.get('bar')} gaps={a.get('gaps')}")
         print(f"      reason={a.get('reason')}")
+    print(f"  {'conflicts':24} {k.get('evidenceConflicts')}")
+    print(f"  {'evidence_process':24} {k.get('evidenceProcess')}")
     print(f"  {'assistant_excerpt':24} {(turn.get('assistant_excerpt') or '')[:260]!r}")
     print()

@@ -25,7 +25,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.config import Settings, get_settings
+from app.config import Settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -201,7 +201,6 @@ async def detect_contradictions(
     routing_tier: str = "multi_step",
 ) -> list[Contradiction]:
     """Ask for genuine factual conflicts only — not tone or phrasing differences."""
-    active = settings or get_settings()
     usable = [
         r
         for r in (rows or [])
@@ -234,7 +233,7 @@ async def detect_contradictions(
         from app.services.assistant_routing_tier import model_for_routing_phase
         from app.services.model_router import TaskType, get_model_router
 
-        router = get_model_router(active)
+        router = get_model_router()
         response = await router.complete(
             TaskType.SUMMARIZATION,
             prompt,

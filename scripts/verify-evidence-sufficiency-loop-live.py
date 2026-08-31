@@ -60,6 +60,19 @@ HARD_QUERY = (
     "Employment Standards Act, what is the current effective date of those "
     "provisions, and how do they differ from the US federal WARN Act thresholds?"
 )
+
+# The Ontario query above proves escalation and the bound, but it retrieves only
+# one relevant web row, so the structural min-sources check settles it before the
+# reasoned assessor is ever consulted. That leaves the model path unproven in
+# production. This query is aimed at the part of the corpus that is genuinely
+# deep (NIST / SEC / FTC), so retrieval should clear the structural bar and the
+# verdict should come down to judgement rather than counting.
+RICH_QUERY = (
+    "Under the SEC's cybersecurity disclosure rules, what materiality standard "
+    "applies to a Form 8-K Item 1.05 incident report, and how does that interact "
+    "with the NIST CSF governance function our policies are mapped to?"
+)
+
 SIMPLE_QUERY = "thanks, that helps"
 
 
@@ -244,9 +257,11 @@ async def main() -> int:
         "org_id": org_id,
         "expect_sha": EXPECT_SHA or None,
         "pass_criteria": {
-            "hard_query": "assessor == 'llm' and bounds respected",
+            "hard_query": "loop engages, escalates, and respects the bound",
+            "rich_query": "structural checks clear so the reasoned assessor runs",
+            "model_path": "assessor == 'llm' on at least one evidence-bearing turn",
             "simple_query": "loop does not engage",
-            "bounds": "additional_rounds_used <= max_additional_rounds",
+            "bounds": "additional_rounds_used <= max_additional_rounds on both",
         },
         "turns": [],
     }
@@ -264,7 +279,11 @@ async def main() -> int:
             print(report["verdict"])
             return 2
 
-        for label, message in (("hard", HARD_QUERY), ("simple", SIMPLE_QUERY)):
+        for label, message in (
+            ("hard", HARD_QUERY),
+            ("rich", RICH_QUERY),
+            ("simple", SIMPLE_QUERY),
+        ):
             turn = await run_turn(
                 client, headers=headers, org_id=org_id, message=message, label=label
             )
@@ -275,16 +294,23 @@ async def main() -> int:
 
     # ---- verdicts ----
     hard = next((t for t in report["turns"] if t["label"] == "hard"), {})
+    rich = next((t for t in report["turns"] if t["label"] == "rich"), {})
     simple = next((t for t in report["turns"] if t["label"] == "simple"), {})
     hard_loop = (hard.get("unifiedTurnKnowledge") or {}).get("evidenceSufficiency") or {}
+    rich_loop = (rich.get("unifiedTurnKnowledge") or {}).get("evidenceSufficiency") or {}
     simple_knowledge = simple.get("unifiedTurnKnowledge") or {}
     simple_loop = simple_knowledge.get("evidenceSufficiency") or {}
 
     assessors = [
         a.get("assessor") for a in (hard_loop.get("assessments") or []) if isinstance(a, dict)
     ]
+    rich_assessors = [
+        a.get("assessor") for a in (rich_loop.get("assessments") or []) if isinstance(a, dict)
+    ]
     rounds = hard_loop.get("additional_rounds_used")
     cap = hard_loop.get("max_additional_rounds")
+    rich_rounds = rich_loop.get("additional_rounds_used")
+    rich_cap = rich_loop.get("max_additional_rounds")
 
     checks = {
         "hard_turn_reached_live": hard.get("unified_turn_live") is True,
@@ -298,6 +324,24 @@ async def main() -> int:
         "hard_sources_tried": hard_loop.get("sources_tried"),
         "bounds_respected": (
             rounds is not None and cap is not None and int(rounds) <= int(cap)
+        ),
+        "rich_loop_meta_present": bool(rich_loop),
+        "rich_assessors": rich_assessors,
+        "rich_bar": rich_loop.get("bar"),
+        "rich_additional_rounds_used": rich_rounds,
+        "rich_final_sufficient": rich_loop.get("final_sufficient"),
+        "rich_stopped_because": rich_loop.get("stopped_because"),
+        "rich_sources_tried": rich_loop.get("sources_tried"),
+        "rich_bounds_respected": (
+            rich_rounds is not None
+            and rich_cap is not None
+            and int(rich_rounds) <= int(rich_cap)
+        ),
+        # The model path only has to be proven once, on whichever turn actually
+        # clears the structural checks. A deterministic verdict is a real verdict,
+        # not a failure — but it must not be the ONLY thing we ever observe.
+        "model_judged_sufficiency_anywhere": (
+            "llm" in assessors or "llm" in rich_assessors
         ),
         "simple_loop_did_not_engage": (
             simple_knowledge.get("skipped") is not None
@@ -314,8 +358,9 @@ async def main() -> int:
 
     hard_pass = bool(
         checks["hard_loop_meta_present"]
-        and checks["hard_model_judged_sufficiency"]
+        and checks["model_judged_sufficiency_anywhere"]
         and checks["bounds_respected"]
+        and checks["rich_bounds_respected"]
     )
     simple_pass = bool(checks["simple_loop_did_not_engage"])
     if hard_pass and simple_pass:
@@ -341,6 +386,18 @@ async def main() -> int:
     print(f"  conflicts      : {checks['conflicts']}")
     print(f"  audit row      : {hard.get('audit_action')} @ {hard.get('audit_created_at')}")
     print(f"  wall ms        : {checks['hard_wall_ms']}")
+    print()
+    print("RICH QUERY (corpus-deep, to exercise the reasoned assessor)")
+    print(f"  bar            : {checks['rich_bar']}")
+    print(f"  assessors      : {checks['rich_assessors']}")
+    print(f"  extra rounds   : {checks['rich_additional_rounds_used']} / cap {rich_cap}")
+    print(f"  sources tried  : {checks['rich_sources_tried']}")
+    print(f"  final sufficient: {checks['rich_final_sufficient']}")
+    print(f"  stopped because: {checks['rich_stopped_because']}")
+    print(f"  conflicts      : {(rich.get('unifiedTurnKnowledge') or {}).get('evidenceConflicts')}")
+    print(f"  wall ms        : {rich.get('wall_ms')}")
+    print()
+    print(f"MODEL PATH PROVEN: {checks['model_judged_sufficiency_anywhere']}")
     print()
     print("SIMPLE QUERY")
     print(f"  loop engaged   : {not checks['simple_loop_did_not_engage']}")

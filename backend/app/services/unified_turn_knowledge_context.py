@@ -466,6 +466,14 @@ async def build_unified_turn_knowledge_context(
         loop_meta["assessments"].append(verdict.to_dict())
 
         while not verdict.sufficient and loop_meta["additional_rounds_used"] < max_rounds:
+            # A broken assessor withholds sufficiency rather than granting it, but
+            # more evidence cannot fix an assessor that is not running. Escalating
+            # here would spend the whole round budget, and the added latency, on
+            # every turn for no possible gain.
+            if verdict.assessor == "assessor_error":
+                loop_meta["stopped_because"] = "assessor_unavailable"
+                break
+
             next_source = next((s for s in ESCALATION_ORDER if s not in tried), None)
             if next_source is None:
                 loop_meta["stopped_because"] = "no_untried_source"
@@ -511,7 +519,19 @@ async def build_unified_turn_knowledge_context(
         loop_meta["final_gaps"] = list(verdict.gaps)[:6]
         loop_meta["ms"] = round((time.perf_counter() - loop_started) * 1000)
 
-        if not verdict.sufficient:
+        if verdict.assessor == "assessor_error":
+            # Distinct from a reasoned shortfall: the evidence was never judged at
+            # all. Claiming it "does not meet the bar" would invent a finding, so
+            # the model is told the check is unavailable and asked to stay within
+            # what the excerpts support.
+            sections.append(
+                "EVIDENCE SUFFICIENCY UNVERIFIED — the sufficiency check could "
+                "not run for this turn, so the evidence has not been judged "
+                f"against the {bar.name} standard. Answer only what the excerpts "
+                "directly support, attribute each claim to its source, and do not "
+                "present the answer as verified."
+            )
+        elif not verdict.sufficient:
             # The honest outcome when iteration ran out: answer, but say the
             # evidence never reached the bar. Never present this at full
             # confidence just because the loop terminated.

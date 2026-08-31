@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.config import Settings, get_settings
+from app.config import Settings
 from app.core.logging import get_logger
 from app.services.confidence_honesty import (
     CONFIDENCE_SOURCE_HEURISTIC,
@@ -283,7 +283,6 @@ async def assess_evidence_sufficiency(
     plainly do not meet. Everything else goes to the model, because "does this
     evidence actually address the question" is not a countable property.
     """
-    active = settings or get_settings()
     rows = [r for r in (rows or []) if isinstance(r, dict)]
 
     if bar.name == BAR_CASUAL:
@@ -375,7 +374,7 @@ async def assess_evidence_sufficiency(
         from app.services.assistant_routing_tier import model_for_routing_phase
         from app.services.model_router import TaskType, get_model_router
 
-        router = get_model_router(active)
+        router = get_model_router()
         response = await router.complete(
             TaskType.SUMMARIZATION,
             prompt,
@@ -408,12 +407,22 @@ async def assess_evidence_sufficiency(
             confidence=confidence,
         )
     except Exception as exc:  # noqa: BLE001
-        # Fail OPEN on assessor failure. Failing closed would spend extra
-        # retrieval rounds and latency on every turn whenever the fast model
-        # hiccups, and the answer path itself is unharmed by skipping the loop.
-        logger.debug("sufficiency_assessor_failed org_id=%s error=%s", org_id, exc)
+        # An assessor failure means sufficiency is UNKNOWN, which is not the same
+        # thing as sufficient. Reporting sufficient=True here told the rest of the
+        # turn that a regulatory answer had cleared its evidence bar when nothing
+        # had actually evaluated it — the precise "full confidence on unverified
+        # evidence" outcome the loop exists to prevent. A live prod run at tip
+        # f8dc5f64 hit exactly this and reported final_sufficient=True off a
+        # TypeError.
+        #
+        # Sufficiency is therefore withheld, but no further rounds are spent: more
+        # retrieval cannot fix a broken assessor, and burning the round budget on
+        # every turn whenever the fast model hiccups would be its own regression.
+        # The caller distinguishes this from a reasoned shortfall via the assessor
+        # field, so the answer is labeled unverified rather than under-evidenced.
+        logger.warning("sufficiency_assessor_failed org_id=%s error=%s", org_id, exc)
         return SufficiencyVerdict(
-            sufficient=True,
+            sufficient=False,
             bar=bar,
             assessor="assessor_error",
             reason=f"sufficiency assessor unavailable: {str(exc)[:160]}",

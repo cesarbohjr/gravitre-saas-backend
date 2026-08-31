@@ -1,53 +1,55 @@
 {
   "probe": "evidence_sufficiency_loop_live",
-  "started_at": "2026-08-31T20:07:16.302077+00:00",
+  "started_at": "2026-08-31T21:09:17.609156+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "704631eb",
+  "expect_sha": "f8dc5f64",
   "pass_criteria": {
-    "hard_query": "assessor == 'llm' and bounds respected",
+    "hard_query": "loop engages, escalates, and respects the bound",
+    "rich_query": "structural checks clear so the reasoned assessor runs",
+    "model_path": "assessor == 'llm' on at least one evidence-bearing turn",
     "simple_query": "loop does not engage",
-    "bounds": "additional_rounds_used <= max_additional_rounds"
+    "bounds": "additional_rounds_used <= max_additional_rounds on both"
   },
   "turns": [
     {
       "label": "hard",
-      "conversation_id": "0f47e5ab-353b-452c-bf5b-d545a898cddf",
+      "conversation_id": "87cf0dc6-7907-465f-84e6-faca3d499275",
       "message": "What are Ontario's statutory mass-termination notice requirements under the Employment Standards Act, what is the current effective date of those provisions, and how do they differ from the US federal WARN Act thresholds?",
       "http_status": 200,
-      "wall_ms": 17927,
-      "assistant_chars": 967,
-      "assistant_excerpt": "I can answer the Ontario piece from the excerpts, but not the \u201ccurrent effective date\u201d as fully verified \u2014 the retrieved sources don\u2019t give a fresh, authoritative date.\n\nWhat the excerpts support:\n- Ontario\u2019s mass-termination rules under the ESA require **8, 12, or 16 weeks of notice**, depending on how many employees are being terminated.\n- That is an **ESA minimum**; the statutory notice is not the whole severance picture.\n\nWhat I can\u2019t substantiate from the retrieved material:\n- The **current effective date** of those Ontario provisions.\n- A fully verified, current comparison to the **US federal WARN Act** thresholds from a sourced legal text.\n\nOn the general comparison: Ontario\u2019s regime ",
+      "wall_ms": 17012,
+      "assistant_chars": 530,
+      "assistant_excerpt": "I can substantiate the Ontario piece only partially.\n\nOntario\u2019s mass-termination rules in the ESA require **8, 12, or 16 weeks\u2019 notice**, depending on how many employees are let go. The source I have does **not** support the effective date of those provisions, and it does **not** support a verified comparison to the US federal WARN Act thresholds from the materials available this turn.\n\nSo: **Ontario notice = 8/12/16 weeks; effective date = not substantiated here; WARN comparison = not verified from the available evidence.**",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
-      "audit_event_id": "6bb645fa-4259-4dc5-b488-0737e2fe5da8",
+      "audit_event_id": "df548e31-b9fc-4869-98fe-928733eb3908",
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-08-31T20:07:34.785377+00:00",
+      "audit_created_at": "2026-08-31T21:09:35.018207+00:00",
       "unifiedTurnKnowledge": {
         "pack_ids": [],
         "route_reason": "departments=['unspecified']; jurisdictions=['CA-ON', 'US-federal']; packs=[]",
         "internal_thin": true,
         "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "04beddb4-f180-492f-946f-425936b06589",
+        "cognitiveTurnId": "15df8bd0-8ad8-4e3b-a9a2-2b7a3811db1d",
         "fabric_hit_count": 0,
         "internet_provider": "serper",
-        "internet_hit_count": 2,
+        "internet_hit_count": 1,
         "evidenceSufficiency": {
-          "ms": 2101,
+          "ms": 4014,
           "bar": "regulatory",
           "enabled": true,
           "final_gaps": [
-            "no_freshness_signal"
+            "insufficient_source_count"
           ],
           "assessments": [
             {
               "bar": "regulatory",
               "gaps": [
-                "no_freshness_signal"
+                "insufficient_source_count"
               ],
-              "reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+              "reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
               "assessor": "deterministic",
               "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
               "sufficient": false,
@@ -63,9 +65,9 @@
             {
               "bar": "regulatory",
               "gaps": [
-                "no_freshness_signal"
+                "insufficient_source_count"
               ],
-              "reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+              "reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
               "assessor": "deterministic",
               "bar_reason": "jurisdiction=CA-ON,US-federal; compliance/regulatory language in query",
               "sufficient": false,
@@ -79,7 +81,7 @@
               "require_freshness_signal": true
             }
           ],
-          "final_reason": "regulatory bar requires no freshness signal; retrieved evidence has neither",
+          "final_reason": "1 substantive source(s) retrieved; regulatory bar needs at least 2",
           "sources_tried": [
             "org_rag",
             "internet",
@@ -92,31 +94,97 @@
         },
         "org_rag_chunk_count": 0,
         "outcomeBiasInjected": true,
-        "business_graph_status": "insufficient_entity_match",
+        "business_graph_error": "{'message': 'column optimization_suggestions.title does not exist', 'code': '42703', 'hint': None, 'details': None}",
         "internet_raw_hit_count": 5,
         "auto_internet_when_thin": true
       }
     },
     {
+      "label": "rich",
+      "conversation_id": "bac0372e-2510-4131-b0c4-ce3c6eefbcb2",
+      "message": "Under the SEC's cybersecurity disclosure rules, what materiality standard applies to a Form 8-K Item 1.05 incident report, and how does that interact with the NIST CSF governance function our policies are mapped to?",
+      "http_status": 200,
+      "wall_ms": 14932,
+      "assistant_chars": 669,
+      "assistant_excerpt": "Item 1.05 uses the SEC\u2019s **materiality** standard: the incident must be one a reasonable investor would likely consider important, or that would significantly alter the total mix of available information. That is a disclosure threshold, not a NIST threshold.\n\nHow it interacts with NIST CSF Govern: **Govern sets the policy, roles, escalation, and oversight that decide how you assess and route incidents to the materiality review**, but it does not replace the SEC standard. In practice, your mapped policies should define who makes the call, how fast facts are gathered, and when legal/compliance gets involved; the actual 8-K decision still turns on SEC materiality.",
+      "stream_errors": [],
+      "unified_turn_live": null,
+      "reasoning_depth": null,
+      "audit_event_id": "4124b8b2-6d51-455e-9e32-7fddf2bb39b0",
+      "audit_action": "unified_turn.live.completed",
+      "audit_created_at": "2026-08-31T21:09:57.673154+00:00",
+      "unifiedTurnKnowledge": {
+        "pack_ids": [
+          "pack.finance",
+          "pack.cybersecurity"
+        ],
+        "route_reason": "departments=['finance', 'cybersecurity']; jurisdictions=['none']; packs=['pack.finance', 'pack.cybersecurity']",
+        "internal_thin": false,
+        "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
+        "research_scope": "internal_only",
+        "cognitiveTurnId": "a729ebf8-ecfd-441b-b66c-ef2e98ca805f",
+        "fabric_hit_count": 6,
+        "internet_hit_count": 0,
+        "evidenceSufficiency": {
+          "ms": 0,
+          "bar": "regulatory",
+          "enabled": true,
+          "final_gaps": [
+            "assessor_unavailable"
+          ],
+          "assessments": [
+            {
+              "bar": "regulatory",
+              "gaps": [
+                "assessor_unavailable"
+              ],
+              "reason": "sufficiency assessor unavailable: get_model_router() takes 0 positional arguments but 1 was given",
+              "assessor": "assessor_error",
+              "bar_reason": "department=cybersecurity,finance",
+              "sufficient": true,
+              "min_sources": 2,
+              "confidenceSource": "insufficient_data",
+              "confidence_source": "insufficient_data",
+              "confidenceIsEstimate": false,
+              "assessment_confidence": null,
+              "confidence_is_estimate": false,
+              "require_citable_source": true,
+              "require_freshness_signal": true
+            }
+          ],
+          "final_reason": "sufficiency assessor unavailable: get_model_router() takes 0 positional arguments but 1 was given",
+          "sources_tried": [
+            "knowledge_pack",
+            "org_rag"
+          ],
+          "final_sufficient": true,
+          "max_additional_rounds": 2,
+          "additional_rounds_used": 0
+        },
+        "org_rag_chunk_count": 0,
+        "outcomeBiasInjected": true
+      }
+    },
+    {
       "label": "simple",
-      "conversation_id": "9a49a457-0912-4feb-b15d-7770f47451b1",
+      "conversation_id": "39f7b9fa-8967-4064-8c48-ad2f863a32f1",
       "message": "thanks, that helps",
       "http_status": 200,
-      "wall_ms": 13957,
+      "wall_ms": 13352,
       "assistant_chars": 78,
       "assistant_excerpt": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
-      "audit_event_id": "0064df8e-f730-4871-9002-553620aaaaed",
+      "audit_event_id": "90fd62d2-8a9f-46b9-8b97-810678620109",
       "audit_action": "unified_turn.live.fallthrough",
-      "audit_created_at": "2026-08-31T20:07:49.729568+00:00",
+      "audit_created_at": "2026-08-31T21:10:12.574344+00:00",
       "unifiedTurnKnowledge": {
         "skipped": "not_informational",
         "pack_ids": [],
         "route_reason": "",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "fbab9c01-2549-43e7-a1ca-f9f40879e152",
+        "cognitiveTurnId": "08a9914d-5346-4eea-aaf4-3ce5f6485638",
         "fabric_hit_count": 0,
         "internet_hit_count": 0,
         "org_rag_chunk_count": 0,
@@ -125,7 +193,7 @@
     }
   ],
   "health": {
-    "git_sha": "704631eb2051e97090f6fe25b0b4b20cc957c769",
+    "git_sha": "f8dc5f643805bf96aba0d4671832b5d6e285f4a9",
     "unified_turn_live_enabled": true
   },
   "checks": {
@@ -146,10 +214,24 @@
       "business_graph"
     ],
     "bounds_respected": true,
+    "rich_loop_meta_present": true,
+    "rich_assessors": [
+      "assessor_error"
+    ],
+    "rich_bar": "regulatory",
+    "rich_additional_rounds_used": 0,
+    "rich_final_sufficient": true,
+    "rich_stopped_because": null,
+    "rich_sources_tried": [
+      "knowledge_pack",
+      "org_rag"
+    ],
+    "rich_bounds_respected": true,
+    "model_judged_sufficiency_anywhere": false,
     "simple_loop_did_not_engage": true,
     "simple_skip_reason": "not_informational",
-    "hard_wall_ms": 17927,
-    "simple_wall_ms": 13957,
+    "hard_wall_ms": 17012,
+    "simple_wall_ms": 13352,
     "conflicts": null
   },
   "verdict": "PARTIAL \u2014 loop ran; see checks for which criterion missed"

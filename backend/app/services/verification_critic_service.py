@@ -104,7 +104,7 @@ class VerificationCriticService:
             "If passed, revised_answer may be null. Keep revisions minimal."
         )
         try:
-            router = get_model_router(self.settings)
+            router = get_model_router()
             response = await router.complete(
                 TaskType.SUMMARIZATION,
                 prompt,
@@ -144,7 +144,9 @@ class VerificationCriticService:
                 "mandatory": require_critic,
             }
         except Exception as exc:  # noqa: BLE001
-            logger.debug("verification_critic_skipped org_id=%s error=%s", org_id, exc)
+            # DEBUG is why a TypeError in this call sat here unnoticed: the
+            # mandatory critic degraded silently on every turn.
+            logger.warning("verification_critic_skipped org_id=%s error=%s", org_id, exc)
             if require_critic:
                 return {
                     "passed": False,

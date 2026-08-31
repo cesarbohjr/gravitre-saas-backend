@@ -91,8 +91,8 @@ def escalate_to_an_already_tried_source() -> str:
 def silence_the_shortfall() -> str:
     return _sub(
         CTX,
-        "        if not verdict.sufficient:\n",
-        "        if False:\n",
+        "        elif not verdict.sufficient:\n",
+        "        elif False:\n",
         "removed the honest shortfall warning from the prompt",
     )
 
@@ -135,6 +135,26 @@ def restore_freshness_dead_end() -> str:
     )
 
 
+def restore_assessor_fail_open() -> str:
+    """The prod bug: a failed assessor certified the evidence it never judged."""
+    return _sub(
+        SUFF,
+        "        logger.warning(\"sufficiency_assessor_failed org_id=%s error=%s\", org_id, exc)\n        return SufficiencyVerdict(\n            sufficient=False,",
+        "        logger.warning(\"sufficiency_assessor_failed org_id=%s error=%s\", org_id, exc)\n        return SufficiencyVerdict(\n            sufficient=True,",
+        "restored fail-open (broken assessor reports evidence as sufficient)",
+    )
+
+
+def escalate_on_assessor_error() -> str:
+    """Withholding sufficiency must not burn the round budget on every hiccup."""
+    return _sub(
+        CTX,
+        '            if verdict.assessor == "assessor_error":',
+        "            if False:",
+        "loop escalates through every source when the assessor is simply broken",
+    )
+
+
 def always_report_process() -> str:
     return _sub(
         SUFF,
@@ -155,6 +175,8 @@ MUTATIONS = [
     (CONTRA, CONTRA_TESTS, "test_unresolved_conflict_is_surfaced_with_both_claims", always_pick_a_winner),
     (CONTRA, CONTRA_TESTS, "test_authority_works_on_the_scale_the_real_corpus_actually_uses", revert_authority_scale_fix),
     (SUFF, LOOP_TESTS, "test_clean_single_pass_produces_no_process_noise", always_report_process),
+    (SUFF, LOOP_TESTS, "test_a_broken_assessor_withholds_sufficiency_rather_than_granting_it", restore_assessor_fail_open),
+    (CTX, LOOP_TESTS, "test_a_broken_assessor_stops_the_loop_instead_of_burning_the_budget", escalate_on_assessor_error),
 ]
 
 
