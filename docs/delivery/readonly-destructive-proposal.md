@@ -1,6 +1,7 @@
 # A read-only question stages a destructive write the user never asked for
 
-**Status: REPRODUCED, deterministic, unfixed. Safety-relevant.**
+**Status: REPRODUCED and deterministic. Guard applied, mutation-proven, awaiting
+a production deploy for live confirmation. Safety-relevant.**
 Deployed tip `db928881`. Evidence:
 `docs/delivery/readonly-destructive-proposal-probe.json`.
 
@@ -107,7 +108,51 @@ system and replies `yes` gets a HubSpot list they never asked for.
 It also explains the false "stale approval hold" report earlier in this program.
 That was this bug, seen through a probe that opened a new conversation per turn.
 
-## Not fixed here
+## Fix applied — withhold invented arguments (option 1, authorized)
+
+Authorized choice: refuse to fabricate arguments for a destructive action the
+user never requested. Implemented in `apply_pack_common_defaults`, the one
+chokepoint all four staging paths already share (governed chat, ReAct write gate,
+unified-turn reasoning, orchestration), so this is not a single-path patch.
+
+The condition is deliberately two-part, because either half alone would be wrong:
+
+```python
+if plan.destructive and not LIST_CREATE_INTENT.search(message):
+    return plan  # leave the slots empty
+```
+
+- **`destructive` only, never `requires_approval`.** Many benign actions require
+  approval; gating on that would suppress defaults far beyond this defect and
+  broke `apollo.lists.add` / `clay.crm.sync` in the existing suite.
+- **The create-intent check is what preserves legitimate flows.** A real
+  omit-name create ("Create a HubSpot static list") is *also* fully
+  default-filled, so a pure "all args are pack defaults" rule would have blocked
+  it. It says "create", `LIST_CREATE_INTENT` matches, and defaults still apply.
+
+With the slots left empty the plan fails the required-parameter check instead of
+arriving as a one-word-from-execution approval prompt. `is_unrequested_destructive_plan()`
+is exposed alongside it for callers that need the predicate directly.
+
+**Evidence:**
+
+- `backend/tests/services/test_unrequested_destructive_plan_guard.py` — 5 tests,
+  asserting both directions: the read-only message gets no invented args, and a
+  genuine create request still gets all three.
+- **Mutation-proven.** Replacing the guard condition with `if False:` restores
+  the exact fabrication (`{'name': 'MSPs', 'object_type_id': '0-1',
+  'processing_type': 'MANUAL'}`) and fails the test. The guard is load-bearing.
+- **No regressions:** 75 passed across `test_pack_common_intent_defaults`,
+  `test_connector_action_workflows`, `test_chat_connector_execution`,
+  `test_approval_action_binding`, plus the new file.
+
+**Still owed: live re-run of `probe-readonly-destructive-proposal.py` against a
+deployed tip carrying this fix.** Production has been serving `db928881` across
+five pushes, so the fix is on `main` and not yet live. Until that probe returns
+0/4 in production, this is **fixed and verified locally, NOT live-confirmed** —
+the 4/4 reproduction stands against the currently deployed build.
+
+## Options considered and not taken
 
 Deliberately left unfixed pending a decision, because the plausible fixes differ
 in blast radius:

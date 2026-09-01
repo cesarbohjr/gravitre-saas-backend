@@ -22,7 +22,10 @@ from app.marketplace.workflows.msp_prospecting_list_workflow import (
     DEFAULT_APOLLO_LIST_NAME,
     DEFAULT_HUBSPOT_LIST_NAME,
 )
-from app.services.chat_connector_models import ConnectorActionPlan
+from app.core.logging import get_logger
+from app.services.chat_connector_models import LIST_CREATE_INTENT, ConnectorActionPlan
+
+logger = get_logger(__name__)
 
 # Pack ids this catalog covers (MSP + Prospecting competitive surface).
 PACK_IDS = frozenset({"msp-intelligence-pack", "prospecting-intelligence-pack"})
@@ -341,6 +344,45 @@ def try_pack_common_list_create_plan(
     return None
 
 
+def is_unrequested_destructive_plan(
+    plan: ConnectorActionPlan, message: str = ""
+) -> bool:
+    """True when a destructive plan appears fabricated rather than requested.
+
+    Guards a real, reproduced defect: a read-only question ("Show me the most
+    recent deals in our HubSpot pipeline with their amounts and close dates")
+    reached ReAct, which selected `hubspot_lists_create`, and the pipeline then
+    filled *every* argument from pack defaults and staged it as approval-ready.
+    The user was told "I still have Create list waiting for approval", and a
+    trusting `yes` would have created a HubSpot list they never asked for.
+    `APPROVAL_ACTION_MISMATCH` cannot catch that: the approved and executed
+    actions are identical. See docs/delivery/readonly-destructive-proposal.md.
+
+    The signature is a destructive action whose arguments came entirely from
+    pack defaults, on a message that never expressed create intent. Both halves
+    are required. A legitimate omit-name create ("Create a HubSpot static list")
+    also gets fully default-filled args, and must keep working — it says
+    "create", so `LIST_CREATE_INTENT` matches and this returns False.
+
+    Only `destructive` is consulted, not `requires_approval`: plenty of benign
+    actions require approval, and treating those as fabricated would suppress
+    defaults far beyond the defect.
+    """
+    if plan is None or not getattr(plan, "destructive", False):
+        return False
+    if LIST_CREATE_INTENT.search(message or ""):
+        return False
+
+    args = {k: v for k, v in (plan.args or {}).items() if str(v or "").strip()}
+    if not args:
+        # Nothing invented yet. Defaults have not run, so there is nothing to
+        # refuse; the caller decides whether an empty destructive plan is stageable.
+        return False
+
+    sources = dict(plan.inference_sources or {})
+    return all(sources.get(key) == SOURCE_PACK_DEFAULT for key in args)
+
+
 def apply_pack_common_defaults(
     plan: ConnectorActionPlan,
     *,
@@ -356,6 +398,17 @@ def apply_pack_common_defaults(
         return plan
     action = str(plan.invoke_action or "").strip()
     if not action:
+        return plan
+
+    # Do not invent arguments for a destructive action the user never asked for.
+    # Leaving the slots empty makes the plan fail the required-param check
+    # instead of arriving as a one-word-from-execution approval prompt.
+    if getattr(plan, "destructive", False) and not LIST_CREATE_INTENT.search(message or ""):
+        logger.warning(
+            "pack_defaults_withheld_unrequested_destructive action=%s message=%r",
+            action,
+            (message or "")[:120],
+        )
         return plan
 
     if action == "apollo.lists.create":

@@ -1,0 +1,115 @@
+"""Guard: never invent arguments for a destructive action nobody asked for.
+
+Pins the fix for a reproduced defect (4/4 live at tip `db928881`, see
+docs/delivery/readonly-destructive-proposal.md). A read-only question reached
+ReAct, which selected `hubspot_lists_create`; pack defaults then filled every
+argument and the turn arrived as "I still have Create list waiting for approval.
+Say yes to run it." `APPROVAL_ACTION_MISMATCH` cannot catch this, because the
+approved and executed actions are identical — the proposal itself is fabricated.
+
+The hard part is not blocking the fabrication, it is blocking it without breaking
+legitimate omit-name creates, which are also fully default-filled. Both
+directions are asserted here.
+"""
+from __future__ import annotations
+
+from app.marketplace.workflows.msp_prospecting_list_workflow import (
+    DEFAULT_HUBSPOT_LIST_NAME,
+)
+from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.pack_common_intent_defaults import (
+    apply_pack_common_defaults,
+    is_unrequested_destructive_plan,
+)
+
+# The exact message that reproduces, from the live artifact.
+READ_ONLY = (
+    "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
+)
+REQUESTED = "Create a HubSpot static list"
+
+
+def _hubspot_list_create(*, destructive: bool, **args: object) -> ConnectorActionPlan:
+    return ConnectorActionPlan(
+        tool_name="hubspot_lists_create",
+        invoke_action="hubspot.lists.create",
+        integration="hubspot",
+        kind="write",
+        label="Create list",
+        args=dict(args),
+        requires_approval=True,
+        destructive=destructive,
+    )
+
+
+def test_read_only_message_gets_no_invented_args_for_destructive_create() -> None:
+    """The defect itself: no create intent, so no arguments may be conjured."""
+    out = apply_pack_common_defaults(
+        _hubspot_list_create(destructive=True), message=READ_ONLY
+    )
+    assert not out.args.get("name"), (
+        "a read-only question was given a fabricated list name; a trusting 'yes' "
+        "would create a HubSpot list the user never requested"
+    )
+    assert not out.args.get("object_type_id")
+    assert not out.args.get("processing_type")
+
+
+def test_a_real_create_request_still_gets_its_defaults() -> None:
+    """The regression this guard must not cause."""
+    out = apply_pack_common_defaults(
+        _hubspot_list_create(destructive=True), message=REQUESTED
+    )
+    assert out.args.get("name") == DEFAULT_HUBSPOT_LIST_NAME
+    assert out.args.get("processing_type") == "MANUAL"
+    assert out.args.get("object_type_id") == "0-1"
+
+
+def test_non_destructive_actions_are_untouched_by_the_guard() -> None:
+    """Only `destructive` gates this, so approval-only actions keep their defaults."""
+    out = apply_pack_common_defaults(
+        _hubspot_list_create(destructive=False), message=READ_ONLY
+    )
+    assert out.args.get("name") == DEFAULT_HUBSPOT_LIST_NAME
+
+
+def test_predicate_flags_the_fully_fabricated_plan() -> None:
+    fabricated = ConnectorActionPlan(
+        tool_name="hubspot_lists_create",
+        invoke_action="hubspot.lists.create",
+        integration="hubspot",
+        kind="write",
+        label="Create list",
+        args={"name": "MSPs", "object_type_id": "0-1", "processing_type": "MANUAL"},
+        inferred_fields=("name", "object_type_id", "processing_type"),
+        inference_sources={
+            "name": "pack_common_default",
+            "object_type_id": "pack_common_default",
+            "processing_type": "pack_common_default",
+        },
+        requires_approval=True,
+        destructive=True,
+    )
+    assert is_unrequested_destructive_plan(fabricated, READ_ONLY) is True
+    # Same plan, but the user actually asked for it.
+    assert is_unrequested_destructive_plan(fabricated, REQUESTED) is False
+
+
+def test_predicate_ignores_plans_with_a_user_supplied_arg() -> None:
+    """One genuinely user-derived value is enough to clear the fabrication test."""
+    partly_real = ConnectorActionPlan(
+        tool_name="hubspot_lists_create",
+        invoke_action="hubspot.lists.create",
+        integration="hubspot",
+        kind="write",
+        label="Create list",
+        args={"name": "Northeast Renewals", "object_type_id": "0-1"},
+        inferred_fields=("object_type_id",),
+        inference_sources={
+            "name": "message",
+            "object_type_id": "pack_common_default",
+        },
+        requires_approval=True,
+        destructive=True,
+    )
+    assert is_unrequested_destructive_plan(partly_real, READ_ONLY) is False
