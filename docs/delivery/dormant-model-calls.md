@@ -995,3 +995,93 @@ fixed so far:
 The three highest-reach sites are on the unified-turn path that serves the
 majority of traffic, which is the opposite of the dead-region read. These are
 ordinary fix-and-prove work, not a product decision.
+
+### Live follow-up: the region is entered, but not via `read_tool_classical`
+
+With `classical.answer_path.reached` deployed at `d154bb99`, four turn shapes
+were run live (`docs/delivery/query-rewriter-reachable-shape.json`). Two produced
+a genuine `read_tool_classical` fallthrough — and **still** recorded zero
+region-reach events.
+
+So that reason falls through the unified turn and then exits *before* line 2608,
+which matches the static read: `run_connector_turn` handles the read tool and
+returns at the `stop_pipeline` branch on line 2606, one line above the region.
+
+This does not revive the dead-path hypothesis — 606 post-region ReAct iterations
+over 30 days are not in dispute. It narrows it: the route into the region is one
+of the three reasons not yet reproduced live (`defer_classical_tool_sse`,
+`outcome_error`, `pending_family_classical_resume`), or a fallthrough where the
+connector turn declines to stop the pipeline. **Which one is still unidentified**
+and is not being guessed at here.
+
+## Phase 2 — sites 9 and 10, `contextual_understanding_service.py:225` and `domain_intelligence_service.py:208` (PASS on dormancy)
+
+Fixed together: domain classify is nested inside `understand()` at
+`contextual_understanding_service.py:89`, so neither is reachable in production
+without the other, and proving them separately would have meant faking the
+caller of one to test the other.
+
+Both were `get_model_router(self.settings)` inside a broad `except Exception`.
+
+**Reach, measured before fixing** (the discipline the dead-path detour bought):
+
+- Site 9 is called at `agent_intelligence.py:1753`, at function-body level, so it
+  runs on **every** streaming turn past the cache and pending-clarify returns —
+  roughly 1,527 turns/30d, unified-served and fallthrough alike. This is the
+  highest-reach site in the whole audit.
+- Site 10 is reached only when rule + org-profile confidence lands under
+  `DOMAIN_CONFIDENCE_THRESHOLD` (0.55).
+
+**What was silently absent.** Site 9's `_model_extract` only runs when rules
+cannot infer a goal — messages that do not end in `?` and run past 12 words. For
+exactly those long, instruction-shaped messages, `goal` stayed `None` and
+`constraints` stayed empty, and that empty understanding is what
+`get_task_classifier(...).classify(understanding=...)` received.
+
+Site 10 is worse in kind. It is the documented third tier — "org profile hints
+first, rule/keyword taxonomy second, **LLM fallback last**". That last tier has
+never existed in production. Every message too ambiguous for keyword rules kept
+its low-confidence guess, and `DOMAIN_CONFIDENCE_THRESHOLD` is read by
+`domain_routing_policy`, `domain_retrieval_policy` and `learning_strategy_keys`
+— so the absence changed routing and retrieval decisions, not just a label.
+
+### Before/after against real code, fixes stashed
+
+`backend/scripts/probe_understanding_domain_before_after.py`, artifacts
+`docs/delivery/understanding-domain-{before,after}.json`. The before arm is the
+actual pre-fix source via `git stash`, not a reconstruction.
+
+| | before | after |
+|---|---|---|
+| site 9 factory call | with 1 arg ? TypeError | zero-arg |
+| site 9 result | `{}` — goal `None`, constraints `[]` | real goal + 2 constraints |
+| site 10 factory call | with 1 arg ? TypeError | zero-arg |
+| site 10 result | rule result verbatim, **confidence 0.1** | real classification, **confidence 0.82** |
+
+Both WARNING lines name the cause exactly: `get_model_router() takes 0
+positional arguments but 1 was given`.
+
+The site 10 row is the finding in one line: dormant, the fallback tier returned
+the caller's own low-confidence input unchanged, below the 0.55 threshold that
+downstream policy reads.
+
+### Tests
+
+`backend/tests/services/test_understanding_and_domain_reach_model.py`, 10 tests.
+The fake router raises `TypeError` on **any** argument, mirroring the real
+factory. That is deliberate: a permissive `MagicMock` is precisely how this bug
+survived at the query rewriter, where the existing test passed with the bug
+present. Mutation-proven 6/6
+(`backend/scripts/scratch_mutate_understanding_domain.py`), including restoring
+the dormant arity at both sites and deleting the low-confidence tier.
+
+`KNOWN_DORMANT` shrinks by two; two remain (`clarification_engine.py:769`,
+`conversational_turn_gate.py:240`).
+
+### Honest limit — live proof NOT YET obtained
+
+**Status: PASS on dormancy, live production impact NOT PROVEN.** Neither service
+writes an audit event, so there is currently no production signal that would
+distinguish a working call from a dormant one. Site 9 in particular runs on
+essentially every turn, which makes it both the most valuable to confirm and the
+most costly to leave unobserved. Not labelled PASS overall until that exists.
