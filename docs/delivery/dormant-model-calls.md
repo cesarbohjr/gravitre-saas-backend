@@ -320,6 +320,21 @@ or whether it should be retired in favor of the grounding behavior the unified
 turn already has. That is a product decision, not a signature bug, and is not
 decided here.
 
+### Superseded — the "unreproduced" observation below is now REPRODUCED
+
+Investigated properly in
+[`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
+**4/4 on the exact phrasing**, deterministic, safety-relevant, unfixed. It is not
+contamination: "MSPs" is `DEFAULT_HUBSPOT_LIST_NAME`, a deliberate pack default,
+and the real defect is that ReAct selects a destructive create tool for a
+read-only request. `APPROVAL_ACTION_MISMATCH` was tested against the claim and
+**would not catch it** — proposed and executed actions are identical.
+
+This also explains the false stale-hold report above: same bug, seen through a
+probe that opened a new conversation per turn.
+
+The original, now-superseded note is kept below unedited.
+
 ### Unreproduced observation, kept honest
 
 In the failing run, a **read-only** request ("show me the most recent deals")
