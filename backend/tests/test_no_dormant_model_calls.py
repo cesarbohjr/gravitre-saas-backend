@@ -86,6 +86,11 @@ KNOWN_DORMANT = {
     # live-proven dormant via org_rag_error in the replan-loop artifact):
     #   app/schedulers/cache_warming_scheduler.py:48
     #   app/services/unified_turn_knowledge_context.py:201
+    # Fixed 2026-08-31 (site 4). Its prompt says "Do not invent ids", so while it
+    # was dormant the only thing filling connector args was heuristics and pack
+    # defaults — the same path that fabricates the destructive write in
+    # docs/delivery/readonly-destructive-proposal.md:
+    #   app/services/schema_param_extractor.py:319
     "app/services/clarification_engine.py:769",
     "app/services/contextual_understanding_service.py:225",
     "app/services/conversation_turn_controller.py:273",
@@ -93,7 +98,6 @@ KNOWN_DORMANT = {
     "app/services/domain_intelligence_service.py:208",
     "app/services/pending_reply_classifier.py:500",
     "app/services/query_rewriter.py:52",
-    "app/services/schema_param_extractor.py:319",
 }
 
 

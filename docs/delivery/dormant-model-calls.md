@@ -320,6 +320,39 @@ or whether it should be retired in favor of the grounding behavior the unified
 turn already has. That is a product decision, not a signature bug, and is not
 decided here.
 
+## Phase 2 — site 4, `schema_param_extractor.py:319` (PARTIAL)
+
+Taken next as the highest-severity remaining site, and because it turned out to
+be directly relevant to the fabricated-write finding: this extractor's own prompt
+says *"Return ONLY keys that have a confident value. Do not invent ids."* While
+it was dormant, the only things filling connector arguments were regex heuristics
+and pack defaults — precisely the path that invents
+`{"name": "MSPs", ...}` in
+[`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
+
+Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+
+**Proven** (`backend/scripts/probe_site4_schema_param_extractor.py`), with the
+pre-fix call shape re-created deliberately so the result cannot be mistaken for
+something that always worked:
+
+```
+get_model_router(settings) -> TypeError: takes 0 positional arguments but 1 was given
+get_model_router()         -> OK — ModelRouter
+```
+
+**Not proven: that the model call adds arguments heuristics miss.** Two messages
+hiding the list name in prose ("we've been calling the segment Northeast
+Renewals") returned `{}` from both the heuristic and the model-backed path. That
+is a limitation of the probe, not evidence about the fix: with no connector schema
+registered in a bare local context, `_schema_field_keys` returns no fields, so
+`required_missing` is empty and the function returns before reaching the model at
+all.
+
+Status: **fix shipped and guard-enforced; functional before/after INCONCLUSIVE.**
+Live proof needs a turn with a real registered action schema and a genuinely
+missing required parameter, which has not been run yet. Not upgraded to PASS.
+
 ### Superseded — the "unreproduced" observation below is now REPRODUCED
 
 Investigated properly in

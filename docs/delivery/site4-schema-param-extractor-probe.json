@@ -1,0 +1,24 @@
+{
+  "site": "app/services/schema_param_extractor.py:319",
+  "pre_fix_call_shape": "TypeError: get_model_router() takes 0 positional arguments but 1 was given",
+  "post_fix_call_shape": "OK \u2014 ModelRouter",
+  "cases": [
+    {
+      "action": "hubspot.lists.create",
+      "message": "Could you set something up in HubSpot? We've been calling the segment Northeast Renewals internally, so use that as the name please.",
+      "heuristic_only": {},
+      "model_backed": {},
+      "fields_gained_from_model": {},
+      "error": null
+    },
+    {
+      "action": "hubspot.lists.create",
+      "message": "Make me a static list. The team refers to it as Q4 Expansion Targets.",
+      "heuristic_only": {},
+      "model_backed": {},
+      "fields_gained_from_model": {},
+      "error": null
+    }
+  ],
+  "verdict": "EXECUTES without raising, but added no argument on these cases"
+}

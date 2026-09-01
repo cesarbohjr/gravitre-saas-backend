@@ -316,7 +316,7 @@ async def extract_action_args(
             f"Still missing: {', '.join(missing) or 'none'}\n"
             f"Current message: {message}\n"
         )
-        response = await get_model_router(settings or get_settings()).complete(
+        response = await get_model_router().complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(
