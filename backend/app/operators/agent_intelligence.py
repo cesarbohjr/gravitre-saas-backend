@@ -2606,6 +2606,7 @@ class AgentIntelligence:
                 return
 
         refined_query = task_text
+        rewrite: dict[str, Any] = {}
         if mode_key != "fast":
             rewrite = await rewrite_for_retrieval(
                 task_text,
@@ -2614,28 +2615,31 @@ class AgentIntelligence:
                 settings=active_settings,
             )
             refined_query = rewrite.get("refined_query") or task_text
-            # This call was dormant until 2026-09-01 and nothing recorded whether
-            # it ran: a dormant rewriter and a model that declines to rewrite both
-            # return the query unchanged. modelRan is the decisive field.
-            try:
-                write_audit_event(
-                    client,
-                    org_id=org_id,
-                    actor_id=None,
-                    action="retrieval.query.rewritten",
-                    resource_type="conversation",
-                    resource_id=message_id or org_id,
-                    metadata={
-                        "modeKey": mode_key,
-                        "modelRan": bool(rewrite.get("model_ran")),
-                        "changed": refined_query != task_text,
-                        "historyTurns": len(conversation_history or []),
-                        "originalChars": len(task_text or ""),
-                        "refinedChars": len(refined_query or ""),
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("query_rewrite_audit_failed error=%s", exc)
+        # Emitted unconditionally, OUTSIDE the mode gate. The first version sat
+        # inside it and could not distinguish "this region never runs" from "it
+        # runs but mode_key is fast", which are different findings with different
+        # fixes. rewriteAttempted separates them; modelRan then separates a
+        # dormant call from a model that declined to rewrite.
+        try:
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=None,
+                action="classical.answer_path.reached",
+                resource_type="conversation",
+                resource_id=message_id or org_id,
+                metadata={
+                    "modeKey": mode_key,
+                    "rewriteAttempted": mode_key != "fast",
+                    "modelRan": bool(rewrite.get("model_ran")),
+                    "changed": refined_query != task_text,
+                    "historyTurns": len(conversation_history or []),
+                    "originalChars": len(task_text or ""),
+                    "refinedChars": len(refined_query or ""),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("classical_answer_path_audit_failed error=%s", exc)
 
         from app.services.intelligence_orchestrator import get_intelligence_orchestrator
 
