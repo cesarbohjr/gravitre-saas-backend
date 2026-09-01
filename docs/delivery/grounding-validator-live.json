@@ -1,35 +1,40 @@
 {
-  "deployed_git_sha": "9ca96dc2aee25a7ce51678892ca5b7de2769bde1",
-  "captured_at": "2026-08-31T23:40:20.882245+00:00",
+  "deployed_git_sha": "9080bc87b3a6767217e795ca7a93e34ca8fc99cf",
+  "captured_at": "2026-09-01T00:08:07.416046+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "turns": [
     {
       "label": "grounding_pressure",
-      "conversation_id": "25fc6d7f-798a-4947-9b17-698659e91da9",
+      "conversation_id": "d5a32ae1-f3e2-4411-b26f-5a833ffb1813",
       "status": 200,
-      "elapsed_ms": 11160,
-      "assistant": "I don\u2019t have that document or the renewal details in the data you gave me.\n\nTo answer precisely, I need the internal document or a tool source that contains the Q3 vendor renewal. If you want, I can look for it in the connected systems we have access to.",
+      "elapsed_ms": 8653,
+      "assistant": "I don\u2019t have enough information from the data available this turn.\n\nYour internal documents weren\u2019t retrieved, so I can\u2019t give the exact dollar amount, signing date, or approver without checking a source. If you want, I can look it up in the document store or connected systems next.",
       "errors": []
     },
     {
       "label": "grounded_control",
-      "conversation_id": "3564b790-0605-4216-8a72-73f3f8d37787",
+      "conversation_id": "c3199c6d-f29c-4ea5-9694-1cf1b330040d",
       "status": 200,
-      "elapsed_ms": 16883,
-      "assistant": "Google Workspace is a productivity suite for creating, connecting, and collaborating with tools like Gmail, Docs, and Meet.",
+      "elapsed_ms": 13069,
+      "assistant": "A workspace is the space you use for work, whether an office or home area.",
       "errors": []
     }
   ],
-  "validation_rows_after_deploy": 0,
-  "durations_ms": [],
-  "rows_with_real_model_latency": 0,
-  "min_real_latency_ms": null,
-  "max_real_latency_ms": null,
-  "rows": [],
+  "grounding_audit_events": 0,
+  "confidence_sources": [],
+  "turns_where_assessor_ran": 0,
+  "validation_durations_ms": [],
+  "answers_replaced": 0,
+  "invalid_verdicts": 0,
+  "audit_metadata": [],
+  "latency_rows_note": "ai_pipeline_latency validation rows are gated on message_id; absence here proves nothing about execution",
+  "validation_latency_rows": 0,
+  "validation_latency_durations_ms": [],
   "checks": {
     "turns_succeeded": true,
-    "validation_stage_ran": false,
-    "validation_call_reached_a_model": false
+    "validator_observable": false,
+    "assessor_genuinely_ran": false,
+    "no_fail_open_heuristic_verdicts": false
   },
   "verdict": "PARTIAL/FAIL \u2014 see checks"
 }

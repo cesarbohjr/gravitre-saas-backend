@@ -175,3 +175,42 @@ audit event recording the validation verdict, which would also give the
 before/after quality comparison Phase 2 asks for.
 
 **Status: site 1+3 SHIPPED and DEPLOYED, live execution NOT CONFIRMED.**
+
+### Second live run at `9080bc87` — root of the non-confirmation found
+
+An `answer.grounding.validated` audit event was added so execution could be
+observed without depending on `message_id`. Its decisive field is
+`confidenceSource`: `"model"` means the assessor genuinely judged, `"heuristic"`
+means the call fell through to the permissive default.
+
+The re-run produced **zero such events**, and the reason is structural, not a
+missing signal. Both turns were handled by `unified_turn.live.completed`:
+
+```
+grounding_pressure  d5a32ae1…  unified_turn.live.completed  2026-09-01T00:07:38Z
+grounded_control    c3199c6d…  unified_turn.live.completed  2026-09-01T00:07:53Z
+```
+
+The grounding validator is called from
+`agent_intelligence._finalize_assistant_response`, which sits on the ReAct
+finalize path. Production chat traffic takes the **unified turn** path and only
+reaches ReAct on `unified_turn.live.fallthrough` — an event that does appear in
+this org's history, but did not fire on either of these turns.
+
+### Consequence for the Phase 0 severity ranking (second correction)
+
+Site 1 was ranked **Critical — every validated answer declared grounded without
+a check**. That ranking assumed the validator sits on the main answer path. It
+does not. Its real reachability is narrower still: validated modes
+(`standard`/`reasoning`) **and** a unified-turn fallthrough.
+
+This does not make the fix wrong — a grounding gate that fails open is a real
+defect and is now repaired. But the honest reading is that the capability was
+absent from a **narrower slice of traffic** than the original ranking implied,
+and that a separate, larger question is now open: whether the grounding check
+should be on the unified turn path at all, given that is where real traffic
+goes. That is a design question, not a signature bug, and is not decided here.
+
+Live execution of site 1+3 therefore remains **NOT CONFIRMED**, with the reason
+now known: the proof requires a turn that reaches ReAct finalize, which these
+did not.
