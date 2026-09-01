@@ -18,6 +18,30 @@ test:
   given"` on both evidence-bearing turns. The loop reported `org_rag` in
   `sources_tried` while that source had thrown instantly.
 
+## Deferred, low priority — `_classify_error` mislabels internal bugs as user error
+
+Raised 2026-09-01 during the HubSpot search investigation. **Not urgent, real,
+and deliberately not folded into the dormant-call work.** Recorded here so it
+is not lost; it deserves its own audit once the twelve sites are closed.
+
+`tool_service._classify_error` is the connector-wide fallthrough for tool
+exceptions. Transport faults and timeouts were being labelled
+`validation_error` and were fixed at that chokepoint; see
+`docs/delivery/hubspot-search-validation-dead-end.md`. What remains is the
+broader case: an arbitrary internal exception — a `KeyError` in Gravitre's own
+code, for instance — still classifies as `validation_error`, so **our bug is
+presented to the user as their input being wrong**, across all 727 actions.
+
+Why it was not fixed in that pass: separating "our fault" from "your input" for
+arbitrary exceptions requires auditing what every caller actually raises, per
+connector. Changing the default without that audit would alter user-facing
+messages catalog-wide with no way to verify the result, which is the kind of
+unverified bulk change this program has repeatedly found to be wrong.
+
+Scope when picked up: enumerate the real exception types reaching
+`_classify_error` from each connector, decide the correct classification per
+type, and keep `validation_error` for genuine user-input faults only.
+
 ## Phase 0 — exhaustive inventory (2026-08-31)
 
 Method: AST scan of all 318 zero-argument module-level factories in
@@ -647,6 +671,108 @@ Honest limits on this PASS:
   model-generated regardless, so the reply *text* is not itself evidence about
   the classifier. The load-bearing evidence is the branch discrimination above,
   not how sensible the wording sounds.
+
+## Phase 2 — site 7, `query_rewriter.py:52` (PASS on dormancy)
+
+Fix: `get_model_router(settings)` → `get_model_router()`.
+
+What was silently absent: `rewrite_for_retrieval` turns a context-dependent
+follow-up into a standalone search query. Its one production caller,
+`agent_intelligence.py:2610`, feeds the result straight into
+`prepare_assistant_turn(query=refined_query)` — so its output **is** the query
+the whole turn retrieves against, for RAG, Knowledge Fabric and hybrid search
+alike.
+
+While dormant it returned `refined_query == original_query` every time. So for
+every context-dependent follow-up in every non-`fast` mode, retrieval searched
+on the raw text. *"and what about their renewal?"* went to the index exactly
+like that, with `their` unresolved and `Acme Corp` — the only useful search term
+in the exchange — never reaching it.
+
+This one fails toward **quietly worse retrieval**, which produces no error and
+no user-visible symptom. The answer still arrives, because the final generation
+model sees the conversation history directly; only the evidence behind it is
+thinner. That makes it the least visible site so far and the hardest to have
+caught by observation.
+
+### Before/after, buggy call restored for the first pass
+
+`backend/scripts/probe_query_rewriter_before_after.py`,
+artifact `docs/delivery/query-rewriter-before-after.json`.
+
+| | Router entered | TypeError | `refined_query` |
+|---|---|---|---|
+| before | **no** | yes, swallowed at WARNING | `"and what about their renewal?"` (unchanged) |
+| after | **yes** | no | unchanged — no AI provider configured locally |
+
+```
+WARNING: query rewrite skipped org_id=probe-org
+  error=get_model_router() takes 0 positional arguments but 1 was given
+```
+
+Note the trap in reading this table: `refined == original` is also the *correct*
+fallback, so the returned string alone cannot distinguish "dormant" from
+"working but declined". Router entry is the discriminator locally — and in
+production that ambiguity is now resolved by the audit field below.
+
+### New finding — the existing test could never have caught this
+
+`test_intelligence_engine_gaps.py::test_query_rewriter_uses_conversation_context`
+has covered this function all along. It patches the factory with
+`patch(..., return_value=router)`, which installs a `MagicMock`. A `MagicMock`
+accepts **any** signature, so `get_model_router(settings)` succeeds inside the
+test while the real zero-arg factory raises `TypeError` in production.
+
+Measured, not asserted
+(`backend/scripts/scratch_prove_existing_rewriter_test_blind.py`):
+
+```
+  existing test WITH the fix : PASS
+  existing test WITH the bug : PASS
+```
+
+The mock granted the production code a calling convention it does not have.
+This is the seventh instance in this program of a green test being the reason a
+bug survived, and it is a **distinct class from "one layer too low"**: not a fix
+aimed below the real cause, but a test that could not fail. Worth separating,
+because the countermeasures differ — the first needs live re-verification after
+deploy, this one needs fakes that enforce the real signature.
+
+Every fake in the new suite therefore asserts the factory is called with zero
+arguments.
+
+### Production observability added
+
+A dormant rewriter and a model that declines to rewrite return byte-identical
+results, which is precisely why this sat unnoticed. Following the precedent set
+for the grounding validator, the caller now writes a
+`retrieval.query.rewritten` audit event carrying **`modelRan`** — true only
+after `router.complete` returns — alongside `changed`, `modeKey`, and
+`historyTurns`. `rewrite_for_retrieval` returns the new `model_ran` key to
+support it.
+
+Two mutations exist specifically to stop that field lying: one sets it to `True`
+unconditionally, one sets it before the call completes. Both are caught.
+
+### Standing regression test
+
+`backend/tests/services/test_query_rewriter_reaches_model.py` — 14 tests.
+Load-bearing assertions: a follow-up is genuinely rewritten when the model
+returns one; `settings` is never forwarded to the factory; conversation history
+reaches the prompt; the cheap `INTENT_DETECTION` tier and `temperature=0.0` are
+pinned; the model is not consulted when there is no history or no query; an
+echoed or unparseable response falls back to the original; the 2000-character
+cap holds; and `model_ran` is correct in all four branches, including `False`
+for the exact `TypeError` that defined the dormancy.
+
+Mutation-proven 11/11 (`backend/scripts/scratch_mutate_query_rewriter.py`).
+Regression check: 40 passed across the rewriter, intelligence-engine, and
+research-policy suites. Baseline: `query_rewriter.py:52` removed from
+`KNOWN_DORMANT`. **Seven of twelve sites now closed.**
+
+### Live production proof
+
+Pending — see below.
 
 ## Phase 2 — customer RAG (`get_rag_service`, both sites)
 

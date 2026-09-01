@@ -1,0 +1,45 @@
+{
+  "captured_at": "2026-09-01T20:42:38.992495+00:00",
+  "site": "backend/app/services/query_rewriter.py:52",
+  "query": "and what about their renewal?",
+  "history": [
+    {
+      "role": "user",
+      "content": "Tell me about the Acme Corp account"
+    },
+    {
+      "role": "assistant",
+      "content": "Acme Corp is an enterprise customer on the Platinum plan."
+    }
+  ],
+  "before": {
+    "label": "BEFORE \u2014 original buggy call restored",
+    "router_entered": false,
+    "type_error_seen": true,
+    "result": {
+      "original_query": "and what about their renewal?",
+      "refined_query": "and what about their renewal?"
+    },
+    "returned_unrewritten": true,
+    "handler_logged": [
+      "WARNING: query rewrite skipped org_id=probe-org error=get_model_router() takes 0 positional arguments but 1 was given"
+    ],
+    "raised": null
+  },
+  "after": {
+    "label": "AFTER \u2014 fix in place",
+    "router_entered": true,
+    "type_error_seen": false,
+    "result": {
+      "original_query": "and what about their renewal?",
+      "refined_query": "and what about their renewal?"
+    },
+    "returned_unrewritten": true,
+    "handler_logged": [
+      "WARNING: query rewrite skipped org_id=probe-org error=All AI providers failed (openai: unavailable/not-configured; anthropic: unavailable/not-configured; gemini: unavailable/not-configured)"
+    ],
+    "raised": null
+  },
+  "verdict": "PASS",
+  "scope_note": "Proves the call is no longer dormant. Whether the model then produces a GOOD standalone query needs AI provider credentials, which this environment does not have \u2014 production only. Note that 'refined == original' is the correct fallback on failure, so after the fix it still looks unrewritten locally; the discriminator is router entry, not the returned string."
+}

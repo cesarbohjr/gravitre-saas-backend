@@ -101,11 +101,15 @@ KNOWN_DORMANT = {
     # that happened to contain a modify hint ("don't do that") kept the plan
     # alive instead of dropping it:
     #   app/services/conversation_turn_controller.py:273
+    # Fixed 2026-09-01 (site 7). Its output IS the retrieval query for the turn
+    # (agent_intelligence passes refined_query into prepare_assistant_turn), so
+    # every context-dependent follow-up in every non-fast mode was retrieved on
+    # its own raw, unresolved text:
+    #   app/services/query_rewriter.py:52
     "app/services/clarification_engine.py:769",
     "app/services/contextual_understanding_service.py:225",
     "app/services/conversational_turn_gate.py:240",
     "app/services/domain_intelligence_service.py:208",
-    "app/services/query_rewriter.py:52",
 }
 
 
