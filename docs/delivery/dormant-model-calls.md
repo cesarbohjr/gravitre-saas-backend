@@ -227,20 +227,62 @@ forced_react_fallthrough  actions=[pending_reply.classified,
 
 Still zero grounding audits, because that turn was intercepted by a pending
 approval — `"I still have **Create list** waiting for approval."` — which
-short-circuits before answer generation. Pending state is org-scoped, not
-conversation-scoped, so a stale hold from an earlier run intercepts every new
-conversation.
+short-circuits before answer generation.
 
-Sending `cancel` first returned `"Canceled."`, and **the very next turn reported
-the same hold again**. That is a separate defect worth its own item: the cancel
-path acknowledges success while the hold survives. It is recorded here because it
-is what blocks this proof, not because it belongs to this task.
+I read that as a stale, org-scoped hold surviving `cancel`, and recorded it as a
+separate blocking defect. **That diagnosis was wrong.** See the retraction below;
+it is left in place rather than edited out because the way it went wrong is the
+useful part.
 
-**Site 1+3 final status this pass: SHIPPED and DEPLOYED at `9ca96dc2`
-(observability at `9080bc87`), live execution NOT CONFIRMED.** Two named
-blockers, neither of them the signature bug: the validator is not on the
-unified-turn path real traffic uses, and the ReAct path in this org is held
-behind an approval that `cancel` does not clear.
+**Site 1+3 status at this point: SHIPPED and DEPLOYED at `9ca96dc2`
+(observability at `9080bc87`), live execution NOT CONFIRMED**, one real blocker:
+the validator is not on the unified-turn path real traffic uses.
+
+### Retraction — there is no stale approval hold
+
+Investigated as its own task and **NOT REPRODUCIBLE**. Evidence, at tip
+`db928881`:
+
+- `task_state` is a column on the `conversations` row, so a hold is
+  conversation-scoped by construction. The claim that it is org-scoped was an
+  assumption, never checked.
+- Reading the four conversations from the failing run directly: only the
+  `forced_react_fallthrough` one carried a `pending_task`, and that conversation
+  was **created 11 seconds earlier, by that same run**. The other three were
+  `None`.
+- `scripts/verify-pending-cancel-clears-hold.py` runs the sequence the report
+  actually describes — one conversation, hold created, `cancel` in the **same**
+  conversation, then a genuinely new conversation. **PASS on all four checks:**
+  the hold was created (`Create list status=awaiting_confirm`), `cancel` cleared
+  it in the database, the follow-up turn showed no hold prompt, and the fresh
+  conversation started clean.
+
+Two compounding mistakes produced the false report. The probe opened a new
+conversation per turn, so `cancel` landed on a conversation that never had a hold
+while a later turn created one of its own — and `format_pending_meta_answer`
+phrases a hold as `"I **still** have X waiting for approval"` even on first
+mention, so a brand-new hold reads like a surviving one. Neither the code nor the
+data ever said the hold survived; the prose did, and I believed it.
+
+Guarded by `backend/tests/services/test_pending_hold_does_not_survive_cancel.py`
+(10 tests). The terminal-clearing half is mutation-proven: disabling the
+`pending_status in {"completed","failed","cancelled"}` branch in
+`conversation_turn_controller` fails 3 of them.
+
+### Unreproduced observation, kept honest
+
+In the failing run, a **read-only** request ("show me the most recent deals")
+produced a pending **destructive** write: `hubspot_lists_create`, name `"MSPs"`,
+`destructive: true`, `risk_level: high`. `"MSPs"` matches earlier MSP
+marketplace testing, so this looks like context contamination rather than
+anything the user asked for. On re-run the same query answered normally with a
+real deals table and created no pending at all.
+
+Labeled **NOT REPRODUCED**, not fixed and not dismissed. It is an
+action-resolution concern adjacent to the `APPROVAL_ACTION_MISMATCH` safety net,
+not a dormant-call issue, and it should not be folded into this task. Worth
+noting that the mismatch net is what would have to catch it if it recurs on a
+real user's org.
 
 ## Phase 2 — customer RAG (`get_rag_service`, both sites)
 

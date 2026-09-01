@@ -1,0 +1,83 @@
+{
+  "deployed_git_sha": "db9288811005e49ddc1435acffb75d9328ee5337",
+  "captured_at": "2026-09-01T00:49:41.660313+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_a": "399bc952-1e55-4824-9639-458e69b39828",
+  "steps": [
+    {
+      "step": "tool_read",
+      "reply": {
+        "status": 200,
+        "elapsed_ms": 9699,
+        "assistant": "I can create a contact list named **ZZ-CancelHold-Probe for contacts** in Hubspot.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+        "errors": []
+      },
+      "pending_after": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "ZZ-CancelHold-Probe for contacts",
+            "object_type_id": "0-1",
+            "processing_type": "MANUAL"
+          },
+          "kind": "write",
+          "label": "Create list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "hubspot_lists_create",
+          "destructive": true,
+          "integration": "hubspot",
+          "invoke_action": "hubspot.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "hubspot_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "c906048f1fdeef946b016b4ec6e7375d56fb8312158e0e193d8b13449ced49e8",
+          "bound_integration": "hubspot",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "67abf5f0-b8d0-4866-930b-0a3b677ecdeb",
+          "bound_invoke_action": "hubspot.lists.create"
+        },
+        "status": "awaiting_confirm"
+      }
+    },
+    {
+      "step": "cancel_same_conversation",
+      "reply": {
+        "status": 200,
+        "elapsed_ms": 8256,
+        "assistant": "No problem \u2014 I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+        "errors": []
+      },
+      "pending_after": null
+    },
+    {
+      "step": "followup_same_conversation",
+      "reply": {
+        "status": 200,
+        "elapsed_ms": 15121,
+        "assistant": "You were just on the HubSpot CRM decision: HubSpot is the chosen CRM.",
+        "errors": []
+      },
+      "pending_after": null
+    },
+    {
+      "step": "fresh_conversation",
+      "conversation_id": "386291af-2f85-4cd2-80f2-d1cc517e0960",
+      "reply": {
+        "status": 200,
+        "elapsed_ms": 15317,
+        "assistant": "I can help with connected CRM/automation work, workflow status, run history, and org analytics.",
+        "errors": []
+      },
+      "pending_after": null
+    }
+  ],
+  "checks": {
+    "pending_hold_was_created": true,
+    "cancel_cleared_the_hold_in_db": true,
+    "followup_shows_no_stale_prompt": true,
+    "fresh_conversation_is_clean": true
+  },
+  "verdict": "PASS \u2014 cancel clears the hold and no stale prompt survives"
+}
