@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-09-01T23:09:11.348681+00:00",
+  "arm": "before",
+  "message": "we need to tighten up the renewal motion for the mid market accounts before the quarter closes and make sure nothing slips through",
+  "site9_contextual_understanding": {
+    "result": {},
+    "goal": null,
+    "constraints": null,
+    "router_completions": 0,
+    "called_with_arg": true,
+    "called_zero_arg": false
+  },
+  "site10_domain_intelligence": {
+    "result": {
+      "industry": null,
+      "department": null,
+      "subdomain": null,
+      "business_objective": null,
+      "execution_type": null,
+      "confidence": 0.1,
+      "source": "rules",
+      "profile_id": null
+    },
+    "department": null,
+    "confidence": 0.1,
+    "router_completions": 0,
+    "called_with_arg": true,
+    "called_zero_arg": false
+  },
+  "warnings": [
+    "contextual model extract skipped: get_model_router() takes 0 positional arguments but 1 was given",
+    "domain_llm_classify_skipped error=get_model_router() takes 0 positional arguments but 1 was given"
+  ]
+}

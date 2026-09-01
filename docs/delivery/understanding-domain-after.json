@@ -1,0 +1,44 @@
+{
+  "captured_at": "2026-09-01T23:08:18.249158+00:00",
+  "arm": "after",
+  "message": "we need to tighten up the renewal motion for the mid market accounts before the quarter closes and make sure nothing slips through",
+  "site9_contextual_understanding": {
+    "result": {
+      "goal": "tighten mid-market renewal motion before quarter close",
+      "constraints": [
+        "mid market accounts",
+        "before quarter close"
+      ]
+    },
+    "goal": "tighten mid-market renewal motion before quarter close",
+    "constraints": [
+      "mid market accounts",
+      "before quarter close"
+    ],
+    "router_completions": 1,
+    "called_with_arg": false,
+    "called_zero_arg": true
+  },
+  "site10_domain_intelligence": {
+    "result": {
+      "industry": "software",
+      "department": "customer_success",
+      "subdomain": "renewals",
+      "business_objective": "retention",
+      "execution_type": "analysis",
+      "confidence": 0.82,
+      "confidence_is_estimate": true,
+      "confidenceIsEstimate": true,
+      "confidence_source": "heuristic",
+      "confidenceSource": "heuristic",
+      "source": "llm",
+      "profile_id": null
+    },
+    "department": "customer_success",
+    "confidence": 0.82,
+    "router_completions": 1,
+    "called_with_arg": false,
+    "called_zero_arg": true
+  },
+  "warnings": []
+}

@@ -104,7 +104,7 @@ def rewrite_events(sb: Any, since: str) -> list[dict[str, Any]]:
     rows = (
         sb.table("audit_events")
         .select("created_at,action,metadata")
-        .eq("action", "retrieval.query.rewritten")
+        .eq("action", "classical.answer_path.reached")
         .gte("created_at", since)
         .order("created_at")
         .execute()
@@ -206,30 +206,41 @@ async def main() -> int:
     await asyncio.sleep(8)
     events = rewrite_events(sb, window_start)
 
-    print(f"retrieval.query.rewritten events in window: {len(events)}")
+    print(f"classical.answer_path.reached events in window: {len(events)}")
     ran = [e for e in events if (e.get("metadata") or {}).get("modelRan")]
     changed = [e for e in events if (e.get("metadata") or {}).get("changed")]
+    attempted = [e for e in events if (e.get("metadata") or {}).get("rewriteAttempted")]
     for e in events:
         md = e.get("metadata") or {}
         print(
-            f"  {e['created_at']}  modelRan={md.get('modelRan')} "
-            f"changed={md.get('changed')} mode={md.get('modeKey')} "
+            f"  {e['created_at']}  mode={md.get('modeKey')} "
+            f"rewriteAttempted={md.get('rewriteAttempted')} "
+            f"modelRan={md.get('modelRan')} changed={md.get('changed')} "
             f"turns={md.get('historyTurns')} {md.get('originalChars')}→{md.get('refinedChars')} chars"
         )
 
     print("\n=== RESULT ===")
     print(f"turns run:                      {len(results)}")
-    print(f"rewrite events recorded:        {len(events)}")
+    print(f"region-reached events:          {len(events)}")
+    print(f"  with rewriteAttempted=true:   {len(attempted)}")
     print(f"  with modelRan=true:           {len(ran)}")
     print(f"  that actually changed query:  {len(changed)}")
 
     if not events:
         verdict = "INCONCLUSIVE"
         note = (
-            "no retrieval.query.rewritten event was written at all, so the caller was "
-            "never reached on these turns. That is a reachability finding, not proof "
-            "the call works or fails — the same trap Phase B hit with the grounding "
+            "no classical.answer_path.reached event was written at all, so the region "
+            "itself was not entered on these turns. That is a reachability finding, not "
+            "proof the call works or fails — the same trap Phase B hit with the grounding "
             "validator, and it is not being rounded up to a pass"
+        )
+    elif not attempted:
+        verdict = "GATED"
+        note = (
+            f"the region was entered {len(events)} time(s) but rewriteAttempted=false on "
+            f"every one, modes={sorted({str((e.get('metadata') or {}).get('modeKey')) for e in events})}. "
+            "The dormancy fix is therefore untestable on these turns: the mode gate above "
+            "the call skips it. This is a routing/product finding, not a dormant call"
         )
     elif not ran:
         verdict = "FAIL"

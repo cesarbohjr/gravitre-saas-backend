@@ -205,7 +205,7 @@ class DomainIntelligenceService:
                 f"Rule guess: {json.dumps(rule_guess)}\n"
                 f"Message: {message[:1200]}"
             )
-            response = await get_model_router(self.settings).complete(
+            response = await get_model_router().complete(
                 task_type=TaskType.CLASSIFICATION,
                 prompt=prompt,
                 system_prompt="Domain classifier. JSON only. No chain of thought.",

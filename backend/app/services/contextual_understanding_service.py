@@ -222,7 +222,7 @@ class ContextualUnderstandingService:
                 'Return JSON only: {"goal": "...", "constraints": ["..."]}\n\n'
                 f"Message: {message}\nEntities: {entities}\nTemporal: {temporal}"
             )
-            response = await get_model_router(self.settings).complete(
+            response = await get_model_router().complete(
                 task_type=TaskType.CLASSIFICATION,
                 prompt=prompt,
                 system_prompt="Extract structured understanding. JSON only.",

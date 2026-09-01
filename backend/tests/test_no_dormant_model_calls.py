@@ -106,10 +106,16 @@ KNOWN_DORMANT = {
     # every context-dependent follow-up in every non-fast mode was retrieved on
     # its own raw, unresolved text:
     #   app/services/query_rewriter.py:52
+    # Fixed 2026-09-01 (sites 9 and 10, fixed together because domain classify is
+    # nested inside understand() at contextual_understanding_service.py:89 and
+    # neither is reachable in production without the other). Site 9 runs on every
+    # streaming turn past the cache/pending-clarify returns; site 10 is the
+    # documented "LLM fallback last" tier that only fires when rule confidence is
+    # below 0.55, so the fallback never existed exactly when rules were least sure:
+    #   app/services/contextual_understanding_service.py:225
+    #   app/services/domain_intelligence_service.py:208
     "app/services/clarification_engine.py:769",
-    "app/services/contextual_understanding_service.py:225",
     "app/services/conversational_turn_gate.py:240",
-    "app/services/domain_intelligence_service.py:208",
 }
 
 

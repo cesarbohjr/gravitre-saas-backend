@@ -1,6 +1,6 @@
 {
-  "deployed_git_sha": "f8fb93d68fec04780dec49f20dce459bfcf78176",
-  "captured_at": "2026-09-01T21:45:08.765156+00:00",
+  "deployed_git_sha": "d154bb9908457b50ca90c562eb411b2a3b076c30",
+  "captured_at": "2026-09-01T23:24:41.405945+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "verdict": "UNREACHED",
   "note": "no turn shape tried reached the query rewriter. Like the grounding validator, it sits behind unified-turn-live on a path these shapes never take. The dormancy fix is correct but its production impact is unproven and may be small",
@@ -8,10 +8,10 @@
     {
       "label": "connector_read_followup",
       "mode": "standard",
-      "conversation_id": "16a97395-5516-497d-9f67-9d8c455de65d",
+      "conversation_id": "33dab43f-d859-4eda-914b-7f21397f7fa7",
       "setup": "Show me the most recent deals in our HubSpot pipeline with their amounts.",
       "followup": "and what are their close dates?",
-      "assistant": "I don\u2019t have enough information yet. Tell me which organizations you mean, and I\u2019ll look up the close dates if they\u2019re in the sources available.",
+      "assistant": "I only have one credible close-date source here, and it\u2019s for Columbia Finance, not \u201ctheir\u201d in general. It shows:\n\n- Period 2 (August) close date: Monday, August 31, 2026\n- Payable closing date: Tuesday, September 1, 2026\n- Another listed date: September 8, 2026\n\nI can\u2019t substantiate the close dates for the specific group you mean from these excerpts alone.",
       "unified_completed": 1,
       "unified_fallthrough": 1,
       "fallthrough_reasons": [
@@ -23,10 +23,10 @@
     {
       "label": "reasoning_mode_followup",
       "mode": "reasoning",
-      "conversation_id": "eb794ee3-c798-4fdf-807f-1e8ce00a2baa",
+      "conversation_id": "4e1e6c49-da4a-429f-9598-332db7ba26c3",
       "setup": "Analyze what our internal material says about enterprise onboarding timelines.",
       "followup": "how does that compare to what we promise in the contract?",
-      "assistant": "I don\u2019t have the contract text here, so I can\u2019t compare it directly.\n\nWhat I can say from the sources: a covenant is framed as a one-sided, enduring commitment, while a contract is an enforceable agreement with mutual obligations. The exact gap depends on the contract language, especially any \u201cif/then,\u201d termination, or remedy clauses.\n\nIf you paste the relevant clause, I\u2019ll compare it precisely.",
+      "assistant": "A covenant is a broader, more enduring commitment; a contract is a legally defined agreement with specific terms and remedies.\n\nWhat I can substantiate here is the general contrast, not your exact contract language. If you want the comparison against your actual contract, I need the clause text.",
       "unified_completed": 2,
       "unified_fallthrough": 0,
       "fallthrough_reasons": [],
@@ -36,10 +36,10 @@
     {
       "label": "research_scope_followup",
       "mode": "standard",
-      "conversation_id": "d96793c5-981e-4f2e-8939-afd4ad81a168",
+      "conversation_id": "babf766f-5282-47a9-8704-fac8edf336da",
       "setup": "Research what the market says about MSP pricing models in 2026.",
       "followup": "and how does that affect our positioning?",
-      "assistant": "Positioning is how you\u2019re distinguished in the market; strategy decides where you play and how you win. So strategy shapes positioning, but positioning is the customer-facing expression of it.",
+      "assistant": "Positioning is strategic, not just marketing copy. The sources support that it shapes how people perceive the product and affects growth, pricing, and margins \u2014 but I don\u2019t have enough here to say how it affects **your** positioning specifically. If you want, I can turn that into a concrete positioning angle for your product.",
       "unified_completed": 2,
       "unified_fallthrough": 0,
       "fallthrough_reasons": [],
@@ -49,10 +49,10 @@
     {
       "label": "crm_entity_followup",
       "mode": "standard",
-      "conversation_id": "84512046-ad1a-4d9e-a69d-d0c290727a24",
+      "conversation_id": "94f0b558-5c5c-42ec-a66b-e53dad298a9c",
       "setup": "Look up the Acme Corp company record in HubSpot.",
       "followup": "what about their open deals?",
-      "assistant": "I don\u2019t have their open deals yet.\n\nIf you want, I can check HubSpot for open deals now.",
+      "assistant": "I don\u2019t have enough information yet to answer that.\n\nIf you mean HubSpot open deals, I can check them.",
       "unified_completed": 1,
       "unified_fallthrough": 1,
       "fallthrough_reasons": [

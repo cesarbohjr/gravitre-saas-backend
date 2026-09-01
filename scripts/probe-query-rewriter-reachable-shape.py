@@ -198,7 +198,7 @@ async def main() -> int:
             reply = await turn(client, conv, sc["followup"], sc["mode"])
             await asyncio.sleep(6)
 
-            rew = events_since(sb, "retrieval.query.rewritten", mark)
+            rew = events_since(sb, "classical.answer_path.reached", mark)
             ft = events_since(sb, "unified_turn.live.fallthrough", mark)
             done = events_since(sb, "unified_turn.live.completed", mark)
 
@@ -208,12 +208,13 @@ async def main() -> int:
             ]
             reached = len(rew) > 0
             print(f"  unified completed={len(done)} fallthrough={len(ft)} {reasons}")
-            print(f"  rewrite events: {len(rew)}  -> reached rewriter: {reached}")
+            print(f"  region-reached events: {len(rew)}  -> entered region: {reached}")
             for e in rew:
                 md = e.get("metadata") or {}
                 print(
-                    f"    modelRan={md.get('modelRan')} changed={md.get('changed')} "
-                    f"mode={md.get('modeKey')} turns={md.get('historyTurns')}"
+                    f"    mode={md.get('modeKey')} rewriteAttempted={md.get('rewriteAttempted')} "
+                    f"modelRan={md.get('modelRan')} changed={md.get('changed')} "
+                    f"turns={md.get('historyTurns')}"
                 )
             print()
 
