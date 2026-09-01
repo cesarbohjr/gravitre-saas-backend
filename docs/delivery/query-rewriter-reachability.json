@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-09-01T21:36:25.926350+00:00",
+  "recent_action_counts": {
+    "agent.react.iteration": 5,
+    "tool.invoke.requested": 5,
+    "unified_turn.live.completed": 4,
+    "tool.invoke.completed": 4,
+    "inference.tool_completion": 2,
+    "tool.invoke.failed": 1,
+    "unified_turn.live.fallthrough": 1,
+    "platform.deploy_smoke.completed": 1
+  },
+  "marker_totals_30d": {
+    "retrieval.query.rewritten": 0,
+    "unified_turn.live.completed": 1008,
+    "unified_turn.live.fallthrough": 512,
+    "answer.grounding.validated": 0
+  },
+  "recent_rewrite_events": []
+}

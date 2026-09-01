@@ -770,9 +770,92 @@ Regression check: 40 passed across the rewriter, intelligence-engine, and
 research-policy suites. Baseline: `query_rewriter.py:52` removed from
 `KNOWN_DORMANT`. **Seven of twelve sites now closed.**
 
-### Live production proof
+### Live production proof — UNREACHED, not PASS
 
-Pending — see below.
+`scripts/verify-query-rewriter-live.py` then
+`scripts/probe-query-rewriter-reachable-shape.py`, both against deployed tip
+**f8fb93d68fec04780dec49f20dce459bfcf78176**
+(`docs/delivery/query-rewriter-live.json`,
+`docs/delivery/query-rewriter-reachable-shape.json`).
+
+**Zero `retrieval.query.rewritten` events across six two-turn conversations.**
+The caller at `agent_intelligence.py:2610` never ran, so nothing about the fix's
+production behaviour was tested. This is explicitly **not** being recorded as a
+pass.
+
+| Shape | Mode | unified completed / fallthrough | Reached rewriter |
+|---|---|---|---|
+| pronoun follow-up ("and what about their renewal?") | standard | served live | no |
+| elliptical follow-up ("how long does that usually take?") | standard | served live | no |
+| connector read follow-up (HubSpot deals → close dates) | standard | 1 / 1 `read_tool_classical` | **no** |
+| reasoning-mode analysis follow-up | reasoning | 2 / 0 | no |
+| research-scope follow-up | standard | 2 / 0 | no |
+| CRM entity follow-up (Acme → open deals) | standard | 1 / 1 `read_tool_classical` | **no** |
+
+The two bolded rows are the informative ones. They **did** fall through
+unified-turn-live, which was the hypothesised prerequisite, and still did not
+reach the rewriter. So fallthrough is necessary but not sufficient: the
+connector-turn block returns at line 2606, ahead of the rewriter at 2610. Eight
+early returns sit between the unified-turn call and the rewriter.
+
+Production fallthrough reasons over 30 days, n=512
+(`docs/delivery/unified-turn-fallthrough-reasons.json`) — two of the four were
+exercised above; `defer_classical_tool_sse` and `outcome_error` were not:
+
+| Reason | Count |
+|---|---|
+| `defer_classical_tool_sse` | 143 |
+| `outcome_error` | 142 |
+| `pending_family_classical_resume` | 136 |
+| `read_tool_classical` | 91 |
+
+### This is a "one layer too low" instance, and the third in three investigations
+
+The pattern the last two investigations established repeats exactly. Fixing the
+dormant call is one layer below the question that decides user impact: *does the
+code containing it run at all?* The fix is correct, mutation-proven and
+deployed, and on the evidence so far it changes nothing a user experiences,
+because the line is not reached.
+
+Worth stating plainly: had the audit event not been added in the same change,
+this would have been written up as a clean PASS. The local before/after was
+green, the deploy succeeded, and the answers looked fine. Only an instrumented
+production trace distinguished "the call works now" from "the call still never
+happens" — which is the same lesson as the HubSpot transport fix and the
+fabricated-write gate.
+
+### The bigger finding — the classical answer path may be largely dead
+
+Two independent instrumented points now sit in the region of
+`execute_task_streaming` after the unified-turn-live call, and **both record
+zero production events**:
+
+| Instrument | Location | Window | Events |
+|---|---|---|---|
+| `answer.grounding.validated` | `_finalize_assistant_response` | 30 days | **0** |
+| `retrieval.query.rewritten` | `agent_intelligence.py:2610` | since deploy | **0** |
+
+Against 1008 `unified_turn.live.completed` and 512 fallthroughs in the same
+30 days. The grounding-validator zero is the stronger evidence, having had a
+full 30-day window; the rewriter's window is hours old and its zero is
+suggestive, not conclusive on its own.
+
+Read together this raises a real possibility that the classical
+retrieval-and-answer region is effectively dead code for current production
+traffic, with unified-turn-live serving everything it does not hand to the
+connector path. Stated as a **hypothesis needing its own investigation**, not a
+finding: proving it requires a longer observation window and a deliberate
+attempt at the two untried fallthrough reasons.
+
+**Process consequence, recommended for the remaining five sites:** measure
+reachability *before* spending a fix-and-prove cycle. Sites 1/3 and 7 have now
+each consumed a full cycle to arrive at "correct fix, unproven impact". A cheap
+reachability check first would have ordered this work better, and would have
+caught that these two sites share a single root condition rather than being two
+independent findings.
+
+Status: **PASS on the dormancy defect** (local before/after is decisive),
+**UNREACHED on production impact**. Not rounded up.
 
 ## Phase 2 — customer RAG (`get_rag_service`, both sites)
 

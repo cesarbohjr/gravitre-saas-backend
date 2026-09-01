@@ -1,0 +1,238 @@
+{
+  "captured_at": "2026-09-01T21:38:15.052576+00:00",
+  "sampled": 512,
+  "reasons": {
+    "defer_classical_tool_sse": 143,
+    "outcome_error": 142,
+    "pending_family_classical_resume": 136,
+    "read_tool_classical": 91
+  },
+  "example": {
+    "created_at": "2026-09-01T21:33:15.614365+00:00",
+    "metadata": {
+      "error": null,
+      "model": "gpt-5.4-mini",
+      "streamed": true,
+      "tool_name": "apollo_organizations_search",
+      "latency_ms": 13526,
+      "tool_stats": {
+        "compressed": true,
+        "totalTools": 74,
+        "catalogTools": 74,
+        "visibleTools": 19,
+        "capabilityIds": [
+          "crm.contact.create",
+          "crm.contact.search"
+        ],
+        "topSimilarity": 0.2798,
+        "turnShapeHint": "ambiguous_taskish",
+        "actionRequired": false,
+        "embed_query_ms": 52,
+        "retrievalMethod": "embedding_narrow_tools_for_turn",
+        "deferredStubCount": 17,
+        "embed_query_model": "all-MiniLM-L6-v2",
+        "focusedConnectors": [
+          "apollo",
+          "hubspot",
+          "platform"
+        ],
+        "toolsPayloadBytes": 4952,
+        "embed_query_method": "local",
+        "embed_tool_docs_ms": 0,
+        "embed_query_provider": "local",
+        "progressivePreloaded": [
+          "apollo_organizations_search",
+          "hubspot_companies_get"
+        ],
+        "embed_narrow_total_ms": 55,
+        "embed_query_cache_hit": false,
+        "embed_query_encode_ms": 52,
+        "loadedFullSchemaCount": 2,
+        "progressiveDisclosure": true,
+        "embed_tool_doc_vectors": 32,
+        "embeddingToolRetrieval": true,
+        "capabilityToolsInjected": 2,
+        "embeddingCandidateCount": 32,
+        "fullCatalogPayloadBytes": 47512,
+        "progressivePayloadBytes": 4952,
+        "embed_similarity_rank_ms": 0,
+        "fullNarrowedPayloadBytes": 7674,
+        "embed_tool_doc_cache_hits": 32,
+        "searchCatalogToolsAttached": true,
+        "embed_query_cache_lookup_ms": 0,
+        "embed_tool_doc_cache_misses": 0,
+        "embed_tool_doc_batch_api_calls": 0,
+        "embed_tool_doc_cache_lookup_ms": 0
+      },
+      "live_served": false,
+      "outcome_kind": "connector_tool_proposal",
+      "user_message": "",
+      "qa_force_tool": null,
+      "needs_tool_sse": true,
+      "tool_arguments": {
+        "limit": "5",
+        "query": "Acme Corp"
+      },
+      "qa_force_outcome": null,
+      "latency_breakdown": {
+        "total_tools": 74,
+        "pre_model_ms": 11421,
+        "max_tools_cap": 16,
+        "model_ttft_ms": 1982,
+        "prompt_tokens": 7304,
+        "topSimilarity": 0.2798,
+        "visible_tools": 19,
+        "embed_query_ms": 52,
+        "messages_chars": 29105,
+        "model_total_ms": 2104,
+        "narrow_tools_ms": 56,
+        "retrieval_query": "Tell me about the Acme Corp account and what plan they are on.",
+        "task_model_tier": "low",
+        "turn_shape_hint": "ambiguous_taskish",
+        "retrieval_method": "embedding_narrow_tools_for_turn",
+        "stream_timeout_s": 20.0,
+        "completion_tokens": 68,
+        "context_prompt_ms": 11364,
+        "embed_query_model": "all-MiniLM-L6-v2",
+        "registry_tools_ms": 0,
+        "embed_query_method": "local",
+        "embed_tool_docs_ms": 0,
+        "cached_prompt_ratio": 0.5783,
+        "system_prompt_chars": 21061,
+        "tools_payload_bytes": 4952,
+        "cached_prompt_tokens": 4224,
+        "embed_query_provider": "local",
+        "progressive_round_ms": [
+          2104
+        ],
+        "unifiedTurnKnowledge": {
+          "pack_ids": [],
+          "route_reason": "departments=['unspecified']; jurisdictions=['none']; packs=[]",
+          "internal_thin": true,
+          "research_scope": "internal_only",
+          "cognitiveTurnId": "27c9e4d2-5743-4f06-bc0f-845d4405b007",
+          "org_rag_metrics": {
+            "top_k": 4,
+            "reranked": 0,
+            "rerank_method": "none",
+            "embedding_method": "openai",
+            "rerank_threshold": 0.3,
+            "hybrid_candidate_k": 20,
+            "keyword_candidates": 0,
+            "reliability_weight": 0.15,
+            "semantic_candidates": 0,
+            "retrieval_latency_ms": 898,
+            "cross_encoder_enabled": true,
+            "reliability_sources_scored": 0
+          },
+          "fabric_hit_count": 0,
+          "internet_provider": "serper",
+          "internet_hit_count": 4,
+          "evidenceSufficiency": {
+            "ms": 9227,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "partial_coverage",
+              "weak_authority"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly identify an Acme Corp account or the plan they are on. The results mention ACME Markets loyalty, benefits, employee resources, and unrelated ACME networking documentation, but none answer the specific question about the account status or plan. Authority is also weak for the asked business account question, and there is no clear in",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly answer what the Acme Corp account is or what plan they are on. The sources refer to ACME Markets loyalty, employee benefits, employee resources, and ACME networking documentation, which are unrelated or too generic to identify a specific account or plan. The evidence is not sufficient under a business standard because it lacks a d",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only topic-adjacent and does not directly answer what the Acme Corp account is or what plan they are on. The sources refer to ACME Markets loyalty, employee benefits, employee resources, and ACME networking documentation, which are unrelated or too generic to identify a spe",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          },
+          "org_rag_chunk_count": 0,
+          "outcomeBiasInjected": true,
+          "business_graph_error": "{'message': 'column optimization_suggestions.title does not exist', 'code': '42703', 'hint': None, 'details': None}",
+          "internet_raw_hit_count": 5,
+          "auto_internet_when_thin": true
+        },
+        "embed_narrow_total_ms": 55,
+        "embed_query_cache_hit": false,
+        "embed_query_encode_ms": 52,
+        "progressive_preloaded": [
+          "apollo_organizations_search",
+          "hubspot_companies_get"
+        ],
+        "progressive_disclosure": true,
+        "wall_to_first_token_ms": 13404,
+        "embeddingCandidateCount": 32,
+        "embed_similarity_rank_ms": 0,
+        "embedding_tool_retrieval": true,
+        "progressive_loaded_count": 2,
+        "embed_tool_doc_cache_hits": 32,
+        "openai_create_schedule_ms": 0,
+        "full_catalog_payload_bytes": 47512,
+        "embed_query_cache_lookup_ms": 0,
+        "embed_tool_doc_cache_misses": 0,
+        "full_narrowed_payload_bytes": 7674,
+        "pre_first_token_overhead_ms": 11422,
+        "embed_tool_doc_batch_api_calls": 0,
+        "embed_tool_doc_cache_lookup_ms": 0
+      },
+      "fallthrough_reason": "read_tool_classical",
+      "tool_invoke_action": "apollo.organizations.search",
+      "shadow_user_visible": false,
+      "first_token_proxy_ms": 13404,
+      "classical_path_active": true,
+      "shadow_executes_tools": false,
+      "connected_integrations": [
+        "apollo",
+        "hubspot",
+        "platform"
+      ],
+      "qa_overrode_model_tool": null,
+      "requires_write_approval": false
+    }
+  }
+}

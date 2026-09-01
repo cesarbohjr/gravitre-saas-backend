@@ -1,0 +1,65 @@
+{
+  "deployed_git_sha": "f8fb93d68fec04780dec49f20dce459bfcf78176",
+  "captured_at": "2026-09-01T21:45:08.765156+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "UNREACHED",
+  "note": "no turn shape tried reached the query rewriter. Like the grounding validator, it sits behind unified-turn-live on a path these shapes never take. The dormancy fix is correct but its production impact is unproven and may be small",
+  "shapes": [
+    {
+      "label": "connector_read_followup",
+      "mode": "standard",
+      "conversation_id": "16a97395-5516-497d-9f67-9d8c455de65d",
+      "setup": "Show me the most recent deals in our HubSpot pipeline with their amounts.",
+      "followup": "and what are their close dates?",
+      "assistant": "I don\u2019t have enough information yet. Tell me which organizations you mean, and I\u2019ll look up the close dates if they\u2019re in the sources available.",
+      "unified_completed": 1,
+      "unified_fallthrough": 1,
+      "fallthrough_reasons": [
+        "read_tool_classical"
+      ],
+      "rewrite_events": [],
+      "reached_rewriter": false
+    },
+    {
+      "label": "reasoning_mode_followup",
+      "mode": "reasoning",
+      "conversation_id": "eb794ee3-c798-4fdf-807f-1e8ce00a2baa",
+      "setup": "Analyze what our internal material says about enterprise onboarding timelines.",
+      "followup": "how does that compare to what we promise in the contract?",
+      "assistant": "I don\u2019t have the contract text here, so I can\u2019t compare it directly.\n\nWhat I can say from the sources: a covenant is framed as a one-sided, enduring commitment, while a contract is an enforceable agreement with mutual obligations. The exact gap depends on the contract language, especially any \u201cif/then,\u201d termination, or remedy clauses.\n\nIf you paste the relevant clause, I\u2019ll compare it precisely.",
+      "unified_completed": 2,
+      "unified_fallthrough": 0,
+      "fallthrough_reasons": [],
+      "rewrite_events": [],
+      "reached_rewriter": false
+    },
+    {
+      "label": "research_scope_followup",
+      "mode": "standard",
+      "conversation_id": "d96793c5-981e-4f2e-8939-afd4ad81a168",
+      "setup": "Research what the market says about MSP pricing models in 2026.",
+      "followup": "and how does that affect our positioning?",
+      "assistant": "Positioning is how you\u2019re distinguished in the market; strategy decides where you play and how you win. So strategy shapes positioning, but positioning is the customer-facing expression of it.",
+      "unified_completed": 2,
+      "unified_fallthrough": 0,
+      "fallthrough_reasons": [],
+      "rewrite_events": [],
+      "reached_rewriter": false
+    },
+    {
+      "label": "crm_entity_followup",
+      "mode": "standard",
+      "conversation_id": "84512046-ad1a-4d9e-a69d-d0c290727a24",
+      "setup": "Look up the Acme Corp company record in HubSpot.",
+      "followup": "what about their open deals?",
+      "assistant": "I don\u2019t have their open deals yet.\n\nIf you want, I can check HubSpot for open deals now.",
+      "unified_completed": 1,
+      "unified_fallthrough": 1,
+      "fallthrough_reasons": [
+        "read_tool_classical"
+      ],
+      "rewrite_events": [],
+      "reached_rewriter": false
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "deployed_git_sha": "f8fb93d68fec04780dec49f20dce459bfcf78176",
+  "captured_at": "2026-09-01T21:34:58.244924+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "site": "backend/app/services/query_rewriter.py:52",
+  "verdict": "INCONCLUSIVE",
+  "note": "no retrieval.query.rewritten event was written at all, so the caller was never reached on these turns. That is a reachability finding, not proof the call works or fails \u2014 the same trap Phase B hit with the grounding validator, and it is not being rounded up to a pass",
+  "events": [],
+  "turns": [
+    {
+      "label": "pronoun_followup",
+      "conversation_id": "db1b6c6a-d2da-41cc-8208-4952a851d4ff",
+      "setup": "Tell me about the Acme Corp account and what plan they are on.",
+      "followup": "and what about their renewal?",
+      "assistant": "I don\u2019t have enough to substantiate that renewal status.\n\nThe excerpts only explain what a renewal is in general. If you want the actual renewal for a specific account, I need the company name or the HubSpot record."
+    },
+    {
+      "label": "elliptical_followup",
+      "conversation_id": "07af7fae-9754-4b9e-bbd3-6834fe3398ca",
+      "setup": "Summarize our current onboarding process for new enterprise customers.",
+      "followup": "how long does that usually take?",
+      "assistant": "The excerpts support only a general answer: it can be measured in weeks, days, hours, or less than an hour, depending on the case. I don\u2019t have enough to say what \u201cusually\u201d is for your specific situation."
+    }
+  ]
+}
