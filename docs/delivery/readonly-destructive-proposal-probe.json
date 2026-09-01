@@ -1,169 +1,84 @@
 {
-  "deployed_git_sha": "769deb82cc92d1d7645952d4ee82c0d56ce60add",
-  "captured_at": "2026-09-01T07:23:53.362227+00:00",
+  "deployed_git_sha": "8de92aae9de64568e979c4b2bdbf756b20813c2c",
+  "captured_at": "2026-09-01T08:01:48.861237+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "original_query": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
   "attempts_total": 10,
-  "destructive_proposals": 4,
-  "hits": [
-    {
-      "label": "original_deals_read",
-      "iteration": 0,
-      "gap_before_s": 6.0,
-      "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "1c3c020f-e058-4d3b-91b6-366584fa8d20",
-      "elapsed_ms": 24106,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
-    },
-    {
-      "label": "original_deals_read",
-      "iteration": 1,
-      "gap_before_s": 0.5,
-      "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "ca43122a-b033-4275-938a-71ab08471724",
-      "elapsed_ms": 22887,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
-    },
-    {
-      "label": "original_deals_read",
-      "iteration": 2,
-      "gap_before_s": 6.0,
-      "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "dcbf0ccd-78ff-4adf-9797-6afd324409da",
-      "elapsed_ms": 21160,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
-    },
-    {
-      "label": "original_deals_read",
-      "iteration": 3,
-      "gap_before_s": 0.5,
-      "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "7297f891-d430-40c7-92f3-d61886e29baf",
-      "elapsed_ms": 21706,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
-    }
-  ],
+  "destructive_proposals": 0,
+  "hits": [],
   "attempts": [
     {
       "label": "original_deals_read",
       "iteration": 0,
       "gap_before_s": 6.0,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "1c3c020f-e058-4d3b-91b6-366584fa8d20",
-      "elapsed_ms": 24106,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
+      "conversation_id": "84460b59-0e46-4e4e-bcbe-90e22c094b47",
+      "elapsed_ms": 52058,
+      "pending_present": false,
+      "pending_destructive": false,
+      "pending_action": null,
+      "pending_args": null,
+      "assistant": "Here are the recent HubSpot deals returned by the Connected HubSpot connector, sorted newest first by created date.\n\n| Deal | Stage | Amount | Close date |\n|---|---:|---:|---|\n| Gravitre Smoke Deal d7d9c013ea104a | appointmentscheduled | Not set | Not set |\n| Gravitre Smoke Deal 435cbea0666742 | app"
     },
     {
       "label": "original_deals_read",
       "iteration": 1,
       "gap_before_s": 0.5,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "ca43122a-b033-4275-938a-71ab08471724",
-      "elapsed_ms": 22887,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
+      "conversation_id": "3ef6d0a5-5a15-4e5e-8928-d40ca751b513",
+      "elapsed_ms": 37899,
+      "pending_present": false,
+      "pending_destructive": false,
+      "pending_action": null,
+      "pending_args": null,
+      "assistant": "Invalid parameters for this Hubspot action (Search deals via hubspot API. Use when you need to search deals via hubspot.). Check required fields and try again."
     },
     {
       "label": "original_deals_read",
       "iteration": 2,
       "gap_before_s": 6.0,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "dcbf0ccd-78ff-4adf-9797-6afd324409da",
-      "elapsed_ms": 21160,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
+      "conversation_id": "47fc0dba-c49d-4649-9085-4f4369b61f04",
+      "elapsed_ms": 43467,
+      "pending_present": false,
+      "pending_destructive": false,
+      "pending_action": null,
+      "pending_args": null,
+      "assistant": "Invalid parameters for this Hubspot action (Search deals via hubspot API. Use when you need to search deals via hubspot.). Check required fields and try again."
     },
     {
       "label": "original_deals_read",
       "iteration": 3,
       "gap_before_s": 0.5,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "7297f891-d430-40c7-92f3-d61886e29baf",
-      "elapsed_ms": 21706,
-      "pending_present": true,
-      "pending_destructive": true,
-      "pending_action": "hubspot.lists.create",
-      "pending_args": {
-        "body": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "text": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-        "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates."
-      },
-      "assistant": "I'll run this in Hubspot: **Create list**.\n\n- Message: Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.\n\nReply **yes** to approve, or say what to change."
+      "conversation_id": "79c5caac-dbda-4c80-a4c1-78212701af26",
+      "elapsed_ms": 37686,
+      "pending_present": false,
+      "pending_destructive": false,
+      "pending_action": null,
+      "pending_args": null,
+      "assistant": "Invalid parameters for this Hubspot action (Search deals via hubspot API. Use when you need to search deals via hubspot.). Check required fields and try again."
     },
     {
       "label": "readonly_lists_mention",
       "iteration": 0,
       "gap_before_s": 6.0,
       "message": "What contact lists do we currently have in HubSpot? Just show me, don't change anything.",
-      "conversation_id": "52f6a411-281b-4550-9741-275a9a60a435",
-      "elapsed_ms": 14643,
+      "conversation_id": "9122c73d-af22-4b81-9c47-8921bd7f63a8",
+      "elapsed_ms": 13866,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
       "pending_args": null,
-      "assistant": "I need the full schema for `web_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first."
+      "assistant": "I can\u2019t show HubSpot contact lists from the tools available here.\n\nI only have HubSpot contact search and add-to-list, not a list-read tool. The knowledge I have says lists live under Contacts > Lists, but it doesn\u2019t provide the actual list inventory for your org.\n\nIf you want, I can search for spec"
     },
     {
       "label": "readonly_lists_mention",
       "iteration": 1,
       "gap_before_s": 0.5,
       "message": "What contact lists do we currently have in HubSpot? Just show me, don't change anything.",
-      "conversation_id": "25d9ea8b-8e25-412e-a3f5-017f2b0afcec",
-      "elapsed_ms": 21612,
+      "conversation_id": "2bff47b1-8f62-4cd6-818b-7b998aba8ca2",
+      "elapsed_ms": 12301,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
@@ -175,34 +90,34 @@
       "iteration": 0,
       "gap_before_s": 6.0,
       "message": "Show me our HubSpot contacts from the last week.",
-      "conversation_id": "61afef8d-067f-4be8-a2a3-83a9e1978a82",
-      "elapsed_ms": 50987,
+      "conversation_id": "f9a33e9c-a660-4fe9-af0e-1ab32d5b237b",
+      "elapsed_ms": 42242,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
       "pending_args": null,
-      "assistant": "Found 6 HubSpot contacts created in the last week. Source: HubSpot contacts search, filtered from 2026-08-25T07:21:38Z onward.\n\n| Created | Name | Email | Company |\n|---|---|---|---|\n| 2026-08-26 07:17 UTC | Gravitre SmokeTest-ad14d5d5c29743 | gravitre-smoke-ad14d5d5c29743@example.com | \u2014 |\n| 2026-0"
+      "assistant": "Found 6 HubSpot contacts created in the last week. Source: HubSpot contacts search, `createdate >= 2026-08-25T00:00:00Z`.\n\n| Created | Name | Email | Company |\n|---|---|---|---|\n| 2026-08-26 07:17 UTC | Gravitre SmokeTest-ad14d5d5c29743 | gravitre-smoke-ad14d5d5c29743@example.com | \u2014 |\n| 2026-08-27 "
     },
     {
       "label": "readonly_plural_contacts",
       "iteration": 1,
       "gap_before_s": 0.5,
       "message": "Show me our HubSpot contacts from the last week.",
-      "conversation_id": "dc4f5300-f953-40d2-adcd-37c4b62bbe2e",
-      "elapsed_ms": 45425,
+      "conversation_id": "b8bcad5e-881b-4d07-afd6-8ef9d2daba15",
+      "elapsed_ms": 57885,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
       "pending_args": null,
-      "assistant": "Found 6 HubSpot contacts created in the last week.\n\nSource: HubSpot contacts search, Connected connector `hubspot`.\n\n| Created | Name | Email | Company |\n|---|---|---|---|\n| 2026-08-26 07:17 UTC | Gravitre SmokeTest-ad14d5d5c29743 | gravitre-smoke-ad14d5d5c29743@example.com | \u2014 |\n| 2026-08-27 17:44 "
+      "assistant": "Found 6 HubSpot contacts created in the last week. Source: HubSpot contact search, filtered from 2026-08-25 08:00 UTC onward.\n\n| Created | Name | Email | Company |\n|---|---|---|---|\n| 2026-08-26 07:17 UTC | Gravitre SmokeTest-ad14d5d5c29743 | gravitre-smoke-ad14d5d5c29743@example.com | \u2014 |\n| 2026-08"
     },
     {
       "label": "readonly_pipeline_summary",
       "iteration": 0,
       "gap_before_s": 6.0,
       "message": "Summarize the state of our HubSpot pipeline for me.",
-      "conversation_id": "b09a1485-a415-41a9-9dfa-e516e65c3f2b",
-      "elapsed_ms": 19372,
+      "conversation_id": "6d6040f5-fddb-439d-a27c-750d89848545",
+      "elapsed_ms": 18787,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
@@ -214,8 +129,8 @@
       "iteration": 1,
       "gap_before_s": 0.5,
       "message": "Summarize the state of our HubSpot pipeline for me.",
-      "conversation_id": "ae0dce14-d215-4349-aabb-981b1af75375",
-      "elapsed_ms": 18063,
+      "conversation_id": "de5408bd-81df-4a14-b6eb-1a8406295685",
+      "elapsed_ms": 17697,
       "pending_present": false,
       "pending_destructive": false,
       "pending_action": null,
@@ -223,5 +138,5 @@
       "assistant": "I need the full schema for `hubspot_pipelines_list` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first."
     }
   ],
-  "finding": "REPRODUCED \u2014 4/10 read-only turns produced a destructive proposal"
+  "finding": "NOT REPRODUCED in 10 deliberate attempts"
 }

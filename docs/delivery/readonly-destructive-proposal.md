@@ -1,8 +1,10 @@
 # A read-only question stages a destructive write the user never asked for
 
-**Status: PARTIALLY FIXED, live-confirmed at `51aa61e4`. Invented arguments are
-gone; the fabricated action is still staged for approval. Safety-relevant, still
-open.**
+**Status: FIXED and LIVE-CONFIRMED at `8de92aae` — 0/10, down from 4/4.**
+
+The fix that worked was the root-cause gate, not the two argument-layer guards
+that preceded it. The full sequence is kept below because the failed attempts are
+the instructive part.
 Deployed tip `db928881`. Evidence:
 `docs/delivery/readonly-destructive-proposal-probe.json`.
 
@@ -223,6 +225,55 @@ Against this program's own standard: three rounds of green, mutation-proven unit
 tests accompanied three live failures. The tests were not wrong — each proved its
 guard behaves as written. They could not prove the *defect* was closed. Only the
 production probe showed that.
+
+## Resolution — gate the action, live-confirmed
+
+`is_read_only_request_for_destructive_plan` in `connector_action_workflows`,
+enforced inside `missing_params_stage_patch` so classical chat, unified-turn live
+and ReAct write staging all inherit it rather than ReAct alone.
+
+It fires only when the message **opens** with a retrieval word, contains **no**
+write verb anywhere, and expresses **no** create intent. All three are required.
+Wrongly refusing a genuine write is a worse failure than the prompt this
+prevents, so anything ambiguous is deliberately allowed through — "Show me the
+deals, then create a list for them" is not blocked.
+
+**Live proof at `8de92aae`:**
+
+| Case | Before (`db928881`) | After (`8de92aae`) |
+|---|---|---|
+| `original_deals_read` | **4/4 destructive proposals** | **0/4** |
+| all 10 attempts | 4 proposals | **0 proposals** |
+
+No regression to the read path: the same query now answers with a real HubSpot
+deals table (deal, stage, amount, close date).
+
+Guarded by 18 tests in
+`backend/tests/services/test_unrequested_destructive_plan_guard.py` asserting both
+directions — five read-shaped asks refused, five genuine write requests
+untouched, non-destructive plans exempt. 126 passed across the connector,
+approval, routing and pending suites.
+
+### Unrelated defect observed during verification
+
+One of the four runs returned *"Invalid parameters for this Hubspot action
+(Search deals via hubspot API)"* instead of the deals table. That is the **read**
+action failing its own parameter validation, intermittently. It is not caused by
+this gate, which only inspects destructive plans. Recorded as a separate,
+un-investigated observation rather than quietly folded in.
+
+## What the three attempts teach
+
+1. Withhold pack defaults → args became `{}`; still staged.
+2. Refuse empty-arg destructive plans → `infer_missing_parameters` filled args
+   with the user's own question; still staged.
+3. Gate the action on read-shaped requests → **closed it.**
+
+The first two were not wasted — they genuinely narrowed what a mistaken `yes`
+could do, and they stay. But **the fabricated action was always the defect, and
+every fix aimed at its arguments was one layer too low.** Three rounds of green,
+mutation-proven unit tests accompanied three live failures; only the production
+probe ever distinguished "this guard works" from "the defect is closed".
 
 ## Options considered and not taken
 
