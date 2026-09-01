@@ -1,0 +1,51 @@
+{
+  "deployed_git_sha": "db9288811005e49ddc1435acffb75d9328ee5337",
+  "captured_at": "2026-09-01T01:30:25.444919+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "shapes": [
+    {
+      "label": "factual_knowledge_standard",
+      "mode": "standard",
+      "query": "Summarize what our documentation says about data retention obligations.",
+      "conversation_id": "79d59938-a40a-4087-ba56-964db41d6620",
+      "elapsed_ms": 27051,
+      "answer_explanation": "Unified turn live (conversational_reply)",
+      "validation_in_sse": null,
+      "assistant": "Our docs say a data retention policy should define how the organization securely collects, stores, and disposes of customer data, and that retention periods depend on the data type.\n\nWhat I can\u2019t substantiate from the excerpts is the exact retention schedule or any jurisdiction-specific obligation."
+    },
+    {
+      "label": "reasoning_mode_analysis",
+      "mode": "reasoning",
+      "query": "Based on our internal material, analyze the tradeoffs between annual and monthly billing for a mid-market customer, and cite what you relied on.",
+      "conversation_id": "5eac970a-16ea-48e7-ace5-c54b55efb595",
+      "elapsed_ms": 19504,
+      "answer_explanation": "Unified turn live (conversational_reply)",
+      "validation_in_sse": null,
+      "assistant": "Monthly is the safer default for mid-market acquisition; annual is better for retention and cash collected upfront.\n\nWhat I can substantiate from the material:\n- The Baremetrics excerpt says annual billing retains about 92% of customers after 12 months, which supports the retention case for annual plans.\n- The billing platform excerpt says annual plans lock customers in for the subscription period and renew automatically unless canceled.\n- The LogiSense excerpt says monthly subscribers typically have higher churn, which supports the churn downside of monthly billing.\n\nWhat I cannot fully subst"
+    },
+    {
+      "label": "grounding_pressure_unanswerable",
+      "mode": "standard",
+      "query": "According to our own internal policy documents, what is the exact number of business days we guarantee for a security questionnaire turnaround?",
+      "conversation_id": "f1337a41-d7fa-4db9-ac00-5d61867721d9",
+      "elapsed_ms": 22156,
+      "answer_explanation": "Unified turn live (confirmation_request)",
+      "validation_in_sse": null,
+      "assistant": "I don\u2019t have enough information to substantiate an exact guaranteed number from the internal documents you provided.\n\nWhat I do have is conflicting evidence:\n- One source says completed questionnaires are returned in **2\u20135 business days**.\n- Another source is a general guide and does **not** give a guaranteed turnaround number.\n\nSo the exact internal guarantee is **not verified here**. If you want, I can look for the actual policy document that states the approved turnaround."
+    },
+    {
+      "label": "multi_hop_business_question",
+      "mode": "reasoning",
+      "query": "What does our knowledge base say about SOC 2 evidence collection, and how does that affect what we can promise a prospect this quarter?",
+      "conversation_id": "09b1e13c-bda3-4303-b7ef-a58ab97ec229",
+      "elapsed_ms": 14556,
+      "answer_explanation": "Unified turn live (confirmation_request)",
+      "validation_in_sse": null,
+      "assistant": "I don\u2019t have enough evidence to substantiate SOC 2 collection from the retrieved sources.\n\nWhat I can verify here:\n- The excerpts include general market-research and SBA material, not SOC 2 process guidance.\n- The turn\u2019s evidence warning says retrieval was insufficient.\n- I can\u2019t support a promise about this quarter\u2019s SOC 2 readiness from this data.\n\nSo: I can\u2019t responsibly say what the knowledge base says on SOC 2, and I can\u2019t tie that to a prospect promise yet. If you want, I can pull the org\u2019s knowledge sources for SOC 2 specifically.\nI don\u2019t have enough evidence to substantiate SOC 2 colle"
+    }
+  ],
+  "grounding_audit_count": 0,
+  "grounding_audits": [],
+  "shapes_reporting_validation_in_sse": [],
+  "finding": "UNREACHED \u2014 no turn shape tried has executed the grounding validator"
+}

@@ -1,0 +1,66 @@
+{
+  "captured_at": "2026-09-01T01:26:39.485134+00:00",
+  "windows": {
+    "6h": {
+      "fallthrough": 11,
+      "completed": 35,
+      "total_turns": 46,
+      "fallthrough_rate_pct": 23.9,
+      "grounding_audits": 0,
+      "grounding_per_fallthrough_pct": 0.0
+    },
+    "24h": {
+      "fallthrough": 13,
+      "completed": 38,
+      "total_turns": 51,
+      "fallthrough_rate_pct": 25.5,
+      "grounding_audits": 0,
+      "grounding_per_fallthrough_pct": 0.0
+    },
+    "7d": {
+      "fallthrough": 53,
+      "completed": 130,
+      "total_turns": 183,
+      "fallthrough_rate_pct": 29.0,
+      "grounding_audits": 0,
+      "grounding_per_fallthrough_pct": 0.0
+    },
+    "30d": {
+      "fallthrough": 464,
+      "completed": 990,
+      "total_turns": 1454,
+      "fallthrough_rate_pct": 31.9,
+      "grounding_audits": 0,
+      "grounding_per_fallthrough_pct": 0.0
+    }
+  },
+  "fallthrough_metadata_keys_30d": {
+    "error": 464,
+    "model": 464,
+    "streamed": 464,
+    "tool_name": 464,
+    "latency_ms": 464,
+    "tool_stats": 464,
+    "live_served": 464,
+    "outcome_kind": 464,
+    "user_message": 464,
+    "qa_force_tool": 464,
+    "tool_arguments": 464,
+    "qa_force_outcome": 464,
+    "latency_breakdown": 464,
+    "fallthrough_reason": 464,
+    "tool_invoke_action": 464,
+    "shadow_user_visible": 464,
+    "first_token_proxy_ms": 464,
+    "classical_path_active": 464,
+    "shadow_executes_tools": 464,
+    "connected_integrations": 464
+  },
+  "fallthrough_reasons_30d": {
+    "pending_family_classical_resume": 144,
+    "outcome_error": 142,
+    "defer_classical_tool_sse": 141,
+    "read_tool_classical": 37
+  },
+  "grounding_confidence_source_30d": {}
+}

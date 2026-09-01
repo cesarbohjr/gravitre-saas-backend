@@ -42,7 +42,7 @@ Ordered by correctness → safety/governance → user-facing quality.
 
 | # | Site | What has been silently absent | Observed fallback | Severity |
 |---|---|---|---|---|
-| 1 | `answer_validator.py:74` | Grounding/hallucination check against retrieved context | `{is_valid: True, issues: [], requires_human: False}` — **fails OPEN** | **Critical — correctness.** Every answer declared grounded with no check |
+| 1 | `answer_validator.py:74` | Grounding/hallucination check against retrieved context | `{is_valid: True, issues: [], requires_human: False}` — **fails OPEN** | ~~Critical — correctness~~ → **corrected to Low: dead code.** See Phase B — measured as never executing on live traffic (0 audits against 464 fallthroughs / 1454 turns in 30d), so nothing was being falsely certified |
 | 2 | `unified_turn_knowledge_context.py:201` | Customer RAG retrieval in the replan loop | `org_rag_error`, 0 chunks | **Critical — correctness.** Org's own documents excluded from evidence |
 | 3 | `agent_intelligence.py:931` | Regeneration of an ungrounded answer | Never reached — gated behind site 1 failing open | **High — correctness**, masked by site 1 |
 | 4 | `schema_param_extractor.py:319` | Model extraction of connector action arguments | Heuristic-only args | **High — touches write actions.** Missing args → failed or under-specified writes |
@@ -268,6 +268,57 @@ Guarded by `backend/tests/services/test_pending_hold_does_not_survive_cancel.py`
 (10 tests). The terminal-clearing half is mutation-proven: disabling the
 `pending_status in {"completed","failed","cancelled"}` branch in
 `conversation_turn_controller` fails 3 of them.
+
+### Phase B — the validator is not on the live answer path, and site 1's severity was overstated
+
+With the phantom blocker gone, the reachability question was asked directly
+instead. `scripts/probe-grounding-validator-reachable-shape.py` swept four turn
+shapes chosen to avoid the early returns that pass `validation=None` — a factual
+knowledge question, `reasoning` mode, a deliberate grounding-pressure question,
+and a multi-hop business question.
+
+**All four were served by "Unified turn live". `validation` was `null` in every
+SSE stream, and zero `answer.grounding.validated` events were written.** The
+audit code was confirmed live for these runs (`9080bc87` is an ancestor of the
+deployed `db928881`), so the zero is a real measurement, not missing
+instrumentation.
+
+Traffic split from `audit_events`, via
+`backend/scripts/probe_validator_reachability.py`:
+
+| Window | Unified completed | Fallthrough | Fallthrough rate | Grounding audits |
+|---|---|---|---|---|
+| 6h | 35 | 11 | 23.9% | 0 |
+| 24h | 38 | 13 | 25.5% | 0 |
+| 7d | 130 | 53 | 29.0% | 0 |
+| 30d | 990 | 464 | 31.9% | 0 |
+
+This corrects an earlier claim of mine in two directions at once. I called this
+"a fallthrough path most production chat traffic never takes" — wrong, about a
+third of turns fall through. But fallthrough does **not** mean reaching ReAct
+finalize: the 30-day reasons are `pending_family_classical_resume` (144),
+`outcome_error` (142), `defer_classical_tool_sse` (141), and
+`read_tool_classical` (37), and the branches that serve them return before the
+finalize call, several passing `validation=None` explicitly. 464 fallthroughs
+produced 0 grounding audits.
+
+**Site 1's severity was overstated and is corrected here.** The Phase 0 table
+calls it "Critical — correctness. Every answer declared grounded with no check."
+That framing assumed the validator ran and rubber-stamped answers. It did not run
+at all on any observed live path, so nothing was being falsely certified. The
+honest finding is *dead code*, not a defeated safety check.
+
+Nor is the live path ungrounded. Both pressure questions were refused honestly by
+the unified turn on its own: *"I don't have enough information to substantiate an
+exact guaranteed number from the internal documents you provided."* Grounding
+discipline exists where traffic actually flows — it simply is not this validator.
+
+**Site 1+3 status: signature fix correct, SHIPPED, DEPLOYED, and NOT EXECUTING,
+because the path it lives on is not reached by live traffic.** The remaining
+question is a design one — whether the unified turn should call this validator,
+or whether it should be retired in favor of the grounding behavior the unified
+turn already has. That is a product decision, not a signature bug, and is not
+decided here.
 
 ### Unreproduced observation, kept honest
 
