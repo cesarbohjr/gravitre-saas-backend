@@ -67,10 +67,14 @@ class ContextualUnderstandingService:
         goal = self._infer_goal_from_rules(message)
         constraints: list[str] = []
         conversational_create = self._is_conversational_create(message)
+        model_ran = False
+        model_attempted = False
         if not goal and len(message.split()) > 8:
+            model_attempted = True
             extracted = await self._model_extract(message, entities, temporal)
             goal = extracted.get("goal")
             constraints = extracted.get("constraints") or []
+            model_ran = bool(extracted.get("model_ran"))
 
         department_inference = self._infer_department(entities, message)
         partial = {
@@ -100,6 +104,8 @@ class ContextualUnderstandingService:
             "expected_output_format": self._detect_output_format(message, conversational_create),
             "department_inference": department_inference,
             "domain": domain,
+            "model_attempted": model_attempted,
+            "model_ran": model_ran,
         }
 
     def _extract_entities_rule_based(self, message: str) -> list[dict[str, Any]]:
@@ -239,6 +245,10 @@ class ContextualUnderstandingService:
                     clean = clean[4:]
             parsed = json.loads(clean)
             if isinstance(parsed, dict):
+                # Set only after the router returns. A dormant call and a model
+                # that found no goal both yield an empty goal, so this flag is
+                # the only thing that separates them in production.
+                parsed["model_ran"] = True
                 return parsed
         except Exception as exc:  # noqa: BLE001
             logger.warning("contextual model extract skipped: %s", exc)

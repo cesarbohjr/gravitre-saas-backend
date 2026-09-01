@@ -1755,6 +1755,32 @@ class AgentIntelligence:
             conversation_history,
             org_id,
         )
+        # Sites 9/10 were dormant with no production signal at all: an empty goal
+        # and a low-confidence domain look identical whether the model ran or
+        # threw. modelRan and domainSource are what separate those.
+        try:
+            _domain = understanding.get("domain") if isinstance(understanding, dict) else None
+            _domain = _domain if isinstance(_domain, dict) else {}
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=None,
+                action="context.understanding.extracted",
+                resource_type="conversation",
+                resource_id=message_id or org_id,
+                metadata={
+                    "modelAttempted": bool(understanding.get("model_attempted")),
+                    "modelRan": bool(understanding.get("model_ran")),
+                    "goalPresent": bool(understanding.get("goal")),
+                    "constraintCount": len(understanding.get("constraints") or []),
+                    "domainSource": _domain.get("source"),
+                    "domainConfidence": _domain.get("confidence"),
+                    "domainRoutingActive": _domain.get("routing_active"),
+                    "wordCount": len((task_text or "").split()),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("understanding_audit_failed error=%s", exc)
         pipeline_classification = await get_task_classifier(active_settings).classify(
             org_id,
             task_text,
