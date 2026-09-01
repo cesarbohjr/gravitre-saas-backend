@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-09-01T08:49:30.238317+00:00",
+  "site": "backend/app/services/schema_param_extractor.py \u2014 extract_action_args",
+  "action": "hubspot.contacts.create",
+  "message": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+  "before": {
+    "label": "BEFORE \u2014 original buggy call restored",
+    "router_entered": false,
+    "type_error_seen": true,
+    "raised": null,
+    "handler_logged": [
+      "WARNING: schema_param_extractor model skipped: get_model_router() takes 0 positional arguments but 1 was given"
+    ],
+    "args": {
+      "firstname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+      "lastname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks."
+    }
+  },
+  "after": {
+    "label": "AFTER \u2014 fix in place",
+    "router_entered": true,
+    "type_error_seen": false,
+    "raised": null,
+    "handler_logged": [
+      "WARNING: schema_param_extractor model skipped: All AI providers failed (openai: unavailable/not-configured; anthropic: unavailable/not-configured; gemini: unavailable/not-configured)"
+    ],
+    "args": {
+      "firstname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+      "lastname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks."
+    }
+  },
+  "verdict": "PASS",
+  "scope_note": "Proves the call is no longer dormant. Whether the model then contributes arguments cannot be measured locally: no AI provider credentials are configured in this environment."
+}

@@ -1,0 +1,66 @@
+{
+  "captured_at": "2026-09-01T08:46:49.137940+00:00",
+  "verdict": "PARTIAL",
+  "message_used": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+  "actions_with_required_schema": 21,
+  "actions_reaching_model_call": 18,
+  "runs": [
+    {
+      "action": "hubspot.associations.create",
+      "missing_after_heuristic": [
+        "from object type",
+        "from object id",
+        "to object type",
+        "to object id"
+      ],
+      "heuristic_args": {},
+      "extractor_args": {},
+      "model_contributed": {}
+    },
+    {
+      "action": "hubspot.contacts.create",
+      "missing_after_heuristic": [
+        "email or contact name"
+      ],
+      "heuristic_args": {
+        "firstname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+        "lastname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks."
+      },
+      "extractor_args": {
+        "firstname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks.",
+        "lastname": "Please go ahead and set that up for the account we discussed on the call earlier this week, the usual arrangement, thanks."
+      },
+      "model_contributed": {}
+    },
+    {
+      "action": "hubspot.contacts.update",
+      "missing_after_heuristic": [
+        "contact id",
+        "update properties"
+      ],
+      "heuristic_args": {},
+      "extractor_args": {},
+      "model_contributed": {}
+    },
+    {
+      "action": "hubspot.contacts.delete",
+      "missing_after_heuristic": [
+        "contact id"
+      ],
+      "heuristic_args": {},
+      "extractor_args": {},
+      "model_contributed": {}
+    },
+    {
+      "action": "hubspot.deals.update",
+      "missing_after_heuristic": [
+        "deal id",
+        "update properties"
+      ],
+      "heuristic_args": {},
+      "extractor_args": {},
+      "model_contributed": {}
+    }
+  ],
+  "no_type_error": true
+}
