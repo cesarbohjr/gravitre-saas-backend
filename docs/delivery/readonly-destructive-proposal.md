@@ -188,6 +188,42 @@ or the ReAct-selected destructive tool must be gated on read-classified turns
 green *and* mutation-proven while the live defect persisted — they proved the
 guard does what it says, not that it closes the defect.
 
+### Second live result: patching argument-filling does not work
+
+The required-param refusal shipped and is live at `769deb82`. **Still 4/4.**
+
+What happened is the useful finding. Across three deploys the fabricated action
+never went away; only the identity of the component inventing its arguments
+changed:
+
+| Deploy | `args` staged | Filled by |
+|---|---|---|
+| `db928881` | `{"name": "MSPs", "object_type_id": "0-1", "processing_type": "MANUAL"}` | `apply_pack_common_defaults` |
+| `51aa61e4` | `{}` | — (defaults withheld) |
+| `769deb82` | `{"body": "<user's question>", "text": …, "message": …}` | `infer_missing_parameters` |
+
+At `769deb82` the user is told:
+
+> I'll run this in Hubspot: **Create list**.
+> - Message: Show me the most recent deals in our HubSpot pipeline…
+> Reply **yes** to approve, or say what to change.
+
+The refusal never fires because the args are no longer empty — a different
+inference step populated them with the user's own question. Each fix closed the
+hole it aimed at, and the next component filled the gap.
+
+**Conclusion: the argument layer is the wrong place to fix this.** Both guards
+are correct and worth keeping — no fabricated list *name* can reach a proposal
+now, a real reduction — but the defect is that **ReAct selects
+`hubspot_lists_create` for a read-only request**, and no amount of argument
+hygiene addresses a fabricated action. The remaining fix is the one deferred
+earlier: gate ReAct-selected destructive tools on read-classified turns.
+
+Against this program's own standard: three rounds of green, mutation-proven unit
+tests accompanied three live failures. The tests were not wrong — each proved its
+guard behaves as written. They could not prove the *defect* was closed. Only the
+production probe showed that.
+
 ## Options considered and not taken
 
 ## Options considered and not taken
