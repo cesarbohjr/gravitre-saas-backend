@@ -128,11 +128,32 @@ async def run_turn(
 
 
 def validation_rows_since(sb: Any, org_id: str, since_iso: str) -> list[dict[str, Any]]:
+    """Latency rows: gated on message_id, so absence proves nothing on this path."""
     return (
         sb.table("ai_pipeline_latency")
         .select("id,stage_name,duration_ms,tier,created_at,message_id")
         .eq("org_id", org_id)
         .eq("stage_name", "validation")
+        .gte("created_at", since_iso)
+        .order("created_at", desc=True)
+        .limit(50)
+        .execute()
+        .data
+        or []
+    )
+
+
+def grounding_audits_since(sb: Any, org_id: str, since_iso: str) -> list[dict[str, Any]]:
+    """The decisive signal: confidenceSource == 'model' means the assessor judged.
+
+    'heuristic' means the call fell through to the permissive default, which is
+    exactly the fail-open behaviour this fix exists to end.
+    """
+    return (
+        sb.table("audit_events")
+        .select("id,action,created_at,metadata")
+        .eq("org_id", org_id)
+        .eq("action", "answer.grounding.validated")
         .gte("created_at", since_iso)
         .order("created_at", desc=True)
         .limit(50)
@@ -197,31 +218,44 @@ async def main() -> int:
     await asyncio.sleep(12)
     rows = validation_rows_since(sb, org_id, started_at)
     durations = [int(r.get("duration_ms") or 0) for r in rows]
+    audits = grounding_audits_since(sb, org_id, started_at)
 
-    executed = [d for d in durations if d >= 5]
+    metas = [a.get("metadata") or {} for a in audits]
+    sources = [m.get("confidenceSource") for m in metas]
+    assessor_ran = [m for m in metas if m.get("assessorRan")]
+    audit_durations = [int(m.get("durationMs") or 0) for m in metas]
+
     result = {
         "deployed_git_sha": git_sha,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "org_id": org_id,
         "turns": turns,
-        "validation_rows_after_deploy": len(rows),
-        "durations_ms": durations,
-        "rows_with_real_model_latency": len(executed),
-        "min_real_latency_ms": min(executed) if executed else None,
-        "max_real_latency_ms": max(executed) if executed else None,
-        "rows": rows,
+        "grounding_audit_events": len(audits),
+        "confidence_sources": sources,
+        "turns_where_assessor_ran": len(assessor_ran),
+        "validation_durations_ms": audit_durations,
+        "answers_replaced": sum(1 for m in metas if m.get("answerReplaced")),
+        "invalid_verdicts": sum(1 for m in metas if m.get("isValid") is False),
+        "audit_metadata": metas,
+        "latency_rows_note": (
+            "ai_pipeline_latency validation rows are gated on message_id; "
+            "absence here proves nothing about execution"
+        ),
+        "validation_latency_rows": len(rows),
+        "validation_latency_durations_ms": durations,
     }
 
     # State the pass condition before reading it, so the verdict is not
     # retrofitted to whatever came back.
     checks = {
         "turns_succeeded": all(t["status"] == 200 and not t["errors"] for t in turns),
-        "validation_stage_ran": len(rows) > 0,
-        "validation_call_reached_a_model": len(executed) > 0,
+        "validator_observable": len(audits) > 0,
+        "assessor_genuinely_ran": len(assessor_ran) > 0,
+        "no_fail_open_heuristic_verdicts": all(s == "model" for s in sources) if sources else False,
     }
     result["checks"] = checks
     result["verdict"] = (
-        "PASS — validator executes at the deployed tip"
+        "PASS — grounding validator executes and the model judges at the deployed tip"
         if all(checks.values())
         else "PARTIAL/FAIL — see checks"
     )
@@ -231,7 +265,10 @@ async def main() -> int:
     print("=== checks ===")
     for k, v in checks.items():
         print(f"  {k}: {v}")
-    print(f"\nvalidation rows since run start: {len(rows)}  durations={durations}")
+    print(f"\ngrounding audit events: {len(audits)}")
+    print(f"confidence sources    : {sources}")
+    print(f"validation durations  : {audit_durations} ms")
+    print(f"answers replaced      : {result['answers_replaced']}")
     print(f"VERDICT: {result['verdict']}")
     print(f"wrote {OUT}")
     return 0 if all(checks.values()) else 1

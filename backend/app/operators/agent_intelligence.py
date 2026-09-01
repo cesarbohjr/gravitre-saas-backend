@@ -1004,6 +1004,36 @@ class AgentIntelligence:
                         "requires_human": True,
                     }
 
+        if validation is not None and validation_started is not None:
+            # The grounding check was dormant until 9ca96dc2 and nothing recorded
+            # whether it ran: the latency row below is gated on message_id, which
+            # this path does not always carry. confidence_source is the decisive
+            # field — "model" means the assessor genuinely judged, "heuristic"
+            # means it fell through to the permissive default.
+            try:
+                write_audit_event(
+                    client,
+                    org_id=org_id,
+                    actor_id=None,
+                    action="answer.grounding.validated",
+                    resource_type="conversation",
+                    resource_id=message_id or org_id,
+                    metadata={
+                        "modeKey": mode_key,
+                        "isValid": bool(validation.get("is_valid")),
+                        "issues": list(validation.get("issues") or [])[:8],
+                        "confidence": validation.get("confidence"),
+                        "confidenceSource": validation.get("confidence_source"),
+                        "assessorRan": validation.get("confidence_source") == "model",
+                        "requiresHuman": bool(validation.get("requires_human")),
+                        "ragSourceCount": len(rag_sources or []),
+                        "answerReplaced": content != answer,
+                        "durationMs": int((time.monotonic() - validation_started) * 1000),
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("grounding_validation_audit_failed error=%s", exc)
+
         if validation_started is not None and message_id:
             validation_ms = int((time.monotonic() - validation_started) * 1000)
             asyncio.create_task(
