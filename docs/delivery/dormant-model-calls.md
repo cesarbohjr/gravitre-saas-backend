@@ -214,3 +214,47 @@ goes. That is a design question, not a signature bug, and is not decided here.
 Live execution of site 1+3 therefore remains **NOT CONFIRMED**, with the reason
 now known: the proof requires a turn that reaches ReAct finalize, which these
 did not.
+
+### Third attempt — fallthrough forced, blocked by a stale approval hold
+
+A connector-read query did force the intended route:
+
+```
+forced_react_fallthrough  actions=[pending_reply.classified,
+                                   unified_turn.live.fallthrough]
+                          reached_react=True  reason=read_tool_classical
+```
+
+Still zero grounding audits, because that turn was intercepted by a pending
+approval — `"I still have **Create list** waiting for approval."` — which
+short-circuits before answer generation. Pending state is org-scoped, not
+conversation-scoped, so a stale hold from an earlier run intercepts every new
+conversation.
+
+Sending `cancel` first returned `"Canceled."`, and **the very next turn reported
+the same hold again**. That is a separate defect worth its own item: the cancel
+path acknowledges success while the hold survives. It is recorded here because it
+is what blocks this proof, not because it belongs to this task.
+
+**Site 1+3 final status this pass: SHIPPED and DEPLOYED at `9ca96dc2`
+(observability at `9080bc87`), live execution NOT CONFIRMED.** Two named
+blockers, neither of them the signature bug: the validator is not on the
+unified-turn path real traffic uses, and the ReAct path in this org is held
+behind an approval that `cancel` does not clear.
+
+## Phase 2 — customer RAG (`get_rag_service`, both sites)
+
+Chosen next over the remaining severity order because this one sits on the
+unified turn path that production traffic actually uses, and because it is the
+only site with a pre-existing live trace of its own dormancy.
+
+- `unified_turn_knowledge_context.py:201` — `get_rag_service()`. Restores
+  customer RAG to the replan loop. Previously `org_rag_error` on every turn.
+- `cache_warming_scheduler.py:48` — `get_rag_service()`. Cache warming threw per
+  org before warming anything; already visible at `warning`, so this one was
+  never silent, only broken.
+
+Before evidence, already on record from the replan-loop artifact at tip
+`ccc98167`: `org_rag_error = "get_rag_service() takes 0 positional arguments but
+1 was given"` with `org_rag_chunk_count = 0` on both evidence-bearing turns.
+The pass condition is the disappearance of that key on a live turn.

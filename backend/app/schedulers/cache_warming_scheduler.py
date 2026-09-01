@@ -45,7 +45,7 @@ async def _warm_org(org_id: str, settings: Settings) -> int:
     if not queries:
         return 0
 
-    rag = get_rag_service(settings)
+    rag = get_rag_service()
     warmed = 0
     for query in queries:
         try:

@@ -38,6 +38,20 @@ CHAT_TIMEOUT = 240.0
 # it. Each asks for specifics an org corpus is unlikely to contain, which is the
 # condition under which a real grounding check has something to object to.
 QUERIES = [
+    # Pending-approval state is org-scoped, not conversation-scoped, so a stale
+    # hold from an earlier run intercepts every turn with "waiting for approval"
+    # and short-circuits before answer generation. Clear it first, or nothing
+    # downstream reaches the validator.
+    ("clear_pending", "cancel"),
+    # The validator lives on the ReAct finalize path. Production chat is served
+    # by the unified turn path and only reaches ReAct on a fallthrough, so a
+    # plain question never exercises it. A connector read is the documented way
+    # in: read_tool_classical / defer_connector_tool_proposal both fall through.
+    (
+        "forced_react_fallthrough",
+        "Show me the most recent deals in our HubSpot pipeline with their "
+        "amounts and close dates.",
+    ),
     (
         "grounding_pressure",
         "According to our internal documents, what exact dollar amount did we "
@@ -220,6 +234,33 @@ async def main() -> int:
     durations = [int(r.get("duration_ms") or 0) for r in rows]
     audits = grounding_audits_since(sb, org_id, started_at)
 
+    # Which path served each turn decides whether the validator was even
+    # reachable, so it is recorded rather than inferred from the outcome.
+    for t in turns:
+        rows = (
+            sb.table("audit_events")
+            .select("action,created_at,metadata")
+            .eq("org_id", org_id)
+            .eq("resource_id", t["conversation_id"])
+            .order("created_at", desc=True)
+            .limit(10)
+            .execute()
+            .data
+            or []
+        )
+        t["audit_actions"] = [r.get("action") for r in rows]
+        t["fallthrough_reason"] = next(
+            (
+                (r.get("metadata") or {}).get("fallthrough_reason")
+                for r in rows
+                if r.get("action") == "unified_turn.live.fallthrough"
+            ),
+            None,
+        )
+        t["reached_react"] = any(
+            r.get("action") == "unified_turn.live.fallthrough" for r in rows
+        )
+
     metas = [a.get("metadata") or {} for a in audits]
     sources = [m.get("confidenceSource") for m in metas]
     assessor_ran = [m for m in metas if m.get("assessorRan")]
@@ -249,6 +290,7 @@ async def main() -> int:
     # retrofitted to whatever came back.
     checks = {
         "turns_succeeded": all(t["status"] == 200 and not t["errors"] for t in turns),
+        "a_turn_reached_react": any(t.get("reached_react") for t in turns),
         "validator_observable": len(audits) > 0,
         "assessor_genuinely_ran": len(assessor_ran) > 0,
         "no_fail_open_heuristic_verdicts": all(s == "model" for s in sources) if sources else False,
@@ -265,6 +307,13 @@ async def main() -> int:
     print("=== checks ===")
     for k, v in checks.items():
         print(f"  {k}: {v}")
+    print("\n=== which path served each turn ===")
+    for t in turns:
+        print(
+            f"  {t['label']}: actions={t.get('audit_actions')} "
+            f"reached_react={t.get('reached_react')} "
+            f"reason={t.get('fallthrough_reason')}"
+        )
     print(f"\ngrounding audit events: {len(audits)}")
     print(f"confidence sources    : {sources}")
     print(f"validation durations  : {audit_durations} ms")

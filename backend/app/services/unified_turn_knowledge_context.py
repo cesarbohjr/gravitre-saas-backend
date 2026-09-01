@@ -198,7 +198,7 @@ async def _retrieve_org_rag(
 
     meta: dict[str, Any] = {}
     rows: list[dict[str, Any]] = []
-    rag = get_rag_service(settings)
+    rag = get_rag_service()
     chunks, rag_metrics = await rag.retrieve_chunks(
         org_id,
         query,

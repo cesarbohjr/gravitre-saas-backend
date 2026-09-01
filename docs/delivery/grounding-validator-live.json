@@ -1,23 +1,60 @@
 {
   "deployed_git_sha": "9080bc87b3a6767217e795ca7a93e34ca8fc99cf",
-  "captured_at": "2026-09-01T00:08:07.416046+00:00",
+  "captured_at": "2026-09-01T00:22:58.163537+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "turns": [
     {
-      "label": "grounding_pressure",
-      "conversation_id": "d5a32ae1-f3e2-4411-b26f-5a833ffb1813",
+      "label": "clear_pending",
+      "conversation_id": "711d4d80-63cc-4bf9-9181-1ce01c919e31",
       "status": 200,
-      "elapsed_ms": 8653,
-      "assistant": "I don\u2019t have enough information from the data available this turn.\n\nYour internal documents weren\u2019t retrieved, so I can\u2019t give the exact dollar amount, signing date, or approver without checking a source. If you want, I can look it up in the document store or connected systems next.",
-      "errors": []
+      "elapsed_ms": 10313,
+      "assistant": "Canceled.",
+      "errors": [],
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "fallthrough_reason": null,
+      "reached_react": false
+    },
+    {
+      "label": "forced_react_fallthrough",
+      "conversation_id": "95ca118f-7cf9-425b-9fda-e87988e8e6f9",
+      "status": 200,
+      "elapsed_ms": 20686,
+      "assistant": "I still have **Create list** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "errors": [],
+      "audit_actions": [
+        "pending_reply.classified",
+        "unified_turn.live.fallthrough"
+      ],
+      "fallthrough_reason": "read_tool_classical",
+      "reached_react": true
+    },
+    {
+      "label": "grounding_pressure",
+      "conversation_id": "1d67dd45-6ecb-4b1b-808c-a8e083817639",
+      "status": 200,
+      "elapsed_ms": 8687,
+      "assistant": "I don\u2019t have that document or those figures in the data available this turn.\n\nIf you want, I can pull the internal doc or search the connected sources for the Q3 vendor renewal details.",
+      "errors": [],
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "fallthrough_reason": null,
+      "reached_react": false
     },
     {
       "label": "grounded_control",
-      "conversation_id": "c3199c6d-f29c-4ea5-9694-1cf1b330040d",
+      "conversation_id": "35e3d638-92d7-4c1e-8421-81ed682b0d99",
       "status": 200,
-      "elapsed_ms": 13069,
-      "assistant": "A workspace is the space you use for work, whether an office or home area.",
-      "errors": []
+      "elapsed_ms": 12679,
+      "assistant": "A workspace is the space used or required for work, whether in an office or at home.",
+      "errors": [],
+      "audit_actions": [
+        "unified_turn.live.completed"
+      ],
+      "fallthrough_reason": null,
+      "reached_react": false
     }
   ],
   "grounding_audit_events": 0,
@@ -28,10 +65,11 @@
   "invalid_verdicts": 0,
   "audit_metadata": [],
   "latency_rows_note": "ai_pipeline_latency validation rows are gated on message_id; absence here proves nothing about execution",
-  "validation_latency_rows": 0,
+  "validation_latency_rows": 1,
   "validation_latency_durations_ms": [],
   "checks": {
     "turns_succeeded": true,
+    "a_turn_reached_react": true,
     "validator_observable": false,
     "assessor_genuinely_ran": false,
     "no_fail_open_heuristic_verdicts": false

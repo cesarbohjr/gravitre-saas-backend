@@ -82,7 +82,10 @@ KNOWN_DORMANT = {
     # made the regeneration TypeError unreachable, so they could not be split):
     #   app/operators/agent_intelligence.py:931
     #   app/services/answer_validator.py:74
-    "app/schedulers/cache_warming_scheduler.py:48",
+    # Fixed 2026-08-31 (both get_rag_service sites; the unified-turn one was
+    # live-proven dormant via org_rag_error in the replan-loop artifact):
+    #   app/schedulers/cache_warming_scheduler.py:48
+    #   app/services/unified_turn_knowledge_context.py:201
     "app/services/clarification_engine.py:769",
     "app/services/contextual_understanding_service.py:225",
     "app/services/conversation_turn_controller.py:273",
@@ -91,7 +94,6 @@ KNOWN_DORMANT = {
     "app/services/pending_reply_classifier.py:500",
     "app/services/query_rewriter.py:52",
     "app/services/schema_param_extractor.py:319",
-    "app/services/unified_turn_knowledge_context.py:201",
 }
 
 
