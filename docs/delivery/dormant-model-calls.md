@@ -258,3 +258,33 @@ Before evidence, already on record from the replan-loop artifact at tip
 `ccc98167`: `org_rag_error = "get_rag_service() takes 0 positional arguments but
 1 was given"` with `org_rag_chunk_count = 0` on both evidence-bearing turns.
 The pass condition is the disappearance of that key on a live turn.
+
+### PASS — live at deployed tip `db928881`
+
+Same script, same org, same queries as the before-run, so the comparison is
+like-for-like rather than a differently-shaped test.
+
+| | tip `ccc98167` (before) | tip `db928881` (after) |
+|---|---|---|
+| `org_rag_error` (hard turn) | `get_rag_service() takes 0 positional arguments but 1 was given` | **absent** |
+| `org_rag_error` (rich turn) | same error | **absent** |
+| `org_rag` in `sources_tried` | yes | yes |
+
+Evidence pointer: `unified_turn.live.completed` @ `2026-09-01T00:33:08.727681Z`,
+artifact `docs/delivery/evidence-sufficiency-loop-live.json`. The hard turn's
+`sources_tried` begins `['org_rag', 'internet', 'business_graph']`, so the source
+was genuinely reached on the same run where the error key is gone — the absence
+is the call succeeding, not the branch being skipped.
+
+Honest limit on this PASS: `org_rag_chunk_count` is still `0`. The isolated
+conversation org has no customer documents, so what is proven is that the call
+**executes and returns cleanly** instead of throwing. It does not prove customer
+RAG returns useful evidence, which would need an org with a real corpus. Stated
+so this is not read as more than it is.
+
+Cost: no measurable latency change. The rich turn ran 32.1s against 32.9s on the
+before-run, which is well inside run-to-run variance for a 3-round loop, and the
+call it replaces previously failed instantly — so the true added cost is one RAG
+query per loop round, unmeasurable here because the corpus is empty.
+
+**Status: both `get_rag_service` sites FIXED and LIVE-CONFIRMED at `db928881`.**

@@ -1,9 +1,9 @@
 {
   "probe": "evidence_sufficiency_loop_live",
-  "started_at": "2026-08-31T22:28:38.274518+00:00",
+  "started_at": "2026-09-01T00:32:45.047953+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "ccc98167",
+  "expect_sha": null,
   "pass_criteria": {
     "hard_query": "loop engages, escalates, and respects the bound",
     "rich_query": "structural checks clear so the reasoned assessor runs",
@@ -14,32 +14,45 @@
   "turns": [
     {
       "label": "hard",
-      "conversation_id": "1a029df4-89d1-4276-8a4b-11eb9a0e9754",
+      "conversation_id": "abade43f-ff59-462e-bfb3-5c63da51d49b",
       "message": "What are Ontario's statutory mass-termination notice requirements under the Employment Standards Act, what is the current effective date of those provisions, and how do they differ from the US federal WARN Act thresholds?",
       "http_status": 200,
-      "wall_ms": 18409,
-      "assistant_chars": 661,
-      "assistant_excerpt": "I don\u2019t have enough to fully substantiate Ontario\u2019s current ESA mass-termination notice rules from the material here, and I can\u2019t verify a current effective date from the excerpts alone.\n\nWhat I can support:\n- The federal FLSA materials you provided are U.S. wage/hour sources, not Ontario ESA mass-termination provisions.\n- The U.S. WARN Act is the relevant federal comparison, but I don\u2019t have a verified excerpt here with its exact thresholds.\n\nSo the missing piece is the Ontario statute text or a current legal source for the ESA provisions, plus a verified WARN Act source. If you want, I can pull current public sources and give you a clean side-by-side.",
+      "wall_ms": 21685,
+      "assistant_chars": 529,
+      "assistant_excerpt": "I don\u2019t have enough evidence here to substantiate the Ontario mass-termination notice rules or their current effective date.\n\nWhat I can support from the retrieved material is only that the federal side includes U.S. Department of Labor/FLSA material, not Ontario ESA mass-termination provisions. For the WARN comparison, I\u2019d need a source that actually states the current Ontario notice rules and another source for the federal WARN thresholds.\n\nIf you want, I can fetch current public sources and give you a clean side-by-side.",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
       "evidence_keys": null,
       "evidence_process": null,
-      "audit_event_id": "dc81b0b9-033f-42d7-9958-53f0f8f1d176",
+      "audit_event_id": "ca1513e9-c153-43ef-be21-4a7c28cf707e",
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-08-31T22:28:56.753705+00:00",
+      "audit_created_at": "2026-09-01T00:33:08.727681+00:00",
       "unifiedTurnKnowledge": {
         "pack_ids": [],
         "route_reason": "departments=['unspecified']; jurisdictions=['CA-ON', 'US-federal']; packs=[]",
         "internal_thin": true,
-        "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "24ae91f3-0a67-4be7-bcc6-8784e3995056",
+        "cognitiveTurnId": "0be7c1c8-b598-45f5-a184-0f110add6c03",
+        "org_rag_metrics": {
+          "top_k": 4,
+          "reranked": 0,
+          "rerank_method": "none",
+          "embedding_method": "openai",
+          "rerank_threshold": 0.3,
+          "hybrid_candidate_k": 20,
+          "keyword_candidates": 0,
+          "reliability_weight": 0.15,
+          "semantic_candidates": 0,
+          "retrieval_latency_ms": 1042,
+          "cross_encoder_enabled": true,
+          "reliability_sources_scored": 0
+        },
         "fabric_hit_count": 0,
         "internet_provider": "serper",
         "internet_hit_count": 0,
         "evidenceSufficiency": {
-          "ms": 3752,
+          "ms": 2650,
           "bar": "regulatory",
           "enabled": true,
           "final_gaps": [
@@ -96,27 +109,27 @@
         },
         "org_rag_chunk_count": 0,
         "outcomeBiasInjected": true,
-        "business_graph_status": "insufficient_entity_match",
+        "business_graph_error": "{'message': 'column optimization_suggestions.title does not exist', 'code': '42703', 'hint': None, 'details': None}",
         "internet_raw_hit_count": 5,
         "internet_empty_relevant": true
       }
     },
     {
       "label": "rich",
-      "conversation_id": "15409b6f-3bc2-461c-b594-3ebe743f484f",
+      "conversation_id": "23ec0bfd-8eb0-4ba1-b398-7cafcf0df779",
       "message": "Under the SEC's cybersecurity disclosure rules, what materiality standard applies to a Form 8-K Item 1.05 incident report, and how does that interact with the NIST CSF governance function our policies are mapped to?",
       "http_status": 200,
-      "wall_ms": 31218,
-      "assistant_chars": 733,
-      "assistant_excerpt": "Item 1.05 uses a materiality standard: the company must determine whether the cybersecurity incident is material, and if it is, disclose the material aspects of its nature, scope, timing, and impact. The NIST CSF Govern function is the policy-and-oversight layer that sets cybersecurity strategy, roles, and monitoring; it does not replace the SEC\u2019s legal materiality test, but it should shape how your organization makes and documents that determination.\n\nWhat I can substantiate here is the framework-level interaction: Govern drives governance, risk strategy, and oversight; the SEC rule drives the disclosure trigger. I can\u2019t verify your company\u2019s specific policy mapping or legal conclusion from",
+      "wall_ms": 32152,
+      "assistant_chars": 1076,
+      "assistant_excerpt": "Item 1.05 is triggered by a cybersecurity incident the registrant determines to be material; the filing then has to cover the material nature, scope, timing, and impact. That part is not fully settled here, because the provided SEC sources disagree on the exact formulation of the standard.\n\nOn the NIST side, CSF Govern is the right fit for your policy mapping: it sets the organization\u2019s cybersecurity strategy, roles, responsibilities, policy, and oversight, and it sits inside broader enterprise risk management. In practice, that means the disclosure decision process should be governed as a formal risk-and-materiality control, not handled ad hoc by the incident team.\n\nWhat I can substantiate ",
       "stream_errors": [],
       "unified_turn_live": null,
       "reasoning_depth": null,
       "evidence_keys": null,
       "evidence_process": null,
-      "audit_event_id": "df4039d4-8b27-42f5-ba97-5212e7946377",
+      "audit_event_id": "8629ee9c-9ed7-4241-a5ba-d47e8d12d690",
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-08-31T22:29:34.862656+00:00",
+      "audit_created_at": "2026-09-01T00:33:49.044124+00:00",
       "unifiedTurnKnowledge": {
         "pack_ids": [
           "pack.finance",
@@ -124,37 +137,76 @@
         ],
         "route_reason": "departments=['finance', 'cybersecurity']; jurisdictions=['none']; packs=['pack.finance', 'pack.cybersecurity']",
         "internal_thin": false,
-        "org_rag_error": "get_rag_service() takes 0 positional arguments but 1 was given",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "e64e5239-425a-4ce0-9d61-1da3c0714e37",
+        "cognitiveTurnId": "30d41693-7a59-43cc-892d-5c62031433eb",
+        "org_rag_metrics": {
+          "top_k": 4,
+          "reranked": 0,
+          "rerank_method": "none",
+          "embedding_method": "openai",
+          "rerank_threshold": 0.3,
+          "hybrid_candidate_k": 20,
+          "keyword_candidates": 0,
+          "reliability_weight": 0.15,
+          "semantic_candidates": 0,
+          "retrieval_latency_ms": 696,
+          "cross_encoder_enabled": true,
+          "reliability_sources_scored": 0
+        },
         "fabric_hit_count": 6,
         "evidenceConflicts": {
-          "ms": 1603,
-          "count": 0,
-          "details": [],
+          "ms": 2793,
+          "count": 1,
+          "details": [
+            {
+              "claims": [
+                {
+                  "kind": "internet",
+                  "as_of": null,
+                  "claim": "Item 1.05 requires disclosure of a cybersecurity incident only when the registrant determines the incident is material.",
+                  "index": 6,
+                  "source": "Disclosure of Cybersecurity Incidents Determined To Be ...",
+                  "superseded": false,
+                  "authority_score": null
+                },
+                {
+                  "kind": "internet",
+                  "as_of": null,
+                  "claim": "Registrants must disclose the material aspects of the incident's nature, scope, timing, and impact under Item 1.05.",
+                  "index": 7,
+                  "source": "Materiality in SEC cybersecurity compliance",
+                  "superseded": false,
+                  "authority_score": null
+                }
+              ],
+              "subject": "SEC Form 8-K Item 1.05 materiality threshold for cybersecurity incident disclosure",
+              "rationale": "no supersession marker, no complete effective dating, no decisive authority gap, and not an org-specific question \u2014 conflict surfaced rather than guessed",
+              "resolution": "unresolved",
+              "winner_index": null
+            }
+          ],
           "resolved": 0,
-          "unresolved": 0
+          "unresolved": 1
         },
         "internet_provider": "serper",
         "internet_hit_count": 4,
         "evidenceSufficiency": {
-          "ms": 11578,
+          "ms": 10156,
           "bar": "regulatory",
           "enabled": true,
           "final_gaps": [
             "does_not_address_question",
             "partial_coverage",
-            "weak_authority"
+            "missing_direct_authority_on_materiality_standard"
           ],
           "assessments": [
             {
               "bar": "regulatory",
               "gaps": [
                 "does_not_address_question",
-                "partial_coverage",
-                "missing_SEC_authority"
+                "partial_coverage"
               ],
-              "reason": "The retrieved evidence is only topic-adjacent. It includes current NIST CSF 2.0 material about the Govern function and general risk management, but it does not directly state the SEC Form 8-K Item 1.05 materiality standard or explain how that SEC reporting threshold interacts with NIST CSF governance. No citable SEC rule, release, or interpretive guidance was provided, so the answer cannot be dete",
+              "reason": "The evidence is only topic-adjacent. It includes general NIST CSF 2.0 Govern-function language, but it does not directly state the SEC Form 8-K Item 1.05 materiality standard or explain how that SEC standard interacts with the NIST CSF governance function. No cited authority in the evidence directly answers the legal/regulatory question, so the standard is not met.",
               "assessor": "llm",
               "bar_reason": "department=cybersecurity,finance",
               "sufficient": false,
@@ -162,7 +214,7 @@
               "confidenceSource": "heuristic",
               "confidence_source": "heuristic",
               "confidenceIsEstimate": true,
-              "assessment_confidence": 0.99,
+              "assessment_confidence": 0.98,
               "confidence_is_estimate": true,
               "require_citable_source": true,
               "require_freshness_signal": true
@@ -174,7 +226,7 @@
                 "partial_coverage",
                 "weak_authority"
               ],
-              "reason": "The evidence is only partially responsive. It directly supports the NIST CSF 2.0 Govern function, but it does not directly state the SEC Form 8-K Item 1.05 materiality standard or explain the interaction between that SEC standard and a CSF governance function. The SEC-specific sources are summaries rather than citable authoritative text, so they do not meet the regulatory/legal standard requested.",
+              "reason": "The evidence is only partially on-topic and does not directly and fully state the legal answer. It shows that Form 8-K Item 1.05 concerns a cybersecurity incident determined to be material, and it provides general NIST CSF 2.0 Govern-function language. However, it does not directly state the SEC materiality standard for Item 1.05, nor does it explain how that SEC standard interacts with an organiz",
               "assessor": "llm",
               "bar_reason": "department=cybersecurity,finance",
               "sufficient": false,
@@ -182,7 +234,7 @@
               "confidenceSource": "heuristic",
               "confidence_source": "heuristic",
               "confidenceIsEstimate": true,
-              "assessment_confidence": 0.95,
+              "assessment_confidence": 0.89,
               "confidence_is_estimate": true,
               "require_citable_source": true,
               "require_freshness_signal": true
@@ -192,9 +244,9 @@
               "gaps": [
                 "does_not_address_question",
                 "partial_coverage",
-                "weak_authority"
+                "missing_direct_authority_on_materiality_standard"
               ],
-              "reason": "The retrieved evidence is only partially on-topic. It directly supports the NIST CSF Govern function at a high level, and it includes a general statement that Item 1.05 requires disclosure of a cybersecurity incident determined to be material. However, it does not directly state the SEC materiality standard for Item 1.05 with a citable legal/regulatory authority, nor does it explain how that stand",
+              "reason": "The evidence is topic-adjacent but does not directly and completely state the legal standard asked. It identifies that Form 8-K Item 1.05 covers a cybersecurity incident determined by the registrant to be material, but the excerpt does not directly provide the SEC\u2019s governing materiality standard or explain how that standard interacts with the NIST CSF Govern function. The NIST CSF citation descri",
               "assessor": "llm",
               "bar_reason": "department=cybersecurity,finance",
               "sufficient": false,
@@ -208,7 +260,7 @@
               "require_freshness_signal": true
             }
           ],
-          "final_reason": "The retrieved evidence is only partially on-topic. It directly supports the NIST CSF Govern function at a high level, and it includes a general statement that Item 1.05 requires disclosure of a cybersecurity incident determined to be material. However, it does not directly state the SEC materiality ",
+          "final_reason": "The evidence is topic-adjacent but does not directly and completely state the legal standard asked. It identifies that Form 8-K Item 1.05 covers a cybersecurity incident determined by the registrant to be material, but the excerpt does not directly provide the SEC\u2019s governing materiality standard or",
           "sources_tried": [
             "knowledge_pack",
             "org_rag",
@@ -228,10 +280,10 @@
     },
     {
       "label": "simple",
-      "conversation_id": "d71b603f-c826-48db-a19f-405650697052",
+      "conversation_id": "6720baf1-3757-42cb-bf2e-5e764d253530",
       "message": "thanks, that helps",
       "http_status": 200,
-      "wall_ms": 13365,
+      "wall_ms": 15992,
       "assistant_chars": 78,
       "assistant_excerpt": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "stream_errors": [],
@@ -239,15 +291,15 @@
       "reasoning_depth": null,
       "evidence_keys": null,
       "evidence_process": null,
-      "audit_event_id": "7b23f045-833f-4d41-8413-9f5c7ec28f4f",
+      "audit_event_id": "e8e3868e-e08c-48e2-a41a-167c3860c1cb",
       "audit_action": "unified_turn.live.fallthrough",
-      "audit_created_at": "2026-08-31T22:29:51.938818+00:00",
+      "audit_created_at": "2026-09-01T00:34:05.397101+00:00",
       "unifiedTurnKnowledge": {
         "skipped": "not_informational",
         "pack_ids": [],
         "route_reason": "",
         "research_scope": "internal_only",
-        "cognitiveTurnId": "637b07af-b32d-48c3-bc28-00ce7872c83f",
+        "cognitiveTurnId": "94f0a53c-0b18-47ea-aa26-a2de487a68e8",
         "fabric_hit_count": 0,
         "internet_hit_count": 0,
         "org_rag_chunk_count": 0,
@@ -256,7 +308,7 @@
     }
   ],
   "health": {
-    "git_sha": "ccc98167d86f0f133bdef0f6ae1d0544e07367d3",
+    "git_sha": "db9288811005e49ddc1435acffb75d9328ee5337",
     "unified_turn_live_enabled": true
   },
   "checks": {
@@ -301,8 +353,8 @@
     "simple_process_summary_absent": true,
     "simple_loop_did_not_engage": true,
     "simple_skip_reason": "not_informational",
-    "hard_wall_ms": 18409,
-    "simple_wall_ms": 13365,
+    "hard_wall_ms": 21685,
+    "simple_wall_ms": 15992,
     "conflicts": null
   },
   "phase_verdicts": {
