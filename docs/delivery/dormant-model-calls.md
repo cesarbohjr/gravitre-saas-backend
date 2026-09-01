@@ -349,9 +349,68 @@ registered in a bare local context, `_schema_field_keys` returns no fields, so
 `required_missing` is empty and the function returns before reaching the model at
 all.
 
-Status: **fix shipped and guard-enforced; functional before/after INCONCLUSIVE.**
-Live proof needs a turn with a real registered action schema and a genuinely
-missing required parameter, which has not been run yet. Not upgraded to PASS.
+### Resolved 2026-09-01 — INCONCLUSIVE superseded by PASS
+
+The INCONCLUSIVE above came from a probe limitation, not from the fix. Correcting
+the probe resolved it. `backend/scripts/probe_schema_param_extractor_live.py`
+first enumerates the real catalog for actions that genuinely have a workflow
+schema with required fields, then constructs a message that leaves a required
+field empty, which is what the earlier probe never achieved.
+
+The dormancy claim is about control flow — was the router entered — so it is
+decidable without AI credentials. `probe_schema_param_extractor_before_after.py`
+runs the real extractor twice on the same input, restoring the original buggy
+call for the first pass (`docs/delivery/schema-param-extractor-before-after.json`):
+
+| | Router entered (`MODEL_CALL_START`) | Handler logged |
+|---|---|---|
+| before | **no** | `get_model_router() takes 0 positional arguments but 1 was given` |
+| after | **yes** | `All AI providers failed (…not-configured)` — local env only |
+
+Status: **PASS on the dormancy defect.** The call reached the router on a real
+invocation; before the fix it could not, and the failure was invisible.
+
+Still open, and deliberately not rounded up: whether the model then contributes
+arguments the heuristics miss. That is a capability question, not a dormancy
+one, and it is unmeasurable in this environment — no AI provider is configured
+locally (openai, anthropic and gemini all report unavailable), so the call
+reaches the router and can never receive a completion. Production only.
+
+Recorded while probing, not fixed: for a vague message the heuristic pass fills
+`hubspot.contacts.create`'s `firstname` *and* `lastname` with the entire user
+message. Same argument-invention pathology as
+[`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
+
+## Phase 2 — site 5, `pending_reply_classifier.py:500` (PASS on dormancy)
+
+Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+
+What was silently absent: `classify_pending_reply` runs a regex fast path first
+and only calls the model when that returns `None`. With the call dormant, every
+reply the regex could not classify returned `"ambiguous"`, so the assistant
+re-asked instead of reading the conversation. It **failed safe** — asking rather
+than guessing an approve or reject — which is exactly why it was never noticed
+on a governance-adjacent path.
+
+Before/after on the same input, buggy call restored for the first pass
+(`backend/scripts/probe_pending_reply_classifier_before_after.py`,
+`docs/delivery/pending-reply-classifier-before-after.json`). The reply used is
+*"hold off on that for now, I want to check the numbers with finance first"* —
+against a real `awaiting_confirm` hold, with the regex fast path confirmed
+returning `None`, so comprehension is the only route to a correct label:
+
+| | Regex fast path | Router entered | TypeError | Intent returned |
+|---|---|---|---|---|
+| before | `None` | **no** | yes, swallowed at WARNING | `ambiguous` |
+| after | `None` | **yes** | no | `ambiguous` (no AI provider configured locally) |
+
+Status: **PASS on the dormancy defect** — the classifier now reaches the model
+router on a reply the regex cannot handle. As with site 4, whether the model
+labels this particular reply correctly needs provider credentials and is
+production-only; it is not claimed here.
+
+Baseline: `pending_reply_classifier.py:500` removed from `KNOWN_DORMANT`, guard
+test green (2 passed). Five of twelve sites now closed.
 
 ### Superseded — the "unreproduced" observation below is now REPRODUCED
 

@@ -497,7 +497,7 @@ async def _model_pending_reply_intent(
             f"Pending: {snap.summary_for_model()}\n"
             f"Latest user reply: {message}\n"
         )
-        response = await get_model_router(settings or get_settings()).complete(
+        response = await get_model_router().complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(

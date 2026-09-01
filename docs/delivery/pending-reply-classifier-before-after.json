@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-09-01T08:58:06.243998+00:00",
+  "site": "backend/app/services/pending_reply_classifier.py:500",
+  "message": "hold off on that for now, I want to check the numbers with finance first",
+  "before": {
+    "label": "BEFORE \u2014 original buggy call restored",
+    "regex_fast_path": null,
+    "router_entered": false,
+    "type_error_seen": true,
+    "intent": "ambiguous",
+    "handler_logged": [
+      "WARNING: pending_reply model classify skipped: get_model_router() takes 0 positional arguments but 1 was given"
+    ],
+    "raised": null
+  },
+  "after": {
+    "label": "AFTER \u2014 fix in place",
+    "regex_fast_path": null,
+    "router_entered": true,
+    "type_error_seen": false,
+    "intent": "ambiguous",
+    "handler_logged": [
+      "WARNING: pending_reply model classify skipped: All AI providers failed (openai: unavailable/not-configured; anthropic: unavailable/not-configured; gemini: unavailable/not-configured)"
+    ],
+    "raised": null
+  },
+  "verdict": "PASS",
+  "scope_note": "Proves the call is no longer dormant. Whether the model then classifies this reply correctly needs AI provider credentials, which this environment does not have \u2014 production only."
+}
