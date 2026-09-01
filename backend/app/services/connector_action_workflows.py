@@ -5,6 +5,7 @@ import re
 from dataclasses import replace
 from typing import Any
 
+from app.core.logging import get_logger
 from app.services.action_workflow_validation import WorkflowCheck
 from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
@@ -18,6 +19,8 @@ from app.services.connector_capability_analysis import (
 )
 from app.services.execution_envelope import format_operator_response
 from app.services.connector_session_state import inference_confidence_for_source
+
+logger = get_logger(__name__)
 
 # Backward-compatible alias for registry verification and tests.
 analyze_list_capability_gaps = analyze_capability_gaps
@@ -67,6 +70,53 @@ def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> Workflow
     return validate_plan_against_schema(plan, schema)
 
 
+# Interrogative / retrieval openers. Deliberately anchored: a "show" appearing
+# mid-sentence ("create a list and show me the result") is a genuine write.
+_READ_OPENER = re.compile(
+    r"^\s*(?:can\s+you\s+|could\s+you\s+|please\s+|hey[, ]+)*"
+    r"(?:show|list|display|find|get|give|tell|summari[sz]e|report|"
+    r"what|which|who|when|where|how\s+many|how\s+much|do\s+we|are\s+there|is\s+there)\b",
+    re.I,
+)
+
+# If any of these appear the user is asking for something to happen, so the read
+# opener is not decisive ("tell me the deals, then create a list for them").
+_WRITE_VERB = re.compile(
+    r"\b(?:creat(?:e|ing)|mak(?:e|ing)|add(?:ing)?|build(?:ing)?|send(?:ing)?|"
+    r"delet(?:e|ing)|remov(?:e|ing)|updat(?:e|ing)|set\s+up|spin\s+up|start(?:ing)?|"
+    r"push(?:ing)?|sync(?:ing)?|enrich(?:ing)?|import(?:ing)?|upload(?:ing)?)\b",
+    re.I,
+)
+
+
+def is_read_only_request_for_destructive_plan(
+    plan: ConnectorActionPlan, message: str
+) -> bool:
+    """True when a destructive plan was produced from a purely interrogative ask.
+
+    The reproduced defect: "Show me the most recent deals in our HubSpot pipeline
+    with their amounts and close dates." reached ReAct, which selected
+    `hubspot_lists_create`, and the turn arrived as an approval prompt for a
+    destructive write the user never requested. `APPROVAL_ACTION_MISMATCH` cannot
+    catch it — proposed and executed actions agree — and three argument-layer
+    guards did not either, because the fabricated action outlived each of them.
+    See docs/delivery/readonly-destructive-proposal.md.
+
+    Conservative by construction: it fires only when the message *opens* with a
+    retrieval word AND contains no write verb anywhere AND expresses no
+    create intent. Anything ambiguous is left alone, because wrongly blocking a
+    real write is a worse failure than the prompt this prevents.
+    """
+    if plan is None or not getattr(plan, "destructive", False):
+        return False
+    text = (message or "").strip()
+    if not text:
+        return False
+    if _WRITE_VERB.search(text) or LIST_CREATE_INTENT.search(text):
+        return False
+    return bool(_READ_OPENER.match(text))
+
+
 def missing_params_stage_patch(
     plan: ConnectorActionPlan,
     message: str,
@@ -92,6 +142,30 @@ def missing_params_stage_patch(
     # "I still have Create list waiting for approval. Say yes to run it." with
     # args {}. Nothing here is answerable by yes — there is no subject to act on.
     # See docs/delivery/readonly-destructive-proposal.md.
+    # Root-cause gate: a read-shaped request must never stage a destructive write.
+    # Three deploys of argument-level guards failed to close this, because each
+    # time a different component supplied the arguments while the fabricated
+    # ACTION survived. The action is the defect, so it is gated here.
+    if clarification is None and is_read_only_request_for_destructive_plan(plan, message or ""):
+        label = (plan.label or plan.invoke_action or "that action").strip()
+        logger.warning(
+            "destructive_plan_blocked_on_read_request action=%s message=%r",
+            plan.invoke_action,
+            (message or "")[:120],
+        )
+        return (
+            WorkflowCheck(
+                status="needs_input",
+                message=(
+                    f"That looked like a question, so I won't set up **{label}** off "
+                    "the back of it. Ask me to create it explicitly if that's what "
+                    "you want."
+                ),
+                dialogue_mode="clarify",
+            ),
+            {"pending_task": None},
+        )
+
     if (
         clarification is None
         and getattr(plan, "destructive", False)

@@ -13,6 +13,8 @@ directions are asserted here.
 """
 from __future__ import annotations
 
+import pytest
+
 from app.marketplace.workflows.msp_prospecting_list_workflow import (
     DEFAULT_HUBSPOT_LIST_NAME,
 )
@@ -125,6 +127,62 @@ def test_a_destructive_plan_with_real_args_still_reaches_approval() -> None:
         destructive=True, name="Northeast Renewals", object_type_id="0-1", processing_type="MANUAL"
     )
     assert missing_params_stage_patch(complete, REQUESTED, task_state={}) is None
+
+
+READ_SHAPED = [
+    READ_ONLY,
+    "What contact lists do we have in HubSpot?",
+    "Show me our pipeline.",
+    "How many deals closed last quarter?",
+    "Can you summarize the pipeline for me?",
+]
+
+# Must NOT be blocked: real write requests, and mixed asks where the user does
+# want something to happen. Wrongly refusing a genuine write is the worse failure.
+WRITE_SHAPED = [
+    REQUESTED,
+    "Create a HubSpot list called Northeast Renewals",
+    "Show me the deals, then create a list for them",
+    "Make a static list of our MSP prospects",
+    "Set up a contact list in Apollo",
+]
+
+
+@pytest.mark.parametrize("message", READ_SHAPED)
+def test_read_shaped_asks_do_not_stage_a_destructive_action(message: str) -> None:
+    from app.services.connector_action_workflows import missing_params_stage_patch
+
+    plan = _hubspot_list_create(
+        destructive=True, name="MSPs", object_type_id="0-1", processing_type="MANUAL"
+    )
+    staged = missing_params_stage_patch(plan, message, task_state={})
+    assert staged is not None, f"read-shaped ask staged a destructive write: {message!r}"
+    clarification, patch = staged
+    assert clarification.dialogue_mode == "clarify"
+    assert patch.get("pending_task") is None
+
+
+@pytest.mark.parametrize("message", WRITE_SHAPED)
+def test_genuine_write_requests_are_not_blocked(message: str) -> None:
+    from app.services.connector_action_workflows import (
+        is_read_only_request_for_destructive_plan,
+    )
+
+    plan = _hubspot_list_create(
+        destructive=True, name="Northeast Renewals", object_type_id="0-1"
+    )
+    assert is_read_only_request_for_destructive_plan(plan, message) is False, (
+        f"a real write request was treated as read-only: {message!r}"
+    )
+
+
+def test_the_gate_only_applies_to_destructive_plans() -> None:
+    from app.services.connector_action_workflows import (
+        is_read_only_request_for_destructive_plan,
+    )
+
+    benign = _hubspot_list_create(destructive=False, name="MSPs")
+    assert is_read_only_request_for_destructive_plan(benign, READ_ONLY) is False
 
 
 def test_predicate_ignores_plans_with_a_user_supplied_arg() -> None:
