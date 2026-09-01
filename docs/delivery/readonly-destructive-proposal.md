@@ -1,7 +1,8 @@
 # A read-only question stages a destructive write the user never asked for
 
-**Status: REPRODUCED and deterministic. Guard applied, mutation-proven, awaiting
-a production deploy for live confirmation. Safety-relevant.**
+**Status: PARTIALLY FIXED, live-confirmed at `51aa61e4`. Invented arguments are
+gone; the fabricated action is still staged for approval. Safety-relevant, still
+open.**
 Deployed tip `db928881`. Evidence:
 `docs/delivery/readonly-destructive-proposal-probe.json`.
 
@@ -146,11 +147,48 @@ is exposed alongside it for callers that need the predicate directly.
   `test_connector_action_workflows`, `test_chat_connector_execution`,
   `test_approval_action_binding`, plus the new file.
 
-**Still owed: live re-run of `probe-readonly-destructive-proposal.py` against a
-deployed tip carrying this fix.** Production has been serving `db928881` across
-five pushes, so the fix is on `main` and not yet live. Until that probe returns
-0/4 in production, this is **fixed and verified locally, NOT live-confirmed** —
-the 4/4 reproduction stands against the currently deployed build.
+### Live result: the argument half is fixed, the staging half is not
+
+Re-run in production at tip `51aa61e4`. **Half of this worked and half of my
+reasoning about it was wrong**, so both are recorded.
+
+Fabricated arguments are gone, confirmed by reading the staged record directly:
+
+| | before (`db928881`) | after (`51aa61e4`) |
+|---|---|---|
+| `args` | `{"name": "MSPs", "object_type_id": "0-1", "processing_type": "MANUAL"}` | `{}` |
+| `inferred_fields` | `["name","processing_type","object_type_id"]` | `[]` |
+| `inference_sources` | 3 × `pack_common_default` | `{}` |
+
+**But the fabricated action is still staged, and the probe is still 4/4.** The
+user still gets:
+
+> I still have **Create list** waiting for approval. Say **yes** to run it…
+
+My stated prediction above — that empty slots would make the plan "fail the
+required-parameter check instead of arriving as a one-word-from-execution
+approval prompt" — **was wrong.** It stages `awaiting_confirm` with `args: {}`
+regardless. Something downstream of the defaults does not treat missing required
+arguments as disqualifying.
+
+Honest status:
+
+- **Fixed, live-confirmed:** no invented values reach a destructive proposal. A
+  `yes` can no longer create a wrongly-named `MSPs` list; it would attempt a
+  nameless create that vendor validation should reject. Real risk reduction.
+- **Not fixed:** a read-only question still fabricates a destructive *action* and
+  still invites approval for it. The root cause — ReAct selecting
+  `hubspot_lists_create` for a read request — is untouched, and the guard was
+  never aimed at it.
+
+The remaining work is the staging decision, not the arguments: either the
+required-param check must refuse to stage a destructive plan with no arguments,
+or the ReAct-selected destructive tool must be gated on read-classified turns
+(the option deferred earlier). Worth noting the unit tests for the guard were
+green *and* mutation-proven while the live defect persisted — they proved the
+guard does what it says, not that it closes the defect.
+
+## Options considered and not taken
 
 ## Options considered and not taken
 
