@@ -66,13 +66,17 @@ def hubspot_calls():
         "search_tickets": "tickets",
         "list_tickets": "tickets",
     }
+    # HubSpot's list_tickets is imported under an alias because app.connectors
+    # .zendesk exports the same name and is imported later.
+    patch_attr = {"list_tickets": "hubspot_list_tickets"}
     with patch(
         "app.services.tool_service._hubspot_connector_and_token",
         return_value=("conn-hs", "token-hs"),
     ), patch("app.services.tool_service._hubspot_hub_id", return_value="1234567"):
         stack = []
         for fn in targets:
-            p = patch(f"app.services.tool_service.{fn}", side_effect=recorder(fn))
+            attr = patch_attr.get(fn, fn)
+            p = patch(f"app.services.tool_service.{attr}", side_effect=recorder(fn))
             p.start()
             stack.append(p)
         try:

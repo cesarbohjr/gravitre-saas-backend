@@ -57,7 +57,9 @@ from app.connectors.hubspot import (
     list_contacts,
     list_deal_pipelines,
     list_deals,
-    list_tickets,
+    # Aliased: app.connectors.zendesk exports list_tickets too and is imported
+    # later, so the bare name would silently resolve to Zendesk's.
+    list_tickets as hubspot_list_tickets,
     list_owners,
     search_companies,
     search_contacts,
@@ -200,9 +202,27 @@ _RETRY_BACKOFF_SEC = (0.5, 1.0)
 _AUTH_HINTS = ("unauthorized", "invalid_auth", "token", "expired", "authentication", "401", "403")
 _CHANNEL_HINTS = ("channel_not_found", "not_in_channel", "is_archived")
 _SCOPE_HINTS = ("missing_scope", "insufficient scope", "required scope", "missing scopes", "oauth_scopes")
+_TIMEOUT_HINTS = ("timeout", "timed out")
+# Substrings, not just exception types, because a transport fault raised deeper
+# in a vendor client is often re-raised as a plain Exception carrying the text.
+_TRANSPORT_HINTS = (
+    "connectionterminated",
+    "connection terminated",
+    "connection reset",
+    "connection aborted",
+    "connection refused",
+    "server disconnected",
+    "remote protocol error",
+    "temporarily unavailable",
+    "broken pipe",
+    "network is unreachable",
+    "eof occurred",
+)
 
 
 def _classify_error(exc: Exception) -> ToolError:
+    import httpx
+
     from app.services.tool_types import (
         ToolChannelNotFoundError,
         ToolConnectorNotConnectedError,
@@ -222,6 +242,14 @@ def _classify_error(exc: Exception) -> ToolError:
         return ToolConnectorNotConnectedError(str(exc))
     if any(h in msg for h in _AUTH_HINTS):
         return ToolAuthExpiredError(str(exc))
+    # A dropped connection, a reset, a GOAWAY or a timeout is not the caller's
+    # parameters. Falling through to ToolValidationError told users to "check
+    # required fields" for a fault they did not cause and a retry would likely
+    # clear, and made a transient failure look permanent.
+    if isinstance(exc, httpx.TimeoutException) or any(h in msg for h in _TIMEOUT_HINTS):
+        return ToolError(str(exc), code="connector_timeout")
+    if isinstance(exc, (httpx.TransportError, OSError)) or any(h in msg for h in _TRANSPORT_HINTS):
+        return ToolError(str(exc))
     return ToolValidationError(str(exc))
 
 
@@ -1038,7 +1066,7 @@ def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> No
     filter_groups = _resolve_hubspot_search("tickets", params)
     try:
         if filter_groups is None:
-            data = list_tickets(token, properties=params.get("properties"), limit=limit)
+            data = hubspot_list_tickets(token, properties=params.get("properties"), limit=limit)
         else:
             data = search_tickets(token, filter_groups=filter_groups, limit=limit)
     except HubSpotAPIError as exc:

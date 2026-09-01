@@ -1,0 +1,154 @@
+{
+  "deployed_git_sha": "dd218e899e08f34544fc70faba5cafc129f08c15",
+  "captured_at": "2026-09-01T09:39:03.497451+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "PASS",
+  "note": "2/3 soft deferrals were comprehended and released the hold, with zero lists.create invocations",
+  "lists_create_invocations": [],
+  "scenarios": [
+    {
+      "label": "soft_defer_finance",
+      "conversation_id": "3d345633-adc2-411e-8430-ad55a4a1f8d6",
+      "staged": true,
+      "pending_before": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "Q4 Renewals for me",
+            "object_type_id": "0-1",
+            "processing_type": "MANUAL"
+          },
+          "kind": "write",
+          "label": "Create list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "hubspot_lists_create",
+          "destructive": true,
+          "integration": "hubspot",
+          "invoke_action": "hubspot.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "hubspot_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "b779de4bd591c5a7b29d2ed8587275a25cfc2e60fe44e9f362bb1029e6be8c29",
+          "bound_integration": "hubspot",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "e6b35873-6804-442f-af57-aadb260eeebe",
+          "bound_invoke_action": "hubspot.lists.create"
+        },
+        "status": "awaiting_confirm"
+      },
+      "pending_after": null,
+      "user_reply": "hold off on that for now, I want to check the numbers with finance first",
+      "assistant": "Cancelled the pending plan. What should we do instead?",
+      "pending_cleared_or_changed": true,
+      "generic_reask": false,
+      "looks_executed": false
+    },
+    {
+      "label": "soft_defer_review",
+      "conversation_id": "b8e92611-3396-4348-ab9d-73f9628f7c9f",
+      "staged": true,
+      "pending_before": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "Q4 Renewals for me",
+            "object_type_id": "0-1",
+            "processing_type": "MANUAL"
+          },
+          "kind": "write",
+          "label": "Create list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "hubspot_lists_create",
+          "destructive": true,
+          "integration": "hubspot",
+          "invoke_action": "hubspot.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "hubspot_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "b779de4bd591c5a7b29d2ed8587275a25cfc2e60fe44e9f362bb1029e6be8c29",
+          "bound_integration": "hubspot",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "638b538d-3a56-4c0f-99c7-2e2210176f30",
+          "bound_invoke_action": "hubspot.lists.create"
+        },
+        "status": "awaiting_confirm"
+      },
+      "pending_after": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "Q4 Renewals for me",
+            "object_type_id": "0-1",
+            "processing_type": "MANUAL"
+          },
+          "kind": "write",
+          "label": "Create list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "hubspot_lists_create",
+          "destructive": true,
+          "integration": "hubspot",
+          "invoke_action": "hubspot.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "hubspot_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "b779de4bd591c5a7b29d2ed8587275a25cfc2e60fe44e9f362bb1029e6be8c29",
+          "bound_integration": "hubspot",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "638b538d-3a56-4c0f-99c7-2e2210176f30",
+          "bound_invoke_action": "hubspot.lists.create"
+        },
+        "status": "awaiting_confirm"
+      },
+      "user_reply": "let me run that past finance before we commit to it",
+      "assistant": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+      "pending_cleared_or_changed": false,
+      "generic_reask": false,
+      "looks_executed": false
+    },
+    {
+      "label": "soft_defer_board",
+      "conversation_id": "97347a41-83c4-476c-8288-59ce30512027",
+      "staged": true,
+      "pending_before": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "Q4 Renewals for me",
+            "object_type_id": "0-1",
+            "processing_type": "MANUAL"
+          },
+          "kind": "write",
+          "label": "Create list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "hubspot_lists_create",
+          "destructive": true,
+          "integration": "hubspot",
+          "invoke_action": "hubspot.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "hubspot_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "b779de4bd591c5a7b29d2ed8587275a25cfc2e60fe44e9f362bb1029e6be8c29",
+          "bound_integration": "hubspot",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "34ca998e-0c02-4ef3-bc2b-262d88f02438",
+          "bound_invoke_action": "hubspot.lists.create"
+        },
+        "status": "awaiting_confirm"
+      },
+      "pending_after": null,
+      "user_reply": "not yet, the board meeting is Thursday and I want their read first",
+      "assistant": "Cancelled the pending plan. What should we do instead?",
+      "pending_cleared_or_changed": true,
+      "generic_reask": false,
+      "looks_executed": false
+    }
+  ]
+}

@@ -405,9 +405,45 @@ returning `None`, so comprehension is the only route to a correct label:
 | after | `None` | **yes** | no | `ambiguous` (no AI provider configured locally) |
 
 Status: **PASS on the dormancy defect** — the classifier now reaches the model
-router on a reply the regex cannot handle. As with site 4, whether the model
-labels this particular reply correctly needs provider credentials and is
-production-only; it is not claimed here.
+router on a reply the regex cannot handle.
+
+### Live production proof — PASS
+
+`scripts/verify-pending-reply-classifier-live.py` against deployed tip
+**dd218e899e08f34544fc70faba5cafc129f08c15**, org
+`f07e57c0-1501-4000-8000-c04e57a00001`
+(`docs/delivery/pending-reply-classifier-live.json`).
+
+Each scenario stages a real `hubspot.lists.create` approval hold, then replies
+with a phrasing verified to return `None` from `classify_pending_reply_fast`
+(`backend/scripts/scratch_pick_regex_bypassing_replies.py`), so the model is the
+only thing that can label it:
+
+| Reply | Outcome | Hold |
+|---|---|---|
+| "hold off on that for now, I want to check the numbers with finance first" | "Cancelled the pending plan. What should we do instead?" | released |
+| "let me run that past finance before we commit to it" | asked for a specific target | retained |
+| "not yet, the board meeting is Thursday and I want their read first" | "Cancelled the pending plan. What should we do instead?" | released |
+
+- **0 `lists.create` invocations** — no soft deferral was read as approval. This
+  was the check that mattered most; comprehending a deferral as a yes would be
+  far worse than re-asking.
+- **0 generic "waiting for your approval" re-asks** — the signature of the
+  dormant `"ambiguous"` path did not appear once.
+- 2 of 3 released the hold correctly.
+
+Honest on the third: "let me run that past finance before we commit to it" was
+not treated as a deferral but as an incomplete instruction, and the reply asked
+for a target. Safe, and not the dormant re-ask, but not right either. That is a
+classification-quality wobble on a reply whose only signal is *"before we
+commit"*, not a return of the dormancy bug. Recorded, not rounded up to a clean
+3/3.
+
+Also noticed while selecting phrasings, not fixed: the regex fast path labels
+*"what exactly is that going to do to our existing lists?"* as `unrelated` when
+it is plainly `meta_clarify`. Because the fast path returns a confident answer,
+the model never gets to correct it — a wrong regex verdict is more harmful than
+no verdict, and this one predates the dormancy fix.
 
 Baseline: `pending_reply_classifier.py:500` removed from `KNOWN_DORMANT`, guard
 test green (2 passed). Five of twelve sites now closed.

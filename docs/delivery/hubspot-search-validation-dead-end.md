@@ -10,7 +10,7 @@ One symptom string, two unrelated faults:
 | | Trigger | Nature | Status |
 | --- | --- | --- | --- |
 | (a) | `hubspot.deals.search` called with no `filter_groups` | deterministic; the advertised schema invited a call the executor refused | fixed, live-proven 9/9 at 77c54964 |
-| (b) | any transport/timeout/5xx failure on any HubSpot action | genuinely intermittent; mislabelled `validation_error` | fixed, live proof pending |
+| (b) | any transport/timeout/5xx failure on **any connector** | genuinely intermittent; mislabelled `validation_error` | fixed at the real chokepoint on the second attempt, live proof pending |
 
 Cause (b) is why the report looked intermittent even after (a) is explained. It
 was found only because the live proof for (a) checked the audit trail rather than
@@ -193,12 +193,81 @@ Fixed by classifying on what actually happened — 4xx is the caller's input, 5x
 is HubSpot failing, no status code is a timeout or transport fault — reusing the
 `connector_timeout` and generic `tool_error` templates that already existed.
 
-Proof: `backend/tests/services/test_hubspot_error_classification.py`, 13 tests
-pinning each failure kind, and 3 further mutations in the same mutation script
-(7/7 caught overall). **Live proof for (b) still pending** — it needs a real
-transport failure to recur in production, which cannot be forced on demand;
-what can be verified live is that no `validation_error` is emitted for a
-non-4xx cause.
+### That fix was one layer too low — again
+
+Re-running the live proof at the deployed tip **dd218e89**, which contained the
+`_handle_hubspot_error` fix, recorded:
+
+```
+tool.invoke.failed   hubspot.deals.search
+error      = "<ConnectionTerminated error_code:1, last_stream_id:107, additional_data:None>"
+error_code = "validation_error"        <-- still wrong
+```
+
+`httpx.RemoteProtocolError` *is* an `httpx.HTTPError`, so had it come from
+`_request` it would have been wrapped into `HubSpotAPIError` and reclassified
+correctly. It was not — it arose outside that wrapping (the OAuth token-refresh
+call is one such path) and landed in the **generic** `_classify_error`, whose
+fallthrough was also `ToolValidationError`.
+
+That function is connector-wide, so this was never a HubSpot bug. Measured
+before the second fix:
+
+| Exception | Classified as |
+| --- | --- |
+| `httpx.RemoteProtocolError` (ConnectionTerminated) | `validation_error` |
+| `OSError(11)` resource temporarily unavailable | `validation_error` |
+| `httpx.ConnectTimeout` / `ReadTimeout` | `validation_error` |
+| `httpx.ConnectError` connection refused | `validation_error` |
+| `ConnectionResetError` | `validation_error` |
+| **`KeyError('dealname')` — our own bug** | `validation_error` |
+
+Every one of those told the user to check their required fields.
+
+Fixed in `_classify_error`: timeouts get `connector_timeout`, transport and
+connection faults get the generic `tool_error`, and both are matched by exception
+type *and* by message substring, since vendor clients often re-raise transport
+text on a bare `Exception`. Genuine validation is deliberately untouched —
+`ValueError("name is required")` still classifies as `validation_error`, and
+there is a test asserting exactly that, because widening the fix into a blanket
+default change would alter messages across 727 actions with no way to verify it
+in this pass.
+
+This is the same failure mode as the fabricated-write investigation: the first
+fix was correct, mutation-proven, and left the defect live because the fault
+travelled a different path. It was caught only by re-running the live probe
+after deploying, not by any test.
+
+### Also caught: a name collision the guard test found
+
+Adding `list_tickets` to the HubSpot connector created a real shadowing bug —
+`app.connectors.zendesk` exports `list_tickets` too and is imported later in
+`tool_service.py`, so the bare name resolved to Zendesk's. The criteria-less
+HubSpot tickets fallback would have called **Zendesk** with a HubSpot token.
+`tests/test_no_shadowed_connector_imports.py` caught it; the import is now
+aliased `hubspot_list_tickets`.
+
+Proof: `backend/tests/services/test_hubspot_error_classification.py`, 26 tests
+covering both the HubSpot-specific handler and the generic chokepoint, including
+the two exact production exception strings. Mutation-proven 10/10
+(`backend/scripts/scratch_mutate_hubspot_search_guards.py`), the added mutations
+covering the `_classify_error` fallthrough, loss of substring matching, and
+swallowing genuine validation into a generic error.
+
+**Live proof for (b) still pending**, honestly: it needs a real transport failure
+to recur in production, which cannot be forced on demand. What the next live run
+can establish is that when one does occur, its `error_code` is no longer
+`validation_error`. Until such a failure is observed at a tip containing this
+fix, (b) stays PARTIAL.
+
+### Remaining, recorded not fixed
+
+`_classify_error` still maps an arbitrary internal exception — the `KeyError`
+row above — to `validation_error`, so a genuine Gravitre bug is still presented
+to users as their input being wrong. Distinguishing "our fault" from "your
+input" for arbitrary exceptions needs a deliberate audit of what every caller
+raises, across every connector. That is real work, not a line change, and is
+recorded rather than guessed at here.
 
 ### Note on the reply that carried this error
 

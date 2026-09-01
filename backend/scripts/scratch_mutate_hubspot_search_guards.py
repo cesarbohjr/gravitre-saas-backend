@@ -73,6 +73,31 @@ MUTATIONS = [
         """    if status is not None and 400 <= status < 500:""",
         """    if status is not None and 400 <= status < 401:""",
     ),
+    (
+        "_classify_error falls through to validation again (the deeper bug)",
+        """    if isinstance(exc, httpx.TimeoutException) or any(h in msg for h in _TIMEOUT_HINTS):
+        return ToolError(str(exc), code="connector_timeout")
+    if isinstance(exc, (httpx.TransportError, OSError)) or any(h in msg for h in _TRANSPORT_HINTS):
+        return ToolError(str(exc))""",
+        """    if False:
+        return ToolError(str(exc))""",
+    ),
+    (
+        "_classify_error stops recognising transport text on plain exceptions",
+        """    if isinstance(exc, (httpx.TransportError, OSError)) or any(h in msg for h in _TRANSPORT_HINTS):""",
+        """    if isinstance(exc, (httpx.TransportError, OSError)):""",
+    ),
+    (
+        "_classify_error swallows genuine validation into a generic error",
+        """    return ToolValidationError(str(exc))
+
+
+def _audit_resource_id""",
+        """    return ToolError(str(exc))
+
+
+def _audit_resource_id""",
+    ),
 ]
 
 

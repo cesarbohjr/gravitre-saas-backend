@@ -1,6 +1,6 @@
 {
-  "deployed_git_sha": "77c5496482531ab164fe9e54559b5cf99ed8e801",
-  "captured_at": "2026-09-01T09:10:53.150315+00:00",
+  "deployed_git_sha": "dd218e899e08f34544fc70faba5cafc129f08c15",
+  "captured_at": "2026-09-01T09:50:54.620374+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "verdict": "FAIL",
   "note": "the dead end still occurs in production",
@@ -10,63 +10,47 @@
   "search_invocations": [
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:02:59.700169+00:00",
+      "created_at": "2026-09-01T09:41:14.227614+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 308
+      "latency_ms": 316
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:09.0058+00:00",
+      "created_at": "2026-09-01T09:41:29.268114+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 422
+      "latency_ms": 337
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:29.965447+00:00",
+      "created_at": "2026-09-01T09:42:55.64273+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 320
+      "latency_ms": 418
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:37.992865+00:00",
+      "created_at": "2026-09-01T09:43:07.795652+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 292
+      "latency_ms": 280
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:12.267093+00:00",
+      "created_at": "2026-09-01T09:43:14.569324+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 299
+      "latency_ms": 279
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:35.5057+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 251
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:44.517821+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 251
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:08:27.000089+00:00",
+      "created_at": "2026-09-01T09:44:19.322246+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
@@ -74,122 +58,155 @@
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:10:04.101127+00:00",
+      "created_at": "2026-09-01T09:44:46.807753+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 364
-    }
-  ],
-  "failed_searches": [],
-  "all_hubspot_invocations": [
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:02:50.494012+00:00",
-      "target_action": "hubspot.deals.list",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 401
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:02:59.700169+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 308
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:09.0058+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 422
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:19.697118+00:00",
-      "target_action": "hubspot.deals.list",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 519
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:29.965447+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 320
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:04:37.992865+00:00",
-      "target_action": "hubspot.deals.search",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 292
+      "latency_ms": 322
     },
     {
       "audit_action": "tool.invoke.failed",
-      "created_at": "2026-09-01T09:05:30.125726+00:00",
-      "target_action": "hubspot.deals.list",
-      "error": "[Errno 11] Resource temporarily unavailable",
+      "created_at": "2026-09-01T09:44:54.978635+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": "<ConnectionTerminated error_code:1, last_stream_id:107, additional_data:None>",
       "error_code": "validation_error",
       "latency_ms": null
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:05:35.740176+00:00",
-      "target_action": "hubspot.deals.list",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 622
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:06:10.821642+00:00",
-      "target_action": "hubspot.deals.list",
-      "error": null,
-      "error_code": null,
-      "latency_ms": 352
-    },
-    {
-      "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:12.267093+00:00",
+      "created_at": "2026-09-01T09:46:23.294895+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 299
+      "latency_ms": 283
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:21.392382+00:00",
+      "created_at": "2026-09-01T09:46:37.433845+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 321
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:46:45.374339+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 316
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:48:19.229929+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 354
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:49:57.505775+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 298
+    }
+  ],
+  "failed_searches": [
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T09:44:54.978635+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": "<ConnectionTerminated error_code:1, last_stream_id:107, additional_data:None>",
+      "error_code": "validation_error",
+      "latency_ms": null
+    }
+  ],
+  "all_hubspot_invocations": [
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:40:47.856784+00:00",
       "target_action": "hubspot.deals.list",
       "error": null,
       "error_code": null,
-      "latency_ms": 386
+      "latency_ms": 484
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:35.5057+00:00",
+      "created_at": "2026-09-01T09:40:59.913782+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 446
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:41:14.227614+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 251
+      "latency_ms": 316
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:07:44.517821+00:00",
+      "created_at": "2026-09-01T09:41:29.268114+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 251
+      "latency_ms": 337
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:08:27.000089+00:00",
+      "created_at": "2026-09-01T09:42:27.947224+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 390
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:42:42.833986+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 409
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:42:55.64273+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 418
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:43:07.795652+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 280
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:43:14.569324+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 279
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:44:10.773764+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 496
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:44:19.322246+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
@@ -197,11 +214,91 @@
     },
     {
       "audit_action": "tool.invoke.completed",
-      "created_at": "2026-09-01T09:10:04.101127+00:00",
+      "created_at": "2026-09-01T09:44:29.502531+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 466
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:44:46.807753+00:00",
       "target_action": "hubspot.deals.search",
       "error": null,
       "error_code": null,
-      "latency_ms": 364
+      "latency_ms": 322
+    },
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T09:44:54.978635+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": "<ConnectionTerminated error_code:1, last_stream_id:107, additional_data:None>",
+      "error_code": "validation_error",
+      "latency_ms": null
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:45:56.505181+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 435
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:46:14.546224+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 430
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:46:23.294895+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 283
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:46:37.433845+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 321
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:46:45.374339+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 316
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:47:38.485671+00:00",
+      "target_action": "hubspot.deals.list",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 513
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:48:19.229929+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 354
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T09:49:57.505775+00:00",
+      "target_action": "hubspot.deals.search",
+      "error": null,
+      "error_code": null,
+      "latency_ms": 298
     }
   ],
   "attempts": [
@@ -209,58 +306,58 @@
       "label": "original_deals_read",
       "iteration": 0,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "1c5255e6-17f4-42ee-bff9-0dca2c4b0aae",
-      "elapsed_ms": 70893,
+      "conversation_id": "de9a02c9-868d-4d24-b644-bb52908bd209",
+      "elapsed_ms": 103487,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "HubSpot returned 10 deals in the default pipeline. Amount is not set on any of them. Source: HubSpot deals list via the Connected HubSpot connector.\n\n| Deal | Stage | Amount | Close date |\n|---|---:|---:|---|\n| Gravitre Smoke Deal d7d9c013ea104a | appointmentscheduled | Not set | Not set |\n| Gravitre Smoke Deal 435cbea0666742 | appointmentscheduled | Not set | Not set |\n| Gravitre Smoke Deal 0d992"
+      "assistant": "These are the most recent HubSpot deals I found in the default pipeline. None of the 10 returned deals has an amount or close date set.\n\nSource: HubSpot `deals.search`, filtered to the default pipeline and recent created dates.\n\n| Created date | Deal | Amount | Close date |\n|---|---|---:|---|\n| 2026-08-31 14:12 UTC | Gravitre Smoke Deal 8f6b129efe5544 | Not set | Not set |\n| 2026-08-30 12:05 UTC |"
     },
     {
       "label": "original_deals_read",
       "iteration": 1,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "5857c56d-0644-486a-96a6-ef284a289414",
-      "elapsed_ms": 86485,
+      "conversation_id": "bf3439d8-f5d7-480e-8f0b-d2b92a2fc1d5",
+      "elapsed_ms": 96318,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "Here are the 10 most recent HubSpot deals I found in the default pipeline. Amount and close date are not set on any of these records.\n\nSource: HubSpot `deals.search`, filtered to deals created on or after 2026-08-20.\n\n| Created | Deal | Amount | Close date |\n|---|---|---:|---|\n| 2026-08-31 14:12 UTC | Gravitre Smoke Deal 8f6b129efe5544 | Not set | Not set |\n| 2026-08-30 12:05 UTC | Gravitre Smoke "
+      "assistant": "Most recent HubSpot deals in the default pipeline are listed below. All six have no amount or close date set.\n\nSource: HubSpot deals search via the Connected HubSpot connector, filtered to the default pipeline and deals created since 2026-08-25.\n\n| Created | Deal | Amount | Close date |\n|---|---|---:|---|\n| 2026-08-31 | Gravitre Smoke Deal 8f6b129efe5544 | Not set | Not set |\n| 2026-08-30 | Gravit"
     },
     {
       "label": "original_deals_read",
       "iteration": 2,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "bced88f9-1077-4aea-8f25-c6ee4f6c9917",
-      "elapsed_ms": 42710,
+      "conversation_id": "6b403245-e80d-43bf-9da8-854313563b22",
+      "elapsed_ms": 96682,
       "dead_end_in_reply": true,
       "answered_with_deal_content": true,
-      "assistant": "Invalid parameters for this Hubspot action (List deals via hubspot API. Use when you need to list deals via hubspot.). Check required fields and try again.**Done \u2014 List deals**\n\nCompleted Hubspot deal list.\n\n_What this means:_ HubSpot now has this record \u2014 you can open it or create a follow-up from chat.\n\n[View in Gravitre](/ai?c=bced88f9-1077-4aea-8f25-c6ee4f6c9917)\n\n[View in Hubspot](https://app"
+      "assistant": "Invalid parameters for this Hubspot action (Search deals via hubspot API. Use when you need to search deals via hubspot.). Check required fields and try again."
     },
     {
       "label": "original_deals_read",
       "iteration": 3,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "8f149bf7-1b57-40f9-b805-fff606521367",
-      "elapsed_ms": 45966,
+      "conversation_id": "51f03ab0-31d0-4860-b5ba-087af01e4b88",
+      "elapsed_ms": 105948,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "Here are the most recent HubSpot deals returned, sorted by created date. Source: HubSpot deals list, pipeline `default`.\n\n| Deal | Amount | Close date |\n|---|---:|---|\n| Gravitre Smoke Deal d7d9c013ea104a | Not set | Not set |\n| Gravitre Smoke Deal 435cbea0666742 | Not set | Not set |\n| Gravitre Smoke Deal 0d992be77f1448 | Not set | Not set |\n| Gravitre Smoke Deal 2620401fde314c | Not set | Not se"
+      "assistant": "The most recent HubSpot deals I found are in the default pipeline. All 10 have no amount or close date set.\n\nSource: HubSpot deals search, filtered to deals created since 2026-08-20.\n\n| Created | Deal | Amount | Close date |\n|---|---|---:|---|\n| 2026-08-31 | Gravitre Smoke Deal 8f6b129efe5544 | Not set | Not set |\n| 2026-08-30 | Gravitre Smoke Deal 30ab2fed995f47 | Not set | Not set |\n| 2026-08-29"
     },
     {
       "label": "original_deals_read",
       "iteration": 4,
       "message": "Show me the most recent deals in our HubSpot pipeline with their amounts and close dates.",
-      "conversation_id": "83c2b2a0-a3f7-415a-8ef8-83b24a7b3404",
-      "elapsed_ms": 88922,
+      "conversation_id": "7f6e37f8-6db2-464a-8d94-26e8afee6466",
+      "elapsed_ms": 48147,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "The most recent HubSpot deals I found in the default pipeline all have no amount or close date set.\n\nSource: HubSpot deals search, default pipeline; I sorted the returned records by created date.\n\n| Created date | Deal | Amount | Close date |\n|---|---|---:|---|\n| 2026-08-31 14:12 UTC | Gravitre Smoke Deal 8f6b129efe5544 | Not set | Not set |\n| 2026-08-30 12:05 UTC | Gravitre Smoke Deal 30ab2fed995"
+      "assistant": "Here are the 10 most recent HubSpot deals returned by the Connected HubSpot pipeline, sorted newest first. Source: HubSpot deals list.\n\n| Deal | Amount | Close date |\n|---|---:|---|\n| Gravitre Smoke Deal d7d9c013ea104a | Not set | Not set |\n| Gravitre Smoke Deal 435cbea0666742 | Not set | Not set |\n| Gravitre Smoke Deal 0d992be77f1448 | Not set | Not set |\n| Gravitre Smoke Deal 2620401fde314c | No"
     },
     {
       "label": "search_shaped_no_criteria",
       "iteration": 0,
       "message": "Search our HubSpot deals and show me what's there.",
-      "conversation_id": "76a60130-c94a-4e68-b748-e9531b16dd67",
-      "elapsed_ms": 28507,
+      "conversation_id": "1337e062-9ac2-4ac2-a63f-31b83e81f18c",
+      "elapsed_ms": 31094,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
       "assistant": "No Executable action matched this request.\nWhat you asked for: **Search our HubSpot deals and show me what's there.**.\n\nHere's what I can do with this integration right now:\n- Get contact\n- Search contacts\n- Get deal\n- Search deals\n- List deals\n- Search companies\n- Get company\n- Search tickets\n\nName the integration action explicitly (e.g. search Apollo companies)."
@@ -269,18 +366,18 @@
       "label": "search_shaped_no_criteria",
       "iteration": 1,
       "message": "Search our HubSpot deals and show me what's there.",
-      "conversation_id": "a5785d19-a59e-4014-8597-52a7b03cec54",
-      "elapsed_ms": 23553,
+      "conversation_id": "5c876277-4455-474b-a1f5-807f729557f9",
+      "elapsed_ms": 21199,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "No Executable action matched this request.\nWhat you asked for: **Search our HubSpot deals and show me what's there.**.\n\nHere's what I can do with this integration right now:\n- Get contact\n- Search contacts\n- Get deal\n- Search deals\n- List deals\n- Search companies\n- Get company\n- Search tickets\n\nName the integration action explicitly (e.g. search Apollo companies)."
+      "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first."
     },
     {
       "label": "search_shaped_no_criteria",
       "iteration": 2,
       "message": "Search our HubSpot deals and show me what's there.",
-      "conversation_id": "12d59d3b-caeb-4235-a101-98a1e8825d53",
-      "elapsed_ms": 25081,
+      "conversation_id": "a4891473-0541-46ce-ac5c-6ea0ca447ae6",
+      "elapsed_ms": 27031,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
       "assistant": "No Executable action matched this request.\nWhat you asked for: **Search our HubSpot deals and show me what's there.**.\n\nHere's what I can do with this integration right now:\n- Get contact\n- Search contacts\n- Get deal\n- Search deals\n- List deals\n- Search companies\n- Get company\n- Search tickets\n\nName the integration action explicitly (e.g. search Apollo companies)."
@@ -289,21 +386,21 @@
       "label": "search_with_query",
       "iteration": 0,
       "message": "Search HubSpot deals for anything matching Acme.",
-      "conversation_id": "82967ca6-6aca-466c-8b69-15441e756b4b",
-      "elapsed_ms": 37497,
+      "conversation_id": "dd913883-adfa-499b-95ac-6f9dadde68d5",
+      "elapsed_ms": 39057,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "No HubSpot deals matched \u201cAcme.\u201d\n\nSource: HubSpot deal search via the Connected HubSpot connector returned 0 results."
+      "assistant": "No HubSpot deals matched \u201cAcme.\u201d\n\nSource: HubSpot deal search returned 0 results from the Connected HubSpot connector."
     },
     {
       "label": "search_with_query",
       "iteration": 1,
       "message": "Search HubSpot deals for anything matching Acme.",
-      "conversation_id": "a9292157-6039-4154-b1ed-1ee4aa5cb3da",
-      "elapsed_ms": 32130,
+      "conversation_id": "52229eb1-fc22-4fc7-b86e-bfc723b704b6",
+      "elapsed_ms": 38552,
       "dead_end_in_reply": false,
       "answered_with_deal_content": true,
-      "assistant": "No HubSpot deals matched \u201cAcme.\u201d\n\nSource: HubSpot deals search returned 0 results using the Connected HubSpot connector."
+      "assistant": "No HubSpot deals matched \u201cAcme.\u201d\n\nSource: HubSpot deals search returned 0 results from the Connected HubSpot connector."
     }
   ]
 }
