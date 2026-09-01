@@ -14,6 +14,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "app" / "services" / "tool_service.py"
 TESTS = "tests/services/test_hubspot_search_honors_advertised_schema.py"
+TESTS_ERR = "tests/services/test_hubspot_error_classification.py"
 
 MUTATIONS = [
     (
@@ -52,12 +53,32 @@ MUTATIONS = [
         """    props = _HUBSPOT_TEXT_SEARCH_PROPERTIES.get(object_type) or ("name",)""",
         """    props = (_HUBSPOT_TEXT_SEARCH_PROPERTIES.get(object_type) or ("name",))[:1]""",
     ),
+    (
+        "every non-auth failure is a validation error again (the mislabel bug)",
+        """    if status is not None and 400 <= status < 500:
+        return ToolValidationError(str(exc))""",
+        """    return ToolValidationError(str(exc))
+    if False:
+        return ToolValidationError(str(exc))""",
+    ),
+    (
+        "timeouts lose their dedicated code",
+        """    if status is None and ("timeout" in text or "timed out" in text):
+        return ToolError(str(exc), code="connector_timeout")""",
+        """    if False:
+        return ToolError(str(exc), code="connector_timeout")""",
+    ),
+    (
+        "real 4xx client errors stop being validation errors",
+        """    if status is not None and 400 <= status < 500:""",
+        """    if status is not None and 400 <= status < 401:""",
+    ),
 ]
 
 
 def run_tests() -> tuple[bool, str]:
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", TESTS, "-q", "--no-header", "-x"],
+        [sys.executable, "-m", "pytest", TESTS, TESTS_ERR, "-q", "--no-header", "-x"],
         cwd=ROOT,
         capture_output=True,
         text=True,

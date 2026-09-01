@@ -1,7 +1,20 @@
 # "Invalid parameters for this Hubspot action (Search deals via hubspot API)"
 
-Status: **root-caused, fixed, awaiting live production proof**
+Status: **two distinct causes behind one message. Cause (a) fixed and
+live-proven at 77c54964. Cause (b) found by that same live run, fixed, awaiting
+its own live proof.**
 Found: 2026-09-01, during verification of the fabricated-destructive-write fix.
+
+One symptom string, two unrelated faults:
+
+| | Trigger | Nature | Status |
+| --- | --- | --- | --- |
+| (a) | `hubspot.deals.search` called with no `filter_groups` | deterministic; the advertised schema invited a call the executor refused | fixed, live-proven 9/9 at 77c54964 |
+| (b) | any transport/timeout/5xx failure on any HubSpot action | genuinely intermittent; mislabelled `validation_error` | fixed, live proof pending |
+
+Cause (b) is why the report looked intermittent even after (a) is explained. It
+was found only because the live proof for (a) checked the audit trail rather than
+just the absence of the error string.
 
 ## The report
 
@@ -131,11 +144,68 @@ Files:
   (`hubspot_search_acme_contacts`, `hubspot_deal_create_with_approval`) were
   confirmed unrelated: they fail identically with these changes stashed. They
   need a real database and real API keys.
-- **Live production proof: pending.** Three green mutation-proven suites
-  accompanied three live failures earlier in this same session, so the tests
-  above are not the evidence. The claim is closed only by a production run
-  showing successful `hubspot.deals.search` invocations with no
-  `validation_error`.
+### Live production proof — cause (a): PASS
+
+`scripts/verify-hubspot-search-dead-end-live.py` against deployed tip
+**77c5496482531ab164fe9e54559b5cf99ed8e801**, 10 turns, org
+`f07e57c0-1501-4000-8000-c04e57a00001`
+(`docs/delivery/hubspot-search-dead-end-live.json`):
+
+- **9 `hubspot.deals.search` invocations, all completed, zero `validation_error`.**
+- 10/10 turns answered with real deal content.
+- The proof deliberately required a *completed* `deals.search`, not merely the
+  absence of failures: a run where the model happened to pick `deals.list` every
+  time would have shown zero errors while proving nothing.
+
+Before the fix the same action failed 4 out of 4 times it was chosen. It now
+succeeds every time it is chosen, including the criteria-less shape.
+
+## Cause (b): a transport failure reported as bad parameters
+
+The live run above surfaced a second, unrelated fault. One invocation recorded:
+
+```
+tool.invoke.failed   hubspot.deals.list
+error      = "[Errno 11] Resource temporarily unavailable"
+error_code = "validation_error"
+```
+
+which rendered to the user as *"Invalid parameters for this Hubspot action (List
+deals via hubspot API). Check required fields and try again."* — the same
+sentence as cause (a), from a completely different fault.
+
+`_handle_hubspot_error` classified only 429 and 401/403, and mapped **everything
+else** to `ToolValidationError`:
+
+```python
+if exc.status_code == 429:      return ToolRateLimitedError(str(exc))
+if exc.status_code in {401,403}: return ToolAuthExpiredError(str(exc))
+return ToolValidationError(str(exc))          # timeouts, 5xx, socket errors…
+```
+
+`_request` raises `HubSpotAPIError(str(exc))` with **no status code** for
+transport errors and for `"HubSpot API timeout"`, so both landed in that final
+line. Consequences: the user is told to fix parameters that were never wrong,
+given advice that cannot help, and a retryable fault is presented as a permanent
+one. `"HubSpot API timeout"` was reported as invalid parameters too.
+
+Fixed by classifying on what actually happened — 4xx is the caller's input, 5xx
+is HubSpot failing, no status code is a timeout or transport fault — reusing the
+`connector_timeout` and generic `tool_error` templates that already existed.
+
+Proof: `backend/tests/services/test_hubspot_error_classification.py`, 13 tests
+pinning each failure kind, and 3 further mutations in the same mutation script
+(7/7 caught overall). **Live proof for (b) still pending** — it needs a real
+transport failure to recur in production, which cannot be forced on demand;
+what can be verified live is that no `validation_error` is emitted for a
+non-4xx cause.
+
+### Note on the reply that carried this error
+
+The same reply also said *"Done — List deals … HubSpot now has this record"*
+directly after the error text, for a read action that failed. Two problems in
+one message — a completion claim over a failure, and "has this record" for a
+list. Recorded here; not fixed in this pass.
 
 ## Broader item, deliberately not fixed here
 

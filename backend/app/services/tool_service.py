@@ -325,11 +325,22 @@ def _hubspot_hub_id(ctx: ToolContext, connector_id: str) -> str | None:
 
 
 def _handle_hubspot_error(exc: HubSpotAPIError) -> ToolError:
-    if exc.status_code == 429:
+    status = exc.status_code
+    if status == 429:
         return ToolRateLimitedError(str(exc))
-    if exc.status_code in {401, 403}:
+    if status in {401, 403}:
         return ToolAuthExpiredError(str(exc))
-    return ToolValidationError(str(exc))
+    if status is not None and 400 <= status < 500:
+        return ToolValidationError(str(exc))
+    # A missing status code means the reply never arrived — a timeout or a
+    # transport failure — and 5xx means HubSpot itself failed. Neither is the
+    # caller's parameters, so classifying them as validation_error tells the
+    # user to "check required fields" for something that was never wrong, and
+    # hides a retryable fault behind a permanent-sounding one.
+    text = str(exc).lower()
+    if status is None and ("timeout" in text or "timed out" in text):
+        return ToolError(str(exc), code="connector_timeout")
+    return ToolError(str(exc))
 
 
 def _exec_hubspot_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
