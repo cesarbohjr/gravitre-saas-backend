@@ -96,9 +96,13 @@ KNOWN_DORMANT = {
     # so the assistant re-asked instead of comprehending the conversation. It
     # failed safe (asks rather than guesses), which is why nobody noticed:
     #   app/services/pending_reply_classifier.py:500
+    # Fixed 2026-09-01 (site 6). Worse than failing safe: on the modify-hint
+    # path the fallback was "modify", not "unclear", so a reply meaning cancel
+    # that happened to contain a modify hint ("don't do that") kept the plan
+    # alive instead of dropping it:
+    #   app/services/conversation_turn_controller.py:273
     "app/services/clarification_engine.py:769",
     "app/services/contextual_understanding_service.py:225",
-    "app/services/conversation_turn_controller.py:273",
     "app/services/conversational_turn_gate.py:240",
     "app/services/domain_intelligence_service.py:208",
     "app/services/query_rewriter.py:52",

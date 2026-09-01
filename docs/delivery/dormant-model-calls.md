@@ -478,6 +478,84 @@ not a dormant-call issue, and it should not be folded into this task. Worth
 noting that the mismatch net is what would have to catch it if it recurs on a
 real user's org.
 
+## Phase 2 — site 6, `conversation_turn_controller.py:273` (PASS on dormancy)
+
+Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+
+**This is the first site in the audit that did not fail safe.** Every one before
+it degraded toward asking again or doing nothing, which is why they survived
+unnoticed. This one degraded toward *keeping a destructive plan alive*.
+
+`_model_pending_intent` has two callers inside `classify_pending_plan_intent`,
+with different fallbacks:
+
+| Caller | Condition | Fallback when the model contributes nothing |
+|---|---|---|
+| modify-hint branch | `re_modify_hint(text)` matches | **`"modify"`** |
+| general branch | a plan or pending task exists | `"unclear"` |
+
+`re_modify_hint` fires on `don't`, `dont`, `without`, `instead`, `just`, `only`,
+`skip`, `change`, `rather`. So a reply that plainly means *cancel* but contains
+one of those words — *"don't bother with that, we're going a completely
+different direction now"* — was classified as a request to **modify** the plan.
+The plan stayed pending. The user had tried to call it off.
+
+### Before/after, buggy call restored for the first pass
+
+`backend/scripts/probe_conversation_turn_controller_before_after.py`,
+artifact `docs/delivery/conversation-turn-controller-before-after.json`.
+Against a real destructive pending plan (`hubspot.lists.create` +
+`lists.add_members`, `awaiting_confirm`):
+
+| Reply | | Router entered | TypeError | Intent |
+|---|---|---|---|---|
+| "don't bother with that…" (modify hint) | before | **no** | yes, swallowed at WARNING | **`modify`** — plan kept |
+| | after | **yes** | no | `modify` (no AI provider configured locally) |
+| "hold off, I need to run this past our finance lead…" (no hint) | before | **no** | yes, swallowed at WARNING | `unclear` |
+| | after | **yes** | no | `unclear` (same reason) |
+
+The swallowed line, verbatim:
+
+```
+WARNING: pending plan intent model skipped:
+  get_model_router() takes 0 positional arguments but 1 was given
+```
+
+After the fix the same handler logs *"All AI providers failed (openai:
+unavailable/not-configured; …)"* — the router is genuinely entered and fails on
+missing local credentials, which is the expected local outcome and is what
+distinguishes "reached" from "never called".
+
+Status: **PASS on the dormancy defect**, and the mislabel it caused is measured
+rather than argued: `modify` returned for an unambiguous cancel, 100% of the
+time, deterministically.
+
+### Standing regression test
+
+`backend/tests/services/test_pending_plan_intent_honors_model.py` — 11 tests.
+The load-bearing one asserts that when the model says `cancel` for a
+modify-hint-shaped reply, `classify_pending_plan_intent` returns `cancel`, not
+the `modify` fallback. The fixture asserts the factory is called with **zero
+arguments**, so reintroducing the defect fails loudly instead of degrading.
+
+Also pinned: the regex fast path still short-circuits `yes`/`cancel` without a
+model call (cost and latency), the classification stays on
+`TaskType.CLASSIFICATION` at `temperature=0.0`, the plan goal is actually
+included in the prompt (without it the model cannot resolve "that"), and a real
+provider outage still degrades instead of raising.
+
+Mutation-proven 7/7 (`backend/scripts/scratch_mutate_pending_plan_intent.py`),
+including restoring the original dormant call, dropping `cancel` from the
+accepted labels, and removing the goal from the prompt.
+
+Regression check: 279 passed across the pending/turn-controller/connector-action
+suites. Baseline: `conversation_turn_controller.py:273` removed from
+`KNOWN_DORMANT`. **Six of twelve sites now closed.**
+
+### Live production proof
+
+Pending — see below.
+
 ## Phase 2 — customer RAG (`get_rag_service`, both sites)
 
 Chosen next over the remaining severity order because this one sits on the

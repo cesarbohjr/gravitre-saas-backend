@@ -270,7 +270,7 @@ async def _model_pending_intent(
             f"Pending task: {pending_type or '(none)'}\n"
             f"User reply: {message}\n"
         )
-        response = await get_model_router(settings or get_settings()).complete(
+        response = await get_model_router().complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(

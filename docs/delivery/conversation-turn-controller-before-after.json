@@ -1,0 +1,62 @@
+{
+  "captured_at": "2026-09-01T17:13:33.928119+00:00",
+  "site": "backend/app/services/conversation_turn_controller.py:273",
+  "before": {
+    "label": "BEFORE \u2014 original buggy call restored",
+    "messages": {
+      "cancel_via_modify_hint": {
+        "message": "don't bother with that, we're going a completely different direction now",
+        "hits_modify_hint": true,
+        "intent": "modify",
+        "router_entered": false,
+        "type_error_seen": true,
+        "handler_logged": [
+          "WARNING: pending plan intent model skipped: get_model_router() takes 0 positional arguments but 1 was given"
+        ],
+        "raised": null
+      },
+      "general_path": {
+        "message": "hold off, I need to run this past our finance lead before anything happens",
+        "hits_modify_hint": false,
+        "intent": "unclear",
+        "router_entered": false,
+        "type_error_seen": true,
+        "handler_logged": [
+          "WARNING: pending plan intent model skipped: get_model_router() takes 0 positional arguments but 1 was given"
+        ],
+        "raised": null
+      }
+    }
+  },
+  "after": {
+    "label": "AFTER \u2014 fix in place",
+    "messages": {
+      "cancel_via_modify_hint": {
+        "message": "don't bother with that, we're going a completely different direction now",
+        "hits_modify_hint": true,
+        "intent": "modify",
+        "router_entered": true,
+        "type_error_seen": false,
+        "handler_logged": [
+          "WARNING: pending plan intent model skipped: All AI providers failed (openai: unavailable/not-configured; anthropic: unavailable/not-configured; gemini: unavailable/not-configured)"
+        ],
+        "raised": null
+      },
+      "general_path": {
+        "message": "hold off, I need to run this past our finance lead before anything happens",
+        "hits_modify_hint": false,
+        "intent": "unclear",
+        "router_entered": true,
+        "type_error_seen": false,
+        "handler_logged": [
+          "WARNING: pending plan intent model skipped: All AI providers failed (openai: unavailable/not-configured; anthropic: unavailable/not-configured; gemini: unavailable/not-configured)"
+        ],
+        "raised": null
+      }
+    }
+  },
+  "verdict": "PASS",
+  "mislabel_before": true,
+  "severity_note": "Unlike sites 1-5 this one did not fail safe: the modify-hint fallback is 'modify', so a cancel-meaning reply left a destructive plan pending instead of dropping it.",
+  "scope_note": "Proves the call is no longer dormant, and measures the wrong label it produced while dormant. Whether the model now returns 'cancel' for this reply needs AI provider credentials, which this environment does not have \u2014 production only."
+}

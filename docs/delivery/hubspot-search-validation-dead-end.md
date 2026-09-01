@@ -1,9 +1,17 @@
 # "Invalid parameters for this Hubspot action (Search deals via hubspot API)"
 
 Status: **two distinct causes behind one message. Cause (a) fixed and
-live-proven at 77c54964. Cause (b) found by that same live run, fixed, awaiting
-its own live proof.**
+live-proven — 0 of 10 dead ends, 14/14 searches clean at deployed tip
+`26440217`. Cause (b), found by that same live run, fixed and mutation-proven,
+PARTIAL pending a real transport failure recurring in production.**
 Found: 2026-09-01, during verification of the fabricated-destructive-write fix.
+
+Direct answer to "is it intermittent": **no for the reported failure.** Cause
+(a) is fully deterministic — every criteria-less `deals.search` call failed,
+100% of the time. It only looked intermittent because the model chose between
+two tools for the same question and only one of them was broken. Cause (b) *is*
+genuinely intermittent, but it is a separate, connector-wide mislabelling fault
+that happens to print the same sentence.
 
 One symptom string, two unrelated faults:
 
@@ -254,11 +262,40 @@ the two exact production exception strings. Mutation-proven 10/10
 covering the `_classify_error` fallthrough, loss of substring matching, and
 swallowing genuine validation into a generic error.
 
-**Live proof for (b) still pending**, honestly: it needs a real transport failure
-to recur in production, which cannot be forced on demand. What the next live run
-can establish is that when one does occur, its `error_code` is no longer
-`validation_error`. Until such a failure is observed at a tip containing this
-fix, (b) stays PARTIAL.
+### Live re-proof at deployed tip `26440217`
+
+```
+turns run:                          10
+replies containing the dead end:    0
+replies with real deal content:     10
+hubspot.*.search invocations:       14
+  completed:                        14
+  failed / validation_error:        0
+```
+
+All 22 HubSpot tool invocations in the window recorded `ok` — 14 `deals.search`
+and 8 `deals.list`, the model's selection still varying between them, which is
+the point: both now work. Artifact: `docs/delivery/hubspot-search-dead-end-live.json`.
+
+Compare the same probe across tips:
+
+| Tip | Dead-end replies | search invocations | validation_error |
+| --- | --- | --- | --- |
+| pre-fix | 4 of 10 | 0 completed | every one |
+| `77c54964` (cause a fixed) | 1 of 10 | 9 completed | 0 on search; 1 on `deals.list` (transport, mislabelled) |
+| `dd218e89` (HubSpot handler) | 1 of 10 | completed | 1 transport still mislabelled |
+| **`26440217`** | **0 of 10** | **14 completed** | **0** |
+
+**Cause (a): PASS**, live, at `26440217`.
+
+**Cause (b): still PARTIAL, and this run does not upgrade it.** Zero failures of
+any kind occurred, so no transport exception was produced for the corrected
+classifier to classify. Absence of the mislabel here is explained by absence of
+the fault, not by the fix — the two are indistinguishable in this run. Honest
+status: the fix is unit- and mutation-proven at the exact chokepoint that
+produced the two observed production strings, and remains unproven in
+production until a real transport failure recurs at a tip containing it. That
+cannot be forced on demand and is not claimed.
 
 ### Remaining, recorded not fixed
 
