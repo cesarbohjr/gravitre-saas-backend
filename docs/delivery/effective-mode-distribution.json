@@ -1,0 +1,148 @@
+{
+  "captured_at": "2026-09-01T22:22:04.944291+00:00",
+  "findings": {
+    "unified_turn.live.completed": {
+      "count": 1013,
+      "mode_fields": {},
+      "sample_keys": [
+        [
+          "classical_path_active",
+          "connected_integrations",
+          "error",
+          "fallthrough_reason",
+          "first_token_proxy_ms",
+          "latency_breakdown",
+          "latency_ms",
+          "live_served",
+          "model",
+          "needs_tool_sse",
+          "outcome_kind",
+          "qa_force_outcome",
+          "qa_force_tool",
+          "qa_overrode_model_tool",
+          "requires_write_approval",
+          "shadow_executes_tools",
+          "shadow_user_visible",
+          "streamed",
+          "tool_arguments",
+          "tool_invoke_action",
+          "tool_name",
+          "tool_stats",
+          "user_message"
+        ],
+        [
+          "classical_path_active",
+          "connected_integrations",
+          "error",
+          "fallthrough_reason",
+          "first_token_proxy_ms",
+          "latency_breakdown",
+          "latency_ms",
+          "live_served",
+          "model",
+          "outcome_kind",
+          "qa_force_outcome",
+          "qa_force_tool",
+          "qa_overrode_model_tool",
+          "requires_write_approval",
+          "shadow_executes_tools",
+          "shadow_user_visible",
+          "streamed",
+          "tool_arguments",
+          "tool_invoke_action",
+          "tool_name",
+          "tool_stats",
+          "user_message"
+        ]
+      ]
+    },
+    "unified_turn.live.fallthrough": {
+      "count": 514,
+      "mode_fields": {},
+      "sample_keys": [
+        [
+          "classical_path_active",
+          "connected_integrations",
+          "error",
+          "fallthrough_reason",
+          "first_token_proxy_ms",
+          "latency_breakdown",
+          "latency_ms",
+          "live_served",
+          "model",
+          "needs_tool_sse",
+          "outcome_kind",
+          "qa_force_outcome",
+          "qa_force_tool",
+          "qa_overrode_model_tool",
+          "requires_write_approval",
+          "shadow_executes_tools",
+          "shadow_user_visible",
+          "streamed",
+          "tool_arguments",
+          "tool_invoke_action",
+          "tool_name",
+          "tool_stats",
+          "user_message"
+        ],
+        [
+          "classical_path_active",
+          "connected_integrations",
+          "error",
+          "fallthrough_reason",
+          "first_token_proxy_ms",
+          "latency_breakdown",
+          "latency_ms",
+          "live_served",
+          "model",
+          "outcome_kind",
+          "qa_force_outcome",
+          "qa_force_tool",
+          "qa_overrode_model_tool",
+          "requires_write_approval",
+          "shadow_executes_tools",
+          "shadow_user_visible",
+          "streamed",
+          "tool_arguments",
+          "tool_invoke_action",
+          "tool_name",
+          "tool_stats",
+          "user_message"
+        ]
+      ]
+    },
+    "agent.react.iteration": {
+      "count": 646,
+      "mode_fields": {},
+      "sample_keys": [
+        [
+          "agentId",
+          "error",
+          "errorCode",
+          "iteration",
+          "observation",
+          "status",
+          "taskId",
+          "thoughtPreview",
+          "toolArgs",
+          "toolName",
+          "toolSuccess"
+        ]
+      ]
+    },
+    "inference.tool_completion": {
+      "count": 391,
+      "mode_fields": {},
+      "sample_keys": [
+        [
+          "agentId",
+          "iteration",
+          "model",
+          "provider",
+          "taskId",
+          "toolCallCount"
+        ]
+      ]
+    }
+  }
+}

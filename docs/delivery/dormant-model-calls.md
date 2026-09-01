@@ -903,3 +903,95 @@ call it replaces previously failed instantly â€” so the true added cost is one R
 query per loop round, unmeasurable here because the corpus is empty.
 
 **Status: both `get_rag_service` sites FIXED and LIVE-CONFIRMED at `db928881`.**
+
+## Dead-path hypothesis — REFUTED (2026-09-01)
+
+Sites 1/3 (grounding validator) and 7 (query rewriter) both recorded **zero**
+production events after their fixes went live. Two instruments, two zeroes,
+prompted the hypothesis that the classical retrieval-and-answer region after the
+`unified-turn-live` call is dead code for current traffic — and with it, the
+question of whether the remaining four sites were worth fixing at all.
+
+The hypothesis is **wrong**. The region is reached by real traffic every day.
+
+### What the zeroes actually meant
+
+Both instruments sit *inside* the region, so a zero from either cannot separate
+"region never entered" from "entered, but this branch skipped". That distinction
+was the whole question, and neither instrument could answer it.
+
+The decisive signal was one already carrying 30 days of history:
+`agent.react.iteration`. Its two emitters are cleanly separable by the
+`audit_resource_type` each passes:
+
+- `agent_intelligence.py:3221` — the **only** caller of `run_streaming`, sitting
+  at line 3221, well past the region entry at 2608, passing `"assistant"`.
+- `agent_intelligence.py:1293` — the separate non-streaming `execute_task`,
+  passing `"workflow_run"` / `"agent_job"`.
+
+Both lines are inside `execute_task_streaming` (1382-3844) with no function
+boundary between them, and the region entry sits at function-body indentation,
+so **reaching 3221 requires executing 2608**.
+
+| resource_type | events (30d) | means |
+|---|---|---|
+| `assistant` | **606** | classical region entered |
+| `agent_job` | 37 | other entry point |
+| `workflow_run` | 3 | other entry point |
+
+Spread across 28 of 30 days, including 120 on the current day. Artifact:
+`docs/delivery/classical-region-reach.json`, probe
+`backend/scripts/probe_classical_region_reach.py`.
+
+### All four fallthrough reasons carry real volume
+
+No branch is unused, so the premise that grounding and the rewriter "happened to
+sit on the two unused branches" is also wrong:
+
+| reason | events (30d) |
+|---|---|
+| `defer_classical_tool_sse` | 143 |
+| `outcome_error` | 142 |
+| `pending_family_classical_resume` | 136 |
+| `read_tool_classical` | 93 |
+
+`outcome_error` at 142 of 514 is the unified turn's own reasoning failing on
+roughly 28% of fallthroughs. Noted as a separate finding, not part of this one.
+
+### So why is the rewriter still at zero
+
+Not deploy timing — checked rather than assumed. Production `git_sha` is
+`f8fb93d68fec04780dec49f20dce459bfcf78176`, the instrumented commit, and **36**
+post-region ReAct iterations occurred after that commit's time, the latest at
+`2026-09-01T21:44:33Z`. The region ran, repeatedly, with the instrument live,
+and the rewriter branch never did.
+
+That leaves the gate above it, `if mode_key != "fast"`. **This is not yet
+proven**: no audit event anywhere records the effective mode
+(`docs/delivery/effective-mode-distribution.json` — all four candidate event
+types checked, none carries a mode field). Labelled INCONCLUSIVE pending the
+instrument below, not rounded up to a root cause.
+
+### Instrument corrected
+
+The first instrument was placed *inside* the mode gate, so it inherited the
+exact ambiguity it was meant to resolve. Replaced by
+`classical.answer_path.reached`, emitted unconditionally on region entry, with
+`modeKey` and `rewriteAttempted`, which separates "region never runs" from "runs
+but skips the rewriter". Committed at `c38d42cf`, awaiting deploy.
+
+### Consequence for the remaining four sites
+
+Reachability was checked per site before any further fix work. Only one of the
+four is in the region at all — the other three sit on hotter paths than any site
+fixed so far:
+
+| site | production call site | real reach |
+|---|---|---|
+| `contextual_understanding` (and `domain_intelligence`, nested at `contextual_understanding_service.py:89`) | `agent_intelligence.py:1753`, function-body level | **every** streaming turn past the cache and pending-clarify returns — ~1,527 turns/30d |
+| `conversational_turn_gate` | `unified_turn_reasoning_service.py:1278` (unified path) **and** `agent_intelligence.py:2150` (fallthrough) | both paths — effectively all turns |
+| `clarification_engine` | `agent_intelligence.py:2718` | inside the region; reached daily, further gated |
+
+The three highest-reach sites are on the unified-turn path that serves the
+majority of traffic, which is the opposite of the dead-region read. These are
+ordinary fix-and-prove work, not a product decision.
