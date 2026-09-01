@@ -533,6 +533,40 @@ def search_companies(
     )
 
 
+def list_companies(
+    access_token: str,
+    *,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """List recent CRM companies (no search filter required)."""
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["name", "domain", "city", "industry"]
+    return _request(
+        "GET",
+        "/crm/v3/objects/companies",
+        access_token,
+        params={"limit": lim, "properties": ",".join(props)},
+    )
+
+
+def list_tickets(
+    access_token: str,
+    *,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """List recent CRM tickets (no search filter required)."""
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["subject", "content", "hs_pipeline_stage", "hs_ticket_priority"]
+    return _request(
+        "GET",
+        "/crm/v3/objects/tickets",
+        access_token,
+        params={"limit": lim, "properties": ",".join(props)},
+    )
+
+
 def list_deal_pipelines(access_token: str) -> dict[str, Any]:
     return _request("GET", "/crm/v3/pipelines/deals", access_token)
 

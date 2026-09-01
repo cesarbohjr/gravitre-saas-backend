@@ -1,0 +1,155 @@
+{
+  "captured_at": "2026-09-01T08:14:46.558069+00:00",
+  "window_days": 3,
+  "audit_volume": {
+    "tool.invoke.completed": 20,
+    "tool.invoke.failed": 12,
+    "tool.invoke.error": 0,
+    "tool.invoke.started": 0
+  },
+  "deal_invocations": 12,
+  "succeeded": 8,
+  "failed": 4,
+  "success_arg_shapes": {
+    "['<empty>']": 8
+  },
+  "failure_arg_shapes": {
+    "['<empty>']": 4
+  },
+  "failures": [
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T07:58:16.38274+00:00",
+      "metadata": {
+        "error": "hubspot.deals.search requires filter_groups array",
+        "action": "hubspot.deals.search",
+        "step_id": null,
+        "error_code": "validation_error",
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T07:57:34.479625+00:00",
+      "metadata": {
+        "error": "hubspot.deals.search requires filter_groups array",
+        "action": "hubspot.deals.search",
+        "step_id": null,
+        "error_code": "validation_error",
+        "connector_id": null
+      }
+    },
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T07:56:40.730767+00:00",
+      "metadata": {
+        "error": "hubspot.deals.search requires filter_groups array",
+        "action": "hubspot.deals.search",
+        "step_id": null,
+        "error_code": "validation_error",
+        "connector_id": null
+      }
+    },
+    {
+      "audit_action": "tool.invoke.failed",
+      "created_at": "2026-09-01T00:45:19.989418+00:00",
+      "metadata": {
+        "error": "hubspot.deals.search requires filter_groups array",
+        "action": "hubspot.deals.search",
+        "step_id": null,
+        "error_code": "validation_error",
+        "connector_id": null
+      }
+    }
+  ],
+  "successes": [
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T07:58:09.701022+00:00",
+      "metadata": {
+        "action": "hubspot.deals.list",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 824,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T07:57:21.805195+00:00",
+      "metadata": {
+        "action": "hubspot.deals.list",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 336,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T07:55:41.50793+00:00",
+      "metadata": {
+        "action": "hubspot.deals.list",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 460,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T00:46:10.567177+00:00",
+      "metadata": {
+        "action": "hubspot.deals.search",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 312,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T00:45:59.643177+00:00",
+      "metadata": {
+        "action": "hubspot.deals.search",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 373,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T00:45:49.224468+00:00",
+      "metadata": {
+        "action": "hubspot.deals.search",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 403,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T00:45:41.502632+00:00",
+      "metadata": {
+        "action": "hubspot.deals.list",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 493,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    },
+    {
+      "audit_action": "tool.invoke.completed",
+      "created_at": "2026-09-01T00:45:34.763718+00:00",
+      "metadata": {
+        "action": "hubspot.deals.list",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 443,
+        "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78"
+      }
+    }
+  ]
+}

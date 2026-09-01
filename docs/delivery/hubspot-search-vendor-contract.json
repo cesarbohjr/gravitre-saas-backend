@@ -1,0 +1,104 @@
+{
+  "captured_at": "2026-09-01T08:24:04.803441+00:00",
+  "source": "HubSpot published OpenAPI catalog",
+  "catalog": "https://api.hubspot.com/public/api/spec/v1/specs",
+  "findings": [
+    {
+      "api": "Companies",
+      "version": "2026-03",
+      "spec_url": "https://api.hubspot.com/public/api/spec/v2/specs/release/75244/version/2026-03",
+      "path": "/crm/objects/2026-03/companies/search",
+      "schema": "PublicObjectSearchRequest",
+      "request_body_required": true,
+      "schema_required": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "sorts"
+      ],
+      "schema_properties": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "query",
+        "sorts"
+      ],
+      "vendor_requires_filter_groups": true
+    },
+    {
+      "api": "Deals",
+      "version": "2026-03",
+      "spec_url": "https://api.hubspot.com/public/api/spec/v2/specs/release/75246/version/2026-03",
+      "path": "/crm/objects/2026-03/0-3/search",
+      "schema": "PublicObjectSearchRequest",
+      "request_body_required": true,
+      "schema_required": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "sorts"
+      ],
+      "schema_properties": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "query",
+        "sorts"
+      ],
+      "vendor_requires_filter_groups": true
+    },
+    {
+      "api": "Tickets",
+      "version": "2026-03",
+      "spec_url": "https://api.hubspot.com/public/api/spec/v2/specs/release/75274/version/2026-03",
+      "path": "/crm/objects/2026-03/tickets/search",
+      "schema": "PublicObjectSearchRequest",
+      "request_body_required": true,
+      "schema_required": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "sorts"
+      ],
+      "schema_properties": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "query",
+        "sorts"
+      ],
+      "vendor_requires_filter_groups": true
+    },
+    {
+      "api": "Contacts",
+      "version": "2026-03",
+      "spec_url": "https://api.hubspot.com/public/api/spec/v2/specs/release/75232/version/2026-03",
+      "path": "/crm/objects/2026-03/contacts/search",
+      "schema": "PublicObjectSearchRequest",
+      "request_body_required": true,
+      "schema_required": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "sorts"
+      ],
+      "schema_properties": [
+        "after",
+        "filterGroups",
+        "limit",
+        "properties",
+        "query",
+        "sorts"
+      ],
+      "vendor_requires_filter_groups": true
+    }
+  ],
+  "vendor_requires_filter_groups_anywhere": true
+}

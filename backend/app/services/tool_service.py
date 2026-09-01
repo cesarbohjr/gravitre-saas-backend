@@ -53,9 +53,11 @@ from app.connectors.hubspot import (
     get_list as hubspot_get_list,
     get_list_memberships as hubspot_get_list_memberships,
     get_ticket as hubspot_get_ticket,
+    list_companies,
     list_contacts,
     list_deal_pipelines,
     list_deals,
+    list_tickets,
     list_owners,
     search_companies,
     search_contacts,
@@ -463,17 +465,59 @@ def _exec_hubspot_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> N
     )
 
 
+_HUBSPOT_TEXT_SEARCH_PROPERTIES: dict[str, tuple[str, ...]] = {
+    "contacts": ("email", "firstname", "lastname", "company"),
+    "deals": ("dealname",),
+    "companies": ("name", "domain"),
+    "tickets": ("subject",),
+}
+
+
+def _hubspot_text_filter_groups(object_type: str, query: str) -> list[dict[str, Any]]:
+    """Turn the advertised `query` parameter into filterGroups HubSpot accepts.
+
+    HubSpot ORs groups and ANDs the filters inside a group, so one group per
+    property gives "matches any of these".
+    """
+    props = _HUBSPOT_TEXT_SEARCH_PROPERTIES.get(object_type) or ("name",)
+    return [
+        {"filters": [{"propertyName": prop, "operator": "CONTAINS_TOKEN", "value": query}]}
+        for prop in props
+    ]
+
+
+def _resolve_hubspot_search(
+    object_type: str, params: dict[str, Any]
+) -> list[dict[str, Any]] | None:
+    """Resolve a catalog search call into something the vendor will accept.
+
+    The catalog advertises these searches with `required: []` and an optional
+    `query`, so a model following that schema legitimately sends `query` alone,
+    or no criteria at all. Both used to be rejected outright by the executor,
+    which is a contract the caller was never shown. Honour the advertised shape
+    instead: build the vendor filter from `query`, and return None for a
+    criteria-less search so the caller can serve it from the list endpoint,
+    which is what an unfiltered search actually means.
+    """
+    filter_groups = params.get("filter_groups") or params.get("filterGroups")
+    if isinstance(filter_groups, list) and filter_groups:
+        return filter_groups
+    for key in ("query", "q", "search", "search_term", "keyword"):
+        raw = params.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return _hubspot_text_filter_groups(object_type, raw.strip())
+    return None
+
+
 def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
     limit = int(params.get("limit") or 10)
     list_all = bool(params.get("list_all") or params.get("listAll"))
-    filter_groups = params.get("filter_groups") or params.get("filterGroups")
+    filter_groups = _resolve_hubspot_search("contacts", params)
     try:
-        if list_all:
+        if list_all or filter_groups is None:
             data = list_contacts(token, properties=params.get("properties"), limit=limit)
         else:
-            if not isinstance(filter_groups, list) or not filter_groups:
-                raise ToolValidationError("hubspot.contacts.search requires filter_groups array")
             data = search_contacts(
                 token,
                 filter_groups=filter_groups,
@@ -828,16 +872,21 @@ def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> 
 
 def _exec_hubspot_companies_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
-    filter_groups = params.get("filter_groups") or params.get("filterGroups")
-    if not isinstance(filter_groups, list) or not filter_groups:
-        raise ToolValidationError("hubspot.companies.search requires filter_groups array")
+    filter_groups = _resolve_hubspot_search("companies", params)
     try:
-        data = search_companies(
-            token,
-            filter_groups=filter_groups,
-            properties=params.get("properties"),
-            limit=int(params.get("limit", 10)),
-        )
+        if filter_groups is None:
+            data = list_companies(
+                token,
+                properties=params.get("properties"),
+                limit=int(params.get("limit", 10)),
+            )
+        else:
+            data = search_companies(
+                token,
+                filter_groups=filter_groups,
+                properties=params.get("properties"),
+                limit=int(params.get("limit", 10)),
+            )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(
@@ -904,11 +953,18 @@ def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
 
 def _exec_hubspot_deals_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
-    filter_groups = params.get("filter_groups")
-    if not isinstance(filter_groups, list) or not filter_groups:
-        raise ToolValidationError("hubspot.deals.search requires filter_groups array")
+    limit = int(params.get("limit") or 25)
+    filter_groups = _resolve_hubspot_search("deals", params)
     try:
-        data = search_deals(token, filter_groups=filter_groups, limit=int(params.get("limit") or 25))
+        if filter_groups is None:
+            data = list_deals(token, properties=params.get("properties"), limit=limit)
+        else:
+            data = search_deals(
+                token,
+                filter_groups=filter_groups,
+                properties=params.get("properties"),
+                limit=limit,
+            )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(success=True, action="hubspot.deals.search", connector_id=cid, data=data)
@@ -967,11 +1023,13 @@ def _exec_hubspot_companies_get(ctx: ToolContext, params: dict[str, Any]) -> Nor
 
 def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
-    filter_groups = params.get("filter_groups")
-    if not isinstance(filter_groups, list) or not filter_groups:
-        raise ToolValidationError("hubspot.tickets.search requires filter_groups array")
+    limit = int(params.get("limit") or 25)
+    filter_groups = _resolve_hubspot_search("tickets", params)
     try:
-        data = search_tickets(token, filter_groups=filter_groups, limit=int(params.get("limit") or 25))
+        if filter_groups is None:
+            data = list_tickets(token, properties=params.get("properties"), limit=limit)
+        else:
+            data = search_tickets(token, filter_groups=filter_groups, limit=limit)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(success=True, action="hubspot.tickets.search", connector_id=cid, data=data)
