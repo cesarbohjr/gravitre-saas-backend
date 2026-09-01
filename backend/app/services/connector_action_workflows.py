@@ -84,6 +84,30 @@ def missing_params_stage_patch(
     """
     plan = scrub_gmail_write_plan(plan)
     clarification = validate_connector_plan(plan, message or "")
+
+    # A destructive plan with no arguments at all is not approvable. This is the
+    # live-observed tail of the fabricated-write defect: withholding invented
+    # pack defaults emptied the args, but schema validation still passed (the
+    # slots are individually optional), so the turn reached the user as
+    # "I still have Create list waiting for approval. Say yes to run it." with
+    # args {}. Nothing here is answerable by yes — there is no subject to act on.
+    # See docs/delivery/readonly-destructive-proposal.md.
+    if (
+        clarification is None
+        and getattr(plan, "destructive", False)
+        and not any(str(v or "").strip() for v in (plan.args or {}).values())
+    ):
+        label = (plan.label or plan.invoke_action or "that action").strip()
+        clarification = WorkflowCheck(
+            status="needs_input",
+            message=(
+                f"I don't have any details for **{label}** — I'd be guessing at "
+                "every field. Tell me what you'd like it to contain, or ignore "
+                "this if you didn't mean to start it."
+            ),
+            dialogue_mode="clarify",
+        )
+
     if not clarification:
         return None
     from app.services.parameter_ledger import get_ledger, stage_awaiting_params

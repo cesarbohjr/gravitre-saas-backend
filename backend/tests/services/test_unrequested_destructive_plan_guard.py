@@ -95,6 +95,38 @@ def test_predicate_flags_the_fully_fabricated_plan() -> None:
     assert is_unrequested_destructive_plan(fabricated, REQUESTED) is False
 
 
+def test_an_empty_destructive_plan_is_not_approvable() -> None:
+    """The live tail of the defect: no invented args, but still staged for yes.
+
+    Withholding pack defaults emptied the arguments, yet schema validation still
+    passed (each slot is individually optional) and the turn reached production
+    as "I still have Create list waiting for approval. Say yes to run it." with
+    args {}. There is nothing for a yes to mean here.
+    """
+    from app.services.connector_action_workflows import missing_params_stage_patch
+
+    staged = missing_params_stage_patch(
+        _hubspot_list_create(destructive=True), READ_ONLY, task_state={}
+    )
+    assert staged is not None, (
+        "a destructive plan with zero arguments was allowed straight to "
+        "awaiting_confirm; one 'yes' would fire an action with no subject"
+    )
+    clarification, patch = staged
+    assert clarification.dialogue_mode == "clarify"
+    assert (patch.get("pending_task") or {}).get("status") != "awaiting_confirm"
+
+
+def test_a_destructive_plan_with_real_args_still_reaches_approval() -> None:
+    """The refusal must not block genuine, fully-specified writes."""
+    from app.services.connector_action_workflows import missing_params_stage_patch
+
+    complete = _hubspot_list_create(
+        destructive=True, name="Northeast Renewals", object_type_id="0-1", processing_type="MANUAL"
+    )
+    assert missing_params_stage_patch(complete, REQUESTED, task_state={}) is None
+
+
 def test_predicate_ignores_plans_with_a_user_supplied_arg() -> None:
     """One genuinely user-derived value is enough to clear the fabrication test."""
     partly_real = ConnectorActionPlan(
