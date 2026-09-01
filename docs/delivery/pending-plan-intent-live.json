@@ -1,0 +1,35 @@
+{
+  "deployed_git_sha": "d57b48c36853b8cb066f04a205c5df8acd66ad16",
+  "captured_at": "2026-09-01T19:27:40.432866+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "site": "backend/app/services/conversation_turn_controller.py:273",
+  "canary": "Zenphara",
+  "verdict": "PASS",
+  "note": "the general-path reply was classified without falling back to the 'abandon or hold' prompt, so the model call is genuinely running in production",
+  "scenarios": [
+    {
+      "label": "general_path_cancel",
+      "ran": true,
+      "conversation_id": "d8c606eb-a768-4fc0-a0ca-c932abc40c7c",
+      "message": "hold off, I need to run this past our finance lead before anything happens",
+      "hits_modify_hint": false,
+      "seeded_goal": "Create a HubSpot list called Zenphara Renewals and add the matched deals",
+      "assistant": "Understood. I\u2019ll wait for finance lead approval.",
+      "unclear_fallback_prompt": false,
+      "canary_leaked": false,
+      "current_plan_cleared": true
+    },
+    {
+      "label": "modify_hint_cancel",
+      "ran": true,
+      "conversation_id": "9ab6120f-d686-4df0-a96a-4c5d5f8af6ba",
+      "message": "don't bother with that, we're going a completely different direction now",
+      "hits_modify_hint": true,
+      "seeded_goal": "Create a HubSpot list called Zenphara Renewals and add the matched deals",
+      "assistant": "Understood. I\u2019ll drop the previous thread and work from the new direction.",
+      "unclear_fallback_prompt": false,
+      "canary_leaked": false,
+      "current_plan_cleared": true
+    }
+  ]
+}

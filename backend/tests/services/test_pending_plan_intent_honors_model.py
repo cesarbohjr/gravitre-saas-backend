@@ -3,9 +3,14 @@
 
 While `_model_pending_intent` was dormant (calling the zero-arg
 `get_model_router` with an argument, TypeError swallowed by the enclosing
-handler), the modify-hint branch fell through to a hardcoded "modify". A reply
-meaning cancel that happened to contain a modify hint therefore left a
-destructive plan pending instead of dropping it.
+handler), the modify-hint branch fell through to a hardcoded "modify".
+
+The one production caller (`agent_intelligence.py`, orphan strategic-plan
+recovery) reacts to "modify" by clearing the plan and appending
+`" (regarding plan: {goal})"` to the user's message. So a reply meaning *stop*
+that happened to contain a hint word had the abandoned goal injected into the
+very turn that rejected it. Every other reply fell to "unclear" and got the
+"abandon or hold" prompt instead of being understood.
 
 Every assertion here fails if that call goes dormant again, because each one
 requires the model's answer to actually reach the return value.
@@ -85,7 +90,8 @@ _CANCEL_VIA_MODIFY_HINT = (
 
 @pytest.mark.asyncio
 async def test_modify_hint_reply_meaning_cancel_is_cancelled(routed):
-    """The regression itself. Dormant, this returned 'modify' and kept the plan."""
+    """The regression itself. Dormant, this returned 'modify', which made the
+    caller carry the abandoned goal forward into the rejecting turn."""
     routed("cancel")
     assert ctc.re_modify_hint(_CANCEL_VIA_MODIFY_HINT) is True
     assert await _classify(_CANCEL_VIA_MODIFY_HINT) == "cancel"

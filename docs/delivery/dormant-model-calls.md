@@ -482,10 +482,6 @@ real user's org.
 
 Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
 
-**This is the first site in the audit that did not fail safe.** Every one before
-it degraded toward asking again or doing nothing, which is why they survived
-unnoticed. This one degraded toward *keeping a destructive plan alive*.
-
 `_model_pending_intent` has two callers inside `classify_pending_plan_intent`,
 with different fallbacks:
 
@@ -496,20 +492,71 @@ with different fallbacks:
 
 `re_modify_hint` fires on `don't`, `dont`, `without`, `instead`, `just`, `only`,
 `skip`, `change`, `rather`. So a reply that plainly means *cancel* but contains
-one of those words — *"don't bother with that, we're going a completely
-different direction now"* — was classified as a request to **modify** the plan.
-The plan stayed pending. The user had tried to call it off.
+one of those words was classified as a request to **modify** the plan.
+
+### Correction — the severity claim I first wrote here was wrong
+
+My first draft of this section said the dormancy "left a destructive plan
+pending after the user tried to call it off." That is **not** what happens, and
+I recorded it before tracing the caller. Correcting it rather than quietly
+editing it out, since mis-stated severity is the exact thing this program keeps
+catching.
+
+`classify_pending_plan_intent` has exactly one production caller,
+`agent_intelligence.py:1631`, and it is gated on:
+
+```python
+isinstance(early_plan, dict)
+and early_plan.get("goal")
+and not (isinstance(early_pending, dict) and early_pending)   # NO pending task
+```
+
+So this path only runs for an **orphan strategic plan** — a `current_plan` left
+over with *no* approval hold attached. A destructive plan awaiting approval is
+excluded by the gate, and is handled by site 5's classifier instead. Further,
+`cancel` and `modify` both clear `current_plan`. Nothing was left pending.
+
+What the dormancy actually did, per branch:
+
+| Intent | Effect at the caller | While dormant |
+|---|---|---|
+| `cancel` | clears `current_plan` | unreachable |
+| `modify` | clears `current_plan`, **appends `" (regarding plan: {goal})"` to the user's message** | every modify-hint reply |
+| `continue` | resumes the old goal as the message | unreachable |
+| `unclear` | sets `pending_hold_prompt`, asks "abandon or hold" | every other reply |
+
+So the two real consequences are:
+
+1. **Stale-goal injection.** A reply meaning *stop* that contains a hint word
+   got its text rewritten to carry the abandoned goal. *"don't bother with that,
+   we're going a completely different direction now"* became
+   *"…different direction now (regarding plan: Create a HubSpot list of MSP
+   prospects…)"* — the abandoned goal pushed into the very turn that rejected it.
+2. **Forced re-ask.** Everything else fell to `unclear` and got the
+   "abandon or hold" prompt instead of being understood.
+
+Neither is a stuck destructive plan. Consequence 1 is still a genuine defect,
+and it fails toward *carrying unwanted intent forward*, not toward safety.
+
+### Possible link to the "MSPs" contamination, explicitly not proven
+
+Consequence 1 is a real mechanism that injects a stale goal string into a later
+turn's prompt, and the contamination observed earlier in this task surfaced the
+token `"MSPs"` from prior marketplace testing. The shapes match. That is a
+**hypothesis, not a finding** — no trace ties the observed contamination to this
+code path, and it is recorded here only so the connection is not lost. It should
+not be cited as the cause of that incident without its own evidence.
 
 ### Before/after, buggy call restored for the first pass
 
 `backend/scripts/probe_conversation_turn_controller_before_after.py`,
 artifact `docs/delivery/conversation-turn-controller-before-after.json`.
-Against a real destructive pending plan (`hubspot.lists.create` +
-`lists.add_members`, `awaiting_confirm`):
+Against a real orphan strategic plan (`hubspot.lists.create` +
+`lists.add_members`), matching the shape the production caller requires:
 
 | Reply | | Router entered | TypeError | Intent |
 |---|---|---|---|---|
-| "don't bother with that…" (modify hint) | before | **no** | yes, swallowed at WARNING | **`modify`** — plan kept |
+| "don't bother with that…" (modify hint) | before | **no** | yes, swallowed at WARNING | **`modify`** — stale goal injected |
 | | after | **yes** | no | `modify` (no AI provider configured locally) |
 | "hold off, I need to run this past our finance lead…" (no hint) | before | **no** | yes, swallowed at WARNING | `unclear` |
 | | after | **yes** | no | `unclear` (same reason) |
@@ -529,6 +576,11 @@ distinguishes "reached" from "never called".
 Status: **PASS on the dormancy defect**, and the mislabel it caused is measured
 rather than argued: `modify` returned for an unambiguous cancel, 100% of the
 time, deterministically.
+
+Honest note on reachability, learned from Phase B: this site's one caller needs
+a `current_plan` with a goal and no `pending_task`. How often real traffic is in
+that state is **not measured**, so the fix is proven correct without a claim
+about how much production behaviour it changes.
 
 ### Standing regression test
 
@@ -552,9 +604,49 @@ Regression check: 279 passed across the pending/turn-controller/connector-action
 suites. Baseline: `conversation_turn_controller.py:273` removed from
 `KNOWN_DORMANT`. **Six of twelve sites now closed.**
 
-### Live production proof
+### Live production proof — PASS
 
-Pending — see below.
+`scripts/verify-pending-plan-intent-live.py` against deployed tip
+**d57b48c36853b8cb066f04a205c5df8acd66ad16**, org
+`f07e57c0-1501-4000-8000-c04e57a00001`
+(`docs/delivery/pending-plan-intent-live.json`).
+
+The scenario seeds the exact state the one production caller requires — a
+`current_plan` with a goal and **no** `pending_task` — directly in
+`conversations.task_state`, then sends one reply. The seeded goal carries a
+nonsense canary token, `Zenphara`, that occurs nowhere else, so any appearance
+of it in the answer is injection rather than coincidence.
+
+| Scenario | Branch | Reply | "abandon or hold" prompt | Canary leaked | Plan cleared |
+|---|---|---|---|---|---|
+| "hold off, I need to run this past our finance lead before anything happens" | general (fallback `unclear`) | "Understood. I'll wait for finance lead approval." | **no** | no | yes |
+| "don't bother with that, we're going a completely different direction now" | modify-hint (fallback `modify`) | "Understood. I'll drop the previous thread and work from the new direction." | no | **no** | yes |
+
+**Why this is conclusive, and not just an absence of a bad string.** The general
+branch has no non-model route to `cancel`/`modify`/`continue`: its fallback is
+`unclear`, and `unclear` makes the caller emit that verbatim prompt and return.
+Two independent observations rule that out — the prompt never appeared, and
+`current_plan` was cleared, which happens *only* inside the three model-decided
+branches. So the model returned a valid label.
+
+The remaining way this could be vacuous is if the regex fast path had answered
+before the model was consulted. Checked, not assumed
+(`backend/scripts/scratch_check_site6_phrasings.py`): neither phrasing matches
+the clear-cancel regex or the confirm regex, so both genuinely reach the model.
+
+The canary also stayed out of both answers, so the stale-goal injection
+described above is not occurring at this tip.
+
+Honest limits on this PASS:
+
+- The state was **seeded directly**, not produced by a natural conversation.
+  That is deliberate — it is the only way to hit a caller gated on
+  plan-without-pending-task — but it means this proves the mechanism works, not
+  that real traffic reaches it. The reachability rate is still unmeasured.
+- The two answers read as correct comprehension, but the final answer is
+  model-generated regardless, so the reply *text* is not itself evidence about
+  the classifier. The load-bearing evidence is the branch discrimination above,
+  not how sensible the wording sounds.
 
 ## Phase 2 — customer RAG (`get_rag_service`, both sites)
 

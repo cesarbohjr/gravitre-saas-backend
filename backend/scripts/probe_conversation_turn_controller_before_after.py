@@ -1,17 +1,19 @@
 """Site 6 (conversation_turn_controller): before/after proof the call is no longer dormant.
 
-This site is worse than the ones before it. `_model_pending_intent` sits behind
-two callers in `classify_pending_plan_intent`:
+`_model_pending_intent` sits behind two callers in `classify_pending_plan_intent`:
 
   * the modify-hint path, whose fallback when the model contributes nothing is
     "modify" — NOT "unclear". So a reply that means cancel but happens to contain
     a modify hint ("don't bother with that") was classified as a request to
-    change the plan, and the pending plan stayed alive.
+    change the plan.
   * the general path, whose fallback is "unclear".
 
-The first is the interesting one: every other dormant site in this audit failed
-safe, which is why they went unnoticed. This one failed toward keeping a
-destructive plan pending after the user tried to call it off.
+The single production caller (agent_intelligence.py, orphan strategic-plan
+recovery) is gated on a current_plan with NO pending_task, and reacts to
+"modify" by clearing the plan and appending " (regarding plan: {goal})" to the
+user's message. So the dormancy did not strand a destructive plan — it injected
+an abandoned goal into the turn that rejected it, and pushed every other reply
+into an "abandon or hold" prompt.
 
 Two claims, both decidable without AI credentials because both are control flow:
   1. dormancy — was the router entered, and what did the swallowing handler log.
@@ -75,7 +77,7 @@ def load_env() -> None:
 
 
 def _current_plan() -> dict:
-    """A real destructive pending plan, so the stakes of the mislabel are concrete."""
+    """An orphan strategic plan, matching the shape the production caller needs."""
     return {
         "goal": "Create a HubSpot list of MSP prospects and add the matched deals",
         "steps": [
@@ -194,7 +196,7 @@ async def main() -> int:
 
     print(f"  before: dormant on both paths (router never entered, TypeError swallowed) = {dormant_before}")
     print(f"  after:  live on both paths (router entered, no TypeError) = {live_after}")
-    print(f"  before: cancel-shaped reply classified 'modify', keeping the plan alive = {mislabel_before}")
+    print(f"  before: cancel-shaped reply classified 'modify' (caller then injects the stale goal) = {mislabel_before}")
 
     verdict = "PASS" if dormant_before and live_after else "INCONCLUSIVE"
     if verdict == "PASS":
@@ -214,9 +216,12 @@ async def main() -> int:
                 "verdict": verdict,
                 "mislabel_before": mislabel_before,
                 "severity_note": (
-                    "Unlike sites 1-5 this one did not fail safe: the modify-hint "
-                    "fallback is 'modify', so a cancel-meaning reply left a "
-                    "destructive plan pending instead of dropping it."
+                    "The one production caller is gated on a current_plan with no "
+                    "pending_task, and both cancel and modify clear it, so nothing "
+                    "was stranded. The real effect of the 'modify' fallback is that "
+                    "the caller appends ' (regarding plan: {goal})' to the user's "
+                    "message, injecting an abandoned goal into the turn that "
+                    "rejected it."
                 ),
                 "scope_note": (
                     "Proves the call is no longer dormant, and measures the wrong "

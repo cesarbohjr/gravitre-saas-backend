@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-01T17:13:33.928119+00:00",
+  "captured_at": "2026-09-01T19:24:21.939864+00:00",
   "site": "backend/app/services/conversation_turn_controller.py:273",
   "before": {
     "label": "BEFORE \u2014 original buggy call restored",
@@ -57,6 +57,6 @@
   },
   "verdict": "PASS",
   "mislabel_before": true,
-  "severity_note": "Unlike sites 1-5 this one did not fail safe: the modify-hint fallback is 'modify', so a cancel-meaning reply left a destructive plan pending instead of dropping it.",
+  "severity_note": "The one production caller is gated on a current_plan with no pending_task, and both cancel and modify clear it, so nothing was stranded. The real effect of the 'modify' fallback is that the caller appends ' (regarding plan: {goal})' to the user's message, injecting an abandoned goal into the turn that rejected it.",
   "scope_note": "Proves the call is no longer dormant, and measures the wrong label it produced while dormant. Whether the model now returns 'cancel' for this reply needs AI provider credentials, which this environment does not have \u2014 production only."
 }
