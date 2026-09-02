@@ -193,3 +193,97 @@ verdict is buried inside `latency_breakdown.unifiedTurnKnowledge` on
 `unified_turn.*` events. Every other governed mechanism in this program earned a
 first-class action string, and this one is a live gate whose verdict currently
 cannot be queried directly.
+
+---
+
+# Decision and outcome (2026-09-02)
+
+**Cesar's decision: stop the CRAG build.** Close the instrument gap now; revisit
+CRAG when a real corpus exists. Phases 1, 2, 4 and 5 are not built.
+
+## Delivered: `evidence.sufficiency.assessed` — LIVE PASS
+
+**PASS — `evidence.sufficiency.assessed` @ 2026-09-02T23:28:32.984Z**, org
+`f07e57c0…0001`, conversation `74059ef1…`, emitted by **deployed** tip
+`fcd244de` (live `git_sha` confirmed equal to local HEAD before probing).
+Artifact: `sufficiency-audit-live.json`. All 13 checks pass.
+
+Emitted from inside `build_unified_turn_knowledge_context`, not from its caller:
+the loop is the mechanism, and an audit attached to the caller would be bypassed
+the moment a second caller appears.
+
+### The strongest evidence was not the probe
+
+The probe's own turn wrote a row at 23:29:41 (`bar=regulatory`, 2 rounds,
+3 × `llm` assessors). But a **recurring production smoke job** drives a turn in
+this org roughly every 30 minutes, and it produced its own row at 23:28:32
+(`bar=business`, 1 round) one second before its `unified_turn.live.completed`
+event — **deployed code, unprompted, on its own schedule.**
+
+That gives a clean before/after from the same recurring job:
+
+| Turn | Tip | Nested `evidenceSufficiency` | `evidence.sufficiency.assessed` |
+|---|---|---|---|
+| 22:01:51Z `smoke-ok` | `36f947d2` | present, `bar=business`, 1 round | **absent** |
+| 22:31:05Z `smoke-ok` | `36f947d2` | present, `bar=business`, 1 round | **absent** |
+| 23:28:33Z `smoke-ok` | **`fcd244de`** | present, `bar=business`, 1 round | **PRESENT** |
+
+Same job, same query, same verdict. The only variable is the deploy, so the
+instrument is what changed and nothing else.
+
+### Two rows were checked before being believed
+
+Two rows for one probe run looked like double emission, which would inflate
+every future query off this action. Matching each row against the surrounding
+`unified_turn.*` events showed two distinct turns, one row each — the smoke
+turn and the probe turn. **No double-count.** Worth recording that the
+suspicious number was chased rather than accepted, because "13/13 checks
+passed" would have shipped over it.
+
+### Cross-checked against an independent signal (lesson 2)
+
+The dedicated event and the pre-existing nested block are written by different
+code from the same verdict, so they can disagree. They were compared on
+`bar`, `final_sufficient`, `additional_rounds_used` and `stopped_because` —
+**all four agree**. `assessorRan` was additionally checked against the raw
+`assessors` list it derives from, rather than trusted on its own.
+
+### Lessons carried, concretely
+
+- **Real actor or a loud skip.** A non-UUID actor or conversation is recorded in
+  the metadata *and* logged by name; `write_audit_event` is never called with
+  values it would silently drop. The live row carries the real actor
+  (`a9f1240f…`) and the real conversation.
+- **Fail-closed announces itself.** `assessorUnavailable` separates a turn whose
+  evidence was never judged from one that genuinely fell short; without it
+  `finalSufficient=False` means both.
+- **`assessorRan` compared against constants, not a literal.** The four inline
+  assessor strings in `evidence_sufficiency_service` are now named constants
+  (`ASSESSOR_LLM`, `MODEL_ASSESSORS`, …). This pre-empts the grounding
+  validator's bug, where a literal `"model"` never matched
+  `"loaded_model_artifact"` and read False on every event for weeks.
+- **The call site is pinned.** An AST test asserts the production caller passes
+  `actor_id` and `conversation_id` and that neither is hardcoded `None`. A
+  correct emitter that is never handed an actor records nothing — the "one layer
+  too low" failure this program has now hit five times.
+- **The fast path pays nothing.** No row is written when the loop is skipped;
+  a per-turn insert on casual turns would add a write to the conversational path.
+
+Mutation-proven **9/9**, including the literal-comparison bug, the removed actor
+guard, and the call site reverting to `actor_id=None`. 15 new tests; targeted
+regression set 83 passed.
+
+## Still open, honestly labelled
+
+- **Phase 1's real delta is NOT built:** the verdict remains binary
+  (`sufficient: bool`), and evidence is judged but never **refined** — rows are
+  never filtered. Deferred with the CRAG program, not silently dropped.
+- **Phase 3 Layer 1 (contextual chunk enrichment) is NOT built.** Confirmed
+  absent, highest-value retrieval gap, unmeasurable at one chunk.
+- **Org RAG has no persisted keyword index.** BM25 is real but in-memory over a
+  500-row fetch; Knowledge Fabric has a proper `tsvector`+GIN and org RAG does
+  not. Accepted for now, recorded as a known asymmetry.
+- **CI is red on `main`** for pre-existing reasons: e2e chat scenario dry-runs
+  asserting on mocked execution, plus a `sk-test-` placeholder key producing
+  embedding 401s in CI. Verified unrelated — the docs-only Phase 0 commit, which
+  touched no application code, failed identically.

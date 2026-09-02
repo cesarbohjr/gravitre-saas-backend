@@ -1,0 +1,203 @@
+[
+  {
+    "started_at": "2026-09-02T23:29:02.765974+00:00",
+    "local_sha": "fcd244de179f",
+    "prod_sha": "fcd244de179f",
+    "env_files": [
+      ".env: 33/33 (utf-8)",
+      ".env.operator.local: 24/51 (cp1252)",
+      ".env: absent"
+    ],
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+    "conversation_id": "74059ef1-69b2-42e0-bc73-461530c22d1c",
+    "conversation_was_synthetic": false,
+    "message": "What are the statutory breach notification deadlines under Ontario privacy law, and what is the current effective date?",
+    "action": "evidence.sufficiency.assessed",
+    "outcome_kind": "conversational_reply",
+    "turn_error": null,
+    "nested_block_present": true,
+    "nested_evidenceSufficiency": {
+      "enabled": true,
+      "bar": "regulatory",
+      "max_additional_rounds": 2,
+      "additional_rounds_used": 2,
+      "sources_tried": [
+        "knowledge_pack",
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "assessments": [
+        {
+          "sufficient": false,
+          "assessor": "llm",
+          "reason": "The retrieved evidence is not sufficient for a regulatory/legal determination. It points to federal Canadian legislation (PIPEDA) rather than Ontario privacy law, and the snippets shown do not directly state any Ontario statutory breach notification deadline or its current effective date. The evidence is therefore only topic-adjacent, not an attributable statement of the requested answer.",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "weak_authority"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.98,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "assessor": "llm",
+          "reason": "The retrieved evidence is only topic-adjacent and does not directly state Ontario statutory breach notification deadlines or the current effective date. The sources shown are federal Canada statutes/regulations pages (mostly PIPEDA) and excerpts are incomplete; none explicitly identify Ontario privacy law deadlines or current Ontario effective-date language. While the authority is strong for feder",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "weak_jurisdiction_match",
+            "missing_current_effective_date"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.97,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "assessor": "llm",
+          "reason": "The evidence is not sufficient for a regulatory/legal determination. It is largely the federal PIPEDA statute page and does not directly state the Ontario statutory breach notification deadlines or the current effective date under Ontario privacy law. The retrieved snippets are topic-adjacent and incomplete, and there is no directly citable Ontario authority in the evidence set.",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "weak_authority"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.98,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        }
+      ],
+      "stopped_because": "max_rounds_reached",
+      "final_sufficient": false,
+      "final_reason": "The evidence is not sufficient for a regulatory/legal determination. It is largely the federal PIPEDA statute page and does not directly state the Ontario statutory breach notification deadlines or the current effective date under Ontario privacy law. The retrieved snippets are topic-adjacent and in",
+      "final_gaps": [
+        "does_not_address_question",
+        "partial_coverage",
+        "weak_authority"
+      ],
+      "ms": 26394,
+      "audit_emitted": true
+    },
+    "loop_ran": true,
+    "loop_skipped_reason": null,
+    "rows_found": 2,
+    "row": {
+      "id": "4e4066d7-d6d5-45bf-85a4-a6eb4a132fd0",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "action": "evidence.sufficiency.assessed",
+      "resource_type": "conversation",
+      "resource_id": "74059ef1-69b2-42e0-bc73-461530c22d1c",
+      "created_at": "2026-09-02T23:29:41.469352+00:00",
+      "metadata": {
+        "ms": 26394,
+        "bar": "regulatory",
+        "skipped": null,
+        "assessors": [
+          "llm",
+          "llm",
+          "llm"
+        ],
+        "finalGaps": [
+          "does_not_address_question",
+          "partial_coverage",
+          "weak_authority"
+        ],
+        "roundCount": 3,
+        "assessorRan": true,
+        "sourcesTried": [
+          "knowledge_pack",
+          "org_rag",
+          "internet",
+          "business_graph"
+        ],
+        "evidenceCounts": {
+          "fabric": 6,
+          "orgRag": 0,
+          "internet": 0,
+          "businessGraph": "insufficient_entity_match"
+        },
+        "stoppedBecause": "max_rounds_reached",
+        "finalSufficient": false,
+        "assessorUnavailable": false,
+        "maxAdditionalRounds": 2,
+        "additionalRoundsUsed": 2
+      }
+    },
+    "audit_metadata": {
+      "ms": 26394,
+      "bar": "regulatory",
+      "skipped": null,
+      "assessors": [
+        "llm",
+        "llm",
+        "llm"
+      ],
+      "finalGaps": [
+        "does_not_address_question",
+        "partial_coverage",
+        "weak_authority"
+      ],
+      "roundCount": 3,
+      "assessorRan": true,
+      "sourcesTried": [
+        "knowledge_pack",
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "evidenceCounts": {
+        "fabric": 6,
+        "orgRag": 0,
+        "internet": 0,
+        "businessGraph": "insufficient_entity_match"
+      },
+      "stoppedBecause": "max_rounds_reached",
+      "finalSufficient": false,
+      "assessorUnavailable": false,
+      "maxAdditionalRounds": 2,
+      "additionalRoundsUsed": 2
+    },
+    "verdict": "PASS",
+    "checks": {
+      "loop_engaged": true,
+      "row_written": true,
+      "real_actor_recorded": true,
+      "resource_is_the_conversation": true,
+      "resource_type": true,
+      "agrees_on_bar": true,
+      "agrees_on_final_sufficient": true,
+      "agrees_on_rounds": true,
+      "agrees_on_stopped_because": true,
+      "assessor_list_present": true,
+      "assessorRan_matches_raw_list": true,
+      "assessorUnavailable_matches_raw_list": true,
+      "evidence_counts_present": true
+    },
+    "finished_at": "2026-09-02T23:29:45.789344+00:00"
+  }
+]
