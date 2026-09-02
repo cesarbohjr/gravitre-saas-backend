@@ -179,6 +179,17 @@ async def validate_grounded_answer(
         'Respond JSON only: {"is_valid": true/false, "issues": ["..."], "confidence": 0.0-1.0, '
         '"requires_human": true/false}'
     )
+    # Why this reason is tracked and returned. This function fails OPEN: any
+    # problem lands on the permissive default below, which reports is_valid=True
+    # with a heuristic confidence. Failing open is the right call for a
+    # safety check on the user-facing path — a model hiccup should not turn a
+    # correct answer into an apology — but a fail-open that does not SAY it
+    # failed open is indistinguishable from a validator that works, which is the
+    # exact silent-failure class this program has been closing all along. The
+    # first live run of the tool-aware validator recorded assessorRan=false on
+    # 3 of 3 verdicts and there was no way to tell whether the call raised or
+    # the response simply did not parse. Now there is.
+    fallthrough_reason = "unknown"
     try:
         router = get_model_router()
         response = await router.complete(
@@ -189,27 +200,44 @@ async def validate_grounded_answer(
             temperature=0.0,
             max_tokens=300,
         )
-        match = _JSON_BLOCK.search(response.content or "")
+        raw = response.content or ""
+        match = _JSON_BLOCK.search(raw)
         if match:
-            parsed = json.loads(match.group(0))
-            confidence = float(parsed.get("confidence") or 0.0)
-            is_valid = bool(parsed.get("is_valid")) and confidence >= confidence_threshold
-            return {
-                "is_valid": is_valid,
-                "issues": list(parsed.get("issues") or []),
-                "requires_human": bool(parsed.get("requires_human")) or not is_valid,
-                **label_confidence(
-                    max(0.0, min(1.0, confidence)),
-                    source=CONFIDENCE_SOURCE_MODEL,
-                    is_estimate=True,
-                ),
-            }
+            try:
+                parsed = json.loads(match.group(0))
+            except Exception as exc:  # noqa: BLE001
+                parsed = None
+                fallthrough_reason = f"json_decode_error:{type(exc).__name__}"
+                logger.warning(
+                    "answer validation unparseable org_id=%s raw=%r", org_id, raw[:200]
+                )
+            if parsed is not None:
+                confidence = float(parsed.get("confidence") or 0.0)
+                is_valid = bool(parsed.get("is_valid")) and confidence >= confidence_threshold
+                return {
+                    "is_valid": is_valid,
+                    "issues": list(parsed.get("issues") or []),
+                    "requires_human": bool(parsed.get("requires_human")) or not is_valid,
+                    "validator_fallthrough": None,
+                    **label_confidence(
+                        max(0.0, min(1.0, confidence)),
+                        source=CONFIDENCE_SOURCE_MODEL,
+                        is_estimate=True,
+                    ),
+                }
+        else:
+            fallthrough_reason = "no_json_in_response" if raw.strip() else "empty_response"
+            logger.warning(
+                "answer validation no-json org_id=%s raw=%r", org_id, raw[:200]
+            )
     except Exception as exc:  # noqa: BLE001
+        fallthrough_reason = f"model_error:{type(exc).__name__}"
         logger.warning("answer validation skipped org_id=%s error=%s", org_id, exc)
 
     return {
         "is_valid": True,
         "issues": [],
         "requires_human": False,
+        "validator_fallthrough": fallthrough_reason,
         **label_confidence(0.5, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
     }

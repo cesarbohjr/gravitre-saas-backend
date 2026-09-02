@@ -195,6 +195,82 @@ async def test_empty_answer_is_still_rejected_before_any_model_call(capture_mode
     assert result["issues"] == ["empty_answer"]
 
 
+# --------------------------------------------------------------------------
+# fail-open must be visible: assessorRan=false with no reason is unreadable
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_model_error_is_named_in_the_fallthrough(monkeypatch) -> None:
+    class _Router:
+        async def complete(self, **kwargs: Any):
+            raise RuntimeError("All AI providers failed")
+
+    monkeypatch.setattr(
+        "app.services.answer_validator.get_model_router", lambda: _Router()
+    )
+
+    result = await validate_grounded_answer(
+        "You have 3 open deals.", [{"source": "d", "content": "c"}]
+    )
+
+    assert result["is_valid"] is True, "must fail open, not apologise to the user"
+    assert result["confidence_source"] == "heuristic"
+    assert result["validator_fallthrough"] == "model_error:RuntimeError"
+
+
+@pytest.mark.asyncio
+async def test_unparseable_response_is_named_in_the_fallthrough(monkeypatch) -> None:
+    class _Response:
+        content = "Sure! Here is my assessment: the answer looks fine to me."
+
+    class _Router:
+        async def complete(self, **kwargs: Any):
+            return _Response()
+
+    monkeypatch.setattr(
+        "app.services.answer_validator.get_model_router", lambda: _Router()
+    )
+
+    result = await validate_grounded_answer(
+        "You have 3 open deals.", [{"source": "d", "content": "c"}]
+    )
+
+    assert result["validator_fallthrough"] == "no_json_in_response"
+
+
+@pytest.mark.asyncio
+async def test_empty_response_is_distinguished_from_unparseable(monkeypatch) -> None:
+    class _Response:
+        content = "   "
+
+    class _Router:
+        async def complete(self, **kwargs: Any):
+            return _Response()
+
+    monkeypatch.setattr(
+        "app.services.answer_validator.get_model_router", lambda: _Router()
+    )
+
+    result = await validate_grounded_answer(
+        "You have 3 open deals.", [{"source": "d", "content": "c"}]
+    )
+
+    assert result["validator_fallthrough"] == "empty_response"
+
+
+@pytest.mark.asyncio
+async def test_a_real_verdict_reports_no_fallthrough(capture_model) -> None:
+    result = await validate_grounded_answer(
+        "You have 3 open deals.", [{"source": "d", "content": "c"}]
+    )
+
+    from app.services.confidence_honesty import CONFIDENCE_SOURCE_MODEL
+
+    assert result["confidence_source"] == CONFIDENCE_SOURCE_MODEL
+    assert result["validator_fallthrough"] is None
+
+
 @pytest.mark.asyncio
 async def test_a_rejecting_model_still_rejects(monkeypatch) -> None:
     """The validator must not have been softened into always passing."""

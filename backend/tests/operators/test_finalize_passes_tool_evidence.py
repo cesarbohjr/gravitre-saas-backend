@@ -217,6 +217,88 @@ async def test_missing_react_result_does_not_crash(monkeypatch, finalize_env) ->
 
 
 @pytest.mark.asyncio
+async def test_assessor_ran_is_true_when_the_model_actually_judged(monkeypatch) -> None:
+    """Regression for an instrument that was false 100% of the time.
+
+    assessorRan compared confidence_source against the literal "model", while
+    CONFIDENCE_SOURCE_MODEL is "loaded_model_artifact". Every event ever written
+    therefore said assessorRan=false, including events where the assessor had
+    genuinely judged. The first tool-aware live run read "0 of 3 fell open" off
+    this field, which was an artifact, not a finding.
+    """
+    from app.services.confidence_honesty import CONFIDENCE_SOURCE_MODEL
+
+    audits: list[dict[str, Any]] = []
+
+    async def _fake_validate(answer, retrieved_context, **kwargs):
+        return {
+            "is_valid": True,
+            "issues": [],
+            "requires_human": False,
+            "confidence": 0.9,
+            "confidence_source": CONFIDENCE_SOURCE_MODEL,
+            "validator_fallthrough": None,
+        }
+
+    monkeypatch.setattr(ai, "validate_grounded_answer", _fake_validate)
+    monkeypatch.setattr(ai, "write_audit_event", lambda client, **k: audits.append(k))
+    monkeypatch.setattr(ai, "validation_enabled_for_mode", lambda *a, **k: True)
+
+    await _finalize(
+        _operator(),
+        rag_sources=[{"source": "d", "content": "c"}],
+        tool_calls=[{"tool": "t", "result": {"success": True}}],
+    )
+
+    verdicts = [r for r in audits if not r["metadata"].get("skipped")]
+    assert verdicts[0]["metadata"]["assessorRan"] is True
+    assert verdicts[0]["metadata"]["validatorFallthrough"] is None
+
+
+@pytest.mark.asyncio
+async def test_fail_open_is_recorded_with_its_reason(monkeypatch) -> None:
+    """A validator that waved an answer through must say it could not judge."""
+    audits: list[dict[str, Any]] = []
+
+    async def _fake_validate(answer, retrieved_context, **kwargs):
+        return {
+            "is_valid": True,
+            "issues": [],
+            "requires_human": False,
+            "confidence": 0.5,
+            "confidence_source": "heuristic",
+            "validator_fallthrough": "model_error:TimeoutError",
+        }
+
+    monkeypatch.setattr(ai, "validate_grounded_answer", _fake_validate)
+    monkeypatch.setattr(ai, "write_audit_event", lambda client, **k: audits.append(k))
+    monkeypatch.setattr(ai, "validation_enabled_for_mode", lambda *a, **k: True)
+
+    await _finalize(
+        _operator(),
+        rag_sources=[{"source": "d", "content": "c"}],
+        tool_calls=[],
+    )
+
+    md = [r for r in audits if not r["metadata"].get("skipped")][0]["metadata"]
+    assert md["assessorRan"] is False
+    assert md["validatorFallthrough"] == "model_error:TimeoutError"
+
+
+def test_assessor_ran_does_not_compare_against_a_string_literal() -> None:
+    """Structural: pin the class of bug, not just this instance."""
+    import inspect
+
+    src = inspect.getsource(ai.AgentIntelligence._finalize_assistant_response)
+
+    assert 'confidence_source") == "model"' not in src, (
+        'assessorRan must compare against CONFIDENCE_SOURCE_MODEL, not the '
+        'literal "model" — the constant is "loaded_model_artifact"'
+    )
+    assert "CONFIDENCE_SOURCE_MODEL" in src
+
+
+@pytest.mark.asyncio
 async def test_regeneration_prompt_actually_contains_the_tool_data(monkeypatch) -> None:
     """Behavioural, not structural.
 

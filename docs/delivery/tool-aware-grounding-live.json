@@ -1,0 +1,114 @@
+{
+  "git_sha": "2306f6db2267e52131d8090871c11826eecee546",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "connectors_connected": [],
+  "turns": [
+    {
+      "kind": "tool",
+      "message": "how many open deals do I have in hubspot right now",
+      "reply": "You have 49 open deals in HubSpot right now.\n\nSource: HubSpot deals search on the Connected HubSpot connector, filtered where `hs_is_closed = false`.",
+      "answered": true,
+      "safe_fallback": false,
+      "wall_ms": 43953
+    },
+    {
+      "kind": "tool",
+      "message": "list my hubspot contacts",
+      "reply": "Here are 10 HubSpot contacts. Source: HubSpot contacts list, connector Connected.\n\n| Name | Email | Company | Created |\n|---|---|---|---|\n| Gravitre SmokeTest-9c184147a82244 | gravitre-smoke-9c184147a82244@example.com | \u2014 | 2026-08-01 |\n| Bill ClayHS6e74 | part0.clayhs.6e74c7dc.1@example.com | Breakthrough Energy | 2026-08-02 |\n| Gravitre SmokeTest-dbad04c19bbf43 | gravitre-smoke-dbad04c19bbf43@ex",
+      "answered": true,
+      "safe_fallback": false,
+      "wall_ms": 120716
+    },
+    {
+      "kind": "tool",
+      "message": "what are my most recent deals and their amounts",
+      "reply": "Here are your 5 most recent deals from HubSpot.\n\n- Gravitre Smoke Deal c8bdd6304fd641 \u2014 amount not set\n- Gravitre Smoke Deal e020afe818e34c \u2014 amount not set\n- Gravitre Smoke Deal 07baace23a2a42 \u2014 amount not set\n- Gravitre Smoke Deal eb2864b763644b \u2014 amount not set\n- Gravitre Smoke Deal 7cbdf9f560cd4e \u2014 amount not set\n\nSource: HubSpot deals list, sorted by recency in the returned results.  \nIf you ",
+      "answered": true,
+      "safe_fallback": false,
+      "wall_ms": 49168
+    },
+    {
+      "kind": "doc",
+      "message": "what does our internal documentation say about refunds",
+      "reply": "I don\u2019t have internal docs on refunds in the sources I can see here.\n\nWhat I do have is general guidance: the FTC says consumers can use a complaint letter to seek a refund or other resolution, and finance guidance stresses documenting the refund reason and keeping approval controls. That\u2019s not your internal policy, just external reference material.\n\nIf you want the internal version, point me to t",
+      "answered": true,
+      "safe_fallback": false,
+      "wall_ms": 27471
+    },
+    {
+      "kind": "none",
+      "message": "thanks, that's helpful",
+      "reply": "Anytime. What else is on your mind?",
+      "answered": true,
+      "safe_fallback": false,
+      "wall_ms": 16635
+    }
+  ],
+  "events_total": 3,
+  "validator_ran": 3,
+  "skipped_no_evidence": 0,
+  "tool_grounded_runs": 3,
+  "assessor_ran": 0,
+  "answers_replaced": 1,
+  "durations_ms": [
+    1848,
+    14300,
+    1383
+  ],
+  "p50_ms": 1848,
+  "p95_ms": 14300,
+  "ran_detail": [
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.96,
+      "durationMs": 1848,
+      "assessorRan": false,
+      "evidenceKind": "tool+doc",
+      "requiresHuman": false,
+      "answerReplaced": false,
+      "ragSourceCount": 2,
+      "toolResultCount": 1,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T20:02:41.250381+00:00"
+    },
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.95,
+      "durationMs": 14300,
+      "assessorRan": false,
+      "evidenceKind": "tool+doc",
+      "requiresHuman": false,
+      "answerReplaced": true,
+      "ragSourceCount": 5,
+      "toolResultCount": 1,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T20:01:49.775993+00:00"
+    },
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.98,
+      "durationMs": 1383,
+      "assessorRan": false,
+      "evidenceKind": "tool+doc",
+      "requiresHuman": false,
+      "answerReplaced": false,
+      "ragSourceCount": 1,
+      "toolResultCount": 1,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T19:59:47.794802+00:00"
+    }
+  ],
+  "skipped_detail": [],
+  "baseline_1e94e644": {
+    "p50_ms": 9309,
+    "p95_ms": 10131,
+    "answers_replaced": "3 of 3"
+  },
+  "verdict": "FAIL \u2014 1 of 3 answers still replaced (previous attempt: 3 of 3). Issues: [[]]"
+}

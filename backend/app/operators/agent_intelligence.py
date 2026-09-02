@@ -61,6 +61,7 @@ from app.services.assistant_availability import (
 from app.services.assistant_tools import TOOL_DISPLAY_NAMES, knowledge_base_output_from_retrieval
 from app.services.answer_explanation import generate_answer_explanation_cached
 from app.services.answer_validator import SAFE_FALLBACK, validate_grounded_answer
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_MODEL
 from app.services.context_conflict_detection import (
     dedupe_chunks,
     detect_chunk_conflicts,
@@ -1071,7 +1072,20 @@ class AgentIntelligence:
                         "issues": list(validation.get("issues") or [])[:8],
                         "confidence": validation.get("confidence"),
                         "confidenceSource": validation.get("confidence_source"),
-                        "assessorRan": validation.get("confidence_source") == "model",
+                        # Compared against the CONSTANT, never the string "model".
+                        # It was hardcoded to the literal "model" while
+                        # CONFIDENCE_SOURCE_MODEL is "loaded_model_artifact", so
+                        # assessorRan was false on every event ever written —
+                        # including when the assessor had genuinely judged. The
+                        # first tool-aware live run read 0-of-3 "fail open" off
+                        # this field and the reading was pure instrument artifact.
+                        "assessorRan": (
+                            validation.get("confidence_source") == CONFIDENCE_SOURCE_MODEL
+                        ),
+                        # When assessorRan is false the validator failed OPEN and
+                        # waved the answer through. This says why, so a broken
+                        # safety check cannot look like a passing one.
+                        "validatorFallthrough": validation.get("validator_fallthrough"),
                         "requiresHuman": bool(validation.get("requires_human")),
                         "ragSourceCount": len(rag_sources or []),
                         # Which half of the evidence carried the turn. Without

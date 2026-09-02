@@ -86,6 +86,24 @@ MUTATIONS: list[tuple[str, pathlib.Path, str, str]] = [
         '"toolResultCount": len(turn_tool_calls),',
         '"toolResultCount": 0,',
     ),
+    (
+        "assessorRan back to the string literal",
+        A,
+        "validation.get(\"confidence_source\") == CONFIDENCE_SOURCE_MODEL",
+        'validation.get("confidence_source") == "model"',
+    ),
+    (
+        "fail-open stops reporting its reason",
+        V,
+        '"validator_fallthrough": fallthrough_reason,',
+        '"validator_fallthrough": None,',
+    ),
+    (
+        "model errors no longer distinguished from unparseable",
+        V,
+        'fallthrough_reason = f"model_error:{type(exc).__name__}"',
+        'fallthrough_reason = "unknown"',
+    ),
 ]
 
 
