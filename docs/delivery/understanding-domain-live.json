@@ -1,6 +1,6 @@
 {
-  "captured_at": "2026-09-01T23:49:19.132262+00:00",
-  "deployed_tip": "9710fd5479a84dc018983ef11fbb602d9682d815",
+  "captured_at": "2026-09-02T00:10:12.533829+00:00",
+  "deployed_tip": "5f2b00143c16c0c418c74f1d0c3b304dbc807fcc",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "gate_check": [
     {
@@ -28,21 +28,64 @@
   "turns": [
     {
       "label": "long_statement_renewals",
-      "conversation_id": "9d9202a3-edc6-4c5c-ae0e-6cba668109f8",
-      "reply": "Mid-market renewals are the right thing to tighten now. The risk is cycle drift and missed follow-ups.\n\nBest move: make it a short, tracked renewal cadence in HubSpot \u2014 one owner, one next step per account, and email follow-ups by default. That keeps momentum tight and catches the cracks before quarter close.\n\nIf you want, I can help shape the renewal checklist or the HubSpot workflow next."
+      "conversation_id": "892b2352-e51e-485a-85e4-068f6cadeaa6",
+      "reply": "Mid-market renewals need a tighter process, yes.\n\nThe material here supports three moves: co-create a mutual plan, use shared deal rooms, and keep deadlines visible so nothing slips. I can\u2019t verify more than that from the excerpts.\n\nIf you want, I can turn that into a renewal checklist for your team."
     },
     {
       "label": "ambiguous_domain_statement",
-      "conversation_id": "f7fac2ea-06df-4082-8a26-1f1dd42ba739",
+      "conversation_id": "15d6059a-06c0-4819-97ca-97de71a01546",
       "reply": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?"
     },
     {
       "label": "multi_constraint_statement",
-      "conversation_id": "db2e5e62-507d-454e-b04d-cca8417bf246",
-      "reply": "Use the current team, and bias hard toward existing channels.\n\nFor enterprise this year, I\u2019d do three things:\n- Focus on the highest-intent accounts only.\n- Run a tight outbound motion through email and LinkedIn, with HubSpot as the system of record.\n- Use account-specific research and tailored follow-ups instead of buying new tools.\n\nThe constraint that matters most is headcount, so don\u2019t add a b"
+      "conversation_id": "750f03a5-d628-4cec-87be-b2f6e40b5670",
+      "reply": "Use HubSpot as the system of record, and keep the plan mostly manual this year.\n\nFor enterprise, I\u2019d do this:\n\n- **Tight account list:** pick a narrow target list of high-fit enterprise accounts in HubSpot.\n- **Email-first outreach:** your org already prefers email follow-ups, so use that for initial contact and follow-up.\n- **Named owner per account:** one rep owns each account end to end. No han"
     }
   ],
-  "events": [],
-  "verdict": "INCONCLUSIVE",
-  "note": "no context.understanding.extracted event was written, so the caller was not reached on these turns \u2014 a reachability finding, not a pass"
+  "events": [
+    {
+      "created_at": "2026-09-02T00:09:05.727448+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 25,
+        "goalPresent": true,
+        "domainSource": "rules",
+        "modelAttempted": true,
+        "constraintCount": 3,
+        "domainConfidence": 0.8,
+        "domainRoutingActive": true
+      }
+    },
+    {
+      "created_at": "2026-09-02T00:09:24.969371+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 24,
+        "goalPresent": true,
+        "domainSource": "rules",
+        "modelAttempted": true,
+        "constraintCount": 3,
+        "domainConfidence": 0.7,
+        "domainRoutingActive": true
+      }
+    },
+    {
+      "created_at": "2026-09-02T00:09:52.16461+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 24,
+        "goalPresent": true,
+        "domainSource": "rules",
+        "modelAttempted": true,
+        "constraintCount": 2,
+        "domainConfidence": 0.8,
+        "domainRoutingActive": true
+      }
+    }
+  ],
+  "verdict": "PARTIAL",
+  "note": "3/3 attempted turns recorded modelRan=true, so site 9 genuinely executes in production; 3 extracted a goal. Site 10: 0 turn(s) recorded domainSource=llm \u2014 but no turn reached the LLM domain tier, because rule confidence stayed above 0.55 on these messages. Site 10 remains unproven live"
 }
