@@ -58,16 +58,13 @@ def _audit_calls_with_literal_none_actor() -> list[str]:
     return offenders
 
 
-# Found by this guard on the day it was written, in code nobody was auditing.
-# Both are connector-health events that have therefore never reached
-# audit_events. Left listed rather than patched blind: the correct actor for a
-# background health sweep is a product decision (a system actor row, or the user
-# whose connector it is), not something to invent here. This list may only
-# SHRINK — a new entry means a fresh silent instrument shipped.
-KNOWN_NONE_ACTOR = {
-    "app/connectors/health_monitor_service.py:110 action=connector.auth.failed",
-    "app/connectors/health_monitor_service.py:125 action=connector.connected",
-}
+# Empty, and it should stay that way. The two original entries were the
+# connector-health events this guard found on the day it was written; they now
+# resolve a real actor via resolve_connector_audit_actor (connector.created_by,
+# falling back to the org owner/admin) and skip loudly rather than silently when
+# neither exists. This list may only SHRINK — a new entry means a fresh silent
+# instrument shipped, and needs a real actor rather than an exemption.
+KNOWN_NONE_ACTOR: set[str] = set()
 
 
 def test_no_audit_event_is_written_with_a_none_actor() -> None:

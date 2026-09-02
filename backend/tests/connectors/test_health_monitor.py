@@ -68,6 +68,10 @@ def test_run_connector_health_monitor_updates_error_status(mock_auth, mock_audit
                 "status": "healthy",
                 "environment": "production",
                 "config": {},
+                # A real connector records who connected it, and that person is
+                # the audit actor. Without it write_audit_event would drop the
+                # row silently, which is the bug this field now guards against.
+                "created_by": "55555555-5555-4555-8555-555555555555",
             }
         ]
     )
@@ -89,6 +93,7 @@ def test_run_connector_health_monitor_updates_error_status(mock_auth, mock_audit
     assert summary["updated"] == 1
     mock_audit.assert_called_once()
     assert mock_audit.call_args.kwargs["action"] == "connector.auth.failed"
+    assert mock_audit.call_args.kwargs["actor_id"] == "55555555-5555-4555-8555-555555555555"
 
 
 def test_run_connector_health_monitor_respects_disable_connectors():

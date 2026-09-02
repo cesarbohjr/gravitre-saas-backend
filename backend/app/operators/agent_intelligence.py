@@ -968,8 +968,38 @@ class AgentIntelligence:
     ) -> dict[str, Any]:
         validation: dict[str, Any] | None = None
         content = answer
-        should_validate = validation_enabled_for_mode(mode_key, engine_settings)
+        mode_allows_validation = validation_enabled_for_mode(mode_key, engine_settings)
+
+        # This validator compares an answer against RETRIEVED CONTEXT. With no
+        # retrieved context there is nothing to ground against, and
+        # validate_grounded_answer returns is_valid=False("no_retrieved_context"),
+        # which routes to regeneration and then SAFE_FALLBACK. Agent-mode turns
+        # frequently answer from tools rather than RAG, so validating them without
+        # context would replace correct, tool-derived answers with a "not enough
+        # reliable context" apology. Tool results are verified by the F6 read-back
+        # path instead; this gate is not the right instrument for them.
+        has_context = bool(rag_sources)
+        should_validate = mode_allows_validation and has_context
         validation_started = time.monotonic() if should_validate else None
+
+        if mode_allows_validation and not has_context and content.strip():
+            try:
+                write_audit_event(
+                    client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    action="answer.grounding.validated",
+                    resource_type="conversation",
+                    resource_id=message_id or org_id,
+                    metadata={
+                        "modeKey": mode_key,
+                        "skipped": True,
+                        "skipReason": "no_retrieved_context",
+                        "ragSourceCount": 0,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("grounding_validation_skip_audit_failed error=%s", exc)
 
         if should_validate and content.strip():
             validation = await validate_grounded_answer(

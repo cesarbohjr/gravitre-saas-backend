@@ -28,11 +28,70 @@ def _connector_vendor(row: dict[str, Any]) -> str:
     return str(vendor)
 
 
+_ROLE_RANK = {"owner": 0, "admin": 1}
+
+
+def _org_responsible_user(client: Client, org_id: str) -> str | None:
+    """Highest-authority member of the org, preferring owner then admin."""
+    try:
+        rows = (
+            client.table("organization_members")
+            .select("user_id, role")
+            .eq("org_id", org_id)
+            .limit(50)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("connector_health_actor_lookup_failed org_id=%s: %s", org_id, exc)
+        return None
+    candidates = [r for r in rows if r.get("user_id")]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda r: _ROLE_RANK.get(str(r.get("role") or "").lower(), 2))
+    return str(candidates[0]["user_id"])
+
+
+def resolve_connector_audit_actor(
+    client: Client,
+    org_id: str,
+    row: dict[str, Any],
+    *,
+    cache: dict[str, str | None] | None = None,
+) -> str | None:
+    """A real, named actor for a background health event.
+
+    These two events previously passed actor_id=None, which write_audit_event
+    silently drops (the column is NOT NULL with an FK), so a connector going
+    into auth failure left no audit trail at all. The sweep has no request user,
+    but the event does have a real owner:
+
+      1. connectors.created_by — the person who connected it. Most specific, and
+         the person whose reconnect is needed. Populated for 6 of 19
+         status-changeable connectors in production.
+      2. the org's owner, then admin — covers the remaining 13, and is the right
+         escalation target for a connector nobody is recorded as having created.
+
+    Returns None only when an org has no members at all, and the caller logs
+    that loudly rather than writing an event that would be silently discarded.
+    """
+    created_by = str(row.get("created_by") or "").strip()
+    if created_by:
+        return created_by
+    if cache is not None and org_id in cache:
+        return cache[org_id]
+    resolved = _org_responsible_user(client, org_id)
+    if cache is not None:
+        cache[org_id] = resolved
+    return resolved
+
+
 def list_monitored_connectors(client: Client) -> list[dict[str, Any]]:
     """Non-deleted connectors eligible for OAuth health polling."""
     response = (
         client.table("connectors")
-        .select("id, org_id, vendor, type, status, environment, config")
+        .select("id, org_id, vendor, type, status, environment, config, created_by")
         .is_("deleted_at", "null")
         .in_("status", list(_MONITOR_STATUSES))
         .order("updated_at", desc=True)
@@ -84,7 +143,13 @@ def check_connector_health(
     }
 
 
-def _persist_health_result(client: Client, row: dict[str, Any], result: dict[str, Any]) -> None:
+def _persist_health_result(
+    client: Client,
+    row: dict[str, Any],
+    result: dict[str, Any],
+    *,
+    actor_cache: dict[str, str | None] | None = None,
+) -> None:
     if result.get("skipped"):
         return
 
@@ -106,11 +171,31 @@ def _persist_health_result(client: Client, row: dict[str, Any], result: dict[str
         return
 
     new_status = str(result["status"])
-    if new_status == "error":
+    is_failure = new_status == "error"
+    is_recovery = new_status in {"healthy", "active"} and result.get("previous_status") in {
+        "error",
+        "pending_auth",
+    }
+    if not (is_failure or is_recovery):
+        return
+
+    actor_id = resolve_connector_audit_actor(client, org_id, row, cache=actor_cache)
+    if not actor_id:
+        # Loud rather than silent: write_audit_event would drop this row without
+        # an actor, which is how these two events went unrecorded in the first place.
+        logger.warning(
+            "connector_health_audit_no_actor org_id=%s connector_id=%s status=%s",
+            org_id,
+            connector_id,
+            new_status,
+        )
+        return
+
+    if is_failure:
         write_audit_event(
             client,
             org_id=org_id,
-            actor_id=None,
+            actor_id=actor_id,
             action="connector.auth.failed",
             resource_type="connector",
             resource_id=connector_id,
@@ -119,13 +204,16 @@ def _persist_health_result(client: Client, row: dict[str, Any], result: dict[str
                 "environment": result.get("environment"),
                 "authStatus": result.get("auth_status"),
                 "previousStatus": result.get("previous_status"),
+                "actorSource": "connector_created_by"
+                if row.get("created_by")
+                else "org_owner_or_admin",
             },
         )
-    elif new_status in {"healthy", "active"} and result.get("previous_status") in {"error", "pending_auth"}:
+    else:
         write_audit_event(
             client,
             org_id=org_id,
-            actor_id=None,
+            actor_id=actor_id,
             action="connector.connected",
             resource_type="connector",
             resource_id=connector_id,
@@ -133,6 +221,9 @@ def _persist_health_result(client: Client, row: dict[str, Any], result: dict[str
                 "vendor": result.get("vendor"),
                 "environment": result.get("environment"),
                 "authStatus": result.get("auth_status"),
+                "actorSource": "connector_created_by"
+                if row.get("created_by")
+                else "org_owner_or_admin",
             },
         )
 
@@ -150,6 +241,7 @@ def run_connector_health_monitor(settings: Settings) -> dict[str, Any]:
     skipped = 0
     errors = 0
     total_latency_ms = 0
+    actor_cache: dict[str, str | None] = {}
 
     for row in rows:
         try:
@@ -171,7 +263,7 @@ def run_connector_health_monitor(settings: Settings) -> dict[str, Any]:
         checked += 1
         total_latency_ms += int(result.get("latency_ms") or 0)
         try:
-            _persist_health_result(client, row, result)
+            _persist_health_result(client, row, result, actor_cache=actor_cache)
             if result.get("changed"):
                 updated += 1
         except Exception as exc:  # noqa: BLE001

@@ -42,7 +42,13 @@ def validation_enabled_for_mode(mode_key: str, settings: IntelligenceEngineSetti
         return mode_key in {"fast", "standard", "reasoning", "agent"}
     if settings.performance_mode == "speed_priority":
         return mode_key in {"reasoning", "agent"}
-    return mode_key in {"standard", "reasoning"}
+    # "agent" belongs in the default set. resolve_effective_intelligence_mode
+    # upgrades BOTH standard and reasoning to agent whenever a connector is
+    # connected, and leaves fast as fast — so a connector-connected org can only
+    # ever reach {fast, agent}. Omitting agent here made grounding validation
+    # structurally unreachable for every org with a connector, which is to say
+    # for real customers, while it stayed enabled for modes they never run in.
+    return mode_key in {"standard", "reasoning", "agent"}
 
 
 async def load_intelligence_engine_settings(
