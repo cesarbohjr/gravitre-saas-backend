@@ -1085,3 +1085,67 @@ writes an audit event, so there is currently no production signal that would
 distinguish a working call from a dormant one. Site 9 in particular runs on
 essentially every turn, which makes it both the most valuable to confirm and the
 most costly to leave unobserved. Not labelled PASS overall until that exists.
+
+### Root cause of every zero-event reading in this audit: `actor_id=None`
+
+Three instruments added during this audit read zero in production. Two of those
+zeroes were interpreted as "this code path is never reached". Both readings were
+wrong, and the cause was the instruments, not the code.
+
+`write_audit_event` **skips the `audit_events` insert entirely** when `actor_id`
+is not a UUID (`app/workflows/audit.py:118-148`). `audit_events.actor_id` is
+`uuid NOT NULL` and FKs `auth.users`, so the helper logs a warning and returns
+rather than raising. All three instruments passed `actor_id=None`:
+
+| instrument | site |
+|---|---|
+| `answer.grounding.validated` | `_finalize_assistant_response` |
+| `classical.answer_path.reached` | `execute_task_streaming` |
+| `context.understanding.extracted` | `execute_task_streaming` |
+
+None ever wrote a row, whether or not the code ran. Every "UNREACHED" verdict
+built on them is void:
+
+- Phase B's grounding-validator UNREACHED — **invalid measurement**
+- Site 7's query-rewriter UNREACHED — **invalid measurement**
+- "`read_tool_classical` exits before the region" — **invalid measurement**
+
+The dead-path refutation itself **stands**: it rests on `agent.react.iteration`,
+which passes a real actor and is unaffected. That independent signal is the only
+reason this was caught rather than acted on.
+
+Fixed: all three now pass `user_id`; `_finalize_assistant_response` gained a
+`user_id` parameter. Standing AST guard added at
+`backend/tests/test_audit_instruments_have_real_actor.py`.
+
+**The guard found two more on its first run**, in code nobody was auditing:
+`connector.auth.failed` and `connector.connected`
+(`app/connectors/health_monitor_service.py:110,125`) have also never reached
+`audit_events`. Pinned as known rather than patched blind — the right actor for
+a background health sweep is a product decision. **Open for Cesar.**
+
+### Sites 9 and 10 — LIVE PASS at `5f2b0014`
+
+`scripts/verify-understanding-domain-live.py`, artifact
+`docs/delivery/understanding-domain-live.json`. Six turns, all six past the rule
+gate (verified in-script against the real gate, not assumed).
+
+| | site 9 | site 10 |
+|---|---|---|
+| turns attempting the model | 6/6 | 3 |
+| `modelRan=true` | **6/6** | — |
+| goal extracted | **6/6** | — |
+| `domainSource="llm"` | — | **3/3** |
+
+Evidence pointer: `context.understanding.extracted` @
+`2026-09-02T04:46:11.220679Z`, `domainSource=llm`, `confidence=0.74`,
+`routingActive=true`.
+
+The site 10 rows are the finding closed. Those three messages score **0.000**
+against the real rule classifier — measured in
+`backend/scripts/scratch_pick_low_domain_confidence.py`, after the first live
+attempt used business-flavoured text that scored 0.7-0.8 and never reached the
+tier at all. Dormant, they would have stayed at 0.000 with `routing_active=false`.
+Live, the tier returned 0.74, 0.84 and 0.63 — all above the 0.55 threshold that
+`domain_routing_policy` and `domain_retrieval_policy` read. The fallback tier is
+doing exactly the job it was documented to do, for the first time in production.

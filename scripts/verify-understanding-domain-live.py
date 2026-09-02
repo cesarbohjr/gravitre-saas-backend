@@ -67,6 +67,31 @@ CASES = [
             "our current headcount and does not require any new tooling spend this year"
         ),
     },
+    # The three above all scored 0.7-0.8 on keyword rules, so they never reach
+    # site 10's tier. These score 0.000 against the real rule classifier
+    # (backend/scripts/scratch_pick_low_domain_confidence.py) — measured, not
+    # guessed — which is the only condition under which the LLM tier runs.
+    {
+        "label": "low_domain_signal_unresolved",
+        "text": (
+            "the thing we talked about before still feels unresolved and i would like "
+            "to get to the bottom of it sometime this week"
+        ),
+    },
+    {
+        "label": "low_domain_signal_pattern",
+        "text": (
+            "there is a pattern here that keeps coming back around again and i want to "
+            "really understand why it happens at all"
+        ),
+    },
+    {
+        "label": "low_domain_signal_settle",
+        "text": (
+            "we keep going back and forth on this one and i would rather settle it "
+            "properly than keep revisiting it every single time"
+        ),
+    },
 ]
 
 

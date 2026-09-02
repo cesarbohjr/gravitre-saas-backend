@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-09-01T23:05:56.082401+00:00",
+  "message": "we need to tighten up the renewal motion for the mid market accounts before the quarter closes and make sure nothing slips through",
+  "before": {
+    "buggy": true,
+    "router_entered": false,
+    "type_error": true,
+    "model_extract_result": {},
+    "warnings": [
+      "contextual model extract skipped: "
+    ],
+    "router_call_shapes": [
+      {
+        "args": 1,
+        "kwargs": []
+      },
+      {
+        "args": 0,
+        "kwargs": []
+      }
+    ]
+  },
+  "after": {
+    "buggy": false,
+    "router_entered": true,
+    "type_error": false,
+    "model_extract_result": {},
+    "warnings": [
+      "contextual model extract skipped: "
+    ],
+    "router_call_shapes": [
+      {
+        "args": 0,
+        "kwargs": []
+      },
+      {
+        "args": 0,
+        "kwargs": []
+      }
+    ]
+  }
+}

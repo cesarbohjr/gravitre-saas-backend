@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-02T00:10:12.533829+00:00",
+  "captured_at": "2026-09-02T04:47:01.532688+00:00",
   "deployed_tip": "5f2b00143c16c0c418c74f1d0c3b304dbc807fcc",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "gate_check": [
@@ -23,28 +23,64 @@
       "ends_with_question": false,
       "rule_path_would_answer": false,
       "reaches_model_tier": true
+    },
+    {
+      "label": "low_domain_signal_unresolved",
+      "words": 23,
+      "ends_with_question": false,
+      "rule_path_would_answer": false,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "low_domain_signal_pattern",
+      "words": 22,
+      "ends_with_question": false,
+      "rule_path_would_answer": false,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "low_domain_signal_settle",
+      "words": 23,
+      "ends_with_question": false,
+      "rule_path_would_answer": false,
+      "reaches_model_tier": true
     }
   ],
   "turns": [
     {
       "label": "long_statement_renewals",
-      "conversation_id": "892b2352-e51e-485a-85e4-068f6cadeaa6",
-      "reply": "Mid-market renewals need a tighter process, yes.\n\nThe material here supports three moves: co-create a mutual plan, use shared deal rooms, and keep deadlines visible so nothing slips. I can\u2019t verify more than that from the excerpts.\n\nIf you want, I can turn that into a renewal checklist for your team."
+      "conversation_id": "81f22a7b-7bb9-4453-a60f-3ccea22c2e92",
+      "reply": "Mid-market renewals need tighter shared ownership and a visible deal room.\n\nThe excerpted evidence supports:\n- co-created mutual plans\n- shared deal rooms\n- tight momentum so nothing slips\n\nWhat I can\u2019t substantiate from the evidence is a full renewal motion design or a quarter-close playbook. If you want, I can turn this into a renewal checklist for HubSpot accounts."
     },
     {
       "label": "ambiguous_domain_statement",
-      "conversation_id": "15d6059a-06c0-4819-97ca-97de71a01546",
+      "conversation_id": "339a62c4-8329-49a0-b3cb-78dd68390d94",
       "reply": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?"
     },
     {
       "label": "multi_constraint_statement",
-      "conversation_id": "750f03a5-d628-4cec-87be-b2f6e40b5670",
-      "reply": "Use HubSpot as the system of record, and keep the plan mostly manual this year.\n\nFor enterprise, I\u2019d do this:\n\n- **Tight account list:** pick a narrow target list of high-fit enterprise accounts in HubSpot.\n- **Email-first outreach:** your org already prefers email follow-ups, so use that for initial contact and follow-up.\n- **Named owner per account:** one rep owns each account end to end. No han"
+      "conversation_id": "b297e924-ad7c-466e-9c25-e152068346f9",
+      "reply": "Go with a narrow, account-based motion: pick the highest-value enterprise accounts, use HubSpot for the system of record, and run email-first outreach with tight follow-up. That stays inside current headcount and avoids new tooling spend.\n\nThe shape should be:\n- Define the enterprise target list from existing Apollo/CRM data.\n- Prioritize by fit, intent, and deal size.\n- Use one email sequence per"
+    },
+    {
+      "label": "low_domain_signal_unresolved",
+      "conversation_id": "da5daac4-b7f9-46f7-8bc9-f92ed2d7ae97",
+      "reply": "Sounds good. Tell me what \u201cthe thing\u201d is, and I\u2019ll help pin it down this week."
+    },
+    {
+      "label": "low_domain_signal_pattern",
+      "conversation_id": "6d50ac64-56c6-446d-ab8f-b32fb976895f",
+      "reply": "I don\u2019t have enough information yet. Tell me the pattern or share the sequence, and I\u2019ll break down why it recurs."
+    },
+    {
+      "label": "low_domain_signal_settle",
+      "conversation_id": "11ff1196-10fd-444b-9092-4318feda910a",
+      "reply": "Fair. Let\u2019s settle it properly \u2014 what decision do you want locked in?"
     }
   ],
   "events": [
     {
-      "created_at": "2026-09-02T00:09:05.727448+00:00",
+      "created_at": "2026-09-02T04:45:08.535409+00:00",
       "action": "context.understanding.extracted",
       "metadata": {
         "modelRan": true,
@@ -58,7 +94,7 @@
       }
     },
     {
-      "created_at": "2026-09-02T00:09:24.969371+00:00",
+      "created_at": "2026-09-02T04:45:29.864475+00:00",
       "action": "context.understanding.extracted",
       "metadata": {
         "modelRan": true,
@@ -72,7 +108,7 @@
       }
     },
     {
-      "created_at": "2026-09-02T00:09:52.16461+00:00",
+      "created_at": "2026-09-02T04:45:54.698613+00:00",
       "action": "context.understanding.extracted",
       "metadata": {
         "modelRan": true,
@@ -84,8 +120,50 @@
         "domainConfidence": 0.8,
         "domainRoutingActive": true
       }
+    },
+    {
+      "created_at": "2026-09-02T04:46:11.220679+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 23,
+        "goalPresent": true,
+        "domainSource": "llm",
+        "modelAttempted": true,
+        "constraintCount": 2,
+        "domainConfidence": 0.74,
+        "domainRoutingActive": true
+      }
+    },
+    {
+      "created_at": "2026-09-02T04:46:25.823412+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 22,
+        "goalPresent": true,
+        "domainSource": "llm",
+        "modelAttempted": true,
+        "constraintCount": 2,
+        "domainConfidence": 0.84,
+        "domainRoutingActive": true
+      }
+    },
+    {
+      "created_at": "2026-09-02T04:46:43.456276+00:00",
+      "action": "context.understanding.extracted",
+      "metadata": {
+        "modelRan": true,
+        "wordCount": 23,
+        "goalPresent": true,
+        "domainSource": "llm",
+        "modelAttempted": true,
+        "constraintCount": 2,
+        "domainConfidence": 0.63,
+        "domainRoutingActive": true
+      }
     }
   ],
-  "verdict": "PARTIAL",
-  "note": "3/3 attempted turns recorded modelRan=true, so site 9 genuinely executes in production; 3 extracted a goal. Site 10: 0 turn(s) recorded domainSource=llm \u2014 but no turn reached the LLM domain tier, because rule confidence stayed above 0.55 on these messages. Site 10 remains unproven live"
+  "verdict": "PASS",
+  "note": "6/6 attempted turns recorded modelRan=true, so site 9 genuinely executes in production; 6 extracted a goal. Site 10: 3 turn(s) recorded domainSource=llm"
 }
