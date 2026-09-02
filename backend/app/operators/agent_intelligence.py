@@ -2205,6 +2205,7 @@ class AgentIntelligence:
                     "liveEnabled": live_enabled,
                     "pendingFamilyActive": bool(pending_family_active),
                     "modeKey": mode_key,
+                    "callSite": "agent_intelligence_classical",
                 },
                 client=client,
                 settings=active_settings,

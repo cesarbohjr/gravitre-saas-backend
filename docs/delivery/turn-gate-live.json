@@ -1,0 +1,84 @@
+{
+  "captured_at": "2026-09-02T07:55:49.341062+00:00",
+  "deployed_tip": "f7b25d0820b2fd37d529538c988c7866c2167aed",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "gate_check": [
+    {
+      "label": "reflective_step_back",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "reflective_sits_with_it",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "reflective_not_sure_matters",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "task_board_deck",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "task_onboarding_outline",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    },
+    {
+      "label": "task_vendor_tradeoffs",
+      "heuristic_claims_it": false,
+      "heuristic_reason": null,
+      "reaches_model_tier": true
+    }
+  ],
+  "turns": [
+    {
+      "label": "reflective_step_back",
+      "conversation_id": "b1af247a-d409-4fe2-93e7-ad636548fd8d",
+      "expect_conversational": true,
+      "reply": "Hey \u2014 on it.\n\nThat\u2019s a reasonable place to pause.\n\nIf you want, tell me what \u201cthe whole thing\u201d is, and I\u2019ll help sort whether to fix it, pause it, or end it."
+    },
+    {
+      "label": "reflective_sits_with_it",
+      "conversation_id": "c30fa8e7-3357-4527-b496-775879cfcead",
+      "expect_conversational": true,
+      "reply": "Glad it clicked."
+    },
+    {
+      "label": "reflective_not_sure_matters",
+      "conversation_id": "eb208a1b-484d-46c7-a40b-6251b1a1a7e9",
+      "expect_conversational": true,
+      "reply": "Probably not. If it\u2019s not changing a decision, it may be noise \u2014 but if you want, name the thing and I\u2019ll tell you whether it actually matters."
+    },
+    {
+      "label": "task_board_deck",
+      "conversation_id": "56728fe4-7fed-48cf-9efd-fb6493c58a46",
+      "expect_conversational": false,
+      "reply": "Start with the story, not the slides.\n\nUse this order:\n1) what changed since last quarter\n2) where we stand vs plan\n3) the 3 biggest risks or blockers\n4) what decisions you need from the board\n5) the asks, next milestones, and cash/runway if relevant\n\nKeep it tight, factual, and decision-oriented. Board decks go bad when they become a diary."
+    },
+    {
+      "label": "task_onboarding_outline",
+      "conversation_id": "648c787b-f33b-41d3-82c1-1938c415bfc7",
+      "expect_conversational": false,
+      "reply": "I don\u2019t have the prior discussion details in this turn.\n\nWhat I do have conflicts: one source points to a 30-60-90 day goal structure; another points to a six-month checklist with relationship-building. If you want, I can build an outline from one of those approaches \u2014 or you can paste the key constraints from last month and I\u2019ll use those."
+    },
+    {
+      "label": "task_vendor_tradeoffs",
+      "conversation_id": "56ed5e6d-2411-4066-8854-53e71d425b59",
+      "expect_conversational": false,
+      "reply": "I don\u2019t have the two vendor names or their criteria yet.\n\nSend the shortlist and what you care about most \u2014 price, fit, risk, or speed \u2014 and I\u2019ll break down the tradeoffs."
+    }
+  ],
+  "events": [],
+  "verdict": "INCONCLUSIVE",
+  "note": "no turn.shape.classified event was written, so the caller was not reached \u2014 a reachability finding, not a pass"
+}
