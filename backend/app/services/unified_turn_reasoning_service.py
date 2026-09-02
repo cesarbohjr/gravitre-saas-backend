@@ -880,21 +880,44 @@ async def run_unified_turn_shadow(
             elif isinstance(attach_tools, NarrowedTools):
                 round_tools = attach_tools
             else:
-                round_tools = list(attach_tools or [])
+                # attach_tools was asserted narrowed before this loop, so plain
+                # list() here would strip proof that is already established.
+                round_tools = mark_narrowed(
+                    list(attach_tools or []),
+                    stats=getattr(attach_tools, "stats", None),
+                    source=str(getattr(attach_tools, "source", "") or "narrow_tools_for_turn"),
+                )
             kwargs: dict[str, Any] = {
                 "model": model,
                 "messages": messages,
             }
+            # Guard BEFORE the payload conversion, deliberately. The conversion
+            # below carries the narrowing proof forward, so it may only run once
+            # this assert has established that the proof is real. Reversing the
+            # order would launder an unnarrowed list into a narrowed-looking one
+            # and render the invariant meaningless.
+            assert_tools_narrowed(round_tools, where=f"unified_turn.round_{prog_round}")
             # tool_choice is only meaningful alongside tools, and sending it
             # without them is a hard 400 from OpenAI. Conversational turns
             # legitimately have no tools, so the key is set only when there are
             # tools to constrain.
             if round_tools:
-                kwargs["tools"] = [openai_tool_payload(t) for t in round_tools]
+                # Must stay NarrowedTools: on the non-OpenAI provider path this
+                # exact value is handed to complete_with_tools, which asserts
+                # narrowing again. A plain list comprehension here was the
+                # unfixed half of the 2026-08 burst -- the 08-13 repair
+                # (65161f90) restored the round_tools round-trip but left this
+                # conversion stripping the marker, so any Anthropic/Gemini turn
+                # carrying tools would still trip the guard and fall through to
+                # the classical path.
+                kwargs["tools"] = mark_narrowed(
+                    [openai_tool_payload(t) for t in round_tools],
+                    stats=getattr(round_tools, "stats", None),
+                    source=str(getattr(round_tools, "source", "") or "narrow_tools_for_turn"),
+                )
                 kwargs["tool_choice"] = "none" if conversational_no_tools else "auto"
             if _supports_custom_temperature(model):
                 kwargs["temperature"] = 0.2
-            assert_tools_narrowed(round_tools, where=f"unified_turn.round_{prog_round}")
             if conversational_no_tools:
                 breakdown["conversational_no_tools"] = True
             round_start = time.perf_counter()

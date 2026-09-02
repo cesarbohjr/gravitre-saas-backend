@@ -1659,6 +1659,36 @@ live proof: "no event claims the model ran" passed with **zero events of any
 kind**, so it proved nothing. It is recorded as PASS-but-weightless in
 `docs/delivery/turn-gate-retirement-live.json` rather than counted as evidence.
 
+### Class C: silence mistaken for health (added 2026-09-02)
+
+Closing the `unnarrowed_tool_attach_blocked` watch item exposed a class the
+audit had not named, and one this program had already reasoned its way into
+once. Full trace in `docs/delivery/unnarrowed-tool-attach-rootcause.md`.
+
+| Aspect | Detail |
+|---|---|
+| The reasoning | 119 events, stopped three weeks ago, never touched a real org, so not worth chasing |
+| Why it failed | The burst had **two** causes. One was genuinely fixed on the day the events stopped (`65161f90`). The other had merely stopped being **exercised**: it only fires for non-OpenAI providers, and prod routes unified turns to OpenAI |
+| Cost of the error | A live defect would have sat dormant until the first Anthropic or Gemini tool-carrying turn, then silently dropped those turns to the classical path |
+
+Two rules, both cheap:
+
+> **"Has not recurred" is not a root cause.** It cannot be distinguished from
+> "has not been exercised" without identifying the mechanism. A defect on a
+> conditionally-reached path goes quiet when the condition stops holding, and
+> looks exactly like a fix.
+
+> **Proof carried as an attribute on a mutable value is lost by ordinary
+> copying, silently.** `list(x)`, comprehensions and slices all strip it.
+> Guarding the invariant is not enough ? the guard must be exercised end-to-end
+> through the real call path, or the plumbing between guard and provider is
+> unobserved. Mutation testing showed the pre-fix defect could be reintroduced
+> with the entire suite green.
+
+This also sharpens the "one layer too low" lesson. Both instances here were
+correct fixes applied one line too high: `65161f90` repaired the round-trip and
+left the conversion immediately below it still stripping the marker.
+
 ## Standing risk register
 
 | Risk | Status | Owner |
@@ -1666,7 +1696,7 @@ kind**, so it proved nothing. It is recorded as PASS-but-weightless in
 | Grounding validation for connector-connected orgs | CLOSED at `ab7ca5a7`. Residual risk below, accepted | Cesar |
 | Tool-aware validator proven on a thin sample only | ACCEPTED - n=5, one probe org, HubSpot only | Cesar |
 | `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
-| `unnarrowed_tool_attach_blocked` | WATCH - 119 events, probe-only, dormant since 08-13 | unassigned |
+| `unnarrowed_tool_attach_blocked` | ROOT-CAUSED 2026-09-02. Two defects, not one: instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 (non-OpenAI provider path) fixed locally, mutation-proven 5/5, **PARTIAL - not prod-verifiable** until a non-OpenAI tool turn runs. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
 
 ## Coverage gap: closed, with the residual risk stated

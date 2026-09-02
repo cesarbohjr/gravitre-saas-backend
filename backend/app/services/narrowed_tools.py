@@ -26,9 +26,20 @@ class NarrowedTools(list):
         self.source = source
         self.gravitre_narrowed = True
 
-    def as_openai_tools(self) -> list[dict[str, Any]]:
-        """Plain OpenAI tool defs (strip retrieval metadata OpenAI rejects)."""
-        return [openai_tool_payload(t) for t in self]
+    def as_openai_tools(self) -> "NarrowedTools":
+        """OpenAI-legal tool defs, still carrying proof of narrowing.
+
+        Returns NarrowedTools, not a plain list. Sanitising the payload must not
+        also discard the evidence that narrowing happened: a plain list here is
+        what produced the `unnarrowed_tool_attach_blocked` bursts of 2026-08-12
+        and 08-13. The list subclass serialises identically for the provider
+        SDKs, so callers are unaffected.
+        """
+        return NarrowedTools(
+            [openai_tool_payload(t) for t in self],
+            stats=self.stats,
+            source=self.source,
+        )
 
 
 _OPENAI_TOOL_KEYS = frozenset({"type", "function"})

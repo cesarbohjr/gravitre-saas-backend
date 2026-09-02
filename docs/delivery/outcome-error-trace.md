@@ -132,11 +132,19 @@ conversational turns onto a path that answered them badly.
 
 ## Left open, honestly
 
-- **`unnarrowed_tool_attach_blocked` (119 events).** Gravitre's own invariant
-  guard rejecting unnarrowed tools in the LIVE path. It is a real internal
-  defect, but it fired on two days three weeks ago, has not recurred, and never
-  touched a real org. Not chased further on that evidence; if it returns, the
-  audit event now carries the exact `where=` and `count=` needed to locate it.
+- ~~**`unnarrowed_tool_attach_blocked` (119 events).**~~ **ROOT-CAUSED and
+  closed 2026-09-02.** See `docs/delivery/unnarrowed-tool-attach-rootcause.md`.
+  Superseded text, kept for the record: *"Gravitre's own invariant guard
+  rejecting unnarrowed tools in the LIVE path. It is a real internal defect, but
+  it fired on two days three weeks ago, has not recurred, and never touched a
+  real org. Not chased further on that evidence."*
+
+  That decision was reasonable on the evidence available but turned out to be
+  wrong in one respect: the burst had **two** causes, not one. The 111 events at
+  `unified_turn.round_0` were already fixed on 08-13 (which is why they stopped),
+  but the 8 events at `provider_tool_router.complete_with_tools` were a **second,
+  unfixed defect** that had merely stopped being exercised. Deciding not to chase
+  it because it "has not recurred" would have left that half live indefinitely.
 - **`404 model \`default\``.** One real-org event on 08-12, no recurrence. No
   code path was found that passes the literal string `"default"` as a model
   name — every `or "default"` in the codebase is an environment or segment
