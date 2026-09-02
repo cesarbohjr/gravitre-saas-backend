@@ -1086,6 +1086,11 @@ class AgentIntelligence:
                         # waved the answer through. This says why, so a broken
                         # safety check cannot look like a passing one.
                         "validatorFallthrough": validation.get("validator_fallthrough"),
+                        # Truncated evidence was measured causing false
+                        # rejections: the one replaced answer at 742414b9 was
+                        # the largest tool payload. Recorded so that stays a
+                        # measurement rather than an inference.
+                        "evidenceTruncated": validation.get("evidence_truncated"),
                         "requiresHuman": bool(validation.get("requires_human")),
                         "ragSourceCount": len(rag_sources or []),
                         # Which half of the evidence carried the turn. Without

@@ -1,39 +1,39 @@
 {
-  "git_sha": "2306f6db2267e52131d8090871c11826eecee546",
+  "git_sha": "742414b9c345506522e872a95524c4d48bf0d801",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "connectors_connected": [],
   "turns": [
     {
       "kind": "tool",
       "message": "how many open deals do I have in hubspot right now",
-      "reply": "You have 49 open deals in HubSpot right now.\n\nSource: HubSpot deals search on the Connected HubSpot connector, filtered where `hs_is_closed = false`.",
+      "reply": "You have 49 open deals in HubSpot right now.\n\nSource: HubSpot deals search, filtered where `hs_is_closed = false`.",
       "answered": true,
       "safe_fallback": false,
-      "wall_ms": 43953
+      "wall_ms": 41612
     },
     {
       "kind": "tool",
       "message": "list my hubspot contacts",
-      "reply": "Here are 10 HubSpot contacts. Source: HubSpot contacts list, connector Connected.\n\n| Name | Email | Company | Created |\n|---|---|---|---|\n| Gravitre SmokeTest-9c184147a82244 | gravitre-smoke-9c184147a82244@example.com | \u2014 | 2026-08-01 |\n| Bill ClayHS6e74 | part0.clayhs.6e74c7dc.1@example.com | Breakthrough Energy | 2026-08-02 |\n| Gravitre SmokeTest-dbad04c19bbf43 | gravitre-smoke-dbad04c19bbf43@ex",
+      "reply": "Here are 10 HubSpot contacts from the Connected HubSpot account. Source: HubSpot contacts list.\n\n- Gravitre SmokeTest-9c184147a82244 \u2014 gravitre-smoke-9c184147a82244@example.com\n- Bill ClayHS6e74 \u2014 part0.clayhs.6e74c7dc.1@example.com \u2014 Breakthrough Energy\n- Gravitre SmokeTest-dbad04c19bbf43 \u2014 gravitre-smoke-dbad04c19bbf43@example.com\n- Gravitre SmokeTest-dcbaf9f14a1c4a \u2014 gravitre-smoke-dcbaf9f14a1c",
       "answered": true,
       "safe_fallback": false,
-      "wall_ms": 120716
+      "wall_ms": 57745
     },
     {
       "kind": "tool",
       "message": "what are my most recent deals and their amounts",
-      "reply": "Here are your 5 most recent deals from HubSpot.\n\n- Gravitre Smoke Deal c8bdd6304fd641 \u2014 amount not set\n- Gravitre Smoke Deal e020afe818e34c \u2014 amount not set\n- Gravitre Smoke Deal 07baace23a2a42 \u2014 amount not set\n- Gravitre Smoke Deal eb2864b763644b \u2014 amount not set\n- Gravitre Smoke Deal 7cbdf9f560cd4e \u2014 amount not set\n\nSource: HubSpot deals list, sorted by recency in the returned results.  \nIf you ",
+      "reply": "Here are the 5 most recent deals from HubSpot. The amount field is empty on each record, so I can\u2019t report amounts yet.\n\n- Gravitre Smoke Deal c8bdd6304fd641 \u2014 closed won \u2014 amount not set\n- Gravitre Smoke Deal e020afe818e34c \u2014 closed lost \u2014 amount not set\n- Gravitre Smoke Deal 07baace23a2a42 \u2014 closed won \u2014 amount not set\n- Gravitre Smoke Deal eb2864b763644b \u2014 closed lost \u2014 amount not set\n- Gravitr",
       "answered": true,
       "safe_fallback": false,
-      "wall_ms": 49168
+      "wall_ms": 39631
     },
     {
       "kind": "doc",
       "message": "what does our internal documentation say about refunds",
-      "reply": "I don\u2019t have internal docs on refunds in the sources I can see here.\n\nWhat I do have is general guidance: the FTC says consumers can use a complaint letter to seek a refund or other resolution, and finance guidance stresses documenting the refund reason and keeping approval controls. That\u2019s not your internal policy, just external reference material.\n\nIf you want the internal version, point me to t",
+      "reply": "I don\u2019t have internal refund documentation in the sources available this turn.\n\nWhat I do have is:\n- FTC guidance on refund/resolution steps for consumer disputes.\n- A general accounting note that refunds should be documented with reasons, not just amounts.\n\nThat\u2019s not enough to answer what your internal docs say. If you want, I can pull the actual internal doc or search the connected systems that",
       "answered": true,
       "safe_fallback": false,
-      "wall_ms": 27471
+      "wall_ms": 16431
     },
     {
       "kind": "none",
@@ -41,67 +41,70 @@
       "reply": "Anytime. What else is on your mind?",
       "answered": true,
       "safe_fallback": false,
-      "wall_ms": 16635
+      "wall_ms": 8354
     }
   ],
   "events_total": 3,
   "validator_ran": 3,
   "skipped_no_evidence": 0,
   "tool_grounded_runs": 3,
-  "assessor_ran": 0,
+  "assessor_ran": 3,
   "answers_replaced": 1,
   "durations_ms": [
-    1848,
-    14300,
-    1383
+    1310,
+    11892,
+    1440
   ],
-  "p50_ms": 1848,
-  "p95_ms": 14300,
+  "p50_ms": 1440,
+  "p95_ms": 11892,
   "ran_detail": [
     {
       "issues": [],
       "isValid": true,
       "modeKey": "agent",
-      "confidence": 0.96,
-      "durationMs": 1848,
-      "assessorRan": false,
+      "confidence": 0.91,
+      "durationMs": 1310,
+      "assessorRan": true,
       "evidenceKind": "tool+doc",
       "requiresHuman": false,
       "answerReplaced": false,
-      "ragSourceCount": 2,
+      "ragSourceCount": 3,
       "toolResultCount": 1,
       "confidenceSource": "loaded_model_artifact",
-      "created_at": "2026-09-02T20:02:41.250381+00:00"
-    },
-    {
-      "issues": [],
-      "isValid": true,
-      "modeKey": "agent",
-      "confidence": 0.95,
-      "durationMs": 14300,
-      "assessorRan": false,
-      "evidenceKind": "tool+doc",
-      "requiresHuman": false,
-      "answerReplaced": true,
-      "ragSourceCount": 5,
-      "toolResultCount": 1,
-      "confidenceSource": "loaded_model_artifact",
-      "created_at": "2026-09-02T20:01:49.775993+00:00"
+      "validatorFallthrough": null,
+      "created_at": "2026-09-02T20:35:50.152469+00:00"
     },
     {
       "issues": [],
       "isValid": true,
       "modeKey": "agent",
       "confidence": 0.98,
-      "durationMs": 1383,
-      "assessorRan": false,
+      "durationMs": 11892,
+      "assessorRan": true,
+      "evidenceKind": "tool+doc",
+      "requiresHuman": false,
+      "answerReplaced": true,
+      "ragSourceCount": 4,
+      "toolResultCount": 1,
+      "confidenceSource": "loaded_model_artifact",
+      "validatorFallthrough": null,
+      "created_at": "2026-09-02T20:35:08.104198+00:00"
+    },
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.99,
+      "durationMs": 1440,
+      "assessorRan": true,
       "evidenceKind": "tool+doc",
       "requiresHuman": false,
       "answerReplaced": false,
       "ragSourceCount": 1,
       "toolResultCount": 1,
       "confidenceSource": "loaded_model_artifact",
-      "created_at": "2026-09-02T19:59:47.794802+00:00"
+      "validatorFallthrough": null,
+      "created_at": "2026-09-02T20:34:09.27931+00:00"
     }
   ],
   "skipped_detail": [],

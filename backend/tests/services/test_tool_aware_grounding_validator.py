@@ -83,12 +83,82 @@ def test_empty_and_malformed_rows_are_dropped() -> None:
 
 
 def test_large_tool_payloads_are_truncated_but_marked() -> None:
-    big = {"success": True, "rows": [{"id": i, "name": f"deal-{i}"} for i in range(500)]}
+    big = {"success": True, "rows": [{"id": i, "name": f"deal-{i}"} for i in range(5000)]}
     evidence = build_evidence([], [_tool_call("hubspot_search_deals", big)])
 
     content = evidence[0]["content"]
-    assert "truncated" in content
+    assert "[TRUNCATED" in content
     assert "deal-0" in content, "the head of the payload must survive truncation"
+
+
+def test_a_ten_record_listing_is_not_truncated() -> None:
+    """The exact payload shape that caused the one false rejection at 742414b9.
+
+    "list my hubspot contacts" returned ten contacts and the answer enumerated
+    all ten. At the old 2000-char budget the tail was cut, so the validator
+    could not see the records the answer named and rejected it. The budget must
+    comfortably hold a realistic ten-record listing.
+    """
+    contacts = [
+        {
+            "id": f"{i}",
+            "firstname": f"Contact{i}",
+            "lastname": "Smoketest",
+            "email": f"contact{i}@example-company-with-a-long-domain.com",
+            "company": "Example Company LLC",
+            "createdate": "2026-08-01T12:00:00Z",
+        }
+        for i in range(10)
+    ]
+    evidence = build_evidence(
+        [], [_tool_call("hubspot_list_contacts", {"success": True, "contacts": contacts})]
+    )
+
+    content = evidence[0]["content"]
+    assert "[TRUNCATED" not in content, "a ten-record listing must fit in the budget"
+    assert "Contact9" in content, "the last record must be visible to the validator"
+
+
+@pytest.mark.asyncio
+async def test_prompt_tells_the_model_how_to_treat_truncation(capture_model) -> None:
+    """Absent evidence is incomplete, not contradictory."""
+    big = {"success": True, "rows": [{"id": i, "v": "x" * 50} for i in range(5000)]}
+    await validate_grounded_answer(
+        "Here are your records.", [], tool_calls=[_tool_call("t", big)]
+    )
+
+    prompt = capture_model["prompt"]
+    assert "TRUNCATION" in prompt
+    assert "incomplete, not contradictory" in prompt
+
+
+@pytest.mark.asyncio
+async def test_truncation_is_reported_in_the_result(capture_model) -> None:
+    big = {"success": True, "rows": [{"id": i, "v": "x" * 50} for i in range(5000)]}
+
+    truncated = await validate_grounded_answer(
+        "Here are your records.", [], tool_calls=[_tool_call("t", big)]
+    )
+    small = await validate_grounded_answer(
+        "You have 1 deal.", [], tool_calls=[_tool_call("t", {"success": True, "n": 1})]
+    )
+
+    assert truncated["evidence_truncated"] is True
+    assert small["evidence_truncated"] is False
+
+
+def test_total_tool_budget_caps_a_multi_tool_turn() -> None:
+    """Per-tool budget alone would let eight big results balloon the prompt."""
+    from app.services.answer_validator import _evidence_block
+
+    calls = [
+        _tool_call(f"tool_{i}", {"success": True, "rows": [{"v": "x" * 100}] * 200})
+        for i in range(8)
+    ]
+    block = _evidence_block(build_evidence([], calls))
+
+    assert len(block) < 20000, f"evidence block ballooned to {len(block)} chars"
+    assert "tool_0" in block, "the first tool must still be fully represented"
 
 
 # --------------------------------------------------------------------------

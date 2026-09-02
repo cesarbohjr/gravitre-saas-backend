@@ -28,7 +28,16 @@ _JSON_BLOCK = re.compile(r"\{[^{}]*\}", re.DOTALL)
 # so truncating it mid-record is what turns a correct answer into a phantom
 # unsupported claim. Tool results therefore get a much larger slice.
 _DOC_CHAR_BUDGET = 700
-_TOOL_CHAR_BUDGET = 2000
+# Raised from 2000 after live measurement at 742414b9. Two of three tool answers
+# passed in ~1.4s; the one that was rejected and regenerated (11.9s) was the
+# largest payload — "list my hubspot contacts", where the answer enumerated ten
+# records. At 2000 chars the tail of that list was cut, so the validator could
+# not see the very records the answer named and correctly called them
+# unsupported. Truncation was manufacturing false rejections.
+_TOOL_CHAR_BUDGET = 6000
+# Total ceiling so a multi-tool turn cannot balloon the prompt. Applied across
+# tool results only; documents have their own small per-chunk budget.
+_TOOL_TOTAL_CHAR_BUDGET = 14000
 _MAX_DOCS = 6
 _MAX_TOOL_RESULTS = 8
 
@@ -61,7 +70,10 @@ def _serialize_tool_result(call: dict[str, Any]) -> str:
         body = str(payload)
 
     if len(body) > _TOOL_CHAR_BUDGET:
-        body = body[:_TOOL_CHAR_BUDGET] + f"... (truncated, {len(body)} chars total)"
+        body = (
+            body[:_TOOL_CHAR_BUDGET]
+            + f"... [TRUNCATED — {len(body)} chars total, remainder not shown]"
+        )
     return f"{status} {body}"
 
 
@@ -118,8 +130,17 @@ def _evidence_block(evidence: list[dict[str, Any]]) -> str:
     ]
 
     lines: list[str] = []
+    spent = 0
     for index, item in enumerate(tools, start=1):
-        lines.append(f"[tool {index}] {item['label']} -> {item['content']}")
+        content = str(item["content"])
+        remaining = _TOOL_TOTAL_CHAR_BUDGET - spent
+        if remaining <= 0:
+            lines.append(f"[tool {index}] {item['label']} -> [OMITTED — prompt budget]")
+            continue
+        if len(content) > remaining:
+            content = content[:remaining] + "... [TRUNCATED — prompt budget]"
+        spent += len(content)
+        lines.append(f"[tool {index}] {item['label']} -> {content}")
     for index, item in enumerate(docs, start=1):
         lines.append(f"[doc {index}] {item['label']}: {item['content']}")
     return "\n".join(lines) or "(no evidence)"
@@ -150,6 +171,7 @@ async def validate_grounded_answer(
         }
 
     evidence = build_evidence(retrieved_context, tool_calls)
+    truncated = any("[TRUNCATED" in str(item.get("content") or "") for item in evidence)
     if not evidence:
         return {
             "is_valid": False,
@@ -174,6 +196,11 @@ async def validate_grounded_answer(
         "Do NOT flag: conversational framing, offers to help further, restatements "
         "of the user's own question, formatting choices, or an honest report that "
         "no results were found when a tool returned none.\n\n"
+        "TRUNCATION: a tool result may end with [TRUNCATED ...]. That evidence is "
+        "incomplete, not contradictory. If the answer names records of the same "
+        "kind the tool returned, treat them as plausibly present in the omitted "
+        "remainder and do NOT flag them as unsupported. Only flag a claim against "
+        "a truncated result if the visible portion actively contradicts it.\n\n"
         f"EVIDENCE:\n{_evidence_block(evidence)}\n\n"
         f"ANSWER:\n{text[:4000]}\n\n"
         'Respond JSON only: {"is_valid": true/false, "issues": ["..."], "confidence": 0.0-1.0, '
@@ -219,6 +246,7 @@ async def validate_grounded_answer(
                     "issues": list(parsed.get("issues") or []),
                     "requires_human": bool(parsed.get("requires_human")) or not is_valid,
                     "validator_fallthrough": None,
+                    "evidence_truncated": truncated,
                     **label_confidence(
                         max(0.0, min(1.0, confidence)),
                         source=CONFIDENCE_SOURCE_MODEL,
@@ -239,5 +267,6 @@ async def validate_grounded_answer(
         "issues": [],
         "requires_human": False,
         "validator_fallthrough": fallthrough_reason,
+        "evidence_truncated": truncated,
         **label_confidence(0.5, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
     }

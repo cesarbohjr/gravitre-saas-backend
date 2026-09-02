@@ -255,8 +255,17 @@ async def main() -> int:
                 f"evidence={str(e.get('evidenceKind')):<8} tools={e.get('toolResultCount')} "
                 f"docs={e.get('ragSourceCount')} {e.get('durationMs')}ms "
                 f"valid={e.get('isValid')} assessor={e.get('assessorRan')} "
+                f"fallthrough={e.get('validatorFallthrough')} "
                 f"replaced={e.get('answerReplaced')} issues={e.get('issues')}"
             )
+        fell_open = [e for e in ran if e.get("validatorFallthrough")]
+        if fell_open:
+            reasons: dict[str, int] = {}
+            for e in fell_open:
+                key = str(e.get("validatorFallthrough"))
+                reasons[key] = reasons.get(key, 0) + 1
+            print(f"\nfail-open runs: {len(fell_open)} of {len(ran)} -> {reasons}")
+            print("  ^ these answers were waved through WITHOUT a model judgement")
     if skipped:
         print("\nskipped detail:")
         for e in skipped[:8]:
