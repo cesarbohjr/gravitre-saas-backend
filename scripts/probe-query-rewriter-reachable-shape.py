@@ -46,30 +46,37 @@ sys.path.insert(0, str(ROOT / "scripts"))
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "query-rewriter-reachable-shape.json"
 
+# Reaching the rewriter needs a turn that BOTH carries conversation history AND
+# falls through to the classical path. Earlier versions put the tool-shaped
+# message first, so the turn that fell through was the one with no history (the
+# rewriter then correctly declined before the model, and turns=0 gave it away).
+# Here the SETUP is conversational — unified-turn-live serves it — and the
+# FOLLOWUP is tool-shaped, forcing read_tool_classical on a turn that now has
+# history and a pronoun that only history can resolve.
 SHAPES = [
     {
-        "label": "connector_read_followup",
+        "label": "entity_then_tool_lookup",
         "mode": "standard",
-        "setup": "Show me the most recent deals in our HubSpot pipeline with their amounts.",
-        "followup": "and what are their close dates?",
+        "setup": "Acme Corp is our largest mid-market account and their contract is up soon.",
+        "followup": "look up their open deals in HubSpot",
     },
     {
-        "label": "reasoning_mode_followup",
-        "mode": "reasoning",
-        "setup": "Analyze what our internal material says about enterprise onboarding timelines.",
-        "followup": "how does that compare to what we promise in the contract?",
+        "label": "entity_then_tool_list",
+        "mode": "standard",
+        "setup": "We have been talking about Globex Industries as a renewal risk this quarter.",
+        "followup": "pull their recent deals from HubSpot",
     },
     {
-        "label": "research_scope_followup",
+        "label": "person_then_tool_search",
         "mode": "standard",
-        "setup": "Research what the market says about MSP pricing models in 2026.",
-        "followup": "and how does that affect our positioning?",
+        "setup": "Dana Whitfield is the main contact we have been dealing with at that account.",
+        "followup": "search for her contact record in HubSpot",
     },
     {
-        "label": "crm_entity_followup",
+        "label": "topic_then_tool_read",
         "mode": "standard",
-        "setup": "Look up the Acme Corp company record in HubSpot.",
-        "followup": "what about their open deals?",
+        "setup": "The enterprise onboarding backlog has been the recurring problem all quarter.",
+        "followup": "show me the deals related to that in HubSpot",
     },
 ]
 
@@ -159,9 +166,22 @@ async def main() -> int:
     git_sha = str(httpx.get(f"{BASE}/health", timeout=30).json().get("git_sha") or "")
     print(f"deployed tip: {git_sha}\norg: {org_id}\n")
 
-    async def turn(client: httpx.AsyncClient, conv: str, text: str, mode: str) -> str:
+    def _msg(role: str, text: str) -> dict[str, Any]:
+        return {"role": role, "parts": [{"type": "text", "text": text}]}
+
+    async def turn(
+        client: httpx.AsyncClient,
+        conv: str,
+        text: str,
+        mode: str,
+        prior: list[dict[str, Any]] | None = None,
+    ) -> str:
+        # The server builds conversation_history from body.messages[:-1], NOT from
+        # the database (assistant.py:1041). Posting only the current message left
+        # the rewriter with no history, so it correctly declined before the model
+        # and the earlier run misread that as the call failing to complete.
         body = {
-            "messages": [{"role": "user", "parts": [{"type": "text", "text": text}]}],
+            "messages": [*(prior or []), _msg("user", text)],
             "org_id": org_id,
             "mode": mode,
             "conversation_id": conv,
@@ -193,9 +213,15 @@ async def main() -> int:
             r.raise_for_status()
             conv = str(r.json()["id"])
 
-            await turn(client, conv, sc["setup"], sc["mode"])
+            setup_reply = await turn(client, conv, sc["setup"], sc["mode"])
             await asyncio.sleep(2)
-            reply = await turn(client, conv, sc["followup"], sc["mode"])
+            reply = await turn(
+                client,
+                conv,
+                sc["followup"],
+                sc["mode"],
+                prior=[_msg("user", sc["setup"]), _msg("assistant", setup_reply or "(no reply)")],
+            )
             await asyncio.sleep(6)
 
             rew = events_since(sb, "classical.answer_path.reached", mark)

@@ -1149,3 +1149,54 @@ tier at all. Dormant, they would have stayed at 0.000 with `routing_active=false
 Live, the tier returned 0.74, 0.84 and 0.63 — all above the 0.55 threshold that
 `domain_routing_policy` and `domain_retrieval_policy` read. The fallback tier is
 doing exactly the job it was documented to do, for the first time in production.
+
+## Re-measurement with working instruments (supersedes the void verdicts)
+
+### Site 7 `query_rewriter` — LIVE PASS at `5f2b0014`
+
+Evidence pointer: `classical.answer_path.reached` @ `2026-09-02T06:54:59.995672Z`
+— `modeKey=agent`, `rewriteAttempted=true`, **`modelRan=true`**, **`changed=true`**,
+`historyTurns=2`, 40 ? 58 chars. The model ran *and* produced a different
+retrieval query than the user's raw text. This supersedes the earlier UNREACHED
+verdict, which was measured with an instrument that could not write.
+
+Getting there took correcting two probe faults, both of which had been silently
+producing "proof" of the wrong thing:
+
+1. **History came from the client, not the database.** `assistant.py:1041` builds
+   `conversation_history` from `body.messages[:-1]`. The probe posted one message
+   per request, so the rewriter saw no history and correctly returned before the
+   model. `historyTurns=0` in the metadata is what exposed it — without that
+   field the run reads as a genuine failure.
+2. **The turn that fell through was the turn without history.** With a
+   tool-shaped *setup*, the fallthrough happened on turn 1. Reaching the rewriter
+   needs a turn that carries history **and** falls through, so the setup was made
+   conversational (unified-turn-live serves it) and the *follow-up* tool-shaped.
+
+Honest limit: 1 of 4 shapes reached it. `read_tool_classical` on a
+history-bearing turn is the only route confirmed so far.
+
+### Sites 1+3 grounding validator — NOT dormant, disabled by configuration
+
+Zero `answer.grounding.validated` events, now with a working instrument, across
+five confirmed region entries including the full-path turn above. The cause is
+not reachability and not a dormant call:
+
+```
+validation_enabled_for_mode(mode_key, settings)      # intelligence_engine_settings.py:38
+    speed_priority     -> {"reasoning", "agent"}
+    accuracy_priority  -> {"fast", "standard", "reasoning", "agent"}
+    default            -> {"standard", "reasoning"}          # excludes "agent"
+```
+
+Every region entry above recorded `modeKey=agent`. And
+`resolve_effective_intelligence_mode` upgrades `standard` ? `agent` whenever any
+connector is connected. So under the **default** performance mode the grounding
+validator is switched off for precisely the orgs that have connectors — real
+customers — while remaining enabled for the modes they never run in.
+
+**This is a product/configuration decision, not a bug fix, and is left for
+Cesar.** The honest options are to include `agent` in the default validation set,
+or to accept that grounding validation is an opt-in for `accuracy_priority` orgs
+and stop describing it as a standing safety net. What is no longer true is that
+the site is "unreached" — it is reachable and deliberately gated off.
