@@ -740,6 +740,12 @@ async def run_unified_turn_shadow(
             knowledge_assignments=knowledge_assignments,
             research_scope=research_scope,
             reasoning_depth=reasoning_depth,
+            # Threaded so the sufficiency gate can write its own audit action.
+            # Both columns are uuid NOT NULL and the insert is dropped silently
+            # without them, which is how three earlier instruments recorded
+            # nothing while appearing to work.
+            actor_id=user_id,
+            conversation_id=conversation_id,
         )
         if knowledge_block:
             user_parts.append(knowledge_block)

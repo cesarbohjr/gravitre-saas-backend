@@ -55,6 +55,24 @@ BAR_REGULATORY = "regulatory"
 BAR_BUSINESS = "business"
 BAR_CASUAL = "casual"
 
+# Who produced the verdict. These are named constants rather than inline strings
+# for a specific, already-paid-for reason: the grounding validator recorded
+# `assessorRan` by comparing its confidence source against a literal "model"
+# while the real value was "loaded_model_artifact". The field read False on
+# every event for weeks, and was interpreted as "the validator always fails
+# open" -- a confident conclusion drawn from a typo. Any consumer deciding
+# whether this assessor really ran must compare against these, never a literal.
+ASSESSOR_LLM = "llm"
+ASSESSOR_DETERMINISTIC = "deterministic"
+ASSESSOR_ERROR = "assessor_error"
+ASSESSOR_SKIPPED_CASUAL = "skipped_casual_bar"
+
+# A model genuinely reasoned about the evidence.
+MODEL_ASSESSORS = frozenset({ASSESSOR_LLM})
+# The check did not run at all. Distinct from a reasoned shortfall: sufficiency
+# is UNKNOWN, not denied.
+UNAVAILABLE_ASSESSORS = frozenset({ASSESSOR_ERROR})
+
 
 @dataclass
 class SufficiencyBar:
@@ -289,7 +307,7 @@ async def assess_evidence_sufficiency(
         return SufficiencyVerdict(
             sufficient=True,
             bar=bar,
-            assessor="skipped_casual_bar",
+            assessor=ASSESSOR_SKIPPED_CASUAL,
             reason="conversational turn — sufficiency loop does not engage",
             confidence=None,
         )
@@ -299,7 +317,7 @@ async def assess_evidence_sufficiency(
         return SufficiencyVerdict(
             sufficient=False,
             bar=bar,
-            assessor="deterministic",
+            assessor=ASSESSOR_DETERMINISTIC,
             reason=(
                 f"{len(substantive)} substantive source(s) retrieved; "
                 f"{bar.name} bar needs at least {bar.min_sources}"
@@ -321,7 +339,7 @@ async def assess_evidence_sufficiency(
         return SufficiencyVerdict(
             sufficient=False,
             bar=bar,
-            assessor="deterministic",
+            assessor=ASSESSOR_DETERMINISTIC,
             reason=(
                 f"{bar.name} bar requires an attributable source, and none of the "
                 f"{len(substantive)} retrieved excerpts carry a citation, URL, or "
@@ -401,7 +419,7 @@ async def assess_evidence_sufficiency(
         return SufficiencyVerdict(
             sufficient=sufficient,
             bar=bar,
-            assessor="llm",
+            assessor=ASSESSOR_LLM,
             reason=str(parsed.get("reason") or "").strip() or "model returned no reason",
             gaps=gaps,
             confidence=confidence,
@@ -424,7 +442,7 @@ async def assess_evidence_sufficiency(
         return SufficiencyVerdict(
             sufficient=False,
             bar=bar,
-            assessor="assessor_error",
+            assessor=ASSESSOR_ERROR,
             reason=f"sufficiency assessor unavailable: {str(exc)[:160]}",
             gaps=["assessor_unavailable"],
             confidence=None,

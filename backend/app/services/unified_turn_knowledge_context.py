@@ -23,6 +23,9 @@ import time
 from typing import Any
 
 from app.config import Settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 _HOLD_PACKS = frozenset({"pack.sales", "pack.marketing"})
 
@@ -288,6 +291,123 @@ async def _retrieve_business_graph(
     return section, meta, rows
 
 
+AUDIT_ACTION_SUFFICIENCY = "evidence.sufficiency.assessed"
+
+
+def _emit_sufficiency_audit(
+    *,
+    client: Any,
+    org_id: str,
+    actor_id: str | None,
+    conversation_id: str | None,
+    loop_meta: dict[str, Any],
+    evidence_meta: dict[str, Any],
+) -> None:
+    """Give the sufficiency gate a queryable audit action of its own.
+
+    Until now the verdict existed only as nested metadata inside
+    ``latency_breakdown.unifiedTurnKnowledge`` on ``unified_turn.*`` events. It
+    could be reconstructed, but not asked about: "how often did evidence fall
+    short of the regulatory bar last week" required walking every turn payload.
+    Every other governed mechanism in this program earned a first-class action.
+
+    Two hard-won rules are enforced here rather than trusted:
+
+    * **A real actor, or a loud skip.** ``write_audit_event`` silently drops the
+      insert when actor_id or resource_id is not a UUID -- it logs and returns,
+      because both columns are uuid NOT NULL. Three instruments were written
+      with ``actor_id=None`` during the dormant-call audit and read zero events
+      in production, and two of those zeroes were nearly taken as proof that
+      live code was unreachable. So a missing actor is recorded in the metadata
+      AND logged by name, never passed through as None.
+    * **Fail-closed is announced.** When the assessor could not run, the event
+      says so explicitly (``assessorUnavailable``) instead of letting an
+      unjudged turn look identical to one that genuinely fell short.
+
+    Never raises: an audit gap must not break a turn.
+    """
+    if client is None:
+        return
+    try:
+        from app.core.uuid_utils import is_uuid  # type: ignore
+    except Exception:  # noqa: BLE001
+        def is_uuid(value: Any) -> bool:  # type: ignore[misc]
+            import uuid as _uuid
+
+            try:
+                _uuid.UUID(str(value))
+                return True
+            except (ValueError, AttributeError, TypeError):
+                return False
+
+    assessments = [a for a in (loop_meta.get("assessments") or []) if isinstance(a, dict)]
+    assessors = [str(a.get("assessor")) for a in assessments]
+
+    from app.services.evidence_sufficiency_service import (
+        MODEL_ASSESSORS,
+        UNAVAILABLE_ASSESSORS,
+    )
+
+    payload: dict[str, Any] = {
+        "bar": loop_meta.get("bar"),
+        "skipped": loop_meta.get("skipped"),
+        "additionalRoundsUsed": loop_meta.get("additional_rounds_used"),
+        "maxAdditionalRounds": loop_meta.get("max_additional_rounds"),
+        "finalSufficient": loop_meta.get("final_sufficient"),
+        "stoppedBecause": loop_meta.get("stopped_because"),
+        "finalGaps": loop_meta.get("final_gaps"),
+        "sourcesTried": loop_meta.get("sources_tried"),
+        "ms": loop_meta.get("ms"),
+        # Whether a model genuinely judged the evidence. Compared against the
+        # module constants, never a literal.
+        "assessorRan": any(a in MODEL_ASSESSORS for a in assessors),
+        "assessorUnavailable": any(a in UNAVAILABLE_ASSESSORS for a in assessors),
+        # The raw list is kept so `assessorRan` can be cross-checked against an
+        # independent signal instead of being believed on its own.
+        "assessors": assessors,
+        "roundCount": len(assessments),
+        "evidenceCounts": {
+            "orgRag": evidence_meta.get("org_rag_chunk_count"),
+            "fabric": evidence_meta.get("fabric_hit_count"),
+            "internet": evidence_meta.get("internet_hit_count"),
+            "businessGraph": evidence_meta.get("business_graph_status"),
+        },
+    }
+
+    if not (actor_id and is_uuid(actor_id)) or not (
+        conversation_id and is_uuid(conversation_id)
+    ):
+        # Loudly, not silently. This is the exact shape that produced three
+        # dead instruments and two false "never reached" conclusions.
+        logger.warning(
+            "sufficiency_audit_skipped org_id=%s reason=non_uuid_actor_or_resource "
+            "actor=%r conversation=%r bar=%s",
+            org_id,
+            actor_id,
+            conversation_id,
+            loop_meta.get("bar"),
+        )
+        loop_meta["audit_skipped"] = "non_uuid_actor_or_resource"
+        return
+
+    try:
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            AUDIT_ACTION_SUFFICIENCY,
+            "conversation",
+            conversation_id,
+            payload,
+        )
+        loop_meta["audit_emitted"] = True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sufficiency_audit_failed org_id=%s error=%s", org_id, exc)
+        loop_meta["audit_skipped"] = f"write_failed:{type(exc).__name__}"
+
+
 def _resolve_max_rounds(settings: Settings) -> int:
     raw = getattr(settings, "evidence_sufficiency_max_rounds", 2)
     try:
@@ -308,6 +428,8 @@ async def build_unified_turn_knowledge_context(
     knowledge_assignments: list[dict[str, Any]] | None = None,
     research_scope: str | None = None,
     reasoning_depth: str = "full",
+    actor_id: str | None = None,
+    conversation_id: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Return (prompt_block, meta) for unified-turn user context."""
     meta: dict[str, Any] = {
@@ -425,6 +547,7 @@ async def build_unified_turn_knowledge_context(
     loop_enabled = bool(getattr(settings, "evidence_sufficiency_loop_enabled", True))
     max_rounds = _resolve_max_rounds(settings)
     from app.services.evidence_sufficiency_service import (
+        ASSESSOR_ERROR,
         BAR_CASUAL,
         assess_evidence_sufficiency,
         sufficiency_bar_for,
@@ -470,7 +593,7 @@ async def build_unified_turn_knowledge_context(
             # more evidence cannot fix an assessor that is not running. Escalating
             # here would spend the whole round budget, and the added latency, on
             # every turn for no possible gain.
-            if verdict.assessor == "assessor_error":
+            if verdict.assessor == ASSESSOR_ERROR:
                 loop_meta["stopped_because"] = "assessor_unavailable"
                 break
 
@@ -519,7 +642,7 @@ async def build_unified_turn_knowledge_context(
         loop_meta["final_gaps"] = list(verdict.gaps)[:6]
         loop_meta["ms"] = round((time.perf_counter() - loop_started) * 1000)
 
-        if verdict.assessor == "assessor_error":
+        if verdict.assessor == ASSESSOR_ERROR:
             # Distinct from a reasoned shortfall: the evidence was never judged at
             # all. Claiming it "does not meet the bar" would invent a finding, so
             # the model is told the check is unavailable and asked to stay within
@@ -545,6 +668,20 @@ async def build_unified_turn_knowledge_context(
                 "of the question you cannot substantiate, and do not present the "
                 "answer as fully verified."
             )
+
+        # Emitted only when the loop actually ran. A row per skipped turn would
+        # add a write to the conversational fast path -- the one path that must
+        # not pay for this machinery -- and would carry no verdict anyway.
+        # Threaded because write_audit_event uses the blocking Supabase client.
+        await asyncio.to_thread(
+            _emit_sufficiency_audit,
+            client=client,
+            org_id=org_id,
+            actor_id=actor_id,
+            conversation_id=conversation_id,
+            loop_meta=loop_meta,
+            evidence_meta=meta,
+        )
 
     # ---- cross-source contradiction check --------------------------------
     contradiction_enabled = bool(
