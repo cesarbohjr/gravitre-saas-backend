@@ -912,19 +912,27 @@ class AgentIntelligence:
         query: str,
         draft: str,
         rag_sources: list[dict[str, Any]],
+        tool_calls: list[dict[str, Any]] | None = None,
     ) -> str:
+        from app.services.answer_validator import build_evidence
         from app.services.model_router import TaskType, get_model_router
 
+        # Must see the SAME evidence the validator judged against. Rewriting a
+        # tool-derived answer from RAG chunks alone would delete the tool's
+        # findings and then truthfully report that context was insufficient —
+        # a correct-looking regeneration of the wrong thing.
+        evidence = build_evidence(rag_sources, tool_calls)
         context_lines = [
-            f"- {row.get('source') or row.get('title') or 'Source'}: "
-            f"{str(row.get('content') or '')[:500]}"
-            for row in rag_sources[:6]
+            f"- [{item['kind']}] {item['label']}: {item['content'][:500]}"
+            for item in evidence[:12]
         ]
-        context_block = "\n".join(context_lines) or "(no retrieved context)"
+        context_block = "\n".join(context_lines) or "(no evidence)"
         prompt = (
-            "Rewrite the draft answer so every factual claim is supported by CONTEXT. "
-            "If CONTEXT is insufficient, say so explicitly.\n\n"
-            f"CONTEXT:\n{context_block}\n\n"
+            "Rewrite the draft answer so every factual claim is supported by EVIDENCE. "
+            "Evidence marked [tool] is the result of a tool this assistant actually ran "
+            "and is authoritative — preserve its findings. Evidence marked [doc] is a "
+            "retrieved document. If the evidence is insufficient, say so explicitly.\n\n"
+            f"EVIDENCE:\n{context_block}\n\n"
             f"QUESTION:\n{query}\n\n"
             f"DRAFT:\n{draft[:3000]}"
         )
@@ -970,15 +978,19 @@ class AgentIntelligence:
         content = answer
         mode_allows_validation = validation_enabled_for_mode(mode_key, engine_settings)
 
-        # This validator compares an answer against RETRIEVED CONTEXT. With no
-        # retrieved context there is nothing to ground against, and
-        # validate_grounded_answer returns is_valid=False("no_retrieved_context"),
-        # which routes to regeneration and then SAFE_FALLBACK. Agent-mode turns
-        # frequently answer from tools rather than RAG, so validating them without
-        # context would replace correct, tool-derived answers with a "not enough
-        # reliable context" apology. Tool results are verified by the F6 read-back
-        # path instead; this gate is not the right instrument for them.
-        has_context = bool(rag_sources)
+        # Evidence for this turn is retrieved context AND the tool results the
+        # turn produced. Judging agent-mode answers against RAG alone measured at
+        # 3 of 3 correct answers replaced in production, because a tool-derived
+        # answer has no document to trace to
+        # (docs/delivery/grounding-validator-latency.json). With tool results in
+        # the evidence there is something real to ground against, so the check
+        # can run on tool-answering turns instead of skipping them.
+        turn_tool_calls: list[dict[str, Any]] = []
+        raw_tool_calls = getattr(react_result, "tool_calls", None) if react_result else None
+        if isinstance(raw_tool_calls, list):
+            turn_tool_calls = [row for row in raw_tool_calls if isinstance(row, dict)]
+
+        has_context = bool(rag_sources) or bool(turn_tool_calls)
         should_validate = mode_allows_validation and has_context
         validation_started = time.monotonic() if should_validate else None
 
@@ -994,8 +1006,9 @@ class AgentIntelligence:
                     metadata={
                         "modeKey": mode_key,
                         "skipped": True,
-                        "skipReason": "no_retrieved_context",
+                        "skipReason": "no_evidence",
                         "ragSourceCount": 0,
+                        "toolResultCount": 0,
                     },
                 )
             except Exception as exc:  # noqa: BLE001
@@ -1005,6 +1018,7 @@ class AgentIntelligence:
             validation = await validate_grounded_answer(
                 content,
                 rag_sources,
+                tool_calls=turn_tool_calls,
                 confidence_threshold=engine_settings.confidence_threshold,
                 org_id=org_id,
                 settings=settings,
@@ -1016,12 +1030,14 @@ class AgentIntelligence:
                     query=query,
                     draft=content,
                     rag_sources=rag_sources,
+                    tool_calls=turn_tool_calls,
                 )
                 if regenerated:
                     content = regenerated
                     validation = await validate_grounded_answer(
                         content,
                         rag_sources,
+                        tool_calls=turn_tool_calls,
                         confidence_threshold=engine_settings.confidence_threshold,
                         org_id=org_id,
                         settings=settings,
@@ -1058,6 +1074,18 @@ class AgentIntelligence:
                         "assessorRan": validation.get("confidence_source") == "model",
                         "requiresHuman": bool(validation.get("requires_human")),
                         "ragSourceCount": len(rag_sources or []),
+                        # Which half of the evidence carried the turn. Without
+                        # this the live measurement cannot tell a tool-grounded
+                        # pass from a doc-grounded one, which is the whole point
+                        # of making the validator tool-aware.
+                        "toolResultCount": len(turn_tool_calls),
+                        "evidenceKind": (
+                            "tool+doc"
+                            if turn_tool_calls and rag_sources
+                            else "tool"
+                            if turn_tool_calls
+                            else "doc"
+                        ),
                         "answerReplaced": content != answer,
                         "durationMs": int((time.monotonic() - validation_started) * 1000),
                     },

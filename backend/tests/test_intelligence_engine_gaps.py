@@ -92,6 +92,7 @@ async def test_validator_triggers_regeneration_once():
         result = await intelligence._finalize_assistant_response(
             settings=SimpleNamespace(),
             org_id="org-1",
+            user_id="22222222-2222-4222-8222-222222222222",
             mode_key="standard",
             query="What is revenue?",
             answer="Unsupported claim",
@@ -124,6 +125,7 @@ async def test_validator_returns_safe_fallback_on_second_failure():
         result = await intelligence._finalize_assistant_response(
             settings=SimpleNamespace(),
             org_id="org-1",
+            user_id="22222222-2222-4222-8222-222222222222",
             mode_key="standard",
             query="What is revenue?",
             answer="Unsupported claim",
@@ -149,6 +151,7 @@ async def test_validator_skipped_in_fast_mode():
         result = await intelligence._finalize_assistant_response(
             settings=SimpleNamespace(),
             org_id="org-1",
+            user_id="22222222-2222-4222-8222-222222222222",
             mode_key="fast",
             query="Quick question",
             answer="Fast answer",

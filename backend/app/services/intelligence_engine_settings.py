@@ -42,27 +42,32 @@ def validation_enabled_for_mode(mode_key: str, settings: IntelligenceEngineSetti
         return mode_key in {"fast", "standard", "reasoning", "agent"}
     if settings.performance_mode == "speed_priority":
         return mode_key in {"reasoning", "agent"}
-    # agent is deliberately NOT here, and the reason is measured rather than
-    # assumed. Including it was tried live at 1e94e644 and reverted the same day
-    # (docs/delivery/grounding-validator-latency.json):
+    # agent is included, on the second attempt and for a different reason than
+    # the first. History, because it explains the shape of the fix:
     #
-    #   p50 9309ms / p95 10131ms added, against a generation p50 of 3123ms, and
-    #   3 of 3 agent-mode answers were replaced — one falling through to
-    #   SAFE_FALLBACK, i.e. a dead end.
+    #   1e94e644 included agent while the validator could only see RAG chunks.
+    #   Measured live: p50 9309ms / p95 10131ms added against a 3123ms
+    #   generation baseline, and 3 of 3 agent answers REPLACED, one landing on
+    #   SAFE_FALLBACK (docs/delivery/grounding-validator-latency.json).
+    #   Reverted the same day.
     #
-    # The cause is structural, not tuning. agent mode is the mode where answers
-    # come from TOOLS while RAG chunks are incidentally present, so this
-    # validator compares a tool-derived conclusion against unrelated knowledge
-    # chunks and correctly finds it unsupported. It has no notion of
-    # tool-derived grounding, so it cannot judge those turns.
+    # That failure was structural, not tuning. agent mode is where answers come
+    # from TOOLS while RAG chunks are incidentally present, so a RAG-only
+    # validator compared a tool-derived conclusion against unrelated knowledge
+    # chunks and correctly found it unsupported.
     #
-    # Note what this exclusion costs, because it is not "validation is on for
-    # most traffic": resolve_effective_intelligence_mode upgrades BOTH standard
-    # and reasoning to agent whenever a connector is connected, and leaves fast
-    # as fast. A connector-connected org can therefore only reach {fast, agent},
-    # so grounding validation is unreachable for every org with a connector.
-    # That gap is real and open — it needs a tool-aware validator, not this flag.
-    return mode_key in {"standard", "reasoning"}
+    # The validator is now tool-aware: executed tool results are first-class
+    # evidence alongside retrieved documents, and the regeneration path sees the
+    # same evidence (app/services/answer_validator.py:build_evidence). A
+    # tool-derived answer now has something real to be grounded against.
+    #
+    # Excluding agent was not a small gap. resolve_effective_intelligence_mode
+    # upgrades BOTH standard and reasoning to agent whenever a connector is
+    # connected, and leaves fast as fast, so a connector-connected org can only
+    # reach {fast, agent} — grounding validation was unreachable for every org
+    # with a connector. That is why Cesar's decision was to build the
+    # tool-aware validator rather than accept the exclusion.
+    return mode_key in {"standard", "reasoning", "agent"}
 
 
 async def load_intelligence_engine_settings(

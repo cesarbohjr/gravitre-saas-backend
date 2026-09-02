@@ -23,28 +23,122 @@ SAFE_FALLBACK = (
 
 _JSON_BLOCK = re.compile(r"\{[^{}]*\}", re.DOTALL)
 
+# A retrieved chunk is prose and compresses well. A tool result is structured
+# data the answer is often a direct restatement of ("you have 3 open deals"),
+# so truncating it mid-record is what turns a correct answer into a phantom
+# unsupported claim. Tool results therefore get a much larger slice.
+_DOC_CHAR_BUDGET = 700
+_TOOL_CHAR_BUDGET = 2000
+_MAX_DOCS = 6
+_MAX_TOOL_RESULTS = 8
 
-def _context_block(chunks: list[dict[str, Any]], *, limit: int = 6) -> str:
+EVIDENCE_DOC = "doc"
+EVIDENCE_TOOL = "tool"
+
+
+def _serialize_tool_result(call: dict[str, Any]) -> str:
+    """Render one executed tool call as evidence, successes and failures alike.
+
+    Failures are included deliberately: an answer claiming an action succeeded
+    when its tool result says otherwise is precisely the fabrication this
+    validator should catch, and it can only catch it if it can see the failure.
+    """
+    result = call.get("result")
+    if not isinstance(result, dict):
+        result = {"value": result}
+
+    success = result.get("success")
+    status = "SUCCESS" if success else ("FAILED" if success is not None else "UNKNOWN")
+
+    payload: dict[str, Any] = {
+        key: value
+        for key, value in result.items()
+        if key not in {"success"} and value is not None
+    }
+    try:
+        body = json.dumps(payload, default=str, ensure_ascii=False)
+    except Exception:  # noqa: BLE001
+        body = str(payload)
+
+    if len(body) > _TOOL_CHAR_BUDGET:
+        body = body[:_TOOL_CHAR_BUDGET] + f"... (truncated, {len(body)} chars total)"
+    return f"{status} {body}"
+
+
+def build_evidence(
+    retrieved_context: list[dict[str, Any]] | None,
+    tool_calls: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Unify retrieved chunks and executed tool results into one evidence list.
+
+    Agent-mode answers are frequently derived from tools rather than from RAG.
+    Judging those against RAG chunks alone measured at 3 of 3 correct answers
+    rejected in production (docs/delivery/grounding-validator-latency.json) —
+    a HubSpot search result was called unsupported because five unrelated
+    knowledge snippets did not mention it. Tool results are the missing half of
+    the evidence, not a second-class hint.
+    """
+    evidence: list[dict[str, Any]] = []
+
+    for chunk in retrieved_context or []:
+        if not isinstance(chunk, dict):
+            continue
+        content = str(chunk.get("content") or chunk.get("snippet") or "").strip()
+        if not content:
+            continue
+        evidence.append(
+            {
+                "kind": EVIDENCE_DOC,
+                "label": str(chunk.get("source") or chunk.get("title") or "document"),
+                "content": content[:_DOC_CHAR_BUDGET],
+            }
+        )
+
+    for call in tool_calls or []:
+        if not isinstance(call, dict):
+            continue
+        tool = str(call.get("tool") or "").strip()
+        if not tool:
+            continue
+        evidence.append(
+            {
+                "kind": EVIDENCE_TOOL,
+                "label": tool,
+                "content": _serialize_tool_result(call),
+            }
+        )
+
+    return evidence
+
+
+def _evidence_block(evidence: list[dict[str, Any]]) -> str:
+    docs = [item for item in evidence if item.get("kind") == EVIDENCE_DOC][:_MAX_DOCS]
+    tools = [item for item in evidence if item.get("kind") == EVIDENCE_TOOL][
+        :_MAX_TOOL_RESULTS
+    ]
+
     lines: list[str] = []
-    for index, chunk in enumerate(chunks[:limit], start=1):
-        title = chunk.get("source") or chunk.get("title") or f"Source {index}"
-        content = str(chunk.get("content") or chunk.get("snippet") or "").strip()[:700]
-        if content:
-            lines.append(f"[{index}] {title}: {content}")
-    return "\n".join(lines) or "(no retrieved context)"
+    for index, item in enumerate(tools, start=1):
+        lines.append(f"[tool {index}] {item['label']} -> {item['content']}")
+    for index, item in enumerate(docs, start=1):
+        lines.append(f"[doc {index}] {item['label']}: {item['content']}")
+    return "\n".join(lines) or "(no evidence)"
 
 
 async def validate_grounded_answer(
     answer: str,
     retrieved_context: list[dict[str, Any]],
     *,
+    tool_calls: list[dict[str, Any]] | None = None,
     confidence_threshold: float = 0.4,
     org_id: str | None = None,
     settings: Any | None = None,
 ) -> dict[str, Any]:
     """
-    Check whether answer claims trace to retrieved context using a fast model call.
-    Returns {is_valid, issues, requires_human, confidence}.
+    Check whether answer claims trace to the turn's evidence using a fast model call.
+
+    Evidence is retrieved context AND the tool results produced this turn. Returns
+    {is_valid, issues, requires_human, confidence}.
     """
     text = (answer or "").strip()
     if not text:
@@ -54,7 +148,9 @@ async def validate_grounded_answer(
             "requires_human": True,
             **label_confidence(0.0, source=CONFIDENCE_SOURCE_INSUFFICIENT, is_estimate=False),
         }
-    if not retrieved_context:
+
+    evidence = build_evidence(retrieved_context, tool_calls)
+    if not evidence:
         return {
             "is_valid": False,
             "issues": ["no_retrieved_context"],
@@ -63,9 +159,22 @@ async def validate_grounded_answer(
         }
 
     prompt = (
-        "You are a grounding validator. Decide if the ANSWER is supported by CONTEXT.\n"
-        "Flag unsupported factual claims, invented entities, or numbers not present in context.\n\n"
-        f"CONTEXT:\n{_context_block(retrieved_context)}\n\n"
+        "You are a grounding validator. Decide if the ANSWER is supported by EVIDENCE.\n\n"
+        "EVIDENCE comes in two kinds:\n"
+        "  [tool N] a tool the assistant actually executed this turn, and its result\n"
+        "  [doc N]  a retrieved document chunk\n\n"
+        "Tool results are authoritative primary evidence. If the answer restates, "
+        "counts, filters, summarizes or reformats data present in a tool result, it "
+        "IS grounded — it does not also need document support.\n\n"
+        "Flag ONLY:\n"
+        "  - factual claims traceable to neither tool results nor documents\n"
+        "  - invented entities, names, or identifiers\n"
+        "  - numbers that contradict the evidence or appear nowhere in it\n"
+        "  - claims that an action succeeded when its tool result shows FAILED\n\n"
+        "Do NOT flag: conversational framing, offers to help further, restatements "
+        "of the user's own question, formatting choices, or an honest report that "
+        "no results were found when a tool returned none.\n\n"
+        f"EVIDENCE:\n{_evidence_block(evidence)}\n\n"
         f"ANSWER:\n{text[:4000]}\n\n"
         'Respond JSON only: {"is_valid": true/false, "issues": ["..."], "confidence": 0.0-1.0, '
         '"requires_human": true/false}'
