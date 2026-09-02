@@ -1200,3 +1200,73 @@ Cesar.** The honest options are to include `agent` in the default validation set
 or to accept that grounding validation is an opt-in for `accuracy_priority` orgs
 and stop describing it as a standing safety net. What is no longer true is that
 the site is "unreached" — it is reachable and deliberately gated off.
+
+## Site 8 `conversational_turn_gate.py:240` — highest-reach site of the twelve
+
+`classify_turn_shape` called `get_model_router(settings or get_settings())`. Fixed
+to the real zero-argument form.
+
+### Why this one never looked broken
+
+It failed **closed**: the handler returns `shape="task_shaped"`, which is also a
+perfectly legitimate verdict. Nothing errored, no output looked wrong, and the
+fallback was even the *safe* direction ("never drop real work into chitchat").
+The before/after probe shows exactly this - both arms return a usable decision:
+
+| arm | router entered | shape | used_model |
+|---|---|---|---|
+| before (dormant) | False | `task_shaped` | False |
+| after (fixed) | True | `mixed` | True |
+
+`docs/delivery/turn-gate-before-after.json`. The only honest discriminators are
+`router_entered` and `used_model`; the returned shape proves nothing on its own.
+
+### Measured reach - 71.9%, before changing any code
+
+`backend/scripts/probe_turn_gate_reach.py` runs the real heuristic over real
+production user messages (30-day window, 1000 rows returned):
+
+```
+user messages considered : 1000
+deferred to model        : 719  (71.90%)
+heuristic mixed          : 1
+  719  DEFERRED_TO_MODEL
+  203  data_or_connector_signal
+   51  human_moment_venting_no_ask
+   16  social_no_task_signal
+    9  meta_capability
+```
+
+So 719 of 1000 real turns had their shape decided by the dormant call fail-closed
+default rather than by the model that was supposed to decide. This is the
+highest-reach site in the whole inventory - higher than sites 9/10, and unlike
+site 7 it does not depend on falling through to the classical region.
+
+Second-order consequence, and the concrete user-visible one: the heuristic can
+only reach `mixed` when a comma or `also/but/anyway/btw` joins the social and
+task halves, which happened **once in 1000 turns**. `mixed` is the sole trigger
+for `_maybe_prepend_mixed_social_ack` (`unified_turn_reasoning_service.py:1283`),
+so the mixed social-ack feature - real, built, and on the LIVE path that serves
+most traffic - was waiting on a call that never ran.
+
+Honest scope limit: 71.9% is the *deferral* rate, not the rate at which the
+model verdict differs from `task_shaped`. Many deferred turns are genuinely
+task-shaped and the default was accidentally right. What the default could never
+produce is `conversational` or `mixed`.
+
+### Evidence
+
+- Dormancy: **PASS** - `docs/delivery/turn-gate-before-after.json`
+- Tests: 11 in `backend/tests/services/test_turn_gate_reaches_model.py`, all 11
+  mutations caught (`backend/scripts/scratch_mutate_turn_gate.py`), including
+  "restore the dormant call", "used_model always True", and "fail-closed becomes
+  fail-open". One test asserts the heuristic still declines the probe message, so
+  a future heuristic change cannot quietly make the suite vacuous.
+- Regression: 164 related tests pass (`-k "turn_shape or turn_gate or
+  conversational or social_ack or pending_reply"`).
+- Observability: `turn.shape.classified` at `agent_intelligence.py:2189`, on the
+  unconditional caller that runs every streaming turn, carrying `usedModel`,
+  `shape`, `category`, `liveEnabled`. Actor is `user_id` from the start - the
+  `actor_id=None` class of bug is now blocked by
+  `backend/tests/test_audit_instruments_have_real_actor.py`.
+- Live proof: **PENDING** deploy.

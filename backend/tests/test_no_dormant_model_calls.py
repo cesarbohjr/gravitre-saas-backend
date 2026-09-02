@@ -114,8 +114,12 @@ KNOWN_DORMANT = {
     # below 0.55, so the fallback never existed exactly when rules were least sure:
     #   app/services/contextual_understanding_service.py:225
     #   app/services/domain_intelligence_service.py:208
+    # Site 8 (conversational_turn_gate.py:240) fixed. It failed closed, so it never
+    # looked broken — but it decided 71.9% of real user turns (719/1000 sampled over
+    # 30 days, backend/scripts/probe_turn_gate_reach.py), and the heuristic assigned
+    # "mixed" only once in 1000, leaving the mixed social-ack path waiting on a call
+    # that never ran.
     "app/services/clarification_engine.py:769",
-    "app/services/conversational_turn_gate.py:240",
 }
 
 

@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.config import Settings, get_settings
+from app.config import Settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -214,7 +214,7 @@ def _split_mixed(text: str) -> tuple[str, str]:
 async def classify_turn_shape(
     message: str,
     *,
-    settings: Settings | None = None,
+    settings: Settings | None = None,  # unused; kept for caller compatibility
     org_id: str | None = None,
     conversation_summary: str | None = None,
 ) -> ConversationalGateDecision:
@@ -237,7 +237,7 @@ async def classify_turn_shape(
             f"Recent context: {(conversation_summary or '')[:400]}\n"
             f"User message: {text}\n"
         )
-        response = await get_model_router(settings or get_settings()).complete(
+        response = await get_model_router().complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(

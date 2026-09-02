@@ -1,0 +1,31 @@
+{
+  "site": "conversational_turn_gate.py:240 classify_turn_shape",
+  "message": "Walk me through how we should approach the Q3 board deck.",
+  "heuristic_declines": true,
+  "arms": [
+    {
+      "arm": "before (dormant call restored)",
+      "router_entered": false,
+      "shape": "task_shaped",
+      "used_model": false,
+      "category": "other",
+      "reason": "model_unavailable:get_model_router() takes 0 positional arguments but 1 were given",
+      "social_portion": "",
+      "task_portion": "Walk me through how we should approach the Q3 board deck.",
+      "swallowed_typeerror": false
+    },
+    {
+      "arm": "after (fix in place)",
+      "router_entered": true,
+      "shape": "mixed",
+      "used_model": true,
+      "category": "other",
+      "reason": "probe",
+      "social_portion": "Walk me through",
+      "task_portion": "Q3 board deck",
+      "swallowed_typeerror": false
+    }
+  ],
+  "verdict": "PASS \u2014 dormancy confirmed and fixed",
+  "note": "Both arms return a usable decision, which is why this site never looked broken: it failed closed to task_shaped. router_entered and used_model are the only honest discriminators. Note the before arm also loses shape=mixed, which is what the social-ack path keys on."
+}
