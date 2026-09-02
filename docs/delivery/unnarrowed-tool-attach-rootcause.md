@@ -200,15 +200,84 @@ Deliberately **not** labelled PASS.
 - **Instance 1: fixed in production since 2026-08-13.** Supporting evidence is
   the absence of events since, which is weak on its own but corroborated by the
   commit that repaired the exact expression on the exact day.
-- **Instance 2: fixed and deployed, mutation-proven, still PARTIAL on live
-  evidence.** See the section below for exactly what blocks a PASS.
+- **Instance 2: LIVE PASS 2026-09-02.** `BUG_REPRODUCED` pre-fix and `CLEAN`
+  post-fix on a real Anthropic tool-carrying unified turn, guard firing at
+  `provider_tool_router.complete_with_tools`. No longer PARTIAL. Details below.
 - **Instances 3 and 4: no production events, and none expected.** Instance 3
   never reached the guard (both downstream branches re-mark); instance 4 was
   fixed before the burst. Neither is claimed as a live finding.
 - **Regression coverage: closed**, mutation-proven at 6/6, plus a standing CI
   scan over 966 files.
 
-## Instance 2: what a real live PASS actually requires
+## Instance 2: LIVE PASS, 2026-09-02
+
+**PASS — real Anthropic tool-carrying unified turn, before/after, no production
+regression window.** Evidence: `docs/delivery/unnarrowed-nonopenai-live.json`.
+Reproduced with `scripts/prove-unnarrowed-nonopenai-beforeafter.py`.
+
+| | pre-fix (files at `3a4cd5f3`) | post-fix (`f029c4e7`) |
+|---|---|---|
+| timestamp | 2026-09-02T22:44:21Z | 2026-09-02T22:43:39Z |
+| provider / model | anthropic / `claude-sonnet-4-6` | anthropic / `claude-sonnet-4-6` |
+| tool retrieval | `embedding_narrow_tools_for_turn` | `embedding_narrow_tools_for_turn` |
+| `outcome_kind` | `error` | `connector_tool_proposal` |
+| guard fired | **True, at `provider_tool_router.complete_with_tools`** | False |
+| tool chosen by model | none - turn died | **`apollo_lists_list`** |
+| reply | (none) | "I'll grab both at the same time." |
+| verdict | `BUG_REPRODUCED` | `CLEAN` |
+
+The pre-fix error is the exact string from the 2026-08 burst, at the exact site:
+
+```
+unnarrowed_tool_attach_blocked at provider_tool_router.complete_with_tools:
+tools must come from narrow_tools_for_turn / embed_narrow_tools_for_turn
+(NarrowedTools). count=18
+```
+
+Why this is a real PASS and not a manufactured one:
+
+- **The model genuinely saw the tools.** Post-fix, Claude returned a
+  `connector_tool_proposal` naming `apollo_lists_list`. A turn that attached no
+  tools could never trip the guard, so a CLEAN with no tools would have been
+  unfalsifiable. It chose one.
+- **It really was Anthropic.** `openai_tool_path_taken: False` on both runs,
+  enforced by a wrapper that raises if OpenAI is called with tools. No silent
+  fallback.
+- **Matched A/B.** Same org, same model, same retrieval method, 42 seconds
+  apart. The only variable is the two source files.
+- **Production was never served the pre-fix code.** Only local files were
+  reverted, restored in a `finally` block, verified clean afterwards.
+
+### Instrument flaw in this run, recorded not hidden
+
+`attached_tool_count` logged `None`, because the probe read `visibleToolCount`
+while the real stats key is `visibleTools`. Left uncorrected, that is precisely
+the Class B pattern - a CLEAN verdict resting on a field that is always None
+would be unfalsifiable.
+
+It does not undermine this PASS, because attachment is independently evidenced
+twice: `count=18` inside the pre-fix guard error, and the post-fix
+`tool_name: apollo_lists_list`. The probe has since been corrected to read the
+right key, to keep both spellings so a rename surfaces as a mismatch rather
+than a silent `None`, and to **enforce** falsifiability by returning
+`VACUOUS_NO_TOOLS_ATTACHED` instead of `CLEAN` when nothing was attached. The
+recorded run predates that correction; it was not re-run, since re-running would
+add a live provider call without adding evidence.
+
+### The env-loading bug found on the way
+
+The first attempt reported `anthropic_not_configured` with the key correctly in
+place. Cause: `backend/.env.operator.local` is cp1252-encoded (utf-8 fails at
+byte 759), and the probe's loader caught `UnicodeDecodeError` per file and
+`continue`d — silently discarding **all 51 variables** in it. A parse failure
+presented as a missing key.
+
+That is Class C again, inside the instrument built to close a Class C finding:
+an absent signal read as a clean negative. The loader now tries four encodings
+and **returns** per-file status, which is recorded in the evidence
+(`.env.operator.local: 24 vars applied of 51 (cp1252)`) rather than swallowed.
+
+## Superseded: what a live PASS was blocked on (kept for the record)
 
 Attempted 2026-09-02 per Cesar's instruction to stop leaving it PARTIAL. Two
 facts changed the plan, both worth recording.
@@ -259,10 +328,10 @@ Not decided unilaterally: option 2 means shipping a known defect to production,
 which is a call for Cesar, not for the agent. Recorded here rather than quietly
 downgraded.
 
-Worth stating plainly: the 8 events of 2026-08-12/13 at
-`provider_tool_router.complete_with_tools` **are** real production evidence that
-this defect fired on this path. What is missing is a *fresh* reproduction, not
-proof that it was ever real.
+**Resolved:** Cesar chose route 1. An Anthropic key was made available to the
+probe out-of-band and the before/after ran with zero production risk. See the
+LIVE PASS section above. Route 2 was never used; production was never served
+the pre-fix code.
 
 ## Caveats
 

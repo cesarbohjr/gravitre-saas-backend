@@ -1,60 +1,27 @@
 [
   {
     "probe": "unnarrowed_tool_attach_nonopenai",
-    "label": "post-fix-working-tree",
-    "started_at": "2026-09-02T22:16:32.140379+00:00",
-    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-    "org_is_isolated": true,
-    "model": "claude-sonnet-4-6",
-    "provider": "anthropic",
-    "provider_configured": {
-      "openai": false,
-      "anthropic": false
-    },
-    "deployed_health": {
-      "status": "ok",
-      "timestamp": "2026-09-02T22:16:31.633618+00:00",
-      "version": "0.1.0",
-      "environment": "prod",
-      "git_sha": "7a0ab8d4eec4fde021161353063e3dacf76d7835",
-      "ai_disabled": false,
-      "unified_turn_shadow_enabled": true,
-      "unified_turn_live_enabled": true,
-      "unified_turn_embedding_tool_retrieval": true,
-      "unified_turn_embed_min_catalog_tools": 40,
-      "unified_turn_task_model_tier": "low",
-      "unified_turn_qa_hooks_enabled": true,
-      "internet_research_enabled": true,
-      "web_research_provider_configured": true,
-      "checks": {
-        "database": "healthy",
-        "cache": "healthy",
-        "temporal": "configured",
-        "clickhouse": "configured"
-      }
-    },
-    "local_git_sha": "7a0ab8d4eec4",
-    "verdict": "CANNOT_RUN",
-    "reason": "anthropic_not_configured in this environment"
-  },
-  {
-    "probe": "unnarrowed_tool_attach_nonopenai",
     "label": "post-fix",
-    "started_at": "2026-09-02T22:29:13.874615+00:00",
+    "started_at": "2026-09-02T22:43:39.526415+00:00",
+    "env_files": [
+      ".env: 33 vars applied of 33 (utf-8)",
+      ".env.operator.local: 24 vars applied of 51 (cp1252)",
+      ".env: absent"
+    ],
     "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
     "org_is_isolated": true,
     "model": "claude-sonnet-4-6",
     "provider": "anthropic",
     "provider_configured": {
-      "openai": false,
-      "anthropic": false
+      "openai": true,
+      "anthropic": true
     },
     "deployed_health": {
       "status": "ok",
-      "timestamp": "2026-09-02T22:29:13.304812+00:00",
+      "timestamp": "2026-09-02T22:43:38.968090+00:00",
       "version": "0.1.0",
       "environment": "prod",
-      "git_sha": "7a0ab8d4eec4fde021161353063e3dacf76d7835",
+      "git_sha": "36f947d24e4da131149903902a6e0d8e66ebc2b1",
       "ai_disabled": false,
       "unified_turn_shadow_enabled": true,
       "unified_turn_live_enabled": true,
@@ -71,28 +38,46 @@
         "clickhouse": "configured"
       }
     },
-    "local_git_sha": "36f947d24e4d",
-    "verdict": "CANNOT_RUN",
-    "reason": "anthropic_not_configured in this environment"
+    "local_git_sha": "f029c4e71319",
+    "forced_flags": [
+      "unified_turn_shadow_enabled"
+    ],
+    "openai_tool_path_taken": false,
+    "outcome_kind": "connector_tool_proposal",
+    "error": "",
+    "model_used": "claude-sonnet-4-6",
+    "tool_name": "apollo_lists_list",
+    "user_message_snippet": "I'll grab both at the same time.",
+    "tool_stats_method": "embedding_narrow_tools_for_turn",
+    "attached_tool_count": null,
+    "guard_fired": false,
+    "guard_at_expected_site": false,
+    "verdict": "CLEAN",
+    "finished_at": "2026-09-02T22:44:15.454126+00:00"
   },
   {
     "probe": "unnarrowed_tool_attach_nonopenai",
     "label": "pre-fix",
-    "started_at": "2026-09-02T22:29:19.044137+00:00",
+    "started_at": "2026-09-02T22:44:21.581278+00:00",
+    "env_files": [
+      ".env: 33 vars applied of 33 (utf-8)",
+      ".env.operator.local: 24 vars applied of 51 (cp1252)",
+      ".env: absent"
+    ],
     "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
     "org_is_isolated": true,
     "model": "claude-sonnet-4-6",
     "provider": "anthropic",
     "provider_configured": {
-      "openai": false,
-      "anthropic": false
+      "openai": true,
+      "anthropic": true
     },
     "deployed_health": {
       "status": "ok",
-      "timestamp": "2026-09-02T22:29:18.512782+00:00",
+      "timestamp": "2026-09-02T22:44:21.035914+00:00",
       "version": "0.1.0",
       "environment": "prod",
-      "git_sha": "7a0ab8d4eec4fde021161353063e3dacf76d7835",
+      "git_sha": "36f947d24e4da131149903902a6e0d8e66ebc2b1",
       "ai_disabled": false,
       "unified_turn_shadow_enabled": true,
       "unified_turn_live_enabled": true,
@@ -109,8 +94,21 @@
         "clickhouse": "configured"
       }
     },
-    "local_git_sha": "36f947d24e4d",
-    "verdict": "CANNOT_RUN",
-    "reason": "anthropic_not_configured in this environment"
+    "local_git_sha": "f029c4e71319",
+    "forced_flags": [
+      "unified_turn_shadow_enabled"
+    ],
+    "openai_tool_path_taken": false,
+    "outcome_kind": "error",
+    "error": "unnarrowed_tool_attach_blocked at provider_tool_router.complete_with_tools: tools must come from narrow_tools_for_turn / embed_narrow_tools_for_turn (NarrowedTools). count=18",
+    "model_used": "claude-sonnet-4-6",
+    "tool_name": null,
+    "user_message_snippet": "",
+    "tool_stats_method": "embedding_narrow_tools_for_turn",
+    "attached_tool_count": null,
+    "guard_fired": true,
+    "guard_at_expected_site": true,
+    "verdict": "BUG_REPRODUCED",
+    "finished_at": "2026-09-02T22:44:50.044551+00:00"
   }
 ]

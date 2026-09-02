@@ -1741,7 +1741,7 @@ fired 109 times could be reintroduced with the entire suite green.
 | Grounding validation for connector-connected orgs | CLOSED at `ab7ca5a7`. Residual risk below, accepted | Cesar |
 | Tool-aware validator proven on a thin sample only | ACCEPTED - n=5, one probe org, HubSpot only | Cesar |
 | `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
-| `unnarrowed_tool_attach_blocked` | ROOT-CAUSED 2026-09-02. Two defects, not one: instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 (non-OpenAI provider path) fixed locally, mutation-proven 5/5, **PARTIAL - not prod-verifiable** until a non-OpenAI tool turn runs. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
+| `unnarrowed_tool_attach_blocked` | **CLOSED 2026-09-02.** Four instances of one mistake, not one defect. Instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 **LIVE PASS** - `BUG_REPRODUCED` pre-fix / `CLEAN` post-fix on a real `claude-sonnet-4-6` tool-carrying turn, guard at `provider_tool_router.complete_with_tools`, model chose `apollo_lists_list` post-fix; instances 3-4 fixed, no prod events. Mutations 6/6 + standing CI scan. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
 
 ## Coverage gap: closed, with the residual risk stated

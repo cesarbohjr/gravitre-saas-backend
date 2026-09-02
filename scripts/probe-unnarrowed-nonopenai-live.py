@@ -62,17 +62,38 @@ class OpenAIToolPathTaken(RuntimeError):
     """The probe fell back to OpenAI; an Anthropic result would be a false pass."""
 
 
-def _load_env() -> None:
+def _load_env() -> list[str]:
+    """Load env files, trying real encodings. Returns per-file status.
+
+    These files are cp1252 on this machine, not utf-8. An earlier version used
+    the dotenv default and swallowed UnicodeDecodeError per file, which skipped
+    every variable in it and surfaced as `anthropic_not_configured` -- a missing
+    key, not a parse failure. Same class as the bug under investigation: a
+    silent skip read as a clean negative. So the status is returned and
+    recorded, never swallowed.
+    """
+    status: list[str] = []
     for path in (BACKEND / ".env", BACKEND / ".env.operator.local", REPO / ".env"):
         if not path.is_file():
+            status.append(f"{path.name}: absent")
             continue
-        try:
-            values = dotenv_values(path)
-        except UnicodeDecodeError:
+        loaded = None
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                loaded = dotenv_values(path, encoding=enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        if loaded is None:
+            status.append(f"{path.name}: UNREADABLE in all encodings")
             continue
-        for key, value in values.items():
+        applied = 0
+        for key, value in loaded.items():
             if value and key not in os.environ:
                 os.environ[key] = value
+                applied += 1
+        status.append(f"{path.name}: {applied} vars applied of {len(loaded)} ({enc})")
+    return status
 
 
 def _health() -> dict[str, Any]:
@@ -106,7 +127,7 @@ async def _forbid_openai_tools(router: Any):
 
 
 async def _run(label: str) -> dict[str, Any]:
-    _load_env()
+    env_status = _load_env()
 
     from app.config import get_settings
     from app.services.model_router import get_model_router
@@ -134,6 +155,7 @@ async def _run(label: str) -> dict[str, Any]:
         "probe": "unnarrowed_tool_attach_nonopenai",
         "label": label,
         "started_at": datetime.now(timezone.utc).isoformat(),
+        "env_files": env_status,
         "org_id": org_id,
         "org_is_isolated": True,
         "model": ANTHROPIC_MODEL,
@@ -200,9 +222,18 @@ async def _run(label: str) -> dict[str, Any]:
             "tool_stats_method": (getattr(result, "tool_stats", None) or {}).get(
                 "retrievalMethod"
             ),
+            # "visibleTools", not "visibleToolCount" -- the first attempt read a
+            # key that does not exist and recorded None, which would have made a
+            # CLEAN verdict unfalsifiable (a turn attaching zero tools can never
+            # trip the guard). Both spellings are recorded so a future rename
+            # shows up as a mismatch rather than a silent None.
             "attached_tool_count": (getattr(result, "tool_stats", None) or {}).get(
-                "visibleToolCount"
+                "visibleTools"
             ),
+            "attached_tool_count_legacy_key": (
+                getattr(result, "tool_stats", None) or {}
+            ).get("visibleToolCount"),
+            "tool_stats": getattr(result, "tool_stats", None) or {},
         }
     )
 
@@ -218,9 +249,16 @@ async def _run(label: str) -> dict[str, Any]:
     elif outcome == "error":
         report["verdict"] = "OTHER_ERROR"
     else:
-        # A clean pass only counts if the turn genuinely carried tools; a turn
-        # that attached none would trivially never trip the guard.
-        report["verdict"] = "CLEAN"
+        # A clean pass only counts if the turn genuinely carried tools: a turn
+        # that attached none could never trip the guard, so CLEAN would be
+        # unfalsifiable. Enforced, not merely asserted in a comment.
+        carried = int(report.get("attached_tool_count") or 0)
+        chose_tool = bool(report.get("tool_name"))
+        if carried > 0 or chose_tool:
+            report["verdict"] = "CLEAN"
+        else:
+            report["verdict"] = "VACUOUS_NO_TOOLS_ATTACHED"
+        report["clean_is_falsifiable"] = carried > 0 or chose_tool
 
     report["finished_at"] = datetime.now(timezone.utc).isoformat()
     return report
@@ -247,6 +285,8 @@ def main() -> int:
     path.write_text(json.dumps(existing, indent=2, default=str), encoding="utf-8")
 
     print(f"label            : {report.get('label')}")
+    for line in report.get("env_files") or []:
+        print(f"  env            : {line}")
     print(f"local sha        : {report.get('local_git_sha')}")
     print(f"prod sha         : {(report.get('deployed_health') or {}).get('git_sha', '')[:12]}")
     print(f"provider         : {report.get('provider')} / {report.get('model')}")
