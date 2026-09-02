@@ -1541,3 +1541,129 @@ rather than writing a row that would be discarded silently.
 connectors per org) and the no-actor skip. One pre-existing health-monitor test
 was upgraded rather than merely unbroken: its fixture had no `created_by`, so it
 now pins the real actor.
+
+---
+
+# FINAL LEDGER - the twelve-site audit, closed 2026-09-02
+
+This section is the authoritative closing record. Everything above it is the
+working history, including corrections and retractions that are deliberately
+preserved. Where an earlier section conflicts with this ledger, this ledger is
+the current state.
+
+Note on encoding: this section is deliberately plain ASCII. The body of this
+document above has mixed-encoding damage from earlier appends, and adding more
+non-ASCII punctuation would compound it.
+
+## Ledger
+
+Dormancy is certain by construction for all twelve: a positional-argument count
+mismatch is evaluated before the callee runs, so none of these could ever have
+intermittently succeeded. Reach is the variable, and reach is what determines
+user impact - which is the single most important lesson of this program.
+
+| # | Site | Dormancy | Production reach | Final state |
+|---|---|---|---|---|
+| 1 | `answer_validator.py:74` | Fixed 2026-08-31 | Config-gated OFF for agent mode; 0 events in 30d | Tool-aware validator built; agent mode enabled; LIVE PASS `ab7ca5a7`. See open decision below |
+| 2 | `unified_turn_knowledge_context.py:201` (`get_rag_service`) | Fixed 2026-08-31 | Reached; `org_rag_error` observed live while dormant | LIVE PASS `db928881` |
+| 3 | `agent_intelligence.py:931` (regeneration) | Fixed 2026-08-31 | Unreachable while site 1 failed open | Reachable and tool-aware; exercised live at `742414b9` (11.9s regeneration, since removed as a false trigger) |
+| 4 | `schema_param_extractor.py:319` | Fixed 2026-08-31 | Reached | PASS via before/after router-entry probe. INCONCLUSIVE status closed out |
+| 5 | `pending_reply_classifier.py:500` | Fixed 2026-09-01 | Reached | LIVE PASS |
+| 6 | `conversation_turn_controller.py:273` | Fixed 2026-09-01 | Reached | LIVE PASS `d57b48c3` |
+| 7 | `query_rewriter.py:52` | Fixed 2026-09-01 | Reached | LIVE PASS `5f2b0014` (modelRan + query changed). The earlier UNREACHED reading was an instrument artifact - see Class B below |
+| 8 | `conversational_turn_gate.py:240` | Fixed 2026-09-01 | Measured NEAR ZERO | Model tier RETIRED `02ef5a6a` by product decision after its value was measured. Live post-fix proof `519fcdf7`: mixed social ack fires 3/3, all consumers intact |
+| 9 | `domain_intelligence_service.py:208` | Fixed 2026-09-01 | Reached | LIVE PASS `5f2b0014` (3/3 `domainSource=llm`) |
+| 10 | `contextual_understanding_service.py:225` | Fixed 2026-09-01 | Reached | LIVE PASS `5f2b0014` (6/6 `modelRan`) |
+| 11 | `clarification_engine.py:769` | Fixed 2026-09-02 | Reached | LIVE PASS `301a64e1` (2/2 questions polished) |
+| 12 | `cache_warming_scheduler.py:48` (`get_rag_service`) | Fixed 2026-08-31 | Scheduler-driven | Fixed; performance-only, was already visible at `warning` |
+
+`KNOWN_DORMANT` in `backend/tests/test_no_dormant_model_calls.py` is empty, and
+the guard only permits that set to SHRINK. A new entry means a fresh dormant
+call shipped.
+
+### Severity corrections made during the audit, preserved
+
+Two of the Phase 0 severity rankings were wrong and were corrected on evidence,
+not opinion:
+
+- Site 1 was ranked **Critical (correctness)** on the assumption that a
+  fail-open validator was falsely certifying answers. Measurement showed it
+  never executed on live traffic, so nothing was being certified at all. It was
+  downgraded, then turned out to be a **coverage** problem rather than a
+  correctness one - the validator was unreachable for exactly the orgs that most
+  needed it.
+- Site 8 was ranked on a 71.9% reach figure that was measured one layer too low:
+  it was a share of gate invocations, not of turns. True reach is near zero.
+
+## The permanent lesson: "one layer too low"
+
+Named class for this program. **Five confirmed instances.** The pattern:
+
+> The fix is correct, mutation-proven, and deployed. It sits one layer below the
+> layer that decides whether a user is affected. Local tests pass, the deploy
+> succeeds, the output looks right, and the defect is still live.
+
+| # | Instance | The fix | The layer that actually decided user impact |
+|---|---|---|---|
+| 1 | HubSpot transport fix | Corrected the call | A different transport path served real traffic |
+| 2 | Fabricated destructive write gate | Gated the fabricating path | The fabrication entered from a path upstream of the gate |
+| 3 | Site 7 `query_rewriter` | Dormant call fixed and proven | The enclosing classical region was not reached on the measured turns |
+| 4 | Grounding validator `has_context` guard | Guarded `rag_sources == []` | The real failure was `rag_sources` **present and irrelevant** to a tool-derived answer, one layer up |
+| 5 | `tool_choice` 400 | Patched `_complete_openai_with_tools` | OpenAI models route through the streaming path, which bypassed that adapter entirely. Four more 400s after deploy |
+
+Numbering note, recorded honestly: the working history above labels two
+different findings as "third", because the site 8 instrument finding was written
+up under that number in a separate session. The table here is the definitive
+enumeration; the site 8 instrument finding belongs to Class B below, not to this
+class.
+
+Instances 4 and 5 were both mine, in the same session, after the class had
+already been named twice. That is the strongest evidence that naming a failure
+class does not by itself prevent it.
+
+### What actually catches it
+
+Ranked by what demonstrably worked in this audit, not by what sounds rigorous:
+
+1. **An instrumented production trace of the specific line.** This is the only
+   thing that reliably distinguished "the call works now" from "the call still
+   never happens". Every clean local before/after in this audit was compatible
+   with the defect remaining live.
+2. **Mutation testing the guard**, not just running it. It found a blind spot in
+   the regeneration evidence check where a structural source assertion passed
+   while the body discarded the tool evidence.
+3. **Asking "which layer serves real traffic?" before writing the fix.** For
+   site 8 this question, asked late, changed the outcome from "fix and ship" to
+   "measure, then retire".
+
+## Class B: broken instrument
+
+A distinct and arguably more dangerous class, surfaced three times. Here the
+**fix was correct and live the whole time** while the instrument measuring it
+was wrong, producing a confident false negative. Left unchecked, each of these
+would have led to abandoning working code.
+
+| # | Instrument | The defect | What it falsely reported |
+|---|---|---|---|
+| 1 | Site 8 `turn.shape.classified` | Event emitted at a caller the measured turns never took | Zero events, read as "unreached", while the probe replies showed the gate plainly working |
+| 2 | Three audit instruments | `actor_id=None` caused `write_audit_event` to skip silently | Zero events across sites 7, 9, 10 - voiding three verdicts at once |
+| 3 | `assessorRan` | Compared `confidence_source` against the literal `"model"`; the constant is `"loaded_model_artifact"` | False on **every** grounding event ever written, including ones where the assessor genuinely judged. Read as "validator fails open on 3 of 3 turns" |
+
+The countermeasure that worked in all three cases was the same: **cross-check
+the instrument against an independent signal** before believing a zero. Twice
+that signal was the user-visible reply text, which showed the feature working
+while the instrument reported nothing.
+
+A vacuous check is a fourth variant of this class and was caught in the site 8
+live proof: "no event claims the model ran" passed with **zero events of any
+kind**, so it proved nothing. It is recorded as PASS-but-weightless in
+`docs/delivery/turn-gate-retirement-live.json` rather than counted as evidence.
+
+## Standing risk register
+
+| Risk | Status | Owner |
+|---|---|---|
+| Grounding validation for connector-connected orgs | See open decision below | Cesar |
+| `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
+| `unnarrowed_tool_attach_blocked` | WATCH - 119 events, probe-only, dormant since 08-13 | unassigned |
+| Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
