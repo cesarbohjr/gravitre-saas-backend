@@ -217,12 +217,59 @@ async def classify_turn_shape(
     settings: Settings | None = None,  # unused; kept for caller compatibility
     org_id: str | None = None,
     conversation_summary: str | None = None,
+    user_id: str | None = None,
+    client: Any = None,
+    call_site: str = "unspecified",
 ) -> ConversationalGateDecision:
     """Classify turn shape. Heuristic first; FAST model when ambiguous."""
     heuristic = heuristic_turn_shape(message)
     if heuristic is not None:
         return heuristic
 
+    decision = await _model_turn_shape(
+        message,
+        org_id=org_id,
+        conversation_summary=conversation_summary,
+    )
+
+    # Site 8 observability, placed inside the function that owns the call rather
+    # than at a caller. Three successive attempts to instrument this from the
+    # outside all landed on paths the measured turns never took: this function
+    # has only two callers, one bypassed by unified-turn-live and one reached on
+    # 3 of 9 LIVE serving paths. Emitting here means the event exists exactly
+    # when the model tier actually runs, whoever called it.
+    if user_id:
+        try:
+            from app.workflows.audit import write_audit_event
+
+            await write_audit_event(
+                org_id=org_id or "",
+                actor_id=user_id,
+                action="turn.shape.classified",
+                resource_type="assistant",
+                metadata={
+                    "shape": decision.shape,
+                    "usedModel": bool(decision.used_model),
+                    "category": decision.category,
+                    "reason": (decision.reason or "")[:120],
+                    "callSite": call_site,
+                },
+                client=client,
+                settings=settings,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("turn.shape.classified audit skipped", exc_info=True)
+
+    return decision
+
+
+async def _model_turn_shape(
+    message: str,
+    *,
+    org_id: str | None,
+    conversation_summary: str | None,
+) -> ConversationalGateDecision:
+    """The model tier proper — reached only when the heuristic declines."""
     text = (message or "").strip()
     try:
         from app.services.model_router import TaskType, get_model_router

@@ -1281,36 +1281,10 @@ async def _maybe_prepend_mixed_social_ack(
         message,
         settings=settings,
         org_id=org_id,
+        user_id=user_id,
+        client=client,
+        call_site="unified_turn_live_social_ack",
     )
-
-    # Site 8 observability on the LIVE path. The sibling instrument in
-    # agent_intelligence sits after apply_unified_turn_live returns, so it never
-    # sees a LIVE-served turn — and LIVE serves the majority of traffic. This is
-    # the caller that decides whether the mixed social ack fires at all.
-    if user_id:
-        try:
-            from app.workflows.audit import write_audit_event
-
-            await write_audit_event(
-                org_id=org_id,
-                actor_id=user_id,
-                action="turn.shape.classified",
-                resource_type="assistant",
-                metadata={
-                    "shape": turn_shape.shape,
-                    "usedModel": bool(turn_shape.used_model),
-                    "category": turn_shape.category,
-                    "reason": (turn_shape.reason or "")[:120],
-                    "callSite": "unified_turn_live_social_ack",
-                    "ackEligible": turn_shape.shape == "mixed"
-                    and bool((turn_shape.task_portion or "").strip()),
-                },
-                client=client,
-                settings=settings,
-            )
-        except Exception:  # noqa: BLE001
-            logger.debug("turn.shape.classified audit skipped", exc_info=True)
-
     if turn_shape.shape != "mixed" or not (turn_shape.task_portion or "").strip():
         return text
     # Avoid double-acking when the model already opened with a social beat.

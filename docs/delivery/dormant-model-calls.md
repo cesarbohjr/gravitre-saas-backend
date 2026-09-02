@@ -1270,3 +1270,43 @@ produce is `conversational` or `mixed`.
   `actor_id=None` class of bug is now blocked by
   `backend/tests/test_audit_instruments_have_real_actor.py`.
 - Live proof: **PENDING** deploy.
+
+### CORRECTION to the 71.9% reach figure above
+
+The 71.9% was measured one layer too low and should not be read as production
+reach. `probe_turn_gate_reach.py` ran the real heuristic over real user messages
+and found 719/1000 defer past it — but that measures what *would* happen if the
+gate ran on every turn. It does not run on every turn.
+
+`classify_turn_shape` has exactly two callers:
+
+- `agent_intelligence.py:2181` — `apply_unified_turn_live` returns before this
+  line, and LIVE serves the majority of traffic.
+- `_maybe_prepend_mixed_social_ack` — reached on 3 of the 9 `live_served = True`
+  paths inside `apply_unified_turn_live`.
+
+Evidence: a 6-turn live probe at `f7b25d08` and again at `b3a429f8` produced
+**zero** `turn.shape.classified` events while 7 `unified_turn.live.completed`
+rows confirmed every turn was LIVE-served. The gate did not run on any of them.
+
+What 71.9% does honestly describe: of real user messages, the share whose shape
+the heuristic cannot decide alone. It is an upper bound on the model tier's share
+of gate invocations, not a share of turns.
+
+### Third "one layer too low" — this one in the instrument, not the fix
+
+Worth recording as its own instance, since the user asked these be flagged
+explicitly. The first two were fixes aimed at a symptom layer. This one is
+different and arguably more dangerous: the *fix* was correct and live the whole
+time, while the *instrument* measuring it was unreachable.
+
+The replies in the `f7b25d08` probe run showed the gate plainly working —
+`"Glad it clicked."`, `"That's a reasonable place to pause."`, and a prepended
+`"Hey — on it."` social ack — at the same moment the instrument reported zero
+events. Read without the replies, that run looks exactly like the earlier
+zero-event reachability findings, and would have been recorded as one.
+
+Resolution: the event now lives inside `classify_turn_shape` itself with
+`call_site` passed by the caller, so it cannot be misplaced relative to the call
+it measures. Real reach will be read from production traffic on this instrument
+rather than inferred.

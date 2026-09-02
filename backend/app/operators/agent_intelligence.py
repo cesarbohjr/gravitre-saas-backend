@@ -2185,34 +2185,10 @@ class AgentIntelligence:
             conversation_summary=" | ".join(
                 str(x) for x in list((task_state or {}).get("recent_user_messages") or [])[-3:]
             ),
+            user_id=user_id,
+            client=client,
+            call_site="agent_intelligence_classical",
         )
-        # Site 8 observability. This gate failed closed to task_shaped, so a dormant
-        # call and a real "task_shaped" verdict were indistinguishable from outside.
-        # usedModel separates them; shape/category show what the model actually
-        # decided on the 71.9% of turns the heuristic declines.
-        try:
-            await write_audit_event(
-                org_id=org_id,
-                actor_id=user_id,
-                action="turn.shape.classified",
-                resource_type="assistant",
-                resource_id=message_id,
-                metadata={
-                    "shape": turn_shape.shape,
-                    "usedModel": bool(turn_shape.used_model),
-                    "category": turn_shape.category,
-                    "reason": (turn_shape.reason or "")[:120],
-                    "liveEnabled": live_enabled,
-                    "pendingFamilyActive": bool(pending_family_active),
-                    "modeKey": mode_key,
-                    "callSite": "agent_intelligence_classical",
-                },
-                client=client,
-                settings=active_settings,
-            )
-        except Exception:  # noqa: BLE001
-            logger.debug("turn.shape.classified audit skipped", exc_info=True)
-
         if (
             not live_enabled
             and should_offer_conversational_path(turn_shape, has_pending=pending_family_active)
