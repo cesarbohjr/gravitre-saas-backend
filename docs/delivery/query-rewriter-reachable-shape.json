@@ -1,58 +1,91 @@
 {
-  "deployed_git_sha": "5f2b00143c16c0c418c74f1d0c3b304dbc807fcc",
-  "captured_at": "2026-09-02T06:56:09.725364+00:00",
+  "deployed_git_sha": "b03def5cf1751a748565fbcf97ccf0d51bab0548",
+  "captured_at": "2026-09-02T08:29:13.700749+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "verdict": "PASS",
-  "note": "1/4 shapes reached the rewriter and 1/1 events recorded modelRan=true, so the call genuinely executes in production; 1 rewrote the query",
+  "note": "3/4 shapes reached the rewriter and 3/3 events recorded modelRan=true, so the call genuinely executes in production; 3 rewrote the query",
   "shapes": [
     {
       "label": "entity_then_tool_lookup",
       "mode": "standard",
-      "conversation_id": "a560c7d9-2f1e-4d73-930f-7f19020f64c3",
+      "conversation_id": "ac12c2b4-0c8d-42b5-9c43-1a6f7952a9d5",
       "setup": "Acme Corp is our largest mid-market account and their contract is up soon.",
       "followup": "look up their open deals in HubSpot",
       "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first.",
       "unified_completed": 2,
-      "unified_fallthrough": 0,
-      "fallthrough_reasons": [],
-      "rewrite_events": [],
-      "reached_rewriter": false
-    },
-    {
-      "label": "entity_then_tool_list",
-      "mode": "standard",
-      "conversation_id": "140636c1-8dcb-4049-97a7-d79dd499bc6e",
-      "setup": "We have been talking about Globex Industries as a renewal risk this quarter.",
-      "followup": "pull their recent deals from HubSpot",
-      "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first.",
-      "unified_completed": 2,
-      "unified_fallthrough": 0,
-      "fallthrough_reasons": [],
-      "rewrite_events": [],
-      "reached_rewriter": false
-    },
-    {
-      "label": "person_then_tool_search",
-      "mode": "standard",
-      "conversation_id": "c7ea8be5-6bec-4bfd-9936-5523354e8d90",
-      "setup": "Dana Whitfield is the main contact we have been dealing with at that account.",
-      "followup": "search for her contact record in HubSpot",
-      "assistant": "I found no HubSpot contact record for Dana Whitfield.\n\nSource: HubSpot contact search returned 0 matches for \u201cDana Whitfield\u201d using the Connected HubSpot connector.",
-      "unified_completed": 1,
       "unified_fallthrough": 1,
       "fallthrough_reasons": [
         "read_tool_classical"
       ],
       "rewrite_events": [
         {
-          "created_at": "2026-09-02T06:54:59.995672+00:00",
+          "created_at": "2026-09-02T08:25:25.33315+00:00",
           "action": "classical.answer_path.reached",
           "metadata": {
             "changed": true,
             "modeKey": "agent",
             "modelRan": true,
             "historyTurns": 2,
-            "refinedChars": 58,
+            "refinedChars": 67,
+            "originalChars": 36,
+            "rewriteAttempted": true
+          }
+        }
+      ],
+      "reached_rewriter": true
+    },
+    {
+      "label": "entity_then_tool_list",
+      "mode": "standard",
+      "conversation_id": "0731e631-b638-468b-932c-ff503d304197",
+      "setup": "We have been talking about Globex Industries as a renewal risk this quarter.",
+      "followup": "pull their recent deals from HubSpot",
+      "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first.",
+      "unified_completed": 3,
+      "unified_fallthrough": 1,
+      "fallthrough_reasons": [
+        "read_tool_classical"
+      ],
+      "rewrite_events": [
+        {
+          "created_at": "2026-09-02T08:26:48.262701+00:00",
+          "action": "classical.answer_path.reached",
+          "metadata": {
+            "changed": true,
+            "modeKey": "agent",
+            "modelRan": true,
+            "historyTurns": 2,
+            "refinedChars": 37,
+            "originalChars": 40,
+            "rewriteAttempted": true
+          }
+        }
+      ],
+      "reached_rewriter": true
+    },
+    {
+      "label": "person_then_tool_search",
+      "mode": "standard",
+      "conversation_id": "8a0b6b1f-323d-440e-8158-699b8c8630bc",
+      "setup": "Dana Whitfield is the main contact we have been dealing with at that account.",
+      "followup": "search for her contact record in HubSpot",
+      "assistant": "I searched HubSpot for \u201cDana Whitfield\u201d and found no matching contact records.\n\nSource: HubSpot contact search returned 0 contacts using the Connected HubSpot connector.",
+      "unified_completed": 2,
+      "unified_fallthrough": 2,
+      "fallthrough_reasons": [
+        "read_tool_classical",
+        "read_tool_classical"
+      ],
+      "rewrite_events": [
+        {
+          "created_at": "2026-09-02T08:27:40.21877+00:00",
+          "action": "classical.answer_path.reached",
+          "metadata": {
+            "changed": true,
+            "modeKey": "agent",
+            "modelRan": true,
+            "historyTurns": 2,
+            "refinedChars": 37,
             "originalChars": 40,
             "rewriteAttempted": true
           }
@@ -63,13 +96,15 @@
     {
       "label": "topic_then_tool_read",
       "mode": "standard",
-      "conversation_id": "d1308cea-f233-4f84-aaad-430a23064df7",
+      "conversation_id": "bf360281-49bb-48a1-ac54-e9ad8495ec1c",
       "setup": "The enterprise onboarding backlog has been the recurring problem all quarter.",
       "followup": "show me the deals related to that in HubSpot",
-      "assistant": "I don\u2019t have enough information yet. What should I search for in HubSpot \u2014 a company, contact, or deal name?",
-      "unified_completed": 2,
-      "unified_fallthrough": 0,
-      "fallthrough_reasons": [],
+      "assistant": "No Executable action matched this request.\nWhat you asked for: **show me the deals related to that in HubSpot**.\n\nHere's what I can do with this integration right now:\n- Get contact\n- Search contacts\n- Get deal\n- Search deals\n- List deals\n- Search companies\n- Get company\n- Search tickets\n\nName the integration action explicitly (e.g. search Apollo companies).",
+      "unified_completed": 1,
+      "unified_fallthrough": 1,
+      "fallthrough_reasons": [
+        "read_tool_classical"
+      ],
       "rewrite_events": [],
       "reached_rewriter": false
     }

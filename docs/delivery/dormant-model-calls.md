@@ -1310,3 +1310,57 @@ Resolution: the event now lives inside `classify_turn_shape` itself with
 `call_site` passed by the caller, so it cannot be misplaced relative to the call
 it measures. Real reach will be read from production traffic on this instrument
 rather than inferred.
+
+### Site 8 final measured state — dormancy FIXED, production reach NEAR ZERO
+
+Four deploys of live-proof attempts (`f7b25d08`, `b3a429f8`, `b03def5c`) settle
+this, and the answer inverts the section above.
+
+**Proven:**
+
+- Dormancy fixed — `docs/delivery/turn-gate-before-after.json`, router entry
+  goes False ? True, verdict `task_shaped` ? `mixed`.
+- 11 regression tests, **11/11 mutations caught after the refactor**.
+
+**Measured, not proven:** production reach. With the instrument inside
+`classify_turn_shape` itself — where it cannot be misplaced relative to the call
+— 12 live turns across two distinct shapes produced **zero** events:
+
+| run | tip | turns | events |
+|---|---|---|---|
+| reflective + task set | `f7b25d08` | 6 | 0 |
+| same, instrument on LIVE social-ack caller | `b3a429f8` | 6 | 0 |
+| same, instrument inside the function | `b03def5c` | 6 | 0 |
+| rewriter-reachable shapes (reached region :2608) | `b03def5c` | 6 | 0 |
+
+The last row is the decisive one. Those turns provably entered the classical
+region at `:2608`, which sits *after* the gate caller at `:2181`. And
+`context.understanding.extracted` fires from the same function with the same
+`user_id`, so a run of `:2181` would have written a row. It did not — therefore
+the fallthrough re-enters `execute_task_streaming` **after** `:2181`, and that
+caller is not reached under current routing either.
+
+That leaves `_maybe_prepend_mixed_social_ack` as the only live caller, reached on
+3 of 9 `live_served` paths, and none of the 12 probe turns took one.
+
+**Honest conclusion.** Site 8 was reported above as the highest-reach site of the
+twelve, on a 71.9% heuristic-deferral figure. Measured reach is near zero under
+current LIVE routing. This is the same shape as the grounding validator: correct
+code that routing does not reach. Note the `"Hey — on it."` prefix seen in the
+probe replies comes from some other social-ack path, not this gate.
+
+**Decision for Cesar, not resolved unilaterally** — same two honest options as
+the grounding validator:
+
+1. Fix the routing gap so the turn-shape gate runs on LIVE-served turns (it is
+   the component that decides conversational vs task-shaped, and LIVE currently
+   decides that some other way), or
+2. Retire the gate and its `mixed` social-ack branch rather than leave a
+   correct-but-unreached component implying conversational routing that is
+   actually happening elsewhere.
+
+### Site 7 upgraded during this work
+
+`docs/delivery/query-rewriter-reachable-shape.json` at `b03def5c`: **3 of 4**
+shapes now reach the rewriter, 3/3 with `modelRan=true` and `changed=true`. The
+earlier "1 of 4" note is superseded.
