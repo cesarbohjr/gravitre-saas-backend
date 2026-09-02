@@ -382,9 +382,18 @@ async def _complete_openai_with_tools(
     kwargs: dict[str, Any] = {
         "model": model,
         "messages": messages,
-        "tools": list(tools),
-        "tool_choice": tool_choice or "auto",
     }
+    # OpenAI rejects tool_choice without tools ("'tool_choice' is only allowed
+    # when 'tools' are specified"), and both callers can legitimately arrive with
+    # an empty list: unified_turn_reasoning_service sets tool_choice="none" for
+    # conversational turns while only attaching tools when it has some, and
+    # react_engine passes `tools if tools else []`. Sending either key with no
+    # tools turned those turns into a 400 that surfaced as an outcome_error
+    # fallthrough. With no tools there is nothing for tool_choice to constrain,
+    # so both keys are omitted rather than sent empty.
+    if tools:
+        kwargs["tools"] = list(tools)
+        kwargs["tool_choice"] = tool_choice or "auto"
     if temperature is not None:
         kwargs["temperature"] = temperature
     resp = await openai_client.chat.completions.create(**kwargs)

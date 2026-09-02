@@ -1,0 +1,68 @@
+{
+  "captured_at": "2026-09-02T18:26:23.145054+00:00",
+  "outcome_error_total": 142,
+  "probe_org_events": 140,
+  "real_org_events": 2,
+  "class_by_source": {
+    "400 invalid tool_choice (API contract bug)": {
+      "probe": 14,
+      "real": 1
+    },
+    "unnarrowed_tool_attach_blocked (internal invariant guard)": {
+      "probe": 119
+    },
+    "429 provider rate limit (environmental)": {
+      "probe": 7
+    },
+    "404 provider": {
+      "real": 1
+    }
+  },
+  "real_events": [
+    {
+      "created_at": "2026-08-14T03:36:54.280577+00:00",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "conversation_id": "6463b649-2fe8-483f-af24-20526b7aa764",
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value for 'tool_choice': 'tool_choice' is only allowed when 'tools' are specified.\", 'type': 'invalid_request_error', 'param': 'tool_choice', 'code': None}}"
+    },
+    {
+      "created_at": "2026-08-12T03:41:56.014298+00:00",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "conversation_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "error": "Error code: 404 - {'error': {'message': 'The model `default` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}"
+    }
+  ],
+  "guard_days": [
+    "2026-08-12",
+    "2026-08-13"
+  ],
+  "tool_choice_days": [
+    "2026-08-12",
+    "2026-08-14",
+    "2026-08-31",
+    "2026-09-01"
+  ],
+  "unanswered_sampled": 6,
+  "unanswered_real": [],
+  "by_day": {
+    "2026-09-01": {
+      "400 invalid tool_choice (API contract bug)": 1
+    },
+    "2026-08-31": {
+      "400 invalid tool_choice (API contract bug)": 6
+    },
+    "2026-08-14": {
+      "400 invalid tool_choice (API contract bug)": 7
+    },
+    "2026-08-13": {
+      "unnarrowed_tool_attach_blocked (internal invariant guard)": 109
+    },
+    "2026-08-12": {
+      "unnarrowed_tool_attach_blocked (internal invariant guard)": 10,
+      "400 invalid tool_choice (API contract bug)": 1,
+      "429 provider rate limit (environmental)": 7,
+      "404 provider": 1
+    }
+  },
+  "verdict": "142 outcome_error turns in 30d, of which 2 are from real customer orgs and 140 from this audit's own probe orgs. 0 real-customer turns had no assistant reply."
+}
