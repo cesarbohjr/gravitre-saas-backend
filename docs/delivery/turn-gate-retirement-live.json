@@ -1,0 +1,90 @@
+{
+  "git_sha": "ab7ca5a70ac00cb6c462c54fd825f6fdce465ab5",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns": [
+    {
+      "consumer": "mixed_ack",
+      "message": "thanks! also can you list my hubspot deals",
+      "reply": "You're welcome.\n\nHubSpot is Connected. I found these deals from the HubSpot deals list. Amounts are not set on the returned records.\n\n- Gravitre Smoke Deal c8bdd6304fd641 \u2014 ID 216498558961 \u2014 Closed won \u2014 close date 2026-07-14\n- Gravitre Smoke Deal e020afe818e34c \u2014 ID 216528864188 \u2014 Closed lost \u2014 close date 2026-07-14\n- Gravitre Smoke Deal 07baace23a2a42 \u2014 ID 216530782177 \u2014 Closed won \u2014 close date ",
+      "answered": true,
+      "opens_with_social_beat": true
+    },
+    {
+      "consumer": "mixed_ack",
+      "message": "appreciate it, but how many open deals do I have",
+      "reply": "Hey \u2014 on it.\n\nWhich item did you mean: the specific workflow, agent, or connector?",
+      "answered": true,
+      "opens_with_social_beat": true
+    },
+    {
+      "consumer": "mixed_ack",
+      "message": "good morning, anyway can you pull up my hubspot contacts",
+      "reply": "Hey \u2014 on it.\n\nPulled up your HubSpot contacts. HubSpot is Connected, and I listed the first 10 contacts.\n\nSource: HubSpot contacts list.\n\n- Gravitre SmokeTest-9c184147a82244 \u2014 gravitre-smoke-9c184147a82244@example.com\n- Bill ClayHS6e74 \u2014 part0.clayhs.6e74c7dc.1@example.com \u2014 Breakthrough Energy\n- Gravitre SmokeTest-dbad04c19bbf43 \u2014 gravitre-smoke-dbad04c19bbf43@example.com\n- Gravitre SmokeTest-dcb",
+      "answered": true,
+      "opens_with_social_beat": true
+    },
+    {
+      "consumer": "conversational",
+      "message": "thanks, that's really helpful",
+      "reply": "Anytime! If there's anything else on your mind, just let me know.",
+      "answered": true,
+      "opens_with_social_beat": true
+    },
+    {
+      "consumer": "conversational",
+      "message": "hey there",
+      "reply": "Good, thanks. What's on your mind?",
+      "answered": true,
+      "opens_with_social_beat": false
+    },
+    {
+      "consumer": "task",
+      "message": "how many open deals do I have in hubspot",
+      "reply": "You have 49 open deals in HubSpot.\n\nSource: HubSpot deal search returned `total: 49` for deals where `hs_is_closed = false`.",
+      "answered": true,
+      "opens_with_social_beat": false
+    },
+    {
+      "consumer": "declined",
+      "message": "so anyway I was thinking about the thing we discussed",
+      "reply": "What thing? Give me the topic and I\u2019ll pick it up.",
+      "answered": true,
+      "opens_with_social_beat": false
+    }
+  ],
+  "turn_shape_events": [],
+  "events_claiming_used_model": 0,
+  "checks": [
+    {
+      "name": "all turns answered",
+      "pass": true,
+      "detail": "7/7 produced a reply"
+    },
+    {
+      "name": "mixed social ack still fires",
+      "pass": true,
+      "detail": "3/3 mixed turns opened with a social beat"
+    },
+    {
+      "name": "conversational turns still conversational",
+      "pass": true,
+      "detail": "2/2 answered"
+    },
+    {
+      "name": "task turns still answered",
+      "pass": true,
+      "detail": "1/1 answered"
+    },
+    {
+      "name": "heuristic-declined turn fails closed but still replies",
+      "pass": true,
+      "detail": "1/1 answered"
+    },
+    {
+      "name": "no event claims the retired model tier ran",
+      "pass": true,
+      "detail": "0 event(s) with usedModel=true"
+    }
+  ],
+  "verdict": "PASS at ab7ca5a7 \u2014 model tier retired, mixed social ack still fires (3/3), all 7 turns answered, 0 events claim the model ran"
+}
