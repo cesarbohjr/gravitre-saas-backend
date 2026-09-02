@@ -1364,3 +1364,180 @@ the grounding validator:
 `docs/delivery/query-rewriter-reachable-shape.json` at `b03def5c`: **3 of 4**
 shapes now reach the rewriter, 3/3 with `modelRan=true` and `changed=true`. The
 earlier "1 of 4" note is superseded.
+
+## Site 11 `clarification_engine.py:769` ? LIVE PASS at `301a64e1` (last of the twelve)
+
+`_polish_question` called `get_model_router(self.settings)`, raised `TypeError`
+on every invocation, and the handler swallowed it. So it always returned `None`,
+`generate_clarification_question` fell back to `polished or question`, and every
+clarifying question the platform asked shipped as its **raw template**.
+
+Why nobody noticed: the templates are legitimate, readable questions. `"I can
+help with {action}. {specific_question}"` renders as a perfectly serviceable
+clarification. The degradation was tone, not correctness ? which is exactly the
+class of silent failure this audit was opened to find.
+
+### Proof without an instrument
+
+This is the one site of the twelve that needed no audit event, which matters
+after three separate instrument-placement misses. The polished question **is**
+the user-visible reply, so the reply text is the evidence, and the template
+strings are the discriminator:
+
+| state | user receives |
+|---|---|
+| dormant | the template **verbatim** |
+| fixed | one natural question, rewritten |
+
+`scripts/verify-clarification-polish-live.py` scores three outcomes rather than
+two, so a turn that never triggered clarification cannot be mistaken for a pass.
+`dialogue_mode=clarify` in the SSE metadata (`agent_intelligence.py:2896`)
+separates "did not trigger" from "triggered and unpolished".
+
+**Evidence pointers** ? tip `301a64e1`, org `f07e57c0-1501-4000-8000-c04e57a00001`:
+
+- conversation `3ffeda10-0e66-44d8-88db-8add63598634`, `dialogue_mode=clarify`,
+  reply `"I need the target first. Which Gmail messages or thread should I archive?"`
+- conversation `3a222797-170f-4d39-a6a2-053055bf683a`, `dialogue_mode=clarify`,
+  reply `"I need the actual task. What should I do for the client?"`
+
+Neither contains any of the four verbatim template markers. The template for
+that trigger would have read `"I can help with archive. Could you share the
+target and any constraints?"`.
+
+2 of 4 scenarios triggered clarification; both were rewritten, 0 verbatim. The
+two that did not trigger are reported INCONCLUSIVE, not rounded up.
+
+`connector_unavailable` is deliberately excluded from the probe:
+`agent_intelligence.py:2866` overrides the question with `shaped["error"]` on
+that branch, so the polish is discarded there and the branch would report a
+false FAIL.
+
+### Local proof
+
+- 8 regression tests (`tests/services/test_clarification_polish_reaches_model.py`)
+- **9/9 mutations caught** (`backend/scripts/scratch_mutate_clarification_polish.py`)
+
+One mutation initially survived, and it was a blind test of my own: the
+high-risk-confirmation guard test asserted from *inside* the fake router, but
+`_polish_question` catches bare `Exception` and `AssertionError` is an
+`Exception`, so the raise was swallowed and the template returned anyway ? the
+test passed with the guard removed. It now counts calls and asserts outside the
+handler. Same failure class this program has found repeatedly, in the test
+written to catch it.
+
+### All twelve closed ? `KNOWN_DORMANT` is empty
+
+`tests/test_no_dormant_model_calls.py` now passes with an **empty** baseline: no
+zero-argument factory is called with arguments anywhere in `app/`. Any future
+entry means a fresh dormant call shipped.
+
+## Grounding validator in agent mode ? enabled, measured, reverted (`1e94e644` ? `301a64e1`)
+
+Cesar's decision was to include agent mode, defaulting toward inclusion on
+safety grounds, with real latency measured before making it final. It was
+enabled, measured on the deployed tip, and reverted the same day, because the
+measurement was decisive against it.
+
+### The gap is worse than "off for agent mode"
+
+`resolve_effective_intelligence_mode` upgrades **both** `standard` and
+`reasoning` to `agent` whenever a connector is connected, and leaves `fast` as
+`fast`. So a connector-connected org can only ever reach `{fast, agent}`, and
+the default validation set is `{standard, reasoning}`. The intersection is
+**empty**: grounding validation is structurally unreachable for every org with a
+connector, not merely disabled for one mode.
+
+Neither function is wrong alone, which is why this survived. A test asserting
+the default set would have looked correct; only composing the two exposes it.
+`tests/services/test_grounding_validation_reaches_real_orgs.py` pins the
+composition for that reason.
+
+### What the measurement showed
+
+`docs/delivery/grounding-validator-latency.json`, 3 agent-mode turns on the
+classical answer path at `1e94e644`. `ai_pipeline_latency` held exactly one
+`validation` row in 30 days, at 0ms, so there was no history to read ? the gate
+had made the validator unreachable.
+
+| metric | measured |
+|---|---|
+| added latency | **p50 9309ms, p95 10131ms** (generation stage p50 is 3123ms) |
+| answers replaced | **3 of 3** |
+| fell through to `SAFE_FALLBACK` | 1 of 3 ? a dead end |
+
+All three failed initial validation and were regenerated; two passed on the
+second pass, one did not. The ~9?10s is two validation calls plus a
+regeneration.
+
+Evidence pointer: `answer.grounding.validated` @ `2026-09-02T09:24:23Z`,
+`modeKey=agent`, `durationMs=8075`, `sources=5`, `answerReplaced=true`,
+`isValid=false`, issues including `regeneration_failed`.
+
+### Why it fails, and why it is not a tuning problem
+
+The rejected claim was `"No HubSpot contact record found for Dana Whitfield"` ?
+legitimately derived from a live HubSpot search, judged against five knowledge
+snippets that merely *mention* HubSpot and Dana. The validator was reasoning
+correctly and reaching the wrong conclusion, because it was given the wrong
+context to judge against.
+
+Agent mode is precisely the mode where answers come from **tools** while RAG
+chunks are incidentally present. This validator only knows how to compare an
+answer against retrieved context; it has no notion of tool-derived grounding.
+No threshold or prompt change fixes that.
+
+### Fourth "one layer too low" ? and mine
+
+The `has_context` guard I added covers `rag_sources == []`. The real failure
+mode is `rag_sources` **present and irrelevant** to a tool-derived answer. I
+guarded the empty case, shipped, and the measurement found the populated case
+one layer up. Same pattern as the previous three: the guard was correct and left
+the defect live.
+
+### What was kept
+
+The revert is only the mode flag. Retained because they are improvements
+regardless:
+
+- the `has_context` guard ? a no-context turn can no longer reach `SAFE_FALLBACK`
+- `skipReason=no_retrieved_context` instrumentation, so the skip rate is
+  measurable rather than assumed
+- tests pinning both the exclusion and the coverage gap, so re-enabling sends
+  the next reader to the measurement rather than to a merge conflict
+
+### Still open for Cesar
+
+The coverage gap is real, documented, and **not closed**: connector-connected
+orgs get no grounding validation by default. Closing it needs a tool-aware
+validator that can judge a tool-derived answer against its tool results, not a
+config flag. `accuracy_priority` remains a genuine opt-in today, at the measured
+~9s cost.
+
+## Connector health audit gap ? closed at `1e94e644`
+
+`connector.auth.failed` and `connector.connected` passed `actor_id=None`, which
+`write_audit_event` silently drops (`NOT NULL` with an FK to users). A connector
+dropping into auth failure therefore left **no audit trail at all**, while the
+code read as though it recorded one. Found by the AST guard written after the
+`actor_id=None` discovery, in code nobody was auditing.
+
+`resolve_connector_audit_actor` assigns a real, named actor:
+
+1. `connectors.created_by` ? the person who connected it, and the person whose
+   reconnect is needed. Populated for 6 of 19 status-changeable production
+   connectors.
+2. the org's `owner`, then `admin`, from `organization_members` ? covers the
+   remaining 13, and is the right escalation target for a connector with no
+   recorded creator. Every org that actually holds connectors resolves to a real
+   owner (`backend/scripts/scratch_connector_actor_coverage.py`,
+   `scratch_org_owner_lookup.py`).
+
+When neither resolves it logs `connector_health_audit_no_actor` and skips,
+rather than writing a row that would be discarded silently.
+
+`KNOWN_NONE_ACTOR` in `tests/test_audit_instruments_have_real_actor.py` is now
+**empty**. 14 tests cover the chain, including the cache (a sweep touches many
+connectors per org) and the no-actor skip. One pre-existing health-monitor test
+was upgraded rather than merely unbroken: its fixture had no `created_by`, so it
+now pins the real actor.

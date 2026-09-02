@@ -1,0 +1,52 @@
+{
+  "git_sha": "301a64e158b653a9df156bd93b3ceadd857a86d8",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "template_markers": [
+    "Could you share the target and any constraints?",
+    "Could you share that?",
+    "did you mean \u2014",
+    "Would you like to connect it first?"
+  ],
+  "scenarios": [
+    {
+      "label": "update_no_target",
+      "conversation_id": "2ecab92f-ac70-48de-bb0c-02efc718df8d",
+      "message": "Can you update it for me?",
+      "assistant": "I can, but I need the record and the fields to change.",
+      "clarify_dialogue_mode": false,
+      "verbatim_template_markers": [],
+      "verdict": "INCONCLUSIVE \u2014 clarification did not trigger"
+    },
+    {
+      "label": "send_no_recipient",
+      "conversation_id": "c2f3ff3a-7fcc-47a8-b67a-6bec78a7f8f6",
+      "message": "Please send that over.",
+      "assistant": "I need the recipient and what \u201cthat\u201d is before I can send it.",
+      "clarify_dialogue_mode": false,
+      "verbatim_template_markers": [],
+      "verdict": "INCONCLUSIVE \u2014 clarification did not trigger"
+    },
+    {
+      "label": "archive_no_scope",
+      "conversation_id": "3ffeda10-0e66-44d8-88db-8add63598634",
+      "message": "Go ahead and archive those.",
+      "assistant": "I need the target first. Which Gmail messages or thread should I archive?",
+      "clarify_dialogue_mode": true,
+      "verbatim_template_markers": [],
+      "verdict": "PASS \u2014 clarification triggered and was rewritten"
+    },
+    {
+      "label": "vague_action_request",
+      "conversation_id": "3a222797-170f-4d39-a6a2-053055bf683a",
+      "message": "I need you to handle the thing for the client.",
+      "assistant": "I need the actual task. What should I do for the client?",
+      "clarify_dialogue_mode": true,
+      "verbatim_template_markers": [],
+      "verdict": "PASS \u2014 clarification triggered and was rewritten"
+    }
+  ],
+  "triggered": 2,
+  "rewritten": 2,
+  "verbatim": 0,
+  "verdict": "PASS \u2014 2 of 2 triggered clarifications were rewritten rather than delivered as the verbatim template, so _polish_question genuinely reaches the model in production"
+}
