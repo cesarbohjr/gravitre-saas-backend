@@ -69,28 +69,91 @@ silently dropped to the classical path.
 **This is why the WATCH label was right and "closed on no recurrence" would have
 been wrong.** Silence was absence of traffic, not absence of a defect.
 
+### Instance 3 — `_stable_tool_list(list(visible or []))`, never fired
+
+Found 2026-09-02 by `scripts/scan_narrowed_tools_strips.py`, written to answer
+the question "is there a third one?"
+
+`_stable_tool_list` has its own preserve-branch:
+
+```python
+if isinstance(tools, NarrowedTools) or getattr(tools, "gravitre_narrowed", False):
+    return mark_narrowed(...)
+```
+
+but the caller wrapped the argument in `list()` first, so that branch could
+never see a `NarrowedTools` and was **dead code**. `visible` came back
+unnarrowed. It never reached the guard only because both downstream branches
+(`apply_progressive_disclosure` and `mark_narrowed`) re-mark unconditionally —
+i.e. it was harmless by luck, and a third branch would have broken it.
+
+Feeding a stripped value to a function that exists to preserve the marker is
+self-defeating in a way nothing would report, so the scanner gives it its own
+verdict, `BLINDS_PRESERVER`.
+
+### Instance 4 — `tools=list(kwargs.get("tools") or [])`, fixed 2026-08-11
+
+Found while checking whether the 8 `complete_with_tools` events could have come
+from the ReAct path instead. Commit `ae2ec35b` ("Fix NarrowedTools regression and
+complete multi-provider live smoke", 2026-08-11) had already repaired exactly
+this shape in the provider dispatch:
+
+```diff
+-            tools=list(kwargs.get("tools") or []),
++            tools=kwargs.get("tools") or [],
+```
+
+Predates the burst and is not a cause of it, but it is the same mistake and it
+matters for the count: this is not a one-off, it is a repeated pattern.
+
 ### The underlying trap
 
 `NarrowedTools.as_openai_tools()` — the *sanctioned* helper for producing
 provider payloads — returned a plain list. The one method whose entire job is
 this conversion discarded the proof, so every correct caller was set up to fail.
-That is the real design fault behind both instances.
+That is the real design fault behind all four instances.
 
-## Fix
+## Fix — at the source, not per call site
+
+The first pass patched the two known call sites individually. That was the wrong
+level: it leaves the trap in place for the next caller. Corrected 2026-09-02 on
+Cesar's instruction.
 
 | file | change |
 |---|---|
 | `narrowed_tools.py` | `as_openai_tools()` returns `NarrowedTools`, preserving `stats` and `source`. Still strips provider-illegal keys; serialises identically on the wire. |
-| `unified_turn_reasoning_service.py` | Payload conversion preserves the marker (instance 2 fixed). |
-| `unified_turn_reasoning_service.py` | Guard moved to run **before** the conversion. |
+| `narrowed_tools.py` | **New `openai_tools_payload(tools, *, where)`** — the single sanctioned conversion. Asserts and converts in one call, so a caller cannot get one without the other. |
+| `unified_turn_reasoning_service.py` | Attach site now calls `openai_tools_payload` instead of hand-rolling the comprehension (instance 2). |
+| `unified_turn_reasoning_service.py` | `_stable_tool_list(visible or [])`, no `list()` wrapper (instance 3). |
 | `unified_turn_reasoning_service.py` | Unreachable `else` arm no longer strips (defensive; see caveats). |
 
-### Ordering matters
+### Why a single entry point rather than three correct call sites
 
-The conversion now *carries proof forward*, so it may only run once the guard
-has established that the proof is real. Reversed, it would launder an unnarrowed
-list into a narrowed-looking one and make the invariant decorative. A structural
-test pins the order, and mutation M3 confirms reversing it is caught.
+Ordering matters: the conversion carries proof forward, so it may only run once
+the guard has established the proof is real. Reversed, it would launder an
+unnarrowed list into a narrowed-looking one and make the invariant decorative.
+
+Leaving that ordering to each call site means getting it right *everywhere*, and
+it was got wrong twice one line apart. `openai_tools_payload` makes the ordering
+a property of the helper, so it cannot be got wrong at a call site at all.
+
+What remains possible is bypassing the helper entirely — which is what the CI
+scan covers.
+
+### What cannot be fixed in code
+
+`list(x)` returning a plain list is Python semantics; a `list` subclass cannot
+override it, and no amount of API design prevents a future caller writing a bare
+comprehension. So the second half of the fix is detection, not prevention:
+`scripts/scan_narrowed_tools_strips.py`, enforced in CI by
+`backend/tests/test_no_narrowed_tools_strips.py`.
+
+The scan is intraprocedural and name-based — that is its honest bound. It tracks
+names assigned from a known narrowing producer within one function and reports
+rebuilds, classified as `ATTACH` (reaches a model attach site),
+`BLINDS_PRESERVER` (defeats a preserve-branch), `REMARKED` (safe) or `MEASURE`
+(sizing only). It does not follow values across function boundaries or through
+containers. Current state: 0 ATTACH, 0 BLINDS_PRESERVER across 966 files.
 
 ## Why this went undetected for 109 events
 
@@ -106,21 +169,23 @@ the real function and inspects what reaches the provider dispatch.
 
 ## Verification
 
-`python scripts/mutate_narrowed_tools_roundtrip.py` — **5 of 5 mutations caught**
+`python scripts/mutate_narrowed_tools_roundtrip.py` — **6 of 6 mutations caught**
 (was 4 of 5 before the end-to-end harness existed):
 
 | mutation | caught by |
 |---|---|
 | M1 `as_openai_tools` returns a plain list (the trap) | round-trip tests |
-| M2 payload conversion strips the marker (instance 2) | round-trip + provider tests |
-| M3 guard moved after the conversion (laundering) | structural order test |
+| M2 attach site hand-rolls the conversion (instance 2) | round-trip + provider tests |
+| M3 `openai_tools_payload` converts without checking (laundering) | guard tests |
 | M4 preserving branch removed (**the actual 08-13 defect**) | end-to-end harness |
 | M5 guard downgraded to a no-op (the invariant itself) | guard tests |
+| M6 strip before a preserver (instance 3) | CI scan test |
 
-Suites: `2985 passed`, 4 pre-existing failures unrelated to this change
-(`test_agent_memory_service`, `test_connector_output_contract` ×2,
-`test_workspace_memory_and_metrics`) — confirmed pre-existing by re-running them
-with these source changes stashed.
+Full backend suite: `5052 passed`, 17 failures. All 17 confirmed **not caused by
+this change**: 16 still fail with these source changes stashed, and the 17th
+(`test_schedule_write_success_verification_returns_immediately`) is a timing
+assertion that flaked under an 11-minute full-suite run and passes 3/3 in
+isolation with the changes applied.
 
 M4 was initially written unfaithfully: it mutated the `else` arm, which never
 executes because `attach_tools` is always a `NarrowedTools`. Rewritten to remove
@@ -135,12 +200,69 @@ Deliberately **not** labelled PASS.
 - **Instance 1: fixed in production since 2026-08-13.** Supporting evidence is
   the absence of events since, which is weak on its own but corroborated by the
   commit that repaired the exact expression on the exact day.
-- **Instance 2: fixed locally, mutation-proven, NOT production-verified.**
-  Cannot be proven live from prod telemetry, because prod does not route unified
-  turns to non-OpenAI providers, which is precisely why it stayed dormant. A
-  genuine prod PASS requires a real Anthropic- or Gemini-backed tool-carrying
-  turn. Until then this is **PARTIAL**.
-- **Regression coverage: closed**, mutation-proven at 5/5.
+- **Instance 2: fixed and deployed, mutation-proven, still PARTIAL on live
+  evidence.** See the section below for exactly what blocks a PASS.
+- **Instances 3 and 4: no production events, and none expected.** Instance 3
+  never reached the guard (both downstream branches re-mark); instance 4 was
+  fixed before the burst. Neither is claimed as a live finding.
+- **Regression coverage: closed**, mutation-proven at 6/6, plus a standing CI
+  scan over 966 files.
+
+## Instance 2: what a real live PASS actually requires
+
+Attempted 2026-09-02 per Cesar's instruction to stop leaving it PARTIAL. Two
+facts changed the plan, both worth recording.
+
+**1. Prod already runs the fix.** `GET https://api.gravitre.app/health` reports
+`git_sha: 7a0ab8d4`, the fix commit — Railway auto-deploys from `main`. So the
+"prove it fires today" half can no longer be done against prod as it stands.
+Doing it would mean **deliberately deploying the known defect to production** to
+re-open the window.
+
+**2. No model-provider keys in this environment.** `provider_tools_configured`
+reports `openai=False, anthropic=False, gemini=False` locally (booleans only; no
+secret material was read). The route used by the earlier accepted multi-provider
+evidence — a local process against prod Supabase and real provider APIs, as in
+`scripts/smoke-multi-provider-tool-live.py` — therefore cannot run here. Supabase
+service access *is* present, so the isolated-org scaffolding works; only the
+model calls are blocked.
+
+`scripts/probe-unnarrowed-nonopenai-live.py` is written and ready; it currently
+returns `CANNOT_RUN / anthropic_not_configured` and that result is recorded in
+`docs/delivery/unnarrowed-nonopenai-live.json`.
+
+### Safety assessment, as requested
+
+Running one real Anthropic tool-carrying unified turn is **safe and genuinely
+bounded**, on four independent grounds:
+
+1. `run_unified_turn_shadow` makes one model call and **does not execute tools**
+   (its own docstring). No connector write can occur by construction.
+2. It runs in the isolated conversation org, which `conversation_write_guard`
+   structurally prevents from ever being a customer org or Cesar's workspace.
+3. The model is passed per-call. Prod routing, prod config and every
+   customer-reachable agent are untouched.
+4. The probe asserts the OpenAI tool path is **not** taken, so a pass cannot be
+   manufactured by silently falling back to OpenAI.
+
+The risk is not in running the probe. It is in what the "before" half now costs.
+
+### The remaining choice
+
+| Route | Gets a real "fires today"? | Cost |
+|---|---|---|
+| Provider key available to run the probe out-of-band | Yes — pre-fix and post-fix, both real | None to prod; needs an Anthropic (or Gemini) key |
+| Deploy pre-fix code to prod, probe, redeploy | Yes, end-to-end through Railway | **Deliberate production regression window**, even if on a path with no customer traffic |
+| Post-fix only, through prod HTTP | No — only proves clean | None; leaves "fires today" resting on the 8 historical events |
+
+Not decided unilaterally: option 2 means shipping a known defect to production,
+which is a call for Cesar, not for the agent. Recorded here rather than quietly
+downgraded.
+
+Worth stating plainly: the 8 events of 2026-08-12/13 at
+`provider_tool_router.complete_with_tools` **are** real production evidence that
+this defect fired on this path. What is missing is a *fresh* reproduction, not
+proof that it was ever real.
 
 ## Caveats
 

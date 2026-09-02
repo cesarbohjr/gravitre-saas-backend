@@ -1659,35 +1659,80 @@ live proof: "no event claims the model ran" passed with **zero events of any
 kind**, so it proved nothing. It is recorded as PASS-but-weightless in
 `docs/delivery/turn-gate-retirement-live.json` rather than counted as evidence.
 
-### Class C: silence mistaken for health (added 2026-09-02)
+## Class C: silence mistaken for health
 
-Closing the `unnarrowed_tool_attach_blocked` watch item exposed a class the
-audit had not named, and one this program had already reasoned its way into
-once. Full trace in `docs/delivery/unnarrowed-tool-attach-rootcause.md`.
+**Third named failure class of this program, permanent status, same standing as
+"one layer too low" (Class A) and "broken instrument" (Class B).** Added
+2026-09-02 on Cesar's instruction after closing the
+`unnarrowed_tool_attach_blocked` watch item. Full trace in
+`docs/delivery/unnarrowed-tool-attach-rootcause.md`.
+
+Where Class A is a fix in the wrong place and Class B is an instrument that
+lies, Class C is **an absence of signal read as evidence of health**. It is the
+most seductive of the three: doing nothing is always the cheapest option, and a
+quiet dashboard always looks like success.
+
+### The instance that named it
 
 | Aspect | Detail |
 |---|---|
-| The reasoning | 119 events, stopped three weeks ago, never touched a real org, so not worth chasing |
+| The signal | 119 events over two days, then nothing for three weeks |
+| The reasoning | Stopped on its own, never touched a real org, so not worth chasing |
 | Why it failed | The burst had **two** causes. One was genuinely fixed on the day the events stopped (`65161f90`). The other had merely stopped being **exercised**: it only fires for non-OpenAI providers, and prod routes unified turns to OpenAI |
-| Cost of the error | A live defect would have sat dormant until the first Anthropic or Gemini tool-carrying turn, then silently dropped those turns to the classical path |
+| Cost had it stood | A live defect sitting dormant until the first Anthropic or Gemini tool-carrying turn, then silently dropping those turns to the classical path |
 
-Two rules, both cheap:
+### The rule
 
 > **"Has not recurred" is not a root cause.** It cannot be distinguished from
 > "has not been exercised" without identifying the mechanism. A defect on a
 > conditionally-reached path goes quiet when the condition stops holding, and
 > looks exactly like a fix.
 
-> **Proof carried as an attribute on a mutable value is lost by ordinary
-> copying, silently.** `list(x)`, comprehensions and slices all strip it.
-> Guarding the invariant is not enough ? the guard must be exercised end-to-end
-> through the real call path, or the plumbing between guard and provider is
-> unobserved. Mutation testing showed the pre-fix defect could be reintroduced
-> with the entire suite green.
+Diagnostic question, cheap to ask every time: *what would have to be true for
+this to fire, and is that still true?* If nobody can answer, the silence is
+uninterpreted, not clean.
 
-This also sharpens the "one layer too low" lesson. Both instances here were
-correct fixes applied one line too high: `65161f90` repaired the round-trip and
-left the conversion immediately below it still stripping the marker.
+### Why this class earns permanent status: the mistake recurred four times
+
+The underlying defect is one line of Python repeated across the codebase. The
+narrowing proof is an attribute on a `list` subclass, so `list(x)`, a
+comprehension, a slice and `sorted(x)` all discard it silently.
+
+| # | Site | Resolved | How it was found |
+|---|---|---|---|
+| 1 | `round_tools = list(attach_tools)` | 2026-08-13 `65161f90` | 109 production events |
+| 2 | `kwargs["tools"] = [openai_tool_payload(t) ...]` | 2026-09-02 `7a0ab8d4` | root-cause investigation; had gone quiet **without being fixed** |
+| 3 | `_stable_tool_list(list(visible or []))` | 2026-09-02 | AST scan; had silently killed that function's own preserve-branch |
+| 4 | `tools=list(kwargs.get("tools") or [])` | 2026-08-11 `ae2ec35b` | multi-provider live smoke |
+
+Four occurrences of one mistake is not carelessness, it is a design that invites
+it. Hence a structural response rather than a fourth point-fix:
+
+> **Proof carried as an attribute on a mutable value is lost by ordinary
+> copying, and the loss is silent.** Python cannot prevent this: `list(x)`
+> returning a plain list is language behaviour, not something a subclass can
+> override. The countermeasures are therefore (a) one sanctioned conversion that
+> checks and converts in the same call
+> (`narrowed_tools.openai_tools_payload`), so a caller cannot get one without
+> the other, and (b) a CI scan (`scripts/scan_narrowed_tools_strips.py`,
+> enforced by `backend/tests/test_no_narrowed_tools_strips.py`) that fails on any
+> rebuild reaching an attach site or blinding a preserver.
+
+### Interaction with Class A
+
+Instances 1 and 2 also sharpen "one layer too low": `65161f90` was a correct fix
+applied one line too high, repairing the round-trip and leaving the conversion
+immediately below it still stripping the marker. **Class A and Class C
+compound** - a partial fix silences the remaining half, and that silence then
+reads as success.
+
+### Countermeasure that generalises
+
+Guarding an invariant is not enough. The guard must be **exercised end-to-end
+through the real call path**, or the plumbing between guard and provider is
+unobserved. Mutation testing proved the point: before
+`test_unified_turn_attaches_narrowed_tools.py` existed, the exact defect that
+fired 109 times could be reintroduced with the entire suite green.
 
 ## Standing risk register
 

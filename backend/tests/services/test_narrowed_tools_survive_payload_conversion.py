@@ -130,22 +130,54 @@ def test_guard_is_not_laundered_by_the_new_conversion() -> None:
         assert_tools_narrowed(plain, where="test")
 
 
-def test_unified_turn_asserts_before_converting_the_payload() -> None:
-    """Structural: order matters here and it is easy to reverse by accident."""
+def test_openai_tools_payload_checks_before_it_converts() -> None:
+    """Ordering is guaranteed by the helper, not left to each call site.
+
+    Previously each call site had to remember to assert first. That is the
+    weaker arrangement: it has to be got right everywhere, and it was got wrong
+    twice one line apart. Now the single entry point does both.
+    """
+    from app.services.narrowed_tools import openai_tools_payload
+
+    plain = [dict(TOOL)]
+
+    with pytest.raises(RuntimeError, match="unnarrowed_tool_attach_blocked"):
+        openai_tools_payload(plain, where="test")
+
+
+def test_openai_tools_payload_converts_and_preserves() -> None:
+    from app.services.narrowed_tools import openai_tools_payload
+
+    narrowed = mark_narrowed([TOOL], source="embedding_narrow_tools_for_turn")
+
+    payload = openai_tools_payload(narrowed, where="test")
+
+    assert isinstance(payload, NarrowedTools)
+    assert payload.source == "embedding_narrow_tools_for_turn"
+    assert set(payload[0].keys()) == {"type", "function"}
+
+
+def test_openai_tools_payload_accepts_empty() -> None:
+    from app.services.narrowed_tools import openai_tools_payload
+
+    assert list(openai_tools_payload([], where="test")) == []
+    assert list(openai_tools_payload(None, where="test")) == []
+
+
+def test_unified_turn_uses_the_sanctioned_conversion() -> None:
+    """Structural: the call site must not hand-roll the conversion again."""
     import inspect
 
     from app.services import unified_turn_reasoning_service as svc
 
     src = inspect.getsource(svc.run_unified_turn_shadow)
-    assert_at = src.find('where=f"unified_turn.round_{prog_round}"')
-    convert_at = src.find('kwargs["tools"] = mark_narrowed(')
 
-    assert assert_at != -1, "the round-level guard is gone"
-    assert convert_at != -1, "the marker-preserving conversion is gone"
-    assert assert_at < convert_at, (
-        "the narrowing guard must run BEFORE the payload conversion; the "
-        "conversion carries the proof forward and would otherwise launder an "
-        "unnarrowed list into a narrowed-looking one"
+    assert 'kwargs["tools"] = openai_tools_payload(' in src, (
+        "the attach site must go through openai_tools_payload; hand-rolling the "
+        "conversion is what discarded the proof twice"
+    )
+    assert "[openai_tool_payload(t) for t in round_tools]" not in src, (
+        "hand-rolled payload comprehension is back at the attach site"
     )
 
 

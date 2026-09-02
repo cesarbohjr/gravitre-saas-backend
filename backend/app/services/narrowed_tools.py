@@ -78,3 +78,32 @@ def assert_tools_narrowed(tools: list[dict[str, Any]] | None, *, where: str) -> 
         f"narrow_tools_for_turn / embed_narrow_tools_for_turn (NarrowedTools). "
         f"count={len(tools)}"
     )
+
+
+def openai_tools_payload(
+    tools: list[dict[str, Any]] | None,
+    *,
+    where: str,
+) -> NarrowedTools:
+    """The one sanctioned way to turn narrowed tools into a provider payload.
+
+    Checks and converts in a single call, so a caller cannot get one without the
+    other. Hand-rolling `[openai_tool_payload(t) for t in tools]` produces a
+    plain list and silently discards the narrowing proof -- that is the exact
+    mistake behind the `unnarrowed_tool_attach_blocked` bursts of 2026-08-12/13,
+    made twice, one line apart.
+
+    Ordering is guaranteed here rather than left to the call site: the guard runs
+    before the conversion, because the conversion carries the proof forward and
+    would otherwise launder an unnarrowed list into a narrowed-looking one.
+    """
+    assert_tools_narrowed(tools, where=where)
+    if isinstance(tools, NarrowedTools):
+        return tools.as_openai_tools()
+    # Reachable only for empty input or a duck-typed carrier; both already
+    # satisfied the guard above.
+    return NarrowedTools(
+        [openai_tool_payload(t) for t in (tools or [])],
+        stats=getattr(tools, "stats", None),
+        source=str(getattr(tools, "source", "") or "narrow_tools_for_turn"),
+    )

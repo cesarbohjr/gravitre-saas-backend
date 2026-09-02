@@ -23,18 +23,12 @@ TESTS = [
     "tests/services/test_unified_turn_attaches_narrowed_tools.py",
     "tests/services/test_g5_unnarrowed_tool_attach_guard.py",
     "tests/services/test_provider_tool_router.py",
+    "tests/test_no_narrowed_tools_strips.py",
 ]
 
-CONVERSION = '''                kwargs["tools"] = mark_narrowed(
-                    [openai_tool_payload(t) for t in round_tools],
-                    stats=getattr(round_tools, "stats", None),
-                    source=str(getattr(round_tools, "source", "") or "narrow_tools_for_turn"),
+CONVERSION = '''                kwargs["tools"] = openai_tools_payload(
+                    round_tools, where=f"unified_turn.round_{prog_round}"
                 )'''
-
-ASSERT_LINE = (
-    '            assert_tools_narrowed(round_tools, '
-    'where=f"unified_turn.round_{prog_round}")\n'
-)
 
 MUTATIONS: list[tuple[str, Path, str, str]] = [
     (
@@ -48,16 +42,25 @@ MUTATIONS: list[tuple[str, Path, str, str]] = [
         "        return [openai_tool_payload(t) for t in self]",
     ),
     (
-        "M2: payload conversion strips the marker (instance 2, the unfixed half)",
+        "M2: attach site hand-rolls the conversion again (instance 2)",
         UNIFIED,
         CONVERSION,
         '                kwargs["tools"] = [openai_tool_payload(t) for t in round_tools]',
     ),
     (
-        "M3: guard moved AFTER the conversion (would launder unnarrowed tools)",
+        "M3: openai_tools_payload converts without checking first (laundering)",
+        NARROWED,
+        """    assert_tools_narrowed(tools, where=where)
+    if isinstance(tools, NarrowedTools):
+        return tools.as_openai_tools()""",
+        """    if isinstance(tools, NarrowedTools):
+        return tools.as_openai_tools()""",
+    ),
+    (
+        "M6: strip before a preserver, killing its branch (instance 3, line 559)",
         UNIFIED,
-        ASSERT_LINE,
-        "",
+        "    visible = _stable_tool_list(visible or [])",
+        "    visible = _stable_tool_list(list(visible or []))",
     ),
     (
         # The faithful pre-65161f90 shape: no preserving branch at all, so

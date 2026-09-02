@@ -556,12 +556,21 @@ async def run_unified_turn_shadow(
             "embeddingToolRetrieval": False,
             "embeddingSkippedReason": skip_reason,
         }
-    visible = _stable_tool_list(list(visible or []))
+    # Passed through directly, not as list(visible or []): _stable_tool_list has
+    # its own preserve-branch, and wrapping in list() here strips the marker
+    # before that branch can see it, leaving the branch dead. Third instance of
+    # the same mistake, found by scripts/scan_narrowed_tools_strips.py.
+    visible = _stable_tool_list(visible or [])
     t_after_narrow = time.perf_counter()
 
     # G.5.2 progressive disclosure — stubs + search_catalog_tools (A1/A2).
     # Candidate set stays the narrowed list; full schemas load on demand.
-    from app.services.narrowed_tools import NarrowedTools, assert_tools_narrowed, mark_narrowed
+    from app.services.narrowed_tools import (
+        NarrowedTools,
+        assert_tools_narrowed,
+        mark_narrowed,
+        openai_tools_payload,
+    )
     from app.services.progressive_tool_schemas import (
         SEARCH_CATALOG_TOOLS_NAME,
         apply_progressive_disclosure,
@@ -870,8 +879,6 @@ async def run_unified_turn_shadow(
         progressive_round_ms: list[int] = []
         # Up to 2 rounds: search_catalog_tools may load full schemas then continue.
         for prog_round in range(2):
-            from app.services.narrowed_tools import openai_tool_payload
-
             # Pure conversational / human-moment venting: never attach tools.
             # Empathy-warranting turns must not derail into connector calls (rule 10).
             conversational_no_tools = shape_label == "conversational"
@@ -891,29 +898,18 @@ async def run_unified_turn_shadow(
                 "model": model,
                 "messages": messages,
             }
-            # Guard BEFORE the payload conversion, deliberately. The conversion
-            # below carries the narrowing proof forward, so it may only run once
-            # this assert has established that the proof is real. Reversing the
-            # order would launder an unnarrowed list into a narrowed-looking one
-            # and render the invariant meaningless.
             assert_tools_narrowed(round_tools, where=f"unified_turn.round_{prog_round}")
             # tool_choice is only meaningful alongside tools, and sending it
             # without them is a hard 400 from OpenAI. Conversational turns
             # legitimately have no tools, so the key is set only when there are
             # tools to constrain.
             if round_tools:
-                # Must stay NarrowedTools: on the non-OpenAI provider path this
-                # exact value is handed to complete_with_tools, which asserts
-                # narrowing again. A plain list comprehension here was the
-                # unfixed half of the 2026-08 burst -- the 08-13 repair
-                # (65161f90) restored the round_tools round-trip but left this
-                # conversion stripping the marker, so any Anthropic/Gemini turn
-                # carrying tools would still trip the guard and fall through to
-                # the classical path.
-                kwargs["tools"] = mark_narrowed(
-                    [openai_tool_payload(t) for t in round_tools],
-                    stats=getattr(round_tools, "stats", None),
-                    source=str(getattr(round_tools, "source", "") or "narrow_tools_for_turn"),
+                # openai_tools_payload, not a hand-rolled comprehension: the
+                # payload must stay NarrowedTools because the non-OpenAI path
+                # hands this exact value to complete_with_tools, which asserts
+                # narrowing again.
+                kwargs["tools"] = openai_tools_payload(
+                    round_tools, where=f"unified_turn.round_{prog_round}"
                 )
                 kwargs["tool_choice"] = "none" if conversational_no_tools else "auto"
             if _supports_custom_temperature(model):
