@@ -1,0 +1,62 @@
+{
+  "tip": "1e94e644",
+  "window_hours": 3,
+  "events_total": 3,
+  "validator_ran": 3,
+  "skipped_no_context": 0,
+  "durations_ms": [
+    8075,
+    9309,
+    10131
+  ],
+  "p50_ms": 9309,
+  "p95_ms": 10131,
+  "answers_replaced": 3,
+  "ran_detail": [
+    {
+      "issues": [
+        "The answer makes a claim about a HubSpot contact record status that is not supported by the context. The context mentions HubSpot and Dana Whitfield in snippets, but does not show any HubSpot search result or evidence that a contact record was found or not found.",
+        "The answer introduces the specific conclusion 'No HubSpot contact record found for Dana Whitfield,' which is an unsupported factual claim because the context contains no direct evidence about HubSpot contact existence.",
+        "regeneration_failed"
+      ],
+      "isValid": false,
+      "modeKey": "agent",
+      "confidence": 0.92,
+      "durationMs": 8075,
+      "assessorRan": false,
+      "requiresHuman": true,
+      "answerReplaced": true,
+      "ragSourceCount": 5,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T09:24:23.22786+00:00"
+    },
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.98,
+      "durationMs": 9309,
+      "assessorRan": false,
+      "requiresHuman": false,
+      "answerReplaced": true,
+      "ragSourceCount": 5,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T09:23:17.414578+00:00"
+    },
+    {
+      "issues": [],
+      "isValid": true,
+      "modeKey": "agent",
+      "confidence": 0.97,
+      "durationMs": 10131,
+      "assessorRan": false,
+      "requiresHuman": false,
+      "answerReplaced": true,
+      "ragSourceCount": 5,
+      "confidenceSource": "loaded_model_artifact",
+      "created_at": "2026-09-02T09:22:04.628049+00:00"
+    }
+  ],
+  "skipped_detail": [],
+  "verdict": "MEASURED p50=9309ms p95=10131ms over n=3"
+}

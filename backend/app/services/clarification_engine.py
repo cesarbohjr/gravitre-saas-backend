@@ -766,7 +766,7 @@ class ClarificationEngine:
         try:
             from app.services.model_router import TaskType, get_model_router
 
-            response = await get_model_router(self.settings).complete(
+            response = await get_model_router().complete(
                 task_type=TaskType.CLASSIFICATION,
                 prompt=(
                     "Rewrite as one natural clarifying question. No bullet lists.\n\n"

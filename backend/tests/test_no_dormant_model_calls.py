@@ -77,7 +77,13 @@ def _imported_names(tree: ast.AST) -> set[str]:
 # This list may only SHRINK. A new entry means a fresh dormant call shipped;
 # a stale entry means someone fixed a site without claiming credit, which the
 # test also reports so the baseline cannot silently rot.
-KNOWN_DORMANT = {
+#
+# All twelve sites are now fixed, so the baseline is empty. set() is explicit:
+# bare braces would be an empty dict, which breaks the set-difference below with
+# a TypeError instead of failing usefully.
+KNOWN_DORMANT: set[str] = set()
+
+_FIX_HISTORY = """
     # Fixed 2026-08-31 (site 1+3, atomic — the validator failing open is what
     # made the regeneration TypeError unreachable, so they could not be split):
     #   app/operators/agent_intelligence.py:931
@@ -119,8 +125,11 @@ KNOWN_DORMANT = {
     # 30 days, backend/scripts/probe_turn_gate_reach.py), and the heuristic assigned
     # "mixed" only once in 1000, leaving the mixed social-ack path waiting on a call
     # that never ran.
-    "app/services/clarification_engine.py:769",
-}
+    # Site 11 (clarification_engine.py:769) fixed — the last of the twelve. It
+    # degraded to the raw question template, which is a legitimate question and
+    # reads fine, so every clarifying question the platform asked was unpolished
+    # and nothing ever looked wrong.
+"""
 
 
 def test_no_zero_arg_factory_is_called_with_arguments() -> None:

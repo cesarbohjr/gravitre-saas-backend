@@ -1,6 +1,6 @@
 {
-  "deployed_git_sha": "b03def5cf1751a748565fbcf97ccf0d51bab0548",
-  "captured_at": "2026-09-02T08:29:13.700749+00:00",
+  "deployed_git_sha": "1e94e6441f1b2ad807ffdf5190ff6f8172642eed",
+  "captured_at": "2026-09-02T09:25:23.645143+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "verdict": "PASS",
   "note": "3/4 shapes reached the rewriter and 3/3 events recorded modelRan=true, so the call genuinely executes in production; 3 rewrote the query",
@@ -8,26 +8,26 @@
     {
       "label": "entity_then_tool_lookup",
       "mode": "standard",
-      "conversation_id": "ac12c2b4-0c8d-42b5-9c43-1a6f7952a9d5",
+      "conversation_id": "7edb246e-451e-4098-a74c-8f1375e576d1",
       "setup": "Acme Corp is our largest mid-market account and their contract is up soon.",
       "followup": "look up their open deals in HubSpot",
-      "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first.",
-      "unified_completed": 2,
+      "assistant": "HubSpot is Connected. I found 48 open deals in the HubSpot deal search, but the returned results did not match \u201cAcme Corp.\u201d HubSpot company search also returned 0 companies for \u201cAcme Corp.\u201d\n\nFrom HubSpot:\n- Open deal search returned 48 results.\n- First returned deals are \u201cGravitre Smoke Deal \u2026\u201d records in the `appointmentscheduled` stage.\n- No Acme Corp company record was found by name.\n\nBest next",
+      "unified_completed": 1,
       "unified_fallthrough": 1,
       "fallthrough_reasons": [
         "read_tool_classical"
       ],
       "rewrite_events": [
         {
-          "created_at": "2026-09-02T08:25:25.33315+00:00",
+          "created_at": "2026-09-02T09:21:28.582323+00:00",
           "action": "classical.answer_path.reached",
           "metadata": {
             "changed": true,
             "modeKey": "agent",
             "modelRan": true,
             "historyTurns": 2,
-            "refinedChars": 67,
-            "originalChars": 36,
+            "refinedChars": 31,
+            "originalChars": 35,
             "rewriteAttempted": true
           }
         }
@@ -37,26 +37,26 @@
     {
       "label": "entity_then_tool_list",
       "mode": "standard",
-      "conversation_id": "0731e631-b638-468b-932c-ff503d304197",
+      "conversation_id": "b25065c5-cbbc-4e4b-8777-cb57ab9afe14",
       "setup": "We have been talking about Globex Industries as a renewal risk this quarter.",
       "followup": "pull their recent deals from HubSpot",
-      "assistant": "I need the full schema for `hubspot_deals_search` before I can run it (progressive disclosure: full_schema_not_loaded). Ask me again and I'll load parameters via search_catalog_tools first.",
-      "unified_completed": 3,
+      "assistant": "Pulled recent deals from HubSpot. HubSpot is Connected; the targeted search for \u201cGlobex Industries\u201d did not return a company match, and the deal search was temporarily unavailable, so I listed the 10 most recent deals instead.\n\nSource: HubSpot deals list via connector `hubspot.deals.list`.\n\n- Gravitre Smoke Deal c8bdd6304fd641 \u2014 closedwon \u2014 close date Jul 14, 2026 \u2014 amount not set\n- Gravitre Smoke",
+      "unified_completed": 1,
       "unified_fallthrough": 1,
       "fallthrough_reasons": [
         "read_tool_classical"
       ],
       "rewrite_events": [
         {
-          "created_at": "2026-09-02T08:26:48.262701+00:00",
+          "created_at": "2026-09-02T09:22:47.318183+00:00",
           "action": "classical.answer_path.reached",
           "metadata": {
             "changed": true,
             "modeKey": "agent",
             "modelRan": true,
             "historyTurns": 2,
-            "refinedChars": 37,
-            "originalChars": 40,
+            "refinedChars": 41,
+            "originalChars": 36,
             "rewriteAttempted": true
           }
         }
@@ -66,26 +66,25 @@
     {
       "label": "person_then_tool_search",
       "mode": "standard",
-      "conversation_id": "8a0b6b1f-323d-440e-8158-699b8c8630bc",
+      "conversation_id": "8cea288e-fd87-44de-8afb-61776e659d74",
       "setup": "Dana Whitfield is the main contact we have been dealing with at that account.",
       "followup": "search for her contact record in HubSpot",
-      "assistant": "I searched HubSpot for \u201cDana Whitfield\u201d and found no matching contact records.\n\nSource: HubSpot contact search returned 0 contacts using the Connected HubSpot connector.",
-      "unified_completed": 2,
-      "unified_fallthrough": 2,
+      "assistant": "No HubSpot contact record found for Dana Whitfield.\n\nSource: HubSpot contact search returned 0 contacts for \u201cDana Whitfield\u201d using the Connected HubSpot connector.",
+      "unified_completed": 1,
+      "unified_fallthrough": 1,
       "fallthrough_reasons": [
-        "read_tool_classical",
         "read_tool_classical"
       ],
       "rewrite_events": [
         {
-          "created_at": "2026-09-02T08:27:40.21877+00:00",
+          "created_at": "2026-09-02T09:23:59.018147+00:00",
           "action": "classical.answer_path.reached",
           "metadata": {
             "changed": true,
             "modeKey": "agent",
             "modelRan": true,
             "historyTurns": 2,
-            "refinedChars": 37,
+            "refinedChars": 53,
             "originalChars": 40,
             "rewriteAttempted": true
           }
@@ -96,15 +95,13 @@
     {
       "label": "topic_then_tool_read",
       "mode": "standard",
-      "conversation_id": "bf360281-49bb-48a1-ac54-e9ad8495ec1c",
+      "conversation_id": "e56c8286-9dda-46ad-ac60-fe739dfb9724",
       "setup": "The enterprise onboarding backlog has been the recurring problem all quarter.",
       "followup": "show me the deals related to that in HubSpot",
-      "assistant": "No Executable action matched this request.\nWhat you asked for: **show me the deals related to that in HubSpot**.\n\nHere's what I can do with this integration right now:\n- Get contact\n- Search contacts\n- Get deal\n- Search deals\n- List deals\n- Search companies\n- Get company\n- Search tickets\n\nName the integration action explicitly (e.g. search Apollo companies).",
-      "unified_completed": 1,
-      "unified_fallthrough": 1,
-      "fallthrough_reasons": [
-        "read_tool_classical"
-      ],
+      "assistant": "I can do that, but \u201cthat\u201d isn\u2019t specific enough.\n\nGive me the deal name, company, contact, or a search term, and I\u2019ll pull the HubSpot matches.",
+      "unified_completed": 2,
+      "unified_fallthrough": 0,
+      "fallthrough_reasons": [],
       "rewrite_events": [],
       "reached_rewriter": false
     }

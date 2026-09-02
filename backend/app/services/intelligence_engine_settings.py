@@ -42,13 +42,27 @@ def validation_enabled_for_mode(mode_key: str, settings: IntelligenceEngineSetti
         return mode_key in {"fast", "standard", "reasoning", "agent"}
     if settings.performance_mode == "speed_priority":
         return mode_key in {"reasoning", "agent"}
-    # "agent" belongs in the default set. resolve_effective_intelligence_mode
-    # upgrades BOTH standard and reasoning to agent whenever a connector is
-    # connected, and leaves fast as fast — so a connector-connected org can only
-    # ever reach {fast, agent}. Omitting agent here made grounding validation
-    # structurally unreachable for every org with a connector, which is to say
-    # for real customers, while it stayed enabled for modes they never run in.
-    return mode_key in {"standard", "reasoning", "agent"}
+    # agent is deliberately NOT here, and the reason is measured rather than
+    # assumed. Including it was tried live at 1e94e644 and reverted the same day
+    # (docs/delivery/grounding-validator-latency.json):
+    #
+    #   p50 9309ms / p95 10131ms added, against a generation p50 of 3123ms, and
+    #   3 of 3 agent-mode answers were replaced — one falling through to
+    #   SAFE_FALLBACK, i.e. a dead end.
+    #
+    # The cause is structural, not tuning. agent mode is the mode where answers
+    # come from TOOLS while RAG chunks are incidentally present, so this
+    # validator compares a tool-derived conclusion against unrelated knowledge
+    # chunks and correctly finds it unsupported. It has no notion of
+    # tool-derived grounding, so it cannot judge those turns.
+    #
+    # Note what this exclusion costs, because it is not "validation is on for
+    # most traffic": resolve_effective_intelligence_mode upgrades BOTH standard
+    # and reasoning to agent whenever a connector is connected, and leaves fast
+    # as fast. A connector-connected org can therefore only reach {fast, agent},
+    # so grounding validation is unreachable for every org with a connector.
+    # That gap is real and open — it needs a tool-aware validator, not this flag.
+    return mode_key in {"standard", "reasoning"}
 
 
 async def load_intelligence_engine_settings(
