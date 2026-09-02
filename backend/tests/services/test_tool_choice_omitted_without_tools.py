@@ -164,3 +164,104 @@ async def test_temperature_is_omitted_when_none() -> None:
     )
 
     assert "temperature" not in client.kwargs
+
+
+# --- the STREAMING path, which is where the production 400s actually came from ---
+#
+# Fixing the adapter above was one layer too low. resolve_provider_for_model
+# routes OpenAI models straight to _complete_unified_turn_stream, which never
+# touches provider_tool_router, so gpt-4o-mini kept 400ing at 56b4f1a1 after the
+# adapter fix was already live. These tests cover the path that actually broke.
+
+
+class _StreamCaptor:
+    """Records the streaming request kwargs and yields an empty stream."""
+
+    def __init__(self) -> None:
+        self.kwargs: dict[str, Any] = {}
+        self.chat = self
+        self.completions = self
+
+    async def create(self, **kwargs: Any) -> Any:
+        self.kwargs = kwargs
+
+        async def _agen():
+            if False:  # pragma: no cover - deliberately empty stream
+                yield None
+
+        return _agen()
+
+
+@pytest.mark.asyncio
+async def test_streaming_path_omits_tool_choice_without_tools() -> None:
+    """The real regression: conversational LIVE turns stream with no tools."""
+    from app.services import unified_turn_reasoning_service as uts
+
+    client = _StreamCaptor()
+
+    await uts._complete_unified_turn_stream(
+        client,
+        kwargs={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "thanks, that helped"}],
+            "tool_choice": "none",
+        },
+        wall_start=0.0,
+        model_start=0.0,
+        timeout_s=20.0,
+    )
+
+    assert "tool_choice" not in client.kwargs, (
+        "this is the exact 400 seen on gpt-4o-mini in production: tool_choice "
+        "sent on a conversational turn that attaches no tools"
+    )
+    assert "tools" not in client.kwargs
+    assert client.kwargs["stream"] is True
+
+
+@pytest.mark.asyncio
+async def test_streaming_path_keeps_tool_choice_with_tools() -> None:
+    """Tool-shaped streaming turns must still be able to call tools."""
+    from app.services import unified_turn_reasoning_service as uts
+
+    client = _StreamCaptor()
+
+    await uts._complete_unified_turn_stream(
+        client,
+        kwargs={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "list my deals"}],
+            "tools": [TOOL],
+            "tool_choice": "auto",
+        },
+        wall_start=0.0,
+        model_start=0.0,
+        timeout_s=20.0,
+    )
+
+    assert client.kwargs["tools"] == [TOOL]
+    assert client.kwargs["tool_choice"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_streaming_path_drops_an_empty_tools_list() -> None:
+    """An explicit empty list is the same contract violation as omitting it."""
+    from app.services import unified_turn_reasoning_service as uts
+
+    client = _StreamCaptor()
+
+    await uts._complete_unified_turn_stream(
+        client,
+        kwargs={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "hey"}],
+            "tools": [],
+            "tool_choice": "auto",
+        },
+        wall_start=0.0,
+        model_start=0.0,
+        timeout_s=20.0,
+    )
+
+    assert "tools" not in client.kwargs
+    assert "tool_choice" not in client.kwargs

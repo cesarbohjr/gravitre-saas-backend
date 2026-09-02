@@ -126,6 +126,18 @@ async def _complete_unified_turn_stream(
             "stream": True,
             "stream_options": {"include_usage": True},
         }
+        # OpenAI rejects tool_choice without tools ("'tool_choice' is only
+        # allowed when 'tools' are specified"). Conversational turns set
+        # tool_choice="none" and deliberately attach no tools, which turned every
+        # such turn into a 400 surfacing as an outcome_error fallthrough.
+        #
+        # The guard lives here, at the call that actually issues the request,
+        # rather than only at the kwargs construction site: resolve_provider_for_model
+        # sends OpenAI models straight to this function and never through
+        # provider_tool_router, so fixing that adapter alone left this path broken.
+        if not stream_kwargs.get("tools"):
+            stream_kwargs.pop("tools", None)
+            stream_kwargs.pop("tool_choice", None)
         content_parts: list[str] = []
         tool_acc: dict[int, dict[str, Any]] = {}
         first_token_ms: int | None = None
@@ -872,10 +884,14 @@ async def run_unified_turn_shadow(
             kwargs: dict[str, Any] = {
                 "model": model,
                 "messages": messages,
-                "tool_choice": "none" if conversational_no_tools else "auto",
             }
+            # tool_choice is only meaningful alongside tools, and sending it
+            # without them is a hard 400 from OpenAI. Conversational turns
+            # legitimately have no tools, so the key is set only when there are
+            # tools to constrain.
             if round_tools:
                 kwargs["tools"] = [openai_tool_payload(t) for t in round_tools]
+                kwargs["tool_choice"] = "none" if conversational_no_tools else "auto"
             if _supports_custom_temperature(model):
                 kwargs["temperature"] = 0.2
             assert_tools_narrowed(round_tools, where=f"unified_turn.round_{prog_round}")

@@ -1,0 +1,46 @@
+{
+  "git_sha": "56b4f1a13321a29ffbb6383ce18fb26c1c2b1f98",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns": [
+    {
+      "message": "thanks, that actually helped a lot",
+      "reply": "Got it \u2014 updated to thanks, that actually helped a lot. Continuing with that.\n\nYou\u2019re welcome \u2014 glad it helped.",
+      "answered": true
+    },
+    {
+      "message": "hey there",
+      "reply": "Hey there. What would you like me to do?",
+      "answered": true
+    },
+    {
+      "message": "got it, appreciate it",
+      "reply": "Which item did you mean: the specific workflow, agent, or connector?",
+      "answered": true
+    },
+    {
+      "message": "yeah that makes sense to me",
+      "reply": "Yep.",
+      "answered": true
+    },
+    {
+      "message": "no worries, take your time",
+      "reply": "No rush.",
+      "answered": true
+    },
+    {
+      "message": "good morning",
+      "reply": "Good morning.",
+      "answered": true
+    }
+  ],
+  "fallthrough_events": 4,
+  "outcome_error_events": 4,
+  "tool_choice_400_events": 4,
+  "other_outcome_errors": [
+    "Error code: 400 - {'error': {'message': \"Invalid value for 'tool_choice': 'tool_choice' is only allowed when 'tools' are specified.\", 'type': 'invalid_request_error', 'param': 'tool_choice', 'code': N",
+    "Error code: 400 - {'error': {'message': \"Invalid value for 'tool_choice': 'tool_choice' is only allowed when 'tools' are specified.\", 'type': 'invalid_request_error', 'param': 'tool_choice', 'code': N",
+    "Error code: 400 - {'error': {'message': \"Invalid value for 'tool_choice': 'tool_choice' is only allowed when 'tools' are specified.\", 'type': 'invalid_request_error', 'param': 'tool_choice', 'code': N",
+    "Error code: 400 - {'error': {'message': \"Invalid value for 'tool_choice': 'tool_choice' is only allowed when 'tools' are specified.\", 'type': 'invalid_request_error', 'param': 'tool_choice', 'code': N"
+  ],
+  "verdict": "FAIL \u2014 4 tool_choice 400(s) still occurring at 56b4f1a1"
+}
