@@ -953,6 +953,7 @@ class AgentIntelligence:
         *,
         settings: Settings,
         org_id: str,
+        user_id: str,
         mode_key: str,
         query: str,
         answer: str,
@@ -1014,7 +1015,7 @@ class AgentIntelligence:
                 write_audit_event(
                     client,
                     org_id=org_id,
-                    actor_id=None,
+                    actor_id=user_id,
                     action="answer.grounding.validated",
                     resource_type="conversation",
                     resource_id=message_id or org_id,
@@ -1764,7 +1765,11 @@ class AgentIntelligence:
             write_audit_event(
                 client,
                 org_id=org_id,
-                actor_id=None,
+                # actor_id must be a real UUID: write_audit_event silently skips
+                # the audit_events insert for a non-uuid actor and only logs a
+                # warning, which is what made three separate instruments in this
+                # file read zero and look like unreached code paths.
+                actor_id=user_id,
                 action="context.understanding.extracted",
                 resource_type="conversation",
                 resource_id=message_id or org_id,
@@ -2650,7 +2655,7 @@ class AgentIntelligence:
             write_audit_event(
                 client,
                 org_id=org_id,
-                actor_id=None,
+                actor_id=user_id,
                 action="classical.answer_path.reached",
                 resource_type="conversation",
                 resource_id=message_id or org_id,
@@ -3545,6 +3550,7 @@ class AgentIntelligence:
         finalized = await self._finalize_assistant_response(
             settings=active_settings,
             org_id=org_id,
+            user_id=user_id,
             mode_key=mode_key,
             query=task_text,
             answer=streamed_content,
