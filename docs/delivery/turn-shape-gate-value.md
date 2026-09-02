@@ -107,3 +107,46 @@ scoped to "never skips the reasoning call". This would preserve every consumer
 that currently works, drop the per-turn model cost, and be honest that the
 conversational judgement now lives in the unified-turn model rather than in a
 separate gate.
+
+## Decision (2026-09-02) — keep the heuristic, retire the model tier
+
+Cesar chose the third option after reading the value report above.
+
+**Shipped**
+
+- `_model_turn_shape` deleted, along with `TurnShapeResult` and the module's last
+  `get_model_router` reference. The gate now calls no model at all.
+- `heuristic_turn_shape` is unchanged. It is what LIVE actually consumes via
+  `is_task_shaped_for_retrieval`, and what `maybe_social_ack_with_pending_note`
+  consumes for the mixed social ack. Both still work.
+- When the heuristic declines (~72% of gate calls), the gate fails closed to
+  `task_shaped` with reason `heuristic_declined_model_tier_retired`. This is the
+  same verdict the dormant call produced for months — now intentional and named,
+  rather than the silent result of a swallowed TypeError.
+- The `turn.shape.classified` instrument is kept as the only visibility into a
+  component whose reach was measured at near zero, and now carries
+  `modelTierRetired: true`. Volume caveat recorded in the code: if routing ever
+  sends real traffic through this gate, sample rather than write a row per turn.
+
+**Why this is not simply reverting the site 8 fix**
+
+The dormant call and the retirement produce the same runtime behaviour, so it is
+fair to ask what the fix bought. It bought the measurement. While the call was
+dormant, nobody could tell the difference between "this gate is load-bearing and
+broken" and "this gate is not load-bearing". Fixing it, instrumenting it, and
+running live traffic against it is what produced the near-zero reach figure and
+the three findings above — and therefore what made an evidence-based retire
+decision possible instead of a guess.
+
+**Tests**
+
+`backend/tests/services/test_turn_gate_reaches_model.py` was inverted. It now
+asserts that no model is reachable, pins the heuristic behaviour every remaining
+consumer depends on, and adds a structural check that `get_model_router` cannot
+reappear in the module. 16 tests, all passing.
+
+Mutation-proven: restoring the model tier in its original swallowing
+`except Exception: pass` shape fails 6 of the 16. The call-counting assertion
+sits outside the mocked router, so the broad handler cannot hide it — this is
+the specific blind-test trap the clarification-engine tests fell into earlier in
+this program.

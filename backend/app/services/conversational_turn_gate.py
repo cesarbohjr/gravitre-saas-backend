@@ -11,8 +11,6 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-
 from app.config import Settings
 from app.core.logging import get_logger
 
@@ -92,14 +90,6 @@ _CONNECTOR_HINT_RE = re.compile(
     r"connector|oauth|/connectors"
     r")\b"
 )
-
-
-class TurnShapeResult(BaseModel):
-    shape: TurnShape = "task_shaped"
-    reason: str = ""
-    social_portion: str = ""
-    task_portion: str = ""
-    category: str = ""  # greeting|thanks|banter|small_talk|meta_capability|venting|other
 
 
 @dataclass(frozen=True)
@@ -221,23 +211,39 @@ async def classify_turn_shape(
     client: Any = None,
     call_site: str = "unspecified",
 ) -> ConversationalGateDecision:
-    """Classify turn shape. Heuristic first; FAST model when ambiguous."""
+    """Classify turn shape from the heuristic alone.
+
+    The model tier was RETIRED on 2026-09-02 by product decision, after its
+    value was measured rather than assumed
+    (docs/delivery/turn-shape-gate-value.md). Three findings drove it:
+
+    1. Conversational quality no longer depends on this gate. The unified-turn
+       reasoning model decides it directly, demonstrably — the site 8 probe runs
+       produced "Glad it clicked." and "That's a reasonable place to pause."
+       while this gate's model tier was dormant and never ran.
+    2. The gate's whole-turn consumer, `should_offer_conversational_path`, is
+       switched off whenever unified-turn LIVE is enabled, and exists as the
+       documented `UNIFIED_TURN_LIVE_ENABLED=false` rollback.
+    3. LIVE's own shape hint (`is_task_shaped_for_retrieval`) calls
+       `heuristic_turn_shape` DIRECTLY and is scoped to picking a retrieval
+       strategy, explicitly never skipping the reasoning call. It would not have
+       benefited from the model tier at all.
+
+    So the heuristic is kept — it is free, it is what LIVE actually consumes,
+    and every working consumer still works — while the per-turn model call is
+    dropped. When the heuristic declines, this fails closed to task_shaped,
+    which never routes real work into chitchat.
+    """
     heuristic = heuristic_turn_shape(message)
     if heuristic is not None:
         return heuristic
 
-    decision = await _model_turn_shape(
-        message,
-        org_id=org_id,
-        conversation_summary=conversation_summary,
-    )
+    decision = _declined_to_task_shaped(message)
 
-    # Site 8 observability, placed inside the function that owns the call rather
-    # than at a caller. Three successive attempts to instrument this from the
-    # outside all landed on paths the measured turns never took: this function
-    # has only two callers, one bypassed by unified-turn-live and one reached on
-    # 3 of 9 LIVE serving paths. Emitting here means the event exists exactly
-    # when the model tier actually runs, whoever called it.
+    # Kept as the only visibility into a component whose production reach was
+    # measured at near zero. Volume note: this fires on the ~72% of gate calls
+    # the heuristic cannot decide, so if routing ever puts real traffic through
+    # this gate, sample it rather than writing a row per turn.
     if user_id:
         try:
             from app.workflows.audit import write_audit_event
@@ -249,7 +255,8 @@ async def classify_turn_shape(
                 resource_type="assistant",
                 metadata={
                     "shape": decision.shape,
-                    "usedModel": bool(decision.used_model),
+                    "usedModel": False,
+                    "modelTierRetired": True,
                     "category": decision.category,
                     "reason": (decision.reason or "")[:120],
                     "callSite": call_site,
@@ -263,69 +270,16 @@ async def classify_turn_shape(
     return decision
 
 
-async def _model_turn_shape(
-    message: str,
-    *,
-    org_id: str | None,
-    conversation_summary: str | None,
-) -> ConversationalGateDecision:
-    """The model tier proper — reached only when the heuristic declines."""
+def _declined_to_task_shaped(message: str) -> ConversationalGateDecision:
+    """Fail closed when the heuristic cannot decide: never drop real work into chitchat."""
     text = (message or "").strip()
-    try:
-        from app.services.model_router import TaskType, get_model_router
-
-        prompt = (
-            "Classify whether the user message is genuinely conversational "
-            "(greeting, thanks, banter, small talk, meta question about the assistant, "
-            "mild venting with no ask) versus task-shaped (wants data, a connector action, "
-            "platform work, or a business status check — even if phrased casually).\n"
-            "If BOTH appear, use mixed and split social_portion vs task_portion.\n"
-            "Casually phrased data asks like 'how are the deals looking' are task_shaped.\n\n"
-            f"Recent context: {(conversation_summary or '')[:400]}\n"
-            f"User message: {text}\n"
-        )
-        response = await get_model_router().complete(
-            task_type=TaskType.CLASSIFICATION,
-            prompt=prompt,
-            system_prompt=(
-                'Respond as JSON: {"shape":"conversational|task_shaped|mixed",'
-                '"reason":"...","social_portion":"...","task_portion":"...",'
-                '"category":"greeting|thanks|banter|small_talk|meta_capability|venting|other"}'
-            ),
-            temperature=0.0,
-            max_tokens=160,
-            response_format=TurnShapeResult,
-            org_id=org_id,
-        )
-        parsed = response.parsed if isinstance(response.parsed, dict) else None
-        if not parsed:
-            import json
-
-            try:
-                parsed = json.loads(response.content or "{}")
-            except Exception:  # noqa: BLE001
-                parsed = {}
-        shape = str((parsed or {}).get("shape") or "task_shaped").lower().strip()
-        if shape not in {"conversational", "task_shaped", "mixed"}:
-            shape = "task_shaped"
-        return ConversationalGateDecision(
-            shape=shape,  # type: ignore[arg-type]
-            reason=str((parsed or {}).get("reason") or "model")[:240],
-            social_portion=str((parsed or {}).get("social_portion") or "").strip(),
-            task_portion=str((parsed or {}).get("task_portion") or "").strip() or text,
-            category=str((parsed or {}).get("category") or "other").strip() or "other",
-            used_model=True,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("conversational turn gate model skipped: %s", exc)
-        # Fail closed into task pipeline — never drop real work into chitchat.
-        return ConversationalGateDecision(
-            shape="task_shaped",
-            reason=f"model_unavailable:{exc}",
-            task_portion=text,
-            category="other",
-            used_model=False,
-        )
+    return ConversationalGateDecision(
+        shape="task_shaped",
+        reason="heuristic_declined_model_tier_retired",
+        task_portion=text,
+        category="other",
+        used_model=False,
+    )
 
 
 def is_human_moment_venting_no_ask(message: str) -> bool:

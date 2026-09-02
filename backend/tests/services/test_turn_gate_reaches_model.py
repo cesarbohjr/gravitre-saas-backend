@@ -1,186 +1,184 @@
-"""Site 8 regression: `classify_turn_shape` must actually reach the model router.
+"""Site 8: the turn-shape gate's model tier is RETIRED — it must call no model.
 
-The dormant call here failed *closed* (shape="task_shaped"), so nothing ever
-looked broken — but it decided 71.9% of real user turns, measured over 30 days
-of production messages in `backend/scripts/probe_turn_gate_reach.py`. The
-heuristic assigned "mixed" once in 1000 turns, meaning the mixed social-ack
-feature in `_maybe_prepend_mixed_social_ack` was effectively waiting on a call
-that never ran.
+History matters here, because this file previously asserted the opposite.
 
-`get_model_router` is imported inside the function, so the patch target is the
-source module rather than this one. Every fake enforces the real zero-argument
-signature: a reintroduced `get_model_router(settings)` must fail loudly here
-instead of being absorbed by a permissive mock and then swallowed by the
-handler, which is exactly how this class of bug survived on site 7.
+The gate's `get_model_router(settings or get_settings())` call was dormant
+(TypeError swallowed on every invocation). It was fixed and mutation-proven, and
+then its production reach was measured at NEAR ZERO: 12 live turns, including
+turns provably past the gate's caller, produced zero `turn.shape.classified`
+events. The earlier "71.9% of turns" figure turned out to be the heuristic's
+deferral rate, not production reach.
+
+The value of the model tier was then measured rather than assumed
+(docs/delivery/turn-shape-gate-value.md), and Cesar chose: keep the heuristic,
+retire the model tier. The reasons, all evidenced:
+
+  - the unified-turn reasoning model already decides conversational quality; the
+    probe replies proved it while this gate was dormant
+  - the gate's whole-turn consumer is off whenever LIVE is enabled, and is the
+    documented UNIFIED_TURN_LIVE_ENABLED=false rollback
+  - LIVE's own shape hint calls heuristic_turn_shape DIRECTLY, so it never stood
+    to gain from the model tier
+
+So the invariant inverts: the gate must be free, deterministic, and must never
+reach a model. The tests below enforce that, and the heuristic's own behaviour —
+which every remaining consumer depends on — is pinned unchanged.
 """
 from __future__ import annotations
 
-import json
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from app.services import conversational_turn_gate as gate
-
-# Deliberately carries no data/connector/social/venting/meta signal, so the
-# heuristic declines and the model is the real decider. Asserted, not assumed:
-# test_ambiguous_message_really_reaches_the_model_tier keeps it honest.
-AMBIGUOUS = "Walk me through how we should approach the Q3 board deck."
-MIXED_TEXT = "Appreciate the fast turnaround yesterday — pull the latest pipeline numbers."
-
-
-class _StrictRouter:
-    def __init__(self, payload: Any, calls: list[dict[str, Any]]) -> None:
-        self._payload = payload
-        self._calls = calls
-
-    async def complete(self, **kwargs: Any) -> SimpleNamespace:
-        self._calls.append(kwargs)
-        if isinstance(self._payload, dict):
-            return SimpleNamespace(parsed=self._payload, content=json.dumps(self._payload))
-        return SimpleNamespace(parsed=None, content=self._payload)
+from app.services.conversational_turn_gate import (
+    classify_turn_shape,
+    heuristic_turn_shape,
+)
 
 
 @pytest.fixture
-def routed(monkeypatch):
-    """Install a factory that enforces the real zero-argument signature."""
+def forbid_model(monkeypatch):
+    """Any model call is now a regression, so make one impossible to miss."""
+    calls: list[str] = []
 
-    def _install(payload: Any) -> list[dict[str, Any]]:
-        calls: list[dict[str, Any]] = []
+    def _boom(*args: Any, **kwargs: Any):
+        calls.append("called")
+        raise AssertionError(
+            "the turn-shape gate model tier is retired; it must not call a model"
+        )
 
-        def _factory(*args: Any, **kwargs: Any):
-            assert not args and not kwargs, (
-                "get_model_router takes no arguments; passing one is the dormancy "
-                f"bug this test exists to catch. got args={args!r} kwargs={kwargs!r}"
-            )
-            return _StrictRouter(payload, calls)
-
-        monkeypatch.setattr("app.services.model_router.get_model_router", _factory)
-        return calls
-
-    return _install
-
-
-def test_ambiguous_message_really_reaches_the_model_tier():
-    """Guards the premise: if the heuristic ever claims this text, the tests below go vacuous."""
-    assert gate.heuristic_turn_shape(AMBIGUOUS) is None
+    monkeypatch.setattr("app.services.model_router.get_model_router", _boom)
+    return calls
 
 
 @pytest.mark.asyncio
-async def test_model_is_called_with_zero_arguments(routed):
-    calls = routed({"shape": "conversational", "reason": "chit", "category": "small_talk"})
+@pytest.mark.parametrize(
+    "message",
+    [
+        "so anyway I was thinking about the thing we discussed",
+        "hmm",
+        "well that is one way to look at it I suppose",
+        "I mean, sure, if that is what makes sense",
+        "the whole situation has been a lot lately honestly",
+    ],
+)
+async def test_ambiguous_messages_never_reach_a_model(forbid_model, message: str) -> None:
+    """These are exactly the messages the heuristic declines and used to defer."""
+    decision = await classify_turn_shape(message)
 
-    result = await gate.classify_turn_shape(AMBIGUOUS, settings=object(), org_id="org-1")
-
-    assert len(calls) == 1, "the model tier never ran — the call is still dormant"
-    assert result.used_model is True
+    assert forbid_model == [], "no model call may happen for an ambiguous message"
+    assert decision.used_model is False
+    assert decision.shape == "task_shaped", "must fail closed, not into chitchat"
+    assert decision.reason == "heuristic_declined_model_tier_retired"
 
 
 @pytest.mark.asyncio
-async def test_model_verdict_beats_the_fail_closed_default(routed):
-    """The whole point: a genuinely conversational turn must not be forced task_shaped."""
-    routed({"shape": "conversational", "reason": "greeting-ish", "category": "small_talk"})
+async def test_declined_turn_keeps_the_message_as_task_portion(forbid_model) -> None:
+    decision = await classify_turn_shape("  so anyway about that thing  ")
 
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.shape == "conversational"
-    assert result.category == "small_talk"
+    assert decision.task_portion == "so anyway about that thing"
+    assert decision.category == "other"
 
 
 @pytest.mark.asyncio
-async def test_mixed_shape_and_split_survive(routed):
-    """Caller 2 (_maybe_prepend_mixed_social_ack) keys entirely off shape == mixed."""
-    routed(
-        {
-            "shape": "mixed",
-            "reason": "social plus task",
-            "social_portion": "Appreciate the fast turnaround yesterday",
-            "task_portion": "pull the latest pipeline numbers",
-            "category": "thanks",
-        }
+async def test_no_audit_is_written_without_a_real_actor(forbid_model) -> None:
+    """actor_id=None would be silently dropped; the gate must not bother."""
+    writes: list[dict[str, Any]] = []
+
+    async def _capture(**kwargs: Any) -> None:
+        writes.append(kwargs)
+
+    import app.workflows.audit as audit_mod
+
+    original = audit_mod.write_audit_event
+    audit_mod.write_audit_event = _capture  # type: ignore[assignment]
+    try:
+        await classify_turn_shape("hmm, anyway", user_id=None)
+    finally:
+        audit_mod.write_audit_event = original  # type: ignore[assignment]
+
+    assert writes == []
+
+
+@pytest.mark.asyncio
+async def test_declined_turn_records_the_retirement_in_the_audit(forbid_model) -> None:
+    """The instrument stays: it is the only visibility into this component."""
+    writes: list[dict[str, Any]] = []
+
+    async def _capture(**kwargs: Any) -> None:
+        writes.append(kwargs)
+
+    import app.workflows.audit as audit_mod
+
+    original = audit_mod.write_audit_event
+    audit_mod.write_audit_event = _capture  # type: ignore[assignment]
+    try:
+        await classify_turn_shape(
+            "hmm, anyway",
+            user_id="11111111-1111-4111-8111-111111111111",
+            call_site="unit_test",
+        )
+    finally:
+        audit_mod.write_audit_event = original  # type: ignore[assignment]
+
+    assert len(writes) == 1
+    md = writes[0]["metadata"]
+    assert md["usedModel"] is False
+    assert md["modelTierRetired"] is True
+    assert md["shape"] == "task_shaped"
+    assert md["callSite"] == "unit_test"
+    assert writes[0]["actor_id"] == "11111111-1111-4111-8111-111111111111"
+
+
+# --- the heuristic itself must be unchanged: every live consumer depends on it ---
+#
+# is_task_shaped_for_retrieval (LIVE retrieval hint) and
+# maybe_social_ack_with_pending_note both call heuristic_turn_shape directly.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message,shape",
+    [
+        ("thanks!", "conversational"),
+        ("hey there", "conversational"),
+        ("good morning", "conversational"),
+        ("list my hubspot deals", "task_shaped"),
+        ("how are the deals looking", "task_shaped"),
+    ],
+)
+async def test_heuristic_decisions_still_short_circuit(
+    forbid_model, message: str, shape: str
+) -> None:
+    decision = await classify_turn_shape(message)
+
+    assert forbid_model == []
+    assert decision.shape == shape
+    assert decision.used_model is False
+
+
+def test_heuristic_still_returns_none_when_it_cannot_decide() -> None:
+    """Pins the contract the retirement relies on: None means 'declined'."""
+    assert heuristic_turn_shape("so anyway I was thinking") is None
+
+
+def test_heuristic_still_decides_the_clear_cases() -> None:
+    thanks = heuristic_turn_shape("thanks, that helped")
+    task = heuristic_turn_shape("show me my open deals in hubspot")
+
+    assert thanks is not None and thanks.shape == "conversational"
+    assert task is not None and task.shape == "task_shaped"
+
+
+def test_gate_module_no_longer_imports_a_model_router() -> None:
+    """Structural: the retirement must be real, not just unreached at runtime."""
+    from pathlib import Path
+
+    import app.services.conversational_turn_gate as gate
+
+    src = Path(gate.__file__).read_text(encoding="utf-8")
+
+    assert "get_model_router" not in src, (
+        "the model tier is retired; a model router reference means it came back"
     )
-
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.shape == "mixed"
-    assert result.social_portion == "Appreciate the fast turnaround yesterday"
-    assert result.task_portion == "pull the latest pipeline numbers"
-
-
-@pytest.mark.asyncio
-async def test_unparsed_json_content_is_still_honored(routed):
-    """Providers that ignore response_format return raw text; that must not be discarded."""
-    routed(json.dumps({"shape": "conversational", "category": "banter"}))
-
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.shape == "conversational"
-    assert result.category == "banter"
-
-
-@pytest.mark.asyncio
-async def test_unknown_shape_falls_back_to_task_shaped(routed):
-    routed({"shape": "wat", "reason": "nonsense"})
-
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.shape == "task_shaped"
-
-
-@pytest.mark.asyncio
-async def test_empty_task_portion_defaults_to_the_message(routed):
-    routed({"shape": "task_shaped", "reason": "r", "task_portion": ""})
-
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.task_portion == AMBIGUOUS
-
-
-@pytest.mark.asyncio
-async def test_router_failure_still_fails_closed(monkeypatch):
-    """Degradation must stay safe: real work never gets dropped into chitchat."""
-
-    def _boom(*args: Any, **kwargs: Any):
-        raise RuntimeError("provider down")
-
-    monkeypatch.setattr("app.services.model_router.get_model_router", _boom)
-
-    result = await gate.classify_turn_shape(AMBIGUOUS)
-
-    assert result.shape == "task_shaped"
-    assert result.used_model is False
-    assert "model_unavailable" in result.reason
-
-
-@pytest.mark.asyncio
-async def test_heuristic_hit_never_pays_for_the_model(monkeypatch):
-    """Cost guard: greetings must not start routing through a model call."""
-
-    def _boom(*args: Any, **kwargs: Any):
-        raise AssertionError("heuristic path must not reach the model")
-
-    monkeypatch.setattr("app.services.model_router.get_model_router", _boom)
-
-    result = await gate.classify_turn_shape("hey there!")
-
-    assert result.shape == "conversational"
-    assert result.used_model is False
-
-
-@pytest.mark.asyncio
-async def test_conversation_summary_reaches_the_prompt(routed):
-    calls = routed({"shape": "conversational", "category": "small_talk"})
-
-    await gate.classify_turn_shape(AMBIGUOUS, conversation_summary="talked about renewals")
-
-    assert "talked about renewals" in calls[0]["prompt"]
-
-
-@pytest.mark.asyncio
-async def test_org_id_is_forwarded_for_attribution(routed):
-    calls = routed({"shape": "task_shaped"})
-
-    await gate.classify_turn_shape(AMBIGUOUS, org_id="org-42")
-
-    assert calls[0]["org_id"] == "org-42"
+    assert "_model_turn_shape" not in src
