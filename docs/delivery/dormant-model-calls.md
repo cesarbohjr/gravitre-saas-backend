@@ -1,4 +1,4 @@
-# Dormant model calls — silent no-ops in production
+# Dormant model calls ? silent no-ops in production
 
 Standing record. Append-only; do not overwrite earlier sections.
 
@@ -10,15 +10,15 @@ passes because the caller's fallback returns a valid-looking value.
 Two confirmed instances were found by reading production traces, not by any
 test:
 
-- `verification_critic_service` — the **mandatory** critic pass, degrading to
+- `verification_critic_service` ? the **mandatory** critic pass, degrading to
   `mandatory_critic_error` on every turn (fixed in `ccc98167`).
-- `unified_turn_knowledge_context` — customer RAG removed from the replan loop
+- `unified_turn_knowledge_context` ? customer RAG removed from the replan loop
   entirely. Live artifact at tip `ccc98167` shows
   `org_rag_error = "get_rag_service() takes 0 positional arguments but 1 was
   given"` on both evidence-bearing turns. The loop reported `org_rag` in
   `sources_tried` while that source had thrown instantly.
 
-## Deferred, low priority — `_classify_error` mislabels internal bugs as user error
+## Deferred, low priority ? `_classify_error` mislabels internal bugs as user error
 
 Raised 2026-09-01 during the HubSpot search investigation. **Not urgent, real,
 and deliberately not folded into the dormant-call work.** Recorded here so it
@@ -28,8 +28,8 @@ is not lost; it deserves its own audit once the twelve sites are closed.
 exceptions. Transport faults and timeouts were being labelled
 `validation_error` and were fixed at that chokepoint; see
 `docs/delivery/hubspot-search-validation-dead-end.md`. What remains is the
-broader case: an arbitrary internal exception — a `KeyError` in Gravitre's own
-code, for instance — still classifies as `validation_error`, so **our bug is
+broader case: an arbitrary internal exception ? a `KeyError` in Gravitre's own
+code, for instance ? still classifies as `validation_error`, so **our bug is
 presented to the user as their input being wrong**, across all 727 actions.
 
 Why it was not fixed in that pass: separating "our fault" from "your input" for
@@ -42,7 +42,7 @@ Scope when picked up: enumerate the real exception types reaching
 `_classify_error` from each connector, decide the correct classification per
 type, and keep `validation_error` for genuine user-input faults only.
 
-## Phase 0 — exhaustive inventory (2026-08-31)
+## Phase 0 ? exhaustive inventory (2026-08-31)
 
 Method: AST scan of all 318 zero-argument module-level factories in
 `backend/app`, cross-checked against imported names so that same-named methods
@@ -57,27 +57,27 @@ count mismatch is evaluated before the callee runs, so these calls can never
 intermittently succeed. What varies is reachability, not outcome.
 
 Runtime proof of the fallback each site has actually been returning:
-`backend/scripts/probe_dormant_model_calls.py` →
+`backend/scripts/probe_dormant_model_calls.py` ?
 `docs/delivery/dormant-model-call-runtime-probe.json`.
 
 ### Severity ranking
 
-Ordered by correctness → safety/governance → user-facing quality.
+Ordered by correctness ? safety/governance ? user-facing quality.
 
 | # | Site | What has been silently absent | Observed fallback | Severity |
 |---|---|---|---|---|
-| 1 | `answer_validator.py:74` | Grounding/hallucination check against retrieved context | `{is_valid: True, issues: [], requires_human: False}` — **fails OPEN** | ~~Critical — correctness~~ → **corrected to Low: dead code.** See Phase B — measured as never executing on live traffic (0 audits against 464 fallthroughs / 1454 turns in 30d), so nothing was being falsely certified |
-| 2 | `unified_turn_knowledge_context.py:201` | Customer RAG retrieval in the replan loop | `org_rag_error`, 0 chunks | **Critical — correctness.** Org's own documents excluded from evidence |
-| 3 | `agent_intelligence.py:931` | Regeneration of an ungrounded answer | Never reached — gated behind site 1 failing open | **High — correctness**, masked by site 1 |
-| 4 | `schema_param_extractor.py:319` | Model extraction of connector action arguments | Heuristic-only args | **High — touches write actions.** Missing args → failed or under-specified writes |
-| 5 | `pending_reply_classifier.py:500` | Comprehending approve/reject replies regex missed | `"ambiguous"` | **High — governance-adjacent.** Approval replies collapse to a re-ask |
-| 6 | `conversation_turn_controller.py:273` | Comprehending continue/modify/cancel on a pending plan | `"unclear"` | **High — governance-adjacent** |
-| 7 | `query_rewriter.py:52` | Resolving pronouns into standalone retrieval queries | Original query unchanged | **Medium — retrieval quality.** Follow-ups retrieve on the raw pronoun |
-| 8 | `conversational_turn_gate.py:240` | Distinguishing small talk from casually-phrased data asks | Heuristics decide every turn, `used_model=False` | **Medium — quality/latency** |
-| 9 | `domain_intelligence_service.py:208` | Model-based domain classification | `source: "rules"` | **Medium — routing quality** |
-| 10 | `contextual_understanding_service.py:225` | Goal + constraint extraction | `{}` — always empty | **Medium — quality** |
-| 11 | `clarification_engine.py:769` | Polishing clarifying questions | Unpolished draft | **Low — cosmetic** |
-| 12 | `cache_warming_scheduler.py:48` | Warming embedding/retrieval caches | Throws per org; `queries_warmed=0` | **Low — performance only.** Already visible at `warning` |
+| 1 | `answer_validator.py:74` | Grounding/hallucination check against retrieved context | `{is_valid: True, issues: [], requires_human: False}` ? **fails OPEN** | ~~Critical ? correctness~~ ? **corrected to Low: dead code.** See Phase B ? measured as never executing on live traffic (0 audits against 464 fallthroughs / 1454 turns in 30d), so nothing was being falsely certified |
+| 2 | `unified_turn_knowledge_context.py:201` | Customer RAG retrieval in the replan loop | `org_rag_error`, 0 chunks | **Critical ? correctness.** Org's own documents excluded from evidence |
+| 3 | `agent_intelligence.py:931` | Regeneration of an ungrounded answer | Never reached ? gated behind site 1 failing open | **High ? correctness**, masked by site 1 |
+| 4 | `schema_param_extractor.py:319` | Model extraction of connector action arguments | Heuristic-only args | **High ? touches write actions.** Missing args ? failed or under-specified writes |
+| 5 | `pending_reply_classifier.py:500` | Comprehending approve/reject replies regex missed | `"ambiguous"` | **High ? governance-adjacent.** Approval replies collapse to a re-ask |
+| 6 | `conversation_turn_controller.py:273` | Comprehending continue/modify/cancel on a pending plan | `"unclear"` | **High ? governance-adjacent** |
+| 7 | `query_rewriter.py:52` | Resolving pronouns into standalone retrieval queries | Original query unchanged | **Medium ? retrieval quality.** Follow-ups retrieve on the raw pronoun |
+| 8 | `conversational_turn_gate.py:240` | Distinguishing small talk from casually-phrased data asks | Heuristics decide every turn, `used_model=False` | **Medium ? quality/latency** |
+| 9 | `domain_intelligence_service.py:208` | Model-based domain classification | `source: "rules"` | **Medium ? routing quality** |
+| 10 | `contextual_understanding_service.py:225` | Goal + constraint extraction | `{}` ? always empty | **Medium ? quality** |
+| 11 | `clarification_engine.py:769` | Polishing clarifying questions | Unpolished draft | **Low ? cosmetic** |
+| 12 | `cache_warming_scheduler.py:48` | Warming embedding/retrieval caches | Throws per org; `queries_warmed=0` | **Low ? performance only.** Already visible at `warning` |
 
 Honest correction recorded: an earlier reading of site 8 assumed the fallback
 was uniformly `task_shaped`. The runtime probe shows a heuristic layer sits in
@@ -85,11 +85,11 @@ front, correctly classifying both an obvious greeting and an obvious data ask
 without the model. The dormant call is the *ambiguous middle*, which is a
 narrower impact than first stated.
 
-## Phase 1 — root cause and structural guard
+## Phase 1 ? root cause and structural guard
 
 ### Root cause: NOT DETERMINABLE from available history
 
-This repository's history is squashed — all 573 commits trace to `9b1d748c`,
+This repository's history is squashed ? all 573 commits trace to `9b1d748c`,
 and `model_router.py`, `answer_validator.py` and the rest each show exactly one
 commit. `git log -S` finds no prior settings-accepting form of
 `get_model_router` because no prior form exists in this history at all.
@@ -99,12 +99,12 @@ signatures diverged is offered here, because none can be evidenced.
 
 What *is* structurally established: `ModelRouter.__init__(settings=None)` does
 accept settings, while the singleton accessor `get_model_router()` does not and
-**cannot honor them** — the instance is built once and reused, so a
+**cannot honor them** ? the instance is built once and reused, so a
 per-call `settings` argument would be silently discarded even if the signature
 accepted it. Widening the factory would therefore encode a lie. The correct fix
 is to keep it zero-argument and remove the argument at each call site.
 
-### Structural guard — `backend/tests/test_no_dormant_model_calls.py`
+### Structural guard ? `backend/tests/test_no_dormant_model_calls.py`
 
 Two rules, enforced in CI:
 
@@ -119,7 +119,7 @@ Two rules, enforced in CI:
 Mutation-proven: injecting `get_model_router(1)` into an unrelated service makes
 rule 1 fail with that exact path; removing the injection restores green.
 
-Rule 2 found a **wider class than the 12 arity sites — 17 handlers** hiding
+Rule 2 found a **wider class than the 12 arity sites ? 17 handlers** hiding
 model failures below WARNING, including three logging nothing at all. All 17
 raised to `warning` in this pass. Two required new log statements
 (`consensus_engine`, `generative_agent_coordinator`); the latter turned out to
@@ -129,7 +129,7 @@ problem, not an arity bug.
 This change is observability-only: no control flow, fallback values, or model
 behavior altered.
 
-## Phase 2 — site 1 + 3 (grounding validator and regeneration)
+## Phase 2 ? site 1 + 3 (grounding validator and regeneration)
 
 Fixed together, not as a batch of convenience: the validator failing open is
 precisely what made the regeneration `TypeError` unreachable. Fixing the
@@ -139,8 +139,8 @@ any `try`. Repairing one without the other leaves production strictly worse.
 
 Changes:
 
-- `answer_validator.py:74` — `get_model_router()`.
-- `agent_intelligence.py:931` — `get_model_router()`, plus a handler so a
+- `answer_validator.py:74` ? `get_model_router()`.
+- `agent_intelligence.py:931` ? `get_model_router()`, plus a handler so a
   regeneration failure returns `""` and lands on the caller's existing
   `SAFE_FALLBACK` branch rather than raising. This path has never executed in
   production, so it is newly exposed and should degrade, not 500.
@@ -151,10 +151,10 @@ The Phase 0 table called this "every answer declared grounded". That overstates
 it. `validation_enabled_for_mode` gates the check: it requires
 `validation_enabled`, and by default covers only `standard` and `reasoning`
 modes (`speed_priority` narrows it further to `reasoning`/`agent`). The accurate
-claim is **every _validated_ answer was declared grounded without a check** — a
+claim is **every _validated_ answer was declared grounded without a check** ? a
 smaller blast radius than first written, still a failed correctness gate.
 
-### Before baseline — `docs/delivery/validation-stage-latency.json`
+### Before baseline ? `docs/delivery/validation-stage-latency.json`
 
 `ai_pipeline_latency` where `stage_name='validation'`, 30-day window, captured
 before deploy: **1 sample, 0 ms**. A swallowed `TypeError` returns in about a
@@ -162,10 +162,10 @@ millisecond; a real model call does not, so 0 ms is consistent with the no-op.
 
 Two honest limits on that figure. n=1 is thin. And the latency row is only
 written when `message_id` is present, so 1 is a **lower bound on invocations,
-not a count of them** — it does not establish how often the validator was
+not a count of them** ? it does not establish how often the validator was
 reached, only that where it was recorded, it took no measurable time.
 
-### After — live run at deployed tip `9ca96dc2`: PARTIAL, execution NOT CONFIRMED
+### After ? live run at deployed tip `9ca96dc2`: PARTIAL, execution NOT CONFIRMED
 
 Artifact: `docs/delivery/grounding-validator-live.json`.
 
@@ -184,7 +184,7 @@ does not distinguish the two possibilities:
   apply. On that reading the validator ran and simply was not recorded.
 - The latency row is gated on `message_id` being truthy. This org's history
   contains **only** `generation` rows and has never contained a `validation`
-  row, which is consistent with `message_id` being absent on this path — in
+  row, which is consistent with `message_id` being absent on this path ? in
   which case no validation row could ever appear, before or after the fix.
 
 So the chosen signal cannot prove execution here, and no claim of live execution
@@ -200,7 +200,7 @@ before/after quality comparison Phase 2 asks for.
 
 **Status: site 1+3 SHIPPED and DEPLOYED, live execution NOT CONFIRMED.**
 
-### Second live run at `9080bc87` — root of the non-confirmation found
+### Second live run at `9080bc87` ? root of the non-confirmation found
 
 An `answer.grounding.validated` audit event was added so execution could be
 observed without depending on `message_id`. Its decisive field is
@@ -211,24 +211,24 @@ The re-run produced **zero such events**, and the reason is structural, not a
 missing signal. Both turns were handled by `unified_turn.live.completed`:
 
 ```
-grounding_pressure  d5a32ae1…  unified_turn.live.completed  2026-09-01T00:07:38Z
-grounded_control    c3199c6d…  unified_turn.live.completed  2026-09-01T00:07:53Z
+grounding_pressure  d5a32ae1?  unified_turn.live.completed  2026-09-01T00:07:38Z
+grounded_control    c3199c6d?  unified_turn.live.completed  2026-09-01T00:07:53Z
 ```
 
 The grounding validator is called from
 `agent_intelligence._finalize_assistant_response`, which sits on the ReAct
 finalize path. Production chat traffic takes the **unified turn** path and only
-reaches ReAct on `unified_turn.live.fallthrough` — an event that does appear in
+reaches ReAct on `unified_turn.live.fallthrough` ? an event that does appear in
 this org's history, but did not fire on either of these turns.
 
 ### Consequence for the Phase 0 severity ranking (second correction)
 
-Site 1 was ranked **Critical — every validated answer declared grounded without
+Site 1 was ranked **Critical ? every validated answer declared grounded without
 a check**. That ranking assumed the validator sits on the main answer path. It
 does not. Its real reachability is narrower still: validated modes
 (`standard`/`reasoning`) **and** a unified-turn fallthrough.
 
-This does not make the fix wrong — a grounding gate that fails open is a real
+This does not make the fix wrong ? a grounding gate that fails open is a real
 defect and is now repaired. But the honest reading is that the capability was
 absent from a **narrower slice of traffic** than the original ranking implied,
 and that a separate, larger question is now open: whether the grounding check
@@ -239,7 +239,7 @@ Live execution of site 1+3 therefore remains **NOT CONFIRMED**, with the reason
 now known: the proof requires a turn that reaches ReAct finalize, which these
 did not.
 
-### Third attempt — fallthrough forced, blocked by a stale approval hold
+### Third attempt ? fallthrough forced, blocked by a stale approval hold
 
 A connector-read query did force the intended route:
 
@@ -250,7 +250,7 @@ forced_react_fallthrough  actions=[pending_reply.classified,
 ```
 
 Still zero grounding audits, because that turn was intercepted by a pending
-approval — `"I still have **Create list** waiting for approval."` — which
+approval ? `"I still have **Create list** waiting for approval."` ? which
 short-circuits before answer generation.
 
 I read that as a stale, org-scoped hold surviving `cancel`, and recorded it as a
@@ -262,7 +262,7 @@ useful part.
 (observability at `9080bc87`), live execution NOT CONFIRMED**, one real blocker:
 the validator is not on the unified-turn path real traffic uses.
 
-### Retraction — there is no stale approval hold
+### Retraction ? there is no stale approval hold
 
 Investigated as its own task and **NOT REPRODUCIBLE**. Evidence, at tip
 `db928881`:
@@ -275,7 +275,7 @@ Investigated as its own task and **NOT REPRODUCIBLE**. Evidence, at tip
   was **created 11 seconds earlier, by that same run**. The other three were
   `None`.
 - `scripts/verify-pending-cancel-clears-hold.py` runs the sequence the report
-  actually describes — one conversation, hold created, `cancel` in the **same**
+  actually describes ? one conversation, hold created, `cancel` in the **same**
   conversation, then a genuinely new conversation. **PASS on all four checks:**
   the hold was created (`Create list status=awaiting_confirm`), `cancel` cleared
   it in the database, the follow-up turn showed no hold prompt, and the fresh
@@ -283,7 +283,7 @@ Investigated as its own task and **NOT REPRODUCIBLE**. Evidence, at tip
 
 Two compounding mistakes produced the false report. The probe opened a new
 conversation per turn, so `cancel` landed on a conversation that never had a hold
-while a later turn created one of its own — and `format_pending_meta_answer`
+while a later turn created one of its own ? and `format_pending_meta_answer`
 phrases a hold as `"I **still** have X waiting for approval"` even on first
 mention, so a brand-new hold reads like a surviving one. Neither the code nor the
 data ever said the hold survived; the prose did, and I believed it.
@@ -293,11 +293,11 @@ Guarded by `backend/tests/services/test_pending_hold_does_not_survive_cancel.py`
 `pending_status in {"completed","failed","cancelled"}` branch in
 `conversation_turn_controller` fails 3 of them.
 
-### Phase B — the validator is not on the live answer path, and site 1's severity was overstated
+### Phase B ? the validator is not on the live answer path, and site 1's severity was overstated
 
 With the phantom blocker gone, the reachability question was asked directly
 instead. `scripts/probe-grounding-validator-reachable-shape.py` swept four turn
-shapes chosen to avoid the early returns that pass `validation=None` — a factual
+shapes chosen to avoid the early returns that pass `validation=None` ? a factual
 knowledge question, `reasoning` mode, a deliberate grounding-pressure question,
 and a multi-hop business question.
 
@@ -318,7 +318,7 @@ Traffic split from `audit_events`, via
 | 30d | 990 | 464 | 31.9% | 0 |
 
 This corrects an earlier claim of mine in two directions at once. I called this
-"a fallthrough path most production chat traffic never takes" — wrong, about a
+"a fallthrough path most production chat traffic never takes" ? wrong, about a
 third of turns fall through. But fallthrough does **not** mean reaching ReAct
 finalize: the 30-day reasons are `pending_family_classical_resume` (144),
 `outcome_error` (142), `defer_classical_tool_sse` (141), and
@@ -327,7 +327,7 @@ finalize call, several passing `validation=None` explicitly. 464 fallthroughs
 produced 0 grounding audits.
 
 **Site 1's severity was overstated and is corrected here.** The Phase 0 table
-calls it "Critical — correctness. Every answer declared grounded with no check."
+calls it "Critical ? correctness. Every answer declared grounded with no check."
 That framing assumed the validator ran and rubber-stamped answers. It did not run
 at all on any observed live path, so nothing was being falsely certified. The
 honest finding is *dead code*, not a defeated safety check.
@@ -335,26 +335,26 @@ honest finding is *dead code*, not a defeated safety check.
 Nor is the live path ungrounded. Both pressure questions were refused honestly by
 the unified turn on its own: *"I don't have enough information to substantiate an
 exact guaranteed number from the internal documents you provided."* Grounding
-discipline exists where traffic actually flows — it simply is not this validator.
+discipline exists where traffic actually flows ? it simply is not this validator.
 
 **Site 1+3 status: signature fix correct, SHIPPED, DEPLOYED, and NOT EXECUTING,
 because the path it lives on is not reached by live traffic.** The remaining
-question is a design one — whether the unified turn should call this validator,
+question is a design one ? whether the unified turn should call this validator,
 or whether it should be retired in favor of the grounding behavior the unified
 turn already has. That is a product decision, not a signature bug, and is not
 decided here.
 
-## Phase 2 — site 4, `schema_param_extractor.py:319` (PARTIAL)
+## Phase 2 ? site 4, `schema_param_extractor.py:319` (PARTIAL)
 
 Taken next as the highest-severity remaining site, and because it turned out to
 be directly relevant to the fabricated-write finding: this extractor's own prompt
 says *"Return ONLY keys that have a confident value. Do not invent ids."* While
 it was dormant, the only things filling connector arguments were regex heuristics
-and pack defaults — precisely the path that invents
+and pack defaults ? precisely the path that invents
 `{"name": "MSPs", ...}` in
 [`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
 
-Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+Fix: `get_model_router(settings or get_settings())` ? `get_model_router()`.
 
 **Proven** (`backend/scripts/probe_site4_schema_param_extractor.py`), with the
 pre-fix call shape re-created deliberately so the result cannot be mistaken for
@@ -362,7 +362,7 @@ something that always worked:
 
 ```
 get_model_router(settings) -> TypeError: takes 0 positional arguments but 1 was given
-get_model_router()         -> OK — ModelRouter
+get_model_router()         -> OK ? ModelRouter
 ```
 
 **Not proven: that the model call adds arguments heuristics miss.** Two messages
@@ -373,7 +373,7 @@ registered in a bare local context, `_schema_field_keys` returns no fields, so
 `required_missing` is empty and the function returns before reaching the model at
 all.
 
-### Resolved 2026-09-01 — INCONCLUSIVE superseded by PASS
+### Resolved 2026-09-01 ? INCONCLUSIVE superseded by PASS
 
 The INCONCLUSIVE above came from a probe limitation, not from the fix. Correcting
 the probe resolved it. `backend/scripts/probe_schema_param_extractor_live.py`
@@ -381,7 +381,7 @@ first enumerates the real catalog for actions that genuinely have a workflow
 schema with required fields, then constructs a message that leaves a required
 field empty, which is what the earlier probe never achieved.
 
-The dormancy claim is about control flow — was the router entered — so it is
+The dormancy claim is about control flow ? was the router entered ? so it is
 decidable without AI credentials. `probe_schema_param_extractor_before_after.py`
 runs the real extractor twice on the same input, restoring the original buggy
 call for the first pass (`docs/delivery/schema-param-extractor-before-after.json`):
@@ -389,14 +389,14 @@ call for the first pass (`docs/delivery/schema-param-extractor-before-after.json
 | | Router entered (`MODEL_CALL_START`) | Handler logged |
 |---|---|---|
 | before | **no** | `get_model_router() takes 0 positional arguments but 1 was given` |
-| after | **yes** | `All AI providers failed (…not-configured)` — local env only |
+| after | **yes** | `All AI providers failed (?not-configured)` ? local env only |
 
 Status: **PASS on the dormancy defect.** The call reached the router on a real
 invocation; before the fix it could not, and the failure was invisible.
 
 Still open, and deliberately not rounded up: whether the model then contributes
 arguments the heuristics miss. That is a capability question, not a dormancy
-one, and it is unmeasurable in this environment — no AI provider is configured
+one, and it is unmeasurable in this environment ? no AI provider is configured
 locally (openai, anthropic and gemini all report unavailable), so the call
 reaches the router and can never receive a completion. Production only.
 
@@ -405,21 +405,21 @@ Recorded while probing, not fixed: for a vague message the heuristic pass fills
 message. Same argument-invention pathology as
 [`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
 
-## Phase 2 — site 5, `pending_reply_classifier.py:500` (PASS on dormancy)
+## Phase 2 ? site 5, `pending_reply_classifier.py:500` (PASS on dormancy)
 
-Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+Fix: `get_model_router(settings or get_settings())` ? `get_model_router()`.
 
 What was silently absent: `classify_pending_reply` runs a regex fast path first
 and only calls the model when that returns `None`. With the call dormant, every
 reply the regex could not classify returned `"ambiguous"`, so the assistant
-re-asked instead of reading the conversation. It **failed safe** — asking rather
-than guessing an approve or reject — which is exactly why it was never noticed
+re-asked instead of reading the conversation. It **failed safe** ? asking rather
+than guessing an approve or reject ? which is exactly why it was never noticed
 on a governance-adjacent path.
 
 Before/after on the same input, buggy call restored for the first pass
 (`backend/scripts/probe_pending_reply_classifier_before_after.py`,
 `docs/delivery/pending-reply-classifier-before-after.json`). The reply used is
-*"hold off on that for now, I want to check the numbers with finance first"* —
+*"hold off on that for now, I want to check the numbers with finance first"* ?
 against a real `awaiting_confirm` hold, with the regex fast path confirmed
 returning `None`, so comprehension is the only route to a correct label:
 
@@ -428,10 +428,10 @@ returning `None`, so comprehension is the only route to a correct label:
 | before | `None` | **no** | yes, swallowed at WARNING | `ambiguous` |
 | after | `None` | **yes** | no | `ambiguous` (no AI provider configured locally) |
 
-Status: **PASS on the dormancy defect** — the classifier now reaches the model
+Status: **PASS on the dormancy defect** ? the classifier now reaches the model
 router on a reply the regex cannot handle.
 
-### Live production proof — PASS
+### Live production proof ? PASS
 
 `scripts/verify-pending-reply-classifier-live.py` against deployed tip
 **dd218e899e08f34544fc70faba5cafc129f08c15**, org
@@ -449,10 +449,10 @@ only thing that can label it:
 | "let me run that past finance before we commit to it" | asked for a specific target | retained |
 | "not yet, the board meeting is Thursday and I want their read first" | "Cancelled the pending plan. What should we do instead?" | released |
 
-- **0 `lists.create` invocations** — no soft deferral was read as approval. This
+- **0 `lists.create` invocations** ? no soft deferral was read as approval. This
   was the check that mattered most; comprehending a deferral as a yes would be
   far worse than re-asking.
-- **0 generic "waiting for your approval" re-asks** — the signature of the
+- **0 generic "waiting for your approval" re-asks** ? the signature of the
   dormant `"ambiguous"` path did not appear once.
 - 2 of 3 released the hold correctly.
 
@@ -466,13 +466,13 @@ commit"*, not a return of the dormancy bug. Recorded, not rounded up to a clean
 Also noticed while selecting phrasings, not fixed: the regex fast path labels
 *"what exactly is that going to do to our existing lists?"* as `unrelated` when
 it is plainly `meta_clarify`. Because the fast path returns a confident answer,
-the model never gets to correct it — a wrong regex verdict is more harmful than
+the model never gets to correct it ? a wrong regex verdict is more harmful than
 no verdict, and this one predates the dormancy fix.
 
 Baseline: `pending_reply_classifier.py:500` removed from `KNOWN_DORMANT`, guard
 test green (2 passed). Five of twelve sites now closed.
 
-### Superseded — the "unreproduced" observation below is now REPRODUCED
+### Superseded ? the "unreproduced" observation below is now REPRODUCED
 
 Investigated properly in
 [`readonly-destructive-proposal.md`](./readonly-destructive-proposal.md).
@@ -480,7 +480,7 @@ Investigated properly in
 contamination: "MSPs" is `DEFAULT_HUBSPOT_LIST_NAME`, a deliberate pack default,
 and the real defect is that ReAct selects a destructive create tool for a
 read-only request. `APPROVAL_ACTION_MISMATCH` was tested against the claim and
-**would not catch it** — proposed and executed actions are identical.
+**would not catch it** ? proposed and executed actions are identical.
 
 This also explains the false stale-hold report above: same bug, seen through a
 probe that opened a new conversation per turn.
@@ -502,9 +502,9 @@ not a dormant-call issue, and it should not be folded into this task. Worth
 noting that the mismatch net is what would have to catch it if it recurs on a
 real user's org.
 
-## Phase 2 — site 6, `conversation_turn_controller.py:273` (PASS on dormancy)
+## Phase 2 ? site 6, `conversation_turn_controller.py:273` (PASS on dormancy)
 
-Fix: `get_model_router(settings or get_settings())` → `get_model_router()`.
+Fix: `get_model_router(settings or get_settings())` ? `get_model_router()`.
 
 `_model_pending_intent` has two callers inside `classify_pending_plan_intent`,
 with different fallbacks:
@@ -518,7 +518,7 @@ with different fallbacks:
 `skip`, `change`, `rather`. So a reply that plainly means *cancel* but contains
 one of those words was classified as a request to **modify** the plan.
 
-### Correction — the severity claim I first wrote here was wrong
+### Correction ? the severity claim I first wrote here was wrong
 
 My first draft of this section said the dormancy "left a destructive plan
 pending after the user tried to call it off." That is **not** what happens, and
@@ -535,7 +535,7 @@ and early_plan.get("goal")
 and not (isinstance(early_pending, dict) and early_pending)   # NO pending task
 ```
 
-So this path only runs for an **orphan strategic plan** — a `current_plan` left
+So this path only runs for an **orphan strategic plan** ? a `current_plan` left
 over with *no* approval hold attached. A destructive plan awaiting approval is
 excluded by the gate, and is handled by site 5's classifier instead. Further,
 `cancel` and `modify` both clear `current_plan`. Nothing was left pending.
@@ -554,8 +554,8 @@ So the two real consequences are:
 1. **Stale-goal injection.** A reply meaning *stop* that contains a hint word
    got its text rewritten to carry the abandoned goal. *"don't bother with that,
    we're going a completely different direction now"* became
-   *"…different direction now (regarding plan: Create a HubSpot list of MSP
-   prospects…)"* — the abandoned goal pushed into the very turn that rejected it.
+   *"?different direction now (regarding plan: Create a HubSpot list of MSP
+   prospects?)"* ? the abandoned goal pushed into the very turn that rejected it.
 2. **Forced re-ask.** Everything else fell to `unclear` and got the
    "abandon or hold" prompt instead of being understood.
 
@@ -567,7 +567,7 @@ and it fails toward *carrying unwanted intent forward*, not toward safety.
 Consequence 1 is a real mechanism that injects a stale goal string into a later
 turn's prompt, and the contamination observed earlier in this task surfaced the
 token `"MSPs"` from prior marketplace testing. The shapes match. That is a
-**hypothesis, not a finding** — no trace ties the observed contamination to this
+**hypothesis, not a finding** ? no trace ties the observed contamination to this
 code path, and it is recorded here only so the connection is not lost. It should
 not be cited as the cause of that incident without its own evidence.
 
@@ -580,9 +580,9 @@ Against a real orphan strategic plan (`hubspot.lists.create` +
 
 | Reply | | Router entered | TypeError | Intent |
 |---|---|---|---|---|
-| "don't bother with that…" (modify hint) | before | **no** | yes, swallowed at WARNING | **`modify`** — stale goal injected |
+| "don't bother with that?" (modify hint) | before | **no** | yes, swallowed at WARNING | **`modify`** ? stale goal injected |
 | | after | **yes** | no | `modify` (no AI provider configured locally) |
-| "hold off, I need to run this past our finance lead…" (no hint) | before | **no** | yes, swallowed at WARNING | `unclear` |
+| "hold off, I need to run this past our finance lead?" (no hint) | before | **no** | yes, swallowed at WARNING | `unclear` |
 | | after | **yes** | no | `unclear` (same reason) |
 
 The swallowed line, verbatim:
@@ -593,7 +593,7 @@ WARNING: pending plan intent model skipped:
 ```
 
 After the fix the same handler logs *"All AI providers failed (openai:
-unavailable/not-configured; …)"* — the router is genuinely entered and fails on
+unavailable/not-configured; ?)"* ? the router is genuinely entered and fails on
 missing local credentials, which is the expected local outcome and is what
 distinguishes "reached" from "never called".
 
@@ -608,7 +608,7 @@ about how much production behaviour it changes.
 
 ### Standing regression test
 
-`backend/tests/services/test_pending_plan_intent_honors_model.py` — 11 tests.
+`backend/tests/services/test_pending_plan_intent_honors_model.py` ? 11 tests.
 The load-bearing one asserts that when the model says `cancel` for a
 modify-hint-shaped reply, `classify_pending_plan_intent` returns `cancel`, not
 the `modify` fallback. The fixture asserts the factory is called with **zero
@@ -628,15 +628,15 @@ Regression check: 279 passed across the pending/turn-controller/connector-action
 suites. Baseline: `conversation_turn_controller.py:273` removed from
 `KNOWN_DORMANT`. **Six of twelve sites now closed.**
 
-### Live production proof — PASS
+### Live production proof ? PASS
 
 `scripts/verify-pending-plan-intent-live.py` against deployed tip
 **d57b48c36853b8cb066f04a205c5df8acd66ad16**, org
 `f07e57c0-1501-4000-8000-c04e57a00001`
 (`docs/delivery/pending-plan-intent-live.json`).
 
-The scenario seeds the exact state the one production caller requires — a
-`current_plan` with a goal and **no** `pending_task` — directly in
+The scenario seeds the exact state the one production caller requires ? a
+`current_plan` with a goal and **no** `pending_task` ? directly in
 `conversations.task_state`, then sends one reply. The seeded goal carries a
 nonsense canary token, `Zenphara`, that occurs nowhere else, so any appearance
 of it in the answer is injection rather than coincidence.
@@ -649,7 +649,7 @@ of it in the answer is injection rather than coincidence.
 **Why this is conclusive, and not just an absence of a bad string.** The general
 branch has no non-model route to `cancel`/`modify`/`continue`: its fallback is
 `unclear`, and `unclear` makes the caller emit that verbatim prompt and return.
-Two independent observations rule that out — the prompt never appeared, and
+Two independent observations rule that out ? the prompt never appeared, and
 `current_plan` was cleared, which happens *only* inside the three model-decided
 branches. So the model returned a valid label.
 
@@ -664,30 +664,30 @@ described above is not occurring at this tip.
 Honest limits on this PASS:
 
 - The state was **seeded directly**, not produced by a natural conversation.
-  That is deliberate — it is the only way to hit a caller gated on
-  plan-without-pending-task — but it means this proves the mechanism works, not
+  That is deliberate ? it is the only way to hit a caller gated on
+  plan-without-pending-task ? but it means this proves the mechanism works, not
   that real traffic reaches it. The reachability rate is still unmeasured.
 - The two answers read as correct comprehension, but the final answer is
   model-generated regardless, so the reply *text* is not itself evidence about
   the classifier. The load-bearing evidence is the branch discrimination above,
   not how sensible the wording sounds.
 
-## Phase 2 — site 7, `query_rewriter.py:52` (PASS on dormancy)
+## Phase 2 ? site 7, `query_rewriter.py:52` (PASS on dormancy)
 
-Fix: `get_model_router(settings)` → `get_model_router()`.
+Fix: `get_model_router(settings)` ? `get_model_router()`.
 
 What was silently absent: `rewrite_for_retrieval` turns a context-dependent
 follow-up into a standalone search query. Its one production caller,
 `agent_intelligence.py:2610`, feeds the result straight into
-`prepare_assistant_turn(query=refined_query)` — so its output **is** the query
+`prepare_assistant_turn(query=refined_query)` ? so its output **is** the query
 the whole turn retrieves against, for RAG, Knowledge Fabric and hybrid search
 alike.
 
 While dormant it returned `refined_query == original_query` every time. So for
 every context-dependent follow-up in every non-`fast` mode, retrieval searched
 on the raw text. *"and what about their renewal?"* went to the index exactly
-like that, with `their` unresolved and `Acme Corp` — the only useful search term
-in the exchange — never reaching it.
+like that, with `their` unresolved and `Acme Corp` ? the only useful search term
+in the exchange ? never reaching it.
 
 This one fails toward **quietly worse retrieval**, which produces no error and
 no user-visible symptom. The answer still arrives, because the final generation
@@ -703,7 +703,7 @@ artifact `docs/delivery/query-rewriter-before-after.json`.
 | | Router entered | TypeError | `refined_query` |
 |---|---|---|---|
 | before | **no** | yes, swallowed at WARNING | `"and what about their renewal?"` (unchanged) |
-| after | **yes** | no | unchanged — no AI provider configured locally |
+| after | **yes** | no | unchanged ? no AI provider configured locally |
 
 ```
 WARNING: query rewrite skipped org_id=probe-org
@@ -712,10 +712,10 @@ WARNING: query rewrite skipped org_id=probe-org
 
 Note the trap in reading this table: `refined == original` is also the *correct*
 fallback, so the returned string alone cannot distinguish "dormant" from
-"working but declined". Router entry is the discriminator locally — and in
+"working but declined". Router entry is the discriminator locally ? and in
 production that ambiguity is now resolved by the audit field below.
 
-### New finding — the existing test could never have caught this
+### New finding ? the existing test could never have caught this
 
 `test_intelligence_engine_gaps.py::test_query_rewriter_uses_conversation_context`
 has covered this function all along. It patches the factory with
@@ -735,7 +735,7 @@ The mock granted the production code a calling convention it does not have.
 This is the seventh instance in this program of a green test being the reason a
 bug survived, and it is a **distinct class from "one layer too low"**: not a fix
 aimed below the real cause, but a test that could not fail. Worth separating,
-because the countermeasures differ — the first needs live re-verification after
+because the countermeasures differ ? the first needs live re-verification after
 deploy, this one needs fakes that enforce the real signature.
 
 Every fake in the new suite therefore asserts the factory is called with zero
@@ -746,8 +746,8 @@ arguments.
 A dormant rewriter and a model that declines to rewrite return byte-identical
 results, which is precisely why this sat unnoticed. Following the precedent set
 for the grounding validator, the caller now writes a
-`retrieval.query.rewritten` audit event carrying **`modelRan`** — true only
-after `router.complete` returns — alongside `changed`, `modeKey`, and
+`retrieval.query.rewritten` audit event carrying **`modelRan`** ? true only
+after `router.complete` returns ? alongside `changed`, `modeKey`, and
 `historyTurns`. `rewrite_for_retrieval` returns the new `model_ran` key to
 support it.
 
@@ -756,7 +756,7 @@ unconditionally, one sets it before the call completes. Both are caught.
 
 ### Standing regression test
 
-`backend/tests/services/test_query_rewriter_reaches_model.py` — 14 tests.
+`backend/tests/services/test_query_rewriter_reaches_model.py` ? 14 tests.
 Load-bearing assertions: a follow-up is genuinely rewritten when the model
 returns one; `settings` is never forwarded to the factory; conversation history
 reaches the prompt; the cheap `INTENT_DETECTION` tier and `temperature=0.0` are
@@ -770,7 +770,7 @@ Regression check: 40 passed across the rewriter, intelligence-engine, and
 research-policy suites. Baseline: `query_rewriter.py:52` removed from
 `KNOWN_DORMANT`. **Seven of twelve sites now closed.**
 
-### Live production proof — UNREACHED, not PASS
+### Live production proof ? UNREACHED, not PASS
 
 `scripts/verify-query-rewriter-live.py` then
 `scripts/probe-query-rewriter-reachable-shape.py`, both against deployed tip
@@ -787,10 +787,10 @@ pass.
 |---|---|---|---|
 | pronoun follow-up ("and what about their renewal?") | standard | served live | no |
 | elliptical follow-up ("how long does that usually take?") | standard | served live | no |
-| connector read follow-up (HubSpot deals → close dates) | standard | 1 / 1 `read_tool_classical` | **no** |
+| connector read follow-up (HubSpot deals ? close dates) | standard | 1 / 1 `read_tool_classical` | **no** |
 | reasoning-mode analysis follow-up | reasoning | 2 / 0 | no |
 | research-scope follow-up | standard | 2 / 0 | no |
-| CRM entity follow-up (Acme → open deals) | standard | 1 / 1 `read_tool_classical` | **no** |
+| CRM entity follow-up (Acme ? open deals) | standard | 1 / 1 `read_tool_classical` | **no** |
 
 The two bolded rows are the informative ones. They **did** fall through
 unified-turn-live, which was the hypothesised prerequisite, and still did not
@@ -799,7 +799,7 @@ connector-turn block returns at line 2606, ahead of the rewriter at 2610. Eight
 early returns sit between the unified-turn call and the rewriter.
 
 Production fallthrough reasons over 30 days, n=512
-(`docs/delivery/unified-turn-fallthrough-reasons.json`) — two of the four were
+(`docs/delivery/unified-turn-fallthrough-reasons.json`) ? two of the four were
 exercised above; `defer_classical_tool_sse` and `outcome_error` were not:
 
 | Reason | Count |
@@ -821,10 +821,10 @@ Worth stating plainly: had the audit event not been added in the same change,
 this would have been written up as a clean PASS. The local before/after was
 green, the deploy succeeded, and the answers looked fine. Only an instrumented
 production trace distinguished "the call works now" from "the call still never
-happens" — which is the same lesson as the HubSpot transport fix and the
+happens" ? which is the same lesson as the HubSpot transport fix and the
 fabricated-write gate.
 
-### The bigger finding — the classical answer path may be largely dead
+### The bigger finding ? the classical answer path may be largely dead
 
 Two independent instrumented points now sit in the region of
 `execute_task_streaming` after the unified-turn-live call, and **both record
@@ -857,15 +857,15 @@ independent findings.
 Status: **PASS on the dormancy defect** (local before/after is decisive),
 **UNREACHED on production impact**. Not rounded up.
 
-## Phase 2 — customer RAG (`get_rag_service`, both sites)
+## Phase 2 ? customer RAG (`get_rag_service`, both sites)
 
 Chosen next over the remaining severity order because this one sits on the
 unified turn path that production traffic actually uses, and because it is the
 only site with a pre-existing live trace of its own dormancy.
 
-- `unified_turn_knowledge_context.py:201` — `get_rag_service()`. Restores
+- `unified_turn_knowledge_context.py:201` ? `get_rag_service()`. Restores
   customer RAG to the replan loop. Previously `org_rag_error` on every turn.
-- `cache_warming_scheduler.py:48` — `get_rag_service()`. Cache warming threw per
+- `cache_warming_scheduler.py:48` ? `get_rag_service()`. Cache warming threw per
   org before warming anything; already visible at `warning`, so this one was
   never silent, only broken.
 
@@ -874,7 +874,7 @@ Before evidence, already on record from the replan-loop artifact at tip
 1 was given"` with `org_rag_chunk_count = 0` on both evidence-bearing turns.
 The pass condition is the disappearance of that key on a live turn.
 
-### PASS — live at deployed tip `db928881`
+### PASS ? live at deployed tip `db928881`
 
 Same script, same org, same queries as the before-run, so the comparison is
 like-for-like rather than a differently-shaped test.
@@ -888,7 +888,7 @@ like-for-like rather than a differently-shaped test.
 Evidence pointer: `unified_turn.live.completed` @ `2026-09-01T00:33:08.727681Z`,
 artifact `docs/delivery/evidence-sufficiency-loop-live.json`. The hard turn's
 `sources_tried` begins `['org_rag', 'internet', 'business_graph']`, so the source
-was genuinely reached on the same run where the error key is gone — the absence
+was genuinely reached on the same run where the error key is gone ? the absence
 is the call succeeding, not the branch being skipped.
 
 Honest limit on this PASS: `org_rag_chunk_count` is still `0`. The isolated
@@ -899,17 +899,17 @@ so this is not read as more than it is.
 
 Cost: no measurable latency change. The rich turn ran 32.1s against 32.9s on the
 before-run, which is well inside run-to-run variance for a 3-round loop, and the
-call it replaces previously failed instantly — so the true added cost is one RAG
+call it replaces previously failed instantly ? so the true added cost is one RAG
 query per loop round, unmeasurable here because the corpus is empty.
 
 **Status: both `get_rag_service` sites FIXED and LIVE-CONFIRMED at `db928881`.**
 
-## Dead-path hypothesis � REFUTED (2026-09-01)
+## Dead-path hypothesis ? REFUTED (2026-09-01)
 
 Sites 1/3 (grounding validator) and 7 (query rewriter) both recorded **zero**
 production events after their fixes went live. Two instruments, two zeroes,
 prompted the hypothesis that the classical retrieval-and-answer region after the
-`unified-turn-live` call is dead code for current traffic � and with it, the
+`unified-turn-live` call is dead code for current traffic ? and with it, the
 question of whether the remaining four sites were worth fixing at all.
 
 The hypothesis is **wrong**. The region is reached by real traffic every day.
@@ -924,9 +924,9 @@ The decisive signal was one already carrying 30 days of history:
 `agent.react.iteration`. Its two emitters are cleanly separable by the
 `audit_resource_type` each passes:
 
-- `agent_intelligence.py:3221` � the **only** caller of `run_streaming`, sitting
+- `agent_intelligence.py:3221` ? the **only** caller of `run_streaming`, sitting
   at line 3221, well past the region entry at 2608, passing `"assistant"`.
-- `agent_intelligence.py:1293` � the separate non-streaming `execute_task`,
+- `agent_intelligence.py:1293` ? the separate non-streaming `execute_task`,
   passing `"workflow_run"` / `"agent_job"`.
 
 Both lines are inside `execute_task_streaming` (1382-3844) with no function
@@ -960,7 +960,7 @@ roughly 28% of fallthroughs. Noted as a separate finding, not part of this one.
 
 ### So why is the rewriter still at zero
 
-Not deploy timing � checked rather than assumed. Production `git_sha` is
+Not deploy timing ? checked rather than assumed. Production `git_sha` is
 `f8fb93d68fec04780dec49f20dce459bfcf78176`, the instrumented commit, and **36**
 post-region ReAct iterations occurred after that commit's time, the latest at
 `2026-09-01T21:44:33Z`. The region ran, repeatedly, with the instrument live,
@@ -968,7 +968,7 @@ and the rewriter branch never did.
 
 That leaves the gate above it, `if mode_key != "fast"`. **This is not yet
 proven**: no audit event anywhere records the effective mode
-(`docs/delivery/effective-mode-distribution.json` � all four candidate event
+(`docs/delivery/effective-mode-distribution.json` ? all four candidate event
 types checked, none carries a mode field). Labelled INCONCLUSIVE pending the
 instrument below, not rounded up to a root cause.
 
@@ -983,13 +983,13 @@ but skips the rewriter". Committed at `c38d42cf`, awaiting deploy.
 ### Consequence for the remaining four sites
 
 Reachability was checked per site before any further fix work. Only one of the
-four is in the region at all � the other three sit on hotter paths than any site
+four is in the region at all ? the other three sit on hotter paths than any site
 fixed so far:
 
 | site | production call site | real reach |
 |---|---|---|
-| `contextual_understanding` (and `domain_intelligence`, nested at `contextual_understanding_service.py:89`) | `agent_intelligence.py:1753`, function-body level | **every** streaming turn past the cache and pending-clarify returns � ~1,527 turns/30d |
-| `conversational_turn_gate` | `unified_turn_reasoning_service.py:1278` (unified path) **and** `agent_intelligence.py:2150` (fallthrough) | both paths � effectively all turns |
+| `contextual_understanding` (and `domain_intelligence`, nested at `contextual_understanding_service.py:89`) | `agent_intelligence.py:1753`, function-body level | **every** streaming turn past the cache and pending-clarify returns ? ~1,527 turns/30d |
+| `conversational_turn_gate` | `unified_turn_reasoning_service.py:1278` (unified path) **and** `agent_intelligence.py:2150` (fallthrough) | both paths ? effectively all turns |
 | `clarification_engine` | `agent_intelligence.py:2718` | inside the region; reached daily, further gated |
 
 The three highest-reach sites are on the unified-turn path that serves the
@@ -1000,21 +1000,21 @@ ordinary fix-and-prove work, not a product decision.
 
 With `classical.answer_path.reached` deployed at `d154bb99`, four turn shapes
 were run live (`docs/delivery/query-rewriter-reachable-shape.json`). Two produced
-a genuine `read_tool_classical` fallthrough � and **still** recorded zero
+a genuine `read_tool_classical` fallthrough ? and **still** recorded zero
 region-reach events.
 
 So that reason falls through the unified turn and then exits *before* line 2608,
 which matches the static read: `run_connector_turn` handles the read tool and
 returns at the `stop_pipeline` branch on line 2606, one line above the region.
 
-This does not revive the dead-path hypothesis � 606 post-region ReAct iterations
+This does not revive the dead-path hypothesis ? 606 post-region ReAct iterations
 over 30 days are not in dispute. It narrows it: the route into the region is one
 of the three reasons not yet reproduced live (`defer_classical_tool_sse`,
 `outcome_error`, `pending_family_classical_resume`), or a fallthrough where the
 connector turn declines to stop the pipeline. **Which one is still unidentified**
 and is not being guessed at here.
 
-## Phase 2 � sites 9 and 10, `contextual_understanding_service.py:225` and `domain_intelligence_service.py:208` (PASS on dormancy)
+## Phase 2 ? sites 9 and 10, `contextual_understanding_service.py:225` and `domain_intelligence_service.py:208` (PASS on dormancy)
 
 Fixed together: domain classify is nested inside `understand()` at
 `contextual_understanding_service.py:89`, so neither is reachable in production
@@ -1026,24 +1026,24 @@ Both were `get_model_router(self.settings)` inside a broad `except Exception`.
 **Reach, measured before fixing** (the discipline the dead-path detour bought):
 
 - Site 9 is called at `agent_intelligence.py:1753`, at function-body level, so it
-  runs on **every** streaming turn past the cache and pending-clarify returns �
+  runs on **every** streaming turn past the cache and pending-clarify returns ?
   roughly 1,527 turns/30d, unified-served and fallthrough alike. This is the
   highest-reach site in the whole audit.
 - Site 10 is reached only when rule + org-profile confidence lands under
   `DOMAIN_CONFIDENCE_THRESHOLD` (0.55).
 
 **What was silently absent.** Site 9's `_model_extract` only runs when rules
-cannot infer a goal � messages that do not end in `?` and run past 12 words. For
+cannot infer a goal ? messages that do not end in `?` and run past 12 words. For
 exactly those long, instruction-shaped messages, `goal` stayed `None` and
 `constraints` stayed empty, and that empty understanding is what
 `get_task_classifier(...).classify(understanding=...)` received.
 
-Site 10 is worse in kind. It is the documented third tier � "org profile hints
+Site 10 is worse in kind. It is the documented third tier ? "org profile hints
 first, rule/keyword taxonomy second, **LLM fallback last**". That last tier has
 never existed in production. Every message too ambiguous for keyword rules kept
 its low-confidence guess, and `DOMAIN_CONFIDENCE_THRESHOLD` is read by
 `domain_routing_policy`, `domain_retrieval_policy` and `learning_strategy_keys`
-� so the absence changed routing and retrieval decisions, not just a label.
+? so the absence changed routing and retrieval decisions, not just a label.
 
 ### Before/after against real code, fixes stashed
 
@@ -1054,7 +1054,7 @@ actual pre-fix source via `git stash`, not a reconstruction.
 | | before | after |
 |---|---|---|
 | site 9 factory call | with 1 arg ? TypeError | zero-arg |
-| site 9 result | `{}` � goal `None`, constraints `[]` | real goal + 2 constraints |
+| site 9 result | `{}` ? goal `None`, constraints `[]` | real goal + 2 constraints |
 | site 10 factory call | with 1 arg ? TypeError | zero-arg |
 | site 10 result | rule result verbatim, **confidence 0.1** | real classification, **confidence 0.82** |
 
@@ -1078,7 +1078,7 @@ the dormant arity at both sites and deleting the low-confidence tier.
 `KNOWN_DORMANT` shrinks by two; two remain (`clarification_engine.py:769`,
 `conversational_turn_gate.py:240`).
 
-### Honest limit � live proof NOT YET obtained
+### Honest limit ? live proof NOT YET obtained
 
 **Status: PASS on dormancy, live production impact NOT PROVEN.** Neither service
 writes an audit event, so there is currently no production signal that would
@@ -1106,9 +1106,9 @@ rather than raising. All three instruments passed `actor_id=None`:
 None ever wrote a row, whether or not the code ran. Every "UNREACHED" verdict
 built on them is void:
 
-- Phase B's grounding-validator UNREACHED � **invalid measurement**
-- Site 7's query-rewriter UNREACHED � **invalid measurement**
-- "`read_tool_classical` exits before the region" � **invalid measurement**
+- Phase B's grounding-validator UNREACHED ? **invalid measurement**
+- Site 7's query-rewriter UNREACHED ? **invalid measurement**
+- "`read_tool_classical` exits before the region" ? **invalid measurement**
 
 The dead-path refutation itself **stands**: it rests on `agent.react.iteration`,
 which passes a real actor and is unaffected. That independent signal is the only
@@ -1121,10 +1121,10 @@ Fixed: all three now pass `user_id`; `_finalize_assistant_response` gained a
 **The guard found two more on its first run**, in code nobody was auditing:
 `connector.auth.failed` and `connector.connected`
 (`app/connectors/health_monitor_service.py:110,125`) have also never reached
-`audit_events`. Pinned as known rather than patched blind � the right actor for
+`audit_events`. Pinned as known rather than patched blind ? the right actor for
 a background health sweep is a product decision. **Open for Cesar.**
 
-### Sites 9 and 10 � LIVE PASS at `5f2b0014`
+### Sites 9 and 10 ? LIVE PASS at `5f2b0014`
 
 `scripts/verify-understanding-domain-live.py`, artifact
 `docs/delivery/understanding-domain-live.json`. Six turns, all six past the rule
@@ -1133,29 +1133,29 @@ gate (verified in-script against the real gate, not assumed).
 | | site 9 | site 10 |
 |---|---|---|
 | turns attempting the model | 6/6 | 3 |
-| `modelRan=true` | **6/6** | � |
-| goal extracted | **6/6** | � |
-| `domainSource="llm"` | � | **3/3** |
+| `modelRan=true` | **6/6** | ? |
+| goal extracted | **6/6** | ? |
+| `domainSource="llm"` | ? | **3/3** |
 
 Evidence pointer: `context.understanding.extracted` @
 `2026-09-02T04:46:11.220679Z`, `domainSource=llm`, `confidence=0.74`,
 `routingActive=true`.
 
 The site 10 rows are the finding closed. Those three messages score **0.000**
-against the real rule classifier � measured in
+against the real rule classifier ? measured in
 `backend/scripts/scratch_pick_low_domain_confidence.py`, after the first live
 attempt used business-flavoured text that scored 0.7-0.8 and never reached the
 tier at all. Dormant, they would have stayed at 0.000 with `routing_active=false`.
-Live, the tier returned 0.74, 0.84 and 0.63 � all above the 0.55 threshold that
+Live, the tier returned 0.74, 0.84 and 0.63 ? all above the 0.55 threshold that
 `domain_routing_policy` and `domain_retrieval_policy` read. The fallback tier is
 doing exactly the job it was documented to do, for the first time in production.
 
 ## Re-measurement with working instruments (supersedes the void verdicts)
 
-### Site 7 `query_rewriter` � LIVE PASS at `5f2b0014`
+### Site 7 `query_rewriter` ? LIVE PASS at `5f2b0014`
 
 Evidence pointer: `classical.answer_path.reached` @ `2026-09-02T06:54:59.995672Z`
-� `modeKey=agent`, `rewriteAttempted=true`, **`modelRan=true`**, **`changed=true`**,
+? `modeKey=agent`, `rewriteAttempted=true`, **`modelRan=true`**, **`changed=true`**,
 `historyTurns=2`, 40 ? 58 chars. The model ran *and* produced a different
 retrieval query than the user's raw text. This supersedes the earlier UNREACHED
 verdict, which was measured with an instrument that could not write.
@@ -1166,7 +1166,7 @@ producing "proof" of the wrong thing:
 1. **History came from the client, not the database.** `assistant.py:1041` builds
    `conversation_history` from `body.messages[:-1]`. The probe posted one message
    per request, so the rewriter saw no history and correctly returned before the
-   model. `historyTurns=0` in the metadata is what exposed it � without that
+   model. `historyTurns=0` in the metadata is what exposed it ? without that
    field the run reads as a genuine failure.
 2. **The turn that fell through was the turn without history.** With a
    tool-shaped *setup*, the fallthrough happened on turn 1. Reaching the rewriter
@@ -1176,7 +1176,7 @@ producing "proof" of the wrong thing:
 Honest limit: 1 of 4 shapes reached it. `read_tool_classical` on a
 history-bearing turn is the only route confirmed so far.
 
-### Sites 1+3 grounding validator � NOT dormant, disabled by configuration
+### Sites 1+3 grounding validator ? NOT dormant, disabled by configuration
 
 Zero `answer.grounding.validated` events, now with a working instrument, across
 five confirmed region entries including the full-path turn above. The cause is
@@ -1192,16 +1192,16 @@ validation_enabled_for_mode(mode_key, settings)      # intelligence_engine_setti
 Every region entry above recorded `modeKey=agent`. And
 `resolve_effective_intelligence_mode` upgrades `standard` ? `agent` whenever any
 connector is connected. So under the **default** performance mode the grounding
-validator is switched off for precisely the orgs that have connectors � real
-customers � while remaining enabled for the modes they never run in.
+validator is switched off for precisely the orgs that have connectors ? real
+customers ? while remaining enabled for the modes they never run in.
 
 **This is a product/configuration decision, not a bug fix, and is left for
 Cesar.** The honest options are to include `agent` in the default validation set,
 or to accept that grounding validation is an opt-in for `accuracy_priority` orgs
 and stop describing it as a standing safety net. What is no longer true is that
-the site is "unreached" � it is reachable and deliberately gated off.
+the site is "unreached" ? it is reachable and deliberately gated off.
 
-## Site 8 `conversational_turn_gate.py:240` � highest-reach site of the twelve
+## Site 8 `conversational_turn_gate.py:240` ? highest-reach site of the twelve
 
 `classify_turn_shape` called `get_model_router(settings or get_settings())`. Fixed
 to the real zero-argument form.
@@ -1275,14 +1275,14 @@ produce is `conversational` or `mixed`.
 
 The 71.9% was measured one layer too low and should not be read as production
 reach. `probe_turn_gate_reach.py` ran the real heuristic over real user messages
-and found 719/1000 defer past it � but that measures what *would* happen if the
+and found 719/1000 defer past it ? but that measures what *would* happen if the
 gate ran on every turn. It does not run on every turn.
 
 `classify_turn_shape` has exactly two callers:
 
-- `agent_intelligence.py:2181` � `apply_unified_turn_live` returns before this
+- `agent_intelligence.py:2181` ? `apply_unified_turn_live` returns before this
   line, and LIVE serves the majority of traffic.
-- `_maybe_prepend_mixed_social_ack` � reached on 3 of the 9 `live_served = True`
+- `_maybe_prepend_mixed_social_ack` ? reached on 3 of the 9 `live_served = True`
   paths inside `apply_unified_turn_live`.
 
 Evidence: a 6-turn live probe at `f7b25d08` and again at `b3a429f8` produced
@@ -1293,16 +1293,16 @@ What 71.9% does honestly describe: of real user messages, the share whose shape
 the heuristic cannot decide alone. It is an upper bound on the model tier's share
 of gate invocations, not a share of turns.
 
-### Third "one layer too low" � this one in the instrument, not the fix
+### Third "one layer too low" ? this one in the instrument, not the fix
 
 Worth recording as its own instance, since the user asked these be flagged
 explicitly. The first two were fixes aimed at a symptom layer. This one is
 different and arguably more dangerous: the *fix* was correct and live the whole
 time, while the *instrument* measuring it was unreachable.
 
-The replies in the `f7b25d08` probe run showed the gate plainly working �
+The replies in the `f7b25d08` probe run showed the gate plainly working ?
 `"Glad it clicked."`, `"That's a reasonable place to pause."`, and a prepended
-`"Hey � on it."` social ack � at the same moment the instrument reported zero
+`"Hey ? on it."` social ack ? at the same moment the instrument reported zero
 events. Read without the replies, that run looks exactly like the earlier
 zero-event reachability findings, and would have been recorded as one.
 
@@ -1311,20 +1311,20 @@ Resolution: the event now lives inside `classify_turn_shape` itself with
 it measures. Real reach will be read from production traffic on this instrument
 rather than inferred.
 
-### Site 8 final measured state � dormancy FIXED, production reach NEAR ZERO
+### Site 8 final measured state ? dormancy FIXED, production reach NEAR ZERO
 
 Four deploys of live-proof attempts (`f7b25d08`, `b3a429f8`, `b03def5c`) settle
 this, and the answer inverts the section above.
 
 **Proven:**
 
-- Dormancy fixed � `docs/delivery/turn-gate-before-after.json`, router entry
+- Dormancy fixed ? `docs/delivery/turn-gate-before-after.json`, router entry
   goes False ? True, verdict `task_shaped` ? `mixed`.
 - 11 regression tests, **11/11 mutations caught after the refactor**.
 
 **Measured, not proven:** production reach. With the instrument inside
-`classify_turn_shape` itself � where it cannot be misplaced relative to the call
-� 12 live turns across two distinct shapes produced **zero** events:
+`classify_turn_shape` itself ? where it cannot be misplaced relative to the call
+? 12 live turns across two distinct shapes produced **zero** events:
 
 | run | tip | turns | events |
 |---|---|---|---|
@@ -1336,7 +1336,7 @@ this, and the answer inverts the section above.
 The last row is the decisive one. Those turns provably entered the classical
 region at `:2608`, which sits *after* the gate caller at `:2181`. And
 `context.understanding.extracted` fires from the same function with the same
-`user_id`, so a run of `:2181` would have written a row. It did not � therefore
+`user_id`, so a run of `:2181` would have written a row. It did not ? therefore
 the fallthrough re-enters `execute_task_streaming` **after** `:2181`, and that
 caller is not reached under current routing either.
 
@@ -1346,10 +1346,10 @@ That leaves `_maybe_prepend_mixed_social_ack` as the only live caller, reached o
 **Honest conclusion.** Site 8 was reported above as the highest-reach site of the
 twelve, on a 71.9% heuristic-deferral figure. Measured reach is near zero under
 current LIVE routing. This is the same shape as the grounding validator: correct
-code that routing does not reach. Note the `"Hey � on it."` prefix seen in the
+code that routing does not reach. Note the `"Hey ? on it."` prefix seen in the
 probe replies comes from some other social-ack path, not this gate.
 
-**Decision for Cesar, not resolved unilaterally** � same two honest options as
+**Decision for Cesar, not resolved unilaterally** ? same two honest options as
 the grounding validator:
 
 1. Fix the routing gap so the turn-shape gate runs on LIVE-served turns (it is
@@ -1564,7 +1564,7 @@ user impact - which is the single most important lesson of this program.
 
 | # | Site | Dormancy | Production reach | Final state |
 |---|---|---|---|---|
-| 1 | `answer_validator.py:74` | Fixed 2026-08-31 | Config-gated OFF for agent mode; 0 events in 30d | Tool-aware validator built; agent mode enabled; LIVE PASS `ab7ca5a7`. See open decision below |
+| 1 | `answer_validator.py:74` | Fixed 2026-08-31 | Config-gated OFF for agent mode; 0 events in 30d | Tool-aware validator built; agent mode enabled; LIVE PASS `ab7ca5a7`. DELIVERED - see "Coverage gap: closed" below |
 | 2 | `unified_turn_knowledge_context.py:201` (`get_rag_service`) | Fixed 2026-08-31 | Reached; `org_rag_error` observed live while dormant | LIVE PASS `db928881` |
 | 3 | `agent_intelligence.py:931` (regeneration) | Fixed 2026-08-31 | Unreachable while site 1 failed open | Reachable and tool-aware; exercised live at `742414b9` (11.9s regeneration, since removed as a false trigger) |
 | 4 | `schema_param_extractor.py:319` | Fixed 2026-08-31 | Reached | PASS via before/after router-entry probe. INCONCLUSIVE status closed out |
@@ -1663,7 +1663,56 @@ kind**, so it proved nothing. It is recorded as PASS-but-weightless in
 
 | Risk | Status | Owner |
 |---|---|---|
-| Grounding validation for connector-connected orgs | See open decision below | Cesar |
+| Grounding validation for connector-connected orgs | CLOSED at `ab7ca5a7`. Residual risk below, accepted | Cesar |
+| Tool-aware validator proven on a thin sample only | ACCEPTED - n=5, one probe org, HubSpot only | Cesar |
 | `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
 | `unnarrowed_tool_attach_blocked` | WATCH - 119 events, probe-only, dormant since 08-13 | unassigned |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
+
+## Coverage gap: closed, with the residual risk stated
+
+Decision 2026-09-02 (Cesar): keep the tool-aware validator live and record it as
+delivered, with the sample limitations carried as accepted residual risk.
+
+Process note, recorded because it matters more than the outcome. The
+instruction that arrived for this closing pass was to **defer** the tool-aware
+validator as its own future project and to document the coverage gap as an
+accepted temporary risk. By the time it arrived the validator had already been
+built, deployed and live-proven. Rather than quietly keep the shipped work or
+quietly revert it, the conflict was surfaced with the evidence on both sides and
+the choice was made explicitly. Nothing here was decided by an agent's
+preference.
+
+**What is closed.** Every connector-connected org can now reach grounding
+validation. `resolve_effective_intelligence_mode` sends them to `agent`, and
+`agent` is in the default validation set, so the empty intersection that made
+validation unreachable for those orgs no longer exists. Measured at `ab7ca5a7`:
+5 tool-grounded runs where the previous 30-day window had zero, 5 of 5 judged by
+the model, 0 fail-open events, 0 answers replaced, p50 1781ms.
+
+**Residual risk, accepted rather than closed.** This is the part that must not
+be read as stronger than it is:
+
+- **Thin sample.** Five validator runs, from one probe org, against HubSpot
+  only. That is enough to demonstrate the specific failure mode is fixed
+  (RAG-only evidence rejecting correct tool answers). It is not a distribution,
+  and it is a small basis for a check that gates user-facing answers.
+- **Single connector shape.** Other connectors return differently shaped
+  payloads. The 6000-char per-tool budget was sized against a ten-record HubSpot
+  contact listing; a connector returning larger records could re-introduce the
+  truncation-driven false rejection that cost 11.9s at `742414b9`.
+  `evidence_truncated` is audited precisely so this is detectable rather than
+  inferred.
+- **Latency at scale unmeasured.** p50 1781ms was measured on a quiet probe org.
+  Behaviour under real concurrent load is unknown.
+- **Fail-open by design.** A model failure still waves the answer through. That
+  is deliberate for a user-facing path, and `validator_fallthrough` now names
+  the cause on every occurrence, but it means the validator is a best-effort
+  safety net and not a guarantee.
+
+**How this gets watched rather than forgotten.** The audit fields
+`evidenceKind`, `toolResultCount`, `evidenceTruncated`, `assessorRan` and
+`validatorFallthrough` on `answer.grounding.validated` are sufficient to answer,
+from production data alone: is it running, is it judging, is it replacing
+answers, and is truncation biting. Any future hardening project should start by
+reading those rather than by re-deriving the problem.
