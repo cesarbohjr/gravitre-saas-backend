@@ -1,0 +1,547 @@
+{
+  "generated_at": "2026-09-02T22:59:56.949948+00:00",
+  "lookback_days": 30,
+  "env_files": [
+    ".env: 33/33 applied (utf-8)",
+    ".env.operator.local: 24/51 applied (cp1252)",
+    ".env: absent"
+  ],
+  "config_defaults": {
+    "evidence_sufficiency_loop_enabled": true,
+    "evidence_sufficiency_max_rounds": 2,
+    "evidence_contradiction_check_enabled": true,
+    "unified_turn_live_enabled": false,
+    "unified_turn_shadow_enabled": false
+  },
+  "actions": {
+    "unified_turn.live.completed": {
+      "total": 1063,
+      "orgs": 3,
+      "probe_events": 1034,
+      "real_events": 29,
+      "first": "2026-08-04T01:08:43.146928+00:00",
+      "last": "2026-09-02T22:31:05.269287+00:00",
+      "events_with_knowledge_block": 678,
+      "events_with_sufficiency_block": 157,
+      "skipped_reason": {
+        "None": 157
+      },
+      "bar": {
+        "business": 131,
+        "regulatory": 26
+      },
+      "additional_rounds_used": {
+        "1": 134,
+        "2": 22,
+        "0": 1
+      },
+      "final_sufficient": {
+        "False": 156,
+        "True": 1
+      },
+      "stopped_because": {
+        "no_untried_source": 134,
+        "max_rounds_reached": 22,
+        "None": 1
+      },
+      "assessor": {
+        "llm": 284,
+        "deterministic": 50,
+        "assessor_error": 1
+      },
+      "events_with_conflicts_block": 23,
+      "conflict_count_distribution": {
+        "1": 17,
+        "0": 6
+      },
+      "fallthrough_reasons": {},
+      "crosscheck_rounds_vs_sources": {
+        "consistent": 156,
+        "inconsistent": 0
+      },
+      "samples": [
+        {
+          "created_at": "2026-09-02T22:31:05.269287+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 7858,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "weak_authority",
+              "partial_coverage"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority"
+                ],
+                "reason": "The evidence is only topic-adjacent: it discusses responses to 'Do you smoke?' but does not directly establish that the correct reply should be exactly 'smoke-ok'. It is insufficient to answer the request dependably under the business standard.",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "weak_authority",
+                  "partial_coverage"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly support the specific requested output. It discusses responses to the question 'Do you smoke?' but does not provide evidence that the exact reply 'smoke-ok' is appropriate or correct. The sources also appear to be generic web snippets with weak authority for a business-standard evidence threshold.",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.94,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only topic-adjacent and does not directly support the specific requested output. It discusses responses to the question 'Do you smoke?' but does not provide evidence that the exact reply 'smoke-ok' is appropriate or correct. The sources also appear to be generic web snippet",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        },
+        {
+          "created_at": "2026-09-02T22:01:51.82055+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 6901,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "weak_authority",
+              "partial_coverage"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly verify the exact required reply. It discusses responses to smoking-related questions and comebacks, but none of the sources confirm that the correct answer is exactly \"smoke-ok\". The evidence is also not authoritative for validating a specific output format, so it is not sufficient under a business standard.",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.97,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "weak_authority",
+                  "partial_coverage"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly support the exact requested reply 'smoke-ok'. It discusses smoking-related comebacks and responses to being asked about smoking, but none of the sources provide the specific answer or directly verify that exact phrase. Authority is also weak for a business-standard judgment, and the evidence is not clearly current enough to rely o",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.97,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only topic-adjacent and does not directly support the exact requested reply 'smoke-ok'. It discusses smoking-related comebacks and responses to being asked about smoking, but none of the sources provide the specific answer or directly verify that exact phrase. Authority is ",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        },
+        {
+          "created_at": "2026-09-02T21:08:34.152842+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 4854,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "partial_coverage",
+              "weak_authority"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only loosely related to the topic of thinking about something and it happening, but it does not directly address the user's vague question or provide a dependable answer. It is also not clear whether the source is authoritative or current enough for a business-standard judgment.",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority"
+                ],
+                "reason": "The retrieved evidence is only loosely related to the topic and does not directly address the question asked. The question is vague and contextual ('the thing we discussed'), while the evidence discusses a general phenomenon of thinking of something and then it happening. It does not provide a dependable basis to answer the specific request, and the source authority is unclear for a business-stand",
+                "assessor": "llm",
+                "bar_reason": "general business question",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only loosely related to the topic and does not directly address the question asked. The question is vague and contextual ('the thing we discussed'), while the evidence discusses a general phenomenon of thinking of something and then it happening. It does not provide a depen",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        }
+      ]
+    },
+    "unified_turn.live.fallthrough": {
+      "total": 518,
+      "orgs": 2,
+      "probe_events": 511,
+      "real_events": 7,
+      "first": "2026-08-04T07:16:47.692641+00:00",
+      "last": "2026-09-02T21:07:57.477924+00:00",
+      "events_with_knowledge_block": 320,
+      "events_with_sufficiency_block": 99,
+      "skipped_reason": {
+        "None": 99
+      },
+      "bar": {
+        "business": 97,
+        "regulatory": 2
+      },
+      "additional_rounds_used": {
+        "1": 99
+      },
+      "final_sufficient": {
+        "False": 99
+      },
+      "stopped_because": {
+        "no_untried_source": 99
+      },
+      "assessor": {
+        "llm": 190,
+        "deterministic": 8
+      },
+      "events_with_conflicts_block": 2,
+      "conflict_count_distribution": {
+        "0": 1,
+        "1": 1
+      },
+      "fallthrough_reasons": {
+        "outcome_error": 146,
+        "pending_family_classical_resume": 136,
+        "defer_classical_tool_sse": 122,
+        "read_tool_classical": 114
+      },
+      "crosscheck_rounds_vs_sources": {
+        "consistent": 99,
+        "inconsistent": 0
+      },
+      "samples": [
+        {
+          "created_at": "2026-09-02T21:07:57.477924+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 5978,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "partial_coverage",
+              "weak_authority",
+              "stale_evidence"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly answer the specific question of how many open deals you have in HubSpot. It discusses concepts like open deals metrics and a specification example, but it does not provide a current count for the user's account. The evidence is also insufficient on authority for a business-standard answer because it is not clearly from the user's ",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.96,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The evidence is only topic-adjacent and does not provide your actual number of open HubSpot deals. It discusses concepts like open deals, metrics, and formulas, but no source states the count for your account or a directly retrievable current total. For a business/sales standard, this is not enough to answer without guessing.",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.97,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The evidence is only topic-adjacent and does not provide your actual number of open HubSpot deals. It discusses concepts like open deals, metrics, and formulas, but no source states the count for your account or a directly retrievable current total. For a business/sales standard, this is not enough ",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        },
+        {
+          "created_at": "2026-09-02T21:06:13.851977+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 5607,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "partial_coverage",
+              "weak_authority",
+              "stale_evidence"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly state the user's number of open deals. It includes general discussions and help documentation about tracking or counting open deals, but no evidence about the user's actual deal count. The sources are also weak for a business/sales answer, and there is no clear current, authoritative account data provided.",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not provide the actual number of your open deals. It discusses how to calculate or track open deals in general, and one Reddit post mentions a different person's count, but there is no direct, current account-specific evidence answering your question. The source authority is also weak for a sales-business standard because the results are gener",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only topic-adjacent and does not provide the actual number of your open deals. It discusses how to calculate or track open deals in general, and one Reddit post mentions a different person's count, but there is no direct, current account-specific evidence answering your que",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        },
+        {
+          "created_at": "2026-09-02T20:54:57.487131+00:00",
+          "org_is_probe": true,
+          "evidenceSufficiency": {
+            "ms": 5226,
+            "bar": "business",
+            "enabled": true,
+            "final_gaps": [
+              "does_not_address_question",
+              "partial_coverage",
+              "weak_authority",
+              "stale_evidence"
+            ],
+            "assessments": [
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority"
+                ],
+                "reason": "The evidence is only topic-adjacent and does not directly list the user's most recent deals or their amounts. It includes generic guidance, a general transactions homepage description, and unrelated retail deals, but no specific deal records tied to the user. This is not sufficient for a business/sales standard.",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              },
+              {
+                "bar": "business",
+                "gaps": [
+                  "does_not_address_question",
+                  "partial_coverage",
+                  "weak_authority",
+                  "stale_evidence"
+                ],
+                "reason": "The retrieved evidence is only topic-adjacent and does not directly provide the user's most recent deals or their amounts. It includes general articles about recent deals and a marketplace/deals homepage, but no personal deal records or concrete deal list tied to the user. The sources are also not authoritative enough for a sales/business-record question, and there is no clear evidence of current,",
+                "assessor": "llm",
+                "bar_reason": "department=sales",
+                "sufficient": false,
+                "min_sources": 1,
+                "confidenceSource": "heuristic",
+                "confidence_source": "heuristic",
+                "confidenceIsEstimate": true,
+                "assessment_confidence": 0.98,
+                "confidence_is_estimate": true,
+                "require_citable_source": false,
+                "require_freshness_signal": false
+              }
+            ],
+            "final_reason": "The retrieved evidence is only topic-adjacent and does not directly provide the user's most recent deals or their amounts. It includes general articles about recent deals and a marketplace/deals homepage, but no personal deal records or concrete deal list tied to the user. The sources are also not a",
+            "sources_tried": [
+              "org_rag",
+              "internet",
+              "business_graph"
+            ],
+            "stopped_because": "no_untried_source",
+            "final_sufficient": false,
+            "max_additional_rounds": 2,
+            "additional_rounds_used": 1
+          }
+        }
+      ]
+    },
+    "unified_turn.shadow.completed": {
+      "total": 0,
+      "orgs": 0,
+      "probe_events": 0,
+      "real_events": 0,
+      "first": null,
+      "last": null,
+      "events_with_knowledge_block": 0,
+      "events_with_sufficiency_block": 0,
+      "skipped_reason": {},
+      "bar": {},
+      "additional_rounds_used": {},
+      "final_sufficient": {},
+      "stopped_because": {},
+      "assessor": {},
+      "events_with_conflicts_block": 0,
+      "conflict_count_distribution": {},
+      "fallthrough_reasons": {},
+      "crosscheck_rounds_vs_sources": {
+        "consistent": 0,
+        "inconsistent": 0
+      },
+      "samples": []
+    }
+  },
+  "named_action_counts": {
+    "evidence.sufficiency.assessed": 0,
+    "evidence.sufficiency.escalated": 0,
+    "answer.grounding.validated": 17
+  }
+}

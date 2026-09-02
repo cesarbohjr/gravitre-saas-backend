@@ -1,0 +1,131 @@
+{
+  "generated_at": "2026-09-02T23:07:15.290852+00:00",
+  "real_turns_examined": 36,
+  "with_knowledge_block": 5,
+  "knowledge_skipped_reason": {
+    "<no knowledge block at all>": 31,
+    "None": 4,
+    "not_informational": 1
+  },
+  "outcome_kind": {
+    "conversational_reply": 21,
+    "clarifying_question": 8,
+    "connector_tool_proposal": 2,
+    "error": 2,
+    "skipped": 2,
+    "confirmation_request": 1
+  },
+  "reasoning_depth": {
+    "None": 36
+  },
+  "detail": [
+    {
+      "created_at": "2026-08-25T22:12:47.952208+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-14T03:39:55.861341+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "connector_tool_proposal",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-14T03:38:31.988959+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "conversational_reply",
+      "reasoning_depth": null,
+      "knowledge_skipped": null,
+      "org_rag_chunk_count": 0,
+      "route_reason": "departments=['marketing']; jurisdictions=['none']; packs=['pack.marketing']"
+    },
+    {
+      "created_at": "2026-08-14T03:37:53.429135+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "conversational_reply",
+      "reasoning_depth": null,
+      "knowledge_skipped": null,
+      "org_rag_chunk_count": 0,
+      "route_reason": "departments=['marketing']; jurisdictions=['none']; packs=['pack.marketing']"
+    },
+    {
+      "created_at": "2026-08-13T21:38:09.664193+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-13T17:55:40.619522+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-13T17:55:24.990304+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-13T10:03:03.205736+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-11T20:23:28.295764+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "clarifying_question",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-11T20:22:41.992347+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "conversational_reply",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-10T04:26:34.594184+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "conversational_reply",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    },
+    {
+      "created_at": "2026-08-07T10:22:09.331043+00:00",
+      "action": "unified_turn.live.completed",
+      "outcome_kind": "conversational_reply",
+      "reasoning_depth": null,
+      "knowledge_skipped": "<absent>",
+      "org_rag_chunk_count": null,
+      "route_reason": null
+    }
+  ]
+}

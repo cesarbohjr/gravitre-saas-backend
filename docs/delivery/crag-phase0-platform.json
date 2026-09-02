@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-09-02T23:04:07.497618+00:00",
+  "org_count": 229,
+  "rag_chunks_total": 1,
+  "rag_documents_total": 1,
+  "rag_chunks_detail": [
+    {
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "org_name": "Acme Corp",
+      "environment": "production",
+      "created_at": "2026-06-22T22:10:23.796639+00:00"
+    }
+  ],
+  "rag_documents_detail": [
+    {
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "org_name": "Acme Corp",
+      "title": "Gravitre Operator Sample Playbook",
+      "environment": "production",
+      "created_at": "2026-06-22T22:10:23.685268+00:00"
+    }
+  ],
+  "orgs_with_corpus": [
+    "00000000-0000-0000-0000-000000000001"
+  ],
+  "traffic_by_org": {
+    "f07e57c0-1501-4000-8000-c04e57a00001": {
+      "org_name": "Gravitre Isolated Conversation Smoke",
+      "unified_turn.live.completed": 1034,
+      "loop_RAN": 256,
+      "no_sufficiency_block": 1289,
+      "unified_turn.live.fallthrough": 511
+    },
+    "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea": {
+      "org_name": "Cesar Bohorquez Jr.'s Workspace",
+      "unified_turn.live.completed": 27,
+      "no_sufficiency_block": 34,
+      "unified_turn.live.fallthrough": 7
+    },
+    "cfe626bb-e2cb-4b6e-bfab-b171e449577c": {
+      "org_name": "testuser.gravitre.20260807's Workspace",
+      "unified_turn.live.completed": 2,
+      "no_sufficiency_block": 2
+    }
+  }
+}

@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-09-02T23:01:39.886497+00:00",
+  "lookback_days": 30,
+  "turns_with_loop_run": 256,
+  "insufficient_total": 255,
+  "insufficient_with_zero_org_rag": 255,
+  "mean_org_rag_chunks": 0.0,
+  "turns_with_zero_total_evidence": 24,
+  "turns_with_some_evidence": 232,
+  "final_gaps": {
+    "does_not_address_question": 226,
+    "partial_coverage": 225,
+    "weak_authority": 213,
+    "stale_evidence": 71,
+    "insufficient_source_count": 28,
+    "no_freshness_signal": 9,
+    "missing_current_account_data": 1,
+    "missing_specific_deal_data": 1,
+    "current_account_contact_missing": 1,
+    "weak_relevance_to_hr_backlog": 1,
+    "missing_current_operational_evidence": 1,
+    "missing_prior_discussion_context": 1,
+    "weak_authority_for_specific_outline": 1,
+    "weak_relevance_to_hr_operations": 1,
+    "insufficient_internal_evidence": 1,
+    "no_actual_timeline_present": 1,
+    "stale_or_noncurrent_for_question": 1,
+    "missing_direct_authority_on_materiality_standard": 1,
+    "insufficient_recency": 1
+  },
+  "final_reasons_top": {
+    "0 substantive source(s) retrieved; business bar needs at least 1": 21,
+    "1 substantive source(s) retrieved; regulatory bar needs at least 2": 4,
+    "0 substantive source(s) retrieved; regulatory bar needs at least 2": 3,
+    "The retrieved evidence is only topic-adjacent and does not directly support the specific requested output. It discusses responses to the question 'Do you smoke?' but does not provide evidence that the": 1,
+    "The retrieved evidence is only topic-adjacent and does not directly support the exact requested reply 'smoke-ok'. It discusses smoking-related comebacks and responses to being asked about smoking, but": 1,
+    "The retrieved evidence is only loosely related to the topic and does not directly address the question asked. The question is vague and contextual ('the thing we discussed'), while the evidence discus": 1,
+    "The retrieved evidence is only topic-adjacent and does not directly state what your internal documentation says about refunds. It mostly discusses generic refund handling and documentation practices, ": 1,
+    "The retrieved evidence is only about the general topic of refunds and refund handling; it does not directly state what your internal documentation says about refunds. The sources are also not authorit": 1,
+    "The retrieved evidence is only loosely related to smoking and does not directly support the exact response requested. It discusses general advice, risks, or etiquette about smoking, but it does not es": 1,
+    "The retrieved evidence is only topic-adjacent and does not directly state the current number of open deals in HubSpot. It discusses how to calculate or understand deals generally, but it does not prov": 1
+  },
+  "bar_by_verdict": {
+    "business/False": 228,
+    "regulatory/False": 27,
+    "regulatory/True": 1
+  },
+  "retrieval_distributions": {
+    "org_rag_chunk_count": {
+      "0": 256
+    },
+    "fabric_hit_count": {
+      "0": 230,
+      "6": 23,
+      "2": 3
+    },
+    "internet_hit_count": {
+      "4": 67,
+      "5": 63,
+      "2": 36,
+      "3": 36,
+      "1": 29,
+      "0": 25
+    },
+    "business_graph_status": {
+      "insufficient_entity_match": 215,
+      "None": 41
+    }
+  },
+  "examples": [
+    {
+      "created_at": "2026-09-02T22:31:05.269287+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "weak_authority",
+        "partial_coverage"
+      ],
+      "final_reason": "The retrieved evidence is only topic-adjacent and does not directly support the specific requested output. It discusses responses to the question 'Do you smoke?' but does not provide evidence that the exact reply 'smoke-ok' is appropriate or correct. The sources also appear to be generic web snippet",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 4,
+      "business_graph_status": "insufficient_entity_match"
+    },
+    {
+      "created_at": "2026-09-02T22:01:51.82055+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "weak_authority",
+        "partial_coverage"
+      ],
+      "final_reason": "The retrieved evidence is only topic-adjacent and does not directly support the exact requested reply 'smoke-ok'. It discusses smoking-related comebacks and responses to being asked about smoking, but none of the sources provide the specific answer or directly verify that exact phrase. Authority is ",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 4,
+      "business_graph_status": "insufficient_entity_match"
+    },
+    {
+      "created_at": "2026-09-02T21:08:34.152842+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "partial_coverage",
+        "weak_authority"
+      ],
+      "final_reason": "The retrieved evidence is only loosely related to the topic and does not directly address the question asked. The question is vague and contextual ('the thing we discussed'), while the evidence discusses a general phenomenon of thinking of something and then it happening. It does not provide a depen",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 1,
+      "business_graph_status": "insufficient_entity_match"
+    },
+    {
+      "created_at": "2026-09-02T20:55:37.08668+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "weak_authority",
+        "partial_coverage"
+      ],
+      "final_reason": "The retrieved evidence is only topic-adjacent and does not directly state what your internal documentation says about refunds. It mostly discusses generic refund handling and documentation practices, not your specific internal policy or docs. The sources are also not authoritative for an internal do",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 4,
+      "business_graph_status": "insufficient_entity_match"
+    },
+    {
+      "created_at": "2026-09-02T20:52:13.819723+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "weak_authority",
+        "partial_coverage"
+      ],
+      "final_reason": "The retrieved evidence is only about the general topic of refunds and refund handling; it does not directly state what your internal documentation says about refunds. The sources are also not authoritative for internal policy, and several are generic or external/public pages rather than internal doc",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 4,
+      "business_graph_status": "insufficient_entity_match"
+    },
+    {
+      "created_at": "2026-09-02T20:50:21.209739+00:00",
+      "bar": "business",
+      "final_gaps": [
+        "does_not_address_question",
+        "partial_coverage",
+        "weak_authority"
+      ],
+      "final_reason": "The retrieved evidence is only loosely related to smoking and does not directly support the exact response requested. It discusses general advice, risks, or etiquette about smoking, but it does not establish that replying exactly 'smoke-ok' is the correct answer. The sources are also mixed in author",
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "stopped_because": "no_untried_source",
+      "org_rag_chunk_count": 0,
+      "fabric_hit_count": 0,
+      "internet_hit_count": 4,
+      "business_graph_status": "insufficient_entity_match"
+    }
+  ]
+}
