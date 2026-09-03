@@ -1,6 +1,7 @@
 """Hybrid retrieval over platform knowledge_* — vector + FTS + authority/freshness."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -10,6 +11,79 @@ from app.rag.embedding import get_embedding
 from app.services.retrieval_provenance import build_provenance_envelope
 
 logger = get_logger(__name__)
+
+# postgrest's `text_search(column, query, options)` takes an options dict, and the
+# free-text branch keys on the literal "web_search". `websearch_to_tsquery` is the
+# right function for a natural-language question: it tolerates spaces, quoted
+# phrases and `-negation`, where a bare tsquery rejects any multi-word string.
+FTS_OPTIONS = {"type": "web_search", "config": "english"}
+
+# `websearch_to_tsquery` ANDs terms, so a whole question only matches a chunk
+# containing every word. Measured on the real 137-chunk corpus: the full sentence
+# returned 0 rows on 3 of 4 realistic questions and 1 row on the fourth, while the
+# same content terms ORed returned the cap on all four. Shipping the AND form
+# would have removed the exception and left the keyword arm contributing nothing
+# -- fixed one layer too low.
+_FTS_WORD = re.compile(r"[a-zA-Z][a-zA-Z0-9\-]{2,}")
+
+# Interrogatives and filler carry no retrieval signal but do drag in noise once
+# terms are ORed. Deliberately short: over-pruning here silently narrows recall.
+_FTS_STOPWORDS = frozenset(
+    {
+        "the", "and", "are", "for", "with", "what", "how", "why", "when", "where",
+        "who", "does", "did", "our", "your", "their", "this", "that", "these",
+        "those", "from", "into", "under", "about", "any", "all", "can", "should",
+        "would", "could", "must", "have", "has", "had", "was", "were", "been",
+        "please", "tell", "explain", "describe", "there", "then", "than",
+    }
+)
+
+# Enough terms to express the question, few enough that an ORed tsquery stays
+# selective.
+_FTS_MAX_TERMS = 8
+
+
+def build_fts_query(query: str) -> str:
+    """Content terms from a natural-language question, ORed for the keyword arm.
+
+    Returns "" when nothing usable survives, which the caller must treat as
+    "keyword search not applicable", never as "keyword search found nothing".
+    """
+    seen: list[str] = []
+    for word in _FTS_WORD.findall(query or ""):
+        lowered = word.lower()
+        if lowered in _FTS_STOPWORDS or lowered in seen:
+            continue
+        seen.append(lowered)
+        if len(seen) >= _FTS_MAX_TERMS:
+            break
+    # Quoted so a term containing a hyphen cannot be read as tsquery negation.
+    return " OR ".join(f'"{term}"' for term in seen)
+
+# Named states for each half of hybrid retrieval. "did not run" and "ran and
+# matched nothing" are different facts and must never serialise to the same
+# value -- that conflation is this program's Class C failure, now booked six
+# times, and it is exactly what let a dead keyword path look healthy.
+FTS_OK = "ok"
+FTS_NOT_RUN = "not_run"
+FTS_FAILED = "failed"
+# Ran the term builder and nothing usable survived. Not a failure, and not a
+# search that found nothing.
+FTS_NO_TERMS = "no_terms"
+VECTOR_OK = "ok"
+VECTOR_NOT_RUN = "not_run"
+VECTOR_FAILED = "failed"
+
+# Returned when the function exits before retrieval is attempted at all. Distinct
+# from a healthy run that matched nothing.
+_UNREACHED_HEALTH = {
+    "retrieval_health": {
+        "fts": FTS_NOT_RUN,
+        "vector": VECTOR_NOT_RUN,
+        "hybrid": False,
+        "degraded": True,
+    }
+}
 
 
 def _authority_boost(authority: float, freshness: float) -> float:
@@ -77,7 +151,7 @@ def retrieve_knowledge_fabric(
         agent_department=agent_department,
     )
     if "expert_pack" not in route.tiers:
-        return {"route": route.to_dict(), "results": [], "provenance": []}
+        return {"route": route.to_dict(), "results": [], "provenance": [], **_UNREACHED_HEALTH}
 
     # Resolve source UUIDs for packs / departments
     source_q = client.table("knowledge_sources").select("id,source_id,department,authority_score,metadata,license_type,publisher,url").eq(
@@ -99,32 +173,57 @@ def retrieve_knowledge_fabric(
             continue
         allowed_ids.append(s["id"])
     if not allowed_ids:
-        return {"route": route.to_dict(), "results": [], "provenance": []}
+        return {"route": route.to_dict(), "results": [], "provenance": [], **_UNREACHED_HEALTH}
 
     candidates: list[dict[str, Any]] = []
+    # Hybrid search is only hybrid if both halves run. Each half records whether
+    # it actually executed so a degraded, vector-only retrieval cannot be mistaken
+    # for a healthy one by anything downstream.
+    health: dict[str, Any] = {"fts": FTS_NOT_RUN, "vector": VECTOR_NOT_RUN}
 
     # FTS path
-    try:
-        fts = (
-            client.table("knowledge_chunks")
-            .select("id,content,citation,jurisdiction,authority_score,freshness_score,topics,source_id,document_id,metadata")
-            .in_("source_id", allowed_ids)
-            .text_search("content_tsv", query, config="english")
-            .limit(top_k * 3)
-            .execute()
-        )
-        for row in fts.data or []:
-            if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
-                continue
-            candidates.append(
-                {
-                    **row,
-                    "semantic_score": 0.55,
-                    "match": "fts",
-                }
+    fts_query = build_fts_query(query)
+    if not fts_query:
+        health["fts"] = FTS_NO_TERMS
+    else:
+        try:
+            fts = (
+                client.table("knowledge_chunks")
+                .select(
+                    "id,content,citation,jurisdiction,authority_score,"
+                    "freshness_score,topics,source_id,document_id,metadata"
+                )
+                .in_("source_id", allowed_ids)
+                # `.limit()` must precede `.text_search()`: text_search returns a
+                # QueryRequestBuilder, which has no `.limit()`. Reversing these
+                # raises AttributeError, which the except below would swallow just
+                # as quietly as the TypeError it swallowed for months.
+                .limit(top_k * 3)
+                # postgrest's signature is `options: dict`, not a `config=` kwarg,
+                # and the option key is the literal "web_search". Passing `config=`
+                # raised TypeError on every call; passing "websearch" instead falls
+                # through to a bare `fts` and hands the raw sentence to tsquery,
+                # which rejects any multi-word query. Both failures were invisible.
+                .text_search("content_tsv", fts_query, FTS_OPTIONS)
+                .execute()
             )
-    except Exception as exc:  # noqa: BLE001
-        logger.info("knowledge_fabric.fts_unavailable", extra={"error": str(exc)[:160]})
+            for row in fts.data or []:
+                if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
+                    continue
+                candidates.append({**row, "semantic_score": 0.55, "match": "fts"})
+            health["fts"] = FTS_OK
+        except Exception as exc:  # noqa: BLE001
+            # Was `logger.info(..., extra={"error": ...})`. The formatter does not
+            # render `extra`, so production emitted "fts_unavailable" with the
+            # cause stripped out, on every turn, and nobody could see that the
+            # entire keyword half of hybrid search had been dormant since it was
+            # written.
+            health["fts"] = f"{FTS_FAILED}:{type(exc).__name__}"
+            logger.warning(
+                "knowledge_fabric.fts_unavailable error=%s: %s",
+                type(exc).__name__,
+                str(exc)[:200],
+            )
 
     # Vector path
     if embed_query:
@@ -165,8 +264,14 @@ def retrieve_knowledge_fabric(
                         continue
                     sim = _cosine(qvec, emb)
                     candidates.append({**row, "semantic_score": sim, "match": "vector_local"})
+            health["vector"] = VECTOR_OK
         except Exception as exc:  # noqa: BLE001
-            logger.warning("knowledge_fabric.vector_failed", extra={"error": str(exc)[:160]})
+            health["vector"] = f"{VECTOR_FAILED}:{type(exc).__name__}"
+            logger.warning(
+                "knowledge_fabric.vector_failed error=%s: %s",
+                type(exc).__name__,
+                str(exc)[:200],
+            )
 
     # Dedup by chunk id (jurisdiction already applied on both paths)
     by_id: dict[str, dict[str, Any]] = {}
@@ -268,7 +373,17 @@ def retrieve_knowledge_fabric(
                 "superseded_by": temporal.get("superseded_by"),
             }
         )
-    return {"route": route.to_dict(), "results": results, "provenance": provenance}
+    # `degraded` is stated rather than left to be inferred from the two sub-states,
+    # because every consumer that has to derive "is this healthy" from parts has so
+    # far derived it wrongly at least once.
+    health["hybrid"] = health["fts"] == FTS_OK and health["vector"] == VECTOR_OK
+    health["degraded"] = not health["hybrid"]
+    return {
+        "route": route.to_dict(),
+        "results": results,
+        "provenance": provenance,
+        "retrieval_health": health,
+    }
 
 
 def _cosine(a: list[float], b: Any) -> float:

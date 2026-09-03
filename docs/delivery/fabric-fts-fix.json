@@ -1,0 +1,43 @@
+{
+  "queries": [
+    {
+      "query": "What are the statutory breach notification deadlines under Ontario privacy law?",
+      "before": "TypeError: SyncSelectRequestBuilder.text_search() got an unexpected keyword argument 'config'",
+      "after_rows": 10,
+      "retrieve_health": {
+        "fts": "ok",
+        "vector": "ok",
+        "hybrid": true,
+        "degraded": false
+      },
+      "retrieve_results": 8,
+      "retrieve_fts_matches": 0
+    },
+    {
+      "query": "data retention requirements",
+      "before": "TypeError: SyncSelectRequestBuilder.text_search() got an unexpected keyword argument 'config'",
+      "after_rows": 10,
+      "retrieve_health": {
+        "fts": "ok",
+        "vector": "ok",
+        "hybrid": true,
+        "degraded": false
+      },
+      "retrieve_results": 8,
+      "retrieve_fts_matches": 0
+    },
+    {
+      "query": "employee privacy obligations",
+      "before": "TypeError: SyncSelectRequestBuilder.text_search() got an unexpected keyword argument 'config'",
+      "after_rows": 10,
+      "retrieve_health": {
+        "fts": "ok",
+        "vector": "ok",
+        "hybrid": true,
+        "degraded": false
+      },
+      "retrieve_results": 8,
+      "retrieve_fts_matches": 0
+    }
+  ]
+}

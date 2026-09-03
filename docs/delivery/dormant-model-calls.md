@@ -1782,6 +1782,61 @@ assertions mutation-proved. Writing it found **five further unbounded jobs** in
 other workflows, which is the class-level check §5 asks for and the reason this
 is a class entry rather than a one-line fix.
 
+### Sixth instance: the Knowledge Fabric keyword arm was never once executed
+
+Added 2026-09-03, found while auditing Phase 0 of the corrective-retrieval
+programme. Full before/after in `docs/delivery/fabric-fts-fix.json`.
+
+`retrieve_knowledge_fabric` advertises hybrid search — a keyword (FTS) arm and a
+vector arm, deduped and reranked. The keyword arm **raised on every call it ever
+made**, from the day it was written, and the entire half was silently dropped.
+Production ran vector-only retrieval while every log line, every test and the
+module docstring said hybrid.
+
+Three defects were stacked in a single expression, and each was hidden by the
+next:
+
+| Layer | Defect | What it raised |
+|---|---|---|
+| 1 | `.text_search(..., config="english")` — postgrest takes a positional `options` dict, there is no `config=` kwarg | `TypeError` on every call |
+| 2 | `.limit()` chained *after* `.text_search()` — text_search returns a `QueryRequestBuilder`, which has no `.limit()` | `AttributeError`, reached only once layer 1 is fixed |
+| 3 | `websearch_to_tsquery` ANDs every term, so a whole question only matches a chunk containing all of it | no exception, **0 rows** on 3 of 4 realistic questions |
+
+Layer 3 is the Class A trap in this instance: fixing layers 1 and 2 removes the
+exception, turns `retrieval_health` green, and leaves the keyword arm
+contributing nothing. Measured on the real 137-chunk corpus, the full sentence
+returned 0/0/0/1 rows across four questions while the same content terms ORed
+returned the cap (20) on all four. "No longer throwing" is not "working".
+
+| Aspect | Detail |
+|---|---|
+| The signal | `knowledge_fabric.fts_unavailable` at **INFO**, with the cause passed via `extra={...}` — which this formatter does not render |
+| The reasoning | An expected, benign degradation line; nothing to chase |
+| Why it failed | The line printed *no cause at all*. There was nothing to read even for someone looking straight at it |
+| Why tests missed it | 71 green tests over this module, all using a mock client that accepts any keyword argument. A double that cannot reproduce the real signature cannot prove a real call site — Class B, applied to the test double |
+| Cost while it stood | Every Knowledge Fabric answer, for the lifetime of the feature, retrieved on embeddings alone |
+
+> **A swallowed exception must name itself.** `logger.info(msg, extra={"error":
+> e})` is indistinguishable from `logger.info(msg)` under a formatter that drops
+> `extra`. Interpolate the cause into the message, and log a dead subsystem at
+> `warning`, not `info`.
+
+Now enforced by `backend/tests/knowledge_fabric/test_fabric_fts_arm.py`: the call
+site is AST-checked against the *real* postgrest signature (no `config=`, options
+positional, `.limit()` before `.text_search()`), the option key is pinned to the
+literal `"web_search"` (`"websearch"` is a silent no-op that falls through to a
+bare `fts`), failure logging must interpolate its cause at `warning`, and every
+return path must carry `retrieval_health`. Mutations 6/6.
+
+Mutation testing earned its keep here: on the first run **the only escaping
+mutation was the original defect**, because the guards checked the library
+signature and never the call site. A guard suite that covers everything except
+the bug that actually shipped is the failure mode this program keeps rediscovering.
+
+`retrieval_health` now reports `fts` and `vector` independently with four
+distinct states (`ok` / `not_run` / `failed:<Type>` / `no_terms`), plus a stated
+`degraded` boolean, so vector-only retrieval can never again present as hybrid.
+
 ### Interaction with Class A
 
 Instances 1 and 2 also sharpen "one layer too low": `65161f90` was a correct fix
@@ -1807,6 +1862,8 @@ fired 109 times could be reintroduced with the entire suite green.
 | `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
 | `unnarrowed_tool_attach_blocked` | **CLOSED 2026-09-02.** Four instances of one mistake, not one defect. Instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 **LIVE PASS** - `BUG_REPRODUCED` pre-fix / `CLEAN` post-fix on a real `claude-sonnet-4-6` tool-carrying turn, guard at `provider_tool_router.complete_with_tools`, model chose `apollo_lists_list` post-fix; instances 3-4 fixed, no prod events. Mutations 6/6 + standing CI scan. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
+| Knowledge Fabric keyword (FTS) arm dormant since written | **FIXED 2026-09-03.** Three stacked defects; hybrid search was vector-only for the lifetime of the feature. `retrieval_health` added, mutations 6/6. Sixth Class C instance | Cesar |
+| Keyword hits do not survive reranking into final results | **OPEN, stated not silent.** FTS candidates now enter the pool but carry a flat `semantic_score=0.55`, so they lose dedup to any vector hit above 0.55. End-to-end `retrieve_fts_matches=0` on all three probe queries even with `fts=ok`. The arm is live but not yet influential; needs real hybrid fusion (RRF or score normalisation), not a constant | unassigned |
 | Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRED 2026-09-03 by decision, not an open gap.** Audited and deliberately not built: 36 real turns / 30d, 0 research-shaped, 1 `rag_chunk` across 229 orgs, 0 of 256 sufficiency-loop runs on real traffic. Named re-open triggers in `crag-phase0-reachability.md` | Cesar |
 | Retrieval Layer 1 (contextual chunk enrichment) ABSENT | OPEN, recorded, unfixed. Highest-value retrieval gap; unmeasurable at one chunk. Do this **before** either deferred programme | unassigned |
 | Org RAG has no persisted keyword index | OPEN, accepted asymmetry - BM25 in-memory over a 500-row fetch; Knowledge Fabric has `tsvector`+GIN | unassigned |
