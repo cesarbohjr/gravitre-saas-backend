@@ -711,6 +711,15 @@ async def run_unified_turn_shadow(
     if prior_recs:
         user_parts.append(prior_recs)
 
+    cognitive_prompt_sections: dict[str, str] = {}
+    if cognitive_context is not None and not remind_me:
+        try:
+            from app.services.cognitive_turn_kernel import to_prompt_sections
+
+            cognitive_prompt_sections = to_prompt_sections(cognitive_context)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
+
     if client is not None and org_id and not remind_me:
         from app.services.unified_turn_knowledge_context import (
             build_unified_turn_knowledge_context,
@@ -739,6 +748,7 @@ async def run_unified_turn_shadow(
             agent=agent,
             knowledge_assignments=knowledge_assignments,
             connected_integrations=connected,
+            supplemental_context=cognitive_prompt_sections,
             research_scope=research_scope,
             reasoning_depth=reasoning_depth,
             # Threaded so the sufficiency gate can write its own audit action.
@@ -760,34 +770,28 @@ async def run_unified_turn_shadow(
         try:
             from app.services.cognitive_turn_kernel import (
                 memory_recall_signal,
-                to_prompt_sections,
             )
 
-            sections = to_prompt_sections(cognitive_context)
-            mem = (sections.get("memory_section") or "").strip()
-            know = (sections.get("knowledge_section") or "").strip()
-            bias = (sections.get("outcome_bias_section") or "").strip()
+            mem = (cognitive_prompt_sections.get("memory_section") or "").strip()
+            know = (cognitive_prompt_sections.get("knowledge_section") or "").strip()
+            bias = (cognitive_prompt_sections.get("outcome_bias_section") or "").strip()
             ranking_meta = (
                 unified_turn_knowledge_meta.get("contextRanking")
                 if isinstance(unified_turn_knowledge_meta, dict)
                 else None
             )
-            if isinstance(ranking_meta, dict) and ranking_meta.get("mode") == "active":
-                # LIVE already carries the same Knowledge Fabric hits through the
-                # shared ranker. Preserve kernel graph/metric context while
-                # removing only the duplicated fabric envelope.
-                know = re.sub(
-                    r"<knowledge_fabric>.*?</knowledge_fabric>\s*",
-                    "",
-                    know,
-                    flags=re.S | re.I,
-                ).strip()
-            if mem:
-                user_parts.append(mem)
-            if know:
-                user_parts.append(know)
-            if bias:
-                user_parts.append(bias)
+            managed_supplemental = bool(
+                isinstance(ranking_meta, dict)
+                and ranking_meta.get("mode") == "active"
+                and ranking_meta.get("managedSupplementalSections")
+            )
+            if not managed_supplemental:
+                if mem:
+                    user_parts.append(mem)
+                if know:
+                    user_parts.append(know)
+                if bias:
+                    user_parts.append(bias)
             kernel_meta = {
                 "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
                 "outcomeBiasInjected": bool(bias),

@@ -73,6 +73,7 @@ class AssistantTurnContext:
     context_registry: dict[str, Any] = field(default_factory=dict)
     context_explanation: str = ""
     ranked_knowledge_block: str = ""
+    context_engine_applied: bool = False
     conversation_memory: dict[str, Any] = field(default_factory=dict)
     business_signals: list[dict[str, Any]] = field(default_factory=list)
     strategic_plan: dict[str, Any] | None = None
@@ -392,11 +393,29 @@ class IntelligenceOrchestrator:
             business_signals=business_signals,
         )
 
+        # Working memory is prompt context too; include it before ranking so it
+        # cannot bypass the shared token budget.
+        working_memory_profile = self._oil.build_working_memory(
+            conversation_memory=memory_ctx,
+            task_state=task_state,
+            org_context_block=org_context_block,
+            query=query,
+        )
+        working_memory = working_memory_profile.to_dict()
+        wm_section = working_memory_profile.prompt_section()
+        memory_for_ranking = str(
+            memory_ctx.get("prompt_section") or retrieval.memory_section or ""
+        ).strip()
+        if wm_section and wm_section not in memory_for_ranking:
+            memory_for_ranking = "\n\n".join(
+                part for part in (memory_for_ranking, wm_section) if part
+            ).strip()
+
         raw_sources = self._build_raw_sources(
             query=query,
             org_context_block=org_context_block,
             retrieval=retrieval,
-            memory_section=memory_ctx.get("prompt_section") or retrieval.memory_section,
+            memory_section=memory_for_ranking,
             company_block=company_block,
             entity_block=entity_block,
             connector_context=f"Connected integrations: {connected_labels}",
@@ -436,6 +455,7 @@ class IntelligenceOrchestrator:
                     "knowledge_gap",
                     "memory_conflicts",
                     "pack_state",
+                    "connector_context",
                 }
             ]
         )
@@ -505,23 +525,11 @@ class IntelligenceOrchestrator:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator strategic plan skipped org_id=%s error=%s", org_id, exc)
 
-        # Pattern 8 — human-like working memory (LTM / STM / scratchpad).
-        working_memory_profile = self._oil.build_working_memory(
-            conversation_memory=memory_ctx,
-            task_state=task_state,
-            org_context_block=org_context_block,
-            query=query,
-        )
-        working_memory = working_memory_profile.to_dict()
-        wm_section = working_memory_profile.prompt_section()
         memory_block = (
             sections.get("conversation_memory")
             or sections.get("agent_memory")
-            or memory_ctx.get("prompt_section")
-            or retrieval.memory_section
+            or ""
         )
-        if wm_section and wm_section not in (memory_block or ""):
-            memory_block = f"{(memory_block or '').rstrip()}\n\n{wm_section}".strip()
 
         operational_envelope = self._oil.build_operational_envelope(
             what_happened="assistant_turn_prepared",
@@ -560,11 +568,11 @@ class IntelligenceOrchestrator:
         return AssistantTurnContext(
             retrieval=retrieval,
             agent=agent,
-            org_context_block=sections.get("org_context") or org_context_block,
+            org_context_block=sections.get("org_context") or "",
             memory_block=memory_block,
-            company_block=sections.get("company_intelligence") or company_block,
-            entity_block=sections.get("entity_graph") or entity_block,
-            task_state_section=sections.get("task_state") or task_state_section,
+            company_block=sections.get("company_intelligence") or "",
+            entity_block=sections.get("entity_graph") or "",
+            task_state_section=sections.get("task_state") or "",
             connected_integrations=connected,
             context_profile={
                 **profile.to_explanation_dict(),
@@ -574,6 +582,7 @@ class IntelligenceOrchestrator:
             context_registry=registry_plan.to_explanation_dict(),
             context_explanation=context_explanation,
             ranked_knowledge_block=ranked_knowledge_block,
+            context_engine_applied=True,
             conversation_memory=memory_ctx,
             business_signals=await self._quality.rank_recommendations(
                 business_signals,

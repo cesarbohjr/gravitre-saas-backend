@@ -438,6 +438,9 @@ async def test_active_ranking_runs_after_all_rounds_and_preserves_warning(
         "internet": 1,
         "graph": 1,
     }
+    assert {
+        source["retrievalRound"] for source in ranking["selectedSources"]
+    } == {1, 2, 3}
     assert "EVIDENCE SUFFICIENCY WARNING" in block
 
 

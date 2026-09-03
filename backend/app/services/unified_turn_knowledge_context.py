@@ -51,6 +51,28 @@ SOURCE_BUSINESS_GRAPH = "business_graph"
 ESCALATION_ORDER = (SOURCE_INTERNET, SOURCE_BUSINESS_GRAPH)
 
 MAX_ADDITIONAL_ROUNDS_CEILING = 3
+CONTEXT_BLOCK_OVERHEAD_TOKENS = 32
+
+
+def _rows_for_round(
+    rows: list[dict[str, Any]],
+    *,
+    round_number: int,
+    retrieval_source: str,
+) -> list[dict[str, Any]]:
+    """Preserve which bounded retrieval round produced each evidence row."""
+    tagged: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        tagged.append(
+            {
+                **row,
+                "retrieval_round": round_number,
+                "retrieval_source": retrieval_source,
+            }
+        )
+    return tagged
 
 
 def should_augment_unified_turn_with_knowledge(
@@ -476,6 +498,7 @@ async def build_unified_turn_knowledge_context(
     agent: dict[str, Any] | None = None,
     knowledge_assignments: list[dict[str, Any]] | None = None,
     connected_integrations: list[str] | None = None,
+    supplemental_context: dict[str, str] | None = None,
     research_scope: str | None = None,
     reasoning_depth: str = "full",
     actor_id: str | None = None,
@@ -549,7 +572,13 @@ async def build_unified_turn_knowledge_context(
                 settings=settings,
             )
             meta.update(pack_meta)
-            rag_source_rows.extend(rows)
+            rag_source_rows.extend(
+                _rows_for_round(
+                    rows,
+                    round_number=1,
+                    retrieval_source=SOURCE_KNOWLEDGE_PACK,
+                )
+            )
             if section:
                 evidence_sections.append(section)
         except Exception as exc:  # noqa: BLE001
@@ -561,7 +590,13 @@ async def build_unified_turn_knowledge_context(
             org_id=org_id, query=query, agent=agent, settings=settings
         )
         meta.update(rag_meta)
-        rag_source_rows.extend(rows)
+        rag_source_rows.extend(
+            _rows_for_round(
+                rows,
+                round_number=1,
+                retrieval_source=SOURCE_ORG_RAG,
+            )
+        )
         if section:
             evidence_sections.append(section)
     except Exception as exc:  # noqa: BLE001
@@ -595,7 +630,13 @@ async def build_unified_turn_knowledge_context(
                 settings=settings,
             )
             meta.update(internet_meta)
-            rag_source_rows.extend(rows)
+            rag_source_rows.extend(
+                _rows_for_round(
+                    rows,
+                    round_number=1,
+                    retrieval_source=SOURCE_INTERNET,
+                )
+            )
             if internet_section:
                 evidence_sections.append(internet_section)
                 meta["auto_internet_when_thin"] = internal_thin
@@ -700,7 +741,13 @@ async def build_unified_turn_knowledge_context(
                         org_id=org_id, query=query, client=client, settings=settings
                     )
                 meta.update(extra_meta)
-                rag_source_rows.extend(rows)
+                rag_source_rows.extend(
+                    _rows_for_round(
+                        rows,
+                        round_number=1 + loop_meta["additional_rounds_used"],
+                        retrieval_source=next_source,
+                    )
+                )
                 if section:
                     evidence_sections.append(section)
             except Exception as exc:  # noqa: BLE001
@@ -844,7 +891,24 @@ async def build_unified_turn_knowledge_context(
     meta["evidenceSufficiency"] = loop_meta
 
     sections = evidence_sections + advisory_sections
-    if not sections:
+    supplemental = supplemental_context or {}
+    memory_section = str(supplemental.get("memory_section") or "").strip()
+    raw_kernel_knowledge = str(supplemental.get("knowledge_section") or "")
+    kernel_fabric_removed = bool(
+        re.search(r"<knowledge_fabric>.*?</knowledge_fabric>", raw_kernel_knowledge, re.S | re.I)
+    )
+    kernel_knowledge_section = re.sub(
+        r"<knowledge_fabric>.*?</knowledge_fabric>\s*",
+        "",
+        raw_kernel_knowledge,
+        flags=re.S | re.I,
+    ).strip()
+    outcome_bias_section = str(
+        supplemental.get("outcome_bias_section") or ""
+    ).strip()
+    if not sections and not any(
+        (memory_section, kernel_knowledge_section, outcome_bias_section)
+    ):
         meta["skipped"] = "no_hits"
         return "", meta
 
@@ -854,9 +918,10 @@ async def build_unified_turn_knowledge_context(
     )
     if active_ranking or shadow_ranking:
         from app.services.context_prioritization_engine import (
+            ContextSource,
             evidence_rows_to_context_sources,
             get_context_prioritization_engine,
-            render_evidence_profile,
+            render_context_sources,
         )
 
         raw_budget = getattr(settings, "cross_source_context_token_budget", 12_000)
@@ -865,8 +930,34 @@ async def build_unified_turn_knowledge_context(
         except (TypeError, ValueError):
             token_budget = 12_000
         normalized = evidence_rows_to_context_sources(rag_source_rows, query=query)
-        advisory_tokens = sum(max(1, len(section) // 4) for section in advisory_sections)
-        evidence_token_budget = max(0, token_budget - advisory_tokens)
+        if memory_section:
+            normalized.append(
+                ContextSource(
+                    source_id="kernel:conversation_memory",
+                    source_type="conversation_memory",
+                    label="Conversation and agent memory",
+                    score=0.0,
+                    content=memory_section,
+                    metadata={"source_identity": "kernel:conversation_memory"},
+                )
+            )
+        if kernel_knowledge_section:
+            normalized.append(
+                ContextSource(
+                    source_id="kernel:org_knowledge",
+                    source_type="entity_graph",
+                    label="Org knowledge graph and definitions",
+                    score=0.0,
+                    content=kernel_knowledge_section,
+                    metadata={"source_identity": "kernel:org_knowledge"},
+                )
+            )
+        mandatory_sections = list(advisory_sections)
+        if active_ranking and outcome_bias_section:
+            mandatory_sections.append(outcome_bias_section)
+        advisory_tokens = sum(max(1, len(section) // 4) for section in mandatory_sections)
+        reserved_tokens = advisory_tokens + CONTEXT_BLOCK_OVERHEAD_TOKENS
+        evidence_token_budget = max(0, token_budget - reserved_tokens)
         profile = get_context_prioritization_engine().build_context_profile(
             raw_sources=normalized,
             classification=classification or {},
@@ -883,8 +974,8 @@ async def build_unified_turn_knowledge_context(
             tokens_by_kind[source.source_type] = (
                 tokens_by_kind.get(source.source_type, 0) + source.token_estimate
             )
-        ranked_evidence = render_evidence_profile(profile)
-        ranked_sections = ([ranked_evidence] if ranked_evidence else []) + advisory_sections
+        ranked_context = render_context_sources(profile.ranked_sources)
+        ranked_sections = ([ranked_context] if ranked_context else []) + mandatory_sections
         meta["contextRanking"] = {
             "mode": "active" if active_ranking else "shadow",
             "candidateCount": explanation["candidateCount"],
@@ -892,23 +983,39 @@ async def build_unified_turn_knowledge_context(
             "duplicateCount": explanation["duplicateCount"],
             "tokenBudget": token_budget,
             "evidenceTokenBudget": evidence_token_budget,
-            "tokensUsed": explanation["tokensUsed"] + advisory_tokens,
+            "tokensUsed": explanation["tokensUsed"] + reserved_tokens,
             "advisoryTokens": advisory_tokens,
+            "blockOverheadTokens": CONTEXT_BLOCK_OVERHEAD_TOKENS,
             "selectedByKind": selected_by_kind,
             "tokensByKind": tokens_by_kind,
             "excludedSources": explanation["excludedSources"][:20],
             "selectedSourceIds": [
                 source.source_id for source in profile.ranked_sources[:20]
             ],
+            "selectedSources": explanation["sourcesUsed"][:20],
+            "managedSupplementalSections": bool(
+                active_ranking
+                and any((memory_section, kernel_knowledge_section, outcome_bias_section))
+            ),
+            "kernelFabricExcludedFromRanking": kernel_fabric_removed,
             "legacyPromptChars": len("\n\n".join(sections)),
             "rankedPromptChars": len("\n\n".join(ranked_sections)),
         }
         if active_ranking:
             sections = ranked_sections
 
-    block = (
-        "RETRIEVED KNOWLEDGE FOR THIS TURN (use when relevant; do not invent facts "
+    if not sections:
+        meta["skipped"] = "no_retrieval_hits"
+        return "", meta
+
+    heading = (
+        "RANKED CONTEXT FOR THIS TURN (use when relevant; do not invent facts "
         "outside these excerpts and connected tools):\n\n"
-        + "\n\n".join(sections)
+        if active_ranking
+        else "RETRIEVED KNOWLEDGE FOR THIS TURN (use when relevant; do not invent facts "
+        "outside these excerpts and connected tools):\n\n"
+    )
+    block = (
+        heading + "\n\n".join(sections)
     )
     return block, meta

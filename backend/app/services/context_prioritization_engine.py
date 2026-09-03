@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -29,6 +30,8 @@ SourceType = Literal[
 ]
 
 _DEFAULT_TOKEN_BUDGET = 14_000
+_SOURCE_RENDER_OVERHEAD_TOKENS = 16
+_TRUNCATION_MARKER = "\n[TRUNCATED TO CONTEXT BUDGET]"
 
 
 @dataclass(frozen=True)
@@ -41,8 +44,18 @@ class ContextSource:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
+    def render_overhead_tokens(self) -> int:
+        wrapper_chars = (
+            len(self.source_id)
+            + len(self.source_type)
+            + (2 * len(self.label))
+            + 100
+        )
+        return max(_SOURCE_RENDER_OVERHEAD_TOKENS, wrapper_chars // 4)
+
+    @property
     def token_estimate(self) -> int:
-        return max(1, len(self.content) // 4)
+        return max(1, len(self.content) // 4) + self.render_overhead_tokens
 
 
 @dataclass
@@ -57,6 +70,15 @@ class ContextProfile:
     duplicate_count: int = 0
 
     def to_explanation_dict(self) -> dict[str, Any]:
+        selected_by_type: dict[str, int] = {}
+        tokens_by_type: dict[str, int] = {}
+        for source in self.ranked_sources:
+            selected_by_type[source.source_type] = (
+                selected_by_type.get(source.source_type, 0) + 1
+            )
+            tokens_by_type[source.source_type] = (
+                tokens_by_type.get(source.source_type, 0) + source.token_estimate
+            )
         return {
             "sourcesUsed": [
                 {
@@ -66,6 +88,10 @@ class ContextProfile:
                     "score": round(source.score, 3),
                     "tokens": source.token_estimate,
                     "truncated": bool(source.metadata.get("truncated")),
+                    "retrievalRound": source.metadata.get("retrieval_round"),
+                    "authority": source.metadata.get("authority_score"),
+                    "freshness": source.metadata.get("freshness_score"),
+                    "citation": source.metadata.get("citation"),
                 }
                 for source in self.ranked_sources
             ],
@@ -76,6 +102,8 @@ class ContextProfile:
             "selectedCount": len(self.ranked_sources),
             "duplicateCount": self.duplicate_count,
             "excludedSources": self.excluded_sources,
+            "selectedByType": selected_by_type,
+            "tokensByType": tokens_by_type,
         }
 
 
@@ -267,19 +295,29 @@ class ContextPrioritizationEngine:
             estimate = source.token_estimate
             if tokens_used + estimate > token_budget:
                 remaining = max(0, token_budget - tokens_used)
-                if remaining <= 0 or (remaining < 200 and ranked):
+                render_overhead = source.render_overhead_tokens
+                if (
+                    remaining <= render_overhead
+                    or (remaining < 200 and ranked)
+                ):
                     excluded.append(
                         {"id": source.source_id, "type": source.source_type, "reason": "budget"}
                     )
                     continue
-                trimmed = source.content[: remaining * 4]
+                content_chars = (
+                    remaining - render_overhead
+                ) * 4
+                body_chars = max(0, content_chars - len(_TRUNCATION_MARKER))
+                trimmed = source.content[:body_chars].rstrip() + _TRUNCATION_MARKER
                 if len(trimmed.strip()) < 40:
                     excluded.append(
                         {"id": source.source_id, "type": source.source_type, "reason": "budget"}
                     )
                     continue
                 content = trimmed
-                estimate = max(1, len(trimmed) // 4)
+                estimate = (
+                    max(1, len(trimmed) // 4) + render_overhead
+                )
                 source = ContextSource(
                     source_id=source.source_id,
                     source_type=source.source_type,
@@ -373,7 +411,7 @@ def evidence_rows_to_context_sources(
                 source_type=source_type,
                 label=label,
                 score=_number(row.get("score"), row.get("semantic_score")),
-                content=f"- [{label}]\n{content}",
+                content=content,
                 metadata=metadata,
             )
         )
@@ -395,8 +433,23 @@ def render_context_sources(sources: list[ContextSource]) -> str:
     }
     parts: list[str] = []
     for source in sources:
-        heading = labels.get(source.source_type, source.label.upper())
-        parts.append(f"{heading}:\n{source.content.strip()}")
+        heading = labels.get(source.source_type, "CONTEXT SOURCE")
+        safe_id = html.escape(source.source_id, quote=True)
+        safe_type = html.escape(source.source_type, quote=True)
+        safe_label = html.escape(source.label, quote=True)
+        safe_content = re.sub(
+            r"<(/?)context_source",
+            r"&lt;\1context_source",
+            source.content,
+            flags=re.I,
+        )
+        parts.append(
+            f"{heading}:\n"
+            f'<context_source id="{safe_id}" type="{safe_type}" label="{safe_label}">\n'
+            f"Source: {safe_label}\n"
+            f"{safe_content.strip()}\n"
+            "</context_source>"
+        )
     return "\n\n".join(parts)
 
 

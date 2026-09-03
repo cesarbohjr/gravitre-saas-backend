@@ -440,6 +440,22 @@ def test_build_system_prompt_prefers_ranked_context_over_unranked_rag(
     assert "unranked evidence" not in prompt
 
 
+def test_build_system_prompt_honors_ranker_exclusions_without_fallback(
+    intelligence: AgentIntelligence,
+):
+    prompt = intelligence._build_system_prompt(
+        "assistant",
+        None,
+        [{"source": "legacy", "content": "excluded evidence"}],
+        {"orgName": "Excluded Acme"},
+        ranked_context_section="",
+        suppress_unranked_context_fallback=True,
+    )
+
+    assert "excluded evidence" not in prompt
+    assert "Organization: Excluded Acme" not in prompt
+
+
 @pytest.mark.asyncio
 async def test_streaming_emits_text_events_when_react_returns_answer_only(intelligence: AgentIntelligence):
     """ReAct may finish with answer text but no text_delta chunks; SSE contract still requires text-* events."""

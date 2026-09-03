@@ -164,15 +164,28 @@ async def test_active_context_ranking_deduplicates_and_includes_connected_tool_p
             {"source_type": "knowledge_pack", "source_id": "pack.legal", "enabled": True}
         ],
         connected_integrations=["hubspot"],
+        supplemental_context={
+            "memory_section": "<memory>remember this account</memory>",
+            "knowledge_section": (
+                "<knowledge_fabric>shared evidence</knowledge_fabric>\n"
+                "<org_metric_definitions>ARR is org-defined</org_metric_definitions>"
+            ),
+            "outcome_bias_section": "<outcome_bias>prefer the proven path</outcome_bias>",
+        },
     )
 
     ranking = meta["contextRanking"]
     assert ranking["mode"] == "active"
-    assert ranking["candidateCount"] == 2
-    assert ranking["selectedCount"] == 1
+    assert ranking["candidateCount"] == 4
+    assert ranking["selectedCount"] == 3
     assert ranking["duplicateCount"] == 1
+    assert ranking["managedSupplementalSections"] is True
+    assert ranking["kernelFabricExcludedFromRanking"] is True
     assert "pack.tool.hubspot" in observed["pack_ids"]
     assert block.count("shared evidence") == 1
+    assert "remember this account" in block
+    assert "ARR is org-defined" in block
+    assert block.count("prefer the proven path") == 1
     assert "PACK LEGACY" not in block
 
 
