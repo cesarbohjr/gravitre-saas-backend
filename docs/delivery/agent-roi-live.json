@@ -1,0 +1,79 @@
+{
+  "probe": "agent_roi_live",
+  "checked_at": "2026-09-03T23:52:03.006646+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "api_git_sha": "a78ef32df8639449b52dd259adf6a24653bbd179",
+  "roi_http": 200,
+  "period_days": 30,
+  "agent_count": 16,
+  "methodology_present": true,
+  "org_totals": {
+    "tasksCompleted": {
+      "value": 4,
+      "provenance": "operational"
+    },
+    "actionsExecuted": {
+      "value": 4,
+      "provenance": "operational"
+    },
+    "agentCostUsd": {
+      "value": 0.88789,
+      "provenance": "measured"
+    },
+    "estimatedHoursSaved": {
+      "value": 1.3332,
+      "provenance": "estimate"
+    },
+    "estimatedLaborValueUsd": {
+      "value": 59.994,
+      "provenance": "estimate"
+    },
+    "revenueInfluencedUsd": {
+      "value": null,
+      "provenance": "not_configured"
+    },
+    "roiMultiple": {
+      "value": 67.5692,
+      "provenance": "estimate"
+    }
+  },
+  "honesty": {
+    "measuredFields": [
+      "agentCostUsd"
+    ],
+    "operationalFields": [
+      "tasksCompleted",
+      "actionsExecuted"
+    ],
+    "estimateFields": [
+      "estimatedHoursSaved",
+      "estimatedLaborValueUsd",
+      "roiMultiple"
+    ],
+    "notConfiguredUnlessEvidence": [
+      "revenueInfluencedUsd"
+    ],
+    "moduleC": true,
+    "sta286": true
+  },
+  "labor": {
+    "value": 45.0,
+    "source": "default_estimate",
+    "provenance": "estimate",
+    "note": "Default estimate $45.0/hr \u2014 not a product price SKU."
+  },
+  "model_calls_sum_usd": 0.88789,
+  "api_cost_usd": 0.88789,
+  "cost_match": true,
+  "sample_agent": {
+    "agentId": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+    "agentName": "Phase1 Sales Swarm Agent",
+    "cost_provenance": "measured",
+    "hours_provenance": "estimate",
+    "labor_provenance": "estimate",
+    "revenue_provenance": "not_configured",
+    "roi_provenance": "insufficient_data"
+  },
+  "verdict": "PASS \u2014 agent ROI honesty + measured cost match"
+}
