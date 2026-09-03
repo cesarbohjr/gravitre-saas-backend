@@ -1884,6 +1884,61 @@ number was independently credible; the *disagreement* was the evidence.
 > this program a clean-looking zero came from the measurement rather than the
 > system. Cross-check or do not report.
 
+### Seventh instance: the org RAG keyword arm ranked rows chosen by nothing
+
+Added 2026-09-03 during Prompt 1 Phase 3. Full record in
+`docs/delivery/crag-iterative-loop.md`; fix at `985149ad`.
+
+The register carried this as "no persisted keyword index — accepted asymmetry",
+which understated it. The absent index was not the defect. `fetch_bm25_corpus`
+**had no query parameter**:
+
+```
+client.table("rag_chunks").select(...).eq("org_id", ...).limit(500)
+```
+
+No terms, no `ORDER BY`. BM25 ranked 500 rows selected by no criterion at all.
+The caller had the query in hand and simply could not pass it.
+
+What makes this Class C rather than an ordinary bug is the shape of the failure
+against corpus size:
+
+| corpus per (org, env) | behaviour | how it looked |
+|---|---|---|
+| under 500 chunks | the slice **is** the whole corpus; ranking is exact | perfect |
+| over 500 chunks | ranking over an arbitrary sample | **identical** |
+
+Both regimes returned a plausible ranked list. Nothing distinguished them. A
+matching chunk beyond the cap was unretrievable at any BM25 tuning, because the
+row never left Postgres — demonstrated deterministically: gold chunk at index
+1500 of 2000, **unreachable before, found after**.
+
+Two things went right here that are worth keeping:
+
+- **Reachability was measured before the fix**, per the standing lesson. One
+  chunk platform-wide, zero scopes over the cap. So this was booked honestly as
+  a **latent trap, not a live defect** — it has never harmed a customer, and the
+  fix is not credited with repairing damage it never prevented.
+- **The premise was checked before being acted on.** Phase 3 arrived asserting
+  org RAG needed bringing "up to the same real, hybrid standard" as the Fabric.
+  It was already hybrid — vector RPC, BM25, RRF, cross-encoder rerank — and
+  ahead of the Fabric in one respect, since BM25 yields a real relevance order
+  where the Fabric's FTS arm cannot order by `ts_rank` at all. Taking the
+  premise at face value would have aimed the work at the wrong layer.
+
+> **A cap with no ordering is a sampler wearing a ranker's clothes.** `LIMIT`
+> without `ORDER BY` and without a filter does not return "the top N", it
+> returns "some N". If the size at which that starts mattering is not reported,
+> the transition is invisible.
+
+Now guarded: six named `reach` states (`exact` / `fts_filtered` /
+`fts_no_match` / `truncated` / `no_terms` / `empty`) **returned as part of the
+contract**, not offered as an optional out-param a caller could drop.
+`fts_no_match` is deliberately separate from `empty` — a filter that ran and
+matched nothing is a real answer, and folding it into "empty" would claim a
+large corpus has no content. Mutations 15/15, including reinstating the exact
+`config=` kwarg that escaped the Fabric's first mutation run.
+
 ### Interaction with Class A
 
 Instances 1 and 2 also sharpen "one layer too low": `65161f90` was a correct fix
@@ -1912,9 +1967,11 @@ fired 109 times could be reintroduced with the entire suite green.
 | Knowledge Fabric keyword (FTS) arm dormant since written | **FIXED 2026-09-03.** Three stacked defects; hybrid search was vector-only for the lifetime of the feature. `retrieval_health` added, mutations 6/6. Sixth Class C instance | Cesar |
 | Keyword hits do not survive reranking into final results | **CLOSED 2026-09-03.** Was real: `fts=ok` with 0 keyword-touched final results, because dedup kept the larger score and discarded every co-match. Set-based fusion + co-match bonus; live 8/8 final results keyword-touched on all 3 probe queries, plus 1 keyword-only chunk the vector arm missed. Mutations 10/10 | Cesar |
 | Keyword arm has no `ts_rank` relevance ordering | **OPEN, stated not silent.** postgrest cannot order by `ts_rank`, so keyword rows arrive unordered and are fused as a set, not a ranking. Correct given the constraint, but it forecloses true BM25-style ranking. Needs a Postgres RPC alongside `match_knowledge_chunks`. A test pins the current design so nobody "upgrades" it to RRF over an arbitrary order | unassigned |
-| Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRED 2026-09-03 by decision, not an open gap.** Audited and deliberately not built: 36 real turns / 30d, 0 research-shaped, 1 `rag_chunk` across 229 orgs, 0 of 256 sufficiency-loop runs on real traffic. Named re-open triggers in `crag-phase0-reachability.md` | Cesar |
-| Retrieval Layer 1 (contextual chunk enrichment) ABSENT | OPEN, recorded, unfixed. Highest-value retrieval gap; unmeasurable at one chunk. Do this **before** either deferred programme | unassigned |
-| Org RAG has no persisted keyword index | OPEN, accepted asymmetry - BM25 in-memory over a 500-row fetch; Knowledge Fabric has `tsvector`+GIN | unassigned |
+| Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRAL SUPERSEDED 2026-09-03 by direct instruction.** Deferred earlier the same day on real, unchanged low-volume evidence (36 real turns / 30d, 1 `rag_chunk` across 229 orgs); then explicitly re-authorised "regardless of that finding". Prompt 1 **BUILT** (`fe53c888`, `985149ad`) — see `crag-iterative-loop.md`. Prompt 2 (Context Engine) is on `main` at `a42b60cd` with shadow diagnostics on by default, which **contradicts its DEFERRED status**; reconcile the flag or the register | Cesar |
+| Retrieval Layer 1 (contextual chunk enrichment) ABSENT | **BUILT 2026-09-03 at `985149ad`, flag OFF, NOT PROVEN LIVE.** Per-document synopsis + deterministic per-chunk context, embedded but never displayed or cited. Deliberately a cheaper approximation of Anthropic's per-chunk call, labelled as such. Before/after is **synthetic corpus, real embeddings**: recall@1 3/8→6/8, MRR 0.6875→0.875. One of eight queries **regressed** 1→2, and recall@3 was 8/8 both ways, so the gain is top-1 precision only. A real-corpus number remains unobtainable at one chunk | Cesar |
+| Org RAG keyword arm ranked an arbitrary 500-row slice | **FIXED 2026-09-03 at `985149ad`, migration NOT YET APPLIED.** Worse than the recorded "no persisted index": `fetch_bm25_corpus` had **no query parameter**, so BM25 ranked 500 rows selected by no criterion at all. Exact under 500 chunks per (org, env), a silent sample above it, and nothing reported which. **Reachability measured first: 0 scopes over the cap, 1 chunk platform-wide — a latent trap, not a live defect.** Now `content_tsv`+GIN mirroring the Fabric, six named `reach` states returned (not an ignorable out-param). Deterministic proof: a matching chunk at index 1500 of 2000 was **unreachable** before and found after. Mutations 15/15 | Cesar |
+| Org RAG hybrid retrieval described as absent when it existed | **CORRECTED 2026-09-03.** The register previously implied org RAG lacked hybrid search. It had vector RPC + BM25 + RRF + cross-encoder rerank, and in one respect **exceeded** the Fabric, whose FTS arm cannot order by `ts_rank`. Recorded because the wrong premise nearly directed the fix at the wrong layer | Cesar |
+| CRAG loop actions not yet proven in production | **OPEN, NOT PROVEN.** Discard-on-INCORRECT and refine-on-CORRECT are green locally (14/14 mutations) and have **no live trace**. A green test proves the path behaves, never that production takes it. Phase 5 checklist in `crag-iterative-loop.md` | Cesar |
 | Memory recall is not instrumented per turn | **CLOSED 2026-09-03 at `9222036d`.** `unifiedTurnKnowledge.memoryRecall` on every unified turn (`ran`/`total`/`bySource` over all five stores/`degraded`) plus a named `memory.recalled` action. **LIVE PASS 18/18**, `local sha == prod sha`, turn `4d2faa6d…`; dedicated row and nested block written by different modules **agree** on `total=28` and per-source; independently corroborated by a real `execute_task_streaming` turn (`total=20`). Mutations 10/10. See `memory-hardening-assessment.md` | Cesar |
 | All five memory stores logged failures at `logger.debug` | **CLOSED 2026-09-03 at `9222036d`.** Real defect found while instrumenting, not a measurement gap: debug is off in prod, so a store failing on *every* turn was invisible **and** byte-identical to one that found nothing. Now WARNING + per-source `error` + `degraded` in the audit trail; pinned by a test asserting `logger.debug` is absent from `_recall`, since the log level is the defect | Cesar |
 | Memory recall baseline starts 2026-09-03, not 30d back | **KNOWN, expected.** Turns before `9222036d` carry no `memoryRecall` block, so a 30-day census still reads near-nothing. Correct behaviour, recorded so it is not later mistaken for the instrument failing | Cesar |
