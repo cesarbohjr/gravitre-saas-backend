@@ -47,12 +47,14 @@ Module: `backend/app/services/agent_security_gateway.py`
 
 ## Live proof
 
-Artifact: `docs/delivery/agent-security-gateway-live.json`
+Artifact: `docs/delivery/agent-security-gateway-live.json`  
+**Prod deploy:** `git_sha=03e8015f7b755563d566950c60a6137745be9840` @ `2026-09-03T23:21:17Z`  
+**Audit:** `agent_security_gateway.sequence` id `7dd545ee-27ec-40df-ac9b-3e2f132dafa3` (tip org)
 
 | Check | Result |
 |-------|--------|
-| Injection doc flagged | PASS |
-| Soft-tag mutation bypass blocked | PASS |
+| Injection doc flagged | PASS — reason `ignore_prior_instructions` |
+| Soft-tag mutation bypass blocked | PASS — `injection_review_required` |
 | Full sequence blocks injection without approval | PASS |
 | Write requires catalog approval | PASS |
 | Untrusted new tool review | PASS |

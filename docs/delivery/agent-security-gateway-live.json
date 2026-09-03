@@ -1,6 +1,6 @@
 {
   "probe": "agent_security_gateway_live",
-  "started_at": "2026-09-03T23:15:03.064117+00:00",
+  "started_at": "2026-09-03T23:21:25.358958+00:00",
   "principle": "Knowledge is data. System policy is authority.",
   "extends": [
     "ai_guardrails.detect_prompt_injection",
@@ -101,15 +101,19 @@
     },
     "audit_emit": {
       "ok": true,
-      "id": "af6b604d-2ab1-4abf-b52c-b69301d2ac4d"
+      "id": "7dd545ee-27ec-40df-ac9b-3e2f132dafa3"
     }
   },
-  "prod_sha_before": "56af0d17171cbe7a3d3affeb82b439364b6daff3",
+  "prod_sha_before": "03e8015f7b755563d566950c60a6137745be9840",
   "audit_event": {
-    "id": "af6b604d-2ab1-4abf-b52c-b69301d2ac4d",
+    "id": "7dd545ee-27ec-40df-ac9b-3e2f132dafa3",
     "action": "agent_security_gateway.sequence",
-    "created_at": "2026-09-03T23:15:06.605605+00:00"
+    "created_at": "2026-09-03T23:21:31.596504+00:00"
   },
   "verdict": "PASS",
-  "finished_at": "2026-09-03T23:15:07.903538+00:00"
+  "finished_at": "2026-09-03T23:21:56.177415+00:00",
+  "prod_sha_after": "03e8015f7b755563d566950c60a6137745be9840",
+  "local_sha": "03e8015f7b755563d566950c60a6137745be9840",
+  "deployed_at": "2026-09-03T23:21:17.308279+00:00",
+  "post_deploy_audit_id": "7dd545ee-27ec-40df-ac9b-3e2f132dafa3"
 }
