@@ -24,11 +24,14 @@ DEFAULT_ORG = os.environ.get("OAUTH_SMOKE_ORG_ID", "cbbf993b-b22f-41ce-964b-1fc2
 def _load_env() -> dict[str, str]:
     merged: dict[str, str] = {}
     for path in (BACKEND / ".env", BACKEND / ".env.operator.local", REPO / ".env"):
-        if path.is_file():
+        if not path.is_file():
+            continue
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
             try:
-                merged.update({k: v for k, v in dotenv_values(path).items() if v})
+                merged.update({k: v for k, v in dotenv_values(path, encoding=enc).items() if v})
+                break
             except UnicodeDecodeError:
-                pass
+                continue
     merged.update({k: v for k, v in os.environ.items() if v})
     return merged
 

@@ -1,6 +1,11 @@
 # Phase 0 — Agent Identity IAM permission-model audit (2026-09-03)
 
-**Status:** CODE shipped; **LIVE PENDING** until migration applied + deploy + smoke probes.
+**Status:** Migration **APPLIED** 2026-09-03 (`agent_identity_iam`, prod ledger
+`20260903215253` / `20260903215303` — duplicate stamp from tooling, schema
+verified via `to_regclass`). Code deployed at `56af0d17`. Ops smokes **NOT RUN**
+locally — `INTERNAL_API_SECRET` not available in this session; run
+`scripts/verify-agent-identity-spend-limit-live.py` and
+`scripts/verify-agent-delegation-live.py` from an operator env for live PASS.
 
 ## Existing permission dimensions
 
