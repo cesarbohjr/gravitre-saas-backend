@@ -1,0 +1,26 @@
+{
+  "recorded_at": "2026-09-03T21:53:32.343499+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "agent_id": "fd1788f6-7b77-5fa2-ac73-beae292bf1d1",
+  "deploy_sha": "56af0d17171cbe7a3d3affeb82b439364b6daff3",
+  "mode": "deployed_http",
+  "probe_error": null,
+  "probe": {
+    "pass": true,
+    "verdict": "PASS",
+    "git_sha": "unknown",
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "agent_id": "fd1788f6-7b77-5fa2-ac73-beae292bf1d1",
+    "grant_id": "bda1a402-ac03-4ce5-916b-4b07cb30e12f",
+    "checks": {
+      "before_read_only": true,
+      "during_autonomous": true,
+      "during_bypass_spend": true,
+      "after_revoked_read_only": true
+    },
+    "claim": "PASS \u2014 delegation grant merged then revoked"
+  },
+  "verdict": "PASS",
+  "claim": "PASS \u2014 delegation grant merged then revoked"
+}
