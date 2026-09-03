@@ -1,31 +1,35 @@
 {
   "label": "probe-derived",
-  "local_sha": "82c647a116aa",
-  "prod_sha": "2a2e03556a4d",
+  "local_sha": "2172e61857b3",
+  "prod_sha": "2172e61857b3",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "probe_tag": "MH_20260903211832",
-  "started_at": "2026-09-03T21:18:37.138261+00:00",
+  "probe_tag": "MH_20260903213100",
+  "started_at": "2026-09-03T21:31:04.714861+00:00",
   "checks": {
-    "temporal_validity": false,
+    "temporal_validity": true,
     "structured_extraction": true,
     "contamination_defense": true,
     "cross_org_isolation": true
   },
   "temporal": {
-    "memory_key": "preference:d767d908c23612ed",
+    "memory_key": "preference:e55c282db7d1abc6",
     "written_v1": [
-      "cdef3b97-773b-4579-a2ea-ab3579ae5f28"
+      "63e6b9cf-cb31-40d6-a6b4-e439eba5d78f"
     ],
-    "written_v2": [],
-    "current_content": "MH_20260903211832 ICP employee range: 10-50 employees",
-    "history_count": 0,
-    "history_sample": [],
-    "ok": false
+    "written_v2": [
+      "001b81ca-a1a3-4271-8dfb-e687e0784534"
+    ],
+    "current_content": "MH_20260903213100 ICP employee range: 25-250 employees",
+    "history_count": 1,
+    "history_sample": [
+      "MH_20260903213100 ICP employee range: 10-50 employees"
+    ],
+    "ok": true
   },
   "structured": {
-    "outcome_content": "Outcome (probe_MH_20260903211832); action=probe.test; status=completed",
+    "outcome_content": "Outcome (probe_MH_20260903213100); action=probe.test; status=completed",
     "structured_payload": {
-      "event": "probe_MH_20260903211832",
+      "event": "probe_MH_20260903213100",
       "status": "completed",
       "action": "probe.test",
       "error": null
@@ -34,7 +38,7 @@
   },
   "contamination": {
     "promoted_ids": [
-      "6b27d272-ff1a-4e17-a84f-67583d2e4c3c"
+      "277284e2-cfdc-44cb-a997-6a58d387ba00"
     ],
     "recalled_untrusted": 1,
     "ok": true
@@ -43,7 +47,7 @@
     "foreign_hits": 0,
     "ok": true
   },
-  "verdict": "NOT_PROVEN",
-  "checks_passed": 3,
+  "verdict": "PASS",
+  "checks_passed": 4,
   "checks_total": 4
 }
