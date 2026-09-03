@@ -26,6 +26,7 @@ import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
+import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 
