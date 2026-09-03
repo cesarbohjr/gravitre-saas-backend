@@ -1,7 +1,7 @@
 """Unit tests for Part 1 items 1–3 helpers (workspace memory, metrics defaults)."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from app.services.cognitive_metrics import (
     PLATFORM_METRIC_DEFAULTS,
@@ -81,19 +81,62 @@ def test_typed_categories_cover_cognitive_taxonomy():
 
 
 def test_promote_turn_memories_writes_org_scoped_rows():
-    client = MagicMock()
-    table = _chainable(
+    """Workspace-scoped rows are pinned to an org steward agent, not left NULL.
+
+    This asserted ``agent_id is None``, which described an earlier design. The
+    service now resolves a steward because ``agent_memories.agent_id`` is still
+    NOT NULL in production, and skips the write outright when no steward exists.
+    The old mock also returned the same rows for every table, so the steward
+    lookup handed back the memory row's own id -- hence ``assert 'm1' is None``.
+    """
+    memories_table = _chainable(
         [
             {
                 "id": "m1",
                 "org_id": "org-1",
-                "agent_id": None,
+                "agent_id": "agent-steward",
                 "category": "decision",
                 "content": "Use HubSpot",
             }
         ]
     )
-    client.table.return_value = table
+    agents_table = _chainable([{"id": "agent-steward"}])
+    client = MagicMock()
+    client.table.side_effect = lambda name, *a, **k: (
+        agents_table if name == "agents" else memories_table
+    )
+
+    # Otherwise this reaches the real embedding provider: in CI the placeholder
+    # key returns 401 (swallowed, but noisy), and offline it fails DNS.
+    with patch("app.rag.embedding.get_embedding", return_value=[0.1, 0.2]) as embed:
+        written = promote_turn_memories(
+            client,
+            org_id="org-1",
+            memories=[{"content": "Use HubSpot", "category": "decision"}],
+            agent_id=None,
+            conversation_id="convo-a",
+        )
+
+    assert len(written) == 1
+    embed.assert_called_once()
+    insert_payload = memories_table.insert.call_args[0][0]
+    assert insert_payload["org_id"] == "org-1"
+    assert insert_payload["agent_id"] == "agent-steward"
+    assert insert_payload["category"] == "decision"
+    assert insert_payload["embedding"] == [0.1, 0.2]
+    assert "conversation:convo-a" in insert_payload["provenance"]
+    assert "workspace_steward" in insert_payload["provenance"]
+
+
+def test_promote_turn_memories_skips_when_no_steward_exists():
+    """No steward means an honest skip, not a NULL-agent insert that would fail."""
+    memories_table = _chainable([])
+    agents_table = _chainable([])
+    client = MagicMock()
+    client.table.side_effect = lambda name, *a, **k: (
+        agents_table if name == "agents" else memories_table
+    )
+
     written = promote_turn_memories(
         client,
         org_id="org-1",
@@ -101,12 +144,9 @@ def test_promote_turn_memories_writes_org_scoped_rows():
         agent_id=None,
         conversation_id="convo-a",
     )
-    assert len(written) == 1
-    client.table.assert_called_with("agent_memories")
-    insert_payload = table.insert.call_args[0][0]
-    assert insert_payload["org_id"] == "org-1"
-    assert insert_payload["agent_id"] is None
-    assert insert_payload["category"] == "decision"
+
+    assert written == []
+    memories_table.insert.assert_not_called()
 
 
 def test_recall_workspace_filters_foreign_org():

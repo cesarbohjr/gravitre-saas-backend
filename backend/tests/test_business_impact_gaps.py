@@ -11,6 +11,7 @@ from app.services.optimization_suggestion_service import (
     OptimizationSuggestionService,
     _serialize_suggestion,
 )
+from tests.conftest import patch_optimization_detectors
 
 
 def test_serialize_suggestion_includes_explanation():
@@ -117,27 +118,16 @@ async def test_v10_business_detectors_are_registered():
             openai_api_key="sk-test-openai",
         )
     )
-    with patch.object(service, "_detect_slow_steps", new=AsyncMock(return_value=[])):
-        with patch.object(service, "_detect_low_reliability_references", new=AsyncMock(return_value=[])):
-            with patch.object(service, "_detect_poor_outcome_patterns", new=AsyncMock(return_value=[])):
-                with patch.object(
-                    service,
-                    "_detect_post_publish_marketing_underperformance",
-                    new=AsyncMock(return_value=[]),
-                ):
-                    with patch.object(service, "_detect_duplicate_steps", new=AsyncMock(return_value=[])):
-                        stalled = AsyncMock(return_value=[{"id": "s1"}])
-                        overdue = AsyncMock(return_value=[{"id": "s2"}])
-                        backlog = AsyncMock(return_value=[{"id": "s3"}])
-                        with patch.object(service, "_detect_stalled_deals", new=stalled):
-                            with patch.object(service, "_detect_overdue_invoices", new=overdue):
-                                with patch.object(service, "_detect_support_backlog_growth", new=backlog):
-                                    with patch.object(
-                                        service,
-                                        "_detect_process_mining_bottlenecks",
-                                        new=AsyncMock(return_value=[]),
-                                    ):
-                                        result = await service.detect_suggestions_for_org("org-1")
+    stalled = AsyncMock(return_value=[{"id": "s1"}])
+    overdue = AsyncMock(return_value=[{"id": "s2"}])
+    backlog = AsyncMock(return_value=[{"id": "s3"}])
+    with patch_optimization_detectors(
+        service,
+        _detect_stalled_deals=stalled,
+        _detect_overdue_invoices=overdue,
+        _detect_support_backlog_growth=backlog,
+    ):
+        result = await service.detect_suggestions_for_org("org-1")
     assert result == [{"id": "s1"}, {"id": "s2"}, {"id": "s3"}]
     stalled.assert_awaited_once()
     overdue.assert_awaited_once()

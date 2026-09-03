@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from app.config import Settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tier1_voice_service import synthesize_speech_stream
 from app.services.voice_agent_profile import normalize_voice_profile
 from app.services.voice_turn_taking import (
@@ -252,8 +253,9 @@ async def stream_voice_turn_events(
             data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
             if isinstance(data, dict):
                 routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
-                if isinstance(routing.get("cognitiveStageMs"), dict):
-                    stage_ms = dict(routing["cognitiveStageMs"])
+                raw_stage_ms = routing.get("cognitiveStageMs")
+                if isinstance(raw_stage_ms, dict):
+                    stage_ms = safe_normalize_stored_dict(raw_stage_ms)
                     if pre_act_done_ms is None:
                         pre_act_done_ms = int((time.perf_counter() - t_start) * 1000)
                 if routing.get("reasoningDepth"):
@@ -289,8 +291,9 @@ async def stream_voice_turn_events(
                         pass
                 if routing.get("spokenStreamed") is not None:
                     spoken_streamed = bool(routing.get("spokenStreamed"))
-                if isinstance(routing.get("latencyBreakdown"), dict):
-                    unified_breakdown = dict(routing["latencyBreakdown"])
+                raw_breakdown = routing.get("latencyBreakdown")
+                if isinstance(raw_breakdown, dict):
+                    unified_breakdown = safe_normalize_stored_dict(raw_breakdown)
                 # First routing intelligence (before kernel) ≈ classify+setup wall.
                 if (
                     classify_done_ms is None

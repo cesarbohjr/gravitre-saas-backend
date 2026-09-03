@@ -224,7 +224,7 @@ def _plan_to_dict(plan: ConnectorActionPlan | None) -> dict[str, Any] | None:
 
 @contextmanager
 def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str]):
-    async def _fake_execute_tool(*, ctx, tool_name, args=None):
+    def _fake_observation(ctx, label: str, action: str) -> dict[str, Any]:
         from app.services.tool_service import write_audit_event
 
         write_audit_event(
@@ -233,8 +233,8 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
             ctx.actor_id,
             action="tool.invoke.requested",
             resource_type="conversation",
-            resource_id=tool_name,
-            metadata={"action": tool_name, "dry_run": True},
+            resource_id=label,
+            metadata={"action": action, "dry_run": True},
         )
         write_audit_event(
             ctx.client,
@@ -242,16 +242,22 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
             ctx.actor_id,
             action="tool.invoke.completed",
             resource_type="conversation",
-            resource_id=tool_name,
+            resource_id=label,
             metadata={"success": True, "dry_run": True},
         )
         return {
             "success": True,
-            "tool": tool_name,
-            "action": tool_name,
+            "tool": label,
+            "action": action,
             "result": {"dry_run": True},
             "connector_id": "conn-e2e",
         }
+
+    async def _fake_execute_tool(*, ctx, tool_name, args=None):
+        return _fake_observation(ctx, tool_name, tool_name)
+
+    async def _fake_execute_invoke_action(*, ctx, invoke_action, args=None, tool_name=None):
+        return _fake_observation(ctx, tool_name or invoke_action, invoke_action)
 
     async def _fake_risk(*_args, **kwargs):
         plan = _args[2] if len(_args) > 2 else None
@@ -268,7 +274,15 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
         # Scenario actors are treated as approvers so confirm-path gating still exercises.
         patch.object(service, "_user_can_approve_writes", return_value=True),
+        # Both execution entry points. execute_plan calls execute_invoke_action;
+        # patching only execute_tool (the ReAct entry point) left the real path
+        # live, so every dry-run scenario reported successful_execution=failed.
         patch.object(service._registry, "execute_tool", side_effect=_fake_execute_tool),
+        patch.object(
+            service._registry,
+            "execute_invoke_action",
+            side_effect=_fake_execute_invoke_action,
+        ),
         patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield

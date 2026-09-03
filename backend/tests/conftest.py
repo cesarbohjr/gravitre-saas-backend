@@ -254,6 +254,56 @@ def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
         yield
 
 
+def optimization_detector_names() -> tuple[str, ...]:
+    """Every ``self._detect_*`` awaited by ``detect_suggestions_for_org``.
+
+    Read from the source rather than hardcoded. Two tests previously listed the
+    detectors by hand in nested ``with`` blocks; when ``_detect_process_sequences``
+    was added, both kept passing their old nine and let the tenth run for real,
+    so each test opened a live Supabase connection -- failing on DNS locally and
+    on a placeholder key in CI. Deriving the list means a new detector is stubbed
+    automatically instead of reaching the network.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from app.services.optimization_suggestion_service import OptimizationSuggestionService
+
+    source = textwrap.dedent(
+        inspect.getsource(OptimizationSuggestionService.detect_suggestions_for_org)
+    )
+    names = {
+        node.func.attr
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr.startswith("_detect_")
+    }
+    assert names, "no detectors discovered — this guard is blind"
+    return tuple(sorted(names))
+
+
+@contextmanager
+def patch_optimization_detectors(service: Any, **overrides: Any) -> Iterator[None]:
+    """Stub every detector to return ``[]``, with named exceptions.
+
+    Keeps a detection test scoped to the detectors it actually asserts on without
+    letting the others touch the network.
+    """
+    names = optimization_detector_names()
+    unknown = sorted(set(overrides) - set(names))
+    assert not unknown, f"not detectors on detect_suggestions_for_org: {unknown}"
+
+    with ExitStack() as stack:
+        for name in names:
+            replacement = (
+                overrides[name] if name in overrides else AsyncMock(return_value=[])
+            )
+            stack.enter_context(patch.object(service, name, new=replacement))
+        yield
+
+
 @pytest.fixture
 def mock_supabase_client() -> MagicMock:
     client = MagicMock()

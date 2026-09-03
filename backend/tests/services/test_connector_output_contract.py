@@ -109,7 +109,11 @@ async def test_verified_slack_post_message_summary_is_non_empty():
         service,
         "_registry",
         MagicMock(
-            execute_tool=AsyncMock(
+            # execute_plan calls execute_invoke_action, not execute_tool (which is
+            # the ReAct entry point and still exists, so mocking it raised nothing --
+            # the await hit a bare MagicMock and the resulting "can't be awaited"
+            # string was caught and returned as the summary body).
+            execute_invoke_action=AsyncMock(
                 return_value={
                     "success": True,
                     "connector_id": "conn-slack",
@@ -149,7 +153,7 @@ async def test_verified_engagebay_contact_create_summary_is_non_empty():
         service,
         "_registry",
         MagicMock(
-            execute_tool=AsyncMock(
+            execute_invoke_action=AsyncMock(
                 return_value={
                     "success": True,
                     "connector_id": "conn-engagebay",

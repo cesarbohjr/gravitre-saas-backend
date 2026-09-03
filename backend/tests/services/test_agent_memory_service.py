@@ -31,6 +31,20 @@ def _table_chain(data):
     return chain
 
 
+def _client_by_table(tables: dict[str, list]) -> tuple[MagicMock, dict[str, MagicMock]]:
+    """Dispatch ``client.table(name)`` by name rather than call order.
+
+    An ordered ``side_effect`` list ties the test to how many reads the function
+    happens to make. When department sharing added two more (agents again, then
+    departments), the two-entry list ran out and raised StopIteration -- a
+    failure that pointed at the mock, not at the feature that changed.
+    """
+    chains = {name: _table_chain(rows) for name, rows in tables.items()}
+    client = MagicMock()
+    client.table.side_effect = lambda name, *args, **kwargs: chains[name]
+    return client, chains
+
+
 def test_memory_retrieval_enabled_from_config():
     agent = {"id": "a1", "config": {"use_memory": True}}
     assert _memory_retrieval_enabled(agent, {}) is True
@@ -79,24 +93,35 @@ def test_create_agent_memory_inserts_embedding(mock_embed):
     org_id = str(uuid.uuid4())
     agent_id = str(uuid.uuid4())
     memory_id = str(uuid.uuid4())
-    client = MagicMock()
-    client.table.side_effect = [
-        _table_chain([{"id": agent_id, "org_id": org_id, "name": "Atlas", "department": "Marketing", "config": {}}]),
-        _table_chain([
-            {
-                "id": memory_id,
-                "agent_id": agent_id,
-                "content": "Always be concise",
-                "category": "preference",
-                "provenance": "Manual",
-                "confidence": 90,
-                "usage_count": 0,
-                "editable": True,
-                "created_at": "2026-01-01T00:00:00Z",
-                "updated_at": "2026-01-01T00:00:00Z",
-            }
-        ]),
-    ]
+    department_id = str(uuid.uuid4())
+    client, chains = _client_by_table(
+        {
+            "agents": [
+                {
+                    "id": agent_id,
+                    "org_id": org_id,
+                    "name": "Atlas",
+                    "department": "Marketing",
+                    "config": {},
+                }
+            ],
+            "departments": [{"id": department_id}],
+            "agent_memories": [
+                {
+                    "id": memory_id,
+                    "agent_id": agent_id,
+                    "content": "Always be concise",
+                    "category": "preference",
+                    "provenance": "Manual",
+                    "confidence": 90,
+                    "usage_count": 0,
+                    "editable": True,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                }
+            ],
+        }
+    )
     settings = MagicMock()
     row = create_agent_memory(
         settings,
@@ -110,6 +135,13 @@ def test_create_agent_memory_inserts_embedding(mock_embed):
     )
     assert row["category"] == "preference"
     mock_embed.assert_called_once()
+
+    payload = chains["agent_memories"].insert.call_args.args[0]
+    assert payload["embedding"] == [0.1, 0.2]
+    assert payload["created_by"] == "user-1"
+    # share_with_department defaults True, so the resolved department must land on
+    # the row -- the behavior whose two extra reads broke the old ordered mock.
+    assert payload["department_id"] == department_id
 
 
 def test_delete_protected_memory_forbidden():

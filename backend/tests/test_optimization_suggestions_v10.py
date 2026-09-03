@@ -11,6 +11,7 @@ from app.services.optimization_suggestion_service import (
     OptimizationSuggestionService,
     PRODUCTION_TABLE_NAMES,
 )
+from tests.conftest import patch_optimization_detectors
 
 
 @pytest.mark.asyncio
@@ -42,25 +43,10 @@ async def test_detection_never_writes_to_production_tables():
         data=[]
     )
     client.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{"id": "s-1"}])
-    with patch.object(service, "_client", return_value=client):
-        with patch.object(service, "_detect_slow_steps", new=AsyncMock(return_value=[])):
-            with patch.object(service, "_detect_low_reliability_references", new=AsyncMock(return_value=[])):
-                with patch.object(service, "_detect_poor_outcome_patterns", new=AsyncMock(return_value=[])):
-                    with patch.object(
-                        service, "_detect_post_publish_marketing_underperformance", new=AsyncMock(return_value=[])
-                    ):
-                        with patch.object(service, "_detect_duplicate_steps", new=AsyncMock(return_value=[])):
-                            with patch.object(service, "_detect_stalled_deals", new=AsyncMock(return_value=[])):
-                                with patch.object(service, "_detect_overdue_invoices", new=AsyncMock(return_value=[])):
-                                    with patch.object(
-                                        service, "_detect_support_backlog_growth", new=AsyncMock(return_value=[])
-                                    ):
-                                        with patch.object(
-                                            service,
-                                            "_detect_process_mining_bottlenecks",
-                                            new=AsyncMock(return_value=[]),
-                                        ):
-                                            await service.detect_suggestions_for_org("org-1")
+    with patch.object(service, "_client", return_value=client), patch_optimization_detectors(
+        service
+    ):
+        await service.detect_suggestions_for_org("org-1")
     inserted_tables = [call.args[0] for call in client.table.call_args_list]
     assert all(name == "optimization_suggestions" for name in inserted_tables if name != "workflow_steps")
 

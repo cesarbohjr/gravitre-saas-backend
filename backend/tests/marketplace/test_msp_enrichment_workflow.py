@@ -61,7 +61,10 @@ def test_msp_enrichment_records_use_from_step_not_dollar_aliases():
     clay_push = steps["clay_push"]["config"]["param_sources"]["records"]
     clay_outputs = steps["clay_outputs"]["config"]["param_sources"]["records"]
     crm_sync = steps["hubspot_crm_sync"]["config"]["param_sources"]["records"]
-    assert clay_push == {"from_step": "apollo_contacts_search", "path": ["records"]}
+    # Rebound from apollo_contacts_search in 74ed0b2b: contacts.search returns a
+    # ``contacts`` key, so a ["records"] path against it resolves to nothing.
+    # people.search is the step that actually carries ``records``.
+    assert clay_push == {"from_step": "apollo_people_search", "path": ["records"]}
     assert clay_outputs == {"from_step": "clay_push", "path": ["records"]}
     assert crm_sync == {"from_step": "clay_outputs", "path": ["records"]}
     assert "$enriched_records" not in str(steps["hubspot_crm_sync"]["config"]["param_sources"]["records"])

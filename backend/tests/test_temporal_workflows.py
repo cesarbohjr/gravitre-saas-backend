@@ -10,13 +10,26 @@ from app.temporal.worker import registered_workflow_names, temporal_configured
 
 
 def test_temporal_worker_registers_all_workflows():
+    """The registered set, named in full.
+
+    This asserted five names and then `len(names) == 5`, so registering
+    StandingInvestigatorWorkflow broke it with `assert 6 == 5` -- a failure that
+    says nothing about what changed. Comparing the whole set means adding a
+    workflow still forces a deliberate update, but the diff names the newcomer.
+    """
+    assert set(registered_workflow_names()) == {
+        "CompanyIntelligenceWorkflow",
+        "MarketplaceInstallWorkflow",
+        "MemoryPromotionWorkflow",
+        "MLModelTrainingWorkflow",
+        "OutcomeMeasurementWorkflow",
+        "StandingInvestigatorWorkflow",
+    }
+
+
+def test_registered_workflow_names_have_no_duplicates():
     names = registered_workflow_names()
-    assert "CompanyIntelligenceWorkflow" in names
-    assert "MarketplaceInstallWorkflow" in names
-    assert "OutcomeMeasurementWorkflow" in names
-    assert "MemoryPromotionWorkflow" in names
-    assert "MLModelTrainingWorkflow" in names
-    assert len(names) == 5
+    assert len(names) == len(set(names))
 
 
 def test_asyncio_fallback_when_temporal_not_configured(monkeypatch):
