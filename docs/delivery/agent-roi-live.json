@@ -1,9 +1,9 @@
 {
   "probe": "agent_roi_live",
-  "checked_at": "2026-09-03T23:52:03.006646+00:00",
+  "checked_at": "2026-09-03T23:55:12.016079+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "api_git_sha": "a78ef32df8639449b52dd259adf6a24653bbd179",
+  "api_git_sha": "16244ce0f84d57be4116764bd483926c66337172",
   "roi_http": 200,
   "period_days": 30,
   "agent_count": 16,
@@ -18,7 +18,7 @@
       "provenance": "operational"
     },
     "agentCostUsd": {
-      "value": 0.88789,
+      "value": 0.887949,
       "provenance": "measured"
     },
     "estimatedHoursSaved": {
@@ -34,7 +34,7 @@
       "provenance": "not_configured"
     },
     "roiMultiple": {
-      "value": 67.5692,
+      "value": 67.5647,
       "provenance": "estimate"
     }
   },
@@ -63,8 +63,8 @@
     "provenance": "estimate",
     "note": "Default estimate $45.0/hr \u2014 not a product price SKU."
   },
-  "model_calls_sum_usd": 0.88789,
-  "api_cost_usd": 0.88789,
+  "model_calls_sum_usd": 0.887949,
+  "api_cost_usd": 0.887949,
   "cost_match": true,
   "sample_agent": {
     "agentId": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
