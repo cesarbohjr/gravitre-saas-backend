@@ -199,6 +199,7 @@ def resolve_user_write_approval_required(
     registry: Any,
     *,
     settings: Any | None = None,
+    agent_id: str | None = None,
 ) -> tuple[bool, str, str, str]:
     """Return (requires_user_approval, invoke_action, integration, label)."""
     connected: list[str] = []
@@ -233,7 +234,22 @@ def resolve_user_write_approval_required(
         user_id=str(user_id),
         action_kind=action_kind,
     )
-    return bool(decision.requires_approval), invoke_action, integration, label
+    requires = bool(decision.requires_approval)
+
+    from app.services.agent_identity_service import resolve_approval_override, resolve_effective_identity
+
+    identity = resolve_effective_identity(client, str(org_id), str(agent_id or "")) if agent_id else None
+    override = resolve_approval_override(identity, action_kind)
+    if override == "always_approve":
+        requires = True
+    elif override == "always_deny":
+        requires = True
+    elif override == "auto_run" and identity and identity.trust_level == "autonomous":
+        requires = False
+    elif identity and identity.trust_level == "write_with_approval" and is_write:
+        requires = True
+
+    return requires, invoke_action, integration, label
 
 
 def block_react_write_execution(
@@ -244,9 +260,61 @@ def block_react_write_execution(
     client: Any = None,
     org_id: str | None = None,
     user_id: str | None = None,
+    agent_id: str | None = None,
     settings: Any | None = None,
 ) -> dict[str, Any] | None:
     """If this ReAct tool call needs user approval per HITL policy, block execution."""
+    from app.services.hitl_policy_service import classify_action_kind
+
+    is_write_probe, invoke_probe, _, label_probe = tool_requires_user_write_approval(
+        tool_name, registry
+    )
+    action_kind = classify_action_kind(
+        invoke_action=invoke_probe,
+        tool_name=tool_name,
+        label=label_probe,
+    )
+    if client is not None and org_id and agent_id and is_write_probe:
+        from app.services.agent_identity_service import (
+            AGENT_IDENTITY_DENIED,
+            AGENT_SPEND_LIMIT_EXCEEDED,
+            AgentIdentityDeniedError,
+            AgentSpendLimitExceededError,
+            enforce_agent_identity_before_tool,
+        )
+
+        try:
+            enforce_agent_identity_before_tool(
+                client,
+                str(org_id),
+                agent_id,
+                tool_name=tool_name,
+                invoke_action=invoke_probe,
+                action_kind=action_kind,
+                actor_id=user_id,
+            )
+        except AgentSpendLimitExceededError as exc:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_probe,
+                "error_code": AGENT_SPEND_LIMIT_EXCEEDED,
+                "error": (
+                    f"Agent spend limit exceeded ({exc.dimension}): "
+                    f"daily limit {exc.limit}, current usage {exc.used}."
+                ),
+                "pending_approval": False,
+            }
+        except AgentIdentityDeniedError as exc:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_probe,
+                "error_code": AGENT_IDENTITY_DENIED,
+                "error": str(exc),
+                "pending_approval": False,
+            }
+
     if client is not None and org_id and user_id:
         requires, invoke_action, integration, label = resolve_user_write_approval_required(
             client,
@@ -255,6 +323,7 @@ def block_react_write_execution(
             tool_name,
             registry,
             settings=settings,
+            agent_id=agent_id,
         )
     else:
         requires, invoke_action, integration, label = tool_requires_user_write_approval(

@@ -747,6 +747,7 @@ class ReActEngine:
             client=ctx.client,
             org_id=ctx.org_id,
             user_id=ctx.actor_id,
+            agent_id=ctx.agent_id,
             settings=self.settings,
         )
         if blocked is not None:

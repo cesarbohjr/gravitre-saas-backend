@@ -404,6 +404,44 @@ export const agentsApi = {
     postJson<AgentMemory[]>(apiUrl(`/api/agents/${agentId}/memories/search`), data),
 }
 
+export interface AgentIdentityRecord {
+  id?: string
+  orgId?: string
+  agentId?: string
+  departmentId?: string | null
+  agentRole?: string
+  trustLevel?: string
+  allowedToolPatterns?: string[]
+  allowedActionKinds?: string[]
+  allowedDataScopes?: string[]
+  maxActionsPerDay?: number | null
+  maxTokensPerDay?: number | null
+  maxSpendUsdPerDay?: number | null
+  canDelegate?: boolean
+  approvalRuleOverrides?: Record<string, string>
+  updatedAt?: string
+}
+
+export interface AgentIdentityStatus {
+  identity: AgentIdentityRecord | null
+  effective?: {
+    trustLevel?: string | null
+    allowedToolPatterns?: string[]
+    allowedActionKinds?: string[]
+    activeDelegationId?: string | null
+  }
+  usageToday?: { actions: number; tokens: number; spendUsd: number }
+  usageDate?: string
+}
+
+export const agentIdentityApi = {
+  get: (agentId: string) => fetcher<AgentIdentityStatus>(apiUrl(`/api/agents/${agentId}/identity`)),
+  upsert: (agentId: string, data: Partial<AgentIdentityRecord>) =>
+    putJson<{ identity: AgentIdentityRecord }>(apiUrl(`/api/agents/${agentId}/identity`), data),
+  listDelegations: (agentId: string) =>
+    fetcher<{ grants: Array<Record<string, unknown>> }>(apiUrl(`/api/agents/${agentId}/delegations`)),
+}
+
 export interface AgentKnowledgeAssignment {
   id?: string
   agentId?: string

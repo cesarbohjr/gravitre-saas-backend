@@ -26,7 +26,8 @@ import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
-import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
+import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 
 // Types
 interface Agent {
@@ -269,9 +270,10 @@ export default function AgentProfilePage({
   const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "personality" | "skills" | "history">(
-    "overview",
-  )
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "personality" | "skills" | "governance" | "history"
+  >("overview")
+  const { isAdmin } = useOrgAdmin()
 
   const { data: apiAgent, isLoading, error, mutate: mutateAgent } = useSWR(
     user && id ? `agent-profile/${id}` : null,
@@ -481,6 +483,7 @@ export default function AgentProfilePage({
               { id: "overview", label: "Overview", icon: "info" },
               { id: "personality", label: "Personality", icon: "sparkles" },
               { id: "skills", label: "Capabilities", icon: "settings" },
+              { id: "governance", label: "Governance", icon: "shield" },
               { id: "history", label: "Work History", icon: "history" },
             ].map((tab) => (
               <button
@@ -610,6 +613,18 @@ export default function AgentProfilePage({
                     </div>
                   </div>
                 ) : null}
+              </motion.div>
+            )}
+
+            {activeTab === "governance" && (
+              <motion.div
+                key="governance"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-3xl"
+              >
+                <AgentIdentityGovernanceCard agentId={agent.id} canEdit={isAdmin} />
               </motion.div>
             )}
 

@@ -25,6 +25,7 @@ from app.routers import (
     agent_knowledge_assignments,
     knowledge_fabric,
     agent_tool_permissions,
+    agent_identity,
     admin_intelligence,
     admin_chat,
     cognitive_turns,
@@ -616,4 +617,5 @@ app.include_router(optimization_suggestions.router)
 app.include_router(feedback_mode.router)
 app.include_router(memory_promotion.router)
 app.include_router(agent_tool_permissions.router)
+app.include_router(agent_identity.router)
 app.include_router(operators_router.sessions_router)

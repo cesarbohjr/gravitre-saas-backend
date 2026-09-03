@@ -1372,3 +1372,165 @@ async def pre_action_card_smoke(
             else f"FAIL — pre-action checks: {[k for k, v in checks.items() if not v]}"
         ),
     }
+
+
+class AgentIdentitySpendSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    agent_id: str
+    environment_name: str = "production"
+
+
+@router.post("/agent-identity-spend-smoke")
+async def agent_identity_spend_smoke(
+    body: AgentIdentitySpendSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Live proof: agent spend limit blocks over-limit write attempts."""
+    import os
+    import uuid
+
+    from app.capability_ontology.tool_bridge import capability_tool_name
+    from app.operators.react_engine import ReActEngine
+    from app.services.agent_identity_service import (
+        AGENT_SPEND_LIMIT_EXCEEDED,
+        record_agent_usage,
+        upsert_agent_identity_record,
+    )
+    from app.services.react_write_gate import block_react_write_execution
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_types import ToolContext
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    agent_id = str(body.agent_id or "").strip()
+    if not org_id or not actor_id or not agent_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id, actor_id, agent_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    upsert_agent_identity_record(
+        client,
+        org_id=org_id,
+        agent_id=agent_id,
+        actor_id=actor_id,
+        payload={"maxSpendUsdPerDay": 0.01, "trustLevel": "write_with_approval"},
+    )
+    record_agent_usage(client, org_id, agent_id, spend_usd=0.01)
+
+    cap_tool = capability_tool_name("crm.contact.create")
+    args = {"email": f"agent-iam-{uuid.uuid4().hex[:8]}@example.com", "preferred_vendor": "hubspot"}
+    blocked = block_react_write_execution(
+        cap_tool,
+        args,
+        reg,
+        client=client,
+        org_id=org_id,
+        user_id=actor_id,
+        agent_id=agent_id,
+        settings=settings,
+    )
+    checks = {
+        "identity_configured": True,
+        "usage_at_limit": True,
+        "spend_blocked": blocked is not None and blocked.get("error_code") == AGENT_SPEND_LIMIT_EXCEEDED,
+    }
+    overall = all(checks.values())
+    return {
+        "pass": overall,
+        "verdict": "PASS" if overall else "FAIL",
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "agent_id": agent_id,
+        "blocked": blocked,
+        "checks": checks,
+        "claim": (
+            "PASS — agent spend limit blocked over-limit write"
+            if overall
+            else "FAIL — agent identity spend smoke"
+        ),
+    }
+
+
+class AgentDelegationSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    agent_id: str
+    expires_in_minutes: int = 1
+
+
+@router.post("/agent-delegation-smoke")
+async def agent_delegation_smoke(
+    body: AgentDelegationSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Live proof: delegation grant, effective merge, and post-expiry revoke."""
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.agent_identity_service import (
+        create_delegation_grant,
+        resolve_effective_identity,
+        revoke_delegation_grant,
+        upsert_agent_identity_record,
+    )
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    agent_id = str(body.agent_id or "").strip()
+    if not org_id or not actor_id or not agent_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id, actor_id, agent_id required")
+
+    client = get_supabase_client(settings)
+    upsert_agent_identity_record(
+        client,
+        org_id=org_id,
+        agent_id=agent_id,
+        actor_id=actor_id,
+        payload={"canDelegate": True, "trustLevel": "read_only", "maxSpendUsdPerDay": 0.01},
+    )
+    before = resolve_effective_identity(client, org_id, agent_id)
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=max(body.expires_in_minutes, 1))).isoformat()
+    grant = create_delegation_grant(
+        client,
+        org_id=org_id,
+        actor_id=actor_id,
+        grantor_agent_id=None,
+        grantee_agent_id=agent_id,
+        grantee_user_id=None,
+        delegated_permissions={"elevated_trust_level": "autonomous", "bypass_spend_limit": True},
+        reason="ops smoke delegation",
+        expires_at=expires_at,
+    )
+    during = resolve_effective_identity(client, org_id, agent_id)
+    revoke_delegation_grant(
+        client,
+        org_id=org_id,
+        grant_id=str(grant.get("id")),
+        actor_id=actor_id,
+    )
+    after = resolve_effective_identity(client, org_id, agent_id)
+
+    checks = {
+        "before_read_only": before is not None and before.trust_level == "read_only",
+        "during_autonomous": during is not None and during.trust_level == "autonomous",
+        "during_bypass_spend": during is not None and during.max_spend_usd_per_day is None,
+        "after_revoked_read_only": after is not None and after.trust_level == "read_only",
+    }
+    overall = all(checks.values())
+    return {
+        "pass": overall,
+        "verdict": "PASS" if overall else "FAIL",
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "agent_id": agent_id,
+        "grant_id": grant.get("id"),
+        "checks": checks,
+        "claim": (
+            "PASS — delegation grant merged then revoked"
+            if overall
+            else "FAIL — agent delegation smoke"
+        ),
+    }
