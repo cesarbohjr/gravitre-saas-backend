@@ -329,7 +329,7 @@ facts:
 | `content_tsv` | present, `to_tsvector('english', COALESCE(content,''))`, `attgenerated='s'` — matches the Fabric definition exactly |
 | `context_prefix` | present, plain nullable text |
 | `idx_rag_chunks_fts`, `idx_rag_chunks_org_env` | both present |
-| history | recorded **twice**, `20260903100000` and `20260903180147`, both `rag_chunks_fts` — idempotent, so harmless |
+| history | canonicalized on 2026-09-03 as `20260903100000`; the generated duplicate stamp was removed after schema verification, without rerunning DDL |
 
 And exercised, not just inspected. `fetch_bm25_corpus` against prod returns
 `reach=fts_no_match` for real query terms: the FTS pre-select **ran** and matched

@@ -250,13 +250,12 @@ than by re-running tests.
 verified by reading `to_regclass` and `information_schema.columns` directly,
 6 of 6 temporal columns present and the history table existing.
 
-Worth flagging for whoever writes the Phase 5 drift scan: both are recorded in
-`supabase_migrations.schema_migrations` under **regenerated version stamps**
-(`20260903180147` and `20260903210816`) rather than their filename versions,
-because they were applied through tooling that stamps its own timestamp. A
-naive `where version = '<filename version>'` check reports NOT APPLIED for a
-migration that is fully live, and `rag_chunks_fts` appears twice for the same
-reason. That is a Class B instrument shape, not a schema problem.
+Migration history was reconciled on 2026-09-03 after direct schema inspection:
+the generated duplicate stamps were removed and the already-live migrations
+were recorded under their canonical repository versions (`20260903100000`,
+`20260903120000`, and `20260903140000`). No DDL was rerun. `supabase migration
+list` now reports local and production history fully aligned with no pending or
+remote-only entries.
 
 **Adjacent program, separate record.** The dormant-model-call and corrective-
 retrieval work accounts for most of the 48 changed `backend/app` files —
