@@ -193,7 +193,9 @@ class UnifiedRetrievalService:
                 metrics = dict(metrics or {})
                 metrics["retrieval_policy"] = retrieval_plan.policy_version if retrieval_plan.active else "legacy"
                 if rag_sources:
-                    rag_section = (
+                    from app.services.agent_security_gateway import fence_external_content
+
+                    raw_kb = (
                         "<knowledge_base>\n"
                         + json.dumps(
                             [
@@ -208,6 +210,9 @@ class UnifiedRetrievalService:
                         )[:12000]
                         + "\n</knowledge_base>\n"
                     )
+                    rag_section = fence_external_content(
+                        raw_kb, kind="knowledge", source_id="unified_retrieval"
+                    ).fenced_block
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_knowledge_skipped org_id=%s error=%s", org_id, exc)
                 metrics = {"fallback": "knowledge_unavailable", "error": str(exc)}

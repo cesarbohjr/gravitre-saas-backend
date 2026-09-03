@@ -1177,7 +1177,12 @@ def _memory_prompt_section(pack: dict[str, Any]) -> str:
             "retrieval confidence is low for this turn."
         )
     lines.append("</memory_pack>")
-    return "\n".join(lines) if len(lines) > 2 else ""
+    soft = "\n".join(lines) if len(lines) > 2 else ""
+    if not soft:
+        return ""
+    from app.services.agent_security_gateway import fence_memory_recall_section
+
+    return fence_memory_recall_section(soft)
 
 
 def _elapsed_ms(t0: float) -> float:

@@ -41,7 +41,6 @@ from app.core.logging import get_logger
 from app.operators.stream_events import ReActStreamEvent
 from app.services.ai_guardrails import (
     fence_untrusted,
-    harden_system_prompt,
     moderate_input,
     redact_pii,
 )
@@ -126,11 +125,11 @@ def resolve_permitted_tools(
     return ["*"]
 
 
-def _truncate_observation(payload: Any) -> str:
-    text = json.dumps(payload, default=str)
-    if len(text) <= _OBSERVATION_MAX_CHARS:
-        return text
-    return text[: _OBSERVATION_MAX_CHARS - 20] + '..."truncated":true}'
+def _truncate_observation(payload: Any, *, tool_name: str | None = None) -> str:
+    """Truncate + Agent Security Gateway fence — tool results are DATA, never instructions."""
+    from app.services.agent_security_gateway import fence_tool_observation
+
+    return fence_tool_observation(payload, tool_name=tool_name, max_chars=_OBSERVATION_MAX_CHARS)
 
 
 def _parse_tool_arguments(raw: str | None) -> dict[str, Any]:
@@ -296,9 +295,10 @@ class ReActEngine:
             else "multi_step",
         ) or MODEL_TIERS["high"]["openai"]
         messages: list[dict[str, Any]] = []
+        from app.services.agent_security_gateway import harden_authority_system_prompt
         from app.services.gravitre_voice import apply_voice
 
-        hardened = harden_system_prompt(
+        hardened = harden_authority_system_prompt(
             apply_voice(system_prompt or _default_react_system_prompt())
         )
         if hardened:
@@ -598,7 +598,7 @@ class ReActEngine:
                             thought=content or None,
                             tool_name=tool_name,
                             tool_args=tool_args,
-                            observation=_truncate_observation(observation),
+                            observation=_truncate_observation(observation, tool_name=tool_name),
                             tool_success=bool(observation.get("success")),
                         )
                     )
@@ -617,7 +617,7 @@ class ReActEngine:
                         {
                             "role": "tool",
                             "tool_call_id": tc.id,
-                            "content": _truncate_observation(observation),
+                            "content": _truncate_observation(observation, tool_name=tool_name),
                         }
                     )
 
@@ -877,7 +877,9 @@ class ReActEngine:
                 "taskId": ctx.task_id,
                 "toolName": tool_name,
                 "toolArgs": tool_args,
-                "observation": _truncate_observation(obs) if obs is not None else None,
+                "observation": _truncate_observation(obs, tool_name=tool_name)
+                if obs is not None
+                else None,
                 "error": error,
                 "errorCode": error_code,
                 "toolSuccess": tool_success,

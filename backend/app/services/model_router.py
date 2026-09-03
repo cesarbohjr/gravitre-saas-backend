@@ -21,11 +21,11 @@ from app.services.ai_guardrails import (
     enforce_budget,
     enforce_rate_limit,
     fence_untrusted,
-    harden_system_prompt,
     moderate_input,
     moderate_output,
     redact_pii,
 )
+from app.services.agent_security_gateway import harden_authority_system_prompt
 from app.services.model_policy_service import assert_model_allowed, load_org_model_policy
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
@@ -268,7 +268,7 @@ class ModelRouter:
         # platform (system prompt is developer-authored, left intact).
         redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
         messages: list[Message] = []
-        hardened_system = harden_system_prompt(system_prompt)
+        hardened_system = harden_authority_system_prompt(system_prompt)
         if hardened_system:
             messages.append({"role": "system", "content": hardened_system})
         for c in context or []:
@@ -469,7 +469,7 @@ class ModelRouter:
 
         redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
         messages: list[Message] = []
-        hardened_system = harden_system_prompt(system_prompt)
+        hardened_system = harden_authority_system_prompt(system_prompt)
         if hardened_system:
             messages.append({"role": "system", "content": hardened_system})
         for c in context or []:

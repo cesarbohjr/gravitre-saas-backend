@@ -664,7 +664,12 @@ class AgentIntelligence:
         conflict_block = format_conflicts_for_prompt(conflicts or [])
         if conflict_block:
             lines.extend(["", conflict_block])
-        return "\n".join(lines)
+        from app.services.agent_security_gateway import fence_knowledge_section
+
+        return fence_knowledge_section(
+            "\n".join(lines),
+            source_id="agent_intelligence_rag",
+        )
 
     @staticmethod
     def _format_task_history(task_history: list[dict[str, Any]] | None) -> str:

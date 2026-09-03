@@ -515,7 +515,10 @@ def format_retrieval_prompt_section(context: dict[str, Any]) -> str:
     """Serialize retrieval context for inclusion in agent prompts."""
     if not context.get("memories") and not context.get("rag_chunks"):
         return ""
-    return f"<agent_memory_context>{json.dumps(context, default=str)[:12000]}</agent_memory_context>\n"
+    soft = f"<agent_memory_context>{json.dumps(context, default=str)[:12000]}</agent_memory_context>\n"
+    from app.services.agent_security_gateway import fence_memory_recall_section
+
+    return fence_memory_recall_section(soft)
 
 
 MIN_DECISIONS_FOR_PATTERN = 3

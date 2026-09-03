@@ -331,7 +331,10 @@ def format_internet_research_section(payload: dict[str, Any], *, query: str | No
         ],
         default=str,
     )[:8000]
-    return f"<internet_research>\n{body}\n</internet_research>\n"
+    soft = f"<internet_research>\n{body}\n</internet_research>\n"
+    from app.services.agent_security_gateway import fence_web_research_section
+
+    return fence_web_research_section(soft)
 
 
 def attach_internet_research_to_cascade(
