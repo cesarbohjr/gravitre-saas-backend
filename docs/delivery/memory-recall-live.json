@@ -1,0 +1,261 @@
+[
+  {
+    "local_sha": "dd9758ca4adc",
+    "prod_sha": "5ece38df12f8",
+    "env_files": [
+      ".env: 33/33 (utf-8)",
+      ".env.operator.local: 24/51 (cp1252)",
+      ".env: absent"
+    ],
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+    "action": "memory.recalled",
+    "message": "When do our quarterly business reviews run, and who schedules them?",
+    "agent_id": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+    "conversation_id": "5deccea3-457e-40a2-a9e2-91b7f88bba42",
+    "conversation_was_synthetic": false,
+    "memories_before": 12,
+    "seeded": true,
+    "seeded_rows": 1,
+    "started_at": "2026-09-03T07:14:12.983659+00:00",
+    "in_process_signal": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "hybrid": 8,
+        "agent": 8,
+        "department": 0,
+        "ledger": 0,
+        "workspace": 12
+      },
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "degraded": false,
+      "failedSources": []
+    },
+    "outcome_kind": "conversational_reply",
+    "turn_error": null,
+    "nested_in_process": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "hybrid": 8,
+        "agent": 8,
+        "department": 0,
+        "ledger": 0,
+        "workspace": 12
+      },
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "degraded": false,
+      "failedSources": []
+    },
+    "recall_rows_found": 1,
+    "turn_rows_found": 1,
+    "turn_row_action": "unified_turn.shadow.completed",
+    "nested_from_db": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "agent": 8,
+        "hybrid": 8,
+        "ledger": 0,
+        "workspace": 12,
+        "department": 0
+      },
+      "degraded": false,
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "failedSources": []
+    },
+    "audit_metadata": {
+      "ran": true,
+      "total": 28,
+      "agentId": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+      "surface": "ai_chat",
+      "bySource": {
+        "agent": 8,
+        "hybrid": 8,
+        "ledger": 0,
+        "workspace": 12,
+        "department": 0
+      },
+      "degraded": false,
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "entryPoint": "memory_recall_live_proof",
+      "failedSources": [],
+      "reasoningDepth": "full"
+    },
+    "verdict": "PASS",
+    "checks": {
+      "recall_ran": true,
+      "nested_block_reached_prod": true,
+      "nested_agrees_on_total": true,
+      "nested_agrees_on_ran": true,
+      "nested_agrees_on_degraded": true,
+      "nested_carries_per_source": true,
+      "memory_recalled_row_expected": true,
+      "memory_recalled_row_written": true,
+      "exactly_one_row_for_this_turn": true,
+      "real_actor_recorded": true,
+      "resource_is_the_conversation": true,
+      "resource_type": true,
+      "row_agrees_with_in_process_total": true,
+      "row_agrees_with_in_process_degraded": true,
+      "row_agrees_with_nested_total": true,
+      "per_source_sums_to_total": true,
+      "attempted_sources_recorded": true
+    },
+    "finished_at": "2026-09-03T07:14:56.151064+00:00"
+  },
+  {
+    "local_sha": "dd9758ca4adc",
+    "prod_sha": "dd9758ca4adc",
+    "env_files": [
+      ".env: 33/33 (utf-8)",
+      ".env.operator.local: 24/51 (cp1252)",
+      ".env: absent"
+    ],
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+    "action": "memory.recalled",
+    "message": "When do our quarterly business reviews run, and who schedules them?",
+    "agent_id": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+    "conversation_id": "9b2125e4-605a-4d87-a216-f22780405b96",
+    "conversation_was_synthetic": false,
+    "memories_before": 13,
+    "seeded": false,
+    "started_at": "2026-09-03T07:16:12.228499+00:00",
+    "in_process_signal": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "hybrid": 8,
+        "agent": 8,
+        "department": 0,
+        "ledger": 0,
+        "workspace": 12
+      },
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "degraded": false,
+      "failedSources": []
+    },
+    "outcome_kind": "conversational_reply",
+    "turn_error": null,
+    "nested_in_process": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "hybrid": 8,
+        "agent": 8,
+        "department": 0,
+        "ledger": 0,
+        "workspace": 12
+      },
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "degraded": false,
+      "failedSources": []
+    },
+    "recall_rows_found": 3,
+    "turn_rows_found": 3,
+    "turn_row_action": "unified_turn.shadow.completed",
+    "nested_from_db": {
+      "ran": true,
+      "total": 28,
+      "bySource": {
+        "agent": 8,
+        "hybrid": 8,
+        "ledger": 0,
+        "workspace": 12,
+        "department": 0
+      },
+      "degraded": false,
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "failedSources": []
+    },
+    "audit_metadata": {
+      "ran": true,
+      "total": 28,
+      "agentId": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+      "surface": "ai_chat",
+      "bySource": {
+        "agent": 8,
+        "hybrid": 8,
+        "ledger": 0,
+        "workspace": 12,
+        "department": 0
+      },
+      "degraded": false,
+      "attempted": [
+        "hybrid",
+        "agent",
+        "department",
+        "ledger",
+        "workspace"
+      ],
+      "entryPoint": "memory_recall_live_proof",
+      "failedSources": [],
+      "reasoningDepth": "full"
+    },
+    "verdict": "FAIL_checks",
+    "checks": {
+      "recall_ran": true,
+      "nested_block_reached_prod": true,
+      "nested_agrees_on_total": true,
+      "nested_agrees_on_ran": true,
+      "nested_agrees_on_degraded": true,
+      "nested_carries_per_source": true,
+      "memory_recalled_row_expected": true,
+      "memory_recalled_row_written": true,
+      "exactly_one_row_for_this_turn": false,
+      "real_actor_recorded": true,
+      "resource_is_the_conversation": true,
+      "resource_type": true,
+      "row_agrees_with_in_process_total": true,
+      "row_agrees_with_in_process_degraded": true,
+      "row_agrees_with_nested_total": true,
+      "per_source_sums_to_total": true,
+      "attempted_sources_recorded": true
+    },
+    "finished_at": "2026-09-03T07:16:43.671484+00:00"
+  }
+]

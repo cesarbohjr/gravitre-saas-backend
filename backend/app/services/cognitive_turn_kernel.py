@@ -172,6 +172,7 @@ class CognitiveTurnKernel:
                 client=client,
                 request=request,
                 signal=recall_signal,
+                turn_id=turn_id,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("cognitive_recall_failed error=%s", exc)
@@ -1039,6 +1040,7 @@ def _emit_memory_recall_audit(
     client: Any,
     request: CognitiveTurnRequest,
     signal: dict[str, Any],
+    turn_id: str,
 ) -> None:
     """Give memory recall a queryable audit action when it actually contributed.
 
@@ -1118,6 +1120,14 @@ def _emit_memory_recall_audit(
             conversation_id,
             {
                 **signal,
+                # Without this the row cannot be attributed to a turn. The first
+                # live proof read three rows in one window -- two probe turns and
+                # one real `execute_task_streaming` turn -- and could not tell
+                # whether that was three turns or one turn emitting three times.
+                # An unattributable row makes "exactly one per turn" unverifiable,
+                # which is a broken instrument, not a passing one. It also joins
+                # to `unifiedTurnKnowledge.cognitiveTurnId` on the sibling event.
+                "cognitiveTurnId": turn_id,
                 "agentId": request.agent_id,
                 "surface": request.surface,
                 "entryPoint": request.entry_point,

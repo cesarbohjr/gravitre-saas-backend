@@ -72,6 +72,12 @@ MUTATIONS: list[tuple[str, Path, str, str]] = [
         "    if False:",
     ),
     (
+        "the audit row loses its turn id and becomes unattributable",
+        KERNEL,
+        "                signal=recall_signal,\n                turn_id=turn_id,",
+        "                signal=recall_signal,",
+    ),
+    (
         "unified turn stops merging the signal into its audit meta",
         UNIFIED,
         '                "memoryRecall": memory_recall_signal(cognitive_context),',

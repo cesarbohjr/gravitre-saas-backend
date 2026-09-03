@@ -36,6 +36,7 @@ ORG = str(uuid.uuid4())
 USER = str(uuid.uuid4())
 CONVO = str(uuid.uuid4())
 AGENT = str(uuid.uuid4())
+TURN = str(uuid.uuid4())
 
 
 def _request(**overrides: Any) -> CognitiveTurnRequest:
@@ -174,6 +175,7 @@ def test_a_real_recall_writes_a_named_audit_action(captured: list) -> None:
     _emit_memory_recall_audit(
         client=MagicMock(),
         request=_request(),
+        turn_id=TURN,
         signal={"ran": True, "total": 3, "degraded": False, "bySource": {}, "failedSources": []},
     )
     assert len(captured) == 1
@@ -185,6 +187,9 @@ def test_a_real_recall_writes_a_named_audit_action(captured: list) -> None:
     payload = args[6]
     assert payload["total"] == 3
     assert payload["agentId"] == AGENT
+    # Attributable to a turn, or "exactly one row per turn" is unverifiable and
+    # the row cannot be joined to the sibling unified_turn event.
+    assert payload["cognitiveTurnId"] == TURN
 
 
 def test_a_zero_recall_writes_no_row(captured: list) -> None:
@@ -196,6 +201,7 @@ def test_a_zero_recall_writes_no_row(captured: list) -> None:
     _emit_memory_recall_audit(
         client=MagicMock(),
         request=_request(),
+        turn_id=TURN,
         signal={"ran": True, "total": 0, "degraded": False, "bySource": {}, "failedSources": []},
     )
     assert captured == []
@@ -206,6 +212,7 @@ def test_a_degraded_recall_writes_a_row_even_at_zero(captured: list) -> None:
     _emit_memory_recall_audit(
         client=MagicMock(),
         request=_request(),
+        turn_id=TURN,
         signal={
             "ran": True,
             "total": 0,
@@ -241,6 +248,7 @@ def test_a_missing_or_non_uuid_actor_is_skipped_loudly_not_passed_through(
         _emit_memory_recall_audit(
             client=MagicMock(),
             request=_request(**overrides),
+            turn_id=TURN,
             signal={"ran": True, "total": 2, "degraded": False, "bySource": {}, "failedSources": []},
         )
     assert captured == []
@@ -254,6 +262,7 @@ def test_an_audit_failure_never_breaks_the_turn(captured: list) -> None:
         _emit_memory_recall_audit(
             client=MagicMock(),
             request=_request(),
+            turn_id=TURN,
             signal={"ran": True, "total": 1, "degraded": False, "bySource": {}, "failedSources": []},
         )
     assert log.warning.called
@@ -263,6 +272,7 @@ def test_no_client_writes_nothing(captured: list) -> None:
     _emit_memory_recall_audit(
         client=None,
         request=_request(),
+        turn_id=TURN,
         signal={"ran": True, "total": 9, "degraded": False, "bySource": {}, "failedSources": []},
     )
     assert captured == []
@@ -326,6 +336,41 @@ def test_the_kernel_marks_a_raising_store_degraded() -> None:
     assert "workspace" in stats["errors"]
     ctx = CognitiveTurnContext(turn_id="t", memory_pack=pack)
     assert memory_recall_signal(ctx)["degraded"] is True
+
+
+def test_the_kernel_threads_its_real_turn_id_into_the_audit_row() -> None:
+    """The emitter is correct only if the caller hands it the turn it describes."""
+    import ast
+    import inspect
+
+    from app.services import cognitive_turn_kernel as mod
+
+    tree = ast.parse(inspect.getsource(mod.CognitiveTurnKernel.run_pre_act).lstrip())
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and any(
+            kw.arg == "_emit_memory_recall_audit" or getattr(kw.value, "id", "") == "_emit_memory_recall_audit"
+            for kw in node.keywords
+        )
+        or (
+            isinstance(node, ast.Call)
+            and any(
+                isinstance(a, ast.Name) and a.id == "_emit_memory_recall_audit"
+                for a in node.args
+            )
+        )
+    ]
+    assert calls, "run_pre_act no longer dispatches the memory recall audit"
+    for call in calls:
+        kwargs = {kw.arg for kw in call.keywords}
+        assert "turn_id" in kwargs, "the audit row would carry no turn id"
+        for kw in call.keywords:
+            if kw.arg == "turn_id":
+                assert not (
+                    isinstance(kw.value, ast.Constant) and kw.value.value in (None, "")
+                ), "turn_id is a hardcoded placeholder"
 
 
 def test_a_turn_with_no_org_does_not_claim_to_have_run() -> None:
