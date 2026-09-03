@@ -738,6 +738,7 @@ async def run_unified_turn_shadow(
             classification=classification,
             agent=agent,
             knowledge_assignments=knowledge_assignments,
+            connected_integrations=connected,
             research_scope=research_scope,
             reasoning_depth=reasoning_depth,
             # Threaded so the sufficiency gate can write its own audit action.
@@ -766,6 +767,21 @@ async def run_unified_turn_shadow(
             mem = (sections.get("memory_section") or "").strip()
             know = (sections.get("knowledge_section") or "").strip()
             bias = (sections.get("outcome_bias_section") or "").strip()
+            ranking_meta = (
+                unified_turn_knowledge_meta.get("contextRanking")
+                if isinstance(unified_turn_knowledge_meta, dict)
+                else None
+            )
+            if isinstance(ranking_meta, dict) and ranking_meta.get("mode") == "active":
+                # LIVE already carries the same Knowledge Fabric hits through the
+                # shared ranker. Preserve kernel graph/metric context while
+                # removing only the duplicated fabric envelope.
+                know = re.sub(
+                    r"<knowledge_fabric>.*?</knowledge_fabric>\s*",
+                    "",
+                    know,
+                    flags=re.S | re.I,
+                ).strip()
             if mem:
                 user_parts.append(mem)
             if know:
