@@ -195,9 +195,12 @@ REPORTING_SURFACES: list[dict[str, Any]] = [
     {
         "id": "intelligence_reports",
         "route": "/intelligence/reports",
-        "sot": "intelligence_outcome_events + pack KPIs",
+        "sot": "GET /api/enterprise/agent-roi + intelligence_outcome_events + pack KPIs",
         "risk": "medium",
-        "notes": "Hours/Revenue/Cost ROI slots are not_configured",
+        "notes": (
+            "Agent ROI: measured model_calls cost + operational job/action counts; "
+            "hours/labor/ROI labeled estimate; revenue only with monetary outcome evidence"
+        ),
     },
     {
         "id": "admin_intelligence",
@@ -241,6 +244,13 @@ REPORTING_SURFACES: list[dict[str, Any]] = [
         "route": "/settings/enterprise",
         "sot": "agent_jobs / audit live counts; sparklines illustrative",
         "risk": "low",
+    },
+    {
+        "id": "enterprise_agent_roi",
+        "route": "/settings/enterprise?tab=roi",
+        "sot": "GET /api/enterprise/agent-roi (model_calls + agent_jobs + outcomes)",
+        "risk": "medium",
+        "notes": "Estimates labeled; revenue not_configured unless monetary outcome metadata",
     },
     {
         "id": "marketplace_analytics",

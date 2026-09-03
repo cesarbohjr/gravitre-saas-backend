@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 const labels: Record<OutcomeMeasurementKind, string> = {
   estimate: "Estimate",
   operational: "Operational",
+  measured: "Measured",
 }
 
 export function MetricProvenanceBadge({
@@ -20,6 +21,7 @@ export function MetricProvenanceBadge({
       className={cn(
         "text-[10px] font-normal uppercase tracking-wide",
         kind === "estimate" ? "border-amber-500/30 text-amber-600 dark:text-amber-400" : "",
+        kind === "measured" ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400" : "",
         className,
       )}
     >

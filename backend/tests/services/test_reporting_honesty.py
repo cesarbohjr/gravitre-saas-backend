@@ -17,6 +17,7 @@ def test_inventory_covers_required_surfaces():
     assert "agents_hub" in ids
     assert "golden_signals" in ids
     assert "built_in_models" in ids
+    assert "enterprise_agent_roi" in ids
 
 
 def test_normalize_never_defaults_100_without_runs():
@@ -48,7 +49,7 @@ def test_varied_series_ok():
     assert result["reason"] == "ok_variance"
 
 
-def test_roi_placeholder_not_configured():
-    card = label_placeholder_metric("Hours saved")
+def test_roi_placeholder_helper_still_honest():
+    card = label_placeholder_metric("Legacy placeholder")
     assert card["value"] is None
     assert card["provenance"] == "not_configured"

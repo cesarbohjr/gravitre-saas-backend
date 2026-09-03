@@ -11,9 +11,9 @@ from app.config import Settings, get_settings
 from app.services.reporting_honesty import (
     REPORTING_SURFACES,
     assess_metric_series,
-    label_placeholder_metric,
     normalize_agent_success_rate,
 )
+from app.services.agent_roi_service import fetch_agent_roi
 
 router = APIRouter(prefix="/api/reporting", tags=["reporting-honesty"])
 
@@ -155,11 +155,88 @@ async def reporting_honesty_audit(
             }
         )
 
-    roi_placeholders = [
-        label_placeholder_metric("Hours saved"),
-        label_placeholder_metric("Revenue influenced"),
-        label_placeholder_metric("Cost savings"),
-    ]
+    agent_roi: dict[str, Any] | None = None
+    try:
+        agent_roi = fetch_agent_roi(client, org_id, period_days=30)
+        honesty = agent_roi.get("honesty") if isinstance(agent_roi, dict) else {}
+        org_totals = (agent_roi or {}).get("orgTotals") or {}
+        for field in (honesty.get("estimateFields") or []):
+            metric = org_totals.get(field) or {}
+            if metric.get("provenance") not in {"estimate", "insufficient_data"}:
+                findings.append(
+                    {
+                        "surface": "enterprise_agent_roi",
+                        "severity": "error",
+                        "detail": f"{field} must be estimate/insufficient_data, got {metric.get('provenance')}",
+                    }
+                )
+        for field in (honesty.get("measuredFields") or []):
+            metric = org_totals.get(field) or {}
+            if metric.get("provenance") != "measured":
+                findings.append(
+                    {
+                        "surface": "enterprise_agent_roi",
+                        "severity": "error",
+                        "detail": f"{field} must be measured, got {metric.get('provenance')}",
+                    }
+                )
+        for field in (honesty.get("operationalFields") or []):
+            metric = org_totals.get(field) or {}
+            if metric.get("provenance") != "operational":
+                findings.append(
+                    {
+                        "surface": "enterprise_agent_roi",
+                        "severity": "error",
+                        "detail": f"{field} must be operational, got {metric.get('provenance')}",
+                    }
+                )
+        rev = org_totals.get("revenueInfluencedUsd") or {}
+        if rev.get("value") is not None and rev.get("provenance") == "not_configured":
+            findings.append(
+                {
+                    "surface": "enterprise_agent_roi",
+                    "severity": "error",
+                    "detail": "revenueInfluencedUsd has value but provenance not_configured",
+                }
+            )
+        if rev.get("value") is None and rev.get("provenance") not in {"not_configured", "measured"}:
+            findings.append(
+                {
+                    "surface": "enterprise_agent_roi",
+                    "severity": "warning",
+                    "detail": f"unexpected revenue provenance {rev.get('provenance')}",
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        findings.append(
+            {
+                "surface": "enterprise_agent_roi",
+                "severity": "error",
+                "detail": f"agent-roi unavailable: {str(exc)[:160]}",
+            }
+        )
+
+    roi_metrics = []
+    if agent_roi:
+        totals = agent_roi.get("orgTotals") or {}
+        for key in (
+            "tasksCompleted",
+            "agentCostUsd",
+            "estimatedHoursSaved",
+            "estimatedLaborValueUsd",
+            "revenueInfluencedUsd",
+            "roiMultiple",
+        ):
+            m = totals.get(key) or {}
+            roi_metrics.append(
+                {
+                    "label": m.get("label") or key,
+                    "value": m.get("value"),
+                    "provenance": m.get("provenance"),
+                    "honesty_ok": bool(m.get("honesty_ok", True)),
+                    "note": m.get("note"),
+                }
+            )
 
     error_count = sum(1 for f in findings if f.get("severity") == "error")
     warning_count = sum(1 for f in findings if f.get("severity") == "warning")
@@ -181,11 +258,13 @@ async def reporting_honesty_audit(
             "intelligence_outcome_events": outcome_count,
             "ops_success_rate_series_7_30_90": series_rates,
             "ops_series_assessment": static_check,
+            "agent_roi_agents": len((agent_roi or {}).get("agents") or []),
         },
-        "roi_placeholders": roi_placeholders,
+        "roi_metrics": roi_metrics,
         "rules": {
             "never_default_success_rate_100_without_runs": True,
-            "roi_hours_revenue_cost_not_configured": True,
+            "agent_roi_estimates_labeled": True,
+            "agent_roi_revenue_only_with_evidence": True,
             "metrics_ranges": ["7d", "30d", "90d"],
             "prefer_live_outcomes_for_agent_effectiveness": True,
             "static_report_metrics_flagged": True,

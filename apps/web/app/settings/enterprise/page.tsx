@@ -10,17 +10,18 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
-import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen } from "lucide-react"
+import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen, LineChart } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
 import { WorkforceTab } from "@/components/enterprise/workforce-tab"
 import { CostTab } from "@/components/enterprise/cost-tab"
+import { AgentRoiTab } from "@/components/enterprise/agent-roi-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
 import { CsDashboardTab } from "@/components/enterprise/cs-dashboard-tab"
 import { KnowledgeSyncTab } from "@/components/enterprise/knowledge-sync-tab"
 import { PlatformOrgViewBanner } from "@/components/enterprise/platform-org-view-banner"
 
-type TabId = "cs" | "knowledge" | "region" | "branding" | "workforce" | "cost" | "siem"
+type TabId = "cs" | "knowledge" | "region" | "branding" | "workforce" | "cost" | "roi" | "siem"
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
   { id: "cs", label: "Command Center", icon: HeartPulse, description: "Integration health and recommendations" },
@@ -29,6 +30,7 @@ const TABS: { id: TabId; label: string; icon: typeof Globe; description: string 
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Operational agent task counts (not hours saved)" },
   { id: "cost", label: "Cost Attribution", icon: DollarSign, description: "Spend by agent and department" },
+  { id: "roi", label: "Agent ROI", icon: LineChart, description: "Measured cost vs estimated labor value per agent" },
   { id: "siem", label: "SIEM Export", icon: ShieldAlert, description: "Stream audit logs to your SIEM" },
 ]
 
@@ -133,6 +135,7 @@ function EnterprisePageContent() {
               {activeTab === "branding" && <BrandingTab isAdmin={isAdmin || isPlatformAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}
               {activeTab === "cost" && <CostTab />}
+              {activeTab === "roi" && <AgentRoiTab />}
               {activeTab === "siem" && <SiemTab isAdmin={isAdmin || isPlatformAdmin} />}
             </div>
           </div>

@@ -90,7 +90,8 @@ def main() -> int:
         report["audit_verdict"] = body.get("verdict")
         report["surface_count"] = len(body.get("surfaces") or [])
         report["summary"] = body.get("summary")
-        report["roi_placeholders"] = body.get("roi_placeholders")
+        report["roi_metrics"] = body.get("roi_metrics") or body.get("roi_placeholders") or []
+        report["rules"] = body.get("rules")
 
         metrics = client.get(f"{BASE}/api/metrics/overview?range=7d", headers=headers)
         report["metrics_http"] = metrics.status_code
@@ -105,6 +106,22 @@ def main() -> int:
         bad = client.get(f"{BASE}/api/metrics/overview?range=24h", headers=headers)
         report["metrics_24h_http"] = bad.status_code
 
+    roi_metrics = report.get("roi_metrics") or []
+    roi_ok = bool(roi_metrics) and all(
+        (m or {}).get("honesty_ok", True)
+        and (m or {}).get("provenance")
+        in {"measured", "operational", "estimate", "not_configured", "insufficient_data"}
+        for m in roi_metrics
+    )
+    # Revenue must not be fabricated as a live number without measured provenance
+    for m in roi_metrics:
+        label = str((m or {}).get("label") or "").lower()
+        if "revenue" in label and (m or {}).get("value") is not None:
+            if (m or {}).get("provenance") not in {"measured"}:
+                roi_ok = False
+        if "hours" in label and (m or {}).get("provenance") not in {"estimate", "not_configured"}:
+            roi_ok = False
+
     ok = (
         report.get("audit_verdict") in {"PASS", "PASS_WITH_WARNINGS"}
         and int(report.get("surface_count") or 0) >= 10
@@ -112,10 +129,8 @@ def main() -> int:
         and isinstance(report.get("metrics_honesty"), dict)
         and report["metrics_honesty"].get("successRateProvenance") == "live_runs"
         and report.get("metrics_24h_http") == 400
-        and all(
-            (p or {}).get("provenance") == "not_configured"
-            for p in (report.get("roi_placeholders") or [])
-        )
+        and roi_ok
+        and (report.get("rules") or {}).get("agent_roi_estimates_labeled") is True
     )
     report["verdict"] = (
         f"PASS — reporting honesty @ {str(report.get('api_git_sha') or '')[:8]}"

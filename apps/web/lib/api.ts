@@ -128,6 +128,7 @@ import type {
   EnterpriseDomainVerifyResult,
   EnterpriseWorkforceAnalytics,
   EnterpriseCostAttribution,
+  AgentRoiReport,
   EnterpriseSiemConfig,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
@@ -2865,6 +2866,15 @@ export const enterpriseApi = {
   // Cost attribution
   getCostAttribution: () =>
     fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
+
+  // Per-agent ROI (measured cost + operational counts + labeled estimates)
+  getAgentRoi: (params?: { periodDays?: number; agentId?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.periodDays) qs.set("period_days", String(params.periodDays))
+    if (params?.agentId) qs.set("agent_id", params.agentId)
+    const suffix = qs.toString() ? `?${qs.toString()}` : ""
+    return fetcher<AgentRoiReport>(apiUrl(`/api/enterprise/agent-roi${suffix}`))
+  },
 
   // Autonomous run budgets (STA-109)
   getAutonomousRunBudgets: () =>

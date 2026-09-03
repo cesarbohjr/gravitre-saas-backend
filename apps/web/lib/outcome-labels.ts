@@ -3,7 +3,7 @@
  * Ground-truth time-on-task measurement is deferred (STA-289).
  */
 
-export type OutcomeMeasurementKind = "estimate" | "operational"
+export type OutcomeMeasurementKind = "estimate" | "operational" | "measured"
 
 /** Catalog / publisher-provided hours-saved (not measured time-on-task). */
 export const ESTIMATED_HOURS_SAVED_LABEL = "Estimated hours saved"
@@ -15,6 +15,9 @@ export const ROI_PAGE_TITLE = "Estimated hours saved (ROI)"
 
 export const ROI_METHODOLOGY =
   "Hours saved are catalog estimates (time per manual task × automated volume), not measured time-on-task. Adopted estimates count when an install records at least one usage event."
+
+export const AGENT_ROI_METHODOLOGY =
+  "Tasks and actions are operational counts. Agent cost is measured model_calls spend. Hours saved and labor value are ESTIMATES from task-type/duration heuristics — not ground-truth time-on-task. Revenue influenced appears only from verified monetary outcome metadata. ROI multiple = estimated labor value ÷ measured cost."
 
 /** Optimization / suggestion impact strings (heuristic, not measured). */
 export const ESTIMATED_IMPACT_LABEL = "Estimated impact"
@@ -38,7 +41,11 @@ export const OPERATIONAL_METHODOLOGY =
 export const OPERATIONAL_METHODOLOGY_SHORT =
   "Operational counts from system records — not measured hours saved."
 
+export const MEASURED_COST_LABEL = "Agent cost (measured)"
+export const ESTIMATED_LABOR_VALUE_LABEL = "Estimated labor value"
+export const ROI_MULTIPLE_LABEL = "ROI multiple (est. labor ÷ measured cost)"
+
 export const OUTCOME_LABELING_DOC_PATH = "docs/ai/OUTCOME_ESTIMATE_LABELING.md"
 
 export const OUTCOME_LABELING_SUMMARY =
-  "Estimate metrics (hours saved, ROI, optimization impact) are modeled or catalog-based until STA-289 ground-truth measurement ships. Operational counts reflect recorded executions only."
+  "Estimate metrics (hours saved, ROI, optimization impact) are modeled or catalog-based until STA-289 ground-truth measurement ships. Operational counts reflect recorded executions only. Measured cost comes from model_calls.cost_usd."

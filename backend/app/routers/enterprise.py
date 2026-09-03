@@ -36,6 +36,8 @@ from app.services.domain_verification_service import build_verification_instruct
 from app.services.enterprise_secrets_service import encrypt_enterprise_secret, resolve_siem_secret
 from app.services.siem_export_service import build_siem_event, dispatch_siem_event
 from app.services.workforce_analytics_service import build_workforce_analytics
+from app.services.agent_cost_service import aggregate_agent_costs
+from app.services.agent_roi_service import fetch_agent_roi
 from app.services.integration_suggestion_service import (
     MUTATING_SUGGESTION_TYPES,
     IntegrationSuggestionError,
@@ -577,20 +579,65 @@ async def cost_attribution(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
+    """Measured LLM spend from model_calls (STA-92), not invented prices."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    usage = (
-        client.table("usage_events")
-        .select("category,cost_usd,amount_usd,metadata,created_at")
+    # Prefer measured model_calls.cost_usd (has agent_id). Fall back to usage_events if present.
+    model_rows = (
+        client.table("model_calls")
+        .select("cost_usd,agent_id,created_at")
         .eq("org_id", org_id)
         .gte("created_at", month_start.isoformat())
+        .limit(5000)
         .execute()
         .data
         or []
     )
+    usage = [
+        {
+            "category": "llm",
+            "cost_usd": row.get("cost_usd"),
+            "metadata": {"agent_id": row.get("agent_id")},
+            "created_at": row.get("created_at"),
+        }
+        for row in model_rows
+    ]
+    if not usage:
+        try:
+            usage = (
+                client.table("usage_events")
+                .select("category,cost_usd,amount_usd,metadata,created_at")
+                .eq("org_id", org_id)
+                .gte("created_at", month_start.isoformat())
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            usage = []
     return aggregate_agent_costs(usage_rows=usage)
+
+
+@router.get("/agent-roi")
+async def agent_roi(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    period_days: int = Query(default=30, ge=1, le=366),
+    agent_id: str | None = Query(default=None, max_length=80),
+) -> dict[str, Any]:
+    """Per-agent ROI: measured cost + operational counts + honestly labeled estimates."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return fetch_agent_roi(
+        client,
+        org_id,
+        period_days=period_days,
+        agent_id=(agent_id or "").strip() or None,
+    )
 
 
 @router.get("/autonomous-run-budgets")

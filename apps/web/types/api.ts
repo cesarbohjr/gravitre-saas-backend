@@ -1559,6 +1559,69 @@ export interface EnterpriseCostAttribution {
   byWorkflow: Record<string, number>
 }
 
+/** Provenance for agent ROI metrics (STA-286 / Module C honesty). */
+export type AgentRoiProvenance =
+  | "measured"
+  | "operational"
+  | "estimate"
+  | "not_configured"
+  | "insufficient_data"
+  | "org_settings"
+
+export interface AgentRoiMetric {
+  label: string
+  value: number | string | null
+  unit?: string | null
+  provenance: AgentRoiProvenance
+  honesty_ok?: boolean
+  note?: string | null
+}
+
+export interface AgentRoiRow {
+  agentId: string
+  agentName: string
+  tasksCompleted: AgentRoiMetric
+  actionsExecuted: AgentRoiMetric
+  agentCostUsd: AgentRoiMetric
+  modelCallCount?: number
+  estimatedHoursSaved: AgentRoiMetric
+  estimatedLaborValueUsd: AgentRoiMetric
+  revenueInfluencedUsd: AgentRoiMetric
+  roiMultiple: AgentRoiMetric
+}
+
+export interface AgentRoiReport {
+  orgId: string
+  periodDays: number
+  periodStart: string
+  periodEnd: string
+  methodology: string
+  laborUsdPerHour: {
+    value: number
+    source: string
+    provenance: AgentRoiProvenance
+    note?: string
+  }
+  orgTotals: {
+    tasksCompleted: AgentRoiMetric
+    actionsExecuted: AgentRoiMetric
+    agentCostUsd: AgentRoiMetric
+    estimatedHoursSaved: AgentRoiMetric
+    estimatedLaborValueUsd: AgentRoiMetric
+    revenueInfluencedUsd: AgentRoiMetric
+    roiMultiple: AgentRoiMetric
+  }
+  agents: AgentRoiRow[]
+  honesty: {
+    measuredFields: string[]
+    operationalFields?: string[]
+    estimateFields: string[]
+    notConfiguredUnlessEvidence: string[]
+    moduleC: boolean
+    sta286: boolean
+  }
+}
+
 export interface EnterpriseSiemConfig {
   enabled: boolean
   endpoint: string | null
