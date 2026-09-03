@@ -14,9 +14,7 @@ from app.services.company_intelligence_orchestrator import get_company_intellige
 from app.services.context_prioritization_engine import (
     ContextPrioritizationEngine,
     ContextSource,
-    evidence_rows_to_context_sources,
     get_context_prioritization_engine,
-    render_context_sources,
 )
 from app.services.context_registry import filter_context_sources, plan_context_registry
 from app.services.conversation_memory_engine import (
@@ -72,7 +70,6 @@ class AssistantTurnContext:
     context_profile: dict[str, Any] = field(default_factory=dict)
     context_registry: dict[str, Any] = field(default_factory=dict)
     context_explanation: str = ""
-    ranked_knowledge_block: str = ""
     conversation_memory: dict[str, Any] = field(default_factory=dict)
     business_signals: list[dict[str, Any]] = field(default_factory=list)
     strategic_plan: dict[str, Any] | None = None
@@ -222,7 +219,6 @@ class IntelligenceOrchestrator:
             logger.debug("orchestrator tool_knowledge packs skipped error=%s", exc)
         fabric_section = ""
         fabric_provenance: list[dict[str, Any]] = []
-        fabric_rows: list[dict[str, Any]] = []
         if fabric_pack_ids:
             try:
                 from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
@@ -248,20 +244,6 @@ class IntelligenceOrchestrator:
                     fresh = hit.get("freshness_score")
                     lines.append(
                         f"- [{cite}] (authority={auth}, freshness={fresh})\n{hit.get('content') or ''}"
-                    )
-                    fabric_rows.append(
-                        {
-                            "kind": "knowledge_fabric",
-                            "content": hit.get("content") or "",
-                            "score": hit.get("semantic_score"),
-                            "source": cite,
-                            "citation": cite,
-                            "source_id": hit.get("source_id"),
-                            "authority_score": auth,
-                            "freshness_score": fresh,
-                            "effective_at": hit.get("effective_at"),
-                            "jurisdiction": hit.get("jurisdiction"),
-                        }
                     )
                 if lines:
                     route = fabric.get("route") or {}
@@ -393,7 +375,6 @@ class IntelligenceOrchestrator:
         )
 
         raw_sources = self._build_raw_sources(
-            query=query,
             org_context_block=org_context_block,
             retrieval=retrieval,
             memory_section=memory_ctx.get("prompt_section") or retrieval.memory_section,
@@ -408,7 +389,6 @@ class IntelligenceOrchestrator:
             pack_state_section=pack_state_section,
             fabric_section=fabric_section,
             fabric_provenance=fabric_provenance,
-            fabric_rows=fabric_rows,
         )
         raw_sources = filter_context_sources(raw_sources, registry_plan)
         # Pattern 9 — distill oversized context before ranking/token budget.
@@ -422,23 +402,6 @@ class IntelligenceOrchestrator:
         )
         explanation = self._context_engine.explain_context_used(profile)
         sections = profile.prompt_sections
-        ranked_knowledge_block = render_context_sources(
-            [
-                source
-                for source in profile.ranked_sources
-                if source.source_type
-                in {
-                    "rag",
-                    "knowledge_fabric",
-                    "internet",
-                    "graph",
-                    "knowledge_assignments",
-                    "knowledge_gap",
-                    "memory_conflicts",
-                    "pack_state",
-                }
-            ]
-        )
         pre_confidence = self._confidence_engine.assess_pre_execution(
             classification=classification,
             context_profile=profile.to_explanation_dict(),
@@ -573,7 +536,6 @@ class IntelligenceOrchestrator:
             },
             context_registry=registry_plan.to_explanation_dict(),
             context_explanation=context_explanation,
-            ranked_knowledge_block=ranked_knowledge_block,
             conversation_memory=memory_ctx,
             business_signals=await self._quality.rank_recommendations(
                 business_signals,
@@ -622,7 +584,6 @@ class IntelligenceOrchestrator:
     @staticmethod
     def _build_raw_sources(
         *,
-        query: str,
         org_context_block: str,
         retrieval: UnifiedRetrievalBundle,
         memory_section: str,
@@ -637,7 +598,6 @@ class IntelligenceOrchestrator:
         pack_state_section: str = "",
         fabric_section: str = "",
         fabric_provenance: list[dict[str, Any]] | None = None,
-        fabric_rows: list[dict[str, Any]] | None = None,
     ) -> list[ContextSource]:
         sources: list[ContextSource] = []
         if org_context_block.strip():
@@ -650,21 +610,7 @@ class IntelligenceOrchestrator:
                     content=org_context_block,
                 )
             )
-        normalized_rag = evidence_rows_to_context_sources(
-            [
-                {
-                    **row,
-                    "kind": "rag",
-                    "content": row.get("content") or row.get("text") or "",
-                }
-                for row in (retrieval.rag_sources or [])
-                if isinstance(row, dict)
-            ],
-            query=query,
-        )
-        if normalized_rag:
-            sources.extend(normalized_rag)
-        elif retrieval.rag_section.strip():
+        if retrieval.rag_section.strip():
             sources.append(
                 ContextSource(
                     source_id="rag",
@@ -751,13 +697,7 @@ class IntelligenceOrchestrator:
                     content=f"<knowledge_assignments>\n{knowledge_section}\n</knowledge_assignments>",
                 )
             )
-        normalized_fabric = evidence_rows_to_context_sources(
-            list(fabric_rows or []),
-            query=query,
-        )
-        if normalized_fabric:
-            sources.extend(normalized_fabric)
-        elif fabric_section.strip():
+        if fabric_section.strip():
             sources.append(
                 ContextSource(
                     source_id="knowledge_fabric",

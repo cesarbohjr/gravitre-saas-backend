@@ -744,7 +744,6 @@ class AgentIntelligence:
         persona_modifier: str | None = None,
         sentiment_adaptation: str | None = None,
         task_state_section: str | None = None,
-        ranked_context_section: str | None = None,
         has_mcp_tools: bool = False,
         spoken_mode: bool = False,
     ) -> str:
@@ -764,14 +763,10 @@ class AgentIntelligence:
             agent_config,
             connected_integrations=connected_integrations,
             org_context=org_dict,
-            rag_available=bool(rag_results) or bool(ranked_context_section),
+            rag_available=bool(rag_results),
             assistant_base_prompt=assistant_base_prompt,
         )
-        rag_section = (
-            ranked_context_section.strip()
-            if ranked_context_section and ranked_context_section.strip()
-            else self._format_rag_context(rag_results, conflicts=conflicts)
-        )
+        rag_section = self._format_rag_context(rag_results, conflicts=conflicts)
         org_text = self._format_org_context_text(org_context, org_context_block=org_context_block)
         history_section = self._format_task_history(task_history)
         handoff_section = ""
@@ -3022,18 +3017,11 @@ class AgentIntelligence:
             full_content_parts.append(correction_ack + "\n\n")
 
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
-        ranked_knowledge_block = str(turn_ctx.ranked_knowledge_block or "").strip()
-        if ranked_knowledge_block:
-            conflict_block = format_conflicts_for_prompt(rag_conflicts)
-            rag_section = "\n\n".join(
-                part for part in (ranked_knowledge_block, conflict_block) if part
-            )
-        else:
-            rag_section = self._format_rag_context(
-                rag_sources,
-                conflicts=rag_conflicts,
-                connected_integrations=connected_list,
-            )
+        rag_section = self._format_rag_context(
+            rag_sources,
+            conflicts=rag_conflicts,
+            connected_integrations=connected_list,
+        )
         memory_section = retrieval.memory_section
         org_context_block = turn_ctx.org_context_block
         memory_block = turn_ctx.memory_block or memory_section or ""
@@ -3079,7 +3067,6 @@ class AgentIntelligence:
             persona_modifier=combined_persona_modifier,
             sentiment_adaptation=str(sentiment.get("recommended_adaptation") or "none"),
             task_state_section=task_state_section or None,
-            ranked_context_section=rag_section if ranked_knowledge_block else None,
             has_mcp_tools=bool(mcp_tools_early),
             spoken_mode=bool(spoken_mode),
         )
@@ -3107,9 +3094,7 @@ class AgentIntelligence:
             briefing=None,
             parameters={"surface": "assistant"},
             org_context=org_context,
-            # Ranked evidence is already present in the system prompt. Avoid
-            # spending the same context budget twice on the classical path.
-            rag_section="" if ranked_knowledge_block else rag_section,
+            rag_section=rag_section,
             memory_section=memory_section,
             task_history=None,
         )
