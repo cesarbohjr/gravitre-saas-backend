@@ -757,7 +757,10 @@ async def run_unified_turn_shadow(
     # Kernel RECALL/KNOWLEDGE pack (post-retrieve, pre-ACT) — denser than LIVE-only KF.
     if cognitive_context is not None and not remind_me:
         try:
-            from app.services.cognitive_turn_kernel import to_prompt_sections
+            from app.services.cognitive_turn_kernel import (
+                memory_recall_signal,
+                to_prompt_sections,
+            )
 
             sections = to_prompt_sections(cognitive_context)
             mem = (sections.get("memory_section") or "").strip()
@@ -769,19 +772,24 @@ async def run_unified_turn_shadow(
                 user_parts.append(know)
             if bias:
                 user_parts.append(bias)
+            kernel_meta = {
+                "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                "outcomeBiasInjected": bool(bias),
+                # Memory is the fifth context source and the only one with no
+                # per-turn count here. org RAG, Knowledge Fabric, internet and
+                # the business graph all report; memory did not, so "did memory
+                # reach this answer" could not be asked of production data.
+                "memoryRecall": memory_recall_signal(cognitive_context),
+            }
             if isinstance(unified_turn_knowledge_meta, dict):
-                unified_turn_knowledge_meta = {
-                    **unified_turn_knowledge_meta,
-                    "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
-                    "outcomeBiasInjected": bool(bias),
-                }
-            elif mem or know or bias:
-                unified_turn_knowledge_meta = {
-                    "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
-                    "outcomeBiasInjected": bool(bias),
-                }
-        except Exception:  # noqa: BLE001
-            pass
+                unified_turn_knowledge_meta = {**unified_turn_knowledge_meta, **kernel_meta}
+            else:
+                # Unconditional. The old `elif mem or know or bias` dropped the
+                # block entirely on an empty pack, which is the one case where
+                # the recall signal carries the most information.
+                unified_turn_knowledge_meta = kernel_meta
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("unified_turn_kernel_section_merge_failed error=%s", exc)
     user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 

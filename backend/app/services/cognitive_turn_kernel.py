@@ -1,6 +1,7 @@
 """CognitiveTurnKernel — mandatory pre-ACT thinking sequence (Phase 1+)."""
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -20,6 +21,24 @@ _MEMORY_KEYS = (
     "relationship",
     "procedural",
 )
+
+# The five independent stores RECALL draws from. Named so a per-turn signal can
+# say which one produced rows -- "memory recalled 3 things" is not actionable if
+# nobody can tell whether they came from workspace recall or the ledger.
+MEMORY_SOURCES = (
+    "hybrid",
+    "agent",
+    "department",
+    "ledger",
+    "workspace",
+)
+
+# Reserved key on the memory pack carrying the recall signal. Every reader of
+# the pack addresses specific keys (`_MEMORY_KEYS`, `prompt_section`) rather
+# than iterating it, so an extra key is inert -- checked, not assumed.
+RECALL_STATS_KEY = "recall_stats"
+
+AUDIT_ACTION_MEMORY_RECALL = "memory.recalled"
 
 # Legacy agent_memories categories → cognitive taxonomy buckets
 _CATEGORY_MAP = {
@@ -137,16 +156,25 @@ class CognitiveTurnKernel:
         t0 = time.perf_counter()
         try:
             ctx.memory_pack = await self._recall(request, client)
+            recall_signal = memory_recall_signal(ctx)
             ctx.stages.append(
                 StageRecord(
                     stage="RECALL",
                     ok=True,
                     ms=_elapsed_ms(t0),
-                    meta={"keys": list(_MEMORY_KEYS)},
+                    # `keys` alone described the pack's shape, which is a
+                    # constant, so the stage said nothing about what happened.
+                    meta={"keys": list(_MEMORY_KEYS), "recall": recall_signal},
                 )
             )
+            await asyncio.to_thread(
+                _emit_memory_recall_audit,
+                client=client,
+                request=request,
+                signal=recall_signal,
+            )
         except Exception as exc:  # noqa: BLE001
-            logger.debug("cognitive_recall_failed error=%s", exc)
+            logger.warning("cognitive_recall_failed error=%s", exc)
             ctx.memory_pack = _empty_memory_pack()
             ctx.stages.append(
                 StageRecord(stage="RECALL", ok=False, ms=_elapsed_ms(t0), meta={"error": str(exc)[:200]})
@@ -464,11 +492,14 @@ class CognitiveTurnKernel:
 
     async def _recall(self, request: CognitiveTurnRequest, client: Any) -> dict[str, Any]:
         pack = _empty_memory_pack()
+        stats = pack[RECALL_STATS_KEY]
         org_id = request.org_id
         if not org_id:
+            # ran stays False: this is "did not execute", not "found nothing".
             return pack
 
         # Hybrid memory (org-scoped)
+        got = 0
         try:
             from app.services.hybrid_memory_service import HybridMemoryService
 
@@ -483,14 +514,22 @@ class CognitiveTurnKernel:
                 if isinstance(row, dict):
                     bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
                     pack[bucket].append(row)
+                    got += 1
             for row in bundle.get("graph_context") or []:
                 if isinstance(row, dict):
                     pack["relationship"].append(row)
+                    got += 1
+            _note_recall(stats, "hybrid", count=got)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("cognitive_hybrid_memory_skipped error=%s", exc)
+            # WARNING, not debug. All five of these stores logged at debug, which
+            # is off in production, so a store that failed on every turn was
+            # invisible and looked exactly like a store that found nothing.
+            logger.warning("cognitive_hybrid_memory_failed error=%s", exc)
+            _note_recall(stats, "hybrid", count=got, error=exc)
 
         # Agent memory search (org-scoped)
         if client is not None and request.agent_id:
+            got = 0
             try:
                 from app.services.agent_memory_service import search_agent_memories
 
@@ -511,10 +550,14 @@ class CognitiveTurnKernel:
                         continue
                     bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
                     pack[bucket].append(row)
+                    got += 1
+                _note_recall(stats, "agent", count=got)
             except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_agent_memory_search_skipped error=%s", exc)
+                logger.warning("cognitive_agent_memory_search_failed error=%s", exc)
+                _note_recall(stats, "agent", count=got, error=exc)
 
             # Shared department memory: agents in the same department RECALL dept-scoped rows.
+            got = 0
             try:
                 from app.rag.department import resolve_department_id_for_agent
                 from app.services.agent_memory_service import search_department_memories
@@ -548,12 +591,16 @@ class CognitiveTurnKernel:
                             seen_ids.add(mid)
                         bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
                         pack[bucket].append({**row, "source": "department_shared_memory", "org_id": org_id})
+                        got += 1
+                _note_recall(stats, "department", count=got)
             except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_department_memory_skipped error=%s", exc)
+                logger.warning("cognitive_department_memory_failed error=%s", exc)
+                _note_recall(stats, "department", count=got, error=exc)
 
         # Org-scoped cross-conversation promotions (ledger/entity resolutions).
         # Never fuzzy person-name Option C — explicit promotions + typed memories only.
         if client is not None:
+            got = 0
             try:
                 from app.services.cross_conversation_ledger_memory import (
                     feature_enabled as ledger_mem_enabled,
@@ -585,10 +632,14 @@ class CognitiveTurnKernel:
                                     "org_id": org_id,
                                 }
                             )
+                            got += 1
+                    _note_recall(stats, "ledger", count=got)
             except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_cross_conversation_recall_skipped error=%s", exc)
+                logger.warning("cognitive_cross_conversation_recall_failed error=%s", exc)
+                _note_recall(stats, "ledger", count=got, error=exc)
 
             # Workspace recall: category + hybrid content match (org only; no Option C).
+            got = 0
             try:
                 from app.services.workspace_memory_service import (
                     TYPED_CATEGORIES,
@@ -620,8 +671,11 @@ class CognitiveTurnKernel:
                         str(row.get("category") or "fact").lower(), "episodic"
                     )
                     pack[bucket].append({**row, "source": row.get("source") or "workspace_memory_recall"})
+                    got += 1
+                _note_recall(stats, "workspace", count=got)
             except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_workspace_memory_recall_skipped error=%s", exc)
+                logger.warning("cognitive_workspace_memory_recall_failed error=%s", exc)
+                _note_recall(stats, "workspace", count=got, error=exc)
 
         pack["prompt_section"] = _memory_prompt_section(pack)
         return pack
@@ -893,10 +947,185 @@ def _identity_from_request(request: CognitiveTurnRequest) -> dict[str, Any]:
     }
 
 
+def _empty_recall_stats() -> dict[str, Any]:
+    """Zeroed per-source recall stats.
+
+    ``attempted`` is the field that matters. Without it, a turn where every store
+    was skipped is byte-identical to a turn where all five ran and found nothing,
+    and those mean opposite things: the first says the instrument is blind, the
+    second says memory is genuinely empty. The memory census read
+    ``no_memory_signal`` on 1581 of 1581 turns and first reported it as "0 turns
+    recalled memory" -- the same conflation, one layer up.
+    """
+    return {
+        "ran": False,
+        "sources": {
+            name: {"attempted": False, "count": 0, "error": None} for name in MEMORY_SOURCES
+        },
+        "total": 0,
+        "errors": [],
+    }
+
+
+def _note_recall(
+    stats: dict[str, Any],
+    source: str,
+    *,
+    count: int = 0,
+    error: BaseException | None = None,
+) -> None:
+    """Record one store's outcome. Never raises -- instrumentation must not break RECALL."""
+    try:
+        entry = stats["sources"][source]
+        entry["attempted"] = True
+        entry["count"] = int(count)
+        if error is not None:
+            entry["error"] = type(error).__name__
+            if source not in stats["errors"]:
+                stats["errors"].append(source)
+        stats["total"] = sum(int(s["count"]) for s in stats["sources"].values())
+        stats["ran"] = True
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _empty_memory_pack() -> dict[str, Any]:
     pack: dict[str, Any] = {k: [] for k in _MEMORY_KEYS}
     pack["prompt_section"] = ""
+    pack[RECALL_STATS_KEY] = _empty_recall_stats()
     return pack
+
+
+def memory_recall_signal(ctx: CognitiveTurnContext) -> dict[str, Any]:
+    """The per-turn memory recall signal, in audit-payload shape.
+
+    A named accessor rather than callers reaching into ``memory_pack`` by string
+    key, so the pack's internal shape stays private and there is one place to
+    change if it moves.
+
+    Distinguishes three states that were previously one:
+
+    * ``ran=False`` -- RECALL did not execute (kernel disabled, or no org).
+      Sufficiency is UNKNOWN.
+    * ``ran=True, total=0`` -- every attempted store genuinely returned nothing.
+    * ``degraded=True`` -- at least one store raised. The count is a floor, not a
+      measurement, and the event says so rather than letting a partial recall
+      look complete. Lesson 5: a fail-open must announce itself.
+    """
+    pack = ctx.memory_pack if isinstance(ctx.memory_pack, dict) else {}
+    stats = pack.get(RECALL_STATS_KEY)
+    if not isinstance(stats, dict):
+        stats = _empty_recall_stats()
+    sources = stats.get("sources") or {}
+    errors = list(stats.get("errors") or [])
+    return {
+        "ran": bool(stats.get("ran")),
+        "total": int(stats.get("total") or 0),
+        "bySource": {
+            name: int((sources.get(name) or {}).get("count") or 0) for name in MEMORY_SOURCES
+        },
+        "attempted": [
+            name for name in MEMORY_SOURCES if (sources.get(name) or {}).get("attempted")
+        ],
+        # Named `degraded` and not `ok`: the absence of a problem should not be
+        # the thing a query has to infer.
+        "degraded": bool(errors),
+        "failedSources": errors,
+    }
+
+
+def _emit_memory_recall_audit(
+    *,
+    client: Any,
+    request: CognitiveTurnRequest,
+    signal: dict[str, Any],
+) -> None:
+    """Give memory recall a queryable audit action when it actually contributed.
+
+    **Why only when it contributed.** RECALL runs on essentially every kernel
+    turn, so an unconditional row would add a write to the conversational fast
+    path -- the one path that must not pay for this machinery -- and at current
+    volume would record "0" a few thousand times. The sufficiency audit declined
+    the same trade for the same reason.
+
+    That is only safe because the zero case is still recorded, just for free:
+    ``unifiedTurnKnowledge.memoryRecall`` rides the existing
+    ``unified_turn.*`` event on every turn and carries ``ran`` and ``total``. So
+    the two signals together separate the three states the census could not:
+
+    * no ``memory.recalled`` row **and** ``memoryRecall.ran == true`` -> ran,
+      found nothing. Real zero.
+    * no ``memory.recalled`` row **and** ``memoryRecall`` absent -> never ran, or
+      the signal is broken. Unknown, and loudly so.
+    * a ``memory.recalled`` row -> memory reached the prompt, with per-source
+      counts saying which store produced it.
+
+    A ``degraded`` recall is emitted even at zero rows, because "every store
+    failed" is exactly the finding that must not be filed as "found nothing".
+
+    Never raises: an audit gap must not break a turn.
+    """
+    if client is None:
+        return
+    if not (signal.get("total") or signal.get("degraded")):
+        return
+
+    org_id = request.org_id
+    actor_id = request.user_id
+    conversation_id = request.conversation_id
+
+    try:
+        from app.core.uuid_utils import is_uuid  # type: ignore
+    except Exception:  # noqa: BLE001
+
+        def is_uuid(value: Any) -> bool:  # type: ignore[misc]
+            import uuid as _uuid
+
+            try:
+                _uuid.UUID(str(value))
+                return True
+            except (ValueError, AttributeError, TypeError):
+                return False
+
+    if not (actor_id and is_uuid(actor_id)) or not (
+        conversation_id and is_uuid(conversation_id)
+    ):
+        # Loudly. write_audit_event drops the insert when actor_id or
+        # resource_id is not a uuid -- both columns are uuid NOT NULL -- and
+        # three instruments in this program were written with actor_id=None,
+        # read zero rows in production, and were nearly taken as proof that live
+        # code was unreachable.
+        logger.warning(
+            "memory_recall_audit_skipped org_id=%s reason=non_uuid_actor_or_resource "
+            "actor=%r conversation=%r total=%s degraded=%s",
+            org_id,
+            actor_id,
+            conversation_id,
+            signal.get("total"),
+            signal.get("degraded"),
+        )
+        return
+
+    try:
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            AUDIT_ACTION_MEMORY_RECALL,
+            "conversation",
+            conversation_id,
+            {
+                **signal,
+                "agentId": request.agent_id,
+                "surface": request.surface,
+                "entryPoint": request.entry_point,
+                "reasoningDepth": request.reasoning_depth,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("memory_recall_audit_failed org_id=%s error=%s", org_id, exc)
 
 
 def _memory_prompt_section(pack: dict[str, Any]) -> str:
