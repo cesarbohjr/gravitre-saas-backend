@@ -390,6 +390,20 @@ Deliberately **not** added: `compliance`. It is common in SOC 2 and NIST
 questions and would pull a large amount of cybersecurity traffic into legal.
 Left out rather than guessed at.
 
+**Confirmed live at `5a6abb4e`.** Phase 5 re-run against the deployed tip,
+`sha_match=true`, 10/10 again, and the decisive line changed:
+
+```
+before   hard_multihop  packs=[]              depts=[]
+after    hard_multihop  packs=['pack.legal']  depts=['legal']
+```
+
+**Routing was necessary, not sufficient.** That turn still comes back
+`INCORRECT` after two rounds. The legal pack now gets retrieved and its six
+chunks still do not cover California consumer breach law, so the assessor is
+right to reject them. The fix removed a silent routing miss; it did not conjure
+a corpus. Read as "the multi-hop query is now answered", that would be wrong.
+
 **Mutation proof:** `scripts/mutate_router_department.py`, **10/10 caught**,
 including the original defect and the three plausible "tidy-ups" that would
 reintroduce it. One escaped on the first run: reverting the compliance markers

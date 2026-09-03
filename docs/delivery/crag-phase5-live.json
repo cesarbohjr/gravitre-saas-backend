@@ -1,12 +1,9 @@
 {
-  "started_at": "2026-09-03T18:31:19.725586+00:00",
-  "local_sha": "09dc495071d0",
-  "code_sha": "985149addb93",
-  "prod_sha": "985149addb93",
-  "commits_ahead_of_code_sha": [
-    "docs/delivery/crag-iterative-loop.md",
-    "docs/delivery/dormant-model-calls.md"
-  ],
+  "started_at": "2026-09-03T20:36:06.954669+00:00",
+  "local_sha": "5a6abb4e05b7",
+  "code_sha": "5a6abb4e05b7",
+  "prod_sha": "5a6abb4e05b7",
+  "commits_ahead_of_code_sha": [],
   "sha_match": true,
   "env_files": [
     ".env: 33/33 (utf-8)",
@@ -14,134 +11,10 @@
     ".env: absent"
   ],
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "conversation_id": "8784170e-e372-41dc-ad92-b0e3c3c98f3a",
+  "conversation_id": "e9d81c3f-acf4-44f0-8ffd-4a73e2d6ad7a",
   "evidence_label": "probe-derived (deliberate), NOT organic production volume",
   "hard_turn": {
-    "ms": 18546,
-    "outcome_kind": "conversational_reply",
-    "error": null,
-    "nested": {
-      "enabled": true,
-      "bar": "regulatory",
-      "max_additional_rounds": 2,
-      "additional_rounds_used": 2,
-      "sources_tried": [
-        "org_rag",
-        "internet",
-        "business_graph"
-      ],
-      "assessments": [
-        {
-          "sufficient": false,
-          "stance": "incorrect",
-          "stance_inferred": false,
-          "keep_indices": [],
-          "assessor": "deterministic",
-          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
-          "gaps": [
-            "insufficient_source_count"
-          ],
-          "bar": "regulatory",
-          "min_sources": 2,
-          "require_citable_source": true,
-          "require_freshness_signal": true,
-          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
-          "assessment_confidence": null,
-          "confidence_is_estimate": false,
-          "confidenceIsEstimate": false,
-          "confidence_source": "insufficient_data",
-          "confidenceSource": "insufficient_data"
-        },
-        {
-          "sufficient": false,
-          "stance": "incorrect",
-          "stance_inferred": false,
-          "keep_indices": [],
-          "assessor": "deterministic",
-          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
-          "gaps": [
-            "insufficient_source_count"
-          ],
-          "bar": "regulatory",
-          "min_sources": 2,
-          "require_citable_source": true,
-          "require_freshness_signal": true,
-          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
-          "assessment_confidence": null,
-          "confidence_is_estimate": false,
-          "confidenceIsEstimate": false,
-          "confidence_source": "insufficient_data",
-          "confidenceSource": "insufficient_data"
-        },
-        {
-          "sufficient": false,
-          "stance": "incorrect",
-          "stance_inferred": false,
-          "keep_indices": [],
-          "assessor": "deterministic",
-          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
-          "gaps": [
-            "insufficient_source_count"
-          ],
-          "bar": "regulatory",
-          "min_sources": 2,
-          "require_citable_source": true,
-          "require_freshness_signal": true,
-          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
-          "assessment_confidence": null,
-          "confidence_is_estimate": false,
-          "confidenceIsEstimate": false,
-          "confidence_source": "insufficient_data",
-          "confidenceSource": "insufficient_data"
-        }
-      ],
-      "stances": [
-        "incorrect",
-        "incorrect",
-        "incorrect"
-      ],
-      "discards": 2,
-      "discarded_rows": 0,
-      "refined": false,
-      "stopped_because": "max_rounds_reached",
-      "final_stance": "incorrect",
-      "final_stance_inferred": false,
-      "final_sufficient": false,
-      "final_reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
-      "final_gaps": [
-        "insufficient_source_count"
-      ],
-      "ms": 6347,
-      "audit_emitted": true
-    }
-  },
-  "hard_loop_ran": true,
-  "router_gap": {
-    "hard_multihop": {
-      "pack_ids": [],
-      "departments": [],
-      "jurisdictions": [
-        "US-CA",
-        "CA-ON",
-        "US-federal"
-      ],
-      "reason": "departments=['unspecified']; jurisdictions=['US-CA', 'CA-ON', 'US-federal']; packs=[]"
-    },
-    "routed": {
-      "pack_ids": [
-        "pack.legal"
-      ],
-      "departments": [
-        "legal"
-      ],
-      "jurisdictions": [
-        "CA-ON"
-      ],
-      "reason": "departments=['legal']; jurisdictions=['CA-ON']; packs=['pack.legal']"
-    }
-  },
-  "routed_turn": {
-    "ms": 30480,
+    "ms": 28358,
     "outcome_kind": "conversational_reply",
     "error": null,
     "nested": {
@@ -158,46 +31,22 @@
       "assessments": [
         {
           "sufficient": false,
-          "stance": "ambiguous",
-          "stance_inferred": false,
-          "keep_indices": [],
-          "assessor": "llm",
-          "reason": "The evidence is from an authoritative, current federal source and appears to concern privacy law, but the excerpts do not directly state Ontario breach notification deadlines or the current effective date. They only show page headers and amendment listings for a federal statute, not the specific Ontario statutory requirements asked about.",
-          "gaps": [
-            "does_not_address_question",
-            "partial_coverage",
-            "need_direct_citation_of_ontario_deadlines",
-            "need_current_effective_date"
-          ],
-          "bar": "regulatory",
-          "min_sources": 2,
-          "require_citable_source": true,
-          "require_freshness_signal": true,
-          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
-          "assessment_confidence": 0.95,
-          "confidence_is_estimate": true,
-          "confidenceIsEstimate": true,
-          "confidence_source": "heuristic",
-          "confidenceSource": "heuristic"
-        },
-        {
-          "sufficient": false,
           "stance": "incorrect",
           "stance_inferred": false,
           "keep_indices": [],
           "assessor": "llm",
-          "reason": "The retrieved excerpts are only general Justice Laws Website/PIPEDA page headers and navigation fragments. They do not directly state Ontario breach notification deadlines or the current effective date, so they do not answer the question. The authority is a federal statute/regulatory source, but the evidence shown is not the specific Ontario privacy law provision asked about and lacks the operativ",
+          "reason": "The retrieved excerpts are general FTC pages and do not address Ontario personal health information breach notification deadlines or California consumer breach notification deadlines. They are off-target for the specific legal comparison requested, and none of the excerpts carry the answer. The evidence is also not current or authoritative for the cited jurisdictions because it does not come from ",
           "gaps": [
             "does_not_address_question",
-            "partial_coverage",
-            "current_effective_date_missing",
-            "specific_ontario_authority_missing"
+            "wrong_jurisdiction",
+            "weak_authority",
+            "stale_evidence"
           ],
           "bar": "regulatory",
           "min_sources": 2,
           "require_citable_source": true,
           "require_freshness_signal": true,
-          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "bar_reason": "department=legal; jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
           "assessment_confidence": 0.99,
           "confidence_is_estimate": true,
           "confidenceIsEstimate": true,
@@ -218,6 +67,160 @@
           "min_sources": 2,
           "require_citable_source": true,
           "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        }
+      ],
+      "stances": [
+        "incorrect",
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 2,
+      "discarded_rows": 6,
+      "refined": false,
+      "stopped_because": "max_rounds_reached",
+      "final_stance": "incorrect",
+      "final_stance_inferred": false,
+      "final_sufficient": false,
+      "final_reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+      "final_gaps": [
+        "insufficient_source_count"
+      ],
+      "ms": 13196,
+      "audit_emitted": true
+    }
+  },
+  "hard_loop_ran": true,
+  "router_gap": {
+    "hard_multihop": {
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "US-CA",
+        "CA-ON",
+        "US-federal"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['US-CA', 'CA-ON', 'US-federal']; packs=['pack.legal']"
+    },
+    "routed": {
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "CA-ON"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['CA-ON']; packs=['pack.legal']"
+    }
+  },
+  "routed_turn": {
+    "ms": 25895,
+    "outcome_kind": "conversational_reply",
+    "error": null,
+    "nested": {
+      "enabled": true,
+      "bar": "regulatory",
+      "max_additional_rounds": 2,
+      "additional_rounds_used": 2,
+      "sources_tried": [
+        "knowledge_pack",
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "assessments": [
+        {
+          "sufficient": false,
+          "stance": "ambiguous",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "llm",
+          "reason": "The retrieved excerpts are from authoritative Canadian federal legislation sources, but they do not directly state the Ontario privacy-law breach notification deadlines or the current effective date in the provided text. The evidence is on the general statutory topic and likely relevant, but it is incomplete and does not carry the specific answer required for a regulatory/legal standard.",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "current_effective_date_not_shown"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.93,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "llm",
+          "reason": "The excerpts are only general Justice Laws/PIPEDA page fragments and do not directly state Ontario breach-notification deadlines or the current effective date under Ontario privacy law. They are at best topic-adjacent federal material and do not answer the specific provincial regulatory question. Authority is strong for federal law, but not adequate for Ontario-specific breach notification timing ",
+          "gaps": [
+            "does_not_address_question",
+            "wrong_jurisdiction",
+            "partial_coverage"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.98,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
           "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
           "assessment_confidence": null,
           "confidence_is_estimate": false,
@@ -242,14 +245,14 @@
       "final_gaps": [
         "insufficient_source_count"
       ],
-      "ms": 22092,
+      "ms": 18503,
       "audit_emitted": true
     }
   },
   "routed_loop_ran": true,
   "forced_branches": {
     "discard": {
-      "ms": 1373,
+      "ms": 1305,
       "fabric_hits": 6,
       "loop_ran": true,
       "discards": 1,
@@ -261,7 +264,7 @@
       ]
     },
     "refine": {
-      "ms": 1538,
+      "ms": 1226,
       "fabric_hits": 6,
       "loop_ran": true,
       "refined": true,
@@ -271,16 +274,16 @@
     }
   },
   "simple_turn": {
-    "ms": 901,
+    "ms": 659,
     "sufficiency_block_present": false,
     "skipped": null,
     "assessments": 0,
     "discards": null
   },
-  "audit_rows_found": 2,
+  "audit_rows_found": 3,
   "audit_rows": [
     {
-      "created_at": "2026-09-03T18:32:08.41518+00:00",
+      "created_at": "2026-09-03T20:37:01.288332+00:00",
       "finalStance": "incorrect",
       "finalStanceInferred": false,
       "stances": [
@@ -293,7 +296,7 @@
       "assessorRan": true
     },
     {
-      "created_at": "2026-09-03T18:31:38.242493+00:00",
+      "created_at": "2026-09-03T20:36:35.022209+00:00",
       "finalStance": "incorrect",
       "finalStanceInferred": false,
       "stances": [
@@ -303,7 +306,19 @@
       ],
       "discards": 2,
       "refined": false,
-      "assessorRan": false
+      "assessorRan": true
+    },
+    {
+      "created_at": "2026-09-03T20:34:17.515331+00:00",
+      "finalStance": "incorrect",
+      "finalStanceInferred": false,
+      "stances": [
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 1,
+      "refined": false,
+      "assessorRan": true
     }
   ],
   "checks": {
