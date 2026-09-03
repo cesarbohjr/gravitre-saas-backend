@@ -73,8 +73,8 @@ def test_temporal_supersede_copies_history():
     }
     memories.execute.side_effect = [
         MagicMock(data=[old_row]),  # get_current
-        MagicMock(data=[]),  # update superseded row
         MagicMock(data=[{**payload, "is_current": True}]),  # insert new row
+        MagicMock(data=[]),  # update superseded row
     ]
     history.execute.return_value = MagicMock(data=[{}])
 

@@ -1,0 +1,49 @@
+{
+  "label": "probe-derived",
+  "local_sha": "82c647a116aa",
+  "prod_sha": "2a2e03556a4d",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "probe_tag": "MH_20260903211832",
+  "started_at": "2026-09-03T21:18:37.138261+00:00",
+  "checks": {
+    "temporal_validity": false,
+    "structured_extraction": true,
+    "contamination_defense": true,
+    "cross_org_isolation": true
+  },
+  "temporal": {
+    "memory_key": "preference:d767d908c23612ed",
+    "written_v1": [
+      "cdef3b97-773b-4579-a2ea-ab3579ae5f28"
+    ],
+    "written_v2": [],
+    "current_content": "MH_20260903211832 ICP employee range: 10-50 employees",
+    "history_count": 0,
+    "history_sample": [],
+    "ok": false
+  },
+  "structured": {
+    "outcome_content": "Outcome (probe_MH_20260903211832); action=probe.test; status=completed",
+    "structured_payload": {
+      "event": "probe_MH_20260903211832",
+      "status": "completed",
+      "action": "probe.test",
+      "error": null
+    },
+    "ok": true
+  },
+  "contamination": {
+    "promoted_ids": [
+      "6b27d272-ff1a-4e17-a84f-67583d2e4c3c"
+    ],
+    "recalled_untrusted": 1,
+    "ok": true
+  },
+  "cross_org": {
+    "foreign_hits": 0,
+    "ok": true
+  },
+  "verdict": "NOT_PROVEN",
+  "checks_passed": 3,
+  "checks_total": 4
+}

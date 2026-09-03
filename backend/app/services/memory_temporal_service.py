@@ -177,6 +177,8 @@ def upsert_temporal_memory(
     payload["superseded_by"] = None
 
     try:
+        inserted = client.table("agent_memories").insert(payload).execute().data or []
+        new_row = inserted[0] if inserted else payload
         client.table("agent_memories").update(
             {
                 "is_current": False,
@@ -192,7 +194,6 @@ def upsert_temporal_memory(
             superseded_by=new_id,
             change_reason=change_reason or "superseded_by_new_value",
         )
-        inserted = client.table("agent_memories").insert(payload).execute().data or []
         logger.info(
             "memory_temporal_superseded org_id=%s key=%s old_id=%s new_id=%s",
             payload.get("org_id"),
@@ -200,7 +201,7 @@ def upsert_temporal_memory(
             current.get("id"),
             new_id,
         )
-        return inserted[0] if inserted else payload
+        return new_row if isinstance(new_row, dict) else payload
     except Exception as exc:  # noqa: BLE001
         logger.warning("memory_temporal_supersede_failed error=%s", exc)
         return None
