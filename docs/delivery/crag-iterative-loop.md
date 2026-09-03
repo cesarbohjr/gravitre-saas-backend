@@ -221,25 +221,105 @@ Held by test, not by reading the code:
 
 ## Phase 5 — live verification
 
-**NOT YET RUN.** Requires the deploy and, for the keyword arm, the migration.
-Recorded here as NOT PROVEN rather than left to be assumed from green tests: a
-green test proves the path behaves correctly, never that production takes it.
+**PASS (probe-derived), 10/10 checks.** `scripts/prove-crag-phase5-live.py`,
+raw output in `docs/delivery/crag-phase5-live.json`.
 
-Outstanding to close Phase 5:
+**Evidence label: probe-derived, not organic.** Deliberate turns, run by hand.
+Organic volume is honestly low — 36 real turns in the last measured month — so
+probe-derived is the expected kind here. It is real evidence; it is not the
+claim that real users triggered it.
 
-1. Push, deploy, confirm live `git_sha`.
-2. Apply migration `20260903100000` (additive, idempotent; the FTS path degrades
-   to the old unfiltered fetch with a WARNING until then, so the code is safe to
-   deploy ahead of it but the fix is not live).
-3. Probe-derived trace showing `finalStance` populated and
-   `finalStanceInferred=false` on a real turn through the deployed tip.
-4. Probe-derived trace showing a discard and a refinement each occurring once.
-5. Measured latency on a simple turn confirming no regression.
+Prod served `985149ad`, the last commit touching `backend/` or `supabase/`. The
+probe compares against that rather than `HEAD`, because a docs-only commit ahead
+of prod is not a version mismatch, and a check that fails on one invites being
+relaxed for a reason that is not always true.
 
-Every claim in that list must be labelled organic or probe-derived. Organic
-volume is honestly low — 36 real turns in the last measured month — so
-probe-derived is the expected kind here, and it is real evidence, just not the
-same claim.
+| Check | Result |
+|---|---|
+| prod serves this tip | PASS |
+| hard turn engaged the loop | PASS |
+| routed turn engaged the loop | PASS |
+| simple turn latency unregressed | PASS — 901ms |
+| audit carries a stance | PASS |
+| stance is reasoned, not inferred | PASS — `finalStanceInferred=false` |
+| forced discard destroyed rows | PASS — 6 rows |
+| forced refine narrowed rows | PASS — 6 → 1 |
+| simple turn paid for none of it | PASS — 0 assessor calls |
+| nested block and audit row agree | PASS |
+
+The strongest single result is **not** one of the forced branches. A hard,
+single-jurisdiction turn with the **real** assessor and no stubbing classified
+`INCORRECT`, spent 2 rounds, and **destroyed 6 real evidence rows**. Unforced,
+on real retrieved evidence, through the deployed tip.
+
+### The probe passed the first time for the wrong reason
+
+Recorded because it is the same failure this program keeps finding, now in its
+own verification harness.
+
+First run: 6/8, with `forced_refine_executed` failing. The obvious reading was a
+bug in the refinement branch. It was not. The probe drove its turns through
+`run_unified_turn_shadow` **with no knowledge packs assigned**, so every turn
+retrieved zero rows. Refinement cannot narrow an empty list, so it correctly did
+nothing.
+
+The part that matters is the check that **passed**:
+`forced_discard_executed` was true because the `discards` counter incremented —
+while `discarded_rows` was **0**. The discard branch had executed and destroyed
+nothing. A green check over an empty evidence set, proving the line was reached
+and nothing more. **Class B, in the instrument built to prove Phase 5.**
+
+Both checks were rewritten to assert the outcome rather than the mechanism:
+`forced_discard_destroyed_rows` requires `discarded_rows > 0`, and
+`forced_refine_narrowed_rows` requires `refined_to < refined_from`. The forced
+branches now run through `build_unified_turn_knowledge_context` with the pack
+assigned explicitly, so the branches are handed real rows or the check fails.
+
+The second failing check, `simple_turn_skipped_the_loop`, was also the
+instrument. It asserted `skipped == "casual_bar"`. The conversational turn never
+reaches knowledge augmentation at all, so it emits no sufficiency block and
+`skipped` is absent. The turn was free — 901ms, zero assessor calls — and the
+check failed it for skipping by the wrong door. Now asserts the property.
+
+### Open finding: the hardest query shape retrieves nothing
+
+Found while diagnosing the above, and worth more than the phase that surfaced it.
+
+The Phase 5 multi-hop query — Ontario health-information breach deadlines versus
+California consumer breach deadlines — routes to **zero knowledge packs**:
+
+```
+hard_multihop   packs=[]             depts=[]        juris=['US-CA','CA-ON','US-federal']
+routed          packs=['pack.legal'] depts=['legal'] juris=['CA-ON']
+```
+
+`classify_knowledge_query` resolves three jurisdictions correctly and no
+department, and packs are selected by department. A jurisdiction-only route
+yields nothing. So the query most obviously about legal compliance retrieves no
+legal evidence.
+
+The loop behaved correctly on it: classified `INCORRECT`, escalated twice, hit
+its bound, and reported the shortfall honestly rather than answering
+confidently. That is the designed behaviour and it worked. But reading turn A as
+"the loop works on hard queries" would be exactly wrong — it iterated twice over
+nothing. **An iterative loop cannot repair a routing miss; it can only spend
+rounds discovering there is nothing there.**
+
+Not fixed here. Changing pack selection to fall back on jurisdiction is a real
+retrieval-policy change with real blast radius, and it is not what Phases 1–5
+authorised. Logged as **OPEN** in the risk register.
+
+### Migration `20260903100000` — NOT APPLIED
+
+The org RAG keyword index is **not live**. The code degrades to the old
+unfiltered fetch with a WARNING, so the deployed tip is safe, but the Phase 3
+keyword-reach fix does not take effect until the migration runs.
+
+Not applied because it is a production schema change and this program requires
+those to be an explicit human choice, not an agent's reading of "complete Phase
+5". Measured impact of applying it today is nil — 1 chunk platform-wide, 0
+scopes over the 500 cap — and the value is entirely in the first real corpus,
+where the old behaviour fails silently.
 
 ---
 
@@ -259,3 +339,16 @@ same claim.
 | `scripts/mutate_orgrag_phase3.py` | 15/15 |
 | `scripts/probe-orgrag-keyword-reach.py` | reachability, measured before fixing |
 | `scripts/prove-orgrag-phase3-beforeafter.py` | before/after, both parts |
+| `scripts/prove-crag-phase5-live.py` | Phase 5 live proof, 10/10 |
+| `docs/delivery/crag-phase5-live.json` | its raw output |
+
+---
+
+## Still open
+
+| Item | State |
+|---|---|
+| Migration `20260903100000` | **NOT APPLIED** — needs an explicit human decision |
+| Multi-jurisdiction queries route to no packs | **OPEN** — real retrieval gap, unfixed |
+| Fabric keyword arm has no `ts_rank` ordering | **OPEN** — carried from the prior phase |
+| Organic (non-probe) trace of a discard | **NOT PROVEN** — awaits real traffic |

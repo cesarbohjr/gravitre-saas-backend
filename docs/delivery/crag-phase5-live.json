@@ -1,0 +1,322 @@
+{
+  "started_at": "2026-09-03T18:31:19.725586+00:00",
+  "local_sha": "09dc495071d0",
+  "code_sha": "985149addb93",
+  "prod_sha": "985149addb93",
+  "commits_ahead_of_code_sha": [
+    "docs/delivery/crag-iterative-loop.md",
+    "docs/delivery/dormant-model-calls.md"
+  ],
+  "sha_match": true,
+  "env_files": [
+    ".env: 33/33 (utf-8)",
+    ".env.operator.local: 24/51 (cp1252)",
+    ".env: absent"
+  ],
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "8784170e-e372-41dc-ad92-b0e3c3c98f3a",
+  "evidence_label": "probe-derived (deliberate), NOT organic production volume",
+  "hard_turn": {
+    "ms": 18546,
+    "outcome_kind": "conversational_reply",
+    "error": null,
+    "nested": {
+      "enabled": true,
+      "bar": "regulatory",
+      "max_additional_rounds": 2,
+      "additional_rounds_used": 2,
+      "sources_tried": [
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "assessments": [
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "jurisdiction=US-CA,CA-ON,US-federal; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        }
+      ],
+      "stances": [
+        "incorrect",
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 2,
+      "discarded_rows": 0,
+      "refined": false,
+      "stopped_because": "max_rounds_reached",
+      "final_stance": "incorrect",
+      "final_stance_inferred": false,
+      "final_sufficient": false,
+      "final_reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+      "final_gaps": [
+        "insufficient_source_count"
+      ],
+      "ms": 6347,
+      "audit_emitted": true
+    }
+  },
+  "hard_loop_ran": true,
+  "router_gap": {
+    "hard_multihop": {
+      "pack_ids": [],
+      "departments": [],
+      "jurisdictions": [
+        "US-CA",
+        "CA-ON",
+        "US-federal"
+      ],
+      "reason": "departments=['unspecified']; jurisdictions=['US-CA', 'CA-ON', 'US-federal']; packs=[]"
+    },
+    "routed": {
+      "pack_ids": [
+        "pack.legal"
+      ],
+      "departments": [
+        "legal"
+      ],
+      "jurisdictions": [
+        "CA-ON"
+      ],
+      "reason": "departments=['legal']; jurisdictions=['CA-ON']; packs=['pack.legal']"
+    }
+  },
+  "routed_turn": {
+    "ms": 30480,
+    "outcome_kind": "conversational_reply",
+    "error": null,
+    "nested": {
+      "enabled": true,
+      "bar": "regulatory",
+      "max_additional_rounds": 2,
+      "additional_rounds_used": 2,
+      "sources_tried": [
+        "knowledge_pack",
+        "org_rag",
+        "internet",
+        "business_graph"
+      ],
+      "assessments": [
+        {
+          "sufficient": false,
+          "stance": "ambiguous",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "llm",
+          "reason": "The evidence is from an authoritative, current federal source and appears to concern privacy law, but the excerpts do not directly state Ontario breach notification deadlines or the current effective date. They only show page headers and amendment listings for a federal statute, not the specific Ontario statutory requirements asked about.",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "need_direct_citation_of_ontario_deadlines",
+            "need_current_effective_date"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.95,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "llm",
+          "reason": "The retrieved excerpts are only general Justice Laws Website/PIPEDA page headers and navigation fragments. They do not directly state Ontario breach notification deadlines or the current effective date, so they do not answer the question. The authority is a federal statute/regulatory source, but the evidence shown is not the specific Ontario privacy law provision asked about and lacks the operativ",
+          "gaps": [
+            "does_not_address_question",
+            "partial_coverage",
+            "current_effective_date_missing",
+            "specific_ontario_authority_missing"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": 0.99,
+          "confidence_is_estimate": true,
+          "confidenceIsEstimate": true,
+          "confidence_source": "heuristic",
+          "confidenceSource": "heuristic"
+        },
+        {
+          "sufficient": false,
+          "stance": "incorrect",
+          "stance_inferred": false,
+          "keep_indices": [],
+          "assessor": "deterministic",
+          "reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+          "gaps": [
+            "insufficient_source_count"
+          ],
+          "bar": "regulatory",
+          "min_sources": 2,
+          "require_citable_source": true,
+          "require_freshness_signal": true,
+          "bar_reason": "department=legal; jurisdiction=CA-ON; compliance/regulatory language in query",
+          "assessment_confidence": null,
+          "confidence_is_estimate": false,
+          "confidenceIsEstimate": false,
+          "confidence_source": "insufficient_data",
+          "confidenceSource": "insufficient_data"
+        }
+      ],
+      "stances": [
+        "ambiguous",
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 1,
+      "discarded_rows": 6,
+      "refined": false,
+      "stopped_because": "max_rounds_reached",
+      "final_stance": "incorrect",
+      "final_stance_inferred": false,
+      "final_sufficient": false,
+      "final_reason": "0 substantive source(s) retrieved; regulatory bar needs at least 2",
+      "final_gaps": [
+        "insufficient_source_count"
+      ],
+      "ms": 22092,
+      "audit_emitted": true
+    }
+  },
+  "routed_loop_ran": true,
+  "forced_branches": {
+    "discard": {
+      "ms": 1373,
+      "fabric_hits": 6,
+      "loop_ran": true,
+      "discards": 1,
+      "discarded_rows": 6,
+      "final_stance": "correct",
+      "stances": [
+        "incorrect",
+        "correct"
+      ]
+    },
+    "refine": {
+      "ms": 1538,
+      "fabric_hits": 6,
+      "loop_ran": true,
+      "refined": true,
+      "refined_from": 6,
+      "refined_to": 1,
+      "final_stance": "correct"
+    }
+  },
+  "simple_turn": {
+    "ms": 901,
+    "sufficiency_block_present": false,
+    "skipped": null,
+    "assessments": 0,
+    "discards": null
+  },
+  "audit_rows_found": 2,
+  "audit_rows": [
+    {
+      "created_at": "2026-09-03T18:32:08.41518+00:00",
+      "finalStance": "incorrect",
+      "finalStanceInferred": false,
+      "stances": [
+        "ambiguous",
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 1,
+      "refined": false,
+      "assessorRan": true
+    },
+    {
+      "created_at": "2026-09-03T18:31:38.242493+00:00",
+      "finalStance": "incorrect",
+      "finalStanceInferred": false,
+      "stances": [
+        "incorrect",
+        "incorrect",
+        "incorrect"
+      ],
+      "discards": 2,
+      "refined": false,
+      "assessorRan": false
+    }
+  ],
+  "checks": {
+    "prod_serves_this_tip": true,
+    "hard_turn_engaged_the_loop": true,
+    "routed_turn_engaged_the_loop": true,
+    "simple_turn_latency_unregressed": true,
+    "audit_carries_a_stance": true,
+    "stance_is_reasoned_not_inferred": true,
+    "forced_discard_destroyed_rows": true,
+    "forced_refine_narrowed_rows": true,
+    "simple_turn_paid_for_none_of_it": true,
+    "nested_and_row_agree": true
+  },
+  "verdict": "PASS (probe-derived)"
+}
