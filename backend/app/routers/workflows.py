@@ -3883,6 +3883,30 @@ async def get_run_alias(
     return await get_run(run_id, _user, org_id, environment_name, settings)
 
 
+@runs_router.get("/{run_id}/observability")
+async def get_run_observability(
+    run_id: UUID,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Joined per-run observability console (read-only fan-in over existing stores)."""
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    from app.services.run_observability_service import build_run_observability
+
+    client = get_supabase_client(settings)
+    run = get_run_with_steps(client, org_id, str(run_id), environment_name)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    steps = list(run.pop("steps", []) or [])
+    return build_run_observability(client, org_id=org_id, run_payload=run, steps=steps)
+
+
 @runs_router.post("/{run_id}/retry")
 async def retry_run_alias(
     run_id: UUID,

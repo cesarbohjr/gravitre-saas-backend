@@ -934,6 +934,8 @@ export const runsApi = {
   },
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
   getWithSteps: (id: string) => fetcher<RunDetailResponse>(apiUrl(`/api/runs/${id}`)),
+  getObservability: (id: string) =>
+    fetcher<Record<string, unknown>>(apiUrl(`/api/runs/${id}/observability`)),
   cancel: async (id: string) => {
     const interrupt = await requestAgentInterrupt("workflow_run", id, "cancel")
     return {

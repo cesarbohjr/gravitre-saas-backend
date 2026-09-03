@@ -29,6 +29,7 @@ import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
+import { RunObservabilityConsole } from "@/components/runs/run-observability-console"
 import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
 import {
   BusinessOutcomeView,
@@ -935,6 +936,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             )}
           </div>
         </div>
+
+        <RunObservabilityConsole runId={id} />
 
         <div className="rounded-lg border border-border bg-card">
           <div className="border-b border-border p-4">

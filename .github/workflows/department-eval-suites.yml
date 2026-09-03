@@ -1,0 +1,87 @@
+# Consolidated per-department eval suites — CI gate for Knowledge/Tool Pack changes.
+# Reuses real pack/security/withhold batteries; does not invent a parallel eval store.
+name: Department Eval Suites
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/marketplace/**"
+      - "backend/app/services/department_eval_registry.py"
+      - "backend/app/services/agent_security_gateway.py"
+      - "backend/app/services/retrieve_plan_gate.py"
+      - "backend/app/services/agent_tool_permissions.py"
+      - "backend/app/services/tool_service.py"
+      - "backend/app/services/*tool*"
+      - "backend/app/rag/**"
+      - "backend/app/knowledge_fabric/**"
+      - "backend/tests/eval/**"
+      - "backend/tests/marketplace/**"
+      - "scripts/run-department-eval-suite.py"
+      - ".github/workflows/department-eval-suites.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/marketplace/**"
+      - "backend/app/services/department_eval_registry.py"
+      - "backend/app/services/agent_security_gateway.py"
+      - "backend/app/services/retrieve_plan_gate.py"
+      - "backend/app/services/agent_tool_permissions.py"
+      - "backend/app/services/tool_service.py"
+      - "backend/app/services/*tool*"
+      - "backend/app/rag/**"
+      - "backend/app/knowledge_fabric/**"
+      - "backend/tests/eval/**"
+      - "backend/tests/marketplace/**"
+      - "scripts/run-department-eval-suite.py"
+      - ".github/workflows/department-eval-suites.yml"
+  workflow_dispatch:
+    inputs:
+      department:
+        description: Optional department (marketing|sales|finance|legal|hr|msp)
+        required: false
+        default: ""
+
+concurrency:
+  group: department-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  department-eval:
+    name: Department eval suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Install backend deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt || true
+
+      - name: Print eval manifest
+        run: python ../scripts/run-department-eval-suite.py --manifest-only
+
+      - name: Run consolidated department eval suites
+        run: |
+          if [ -n "${{ github.event.inputs.department }}" ]; then
+            python ../scripts/run-department-eval-suite.py -q --department "${{ github.event.inputs.department }}"
+          else
+            python ../scripts/run-department-eval-suite.py -q
+          fi
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
