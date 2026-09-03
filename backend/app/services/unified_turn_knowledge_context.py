@@ -354,6 +354,22 @@ def _emit_sufficiency_audit(
         "additionalRoundsUsed": loop_meta.get("additional_rounds_used"),
         "maxAdditionalRounds": loop_meta.get("max_additional_rounds"),
         "finalSufficient": loop_meta.get("final_sufficient"),
+        # The three-way classification, and every stance the loop passed through.
+        # `finalSufficient` alone cannot distinguish "wrong evidence, discarded"
+        # from "on-topic evidence, still thin", which are the two cases the loop
+        # now responds to differently.
+        "finalStance": loop_meta.get("final_stance"),
+        # True when the stance was reconstructed from a legacy bool rather than
+        # genuinely classified. Without it, a defaulted stance reads exactly like
+        # a reasoned one and the whole three-way signal becomes unfalsifiable.
+        "finalStanceInferred": loop_meta.get("final_stance_inferred"),
+        "stances": loop_meta.get("stances"),
+        # What the loop actually DID, as opposed to what it concluded.
+        "discards": loop_meta.get("discards"),
+        "discardedRows": loop_meta.get("discarded_rows"),
+        "refined": loop_meta.get("refined"),
+        "refinedFrom": loop_meta.get("refined_from"),
+        "refinedTo": loop_meta.get("refined_to"),
         "stoppedBecause": loop_meta.get("stopped_because"),
         "finalGaps": loop_meta.get("final_gaps"),
         "sourcesTried": loop_meta.get("sources_tried"),
@@ -406,6 +422,39 @@ def _emit_sufficiency_audit(
     except Exception as exc:  # noqa: BLE001
         logger.warning("sufficiency_audit_failed org_id=%s error=%s", org_id, exc)
         loop_meta["audit_skipped"] = f"write_failed:{type(exc).__name__}"
+
+
+def _render_refined_evidence(rows: list[dict[str, Any]]) -> str:
+    """Re-render only the excerpts the assessor judged load-bearing.
+
+    The per-source formatters produce one block per source, so refinement cannot
+    be done by dropping section strings -- the granularity is wrong. This renders
+    from the rows themselves, preserving citation, source and kind so nothing
+    that made an excerpt attributable is lost on the way through.
+    """
+    lines: list[str] = []
+    for index, row in enumerate(rows, start=1):
+        content = str(row.get("content") or "").strip()
+        if not content:
+            continue
+        label = str(
+            row.get("citation") or row.get("source") or row.get("kind") or "source"
+        )[:120]
+        bits = []
+        if row.get("url") or row.get("web_link"):
+            bits.append(str(row.get("url") or row.get("web_link"))[:200])
+        for date_key in ("effective_at", "valid_from", "last_updated"):
+            if row.get(date_key):
+                bits.append(f"{date_key}={row.get(date_key)}")
+                break
+        suffix = f" ({'; '.join(bits)})" if bits else ""
+        lines.append(f"[{index}] {label}{suffix}\n{content}")
+    if not lines:
+        return ""
+    return (
+        "REFINED EVIDENCE — the excerpts below were judged to carry the answer; "
+        "unrelated retrieved material has been removed:\n\n" + "\n\n".join(lines)
+    )
 
 
 def _resolve_max_rounds(settings: Settings) -> int:
@@ -559,7 +608,9 @@ async def build_unified_turn_knowledge_context(
     from app.services.evidence_sufficiency_service import (
         ASSESSOR_ERROR,
         BAR_CASUAL,
+        STANCE_CORRECT,
         assess_evidence_sufficiency,
+        substantive_rows,
         sufficiency_bar_for,
     )
 
@@ -576,6 +627,12 @@ async def build_unified_turn_knowledge_context(
         "additional_rounds_used": 0,
         "sources_tried": list(tried),
         "assessments": [],
+        # Phase 2 actions, counted so "the loop ran" and "the loop did something"
+        # are separable in production data.
+        "stances": [],
+        "discards": 0,
+        "discarded_rows": 0,
+        "refined": False,
     }
 
     if not loop_enabled or bar.name == BAR_CASUAL or max_rounds == 0:
@@ -597,6 +654,7 @@ async def build_unified_turn_knowledge_context(
             sources_tried=tried,
         )
         loop_meta["assessments"].append(verdict.to_dict())
+        loop_meta["stances"].append(verdict.stance)
 
         while not verdict.sufficient and loop_meta["additional_rounds_used"] < max_rounds:
             # A broken assessor withholds sufficiency rather than granting it, but
@@ -611,6 +669,22 @@ async def build_unified_turn_knowledge_context(
             if next_source is None:
                 loop_meta["stopped_because"] = "no_untried_source"
                 break
+
+            # INCORRECT means the evidence answers a different question. Carrying
+            # it into the next round would let the model generate from material
+            # already judged wrong, which is the specific outcome this loop exists
+            # to prevent -- and it would also bias the next assessment, since the
+            # assessor sees the accumulated set.
+            #
+            # Both the rows and the rendered sections have to go. Dropping only
+            # the rows would leave the discarded text sitting in the prompt while
+            # every downstream count claimed it was gone: a fix one layer below
+            # the thing that decides what the model actually reads.
+            if verdict.should_discard_evidence:
+                loop_meta["discards"] += 1
+                loop_meta["discarded_rows"] += len(rag_source_rows)
+                rag_source_rows = []
+                evidence_sections.clear()
 
             tried.append(next_source)
             loop_meta["additional_rounds_used"] += 1
@@ -642,11 +716,34 @@ async def build_unified_turn_knowledge_context(
                 sources_tried=tried,
             )
             loop_meta["assessments"].append(verdict.to_dict())
+            loop_meta["stances"].append(verdict.stance)
 
         if not verdict.sufficient and loop_meta["additional_rounds_used"] >= max_rounds:
             loop_meta["stopped_because"] = "max_rounds_reached"
 
+        # CORRECT with a named subset: keep the load-bearing excerpts and drop the
+        # rest, so generation is not diluted by material the assessor explicitly
+        # did not endorse.
+        #
+        # Guarded three ways, because an over-eager refinement silently deletes
+        # good evidence: only on CORRECT, only when the assessor named a strict
+        # and non-empty subset, and never down to nothing.
+        if verdict.stance == STANCE_CORRECT and verdict.keep_indices:
+            candidates = substantive_rows(rag_source_rows)
+            kept = [candidates[i] for i in verdict.keep_indices if 0 <= i < len(candidates)]
+            if kept and len(kept) < len(candidates):
+                refined_section = _render_refined_evidence(kept)
+                if refined_section:
+                    rag_source_rows = kept
+                    evidence_sections.clear()
+                    evidence_sections.append(refined_section)
+                    loop_meta["refined"] = True
+                    loop_meta["refined_from"] = len(candidates)
+                    loop_meta["refined_to"] = len(kept)
+
         loop_meta["sources_tried"] = list(tried)
+        loop_meta["final_stance"] = verdict.stance
+        loop_meta["final_stance_inferred"] = verdict.stance_inferred
         loop_meta["final_sufficient"] = verdict.sufficient
         loop_meta["final_reason"] = verdict.reason[:300]
         loop_meta["final_gaps"] = list(verdict.gaps)[:6]
@@ -669,15 +766,31 @@ async def build_unified_turn_knowledge_context(
             # evidence never reached the bar. Never present this at full
             # confidence just because the loop terminated.
             gap_text = ", ".join(verdict.gaps[:4]) or "evidence did not reach the bar"
-            advisory_sections.append(
-                "EVIDENCE SUFFICIENCY WARNING — retrieval was attempted "
-                f"{1 + loop_meta['additional_rounds_used']} time(s) across "
-                f"{len(tried)} source(s) and the evidence still does not meet the "
-                f"{bar.name} standard for this question ({gap_text}). "
-                "Answer only what the excerpts support, state plainly which part "
-                "of the question you cannot substantiate, and do not present the "
-                "answer as fully verified."
-            )
+            # INCORRECT and AMBIGUOUS need different instructions. On INCORRECT
+            # the evidence was discarded, so telling the model to "answer only
+            # what the excerpts support" would point it at excerpts that are no
+            # longer there -- and inviting it to answer anyway is how a turn ends
+            # up generating from nothing while sounding sourced.
+            if verdict.should_discard_evidence and not rag_source_rows:
+                advisory_sections.append(
+                    "NO USABLE EVIDENCE — retrieval was attempted "
+                    f"{1 + loop_meta['additional_rounds_used']} time(s) across "
+                    f"{len(tried)} source(s). What came back was judged to address "
+                    f"a different question and was discarded ({gap_text}). Say "
+                    "plainly that you do not have the information to answer this, "
+                    "and do not substitute general knowledge for the missing "
+                    "evidence."
+                )
+            else:
+                advisory_sections.append(
+                    "EVIDENCE SUFFICIENCY WARNING — retrieval was attempted "
+                    f"{1 + loop_meta['additional_rounds_used']} time(s) across "
+                    f"{len(tried)} source(s) and the evidence still does not meet the "
+                    f"{bar.name} standard for this question ({gap_text}). "
+                    "Answer only what the excerpts support, state plainly which part "
+                    "of the question you cannot substantiate, and do not present the "
+                    "answer as fully verified."
+                )
 
         # Emitted only when the loop actually ran. A row per skipped turn would
         # add a write to the conversational fast path -- the one path that must

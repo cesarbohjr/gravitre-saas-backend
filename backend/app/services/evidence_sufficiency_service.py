@@ -73,6 +73,29 @@ MODEL_ASSESSORS = frozenset({ASSESSOR_LLM})
 # is UNKNOWN, not denied.
 UNAVAILABLE_ASSESSORS = frozenset({ASSESSOR_ERROR})
 
+# ---- three-way evidence classification (CRAG) ---------------------------
+#
+# The verdict used to be a single bool, which collapsed two genuinely different
+# situations into one. "The evidence is about the wrong thing" and "the evidence
+# is on-topic but thin" both read as `sufficient=False`, and the loop responded
+# to both by *adding* more evidence to the pile. Wrong evidence is not improved
+# by keeping it, so the distinction has to exist before the loop can act on it.
+STANCE_CORRECT = "correct"
+STANCE_INCORRECT = "incorrect"
+STANCE_AMBIGUOUS = "ambiguous"
+# Fourth state, and not one of CRAG's three: the classification never happened.
+# Kept separate for the reason this program has now booked six times -- "was not
+# judged" and "was judged and failed" produce identical evidence unless they are
+# named differently.
+STANCE_UNKNOWN = "unknown"
+
+STANCES = frozenset({STANCE_CORRECT, STANCE_INCORRECT, STANCE_AMBIGUOUS, STANCE_UNKNOWN})
+
+# Stances whose evidence must be thrown away rather than carried forward.
+DISCARD_STANCES = frozenset({STANCE_INCORRECT})
+# Stances that justify spending another retrieval round.
+ESCALATE_STANCES = frozenset({STANCE_INCORRECT, STANCE_AMBIGUOUS})
+
 
 @dataclass
 class SufficiencyBar:
@@ -102,10 +125,51 @@ class SufficiencyVerdict:
     reason: str
     gaps: list[str] = field(default_factory=list)
     confidence: float | None = None
+    # Three-way classification. Authoritative: `sufficient` is derived from it in
+    # __post_init__ so the two can never disagree. Two fields encoding the same
+    # judgement that are allowed to drift is how `assessorRan` read False for
+    # weeks while the assessor was running fine.
+    stance: str = ""
+    # Indices into the evidence rows the assessor judged load-bearing. Empty
+    # means "no opinion offered", never "keep nothing" -- the caller must not
+    # read an absent refinement as an instruction to discard everything.
+    keep_indices: list[int] = field(default_factory=list)
+    # True when `stance` was inferred from a legacy bool rather than genuinely
+    # classified. Without this, a defaulted stance is indistinguishable from a
+    # reasoned one.
+    stance_inferred: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.stance:
+            self.stance_inferred = True
+            if self.assessor in UNAVAILABLE_ASSESSORS:
+                self.stance = STANCE_UNKNOWN
+            else:
+                # Deliberately AMBIGUOUS, never INCORRECT. INCORRECT triggers
+                # discarding the evidence, which is the destructive branch, so it
+                # must require an explicit judgement and can never be reached by
+                # a default.
+                self.stance = STANCE_CORRECT if self.sufficient else STANCE_AMBIGUOUS
+        if self.stance not in STANCES:
+            self.stance = STANCE_UNKNOWN
+            self.stance_inferred = True
+        self.sufficient = self.stance == STANCE_CORRECT
+
+    @property
+    def should_discard_evidence(self) -> bool:
+        """Evidence judged plainly wrong must not survive into the answer."""
+        return self.stance in DISCARD_STANCES
+
+    @property
+    def should_escalate(self) -> bool:
+        return self.stance in ESCALATE_STANCES
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "sufficient": self.sufficient,
+            "stance": self.stance,
+            "stance_inferred": self.stance_inferred,
+            "keep_indices": list(self.keep_indices)[:20],
             "assessor": self.assessor,
             "reason": self.reason[:400],
             "gaps": list(self.gaps)[:6],
@@ -261,6 +325,56 @@ def _has_freshness_signal(rows: list[dict[str, Any]]) -> bool:
     return False
 
 
+def substantive_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """The rows the assessor is shown, in the order it is shown them.
+
+    ``keep_indices`` is 0-based against *this* list, so the definition must live
+    in exactly one place. If the assessor and the caller disagree about which
+    rows are in scope, refinement silently keeps the wrong excerpts -- a
+    misalignment that would produce a confident answer built from evidence the
+    assessor never endorsed.
+    """
+    return [
+        r
+        for r in (rows or [])
+        if isinstance(r, dict) and str(r.get("content") or "").strip()
+    ]
+
+
+def _parse_stance(parsed: dict[str, Any]) -> tuple[str, bool]:
+    """Read the three-way classification out of a model response.
+
+    Returns ``(stance, inferred)``. ``inferred`` is True whenever the stance was
+    reconstructed rather than stated, so a defaulted classification is never
+    mistaken for a reasoned one.
+
+    Two deliberate refusals:
+
+      * An unrecognised stance string does **not** fall back to CORRECT. A
+        garbled response must not certify evidence.
+      * Nothing here can produce INCORRECT by default. INCORRECT causes the
+        evidence to be thrown away, so it is reachable only when the model
+        actually says so.
+    """
+    raw = parsed.get("stance")
+    if isinstance(raw, str):
+        candidate = raw.strip().lower()
+        if candidate in STANCES and candidate != STANCE_UNKNOWN:
+            return candidate, False
+        if candidate:
+            # Said something, but not one of ours. Treat as unclassified rather
+            # than guessing which of three branches was meant.
+            logger.warning("sufficiency_stance_unrecognized value=%s", candidate[:40])
+            return STANCE_AMBIGUOUS, True
+
+    # Legacy shape: older prompts and older cached responses return a bool.
+    if "sufficient" in parsed:
+        legacy = STANCE_CORRECT if bool(parsed.get("sufficient")) else STANCE_AMBIGUOUS
+        return legacy, True
+
+    return STANCE_AMBIGUOUS, True
+
+
 def _evidence_digest(rows: list[dict[str, Any]], limit: int = 8) -> str:
     lines: list[str] = []
     for index, row in enumerate(rows[:limit], start=1):
@@ -310,9 +424,10 @@ async def assess_evidence_sufficiency(
             assessor=ASSESSOR_SKIPPED_CASUAL,
             reason="conversational turn — sufficiency loop does not engage",
             confidence=None,
+            stance=STANCE_CORRECT,
         )
 
-    substantive = [r for r in rows if str(r.get("content") or "").strip()]
+    substantive = substantive_rows(rows)
     if len(substantive) < max(1, bar.min_sources):
         return SufficiencyVerdict(
             sufficient=False,
@@ -324,6 +439,10 @@ async def assess_evidence_sufficiency(
             ),
             gaps=["insufficient_source_count"],
             confidence=None,
+            # INCORRECT rather than AMBIGUOUS: there is nothing here worth
+            # carrying forward, so discarding is a no-op and escalation is the
+            # only useful move.
+            stance=STANCE_INCORRECT,
         )
 
     # Only one structural veto: a regulatory answer with nothing attributable
@@ -347,6 +466,10 @@ async def assess_evidence_sufficiency(
             ),
             gaps=["no_citable_source"],
             confidence=None,
+            # AMBIGUOUS, not INCORRECT. These excerpts may address the question
+            # perfectly well and merely lack attribution; throwing them away
+            # would destroy usable evidence over a metadata gap.
+            stance=STANCE_AMBIGUOUS,
         )
 
     freshness_missing = bar.require_freshness_signal and not _has_freshness_signal(
@@ -380,12 +503,25 @@ async def assess_evidence_sufficiency(
         + f"\nRetrieved evidence:\n{digest or '(none)'}\n\n"
         "Judge three things: (1) does the evidence directly address what was asked, "
         "or only the general topic; (2) is it current enough for the question; "
-        "(3) is the source authority adequate for this standard.\n"
-        'Return JSON only: {"sufficient": bool, "reason": str, '
-        '"gaps": [str], "confidence": number between 0 and 1}. '
+        "(3) is the source authority adequate for this standard.\n\n"
+        "Then classify the evidence as exactly one of:\n"
+        '  "correct"   - it directly supports an answer to THIS question. Also list '
+        "the numbered excerpts that actually carry the answer, so the rest can be "
+        "dropped from the prompt.\n"
+        '  "incorrect" - it is about the wrong subject, or answers a different '
+        "question. Say this when keeping the evidence would be worse than having "
+        "none, because it will be discarded entirely.\n"
+        '  "ambiguous" - it is genuinely related and partially useful, but not '
+        "enough on its own to answer dependably.\n\n"
+        'Return JSON only: {"stance": "correct"|"incorrect"|"ambiguous", '
+        '"keep": [int], "reason": str, "gaps": [str], '
+        '"confidence": number between 0 and 1}. '
+        '"keep" is the 1-based numbers of the load-bearing excerpts (only meaningful '
+        'for "correct"; omit or leave empty otherwise). '
         "gaps names what is missing, e.g. does_not_address_question, stale_evidence, "
         "weak_authority, partial_coverage. Be strict: topic-adjacent evidence that "
-        "does not contain the answer is NOT sufficient."
+        'does not contain the answer is NOT "correct". Reserve "incorrect" for '
+        "evidence that is genuinely off-target, not merely incomplete."
     )
 
     try:
@@ -409,7 +545,20 @@ async def assess_evidence_sufficiency(
         confidence = None
         if isinstance(raw_conf, (int, float)):
             confidence = max(0.0, min(1.0, float(raw_conf)))
-        sufficient = bool(parsed.get("sufficient", True))
+
+        stance, stance_inferred = _parse_stance(parsed)
+        sufficient = stance == STANCE_CORRECT
+        # 1-based in the prompt because the digest is numbered [1], [2], ...;
+        # stored 0-based so callers can index rows directly.
+        keep_indices: list[int] = []
+        if stance == STANCE_CORRECT:
+            for raw in parsed.get("keep") or []:
+                try:
+                    idx = int(raw) - 1
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= idx < len(substantive) and idx not in keep_indices:
+                    keep_indices.append(idx)
         gaps = [str(g) for g in (parsed.get("gaps") or []) if g]
         # Keep the undated-evidence fact visible in the shortfall record when the
         # assessor concluded the evidence falls short, so the reported reason
@@ -423,6 +572,9 @@ async def assess_evidence_sufficiency(
             reason=str(parsed.get("reason") or "").strip() or "model returned no reason",
             gaps=gaps,
             confidence=confidence,
+            stance=stance,
+            keep_indices=keep_indices,
+            stance_inferred=stance_inferred,
         )
     except Exception as exc:  # noqa: BLE001
         # An assessor failure means sufficiency is UNKNOWN, which is not the same
@@ -446,4 +598,5 @@ async def assess_evidence_sufficiency(
             reason=f"sufficiency assessor unavailable: {str(exc)[:160]}",
             gaps=["assessor_unavailable"],
             confidence=None,
+            stance=STANCE_UNKNOWN,
         )
