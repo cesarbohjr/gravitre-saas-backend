@@ -10,7 +10,15 @@ from typing import Any, Callable
 from supabase import Client
 
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
+from app.rag.contextual_enrichment import (
+    build_chunk_context,
+    enrichment_enabled,
+    text_for_embedding,
+)
 from app.rag.embedding import _estimate_tokens, get_embedding, record_embedding_cost
+
+logger = get_logger(__name__)
 
 # Size limits
 MAX_TEXT_BYTES = 2 * 1024 * 1024  # 2 MiB
@@ -433,20 +441,49 @@ def replace_chunks_and_embeddings(
     chunks: list[str],
     environment_name: str = "default",
     heartbeat_cb: Callable[[], None] | None = None,
+    title: str = "",
+    synopsis: str = "",
 ) -> int:
-    """Replace chunks for a document and insert embeddings. Returns chunk_count."""
+    """Replace chunks for a document and insert embeddings. Returns chunk_count.
+
+    When contextual enrichment is on, each chunk is embedded together with a
+    short generated context that situates it in its document, and that context is
+    persisted alongside the chunk. `content` is never modified: it stays the only
+    text ever displayed or cited, so a generated synopsis can never be shown to a
+    user as something their document said.
+
+    `synopsis` is produced by one async model call per document and passed in,
+    because this function is synchronous and called from a synchronous worker.
+    An empty synopsis is not a failure -- the deterministic part of the context
+    (title, position, neighbouring passages) is the majority of the benefit and
+    still applies.
+    """
     if not settings.openai_api_key:
         raise ValueError("OPENAI_API_KEY required for embeddings")
+
+    enrich = enrichment_enabled(settings)
+    contexts: list[str] = []
+    if enrich:
+        contexts = [
+            build_chunk_context(
+                chunk_index=i, chunks=chunks, title=title, synopsis=synopsis
+            )
+            for i in range(len(chunks))
+        ]
+
     rows = []
     for i, content in enumerate(chunks):
-        rows.append({
+        row = {
             "org_id": org_id,
             "document_id": document_id,
             "source_id": source_id,
             "content": content,
             "chunk_index": i,
             "environment": environment_name,
-        })
+        }
+        if enrich:
+            row["context_prefix"] = contexts[i]
+        rows.append(row)
     if not rows:
         return 0
     r = client.table("rag_chunks").insert(rows).execute()
@@ -455,10 +492,17 @@ def replace_chunks_and_embeddings(
     chunk_ids = [c["id"] for c in r.data]
     if heartbeat_cb:
         heartbeat_cb()
+    embedded_texts: list[str] = []
     for idx, (chunk_id, content) in enumerate(zip(chunk_ids, chunks)):
+        embed_text = (
+            text_for_embedding(content=content, context=contexts[idx])
+            if enrich
+            else content
+        )
+        embedded_texts.append(embed_text)
         # org_id intentionally not passed here: cost is recorded once per document
         # below (aggregate) to avoid one model_calls insert per chunk.
-        embedding = get_embedding(content, settings)
+        embedding = get_embedding(embed_text, settings)
         client.table("rag_embeddings").insert({
             "chunk_id": chunk_id,
             "org_id": org_id,
@@ -468,8 +512,18 @@ def replace_chunks_and_embeddings(
         }).execute()
         if heartbeat_cb and idx > 0 and (idx % 10 == 0):
             heartbeat_cb()
+    if enrich:
+        logger.info(
+            "rag_ingest_enriched document_id=%s chunks=%s synopsis=%s",
+            document_id,
+            len(chunks),
+            "yes" if synopsis else "deterministic_only",
+        )
     # Aggregate embedding cost for the whole document in a single ai-spend row.
-    total_tokens = sum(_estimate_tokens(c) for c in chunks)
+    # Counted over what was actually SENT: enrichment adds tokens, and billing a
+    # customer for the bare chunk while embedding the enriched one would
+    # under-report real spend.
+    total_tokens = sum(_estimate_tokens(c) for c in embedded_texts)
     record_embedding_cost(settings, org_id, "openai", settings.embedding_model, total_tokens)
     return len(chunks)
 

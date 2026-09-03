@@ -1,6 +1,7 @@
 """Phase 6: background ingestion worker (poll/claim loop)."""
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
@@ -10,6 +11,7 @@ from supabase import Client, create_client
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.rag.contextual_enrichment import build_document_synopsis, enrichment_enabled
 from app.rag.ingest import (
     activate_document,
     chunk_document_text,
@@ -112,6 +114,23 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             is_active=False,
             environment_name=environment,
         )
+        # One model call per document, not per chunk. Run with asyncio.run
+        # because this worker is synchronous end to end and owns no event loop;
+        # the synopsis helper returns "" rather than raising when the model is
+        # unavailable, so enrichment degrades to its deterministic part instead
+        # of failing an ingest.
+        synopsis = ""
+        if enrichment_enabled(settings):
+            synopsis, _state = asyncio.run(
+                build_document_synopsis(
+                    text=text or "\n\n".join(chunks or []),
+                    title=title or "",
+                    settings=settings,
+                    org_id=org_id,
+                )
+            )
+            _heartbeat_job(client, job_id, worker_id)
+
         chunk_count = replace_chunks_and_embeddings(
             client,
             settings,
@@ -121,6 +140,8 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             chunks=chunks,
             environment_name=environment,
             heartbeat_cb=lambda: _heartbeat_job(client, job_id, worker_id),
+            title=title or "",
+            synopsis=synopsis,
         )
         _heartbeat_job(client, job_id, worker_id)
         if external_id:

@@ -1,0 +1,13 @@
+{
+  "ceiling": 500,
+  "total_chunks": 1,
+  "orgs_with_any_chunks": 1,
+  "largest_org_corpus": 1,
+  "orgs_over_ceiling": 0,
+  "scopes_over_ceiling": {},
+  "distribution": {
+    "00000000-0000-0000-0000-000000000001": 1
+  },
+  "total_documents": 1,
+  "active_documents": 1
+}

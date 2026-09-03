@@ -51,7 +51,10 @@ async def test_query_pipeline(service: RAGService):
     ]
     with patch("app.services.rag_service.embed_with_failover", return_value=([0.1] * 1536, "openai")):
         with patch("app.services.rag_service.search_chunks", return_value=semantic_rows):
-            with patch("app.services.rag_service.fetch_bm25_corpus", return_value=bm25_rows):
+            with patch(
+                "app.services.rag_service.fetch_bm25_corpus",
+                return_value=(bm25_rows, "fts_filtered"),
+            ):
                 with patch("app.services.rag_service.bm25_rank_rows", return_value=bm25_rows):
                     with patch(
                         "app.services.rag_service.rerank_rows",

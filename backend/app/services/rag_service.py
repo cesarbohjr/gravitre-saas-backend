@@ -22,6 +22,7 @@ from app.rag.hybrid_rerank import (
 )
 from app.ml.learning_to_rank import get_weight_for_org
 from app.ml.source_reliability import apply_reliability_adjustment, fetch_source_reliability_scores
+from app.rag.contextual_enrichment import build_document_synopsis
 from app.rag.retrieval import fetch_bm25_corpus, search_chunks
 from app.services.model_router import TaskType, get_model_router
 from app.services.rag_outcome_tracking import record_retrieval_outcomes
@@ -77,6 +78,14 @@ class RAGService:
             environment_name=document.environment,
         )
         chunks = chunk_document_text(document.content, settings=self.settings)
+        # Already inside an event loop here, so this is a plain await; the
+        # synchronous worker path uses asyncio.run for the same call.
+        synopsis, _state = await build_document_synopsis(
+            text=document.content,
+            title=document.title or "",
+            settings=self.settings,
+            org_id=org_id,
+        )
         replace_chunks_and_embeddings(
             client=client,
             settings=self.settings,
@@ -85,6 +94,8 @@ class RAGService:
             document_id=str(doc["id"]),
             chunks=chunks,
             environment_name=document.environment,
+            title=document.title or "",
+            synopsis=synopsis,
         )
         return [Chunk(id=f"{doc['id']}:{i}", content=value, score=1.0, source=document.title) for i, value in enumerate(chunks)]
 
@@ -197,9 +208,14 @@ class RAGService:
         )
         semantic_rows = [normalize_chunk_row(row) for row in semantic_rows]
 
-        bm25_corpus = fetch_bm25_corpus(
+        bm25_corpus, keyword_reach = fetch_bm25_corpus(
             self.settings,
             org_id,
+            # Previously omitted, which is the whole defect: the corpus fetch was
+            # query-blind, so BM25 ranked an arbitrary slice bounded only by row
+            # order. With the terms passed through, Postgres selects candidates
+            # on the keyword index and the corpus-size ceiling disappears.
+            query_text=query,
             environment_name=environment,
             source_id=(filters or {}).get("source_id"),
             document_id=(filters or {}).get("document_id"),
@@ -270,6 +286,12 @@ class RAGService:
             "top_k": top_k,
             "semantic_candidates": len(semantic_rows),
             "keyword_candidates": len(keyword_rows),
+            # How much of the corpus the keyword arm actually got to rank.
+            # `keyword_candidates` alone cannot tell "ranked the whole scope"
+            # from "ranked an arbitrary 500-row sample of it", and those are
+            # different enough that reporting them identically is the mistake
+            # this field exists to stop.
+            "keyword_reach": keyword_reach,
             "reranked": len(reranked),
             "embedding_method": embedding_method,
             "hybrid_candidate_k": candidate_k,

@@ -1,0 +1,81 @@
+{
+  "part_b_keyword_reach": {
+    "status": "MEASURED (deterministic, no model)",
+    "corpus_chunks": 2000,
+    "cap": 500,
+    "matching_chunk_index": 1500,
+    "before": {
+      "fetched": 500,
+      "reach": "truncated",
+      "gold_reachable": false
+    },
+    "after": {
+      "fetched": 1,
+      "reach": "fts_filtered",
+      "gold_reachable": true
+    },
+    "note": "BEFORE is the old behaviour reproduced by withholding the query, which is what the previous signature forced -- it had no query parameter. The matching chunk sits beyond the cap, so no amount of BM25 tuning could retrieve it: the row never left Postgres.",
+    "reachability": "Not a live defect today. orgrag-keyword-reach.json: 1 chunk platform-wide, 0 scopes over the 500 cap. This is a latent trap that fires silently on the first real corpus."
+  },
+  "part_a_contextual_enrichment": {
+    "status": "MEASURED (synthetic corpus, real embeddings)",
+    "corpus_chunks": 16,
+    "queries": 8,
+    "recall_at_1": {
+      "bare": 3,
+      "enriched": 6
+    },
+    "recall_at_3": {
+      "bare": 8,
+      "enriched": 8
+    },
+    "mrr": {
+      "bare": 0.6875,
+      "enriched": 0.875
+    },
+    "top1_failure_reduction_pct": 60.0,
+    "per_query": [
+      {
+        "query": "How much did ACME Corp's revenue change in Q2 2026?",
+        "rank_bare": 2,
+        "rank_enriched": 1
+      },
+      {
+        "query": "What happened to Northwind Ltd's revenue in FY2025?",
+        "rank_bare": 2,
+        "rank_enriched": 1
+      },
+      {
+        "query": "What was ACME Corp's headcount in Q2 2026?",
+        "rank_bare": 2,
+        "rank_enriched": 1
+      },
+      {
+        "query": "What was Northwind Ltd's gross margin in FY2025?",
+        "rank_bare": 2,
+        "rank_enriched": 1
+      },
+      {
+        "query": "When must an Ontario health information custodian notify a breach?",
+        "rank_bare": 2,
+        "rank_enriched": 2
+      },
+      {
+        "query": "What is the threshold for notifying the California Attorney General?",
+        "rank_bare": 1,
+        "rank_enriched": 1
+      },
+      {
+        "query": "How long must Ontario notification decisions be retained?",
+        "rank_bare": 1,
+        "rank_enriched": 2
+      },
+      {
+        "query": "When is substitute notice allowed in California?",
+        "rank_bare": 1,
+        "rank_enriched": 1
+      }
+    ],
+    "caveat": "Synthetic corpus. The embeddings, ranking and numbers are real; the documents are invented, because the production corpus is one chunk. Not evidence about real customer retrieval quality."
+  }
+}

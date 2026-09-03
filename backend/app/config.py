@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     # Hybrid RAG (STA-150): vector+BM25 candidates, cross-encoder rerank.
     rag_hybrid_candidate_k: int = 20
     rag_rerank_score_threshold: float = 0.3
+    # Contextual chunk enrichment: situate each chunk before embedding it, so a
+    # passage stays findable after chunking strips its referents. Costs one model
+    # call per document at ingest. Default off: it changes what gets embedded, so
+    # turning it on means existing chunks are enriched and new ones are not until
+    # a reindex, and that mixed state should be entered deliberately.
+    rag_contextual_enrichment_enabled: bool = False
     rag_cross_encoder_enabled: bool = True
     rag_disable_cross_encoder: bool = False
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
