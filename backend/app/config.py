@@ -137,6 +137,30 @@ class Settings(BaseSettings):
             "EVIDENCE_CONTRADICTION_CHECK_ENABLED", "evidence_contradiction_check_enabled"
         ),
     )
+    # Shared cross-source ranking. Shadow computes diagnostics while preserving
+    # the legacy prompt; active switches unified-turn prompt assembly to the
+    # ranked, deduplicated, token-budgeted output.
+    cross_source_context_engine_shadow_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CROSS_SOURCE_CONTEXT_ENGINE_SHADOW_ENABLED",
+            "cross_source_context_engine_shadow_enabled",
+        ),
+    )
+    cross_source_context_engine_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "CROSS_SOURCE_CONTEXT_ENGINE_ENABLED",
+            "cross_source_context_engine_enabled",
+        ),
+    )
+    cross_source_context_token_budget: int = Field(
+        default=12_000,
+        validation_alias=AliasChoices(
+            "CROSS_SOURCE_CONTEXT_TOKEN_BUDGET",
+            "cross_source_context_token_budget",
+        ),
+    )
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,

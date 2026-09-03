@@ -173,6 +173,85 @@ def test_fts_failure_is_logged_with_the_cause_in_the_message():
         assert len(node.args) > 1, f"{first.value} logs no cause at all"
 
 
+class TestHybridFusion:
+    """The keyword arm running is not the same as the keyword arm counting.
+
+    Fixing the three call defects made `fts=ok` while `retrieve_fts_matches`
+    stayed 0 end-to-end: keyword hits entered the pool and were then thrown away
+    by a dedup that kept whichever copy scored higher. Vector cosines sit well
+    above the flat 0.55 a keyword hit carries, so agreement between the two arms
+    -- the entire point of hybrid retrieval -- was discarded on every chunk.
+    """
+
+    @staticmethod
+    def _fts(cid: str) -> dict:
+        return {"id": cid, "match": "fts", "semantic_score": 0.55, "content": cid}
+
+    @staticmethod
+    def _vec(cid: str, score: float) -> dict:
+        return {"id": cid, "match": "vector", "semantic_score": score, "content": cid}
+
+    def test_co_matched_chunk_outranks_an_equal_vector_only_chunk(self):
+        """The regression that mattered: agreement used to be worth nothing."""
+        from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
+
+        fused = {
+            r["id"]: r
+            for r in fuse_hybrid_candidates(
+                [self._vec("both", 0.80), self._fts("both"), self._vec("solo", 0.80)]
+            )
+        }
+        assert fused["both"]["semantic_score"] > fused["solo"]["semantic_score"]
+        assert fused["both"]["match"] == "hybrid"
+        assert fused["solo"]["match"] == "vector"
+
+    def test_vector_only_scores_are_untouched(self):
+        """Conservative by design: only co-matched chunks may move."""
+        from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
+
+        [row] = fuse_hybrid_candidates([self._vec("a", 0.83)])
+        assert row["semantic_score"] == pytest.approx(0.83)
+
+    def test_keyword_only_chunk_survives_as_recall(self):
+        """A chunk the vector arm missed entirely must still reach the pool."""
+        from app.knowledge_fabric.retrieval import FTS_ONLY_SCORE, fuse_hybrid_candidates
+
+        [row] = fuse_hybrid_candidates([self._fts("kw")])
+        assert row["semantic_score"] == pytest.approx(FTS_ONLY_SCORE)
+        assert row["match"] == "fts"
+
+    def test_matched_by_records_both_arms(self):
+        from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
+
+        [row] = fuse_hybrid_candidates([self._vec("x", 0.6), self._fts("x")])
+        assert row["matched_by"] == ["fts", "vector"]
+
+    def test_fused_score_is_capped_at_one(self):
+        from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
+
+        [row] = fuse_hybrid_candidates([self._vec("x", 0.99), self._fts("x")])
+        assert row["semantic_score"] <= 1.0
+
+    def test_fusion_is_not_rrf_because_the_keyword_arm_is_unranked(self):
+        """Guard against a future 'upgrade' to RRF over an arbitrary row order.
+
+        postgrest cannot order by ts_rank, so keyword rows arrive unordered.
+        RRF over that order would manufacture a precision signal that does not
+        exist. Reordering the keyword rows must therefore change nothing.
+        """
+        from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
+
+        forward = fuse_hybrid_candidates(
+            [self._fts("a"), self._fts("b"), self._fts("c"), self._vec("a", 0.7)]
+        )
+        reverse = fuse_hybrid_candidates(
+            [self._fts("c"), self._fts("b"), self._fts("a"), self._vec("a", 0.7)]
+        )
+        assert {r["id"]: r["semantic_score"] for r in forward} == {
+            r["id"]: r["semantic_score"] for r in reverse
+        }
+
+
 def test_retrieval_health_is_reported_on_every_return_path():
     """A caller must never have to infer whether hybrid search actually ran."""
     tree = ast.parse(SOURCE)

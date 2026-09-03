@@ -407,6 +407,41 @@ async def test_iteration_is_hard_bounded_and_the_shortfall_is_stated(
 
 
 @pytest.mark.asyncio
+async def test_active_ranking_runs_after_all_rounds_and_preserves_warning(
+    monkeypatch: pytest.MonkeyPatch, stub_sources: dict[str, list[str]]
+) -> None:
+    import app.services.evidence_sufficiency_service as suff
+
+    monkeypatch.setattr(suff, "assess_evidence_sufficiency", _always(False))
+    block, meta = await ctx_mod.build_unified_turn_knowledge_context(
+        org_id="org-1",
+        query="What are the statutory breach notification deadlines in Ontario?",
+        client=object(),
+        settings=_settings(
+            cross_source_context_engine_shadow_enabled=True,
+            cross_source_context_engine_enabled=True,
+            cross_source_context_token_budget=2000,
+        ),
+        classification={"department": "legal", "intent": "knowledge_lookup"},
+        knowledge_assignments=[
+            {"source_type": "knowledge_pack", "source_id": "pack.legal", "enabled": True}
+        ],
+    )
+
+    ranking = meta["contextRanking"]
+    assert ranking["mode"] == "active"
+    assert ranking["candidateCount"] == 4
+    assert ranking["selectedCount"] == 4
+    assert ranking["selectedByKind"] == {
+        "knowledge_fabric": 1,
+        "rag": 1,
+        "internet": 1,
+        "graph": 1,
+    }
+    assert "EVIDENCE SUFFICIENCY WARNING" in block
+
+
+@pytest.mark.asyncio
 async def test_the_cap_binds_even_when_more_sources_remain_untried(
     monkeypatch: pytest.MonkeyPatch, stub_sources: dict[str, list[str]]
 ) -> None:

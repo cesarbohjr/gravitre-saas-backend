@@ -7,11 +7,16 @@
       "retrieve_health": {
         "fts": "ok",
         "vector": "ok",
+        "co_matched": 8,
+        "fts_only": 0,
         "hybrid": true,
         "degraded": false
       },
       "retrieve_results": 8,
-      "retrieve_fts_matches": 0
+      "final_touched_by_fts": 8,
+      "final_co_matched": 8,
+      "final_fts_only": 0,
+      "health_agrees_with_provenance": true
     },
     {
       "query": "data retention requirements",
@@ -20,11 +25,16 @@
       "retrieve_health": {
         "fts": "ok",
         "vector": "ok",
+        "co_matched": 8,
+        "fts_only": 0,
         "hybrid": true,
         "degraded": false
       },
       "retrieve_results": 8,
-      "retrieve_fts_matches": 0
+      "final_touched_by_fts": 8,
+      "final_co_matched": 8,
+      "final_fts_only": 0,
+      "health_agrees_with_provenance": true
     },
     {
       "query": "employee privacy obligations",
@@ -33,11 +43,16 @@
       "retrieve_health": {
         "fts": "ok",
         "vector": "ok",
+        "co_matched": 7,
+        "fts_only": 1,
         "hybrid": true,
         "degraded": false
       },
       "retrieve_results": 8,
-      "retrieve_fts_matches": 0
+      "final_touched_by_fts": 8,
+      "final_co_matched": 7,
+      "final_fts_only": 1,
+      "health_agrees_with_provenance": true
     }
   ]
 }

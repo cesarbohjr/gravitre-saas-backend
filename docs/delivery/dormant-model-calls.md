@@ -1837,6 +1837,53 @@ the bug that actually shipped is the failure mode this program keeps rediscoveri
 distinct states (`ok` / `not_run` / `failed:<Type>` / `no_terms`), plus a stated
 `degraded` boolean, so vector-only retrieval can never again present as hybrid.
 
+#### The fourth layer: running is not counting
+
+Fixing layers 1-3 produced `fts=ok` while the keyword arm still reached **zero**
+final results. Keyword hits entered the candidate pool and were then discarded by
+a dedup that kept whichever copy of a chunk scored higher. Keyword hits carry a
+flat `0.55`; vector cosines for relevant chunks sit well above it. So on every
+chunk the two arms *agreed* on — the single highest-precision signal hybrid
+retrieval produces — the keyword contribution was thrown away by construction.
+
+Fusion now treats the arms as what they are. Deliberately **not** Reciprocal Rank
+Fusion: postgrest cannot order by `ts_rank`, so keyword rows arrive in arbitrary
+order, and RRF over an arbitrary order would manufacture a precision signal that
+does not exist. The keyword arm contributes **recall** (as a set) and **agreement**
+(as a co-match bonus); a test pins this by asserting that reordering the keyword
+rows changes nothing. A real `ts_rank` RPC alongside `match_knowledge_chunks` is
+recorded as open work rather than silently assumed.
+
+Vector-only and keyword-only chunks keep exactly the scores they had, so ranking
+cannot regress; only co-matched chunks move, and only upward.
+
+Measured live on the real corpus, after the fix (probe-derived, 3 queries):
+
+| Query | `co_matched` | final results touched by keyword arm | keyword-only in final |
+|---|---|---|---|
+| statutory breach notification deadlines (Ontario) | 8 | 8 / 8 | 0 |
+| data retention requirements | 8 | 8 / 8 | 0 |
+| employee privacy obligations | 7 | 8 / 8 | **1** |
+
+The third query is the recall case: a chunk the vector arm missed entirely reached
+the final answer set because the keyword arm found it. Mutations 10/10.
+
+#### A Class B instance found inside this very fix
+
+The first end-to-end measurement reported `final_touched_by_fts: 0` on all three
+queries **after** fusion shipped — a confident zero that would have justified
+reverting a working change. The probe read `provenance[i]["extra"]["match"]`, but
+`build_provenance_envelope` does `envelope.update(extra)`, flattening those keys
+into the envelope. `p["extra"]` was `{}` on every row.
+
+It was caught only because the probe also printed `retrieval_health.co_matched`,
+computed by different code from the same data, and the two disagreed. Neither
+number was independently credible; the *disagreement* was the evidence.
+
+> **A metric with no second opinion is a rumour.** This is the fourth time in
+> this program a clean-looking zero came from the measurement rather than the
+> system. Cross-check or do not report.
+
 ### Interaction with Class A
 
 Instances 1 and 2 also sharpen "one layer too low": `65161f90` was a correct fix
@@ -1863,7 +1910,8 @@ fired 109 times could be reintroduced with the entire suite green.
 | `unnarrowed_tool_attach_blocked` | **CLOSED 2026-09-02.** Four instances of one mistake, not one defect. Instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 **LIVE PASS** - `BUG_REPRODUCED` pre-fix / `CLEAN` post-fix on a real `claude-sonnet-4-6` tool-carrying turn, guard at `provider_tool_router.complete_with_tools`, model chose `apollo_lists_list` post-fix; instances 3-4 fixed, no prod events. Mutations 6/6 + standing CI scan. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
 | Knowledge Fabric keyword (FTS) arm dormant since written | **FIXED 2026-09-03.** Three stacked defects; hybrid search was vector-only for the lifetime of the feature. `retrieval_health` added, mutations 6/6. Sixth Class C instance | Cesar |
-| Keyword hits do not survive reranking into final results | **OPEN, stated not silent.** FTS candidates now enter the pool but carry a flat `semantic_score=0.55`, so they lose dedup to any vector hit above 0.55. End-to-end `retrieve_fts_matches=0` on all three probe queries even with `fts=ok`. The arm is live but not yet influential; needs real hybrid fusion (RRF or score normalisation), not a constant | unassigned |
+| Keyword hits do not survive reranking into final results | **CLOSED 2026-09-03.** Was real: `fts=ok` with 0 keyword-touched final results, because dedup kept the larger score and discarded every co-match. Set-based fusion + co-match bonus; live 8/8 final results keyword-touched on all 3 probe queries, plus 1 keyword-only chunk the vector arm missed. Mutations 10/10 | Cesar |
+| Keyword arm has no `ts_rank` relevance ordering | **OPEN, stated not silent.** postgrest cannot order by `ts_rank`, so keyword rows arrive unordered and are fused as a set, not a ranking. Correct given the constraint, but it forecloses true BM25-style ranking. Needs a Postgres RPC alongside `match_knowledge_chunks`. A test pins the current design so nobody "upgrades" it to RRF over an arbitrary order | unassigned |
 | Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRED 2026-09-03 by decision, not an open gap.** Audited and deliberately not built: 36 real turns / 30d, 0 research-shaped, 1 `rag_chunk` across 229 orgs, 0 of 256 sufficiency-loop runs on real traffic. Named re-open triggers in `crag-phase0-reachability.md` | Cesar |
 | Retrieval Layer 1 (contextual chunk enrichment) ABSENT | OPEN, recorded, unfixed. Highest-value retrieval gap; unmeasurable at one chunk. Do this **before** either deferred programme | unassigned |
 | Org RAG has no persisted keyword index | OPEN, accepted asymmetry - BM25 in-memory over a 500-row fetch; Knowledge Fabric has `tsvector`+GIN | unassigned |

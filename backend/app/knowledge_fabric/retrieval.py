@@ -115,6 +115,76 @@ def jurisdiction_allowed(chunk_jurisdiction: str | None, route_jurisdictions: li
     return False
 
 
+# Score given to a chunk the keyword arm found and the vector arm did not. Kept
+# at the historical constant deliberately: a lexical match with no semantic
+# support is weak evidence, and raising it would change ranking for reasons this
+# change has no measurement to justify.
+FTS_ONLY_SCORE = 0.55
+
+# Added when both arms independently surfaced the same chunk. Agreement between a
+# lexical and a semantic retriever is the highest-precision signal hybrid search
+# produces, and the previous dedup discarded it entirely by keeping whichever
+# score happened to be larger.
+CO_MATCH_BONUS = 0.15
+
+MATCH_FTS = "fts"
+MATCH_HYBRID = "hybrid"
+
+
+def fuse_hybrid_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Combine the keyword and vector arms into one candidate set.
+
+    Deliberately NOT Reciprocal Rank Fusion. RRF combines two *ranked* lists, and
+    the keyword arm here is not ranked: postgrest cannot order by `ts_rank`, so
+    the rows come back in arbitrary order. Applying RRF to an arbitrary order
+    would invent a precision signal that does not exist -- a broken instrument by
+    construction. The keyword arm is therefore treated as a *set*: it contributes
+    recall, and agreement with the vector arm contributes precision.
+
+    True `ts_rank` ordering needs a Postgres RPC alongside `match_knowledge_chunks`
+    and is recorded as open work, not silently assumed.
+
+    Vector-only and keyword-only chunks keep exactly the scores they have today,
+    so this cannot regress existing ranking; only co-matched chunks move, and
+    they move up.
+    """
+    fused: dict[str, dict[str, Any]] = {}
+    arms_by_id: dict[str, set[str]] = {}
+
+    for row in candidates:
+        cid = str(row.get("id") or "")
+        if not cid:
+            continue
+        arm = MATCH_FTS if row.get("match") == MATCH_FTS else "vector"
+        arms_by_id.setdefault(cid, set()).add(arm)
+        prev = fused.get(cid)
+        if prev is None:
+            fused[cid] = dict(row)
+            continue
+        # Prefer the vector row as the carrier: it holds a real similarity, where
+        # the keyword row carries only the flat constant.
+        if prev.get("match") == MATCH_FTS and arm == "vector":
+            merged = dict(row)
+            fused[cid] = merged
+        elif float(row.get("semantic_score") or 0) > float(prev.get("semantic_score") or 0):
+            fused[cid] = dict(row)
+
+    for cid, row in fused.items():
+        arms = arms_by_id.get(cid, set())
+        if arms == {MATCH_FTS}:
+            row["semantic_score"] = FTS_ONLY_SCORE
+            row["match"] = MATCH_FTS
+        elif len(arms) > 1:
+            base = float(row.get("semantic_score") or 0.0)
+            row["semantic_score"] = min(1.0, max(base, FTS_ONLY_SCORE) + CO_MATCH_BONUS)
+            row["match"] = MATCH_HYBRID
+        # Recorded so a consumer can tell recall from agreement without guessing
+        # at the `match` label.
+        row["matched_by"] = sorted(arms)
+
+    return list(fused.values())
+
+
 def rerank_with_authority(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Ensure high-authority sources are not outranked by weak semantic-only hits."""
     scored: list[tuple[float, dict[str, Any]]] = []
@@ -273,19 +343,23 @@ def retrieve_knowledge_fabric(
                 str(exc)[:200],
             )
 
-    # Dedup by chunk id (jurisdiction already applied on both paths)
-    by_id: dict[str, dict[str, Any]] = {}
-    for c in candidates:
-        if not jurisdiction_allowed(c.get("jurisdiction"), route.jurisdictions):
-            continue
-        cid = str(c.get("id") or "")
-        if not cid:
-            continue
-        prev = by_id.get(cid)
-        if not prev or float(c.get("semantic_score") or 0) > float(prev.get("semantic_score") or 0):
-            by_id[cid] = c
+    # Fuse the two arms (jurisdiction already applied on both paths).
+    #
+    # The previous dedup kept whichever copy had the larger `semantic_score`.
+    # Because keyword hits carry a flat 0.55 and vector hits carry a cosine
+    # typically well above it, that rule discarded the keyword arm's contribution
+    # on every chunk the two arms agreed on -- which is precisely the signal
+    # hybrid retrieval exists to capture.
+    eligible = [
+        c
+        for c in candidates
+        if jurisdiction_allowed(c.get("jurisdiction"), route.jurisdictions) and c.get("id")
+    ]
+    fused = fuse_hybrid_candidates(eligible)
+    health["co_matched"] = sum(1 for c in fused if c.get("match") == MATCH_HYBRID)
+    health["fts_only"] = sum(1 for c in fused if c.get("match") == MATCH_FTS)
 
-    ranked = rerank_with_authority(list(by_id.values()))[:top_k]
+    ranked = rerank_with_authority(fused)[:top_k]
     source_map = {s["id"]: s for s in sources}
     # Document-level honesty + temporal fields (proposal aliases valid_from/valid_until)
     doc_meta_by_id: dict[str, dict[str, Any]] = {}
@@ -345,6 +419,9 @@ def retrieve_knowledge_fabric(
                 "license_type": src.get("license_type"),
                 "web_link": src.get("url"),
                 "match": row.get("match"),
+                # Which arms surfaced this chunk. `match` alone cannot distinguish
+                # "keyword found it too" from "keyword was the only thing that did".
+                "matched_by": row.get("matched_by"),
                 "content_mode": content_mode,
                 "fetch_status": fetch_status,
                 "valid_from": temporal.get("valid_from"),

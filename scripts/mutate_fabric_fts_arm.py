@@ -52,6 +52,30 @@ MUTATIONS: list[tuple[str, str, str]] = [
         '"retrieval_health": health,',
         "",
     ),
+    (
+        "remove the co-match bonus (agreement worth nothing again)",
+        "CO_MATCH_BONUS = 0.15",
+        "CO_MATCH_BONUS = 0.0",
+    ),
+    (
+        "revert fusion to the old keep-the-larger-score dedup",
+        "row[\"semantic_score\"] = min(1.0, max(base, FTS_ONLY_SCORE) + CO_MATCH_BONUS)",
+        "row[\"semantic_score\"] = max(base, FTS_ONLY_SCORE)",
+    ),
+    (
+        "drop keyword-only chunks instead of keeping them for recall",
+        "        if arms == {MATCH_FTS}:\n"
+        "            row[\"semantic_score\"] = FTS_ONLY_SCORE\n"
+        "            row[\"match\"] = MATCH_FTS",
+        "        if arms == {MATCH_FTS}:\n"
+        "            row[\"semantic_score\"] = 0.0\n"
+        "            row[\"match\"] = MATCH_FTS",
+    ),
+    (
+        "stop recording which arms matched",
+        'row["matched_by"] = sorted(arms)',
+        "",
+    ),
 ]
 
 

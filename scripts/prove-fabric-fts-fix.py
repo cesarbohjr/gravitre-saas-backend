@@ -100,14 +100,32 @@ def main() -> int:
                 client, q, settings=settings, top_k=8, assigned_pack_ids=["pack.legal"]
             )
             results = got.get("results") or []
+            # `build_provenance_envelope` does `envelope.update(extra)`, so the
+            # extras are FLATTENED into the envelope, not nested under "extra".
+            # Reading p["extra"] returned {} on every row and reported a confident
+            # zero -- a broken instrument, caught only because it disagreed with
+            # `retrieval_health.co_matched` computed by different code.
+            extras = list(got.get("provenance") or [])
             entry["retrieve_health"] = got.get("retrieval_health")
             entry["retrieve_results"] = len(results)
-            entry["retrieve_fts_matches"] = sum(
-                1 for p in (got.get("provenance") or [])
-                if (p.get("extra") or {}).get("match") == "fts"
+            # The number that actually matters: chunks in the FINAL top-k that the
+            # keyword arm had a hand in. `fts=ok` with this at 0 means the arm runs
+            # and does not count.
+            entry["final_touched_by_fts"] = sum(
+                1 for e in extras if "fts" in (e.get("matched_by") or [])
             )
+            entry["final_co_matched"] = sum(1 for e in extras if e.get("match") == "hybrid")
+            entry["final_fts_only"] = sum(1 for e in extras if e.get("match") == "fts")
         except Exception as exc:  # noqa: BLE001
             entry["retrieve_health"] = f"{type(exc).__name__}: {str(exc)[:160]}"
+
+        # Cross-check the two independently-computed records against each other.
+        health = entry.get("retrieve_health")
+        if isinstance(health, dict):
+            entry["health_agrees_with_provenance"] = (
+                entry["final_co_matched"] <= health.get("co_matched", 0)
+                and entry["final_fts_only"] <= health.get("fts_only", 0)
+            )
 
         report["queries"].append(entry)
 

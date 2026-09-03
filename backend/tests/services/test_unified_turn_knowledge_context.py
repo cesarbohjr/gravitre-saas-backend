@@ -1,6 +1,7 @@
 """Tests for unified-turn knowledge prefetch."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -95,3 +96,118 @@ async def test_auto_internet_when_internal_thin():
     mock_internet.assert_awaited_once()
     assert meta["internal_thin"] is True
     assert "INTERNET RESEARCH" in block
+
+
+@pytest.mark.asyncio
+async def test_active_context_ranking_deduplicates_and_includes_connected_tool_packs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services import adaptive_research_cascade as cascade
+    from app.services import unified_turn_knowledge_context as context_module
+    import app.knowledge_fabric.tool_knowledge as tool_knowledge
+
+    observed: dict[str, list[str]] = {}
+
+    async def packs(**kwargs):
+        observed["pack_ids"] = list(kwargs["pack_ids"])
+        return (
+            "PACK LEGACY",
+            {"fabric_hit_count": 1},
+            [
+                {
+                    "kind": "knowledge_pack",
+                    "content": "shared evidence",
+                    "source": "same-source",
+                    "authority_score": 0.9,
+                }
+            ],
+        )
+
+    async def rag(**kwargs):
+        return (
+            "RAG LEGACY",
+            {"org_rag_chunk_count": 1},
+            [
+                {
+                    "kind": "knowledge",
+                    "content": "shared evidence",
+                    "source": "same-source",
+                    "score": 0.7,
+                }
+            ],
+        )
+
+    monkeypatch.setattr(context_module, "_retrieve_knowledge_packs", packs)
+    monkeypatch.setattr(context_module, "_retrieve_org_rag", rag)
+    monkeypatch.setattr(cascade, "assess_internal_retrieval_thinness", lambda **_: False)
+    monkeypatch.setattr(cascade, "should_run_internet_research", lambda *a, **k: False)
+    monkeypatch.setattr(
+        tool_knowledge,
+        "tool_packs_for_connected_vendors",
+        lambda connected: ["pack.tool.hubspot"] if "hubspot" in connected else [],
+    )
+
+    block, meta = await build_unified_turn_knowledge_context(
+        org_id="org-1",
+        query="What does our connected CRM policy require?",
+        client=object(),
+        settings=SimpleNamespace(
+            evidence_sufficiency_loop_enabled=False,
+            evidence_sufficiency_max_rounds=0,
+            evidence_contradiction_check_enabled=False,
+            cross_source_context_engine_shadow_enabled=True,
+            cross_source_context_engine_enabled=True,
+            cross_source_context_token_budget=1000,
+        ),
+        classification={"department": "legal", "intent": "knowledge_lookup"},
+        knowledge_assignments=[
+            {"source_type": "knowledge_pack", "source_id": "pack.legal", "enabled": True}
+        ],
+        connected_integrations=["hubspot"],
+    )
+
+    ranking = meta["contextRanking"]
+    assert ranking["mode"] == "active"
+    assert ranking["candidateCount"] == 2
+    assert ranking["selectedCount"] == 1
+    assert ranking["duplicateCount"] == 1
+    assert "pack.tool.hubspot" in observed["pack_ids"]
+    assert block.count("shared evidence") == 1
+    assert "PACK LEGACY" not in block
+
+
+@pytest.mark.asyncio
+async def test_shadow_context_ranking_preserves_legacy_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services import adaptive_research_cascade as cascade
+    from app.services import unified_turn_knowledge_context as context_module
+
+    async def rag(**kwargs):
+        return (
+            "RAG LEGACY",
+            {"org_rag_chunk_count": 1},
+            [{"kind": "knowledge", "content": "rank me", "source": "doc-1", "score": 0.8}],
+        )
+
+    monkeypatch.setattr(context_module, "_retrieve_org_rag", rag)
+    monkeypatch.setattr(cascade, "assess_internal_retrieval_thinness", lambda **_: False)
+    monkeypatch.setattr(cascade, "should_run_internet_research", lambda *a, **k: False)
+
+    block, meta = await build_unified_turn_knowledge_context(
+        org_id="org-1",
+        query="What does the document say?",
+        client=object(),
+        settings=SimpleNamespace(
+            evidence_sufficiency_loop_enabled=False,
+            evidence_sufficiency_max_rounds=0,
+            evidence_contradiction_check_enabled=False,
+            cross_source_context_engine_shadow_enabled=True,
+            cross_source_context_engine_enabled=False,
+            cross_source_context_token_budget=1000,
+        ),
+        classification={"department": "all", "intent": "knowledge_lookup"},
+    )
+
+    assert meta["contextRanking"]["mode"] == "shadow"
+    assert "RAG LEGACY" in block

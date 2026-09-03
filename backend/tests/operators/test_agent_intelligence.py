@@ -425,6 +425,21 @@ def test_build_system_prompt_adds_spoken_register(intelligence: AgentIntelligenc
     assert "Register 5 — SPOKEN" in prompt
 
 
+def test_build_system_prompt_prefers_ranked_context_over_unranked_rag(
+    intelligence: AgentIntelligence,
+):
+    prompt = intelligence._build_system_prompt(
+        "assistant",
+        None,
+        [{"source": "legacy", "content": "unranked evidence"}],
+        {"orgName": "Acme"},
+        ranked_context_section="ranked authoritative evidence",
+    )
+
+    assert "ranked authoritative evidence" in prompt
+    assert "unranked evidence" not in prompt
+
+
 @pytest.mark.asyncio
 async def test_streaming_emits_text_events_when_react_returns_answer_only(intelligence: AgentIntelligence):
     """ReAct may finish with answer text but no text_delta chunks; SSE contract still requires text-* events."""

@@ -426,6 +426,7 @@ async def build_unified_turn_knowledge_context(
     classification: dict[str, Any] | None = None,
     agent: dict[str, Any] | None = None,
     knowledge_assignments: list[dict[str, Any]] | None = None,
+    connected_integrations: list[str] | None = None,
     research_scope: str | None = None,
     reasoning_depth: str = "full",
     actor_id: str | None = None,
@@ -444,7 +445,8 @@ async def build_unified_turn_knowledge_context(
         meta["skipped"] = "not_informational"
         return "", meta
 
-    sections: list[str] = []
+    evidence_sections: list[str] = []
+    advisory_sections: list[str] = []
     dept = str(
         (classification or {}).get("department")
         or (agent or {}).get("department")
@@ -472,6 +474,14 @@ async def build_unified_turn_knowledge_context(
     pack_ids = [p for p in route.pack_ids if p not in _HOLD_PACKS]
     if assigned_pack_ids and not pack_ids:
         pack_ids = [p for p in assigned_pack_ids if p not in _HOLD_PACKS]
+    try:
+        from app.knowledge_fabric.tool_knowledge import tool_packs_for_connected_vendors
+
+        for pack_id in tool_packs_for_connected_vendors(list(connected_integrations or [])):
+            if pack_id not in pack_ids and pack_id not in _HOLD_PACKS:
+                pack_ids.append(pack_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("unified_turn tool_knowledge packs skipped error=%s", exc)
     meta["pack_ids"] = pack_ids
     meta["route_reason"] = route.reason
 
@@ -492,7 +502,7 @@ async def build_unified_turn_knowledge_context(
             meta.update(pack_meta)
             rag_source_rows.extend(rows)
             if section:
-                sections.append(section)
+                evidence_sections.append(section)
         except Exception as exc:  # noqa: BLE001
             meta["fabric_error"] = str(exc)[:200]
 
@@ -504,7 +514,7 @@ async def build_unified_turn_knowledge_context(
         meta.update(rag_meta)
         rag_source_rows.extend(rows)
         if section:
-            sections.append(section)
+            evidence_sections.append(section)
     except Exception as exc:  # noqa: BLE001
         meta["org_rag_error"] = str(exc)[:200]
 
@@ -538,7 +548,7 @@ async def build_unified_turn_knowledge_context(
             meta.update(internet_meta)
             rag_source_rows.extend(rows)
             if internet_section:
-                sections.append(internet_section)
+                evidence_sections.append(internet_section)
                 meta["auto_internet_when_thin"] = internal_thin
         except Exception as exc:  # noqa: BLE001
             meta["internet_error"] = str(exc)[:200]
@@ -618,7 +628,7 @@ async def build_unified_turn_knowledge_context(
                 meta.update(extra_meta)
                 rag_source_rows.extend(rows)
                 if section:
-                    sections.append(section)
+                    evidence_sections.append(section)
             except Exception as exc:  # noqa: BLE001
                 meta[f"{next_source}_error"] = str(exc)[:200]
 
@@ -647,7 +657,7 @@ async def build_unified_turn_knowledge_context(
             # all. Claiming it "does not meet the bar" would invent a finding, so
             # the model is told the check is unavailable and asked to stay within
             # what the excerpts support.
-            sections.append(
+            advisory_sections.append(
                 "EVIDENCE SUFFICIENCY UNVERIFIED — the sufficiency check could "
                 "not run for this turn, so the evidence has not been judged "
                 f"against the {bar.name} standard. Answer only what the excerpts "
@@ -659,7 +669,7 @@ async def build_unified_turn_knowledge_context(
             # evidence never reached the bar. Never present this at full
             # confidence just because the loop terminated.
             gap_text = ", ".join(verdict.gaps[:4]) or "evidence did not reach the bar"
-            sections.append(
+            advisory_sections.append(
                 "EVIDENCE SUFFICIENCY WARNING — retrieval was attempted "
                 f"{1 + loop_meta['additional_rounds_used']} time(s) across "
                 f"{len(tried)} source(s) and the evidence still does not meet the "
@@ -709,7 +719,7 @@ async def build_unified_turn_knowledge_context(
         )
         conflict_section = format_contradiction_section(conflicts)
         if conflict_section:
-            sections.append(conflict_section)
+            advisory_sections.append(conflict_section)
         meta["evidenceConflicts"] = {
             "count": len(conflicts),
             "resolved": sum(1 for c in conflicts if c.resolution.startswith("resolved")),
@@ -720,9 +730,68 @@ async def build_unified_turn_knowledge_context(
 
     meta["evidenceSufficiency"] = loop_meta
 
+    sections = evidence_sections + advisory_sections
     if not sections:
         meta["skipped"] = "no_hits"
         return "", meta
+
+    active_ranking = bool(getattr(settings, "cross_source_context_engine_enabled", False))
+    shadow_ranking = bool(
+        getattr(settings, "cross_source_context_engine_shadow_enabled", True)
+    )
+    if active_ranking or shadow_ranking:
+        from app.services.context_prioritization_engine import (
+            evidence_rows_to_context_sources,
+            get_context_prioritization_engine,
+            render_evidence_profile,
+        )
+
+        raw_budget = getattr(settings, "cross_source_context_token_budget", 12_000)
+        try:
+            token_budget = max(512, min(32_000, int(raw_budget)))
+        except (TypeError, ValueError):
+            token_budget = 12_000
+        normalized = evidence_rows_to_context_sources(rag_source_rows, query=query)
+        advisory_tokens = sum(max(1, len(section) // 4) for section in advisory_sections)
+        evidence_token_budget = max(0, token_budget - advisory_tokens)
+        profile = get_context_prioritization_engine().build_context_profile(
+            raw_sources=normalized,
+            classification=classification or {},
+            token_budget=evidence_token_budget,
+            department=dept or None,
+        )
+        explanation = profile.to_explanation_dict()
+        selected_by_kind: dict[str, int] = {}
+        tokens_by_kind: dict[str, int] = {}
+        for source in profile.ranked_sources:
+            selected_by_kind[source.source_type] = (
+                selected_by_kind.get(source.source_type, 0) + 1
+            )
+            tokens_by_kind[source.source_type] = (
+                tokens_by_kind.get(source.source_type, 0) + source.token_estimate
+            )
+        ranked_evidence = render_evidence_profile(profile)
+        ranked_sections = ([ranked_evidence] if ranked_evidence else []) + advisory_sections
+        meta["contextRanking"] = {
+            "mode": "active" if active_ranking else "shadow",
+            "candidateCount": explanation["candidateCount"],
+            "selectedCount": explanation["selectedCount"],
+            "duplicateCount": explanation["duplicateCount"],
+            "tokenBudget": token_budget,
+            "evidenceTokenBudget": evidence_token_budget,
+            "tokensUsed": explanation["tokensUsed"] + advisory_tokens,
+            "advisoryTokens": advisory_tokens,
+            "selectedByKind": selected_by_kind,
+            "tokensByKind": tokens_by_kind,
+            "excludedSources": explanation["excludedSources"][:20],
+            "selectedSourceIds": [
+                source.source_id for source in profile.ranked_sources[:20]
+            ],
+            "legacyPromptChars": len("\n\n".join(sections)),
+            "rankedPromptChars": len("\n\n".join(ranked_sections)),
+        }
+        if active_ranking:
+            sections = ranked_sections
 
     block = (
         "RETRIEVED KNOWLEDGE FOR THIS TURN (use when relevant; do not invent facts "
