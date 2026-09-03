@@ -27,6 +27,7 @@ jobs:
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: apps/desktop

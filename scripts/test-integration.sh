@@ -4,17 +4,21 @@
 
 set -e
 BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+# Every curl below is bounded. None of them were, and this script runs in a CI
+# step that had no timeout either, so a single unanswered request could hang the
+# job indefinitely. Measured locally: each of these returns in ~1.2s.
+MAXT=30
 echo "Testing backend at $BACKEND_URL"
 
 # 1. Health check
 echo "→ Health check..."
-curl -sf "$BACKEND_URL/health" | grep -qE '"status"\s*:\s*"(ok|degraded)"' && \
+curl -sf --max-time $MAXT "$BACKEND_URL/health" | grep -qE '"status"\s*:\s*"(ok|degraded)"' && \
   echo "✅ Backend healthy" || \
   (echo "❌ Backend unreachable" && exit 1)
 
 # 2. Auth check (expect 401, not 000/connection refused)
 echo "→ Auth check..."
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time $MAXT \
   -X POST "$BACKEND_URL/api/assistant/chat" \
   -H "Content-Type: application/json" \
   -d '{"messages":[],"org_id":"test"}')
@@ -24,7 +28,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
 
 # 4. Marketplace browse auth gate
 echo "→ Marketplace browse auth gate..."
-MKT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+MKT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time $MAXT \
   "$BACKEND_URL/api/marketplace/assets?limit=1")
 [ "$MKT_STATUS" = "401" ] && \
   echo "✅ Marketplace assets auth gate working (got 401)" || \
@@ -32,7 +36,7 @@ MKT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
 
 # 3. Killswitch check (informational)
 echo "→ Checking killswitch status..."
-curl -sf "$BACKEND_URL/health" | python3 -c \
+curl -sf --max-time $MAXT "$BACKEND_URL/health" | python3 -c \
   "import sys,json; h=json.load(sys.stdin); \
    print('✅ AI enabled' if not h.get('ai_disabled') \
    else '⚠️  AI killswitch is ON')" 2>/dev/null || \

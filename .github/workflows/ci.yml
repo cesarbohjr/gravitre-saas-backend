@@ -16,6 +16,9 @@ jobs:
   web:
     name: Web (lint + typecheck + build)
     runs-on: ubuntu-latest
+    # No job here had a ceiling until the smoke test hung 40+ minutes on main.
+    # Class-level, not just the one that failed.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/web
@@ -68,6 +71,10 @@ jobs:
     name: Integration Smoke Test
     runs-on: ubuntu-latest
     needs: [web, backend]
+    # This job hung for 40+ minutes with no bound because its readiness-failure
+    # branch called `wait` on a server that was still starting. Both halves are
+    # fixed below; the ceiling stays so no future variant can pin the tip.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -93,18 +100,35 @@ jobs:
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
         run: |
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 &
+          # Logged to a file, not inherited stdout: the failure branch needs the
+          # startup trace, and reading it must not depend on waiting for exit.
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 >/tmp/backend.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do
-            if curl -sf "http://127.0.0.1:8765/health" >/dev/null; then
+          # 120s, not 30s. Measured: startup blocks on warm_local_tool_encoder
+          # (all-MiniLM-L6-v2 download, added 2026-08-06 in ef7ef50f) plus 758
+          # tool-doc embeddings before /health answers -- 51.6s warm and ~62s
+          # cold locally. 30s could not be met, so this job could only ever
+          # reach the failure branch.
+          for i in $(seq 1 120); do
+            if curl -sf --max-time 5 "http://127.0.0.1:8765/health" >/dev/null; then
               break
+            fi
+            # A dead server is a different failure from a slow one. Say so now
+            # instead of burning the whole window on a process that is gone.
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "Backend process exited during startup after ${i}s"
+              cat /tmp/backend.log
+              exit 1
             fi
             sleep 1
           done
-          if ! curl -sf "http://127.0.0.1:8765/health" >/dev/null; then
-            echo "Backend failed to start on port 8765"
-            wait $SERVER_PID || true
+          if ! curl -sf --max-time 5 "http://127.0.0.1:8765/health" >/dev/null; then
+            echo "Backend failed to become ready on port 8765 within 120s"
+            # Never `wait` here. The server is still running by definition of
+            # reaching this branch, so waiting for it blocked forever and turned
+            # a legible failure into an unbounded hang.
+            cat /tmp/backend.log
             exit 1
           fi
           export BACKEND_URL="http://127.0.0.1:8765"
@@ -120,6 +144,7 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -189,6 +214,7 @@ jobs:
   security-scan:
     name: Dependency audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -238,6 +264,7 @@ jobs:
   billing-e2e:
     name: Billing E2E (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Manual/signal only — do not run on main push. A failed check (even with
     # continue-on-error) still blocks Railway "Wait for CI" and pins the tip.
     if: github.event_name == 'workflow_dispatch'

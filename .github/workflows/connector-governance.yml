@@ -47,6 +47,7 @@ jobs:
   connector-governance:
     name: Connector governance (scoped pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend

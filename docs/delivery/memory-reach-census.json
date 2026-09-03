@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-09-03T01:54:18.343193+00:00",
+  "lookback_days": 30,
+  "env_status": [
+    ".env: 33 of 33 applied (utf-8)",
+    ".env.operator.local: 24 of 51 applied (cp1252)",
+    ".env: absent"
+  ],
+  "org_count": 229,
+  "agent_memories_total": 13,
+  "agent_memories_by_category": {
+    "outcome": 5,
+    "preference": 5,
+    "decision": 3
+  },
+  "agent_memories_by_provenance_prefix": {
+    "learn_outcome": 5,
+    "part1_seven_gates": 5,
+    "one_brain_workspace_memory_probe": 3
+  },
+  "agent_memories_by_org": {
+    "f07e57c0-1501-4000-8000-c04e57a00001": {
+      "org_name": "Gravitre Isolated Conversation Smoke",
+      "is_probe_org": true,
+      "rows": 12,
+      "active": 12,
+      "agent_scoped": 12
+    },
+    "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea": {
+      "org_name": "Cesar Bohorquez Jr.'s Workspace",
+      "is_probe_org": false,
+      "rows": 1,
+      "active": 1,
+      "agent_scoped": 1
+    }
+  },
+  "agent_memories_in_real_orgs": 1,
+  "agent_memories_created_range": {
+    "earliest": "2026-08-13T22:19:27.304741+00:00",
+    "latest": "2026-08-27T20:46:32.006797+00:00"
+  },
+  "memory_promotion_candidates_total": 3,
+  "memory_promotion_candidates_by_status": {
+    "pending_approval": 3
+  },
+  "memory_promotion_candidates_by_org": {
+    "Gravitre Isolated Conversation Smoke": 3
+  },
+  "agent_memory_promotion_audit_total": 0,
+  "recall_by_org": {
+    "f07e57c0-1501-4000-8000-c04e57a00001": {
+      "org_name": "Gravitre Isolated Conversation Smoke",
+      "is_probe_org": true,
+      "turns": 1546,
+      "no_memory_signal": 1546
+    },
+    "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea": {
+      "org_name": "Cesar Bohorquez Jr.'s Workspace",
+      "is_probe_org": false,
+      "turns": 33,
+      "no_memory_signal": 33
+    },
+    "cfe626bb-e2cb-4b6e-bfab-b171e449577c": {
+      "org_name": "testuser.gravitre.20260807's Workspace",
+      "is_probe_org": false,
+      "turns": 2,
+      "no_memory_signal": 2
+    }
+  },
+  "turn_memory_signal": {
+    "is_probe_org": 1,
+    "turns": 1581,
+    "no_memory_signal": 1581
+  },
+  "memory_recall_is_instrumented": false,
+  "real_turns_30d": 35,
+  "real_turns_with_memory_recalled": "NOT INSTRUMENTED",
+  "errors": {},
+  "verdict": "COMPLETE"
+}

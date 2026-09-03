@@ -1718,6 +1718,43 @@ it. Hence a structural response rather than a fourth point-fix:
 > enforced by `backend/tests/test_no_narrowed_tools_strips.py`) that fails on any
 > rebuild reaching an attach site or blinding a preserver.
 
+### Fifth instance, different mechanism: a CI job that was skipped, not passing
+
+Added 2026-09-03. Class C is **not** specific to the `NarrowedTools` marker; the
+four above simply share a mechanism. This one shares only the epistemics, which
+is what makes it worth recording here.
+
+`Integration Smoke Test` declares `needs: [web, backend]`. `Backend (pytest)`
+was red from 2026-08-06, so for 40 consecutive runs the smoke job resolved to
+**`skipped`** — and a skipped job reports no failure, contributes no annotation,
+and appears in no failing-checks list. Fixing the eight pytest causes turned
+backend green, the job executed for the first time in a month, and it **hung for
+40+ minutes** until cancelled.
+
+| Aspect | Detail |
+|---|---|
+| The signal | No integration failure for a month |
+| The reasoning | Integration is fine; the red is confined to pytest |
+| Why it failed | The job never ran. `skipped` and `success` are both "not failing" in every view that matters |
+| Actual state | Two live defects: `warm_local_tool_encoder` (added the same day, `ef7ef50f`) pushed time-to-`/health` to 51.6s warm / ~62s cold, past a 30s readiness window; the failure branch then called `wait $SERVER_PID` on a still-starting server and blocked forever, unbounded because **no job in any workflow had `timeout-minutes`** |
+| Cost had it stood | An unbounded job pinning the branch tip on every push |
+
+Two rules follow, and both are now enforced rather than remembered:
+
+> **A skipped check is an unknown, not a pass.** When a gate is fixed, treat
+> every check that `needs:` it as never-run and re-derive its status from a real
+> execution.
+
+> **An unbounded job cannot fail, it can only hang.** Anything that waits needs a
+> ceiling, and the wait must never be on a process whose liveness is the very
+> thing in question.
+
+Enforced by `backend/tests/lint/test_ci_jobs_are_bounded.py`: every job in every
+workflow must carry `timeout-minutes`, and no step may `wait $SERVER_PID`. Both
+assertions mutation-proved. Writing it found **five further unbounded jobs** in
+other workflows, which is the class-level check §5 asks for and the reason this
+is a class entry rather than a one-line fix.
+
 ### Interaction with Class A
 
 Instances 1 and 2 also sharpen "one layer too low": `65161f90` was a correct fix
@@ -1743,6 +1780,13 @@ fired 109 times could be reintroduced with the entire suite green.
 | `_classify_error` labels internal bugs as user `validation_error` | OPEN, low priority, deferred by decision | unassigned |
 | `unnarrowed_tool_attach_blocked` | **CLOSED 2026-09-02.** Four instances of one mistake, not one defect. Instance 1 fixed in prod since 08-13 (`65161f90`); instance 2 **LIVE PASS** - `BUG_REPRODUCED` pre-fix / `CLEAN` post-fix on a real `claude-sonnet-4-6` tool-carrying turn, guard at `provider_tool_router.complete_with_tools`, model chose `apollo_lists_list` post-fix; instances 3-4 fixed, no prod events. Mutations 6/6 + standing CI scan. See `unnarrowed-tool-attach-rootcause.md` | Cesar |
 | Audit probe traffic pollutes production telemetry | KNOWN - 140 of 142 `outcome_error` events were this audit's own probes | unassigned |
+| Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRED 2026-09-03 by decision, not an open gap.** Audited and deliberately not built: 36 real turns / 30d, 0 research-shaped, 1 `rag_chunk` across 229 orgs, 0 of 256 sufficiency-loop runs on real traffic. Named re-open triggers in `crag-phase0-reachability.md` | Cesar |
+| Retrieval Layer 1 (contextual chunk enrichment) ABSENT | OPEN, recorded, unfixed. Highest-value retrieval gap; unmeasurable at one chunk. Do this **before** either deferred programme | unassigned |
+| Org RAG has no persisted keyword index | OPEN, accepted asymmetry - BM25 in-memory over a 500-row fetch; Knowledge Fabric has `tsvector`+GIN | unassigned |
+| Memory recall is not instrumented per turn | **OPEN — measurement gap, not a defect.** `unifiedTurnKnowledge` counts org RAG / fabric / internet / business-graph hits; memory has no equivalent field, and the only memory audit action is `memory_entity_embeddings.updated`. Whether memory reaches a real answer cannot be asked of production data. See `memory-hardening-assessment.md` | Cesar |
+| `memory_promotion_candidates` queue never adjudicated | KNOWN - 3 rows, all `pending_approval`, all in the probe org; `agent_memory_promotion_audit` has 0 rows | unassigned |
+| CI red on `main` since 2026-08-06 | **CLOSED 2026-09-03.** Nine causes, not the two believed. Eight in pytest (`5ece38df`), then a ninth exposed only once backend went green: `Integration Smoke Test` had been `skipped` on all 40 runs and hung 40+ min on first real execution. See Class C fifth instance | Cesar |
+| Backend startup blocks ~52-62s before serving `/health` | **OPEN, recorded, deliberately not changed.** `main.py` awaits `_warm_unified_tool_embeds()` inline in the lifespan (`warm_local_tool_encoder` downloads all-MiniLM-L6-v2, then 758 tool-doc embeddings). CI now allows 120s. Making the warm non-blocking would trade a cold first turn for faster boot — a real product tradeoff, so **not** decided by an agent. Worth checking the Railway healthcheck grace period against this | Cesar |
 
 ## Coverage gap: closed, with the residual risk stated
 

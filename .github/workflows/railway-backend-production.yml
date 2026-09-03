@@ -29,6 +29,7 @@ jobs:
   detect-backend-changes:
     name: Detect backend changes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
       ref: ${{ steps.detect.outputs.ref }}

@@ -287,3 +287,107 @@ regression set 83 passed.
   asserting on mocked execution, plus a `sk-test-` placeholder key producing
   embedding 401s in CI. Verified unrelated — the docs-only Phase 0 commit, which
   touched no application code, failed identically.
+
+  > **CORRECTED 2026-09-03 at `5ece38df`. Both halves of that sentence were
+  > wrong.** It was **eight** distinct causes, not two, and the embedding 401s
+  > were **never** one of them — they are caught and logged as warnings, so they
+  > could not fail a test. The red streak also began **2026-08-06**, 39 of the
+  > last 40 runs, so it long predates the docs-only commit named above. Full
+  > diagnosis and fixes in the `5ece38df` commit message. Recorded here because
+  > this paragraph is where the incorrect "two known causes" framing entered the
+  > standing record and was then repeated back as established fact.
+  >
+  > **CORRECTED AGAIN — it was nine.** Fixing the eight turned `Backend
+  > (pytest)` green, which un-skipped `Integration Smoke Test` (`needs: [web,
+  > backend]`). It had been **skipped, not passing**, on all 40 red runs, and on
+  > its first real execution in a month it **hung for 40+ minutes** and had to be
+  > cancelled. Cause: `warm_local_tool_encoder` was added to the blocking
+  > lifespan on **2026-08-06** in `ef7ef50f` — the same day the streak began —
+  > pushing time-to-`/health` to 51.6s warm / ~62s cold, past the job's 30s
+  > readiness window; the failure branch then called `wait $SERVER_PID` on a
+  > server that was still starting and blocked forever, with no
+  > `timeout-minutes` on any job in any workflow to bound it. This is **Class C
+  > exactly**: a skipped job reads as an absent failure. Cause 9 was structurally
+  > unfindable until 1–8 were fixed, which is the honest reason the earlier
+  > "complete explanation" was incomplete rather than careless.
+
+---
+
+# FORMAL DEFERRAL — Prompt 1 (CRAG) and Prompt 2 (Context Engine)
+
+**Decision date:** 2026-09-03 · **Decided by:** Cesar · **Status: DEFERRED —
+correctly-timed-later work. NOT an open gap, NOT a known defect, NOT debt.**
+
+This section exists so neither programme is later rediscovered and misread as
+something that was overlooked. Both were **audited, scoped, and deliberately
+not built**, on evidence.
+
+## What is being deferred
+
+| | Programme | Scope as written |
+|---|---|---|
+| **Prompt 1** | Corrective RAG (CRAG) | Three-way evidence evaluation (Correct / Incorrect / Ambiguous), bounded corrective retrieval, contextual-retrieval quality layers, cross-source contradiction detection, RAGAS-style verification |
+| **Prompt 2** | Context Engine | A thin cross-source ranking layer above customer RAG, Knowledge Fabric, Tool Knowledge, memory, connectors, knowledge graph and web research, selecting the best candidate subset within an enforced budget |
+
+## Why — the measured basis, not a judgement call
+
+Retrieval quality is **confirmed not to be the current limiting factor**:
+
+| Measurement | Value | Source |
+|---|---|---|
+| Real (non-probe) unified turns, 30d | **36** | `crag-phase0-realturns.json` |
+| Real turns carrying no knowledge block at all | **31 of 36** | same |
+| Knowledge-grounded research answers | **0** | same |
+| `rag_chunks`, all 229 orgs | **1** | `crag-phase0-platform.json` |
+| Sufficiency-loop runs on real user traffic | **0 of 256** (all probe) | `crag-phase0-reachability.json` |
+
+Both programmes improve *how well candidates are chosen*. At one chunk
+platform-wide and zero research-shaped turns, there is nothing to choose
+between. A ranking layer over a single candidate ranks it first.
+
+This is **lesson 4 applied as designed**: measure real reachability with real
+production data before investing a fix-and-prove cycle. It is the same
+discipline that prevented building Phases 1–5 in the first place.
+
+## What this deferral does NOT claim
+
+Stated explicitly, because a deferral is easy to over-read:
+
+- **Not** that the designs were wrong. Phase 0 found the CRAG architecture
+  substantially sound and already half-built in the right place.
+- **Not** that retrieval quality is good. Three real gaps stay recorded and
+  unfixed below.
+- **Not** that they were skipped for cost or difficulty. Neither was estimated,
+  because volume made the estimate moot.
+
+## The real gaps that remain recorded and unfixed
+
+Deferring the programmes does not retire these. They are carried in the
+standing risk register:
+
+1. **Layer 1 contextual chunk enrichment is ABSENT** — the highest-value single
+   retrieval improvement available (Anthropic measure ~35% fewer retrieval
+   failures for this layer alone). Unmeasurable at one chunk.
+2. **Org RAG has no persisted keyword index** — BM25 is real but in-memory over
+   a 500-row fetch; Knowledge Fabric has `tsvector`+GIN and org RAG does not.
+3. **Phase 1's genuine delta is unbuilt** — the sufficiency verdict is binary
+   (`sufficient: bool`) and evidence is judged but never *refined*; rows are
+   never filtered.
+
+## Re-open triggers — the conditions that make this work correctly-timed
+
+Deferred is not forgotten. Revisit when **any** of these becomes true, and
+prefer gap 1 above before either programme:
+
+- `rag_chunks` exceeds ~1,000 across ≥3 real orgs (currently **1** / **1 org**)
+- Real research-shaped turns exceed ~10% of real traffic (currently **0%**)
+- The sufficiency loop runs on real user traffic at all (currently **0 of 256**)
+- A real customer reports a wrong-evidence or conflicting-evidence answer
+
+These are now cheap to check: `evidence.sufficiency.assessed` (shipped
+`fcd244de`) makes the third queryable directly, and
+`scripts/probe-crag-phase0-platform.py` answers the first two.
+
+**Read the production numbers first.** Both programmes were scoped twice before
+anyone measured how much traffic they would serve; that measurement is what
+changed the decision, and it takes minutes.
