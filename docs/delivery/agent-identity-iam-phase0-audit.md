@@ -1,11 +1,14 @@
 # Phase 0 — Agent Identity IAM permission-model audit (2026-09-03)
 
-**Status:** Migration **APPLIED** 2026-09-03 (`agent_identity_iam`, prod ledger
-`20260903215253` / `20260903215303` — duplicate stamp from tooling, schema
-verified via `to_regclass`). Code deployed at `56af0d17`. Ops smokes **NOT RUN**
-locally — `INTERNAL_API_SECRET` not available in this session; run
-`scripts/verify-agent-identity-spend-limit-live.py` and
-`scripts/verify-agent-delegation-live.py` from an operator env for live PASS.
+**Status:** **LIVE PASS** @ `56af0d17` (2026-09-03). Migration applied (`agent_identity_iam`).
+Prod ops smokes green; artifacts in `docs/delivery/agent-identity-*-live.json`.
+
+## Live evidence (2026-09-03)
+
+| Probe | Verdict | Evidence |
+|-------|---------|----------|
+| Spend limit block | **PASS** | `agent.identity.spend_limit_blocked` @ `2026-09-03T21:53:29.974417Z` — agent `fd1788f6…`, `error_code=agent_spend_limit_exceeded`, deploy `56af0d17` |
+| Delegation grant/revoke | **PASS** | `agent.delegation.granted` @ `2026-09-03T21:53:32.053563Z`, `agent.delegation.revoked` @ `2026-09-03T21:53:32.16261Z` — grant `bda1a402…` |
 
 ## Existing permission dimensions
 
