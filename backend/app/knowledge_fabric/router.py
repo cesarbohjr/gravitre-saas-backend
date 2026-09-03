@@ -28,13 +28,36 @@ _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "legal": (
         "law",
         "statute",
+        # "statute" does not cover "statutory": the suffix rule below appends to
+        # a whole keyword, and "statute" + "ory" is not a word. Measured on real
+        # traffic, "statutory" was the second most common piece of legal
+        # vocabulary in messages that routed nowhere.
+        "statutory",
         "regulation",
+        # Covers "regulator", "regulators" and "regulatory" under the suffix rule.
+        "regulator",
         "court",
         "opinion",
         "jurisdiction",
         "constitution",
         "equal protection",
         "employment law",
+        "contract",
+        "liability",
+        "indemnity",
+        # Privacy vocabulary was absent from this list entirely, so the most
+        # ordinary privacy question in the product routed to no department and
+        # retrieved no legal evidence. This is the gap Phase 5 surfaced.
+        "privacy",
+        "personal information",
+        "personal data",
+        "breach notification",
+        "data subject",
+        "hipaa",
+        "gdpr",
+        "ccpa",
+        "cpra",
+        "phipa",
         "flsa",
         "fmla",
         "ftc",
@@ -105,6 +128,80 @@ _DEPT_KEYWORDS: dict[str, tuple[str, ...]] = {
         "customer acquisition",
     ),
 }
+
+
+# Keywords that must match as a whole word, with no suffix allowed.
+#
+# The default rule below deliberately allows a suffix, because measured on 1982
+# real user messages the suffix matches are overwhelmingly the ones we want:
+# "prospect" firing inside "prospects" (21) and "prospecting" (9), "msp" inside
+# "msps" (10), "cyber" inside "cybersecurity" (7). A naive word-boundary fix
+# would have destroyed all of those to remove a smaller number of accidents --
+# the obvious fix, measurably worse than the defect.
+#
+# What the same measurement showed genuinely wrong was "sec", the finance
+# keyword for SEC filings, firing inside "secondary" (13), "security" (2) and
+# "cybersecurity" (2). Every one of its partial matches was an accident, and it
+# was routing security questions to finance.
+#
+# The rest are acronyms already in the vocabulary that prefix common English
+# words -- "seo" in "Seoul", "csf" and "cisa" in assorted identifiers. They carry
+# no measured accidents, unlike "sec"; they are listed because the same accident
+# is available to them, and that reason is stated rather than left to look like
+# data.
+#
+# Every entry must be a keyword that actually exists. An entry for a keyword the
+# router does not have protects nothing while reading as though it does, so
+# `test_every_exact_only_keyword_is_actually_in_the_vocabulary` fails on one.
+# That test is why "phi" and "dpa" are not here: they were added on the
+# assumption they were vocabulary, and they are not.
+_EXACT_ONLY_KEYWORDS = frozenset(
+    {"sec", "seo", "ftc", "csf", "gaap", "xbrl", "eeoc", "cisa"}
+)
+
+
+def _compile_keyword(keyword: str) -> re.Pattern[str]:
+    """One keyword, as the pattern that decides whether it fired.
+
+    Left edge is always a boundary. That alone removes the whole class of
+    mid-word accidents the old naked `in` test produced: "law" inside "flawed",
+    "law" inside "outlaw", "incident" inside "coincident". Those were routing
+    ordinary sentences to legal and cybersecurity.
+
+    Right edge depends on the keyword. Ordinary words allow an alphabetic suffix
+    so inflections match; acronyms do not.
+    """
+    escaped = re.escape(keyword)
+    left = r"(?<![a-z0-9])"
+    if keyword in _EXACT_ONLY_KEYWORDS:
+        return re.compile(left + escaped + r"(?![a-z0-9])")
+    return re.compile(left + escaped + r"[a-z]*")
+
+
+# Compiled once at import. `_DEPT_KEYWORDS` stays the single source of the
+# vocabulary so the reachability probe and the tests read the same list the
+# router does, rather than a copy free to drift from it.
+_DEPT_MATCHERS: dict[str, tuple[re.Pattern[str], ...]] = {
+    dept: tuple(_compile_keyword(k) for k in keys)
+    for dept, keys in _DEPT_KEYWORDS.items()
+}
+
+# Marketing compliance (FTC / CAN-SPAM / endorsements / Competition Bureau)
+# retrieves Legal and Marketing together. Compiled through the same rule as the
+# department keywords: it had the identical naked-substring defect, and fixing
+# one and not the other would leave half the router matching by accident.
+_COMPLIANCE_MARKERS = (
+    "can-spam",
+    "can spam",
+    "ftc",
+    "endorsement",
+    "influencer",
+    "native advertising",
+    "deceptive advertising",
+    "competition bureau",
+    "deceptive marketing",
+)
+_COMPLIANCE_MATCHERS = tuple(_compile_keyword(m) for m in _COMPLIANCE_MARKERS)
 
 
 @dataclass
@@ -191,8 +288,8 @@ def classify_knowledge_query(
     text = (query or "").strip()
     lower = text.lower()
     departments: list[str] = []
-    for dept, keys in _DEPT_KEYWORDS.items():
-        if any(k in lower for k in keys):
+    for dept, matchers in _DEPT_MATCHERS.items():
+        if any(m.search(lower) for m in matchers):
             departments.append(dept)
     if not departments and agent_department:
         dept = agent_department.strip().lower()
@@ -227,18 +324,7 @@ def classify_knowledge_query(
             pack_ids.append(pid)
     # Marketing compliance (FTC / CAN-SPAM / endorsements / Competition Bureau)
     # should retrieve Legal + Marketing together
-    compliance_markers = (
-        "can-spam",
-        "can spam",
-        "ftc",
-        "endorsement",
-        "influencer",
-        "native advertising",
-        "deceptive advertising",
-        "competition bureau",
-        "deceptive marketing",
-    )
-    if any(m in lower for m in compliance_markers):
+    if any(m.search(lower) for m in _COMPLIANCE_MATCHERS):
         for pid in ("pack.marketing", "pack.legal"):
             if pid not in pack_ids:
                 pack_ids.append(pid)

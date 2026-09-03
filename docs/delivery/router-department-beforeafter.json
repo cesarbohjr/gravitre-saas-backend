@@ -1,0 +1,15 @@
+{
+  "corpus": "all role='user' conversation_messages in production",
+  "messages": 1982,
+  "before_routed_to_a_department": 311,
+  "after_routed_to_a_department": 321,
+  "newly_routed": 24,
+  "de_routed": 14,
+  "any_department_change": 41,
+  "departments_gained": {
+    "legal": 24
+  },
+  "departments_lost": {
+    "finance": 17
+  }
+}

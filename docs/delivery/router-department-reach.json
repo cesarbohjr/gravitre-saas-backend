@@ -1,0 +1,29 @@
+{
+  "user_messages_scanned": 1982,
+  "routed_to_a_department": 311,
+  "routed_to_nothing": 1671,
+  "routed_to_nothing_pct": 84.3,
+  "routed_ONLY_by_substring_accident": 33,
+  "unrouted_but_carrying_legal_vocab": 24,
+  "departments": {
+    "sales": 100,
+    "finance": 66,
+    "marketing": 62,
+    "cybersecurity": 56,
+    "hr": 36,
+    "legal": 24
+  },
+  "top_absent_vocab_in_unrouted": {
+    "contract": 16,
+    "statutory": 8
+  },
+  "top_substring_accidents": {
+    "prospect -> prospects": 21,
+    "sec -> secondary": 13,
+    "msp -> msps": 10,
+    "prospect -> prospecting": 9,
+    "cyber -> cybersecurity": 7,
+    "sec -> cybersecurity": 2,
+    "sec -> security": 2
+  }
+}

@@ -298,6 +298,12 @@ department, and packs are selected by department. A jurisdiction-only route
 yields nothing. So the query most obviously about legal compliance retrieves no
 legal evidence.
 
+> **Correction, same day.** The paragraph above is one layer too low, and it is
+> this program's own Class A written into its own report. "A jurisdiction-only
+> route yields nothing" describes the symptom and stops. It does not ask *why no
+> department was detected*, which is where the actual defect is. Fixed and
+> measured below under **Router department matching**.
+
 The loop behaved correctly on it: classified `INCORRECT`, escalated twice, hit
 its bound, and reported the shortfall honestly rather than answering
 confidently. That is the designed behaviour and it worked. But reading turn A as
@@ -309,17 +315,87 @@ Not fixed here. Changing pack selection to fall back on jurisdiction is a real
 retrieval-policy change with real blast radius, and it is not what Phases 1–5
 authorised. Logged as **OPEN** in the risk register.
 
-### Migration `20260903100000` — NOT APPLIED
+### Migration `20260903100000` — APPLIED, and it already was
 
-The org RAG keyword index is **not live**. The code degrades to the old
-unfiltered fetch with a WARNING, so the deployed tip is safe, but the Phase 3
-keyword-reach fix does not take effect until the migration runs.
+Authorised, then found already applied on inspection. The section this replaces
+said NOT APPLIED; that was wrong by the time it was written.
 
-Not applied because it is a production schema change and this program requires
-those to be an explicit human choice, not an agent's reading of "complete Phase
-5". Measured impact of applying it today is nil — 1 chunk platform-wide, 0
-scopes over the 500 cap — and the value is entirely in the first real corpus,
-where the old behaviour fails silently.
+Verified in prod rather than assumed from the migration history alone, because
+"recorded as run" and "actually present with the right definition" are different
+facts:
+
+| | |
+|---|---|
+| `content_tsv` | present, `to_tsvector('english', COALESCE(content,''))`, `attgenerated='s'` — matches the Fabric definition exactly |
+| `context_prefix` | present, plain nullable text |
+| `idx_rag_chunks_fts`, `idx_rag_chunks_org_env` | both present |
+| history | recorded **twice**, `20260903100000` and `20260903180147`, both `rag_chunks_fts` — idempotent, so harmless |
+
+And exercised, not just inspected. `fetch_bm25_corpus` against prod returns
+`reach=fts_no_match` for real query terms: the FTS pre-select **ran** and matched
+nothing, which is a real answer. No swallowed `TypeError`, no silent fallback to
+the unfiltered path — the exact failure mode that kept the Fabric's keyword arm
+dead for months. Distinguishing those two is the whole point of the six reach
+states.
+
+Still latent, as measured: 1 chunk platform-wide, 0 scopes over the 500 cap.
+
+### Router department matching — the real root cause, fixed
+
+The multi-hop query resolved no department because of **how keywords are
+matched**, not because of anything to do with jurisdictions.
+
+Two failure directions, both live, both measured on **1982 real production user
+messages**:
+
+**Missed.** The list held one surface form per concept and matched by naked
+substring, so `"statutory"` missed — the entry is `"statute"`, and `statute` is
+not a substring of `statutory`. `"regulator"` missed against `"regulation"` the
+same way. Worse, **privacy vocabulary was absent from the legal list entirely**:
+`privacy`, `HIPAA`, `GDPR`, `CCPA`, `breach notification` all routed nowhere. The
+most ordinary privacy question in the product retrieved no legal evidence.
+
+**Fired wrongly.** With no word boundary, `law` matched inside **flawed** and
+**outlaw**, `incident` inside **coincident**, and `sec` inside **secondary**,
+**security** and **cybersecurity** — routing security questions to finance.
+
+**The obvious fix is measurably worse than the defect.** Adding plain word
+boundaries would remove 17 real accidents and destroy 38 desirable ones, because
+most partial matches were wanted inflections: `prospect` inside **prospects**
+(21) and **prospecting** (9), `msp` inside **msps** (10), `cyber` inside
+**cybersecurity** (7). This is only visible with the measurement in hand, which
+is why it was taken before writing the fix.
+
+So the rule is asymmetric: **left boundary always, right suffix allowed, except
+for acronyms.** Ordinary words inflect; `sec` and its kind must match whole.
+`_EXACT_ONLY_KEYWORDS` holds the exceptions, and a test fails if any entry names
+a keyword that does not exist — which is how `phi` and `dpa` were caught, added
+on the assumption they were vocabulary when they were not. A dead entry reads as
+protection and provides none.
+
+**Before/after, same 1982 real messages** (`router-department-beforeafter.json`):
+
+| | before | after |
+|---|---|---|
+| routed to a department | 311 | 321 |
+| newly routed | — | **+24**, all legal |
+| lost all departments | — | **14** |
+| departments lost | — | **finance −17**, nothing else |
+
+The only losses are the `sec` accidents. **Zero** losses in sales, marketing,
+cybersecurity or HR, which is the direct confirmation that the suffix rule kept
+`prospects`, `msps` and `cybersecurity`.
+
+Deliberately **not** added: `compliance`. It is common in SOC 2 and NIST
+questions and would pull a large amount of cybersecurity traffic into legal.
+Left out rather than guessed at.
+
+**Mutation proof:** `scripts/mutate_router_department.py`, **10/10 caught**,
+including the original defect and the three plausible "tidy-ups" that would
+reintroduce it. One escaped on the first run: reverting the compliance markers
+to naked substring kept every positive case working, because the defect is what
+they match *additionally* — the guard tested that markers fire, not that they
+stop firing. Now pinned by `ftc` inside **swiftcode**.
 
 ---
 
@@ -348,7 +424,9 @@ where the old behaviour fails silently.
 
 | Item | State |
 |---|---|
-| Migration `20260903100000` | **NOT APPLIED** — needs an explicit human decision |
-| Multi-jurisdiction queries route to no packs | **OPEN** — real retrieval gap, unfixed |
+| Migration `20260903100000` | **APPLIED and verified in prod**, FTS pre-select exercised |
+| Router department matching | **FIXED**, before/after on 1982 real messages, mutations 10/10 |
 | Fabric keyword arm has no `ts_rank` ordering | **OPEN** — carried from the prior phase |
 | Organic (non-probe) trace of a discard | **NOT PROVEN** — awaits real traffic |
+| `compliance` as a legal keyword | **DELIBERATELY OUT** — would pull SOC 2 / NIST traffic into legal |
+| Contextual chunk enrichment | **BUILT, FLAG OFF**, never proven on a real corpus |
