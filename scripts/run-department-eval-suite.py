@@ -18,8 +18,31 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 
 
+def _expand_targets(patterns: list[str]) -> list[str]:
+    """Expand shell-style globs for pytest (pytest does not expand * itself)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for pat in patterns:
+        matches = sorted(BACKEND.glob(pat))
+        if not matches:
+            # Allow exact relative paths that somehow missed glob.
+            exact = BACKEND / pat
+            if exact.is_file():
+                matches = [exact]
+            else:
+                print(f"ERROR: no files matched pytest target: {pat}", file=sys.stderr)
+                raise SystemExit(4)
+        for match in matches:
+            rel = str(match.relative_to(BACKEND)).replace("\\", "/")
+            if rel not in seen:
+                seen.add(rel)
+                out.append(rel)
+    return out
+
+
 def _run_pytest(targets: list[str], *, quiet: bool, keyword: str | None = None) -> int:
-    cmd = [sys.executable, "-m", "pytest", *targets]
+    expanded = _expand_targets(targets)
+    cmd = [sys.executable, "-m", "pytest", *expanded]
     if quiet:
         cmd.append("-q")
     if keyword:

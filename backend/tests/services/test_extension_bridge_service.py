@@ -44,8 +44,11 @@ def test_extension_chat_page_context_fenced_and_handoff_heuristics():
         page_url="https://www.linkedin.com/in/jane-doe",
         page_context={"fullName": "Jane Doe"},
     )
-    assert "<page_context>" in prompt
+    # Page context is fenced as untrusted external data (may wrap <page_context>).
     assert "Jane Doe" in prompt
+    assert ("<page_context>" in prompt) or (
+        'kind="page_context"' in prompt and "<external_data" in prompt
+    )
     assert "browser overlay" in prompt.lower()
     quick, reason = should_handoff_extension_chat(
         message="Who is this person?",

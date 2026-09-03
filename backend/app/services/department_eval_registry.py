@@ -39,7 +39,8 @@ DEPARTMENT_EVAL_SPECS: tuple[DepartmentEvalSpec, ...] = (
         pack_id="marketing-intelligence-pack",
         expected_systems=("google_search_console", "google_analytics", "hubspot"),
         pytest_globs=(
-            "tests/marketplace/test_marketing_pack*.py",
+            # Concrete pack gate (no bare test_marketing_pack.py; glob expanded by runner).
+            "tests/marketplace/test_marketing_pack_mode_ab_decision.py",
             "tests/services/test_routing_nl_variance_battery.py",
         ),
     ),

@@ -57,7 +57,10 @@ def test_format_retrieval_prompt_section_empty():
 
 def test_format_retrieval_prompt_section_includes_payload():
     section = format_retrieval_prompt_section({"memories": [{"content": "ICP is SaaS"}], "rag_chunks": []})
-    assert section.startswith("<agent_memory_context>")
+    # Memory is untrusted external data (Agent Security Gateway fence).
+    assert "<agent_memory_context>" in section
+    assert 'trust="untrusted_external"' in section or "<external_data" in section
+    assert "ICP is SaaS" in section
     assert "ICP is SaaS" in section
 
 
