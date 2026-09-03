@@ -360,7 +360,7 @@ most ordinary privacy question in the product retrieved no legal evidence.
 **security** and **cybersecurity** — routing security questions to finance.
 
 **The obvious fix is measurably worse than the defect.** Adding plain word
-boundaries would remove 17 real accidents and destroy 38 desirable ones, because
+boundaries would remove 17 real accidents and destroy 47 desirable ones, because
 most partial matches were wanted inflections: `prospect` inside **prospects**
 (21) and **prospecting** (9), `msp` inside **msps** (10), `cyber` inside
 **cybersecurity** (7). This is only visible with the measurement in hand, which

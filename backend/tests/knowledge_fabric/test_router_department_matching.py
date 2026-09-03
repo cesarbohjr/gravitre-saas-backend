@@ -14,7 +14,7 @@ two failure directions and both were live:
 The fix is not "add word boundaries". Measured on 1982 real user messages, the
 partial matches were mostly the ones we want -- "prospect" inside "prospects",
 "msp" inside "msps", "cyber" inside "cybersecurity" -- and a plain boundary rule
-would have destroyed 38 good matches to remove 17 accidents. These tests pin the
+would have destroyed 47 good matches to remove 17 accidents. These tests pin the
 asymmetric rule that came out of that measurement, in both directions, because a
 future edit that "tidies" it either way reintroduces one of the two defects.
 """

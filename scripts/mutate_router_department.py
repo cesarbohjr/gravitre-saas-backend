@@ -36,7 +36,7 @@ MUTATIONS: list[tuple[str, str, str, str]] = [
     ),
     (
         "plain word boundary on both sides",
-        "the obvious fix; destroys prospects/msps/cybersecurity, 38 good matches",
+        "the obvious fix; destroys prospects/msps/cybersecurity, 47 good matches",
         '    return re.compile(left + escaped + r"[a-z]*")',
         '    return re.compile(left + escaped + r"(?![a-z0-9])")',
     ),
