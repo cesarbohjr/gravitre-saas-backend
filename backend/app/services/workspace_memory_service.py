@@ -3,6 +3,9 @@
 Persists typed memories into ``agent_memories`` (org-scoped; ``agent_id`` nullable).
 RECALL uses category filter + hybrid content match + existing ledger path (kernel).
 No Option C fuzzy person matching.
+
+Memory hardening (2026-09): temporal supersede, structured extraction, contamination
+defense, and deterministic lifecycle — all via shared helpers, not call-site patches.
 """
 from __future__ import annotations
 
@@ -11,6 +14,14 @@ from uuid import uuid4
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.memory_contamination_guard import attach_recall_honesty, validate_memory_write
+from app.services.memory_extraction_service import extract_typed_memories_structured
+from app.services.memory_temporal_service import (
+    APPEND_ONLY_CATEGORIES,
+    TEMPORAL_CATEGORIES,
+    normalize_memory_key,
+    upsert_temporal_memory,
+)
 
 logger = get_logger(__name__)
 
@@ -30,6 +41,38 @@ _WRITE_CATEGORIES = TYPED_CATEGORIES | frozenset(
     {"fact", "pattern", "rule", "working", "campaign_learning", "risk_signal", "business_rule"}
 )
 
+_HARDENING_COLUMNS = frozenset(
+    {
+        "memory_key",
+        "valid_from",
+        "valid_until",
+        "superseded_by",
+        "is_current",
+        "source_class",
+        "structured_payload",
+    }
+)
+
+
+def _insert_memory_row(client: Any, payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Insert with hardened columns; fall back to legacy shape if migration pending."""
+    try:
+        inserted = client.table("agent_memories").insert(payload).execute().data or []
+        if inserted and isinstance(inserted[0], dict):
+            return inserted[0]
+        return payload
+    except Exception as first_exc:  # noqa: BLE001
+        legacy = {k: v for k, v in payload.items() if k not in _HARDENING_COLUMNS}
+        try:
+            inserted = client.table("agent_memories").insert(legacy).execute().data or []
+            if inserted and isinstance(inserted[0], dict):
+                logger.debug("workspace_memory_insert_legacy_fallback reason=%s", first_exc)
+                return inserted[0]
+            return legacy
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("workspace_memory_insert_failed error=%s", exc)
+            return None
+
 
 def promote_turn_memories(
     client: Any,
@@ -45,6 +88,7 @@ def promote_turn_memories(
     """Persist typed memories from a confirmed turn into ``agent_memories``.
 
     Rows are org-scoped. ``agent_id`` may be None (workspace scope). Never raises.
+    Temporal categories supersede on ``memory_key``; append-only categories insert.
     Returns inserted row dicts (best-effort).
     """
     _ = settings or get_settings()
@@ -56,8 +100,6 @@ def promote_turn_memories(
     if conversation_id:
         base_prov = f"{base_prov}:conversation:{conversation_id}"
 
-    # Until agent_id is nullable in prod, pin workspace rows to an org steward agent
-    # while keeping org-wide RECALL (workspace-scoped product semantics).
     resolved_agent_id = (str(agent_id).strip() or None) if agent_id else None
     if not resolved_agent_id:
         try:
@@ -79,38 +121,52 @@ def promote_turn_memories(
     for raw in memories:
         if not isinstance(raw, dict):
             continue
-        content = str(raw.get("content") or raw.get("memory_text") or "").strip()
+        enriched = validate_memory_write(raw, provenance=base_prov)
+        content = str(enriched.get("content") or enriched.get("memory_text") or "").strip()
         if not content:
             continue
-        category = str(raw.get("category") or "episodic").strip().lower()
+        category = str(enriched.get("category") or "episodic").strip().lower()
         if category not in _WRITE_CATEGORIES:
             category = "episodic"
         try:
-            confidence = float(raw.get("confidence") if raw.get("confidence") is not None else 80)
+            confidence = float(
+                enriched.get("confidence") if enriched.get("confidence") is not None else 80
+            )
         except (TypeError, ValueError):
             confidence = 80.0
         confidence = max(0.0, min(100.0, confidence))
 
+        memory_key = enriched.get("memory_key") or normalize_memory_key(
+            category,
+            content,
+            enriched.get("explicit_key"),
+        )
+
         payload: dict[str, Any] = {
-            "id": str(raw.get("id") or uuid4()),
+            "id": str(enriched.get("id") or uuid4()),
             "org_id": org_id,
             "agent_id": resolved_agent_id,
             "content": content[:4000],
             "category": category,
-            "provenance": str(raw.get("provenance") or base_prov)[:500],
+            "provenance": str(enriched.get("provenance") or base_prov)[:500],
             "confidence": confidence,
             "editable": True,
             "created_by": user_id,
             "is_active": True,
+            "source_class": enriched.get("source_class"),
+            "structured_payload": enriched.get("structured_payload"),
+            "is_current": True,
         }
+        if memory_key:
+            payload["memory_key"] = memory_key
+
         if not resolved_agent_id:
-            # Cannot insert without agent_id until migration applied — skip honestly.
             logger.warning(
                 "workspace_memory_promote_skipped_no_steward org_id=%s",
                 org_id,
             )
             continue
-        # Optional embedding — best-effort; recall still works via content/category.
+
         try:
             from app.rag.embedding import get_embedding
 
@@ -122,11 +178,18 @@ def promote_turn_memories(
             logger.debug("workspace_memory_embed_skipped error=%s", exc)
 
         try:
-            inserted = client.table("agent_memories").insert(payload).execute().data or []
-            if inserted and isinstance(inserted[0], dict):
-                written.append(inserted[0])
+            if category in TEMPORAL_CATEGORIES and memory_key:
+                row = upsert_temporal_memory(
+                    client,
+                    payload,
+                    change_reason=enriched.get("change_reason"),
+                )
+                if row:
+                    written.append(row)
             else:
-                written.append(payload)
+                inserted = _insert_memory_row(client, payload)
+                if inserted:
+                    written.append(inserted)
         except Exception as exc:  # noqa: BLE001
             logger.debug("workspace_memory_promote_failed error=%s", exc)
 
@@ -149,37 +212,53 @@ def recall_workspace(
     top_k: int = 12,
     agent_id: str | None = None,
     settings: Settings | None = None,
+    include_history: bool = False,
+    memory_key: str | None = None,
 ) -> list[dict[str, Any]]:
     """Recall org-scoped memories by category + hybrid content match.
 
-    Always filters ``org_id``. Includes workspace rows (``agent_id`` null) and
-    same-org agent rows. Does not perform Option C fuzzy person match.
+    Always filters ``org_id``. Current temporal rows only (``is_current=true``).
+    Includes workspace rows (``agent_id`` null) and same-org agent rows.
+    Does not perform Option C fuzzy person match.
     """
     _ = settings
     if not client or not org_id:
         return []
 
+    if memory_key and include_history:
+        from app.services.memory_temporal_service import get_memory_history
+
+        history = get_memory_history(client, org_id, memory_key)
+        return [attach_recall_honesty(h) for h in history]
+
     limit = max(1, min(int(top_k), 50))
     cats = [c.strip().lower() for c in (categories or []) if c and str(c).strip()]
     cats = [c for c in cats if c in _WRITE_CATEGORIES]
 
+    select_cols = (
+        "id,org_id,agent_id,category,content,confidence,provenance,"
+        "usage_count,created_at,is_active,memory_key,source_class,"
+        "structured_payload,is_current,valid_from,valid_until"
+    )
+
     try:
         q = (
             client.table("agent_memories")
-            .select(
-                "id,org_id,agent_id,category,content,confidence,provenance,"
-                "usage_count,created_at,is_active"
-            )
+            .select(select_cols)
             .eq("org_id", org_id)
             .order("created_at", desc=True)
             .limit(max(limit * 4, 40))
         )
-        # Prefer active rows when column present (PostgREST ignores unknown filters
-        # only if column missing — we already migrated is_active).
         try:
             q = q.eq("is_active", True)
         except Exception:  # noqa: BLE001
             pass
+        try:
+            q = q.eq("is_current", True)
+        except Exception:  # noqa: BLE001
+            pass
+        if memory_key:
+            q = q.eq("memory_key", memory_key)
         if len(cats) == 1:
             q = q.eq("category", cats[0])
         rows = q.execute().data or []
@@ -196,6 +275,8 @@ def recall_workspace(
             continue
         if cats and str(row.get("category") or "").lower() not in cats:
             continue
+        if row.get("is_current") is False:
+            continue
         content = str(row.get("content") or "")
         content_l = content.lower()
         score = 0.35  # confidence-honesty-ok: internal relevance rank, not user-facing confidence
@@ -206,7 +287,6 @@ def recall_workspace(
                 score = 0.62  # confidence-honesty-ok
             else:
                 score = 0.25  # confidence-honesty-ok
-        # Slight preference for workspace (null agent) and matching agent.
         row_agent = row.get("agent_id")
         if row_agent is None:
             score += 0.05
@@ -219,16 +299,14 @@ def recall_workspace(
             score += min(conf, 100.0) / 1000.0
         except (TypeError, ValueError):
             pass
-        scored.append(
-            (
-                score,
-                {
-                    **row,
-                    "score": round(score, 4),
-                    "source": "workspace_memory_recall",
-                },
-            )
+        labeled = attach_recall_honesty(
+            {
+                **row,
+                "score": round(score, 4),
+                "source": "workspace_memory_recall",
+            }
         )
+        scored.append((score, labeled))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [item for _, item in scored[:limit]]
@@ -240,28 +318,19 @@ def extract_typed_memories_from_act(
     outcome_event: str | None = None,
     message: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Pull explicit typed memories from act_result; optional outcome stub."""
-    out: list[dict[str, Any]] = []
-    if isinstance(act_result, dict):
-        for key in ("typed_memories", "memories", "workspace_memories"):
-            raw = act_result.get(key)
-            if isinstance(raw, list):
-                for item in raw:
-                    if isinstance(item, dict) and (item.get("content") or item.get("memory_text")):
-                        out.append(item)
-        # Single explicit fields
-        content = act_result.get("memory_content") or act_result.get("decision")
-        category = str(act_result.get("memory_category") or "").strip().lower()
-        if content and category in TYPED_CATEGORIES:
-            out.append({"content": str(content), "category": category})
+    """Pull structured typed memories from act_result; no raw transcript replay."""
+    return extract_typed_memories_structured(
+        act_result,
+        outcome_event=outcome_event,
+        message=message,
+    )
 
-    if outcome_event and message:
-        out.append(
-            {
-                "content": f"Outcome ({outcome_event}): {(message or '')[:500]}",
-                "category": "outcome",
-                "confidence": 70,
-                "provenance": f"learn_outcome:{outcome_event}",
-            }
-        )
-    return out
+
+__all__ = [
+    "APPEND_ONLY_CATEGORIES",
+    "TEMPORAL_CATEGORIES",
+    "TYPED_CATEGORIES",
+    "extract_typed_memories_from_act",
+    "promote_turn_memories",
+    "recall_workspace",
+]

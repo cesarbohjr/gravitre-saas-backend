@@ -109,6 +109,21 @@ def test_promote_turn_memories_writes_org_scoped_rows():
     # Otherwise this reaches the real embedding provider: in CI the placeholder
     # key returns 401 (swallowed, but noisy), and offline it fails DNS.
     with patch("app.rag.embedding.get_embedding", return_value=[0.1, 0.2]) as embed:
+        # Temporal upsert: get_current (empty) then insert.
+        memories_table.execute.side_effect = [
+            MagicMock(data=[]),
+            MagicMock(
+                data=[
+                    {
+                        "id": "m1",
+                        "org_id": "org-1",
+                        "agent_id": "agent-steward",
+                        "category": "decision",
+                        "content": "Use HubSpot",
+                    }
+                ]
+            ),
+        ]
         written = promote_turn_memories(
             client,
             org_id="org-1",
@@ -179,12 +194,18 @@ def test_extract_typed_memories_from_act():
         {
             "confirmed": True,
             "typed_memories": [{"content": "Decide X", "category": "decision"}],
+            "status": "completed",
+            "action": "test.action",
         },
         outcome_event="workflow_executed",
         message="ran workflow",
     )
     assert any(m.get("category") == "decision" for m in memories)
-    assert any(m.get("category") == "outcome" for m in memories)
+    outcome = next(m for m in memories if m.get("category") == "outcome")
+    assert "Outcome (workflow_executed)" in outcome.get("content", "")
+    assert "action=test.action" in outcome.get("content", "")
+    # Structured extraction must not replay raw transcript as primary content.
+    assert "ran workflow" not in outcome.get("content", "")
 
 
 def test_create_knowledge_node_validates_type():
