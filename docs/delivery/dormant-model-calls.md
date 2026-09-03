@@ -1659,6 +1659,33 @@ live proof: "no event claims the model ran" passed with **zero events of any
 kind**, so it proved nothing. It is recorded as PASS-but-weightless in
 `docs/delivery/turn-gate-retirement-live.json` rather than counted as evidence.
 
+### Three more instances, all from the memory-recall instrument (2026-09-03)
+
+Recorded because they arrived while building a guard **against Class A**, and
+all three were caught only by mutation-testing and by reading the raw rows —
+never by the suite, which was green throughout.
+
+| # | Instrument | The defect | What it falsely reported |
+|---|---|---|---|
+| 4 | "the merge is unconditional" test, v1 | Substring-matched the source *including comments*, so it matched the comment describing the bug it guarded | FAIL on correct code |
+| 5 | "the merge is unconditional" test, v2 | Stripped comments by concatenating tokens, which **drops the whitespace between them**, so `elif mem or know or bias` could never match anything | PASS vacuously — a guard that could not fail |
+| 6 | `prove-memory-recall-live.py`, v1 | Counted `memory.recalled` rows by org + time window; the payload carried no turn id, so rows were unattributable | `exactly_one_row_for_this_turn = False` — a double emission that had not happened. The three rows were three distinct turns, one of them real production traffic |
+
+Instance 5 is the sharpest: a test asserting a phrase that its own
+comment-stripper had made unmatchable. It reported the guard as present and
+working for as long as it existed. Both 4 and 5 are now replaced by a
+**structural check over the AST**, which cannot be fooled by formatting.
+
+Instance 6 is the useful reminder that the fix for a broken instrument is often
+to make the *data* answerable rather than the query cleverer: the row now carries
+`cognitiveTurnId`, which also joins it to `unifiedTurnKnowledge.cognitiveTurnId`
+on the sibling event. Correlating by timestamp was the mistake.
+
+> **Rule added: a guard written in prose about source text is itself untested
+> code.** If an assertion inspects source, prefer the AST, and always run a
+> mutation that should trip it. Instances 4-6 cost nothing to find that way and
+> would each have been invisible indefinitely otherwise.
+
 ## Class C: silence mistaken for health
 
 **Third named failure class of this program, permanent status, same standing as
@@ -1783,7 +1810,10 @@ fired 109 times could be reintroduced with the entire suite green.
 | Prompt 1 (CRAG) and Prompt 2 (Context Engine) | **DEFERRED 2026-09-03 by decision, not an open gap.** Audited and deliberately not built: 36 real turns / 30d, 0 research-shaped, 1 `rag_chunk` across 229 orgs, 0 of 256 sufficiency-loop runs on real traffic. Named re-open triggers in `crag-phase0-reachability.md` | Cesar |
 | Retrieval Layer 1 (contextual chunk enrichment) ABSENT | OPEN, recorded, unfixed. Highest-value retrieval gap; unmeasurable at one chunk. Do this **before** either deferred programme | unassigned |
 | Org RAG has no persisted keyword index | OPEN, accepted asymmetry - BM25 in-memory over a 500-row fetch; Knowledge Fabric has `tsvector`+GIN | unassigned |
-| Memory recall is not instrumented per turn | **OPEN — measurement gap, not a defect.** `unifiedTurnKnowledge` counts org RAG / fabric / internet / business-graph hits; memory has no equivalent field, and the only memory audit action is `memory_entity_embeddings.updated`. Whether memory reaches a real answer cannot be asked of production data. See `memory-hardening-assessment.md` | Cesar |
+| Memory recall is not instrumented per turn | **CLOSED 2026-09-03 at `9222036d`.** `unifiedTurnKnowledge.memoryRecall` on every unified turn (`ran`/`total`/`bySource` over all five stores/`degraded`) plus a named `memory.recalled` action. **LIVE PASS 18/18**, `local sha == prod sha`, turn `4d2faa6d…`; dedicated row and nested block written by different modules **agree** on `total=28` and per-source; independently corroborated by a real `execute_task_streaming` turn (`total=20`). Mutations 10/10. See `memory-hardening-assessment.md` | Cesar |
+| All five memory stores logged failures at `logger.debug` | **CLOSED 2026-09-03 at `9222036d`.** Real defect found while instrumenting, not a measurement gap: debug is off in prod, so a store failing on *every* turn was invisible **and** byte-identical to one that found nothing. Now WARNING + per-source `error` + `degraded` in the audit trail; pinned by a test asserting `logger.debug` is absent from `_recall`, since the log level is the defect | Cesar |
+| Memory recall baseline starts 2026-09-03, not 30d back | **KNOWN, expected.** Turns before `9222036d` carry no `memoryRecall` block, so a 30-day census still reads near-nothing. Correct behaviour, recorded so it is not later mistaken for the instrument failing | Cesar |
+| Prompt 3 (memory hardening) build | **HELD, prerequisite now met.** Instrument closed; adoption unchanged at **0 of 146** agents and **1** memory row in a real org, so hardening remains provable only against probe traffic. Re-open triggers in `memory-hardening-assessment.md`. Note the prompt text itself was never supplied | Cesar |
 | `memory_promotion_candidates` queue never adjudicated | KNOWN - 3 rows, all `pending_approval`, all in the probe org; `agent_memory_promotion_audit` has 0 rows | unassigned |
 | CI red on `main` since 2026-08-06 | **CLOSED 2026-09-03.** Nine causes, not the two believed. Eight in pytest (`5ece38df`), then a ninth exposed only once backend went green: `Integration Smoke Test` had been `skipped` on all 40 runs and hung 40+ min on first real execution. See Class C fifth instance | Cesar |
 | Backend startup blocks ~52-62s before serving `/health` | **OPEN, recorded, deliberately not changed.** `main.py` awaits `_warm_unified_tool_embeds()` inline in the lifespan (`warm_local_tool_encoder` downloads all-MiniLM-L6-v2, then 758 tool-doc embeddings). CI now allows 120s. **Production already hit this on the same day**: `backend/railway.toml:38` records that 2026-08-06 tip deploys built fine but failed healthcheck at 5m, and the fix was `healthcheckTimeout = 600`. So the same regression broke prod deploys and CI simultaneously; only prod got fixed. Making the warm non-blocking trades a cold first turn for faster boot — a product tradeoff, **not** an agent's call | Cesar |

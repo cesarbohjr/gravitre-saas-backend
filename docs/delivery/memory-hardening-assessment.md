@@ -106,6 +106,65 @@ there, and/or a named audit action. Justification, in order:
    workspace recall runs on every turn while agent recall runs never, and that
    3 promotion candidates have sat `pending_approval` with an empty audit table.
 
+## The instrument gap is now CLOSED — live PASS at `9222036d`
+
+**Decision (Cesar, 2026-09-03): close the instrument gap now, then re-scope
+hardening against real numbers.** Done, shipped, live-proven.
+
+| | |
+|---|---|
+| Per-turn signal | `unifiedTurnKnowledge.memoryRecall` on every `unified_turn.*` event — `ran`, `total`, `bySource` over all five stores, `attempted`, `degraded`, `failedSources` |
+| Named action | `memory.recalled`, emitted when recall contributed **or** degraded |
+| Live PASS | **18/18 checks**, `local sha == prod sha == 9222036dccbd`, turn `4d2faa6d-7455-4b85-b249-53a5c022f4d6`, org `f07e57c0…0001`. Artifact: `memory-recall-live.json` |
+| Cross-check (lesson 2) | The dedicated row and the nested block are written by **different modules** from the same recall. Both reported `total=28`, identical `bySource` (`workspace` 12, `hybrid` 8, `agent` 8, `department` 0, `ledger` 0). Agreement is the evidence; a row's existence alone is not |
+| Real traffic (lesson 1) | Independent of the probe, a genuine production turn emitted `memory.recalled` with `entryPoint=execute_task_streaming`, `agent=None`, `total=20` at `2026-09-03T07:38:35Z`. Real path, real traffic, deployed tip |
+| Mutation proof | **10/10 CAUGHT**, `scripts/mutate_memory_recall_signal.py` |
+
+### Three states, previously one
+
+The census's central complaint is fixed at the root:
+
+- `ran=False` → RECALL did not execute. **UNKNOWN.**
+- `ran=True, total=0` → every attempted store genuinely returned nothing. **Real zero.**
+- `degraded=True` → a store raised. The count is a floor, not a measurement.
+
+### A real defect found while instrumenting, not just a gap closed
+
+All five stores in `CognitiveTurnKernel._recall` — hybrid, agent, department,
+ledger, workspace — swallowed their exception into **`logger.debug`**. Debug is
+off in production, so a store failing on *every turn* was both invisible and
+byte-identical to a store that found nothing. All five now log at WARNING and
+record `error` per source, and a test asserts `logger.debug` does not appear in
+`_recall` at all, because the log level *is* the defect and no behavioural test
+can observe it.
+
+This matters for the hardening decision: it means the census's inability to see
+memory was **two** problems stacked, not one, and the second could have hidden a
+permanently broken store behind an apparently-empty one.
+
+### What the numbers now say
+
+Memory recall genuinely works when there is data: **28 rows recalled** in the
+probe org across three stores, and **20** on the real production turn above. So
+the census's zero was the instrument plus real orgs having nothing to recall —
+**not** a broken recall path. That is a materially better starting point for any
+hardening scope than the census could establish.
+
+### Caveat on the baseline, stated rather than discovered later
+
+The signal exists from `9222036d` forward. **Historical turns carry no
+`memoryRecall` block**, so re-running `probe-memory-reach.py` over a 30-day
+window will still report near-nothing for turns predating the deploy. That is
+correct behaviour, not a regression. A real adoption baseline accrues from
+2026-09-03 onward, and `memory.recalled` is the cheap way to ask for it.
+
+**The hold recommendation below stands unchanged.** Closing the instrument was
+the prerequisite, not the hardening. Adoption is still 0 of 146 agents and 1
+memory row in a real org, and those are the numbers that decide whether hardening
+can be proven against anything but probe traffic.
+
+---
+
 **Not recommended now:** any recall-quality work — the exact-match caveat
 included. `Memory Phase 1` opaque-alias vectors are **exact HMAC matches** of
 normalized mentions, so `"Sarah"` does not match `"Sarah Smith"`. That is a real
