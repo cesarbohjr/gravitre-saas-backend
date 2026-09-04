@@ -93,12 +93,16 @@ def test_voice_status_exposes_pipecat_fields():
     class S:
         elevenlabs_api_key = ""
         deepgram_api_key = ""
+        openai_api_key = ""
         elevenlabs_default_voice = "rachel"
         elevenlabs_tts_model = "eleven_flash_v2_5"
         elevenlabs_voice_rachel = ""
         elevenlabs_voice_adam = ""
         elevenlabs_voice_josh = ""
         voice_pipecat_enabled = False
+        voice_pipecat_stt = "flux"
+        voice_pipecat_stt_fallback_enabled = True
+        voice_pipecat_stt_fallback = "nova3"
         api_public_url = ""
 
     status = voice_status(S())  # type: ignore[arg-type]
@@ -109,22 +113,46 @@ def test_voice_status_exposes_pipecat_fields():
     assert "pipecat_available" in status
     assert "pipecat_ws_hint" in status
     assert str(status["pipecat_ws_hint"]).startswith("ws")
+    assert status["pipecat_stt"]["stt_provider"] == "deepgram_flux"
+    assert status["pipecat_tts"]["model"] == "eleven_flash_v2_5"
 
     class On:
         elevenlabs_api_key = ""
         deepgram_api_key = ""
+        openai_api_key = ""
         elevenlabs_default_voice = "rachel"
         elevenlabs_tts_model = "eleven_flash_v2_5"
         elevenlabs_voice_rachel = ""
         elevenlabs_voice_adam = ""
         elevenlabs_voice_josh = ""
         voice_pipecat_enabled = True
+        voice_pipecat_stt = "flux"
+        voice_pipecat_stt_fallback_enabled = True
+        voice_pipecat_stt_fallback = "nova3"
         api_public_url = "https://api.gravitre.app"
 
     on = voice_status(On())  # type: ignore[arg-type]
     assert on["default_orchestration"] == "pipecat"
     assert on["pipecat_ws_clients_accepted"] is True
     assert on["pipecat_ws_hint"] == "wss://api.gravitre.app"
+    assert on["pipecat_tts"]["transport"] == "websocket"
+
+
+def test_stt_factory_provider_resolution_and_meta():
+    from app.services.pipecat_voice.stt_factory import (
+        resolve_pipecat_stt_provider,
+        stt_meta,
+    )
+
+    class S:
+        voice_pipecat_stt = "flux"
+
+    assert resolve_pipecat_stt_provider(S()) == "flux"
+    assert resolve_pipecat_stt_provider(S(), override="nova3") == "nova3"
+    meta = stt_meta("flux")
+    assert meta["stt_model"] == "flux-general-en"
+    assert meta["stt_provider"] == "deepgram_flux"
+
 
 def test_text_turn_kick_targets_browser_finals_only():
     from pipecat.frames.frames import TranscriptionFrame

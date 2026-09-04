@@ -99,6 +99,33 @@ def _pipecat_ws_hint(settings: Settings) -> str:
     return f"wss://{raw}"
 
 
+def _pipecat_stt_status(settings: Settings) -> dict[str, Any]:
+    """Honest STT primary/fallback advertisement for /api/voice/status."""
+    try:
+        from app.services.pipecat_voice.stt_factory import (
+            resolve_pipecat_stt_fallback,
+            resolve_pipecat_stt_provider,
+            stt_meta,
+        )
+
+        primary = resolve_pipecat_stt_provider(settings)
+        fallback = resolve_pipecat_stt_fallback(settings)
+        meta = stt_meta(primary)
+        return {
+            **meta,
+            "fallback_enabled": bool(getattr(settings, "voice_pipecat_stt_fallback_enabled", True)),
+            "fallback_provider": stt_meta(fallback).get("stt_provider"),
+            "fallback_key": fallback,
+        }
+    except Exception:  # noqa: BLE001
+        return {
+            "stt_provider": "deepgram_flux",
+            "stt_model": "flux-general-en",
+            "fallback_enabled": True,
+            "fallback_provider": "deepgram_nova3",
+        }
+
+
 def voice_status(settings: Settings) -> dict[str, Any]:
     voices = _resolved_voices(settings)
     return {
@@ -134,6 +161,11 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             else "http_session_turn"
         ),
         "pipecat_ws_clients_accepted": bool(getattr(settings, "voice_pipecat_enabled", False)),
+        "pipecat_stt": _pipecat_stt_status(settings),
+        "pipecat_tts": {
+            "model": (settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip(),
+            "transport": "websocket" if bool(getattr(settings, "voice_pipecat_enabled", False)) else "http_stream",
+        },
         "realtime_bar_ms": 300,
         "latency_targets_ms": LATENCY_TARGETS_MS,
         "honest_expectation": (

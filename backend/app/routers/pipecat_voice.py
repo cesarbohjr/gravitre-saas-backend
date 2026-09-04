@@ -169,30 +169,81 @@ async def pipecat_voice_ws(
     from pipecat.pipeline.runner import PipelineRunner
 
     from app.services.pipecat_voice.pipeline import build_pipecat_voice_task
+    from app.services.pipecat_voice.stt_factory import (
+        log_stt_fallback,
+        resolve_pipecat_stt_fallback,
+        resolve_pipecat_stt_provider,
+    )
+
+    primary = resolve_pipecat_stt_provider(settings)
+    fallback_enabled = bool(getattr(settings, "voice_pipecat_stt_fallback_enabled", True))
+    fallback = resolve_pipecat_stt_fallback(settings)
+    providers: list[tuple[str | None, str | None, str | None]] = [(primary, None, None)]
+    if fallback_enabled and fallback != primary:
+        providers.append((fallback, primary, "primary_pipeline_failed"))
 
     try:
-        task = build_pipecat_voice_task(
-            websocket=websocket,
-            settings=settings,
-            org_id=resolved_org,
-            user_id=user_id,
-            agent=agent,
-            conversation_id=conversation_id,
-            voice_key=voice,
-        )
-        runner = PipelineRunner(handle_sigint=False)
-        await runner.run(task)
-    except WebSocketDisconnect:
-        logger.info("pipecat_voice_ws_disconnected org_id=%s", resolved_org)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("pipecat_voice_ws_failed error=%s", exc)
-        if websocket.client_state == WebSocketState.CONNECTED:
+        last_exc: Exception | None = None
+        for idx, (prov, fb_from, fb_reason) in enumerate(providers):
+            try:
+                if fb_from:
+                    log_stt_fallback(primary=fb_from, fallback=str(prov), reason=str(fb_reason))
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        try:
+                            await websocket.send_json(
+                                {
+                                    "type": "stt_fallback",
+                                    "primary": fb_from,
+                                    "fallback": prov,
+                                    "reason": fb_reason,
+                                }
+                            )
+                        except Exception:  # noqa: BLE001
+                            pass
+                task, _meta = build_pipecat_voice_task(
+                    websocket=websocket,
+                    settings=settings,
+                    org_id=resolved_org,
+                    user_id=user_id,
+                    agent=agent,
+                    conversation_id=conversation_id,
+                    voice_key=voice,
+                    stt_provider=prov,
+                    stt_fallback_from=fb_from,
+                    stt_fallback_reason=fb_reason,
+                )
+                runner = PipelineRunner(handle_sigint=False)
+                await runner.run(task)
+                last_exc = None
+                break
+            except WebSocketDisconnect:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.exception(
+                    "pipecat_voice_ws_failed attempt=%s stt=%s error=%s",
+                    idx,
+                    prov,
+                    exc,
+                )
+                if idx + 1 >= len(providers):
+                    break
+                # Only retry fallback while the socket is still usable.
+                if websocket.client_state != WebSocketState.CONNECTED:
+                    break
+        if last_exc is not None and websocket.client_state == WebSocketState.CONNECTED:
             try:
                 await websocket.send_json(
-                    {"type": "error", "error": str(exc)[:400], "error_class": "service_failure"}
+                    {
+                        "type": "error",
+                        "error": str(last_exc)[:400],
+                        "error_class": "service_failure",
+                    }
                 )
             except Exception:  # noqa: BLE001
                 pass
+    except WebSocketDisconnect:
+        logger.info("pipecat_voice_ws_disconnected org_id=%s", resolved_org)
     finally:
         if websocket.client_state == WebSocketState.CONNECTED:
             try:

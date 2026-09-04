@@ -234,6 +234,10 @@ async def _probe_ws(
         "cognitive_path": (ready or {}).get("cognitive_path"),
         "architecture": (ready or {}).get("architecture"),
         "write_confirm_policy": (ready or {}).get("write_confirm_policy"),
+        "stt_provider": (ready or {}).get("stt_provider"),
+        "stt_model": (ready or {}).get("stt_model"),
+        "tts_model": (ready or {}).get("tts_model"),
+        "tts_transport": (ready or {}).get("tts_transport"),
         "assistant_text": assistant_text[:800],
     }
 
@@ -262,6 +266,8 @@ def main() -> int:
                 "pipecat_ws_path": body.get("pipecat_ws_path"),
                 "default_orchestration": body.get("default_orchestration"),
                 "architecture": body.get("architecture"),
+                "pipecat_stt": body.get("pipecat_stt"),
+                "pipecat_tts": body.get("pipecat_tts"),
             }
         except Exception as exc:  # noqa: BLE001
             status_probe = {"ok": False, "error": f"{exc.__class__.__name__}:{exc}"}
@@ -279,6 +285,16 @@ def main() -> int:
                 and (ws_probe.get("audio_frames") or 0) > 0
                 else "FAIL"
             )
+            expect_stt = (env.get("VOICE_PIPECAT_STT_EXPECT") or "deepgram_flux").strip()
+            got_stt = str(ws_probe.get("stt_provider") or "")
+            # Tip without Part 2 fields: skip honesty (empty) rather than false FAIL.
+            if got_stt:
+                ws_probe["stt_honesty"] = "PASS" if got_stt == expect_stt else "FAIL"
+                ws_probe["stt_expect"] = expect_stt
+                if ws_probe["stt_honesty"] == "FAIL":
+                    ws_probe["verdict"] = "FAIL"
+            else:
+                ws_probe["stt_honesty"] = "SKIP_LEGACY_TIP"
             # Separate connection: consequential write-shaped turn — must stay on
             # CognitiveTurnKernel + nl_yes confirm policy (no voice bypass).
             governance_probe = asyncio.run(

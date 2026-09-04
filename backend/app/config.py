@@ -548,6 +548,39 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("VOICE_PIPECAT_ENABLED", "voice_pipecat_enabled"),
     )
+    # Pipecat STT: flux (default) | nova3 | openai — mutation via VOICE_PIPECAT_STT.
+    voice_pipecat_stt: str = Field(
+        default="flux",
+        validation_alias=AliasChoices("VOICE_PIPECAT_STT", "voice_pipecat_stt"),
+    )
+    voice_pipecat_stt_fallback_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_PIPECAT_STT_FALLBACK_ENABLED",
+            "voice_pipecat_stt_fallback_enabled",
+        ),
+    )
+    voice_pipecat_stt_fallback: str = Field(
+        default="nova3",
+        validation_alias=AliasChoices(
+            "VOICE_PIPECAT_STT_FALLBACK",
+            "voice_pipecat_stt_fallback",
+        ),
+    )
+    voice_pipecat_flux_eager_eot: float | None = Field(
+        default=0.5,
+        validation_alias=AliasChoices(
+            "VOICE_PIPECAT_FLUX_EAGER_EOT",
+            "voice_pipecat_flux_eager_eot",
+        ),
+    )
+    voice_pipecat_flux_eot: float | None = Field(
+        default=0.7,
+        validation_alias=AliasChoices(
+            "VOICE_PIPECAT_FLUX_EOT",
+            "voice_pipecat_flux_eot",
+        ),
+    )
     twilio_auth_token: str = Field(
         default="",
         validation_alias=AliasChoices("TWILIO_AUTH_TOKEN", "twilio_auth_token"),
