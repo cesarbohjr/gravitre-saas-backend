@@ -1915,7 +1915,7 @@ function AddConnectorModal({
                       <p className="text-xs text-muted-foreground">
                         Twilio powers PSTN voice (outbound/inbound calls) and SMS. Use an API Key (SK…) + secret from
                         Twilio Console → Account → API keys. Account SID (AC…) is auto-resolved when left blank.
-                        Optional Auth Token enables webhook signature verification.
+                        Optional Auth Token enables webhook signature verification on inbound PSTN calls.
                       </p>
                       <a
                         href="https://www.twilio.com/docs/iam/api-keys"
@@ -1937,12 +1937,12 @@ function AddConnectorModal({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Auth Token (optional, for webhooks)</label>
+                      <label className="text-sm font-medium text-foreground">Optional Auth Token</label>
                       <Input
                         type="password"
                         value={twilioAuthToken}
                         onChange={(e) => setTwilioAuthToken(e.target.value)}
-                        placeholder="Primary Auth Token from Twilio Console"
+                        placeholder="Primary Auth Token — optional; for inbound webhook verification"
                         className="bg-secondary font-mono text-sm"
                       />
                     </div>
