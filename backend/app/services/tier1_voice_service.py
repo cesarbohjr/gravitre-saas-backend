@@ -165,10 +165,12 @@ def synthesize_speech(
     # Prefer Flash v2.5 naming; accept legacy turbo alias.
     if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
         model = "eleven_flash_v2_5"
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    # Non-stream path also needs an explicit enum — bare mpeg is rejected (403).
+    fmt, accept = normalize_elevenlabs_output_format("mp3_44100_128")
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format={fmt}"
     headers = {
         "xi-api-key": api_key,
-        "Accept": "audio/mpeg",
+        "Accept": accept,
         "Content-Type": "application/json",
     }
     body = {
@@ -191,17 +193,40 @@ def synthesize_speech(
     return resp.content, "audio/mpeg", meta
 
 
+def normalize_elevenlabs_output_format(output_format: str | None) -> tuple[str, str]:
+    """Map legacy / alias formats to ElevenLabs-accepted ``output_format`` values.
+
+    ElevenLabs rejects bare ``mpeg`` (403 invalid_output_format). Browser duplex
+    and batch TTS must use an explicit mp3_* enum; PSTN uses ``ulaw_8000``.
+    Returns ``(api_output_format, http_accept)``.
+    """
+    raw = (output_format or "mp3_44100_128").strip().lower()
+    if raw in {"ulaw", "ulaw_8000", "mulaw", "mulaw_8000"}:
+        return "ulaw_8000", "audio/basic"
+    if raw in {"alaw", "alaw_8000"}:
+        return "alaw_8000", "audio/basic"
+    # Legacy Accept-style / shorthand aliases → concrete mp3 enum.
+    if raw in {"mpeg", "mp3", "audio/mpeg", "mp3_44100_128"}:
+        return "mp3_44100_128", "audio/mpeg"
+    if raw.startswith("mp3_") or raw.startswith("opus_") or raw.startswith("pcm_") or raw.startswith("m4a_"):
+        accept = "audio/basic" if raw.startswith("pcm_") else "audio/mpeg"
+        return raw, accept
+    # Unknown → safest browser default (never send bare "mpeg").
+    return "mp3_44100_128", "audio/mpeg"
+
+
 def synthesize_speech_stream(
     settings: Settings,
     *,
     text: str,
     voice_key: str | None = None,
     model_id: str | None = None,
-    output_format: str = "mpeg",
+    output_format: str = "mp3_44100_128",
 ) -> Iterator[bytes]:
     """Stream audio chunks from ElevenLabs as soon as first byte is available.
 
-    output_format: ``mpeg`` (browser) or ``ulaw_8000`` (Twilio Media Streams).
+    output_format: ``mp3_44100_128`` (browser; legacy ``mpeg`` alias ok) or
+    ``ulaw_8000`` (Twilio Media Streams).
     """
     api_key = (settings.elevenlabs_api_key or "").strip()
     if not api_key:
@@ -220,13 +245,7 @@ def synthesize_speech_stream(
     model = (model_id or settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip()
     if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
         model = "eleven_flash_v2_5"
-    fmt = (output_format or "mpeg").strip().lower()
-    if fmt in {"ulaw", "ulaw_8000", "mulaw", "mulaw_8000"}:
-        fmt = "ulaw_8000"
-        accept = "audio/basic"
-    else:
-        fmt = "mpeg"
-        accept = "audio/mpeg"
+    fmt, accept = normalize_elevenlabs_output_format(output_format)
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream?output_format={fmt}"
     headers = {
         "xi-api-key": api_key,

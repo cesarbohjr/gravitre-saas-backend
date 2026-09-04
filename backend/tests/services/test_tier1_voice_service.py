@@ -8,6 +8,7 @@ import pytest
 
 from app.services.tier1_voice_service import (
     VoiceProviderError,
+    normalize_elevenlabs_output_format,
     synthesize_speech,
     transcribe_audio,
     voice_status,
@@ -27,6 +28,46 @@ def _settings(**kwargs):
     )
     base.update(kwargs)
     return SimpleNamespace(**base)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_fmt"),
+    [
+        ("mpeg", "mp3_44100_128"),
+        ("mp3", "mp3_44100_128"),
+        ("audio/mpeg", "mp3_44100_128"),
+        (None, "mp3_44100_128"),
+        ("mp3_44100_128", "mp3_44100_128"),
+        ("ulaw_8000", "ulaw_8000"),
+        ("mulaw", "ulaw_8000"),
+    ],
+)
+def test_normalize_elevenlabs_output_format_never_sends_bare_mpeg(raw, expected_fmt):
+    fmt, accept = normalize_elevenlabs_output_format(raw)
+    assert fmt == expected_fmt
+    assert fmt != "mpeg"
+    if expected_fmt.startswith("ulaw"):
+        assert accept == "audio/basic"
+    else:
+        assert accept == "audio/mpeg"
+
+
+def test_synthesize_stream_uses_mp3_enum_not_bare_mpeg():
+    settings = _settings(elevenlabs_api_key="k")
+    stream_cm = MagicMock()
+    stream_resp = MagicMock(status_code=200)
+    stream_resp.iter_bytes.return_value = [b"ID3chunk"]
+    stream_cm.__enter__.return_value = stream_resp
+    with patch("app.services.tier1_voice_service.httpx.Client") as client_cls:
+        client = client_cls.return_value.__enter__.return_value
+        client.stream.return_value = stream_cm
+        from app.services.tier1_voice_service import synthesize_speech_stream
+
+        chunks = list(synthesize_speech_stream(settings, text="Hello", output_format="mpeg"))
+    assert chunks == [b"ID3chunk"]
+    url = client.stream.call_args.args[1]
+    assert "output_format=mp3_44100_128" in url
+    assert "output_format=mpeg" not in url
 
 
 def test_voice_status_reports_disabled_without_keys():

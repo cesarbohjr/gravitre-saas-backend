@@ -135,20 +135,20 @@ async def stream_voice_turn_events(
     tts_model: str | None = None,
     turn_id: str | None = None,
     should_cancel: Callable[[], bool] | None = None,
-    tts_output_format: str = "mpeg",
+    tts_output_format: str = "mp3_44100_128",
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     from app.operators.agent_intelligence import get_agent_intelligence
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+    from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
     resolved_voice = voice_id or profile.get("voice_id") or profile.get("voice_key")
     model = tts_model or profile.get("tts_model") or "eleven_flash_v2_5"
     resolved_turn_id = (turn_id or "").strip() or str(uuid.uuid4())
     resolved_conversation_id = (conversation_id or "").strip() or None
-    audio_content_type = (
-        "audio/basic" if (tts_output_format or "mpeg").lower().startswith("ulaw") else "audio/mpeg"
-    )
+    _fmt, audio_content_type = normalize_elevenlabs_output_format(tts_output_format)
+    tts_output_format = _fmt
 
     def _cancelled() -> bool:
         if should_cancel and should_cancel():
