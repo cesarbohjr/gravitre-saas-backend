@@ -45,6 +45,8 @@ type AiLandingProps = {
     toggle: () => void
     bargeIn: () => void
     supported?: boolean
+    playbackBlocked?: boolean
+    resumeBlockedPlayback?: () => void
   } | null
 }
 

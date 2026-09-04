@@ -2239,6 +2239,10 @@ export function AiWorkspace({
                     void voiceDuplex.bargeIn()
                   },
                   supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+                  playbackBlocked: voiceDuplex.playbackBlocked,
+                  resumeBlockedPlayback: () => {
+                    void voiceDuplex.resumeBlockedPlayback()
+                  },
                 }}
               />
             ) : null}
@@ -2485,6 +2489,10 @@ export function AiWorkspace({
                     void voiceDuplex.bargeIn()
                   },
                   supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+                  playbackBlocked: voiceDuplex.playbackBlocked,
+                  resumeBlockedPlayback: () => {
+                    void voiceDuplex.resumeBlockedPlayback()
+                  },
                 }}
                 onVoiceInputError={(message) => {
                   if (!message) return

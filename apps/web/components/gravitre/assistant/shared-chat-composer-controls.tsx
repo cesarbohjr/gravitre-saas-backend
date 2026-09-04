@@ -88,6 +88,10 @@ export type SharedChatComposerControlsProps = {
     toggle: () => void
     bargeIn: () => void
     supported?: boolean
+    /** Browser autoplay gate tripped — reply audio held, not dropped. */
+    playbackBlocked?: boolean
+    /** Fresh user gesture — retries the held-back reply and unlocks future turns. */
+    resumeBlockedPlayback?: () => void
   } | null
 }
 
@@ -307,7 +311,17 @@ export function SharedChatComposerControls({
       ? "Voice paused — credits or payment needed"
       : (voicePresenceDetail || "").trim() || "Voice unavailable right now. Try again in a moment."
   ).trim()
-  const playbackBlocked = /playback.+blocked/i.test(voiceErrorMessage)
+  // Prefer the hook's own flag (works even when the parent hasn't wired
+  // voicePresence/voicePresenceDetail down, e.g. the pre-conversation landing
+  // composer) and fall back to the message-text match for the legacy path.
+  const playbackBlocked = useDuplex
+    ? Boolean(duplex?.playbackBlocked)
+    : /playback.+blocked/i.test(voiceErrorMessage)
+  const enableSound = () => {
+    void unlockVoicePlayback()
+    duplex?.resumeBlockedPlayback?.()
+    onClearVoiceError?.()
+  }
 
   return (
     <div className={cn("flex flex-col gap-2", className)} data-shared-chat-composer-controls="">
@@ -322,10 +336,7 @@ export function SharedChatComposerControls({
               size="sm"
               variant="outline"
               className="h-6 rounded-full px-2 text-[11px]"
-              onClick={() => {
-                void unlockVoicePlayback()
-                onClearVoiceError?.()
-              }}
+              onClick={enableSound}
             >
               Enable sound
             </Button>
@@ -414,6 +425,8 @@ export function SharedChatComposerControls({
           onMicToggle={handleWaveformClick}
           micActive={effectiveListening}
           amplitude={duplex?.amplitude}
+          playbackBlocked={playbackBlocked}
+          onEnableSound={enableSound}
         />
       ) : null}
     </div>

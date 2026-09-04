@@ -103,6 +103,13 @@ export function useVoiceDuplexSession(options: Options) {
   const [provisionalTranscript, setProvisionalTranscript] = useState("")
   const [latency, setLatency] = useState<DuplexLatencyStages>({})
   const [isActive, setIsActive] = useState(false)
+  // Browser autoplay gate tripped mid-session (e.g. a slow cold turn outlives the
+  // "Talk" tap's user-activation window). The reply audio is kept queued rather
+  // than dropped — see playNext's catch — until a fresh gesture calls
+  // resumeBlockedPlayback(). Root cause of "no audio, no visible error": this used
+  // to silently discard the blob and suppress its own toast with nothing else
+  // surfacing it, so the orb looked normal forever with zero sound.
+  const [playbackBlocked, setPlaybackBlocked] = useState(false)
 
   const optsRef = useRef(options)
   optsRef.current = options
@@ -121,6 +128,7 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackWiredRef = useRef(false)
   const audioQueueRef = useRef<Blob[]>([])
   const playingRef = useRef(false)
+  const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
   const activeRef = useRef(false)
   const speculativeRef = useRef<{
@@ -133,6 +141,8 @@ export function useVoiceDuplexSession(options: Options) {
     playingRef.current = false
     audioQueueRef.current = []
     playbackWiredRef.current = false
+    playbackBlockedRef.current = false
+    setPlaybackBlocked(false)
     const el = audioElRef.current
     if (el) {
       try {
@@ -148,6 +158,10 @@ export function useVoiceDuplexSession(options: Options) {
 
   const playNext = useCallback(async () => {
     if (playingRef.current) return
+    // Autoplay gate is open — wait for resumeBlockedPlayback() (a fresh user
+    // gesture) instead of burning through the queue on every arriving chunk,
+    // each of which would fail the same way and previously got silently dropped.
+    if (playbackBlockedRef.current) return
     const next = audioQueueRef.current.shift()
     if (!next) return
     playingRef.current = true
@@ -185,14 +199,32 @@ export function useVoiceDuplexSession(options: Options) {
       URL.revokeObjectURL(url)
       const blocked =
         err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
-      optsRef.current.onError?.(
-        blocked
-          ? "Audio playback is blocked. Tap Talk once to enable sound, then try again."
-          : "Audio playback failed during voice reply",
-      )
+      if (blocked) {
+        // Keep the reply — put it back at the front of the queue rather than
+        // discarding it, and stop draining until a real gesture unlocks output.
+        // Immediately retrying here would just fail identically on repeat, so
+        // the queue would silently empty out with the user hearing nothing.
+        audioQueueRef.current.unshift(next)
+        playbackBlockedRef.current = true
+        setPlaybackBlocked(true)
+        optsRef.current.onError?.(
+          "Audio playback is blocked. Tap Talk once to enable sound, then try again.",
+        )
+        return
+      }
+      optsRef.current.onError?.("Audio playback failed during voice reply")
       void playNext()
     }
   }, [])
+
+  /** Fresh user gesture (tap "Enable sound" / mic) — retry the held-back reply. */
+  const resumeBlockedPlayback = useCallback(async () => {
+    if (!playbackBlockedRef.current) return
+    await unlockVoicePlayback()
+    playbackBlockedRef.current = false
+    setPlaybackBlocked(false)
+    void playNext()
+  }, [playNext])
 
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
@@ -668,10 +700,12 @@ export function useVoiceDuplexSession(options: Options) {
     provisionalTranscript,
     latency,
     isActive,
+    playbackBlocked,
     start,
     stop,
     toggle,
     bargeIn,
+    resumeBlockedPlayback,
     /** Inject a finalized utterance (tests / recovery) through the same session turn path. */
     submitFinalTranscript: runSessionTurn,
   }

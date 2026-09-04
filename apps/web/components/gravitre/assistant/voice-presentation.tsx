@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef } from "react"
-import { Mic, MicOff, X } from "lucide-react"
+import { Mic, MicOff, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
@@ -128,6 +128,8 @@ export function VoiceOrbTakeover({
   onMicToggle,
   micActive = true,
   amplitude,
+  playbackBlocked = false,
+  onEnableSound,
 }: {
   speaker: VoiceSpeaker
   agentLabel?: string
@@ -138,6 +140,15 @@ export function VoiceOrbTakeover({
   micActive?: boolean
   /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
   amplitude?: number | null
+  /**
+   * Browser autoplay gate tripped (a cold/slow turn outlived the "Talk" tap's
+   * user-activation window). This is the ONLY surface visible while voice mode
+   * owns the screen — a banner rendered behind this fixed overlay is invisible,
+   * which is how "no audio, no error" happened. Must render its own recovery here.
+   */
+  playbackBlocked?: boolean
+  /** Fresh user gesture to retry the held-back reply and unlock future turns. */
+  onEnableSound?: () => void
 }) {
   // Escape exits voice mode to avoid trapping users inside full-screen voice UI.
   useEffect(() => {
@@ -161,9 +172,11 @@ export function VoiceOrbTakeover({
   }, [])
 
   const isUser = speaker === "user"
-  const label = micActive
-    ? `I'm listening… What's on your mind?`
-    : `${agentLabel} voice paused`
+  const label = playbackBlocked
+    ? "Sound is blocked"
+    : micActive
+      ? `I'm listening… What's on your mind?`
+      : `${agentLabel} voice paused`
 
   return (
     <div
@@ -208,9 +221,24 @@ export function VoiceOrbTakeover({
         <div className="pointer-events-none mt-8 text-center text-white">
           <p className="text-4xl font-semibold leading-tight">{label}</p>
           <p className="mt-2 text-base text-white/70">
-            {isUser ? `${agentLabel} voice channel is live` : `${agentLabel} is replying`}
+            {playbackBlocked
+              ? "Your browser blocked audio playback. Tap below to enable sound."
+              : isUser
+                ? `${agentLabel} voice channel is live`
+                : `${agentLabel} is replying`}
           </p>
         </div>
+
+        {playbackBlocked ? (
+          <button
+            type="button"
+            onClick={onEnableSound}
+            className="relative z-10 mt-6 flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          >
+            <Volume2 className="h-4 w-4" aria-hidden />
+            Enable sound
+          </button>
+        ) : null}
 
         <div className="mt-10 flex items-center rounded-full border border-white/15 bg-white/10 p-1.5 backdrop-blur-sm">
           <button
