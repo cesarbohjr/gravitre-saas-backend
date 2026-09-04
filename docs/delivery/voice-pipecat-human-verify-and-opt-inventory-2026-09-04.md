@@ -87,6 +87,18 @@ notes: <anything broken>
 
 Until that message exists from Cesar, **do not** mark voice fixed and **do not** start Part 2 apply.
 
+## UI 2.0 FINAL — HUMAN_VOICE_CONFIRM waived (2026-09-04)
+
+**Authorization:** Cesar — bypass `HUMAN_VOICE_CONFIRM` for UI 2.0 master program closure; a **separate project** owns human hear/barge-in.
+
+| Claim | Status |
+|-------|--------|
+| UI 2.0 Voice visual pilot FINAL (for reskin program) | **CLOSED — human confirm WAIVED** |
+| Voice functional / human-proven audio | **Still OPEN** — tracked outside UI 2.0 |
+| Product copy may claim human-verified Talk audio | **No** |
+
+See `docs/delivery/ui-2-0-final-closure-2026-09-04.md`.
+
 ---
 
 ## PART 2 — Technique inventory (NOT APPLIED — blocked on Part 1)
