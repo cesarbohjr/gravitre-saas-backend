@@ -40,7 +40,8 @@ import {
   VoiceOrbTakeover,
   type VoiceSpeaker,
 } from "@/components/gravitre/assistant/voice-presentation"
-import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import { VoiceModeToggle, type ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import { primeVoicePlaybackUnlock, unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 
 export type SharedChatComposerControlsProps = {
   input: string
@@ -60,8 +61,8 @@ export type SharedChatComposerControlsProps = {
   onMicStatusChange?: (status: SpeechRecognitionStatus) => void
   voicePresence?: VoicePresenceState
   voiceBilling?: boolean
-  /** @deprecated Technical upstream detail — ignored in customer UI. */
   voicePresenceDetail?: string
+  onClearVoiceError?: () => void
   onVoiceInputError?: (message: string) => void
   /** Display name for the speaking agent (orb + in-input pill). */
   agentLabel?: string
@@ -109,6 +110,8 @@ export function SharedChatComposerControls({
   onMicStatusChange,
   voicePresence = "idle",
   voiceBilling = false,
+  voicePresenceDetail,
+  onClearVoiceError,
   onVoiceInputError,
   agentLabel = "Gravitre",
   className,
@@ -164,6 +167,7 @@ export function SharedChatComposerControls({
   const effectiveListening = useDuplex ? Boolean(duplexListening) : isListening
   const effectivePresence = useDuplex && duplex ? duplex.presence : voicePresence
   const duplexSupported = duplex?.supported !== false
+  const canUseVoiceInput = useDuplex ? duplexSupported : isSupported
 
   // 11a/11b speaker chrome only while Voice owns the floor (mic or TTS / voice stream).
   // Idle Text replies must not paint a graphite agent pill.
@@ -199,6 +203,10 @@ export function SharedChatComposerControls({
 
   const isBusy = isStreaming || ttsSpeaking || effectiveListening
 
+  useEffect(() => {
+    primeVoicePlaybackUnlock()
+  }, [])
+
   // Orb cannot outlive a live floor — collapse when mic/TTS ends.
   useEffect(() => {
     if (!isLiveVoice && presentation === "orb") setPresentation("text")
@@ -214,8 +222,19 @@ export function SharedChatComposerControls({
     setPresentation("orb")
   }
 
-  const handleWaveformClick = () => {
+  const stopVoiceCapture = () => {
+    if (useDuplex && duplex?.active) {
+      duplex.toggle()
+      return
+    }
+    if (!useDuplex && isListening) {
+      toggleListening()
+    }
+  }
+
+  const startVoiceCapture = () => {
     if (disabled || !voiceEntitled) return
+    void unlockVoicePlayback()
     if (useDuplex && duplex) {
       if (!duplexSupported) {
         onVoiceInputError?.("Live voice is not supported in this browser.")
@@ -229,35 +248,34 @@ export function SharedChatComposerControls({
         duplex.bargeIn()
         onStop?.()
         armVoice()
-        return
-      }
-      if (duplex.active && duplex.presence === "listening") {
-        openVoiceView()
+        if (!duplex.active) duplex.toggle()
+        setPresentation("text")
         return
       }
       armVoice()
-      duplex.toggle()
+      if (!duplex.active) duplex.toggle()
+      setPresentation("text")
       return
     }
     if (!isSupported) {
       onVoiceInputError?.("Voice input is not supported in this browser.")
       return
     }
-    // Already listening — open immersive voice view (orb). Stop ends the mic.
-    if (isListening) {
-      openVoiceView()
-      return
-    }
-    // Agent holding the floor — barge-in: stop TTS and take the mic in text view.
     if (ttsSpeaking || voicePresence === "speaking") {
       onStop?.()
-      armVoice()
-      toggleListening()
+    }
+    armVoice()
+    if (!isListening) toggleListening()
+    setPresentation("text")
+  }
+
+  const handleWaveformClick = () => {
+    if (disabled || !voiceEntitled) return
+    if (effectiveListening) {
+      stopVoiceCapture()
       return
     }
-    // Idle grey waveform → arm spoken replies and start listening (stay in text view).
-    armVoice()
-    toggleListening()
+    startVoiceCapture()
   }
 
   const returnToTextView = () => setPresentation("text")
@@ -269,13 +287,13 @@ export function SharedChatComposerControls({
           <button
             type="button"
             onClick={handleWaveformClick}
-            disabled={disabled || !voiceEntitled || (!isSupported && voiceEntitled)}
+            disabled={disabled || !voiceEntitled}
             aria-label={
               !voiceEntitled
                 ? "Voice unavailable"
                 : effectiveListening
-                  ? "Open voice view"
-                  : "Start voice — speak your message"
+                  ? "Stop voice"
+                  : "Start voice"
             }
             aria-pressed={effectiveListening}
             className={cn(
@@ -302,25 +320,67 @@ export function SharedChatComposerControls({
         <TooltipContent className="max-w-xs text-xs">
           {!voiceEntitled
             ? unavailableReason
+            : !canUseVoiceInput
+              ? "Voice input is not supported in this browser."
             : effectiveListening
-              ? "Tap again for voice view (full-page orb). Use the stop button to finish speaking."
-              : "Tap to speak. Waveform turns green while you talk; graphite when the agent replies."}
+              ? "Tap to stop voice input."
+              : "Tap to start voice input. You can always type in the box."}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   )
 
+  const voiceErrorMessage = (
+    voiceBilling
+      ? "Voice paused — credits or payment needed"
+      : (voicePresenceDetail || "").trim() || "Voice unavailable right now. Try again in a moment."
+  ).trim()
+  const playbackBlocked = /playback.+blocked/i.test(voiceErrorMessage)
+
   return (
     <div className={cn("flex flex-col gap-2", className)} data-shared-chat-composer-controls="">
-      {voicePresence === "error" ? (
-        <p
-          className={cn("text-xs", voiceBilling ? "text-warning" : "text-muted-foreground")}
-          role="status"
-        >
-          {voiceBilling
-            ? "Voice paused — credits or payment needed"
-            : "Voice unavailable right now. Try again in a moment."}
+      <div className="flex items-center justify-between gap-2">
+        <VoiceModeToggle
+          mode={modality}
+          onChange={(next) => {
+            onModalityChange?.(next)
+            if (next === "text") {
+              stopVoiceCapture()
+              setPresentation("text")
+              onClearVoiceError?.()
+              return
+            }
+            startVoiceCapture()
+          }}
+          voiceEntitled={voiceEntitled}
+          unavailableReason={unavailableReason}
+          disabled={disabled}
+        />
+        <p className="text-xs text-muted-foreground">
+          {modality === "voice" ? "Talk or type" : "Type or tap Talk"}
         </p>
+      </div>
+
+      {voicePresence === "error" ? (
+        <div className="flex flex-wrap items-center gap-2" role="status">
+          <p className={cn("text-xs", voiceBilling ? "text-warning" : "text-muted-foreground")}>
+            {voiceErrorMessage}
+          </p>
+          {playbackBlocked ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-6 rounded-full px-2 text-[11px]"
+              onClick={() => {
+                void unlockVoicePlayback()
+                onClearVoiceError?.()
+              }}
+            >
+              Enable sound
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <div
@@ -337,7 +397,12 @@ export function SharedChatComposerControls({
           ref={inputRef}
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              void unlockVoicePlayback()
+            }
+            onKeyDown?.(event)
+          }}
           rows={textareaRows}
           disabled={disabled}
           placeholder={placeholder}
@@ -398,7 +463,10 @@ export function SharedChatComposerControls({
                   : "disabled:opacity-40",
               )}
               aria-label="Send message"
-              onClick={onSubmit}
+              onClick={() => {
+                void unlockVoicePlayback()
+                onSubmit?.()
+              }}
             >
               <ArrowUp className="h-4 w-4" />
             </Button>

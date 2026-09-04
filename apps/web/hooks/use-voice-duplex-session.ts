@@ -187,7 +187,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
       optsRef.current.onError?.(
         blocked
-          ? "Audio playback blocked — tap the waveform again to enable sound"
+          ? "Audio playback is blocked. Tap Talk once to enable sound, then try again."
           : "Audio playback failed during voice reply",
       )
       void playNext()
@@ -195,11 +195,11 @@ export function useVoiceDuplexSession(options: Options) {
   }, [])
 
   const enqueueAudio = useCallback(
-    (b64: string) => {
+    (b64: string, contentType?: string) => {
       const raw = atob(b64)
       const bytes = new Uint8Array(raw.length)
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-      audioQueueRef.current.push(new Blob([bytes], { type: "audio/mpeg" }))
+      audioQueueRef.current.push(new Blob([bytes], { type: contentType || "audio/mpeg" }))
       playNext()
     },
     [playNext],
@@ -372,7 +372,10 @@ export function useVoiceDuplexSession(options: Options) {
             setPresence("speaking")
           }
           if (event.type === "voice.audio.delta" && typeof event.audio_base64 === "string") {
-            enqueueAudio(event.audio_base64)
+            enqueueAudio(
+              event.audio_base64,
+              typeof event.content_type === "string" ? event.content_type : undefined,
+            )
           }
           if (event.type === "voice.turn.cancelled") {
             cancelled = true

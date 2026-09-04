@@ -116,6 +116,7 @@ export default function AgentChatPage({
   // Mirrored from the mic button so the presence strip shows the real recognition
   // state. Presentation only — the button remains the owner of the session.
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
+  const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>(undefined)
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(AGENT_CHAT_HEADER_COLLAPSED_KEY) === "1"
@@ -251,9 +252,11 @@ export default function AgentChatPage({
       setInput(text)
       modalityRef.current = "voice"
       setModality("voice")
+      setDuplexVoiceError(undefined)
     },
     onTurnComplete: (result) => {
       if (result.cancelled && !result.assistantText.trim()) return
+      setDuplexVoiceError(undefined)
       const stamp = Date.now()
       setMessages((prev) => {
         const next = [
@@ -275,7 +278,12 @@ export default function AgentChatPage({
         return next
       })
     },
-    onError: (message) => toast.error(message),
+    onError: (message) => {
+      setDuplexVoiceError(message)
+      if (!/playback.+blocked/i.test(message)) {
+        toast.error(message)
+      }
+    },
   })
 
   // Auto-TTS after assistant reply completes — same /api/voice/tts pipeline as /ai Read aloud.
@@ -313,6 +321,7 @@ export default function AgentChatPage({
     if (modality !== "voice") {
       stopAgentVoice()
       clearVoiceErrors()
+      setDuplexVoiceError(undefined)
       lastSpokenMessageIdRef.current = null
       if (duplexIsActive) stopDuplex()
     }
@@ -320,7 +329,7 @@ export default function AgentChatPage({
 
   // Live-floor chrome only when Voice is armed or mic/TTS owns the floor.
   const voicePresence: VoicePresenceState =
-    voiceBilling || voiceServiceError
+    voiceBilling || voiceServiceError || Boolean(duplexVoiceError)
       ? "error"
       : voiceDuplex.isActive || voiceDuplex.presence !== "idle"
         ? voiceDuplex.presence
@@ -335,6 +344,8 @@ export default function AgentChatPage({
     ? voiceBillingDetail
     : voiceServiceError
       ? voiceServiceDetail
+      : duplexVoiceError
+        ? duplexVoiceError
       : undefined
   const hasSentMessage = messages.some((m) => m.role === "user")
 
@@ -596,6 +607,7 @@ export default function AgentChatPage({
                 if (next === "text") {
                   stopAgentVoice()
                   clearVoiceErrors()
+                  setDuplexVoiceError(undefined)
                 }
               }}
               voiceEntitled={voiceEntitled}
@@ -620,6 +632,7 @@ export default function AgentChatPage({
                 voiceDuplex.stop()
                 stop()
                 stopAgentVoice()
+                setDuplexVoiceError(undefined)
               }}
               canSubmit={Boolean(user && input.trim() && !isLoading)}
               showSubmit
@@ -627,6 +640,10 @@ export default function AgentChatPage({
               voicePresence={voicePresence}
               voiceBilling={voiceBilling}
               voicePresenceDetail={voicePresenceDetail}
+              onClearVoiceError={() => {
+                setDuplexVoiceError(undefined)
+                clearVoiceErrors()
+              }}
               duplex={{
                 active: voiceDuplex.isActive,
                 presence: voiceDuplex.presence,
@@ -639,7 +656,9 @@ export default function AgentChatPage({
                 supported: typeof window !== "undefined" && !!navigator.mediaDevices,
               }}
               onVoiceInputError={(message) => {
-                if (message) toast.error(message)
+                if (!message) return
+                setDuplexVoiceError(message)
+                toast.error(message)
               }}
             />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">

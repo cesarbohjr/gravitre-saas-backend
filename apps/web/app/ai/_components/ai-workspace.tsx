@@ -271,6 +271,7 @@ export function AiWorkspace({
   const [voiceEntitled, setVoiceEntitled] = useState(true)
   const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | undefined>()
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
+  const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>()
   const lastSpokenMessageIdRef = useRef<string | null>(null)
   const {
     isSpeaking: ttsSpeaking,
@@ -1688,6 +1689,7 @@ export function AiWorkspace({
       setInput(text)
       modalityRef.current = "voice"
       setModality("voice")
+      setDuplexVoiceError(undefined)
     },
     onConversationId: (id) => {
       if (!id) return
@@ -1698,6 +1700,7 @@ export function AiWorkspace({
     },
     onTurnComplete: (result) => {
       if (result.cancelled && !result.assistantText.trim()) return
+      setDuplexVoiceError(undefined)
       const stamp = Date.now()
       const userId = `voice-user-${result.turnId || stamp}`
       const assistantId = `voice-assistant-${result.turnId || stamp}`
@@ -1745,8 +1748,14 @@ export function AiWorkspace({
       }
     },
     onError: (message, billing) => {
-      if (billing) toast.error(message)
-      else toast.error(message)
+      setDuplexVoiceError(message)
+      if (billing) {
+        toast.error(message)
+        return
+      }
+      if (!/playback.+blocked/i.test(message)) {
+        toast.error(message)
+      }
     },
   })
   duplexActiveRef.current = voiceDuplex.isActive
@@ -1787,6 +1796,7 @@ export function AiWorkspace({
     if (modality !== "voice") {
       stopAgentVoice()
       clearVoiceErrors()
+      setDuplexVoiceError(undefined)
       lastSpokenMessageIdRef.current = null
       if (duplexIsActive) stopDuplex()
     }
@@ -1795,7 +1805,7 @@ export function AiWorkspace({
   // Live-floor chrome (11a/11b) only when Voice is armed or the mic/TTS owns
   // the floor — never treat ordinary Text streaming as "agent speaking".
   const voicePresence: VoicePresenceState =
-    voiceBilling || voiceServiceError
+    voiceBilling || voiceServiceError || Boolean(duplexVoiceError)
       ? "error"
       : voiceDuplex.isActive || voiceDuplex.presence !== "idle"
         ? voiceDuplex.presence
@@ -1810,6 +1820,8 @@ export function AiWorkspace({
     ? voiceBillingDetail
     : voiceServiceError
       ? voiceServiceDetail
+      : duplexVoiceError
+        ? duplexVoiceError
       : undefined
 
   // Armed by the in-input waveform (no Text|Voice toggle). Once voice is used,
@@ -2451,6 +2463,7 @@ export function AiWorkspace({
                   voiceDuplex.stop()
                   stop()
                   stopAgentVoice()
+                  setDuplexVoiceError(undefined)
                 }}
                 canSubmit={Boolean(input.trim() || connectedFileAttachments.length > 0) && !routing && !isChatBusy}
                 showSubmit
@@ -2458,6 +2471,10 @@ export function AiWorkspace({
                 voicePresence={voicePresence}
                 voiceBilling={voiceBilling}
                 voicePresenceDetail={voicePresenceDetail}
+                onClearVoiceError={() => {
+                  setDuplexVoiceError(undefined)
+                  clearVoiceErrors()
+                }}
                 agentLabel={assistantLabel}
                 duplex={{
                   active: voiceDuplex.isActive,
@@ -2471,7 +2488,9 @@ export function AiWorkspace({
                   supported: typeof window !== "undefined" && !!navigator.mediaDevices,
                 }}
                 onVoiceInputError={(message) => {
-                  if (message) toast.error(message)
+                  if (!message) return
+                  setDuplexVoiceError(message)
+                  toast.error(message)
                 }}
                 trailingExtras={
                   <Button

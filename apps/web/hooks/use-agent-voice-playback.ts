@@ -136,7 +136,7 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
       } catch {
         stop()
         setServiceError(true)
-        setServiceDetail("Audio playback blocked by the browser")
+        setServiceDetail("Audio playback is blocked. Tap Talk once to enable sound, then try again.")
       }
     },
     [applyFailure, clearErrors, stop],

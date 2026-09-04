@@ -4,6 +4,7 @@
  */
 
 let sharedPlaybackContext: AudioContext | null = null
+let listenersBound = false
 
 export function getSharedPlaybackContext(): AudioContext | null {
   if (typeof window === "undefined") return null
@@ -27,9 +28,38 @@ export async function unlockVoicePlayback(): Promise<AudioContext | null> {
       return ctx
     }
   }
+  // Prime output once so later Audio().play() calls are less likely to hit
+  // autoplay gating after the initial user gesture.
+  try {
+    const src = ctx.createBufferSource()
+    src.buffer = ctx.createBuffer(1, 1, 22050)
+    src.connect(ctx.destination)
+    src.start(0)
+  } catch {
+    /* no-op: some browsers reject this outside gestures */
+  }
   return ctx
+}
+
+export function primeVoicePlaybackUnlock(): void {
+  if (typeof window === "undefined" || listenersBound) return
+  listenersBound = true
+  const handler = () => {
+    void unlockVoicePlayback()
+    const ctx = getSharedPlaybackContext()
+    if (!ctx || ctx.state === "running") {
+      window.removeEventListener("pointerdown", handler, true)
+      window.removeEventListener("keydown", handler, true)
+      window.removeEventListener("touchstart", handler, true)
+      listenersBound = false
+    }
+  }
+  window.addEventListener("pointerdown", handler, true)
+  window.addEventListener("keydown", handler, true)
+  window.addEventListener("touchstart", handler, true)
 }
 
 export function resetSharedPlaybackContextForTests(): void {
   sharedPlaybackContext = null
+  listenersBound = false
 }
