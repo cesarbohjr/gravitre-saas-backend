@@ -76,6 +76,15 @@ def _raise_upstream(provider: str, resp: httpx.Response) -> None:
     )
 
 
+def _pipecat_import_available() -> bool:
+    try:
+        import pipecat  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 def voice_status(settings: Settings) -> dict[str, Any]:
     voices = _resolved_voices(settings)
     return {
@@ -96,6 +105,19 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             "bypass the write gate."
         ),
         "architecture": "streaming_voice_session_over_unified_turn",
+        "pipecat_enabled": bool(getattr(settings, "voice_pipecat_enabled", False)),
+        "pipecat_available": _pipecat_import_available(),
+        "pipecat_ws_path": "/api/voice/pipecat/ws",
+        "pipecat_architecture": (
+            "pipecat_deepgram_cognitive_elevenlabs"
+            if bool(getattr(settings, "voice_pipecat_enabled", False))
+            else None
+        ),
+        "default_orchestration": (
+            "pipecat"
+            if bool(getattr(settings, "voice_pipecat_enabled", False))
+            else "http_session_turn"
+        ),
         "realtime_bar_ms": 300,
         "latency_targets_ms": LATENCY_TARGETS_MS,
         "honest_expectation": (

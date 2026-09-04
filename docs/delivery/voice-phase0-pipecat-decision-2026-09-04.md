@@ -79,3 +79,19 @@ Post `fix(voice): skip knowledge + cold classify on spoken conversational turns`
 - Duplex one-brain **PASS** (barge-in, continuation, write governance, cognitive kernel) — tip `0205c202`; `docs/delivery/voice-duplex-one-brain-live.json`.
 - Note: `simple_conversational_turn2` hit `UnboundLocalError: chat_facade` (service_failure); overall latency verdict still PASS on primary simple/write gates.
 
+## Phase 1 (Pipecat) — STARTED 2026-09-04
+
+User authorized move to Phase 1 after Phase 0 narrow fixes. Flag-gated; default duplex remains `POST /api/voice/session/turn`.
+
+| Piece | Location |
+|-------|----------|
+| Deps | `backend/requirements-extras-voice.txt` → `pipecat-ai[deepgram,elevenlabs,websocket]`; Dockerfile copies extras-voice |
+| Flag | `VOICE_PIPECAT_ENABLED` / `voice_pipecat_enabled` (default **false**) |
+| Cognitive bridge | `GravitreCognitiveLLMService` → `execute_task_streaming(spoken_mode=True)` |
+| Speculative | `SpeculativePrefetchProcessor` on `InterimTranscriptionFrame` |
+| WS | `WS /api/voice/pipecat/ws` — JSON/PCM serializer; text ingress for smokes; `{"type":"interrupt"}` barge-in |
+| Status | `/api/voice/status` exposes `pipecat_enabled`, `pipecat_ws_path`, `default_orchestration` |
+| Live smoke | `scripts/verify-voice-pipecat-phase1-live.py` → `docs/delivery/voice-pipecat-phase1-live.json` |
+
+**Not done until live tip evidence:** Railway install of extras-voice, flag-off duplex regression, flag-on WS `session.ready` + audio, write-governance through Pipecat path. FE still uses HTTP duplex by default.
+

@@ -59,6 +59,7 @@ backend/*.txt
 !backend/requirements.txt
 !backend/requirements-core.txt
 !backend/requirements-extras-data.txt
+!backend/requirements-extras-voice.txt
 !backend/requirements-audit.txt
 apps/web/*.txt
 build.txt

@@ -1,3 +1,4 @@
-# Railway runtime — core + optional data connectors
+# Railway runtime — core + optional data connectors + optional voice (Pipecat)
 -r requirements-core.txt
 -r requirements-extras-data.txt
+-r requirements-extras-voice.txt

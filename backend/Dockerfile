@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PATH="/app/.venv/bin:$PATH"
 
-COPY requirements.txt requirements-core.txt requirements-extras-data.txt ./
+COPY requirements.txt requirements-core.txt requirements-extras-data.txt requirements-extras-voice.txt ./
 RUN python -m venv /app/.venv \
     && pip install --no-cache-dir -r requirements.txt
 

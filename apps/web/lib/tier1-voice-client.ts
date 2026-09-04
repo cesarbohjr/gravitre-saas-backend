@@ -16,6 +16,11 @@ export type VoiceStatus = {
   voices?: Array<{ key: string; id: string; label: string; description: string }>
   write_confirm_policy?: string
   architecture?: string
+  /** Phase 1 Pipecat orchestration (flag-gated; default remains http session/turn). */
+  pipecat_enabled?: boolean
+  pipecat_available?: boolean
+  pipecat_ws_path?: string
+  default_orchestration?: "pipecat" | "http_session_turn" | string
 }
 
 let cachedStatus: VoiceStatus | null = null

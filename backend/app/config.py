@@ -542,6 +542,12 @@ class Settings(BaseSettings):
         default="nova-2",
         validation_alias=AliasChoices("DEEPGRAM_STT_MODEL", "deepgram_stt_model"),
     )
+    # Phase 1 Pipecat orchestration — default OFF; existing duplex remains canonical until
+    # Cesar enables VOICE_PIPECAT_ENABLED after live parity checks.
+    voice_pipecat_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_PIPECAT_ENABLED", "voice_pipecat_enabled"),
+    )
     twilio_auth_token: str = Field(
         default="",
         validation_alias=AliasChoices("TWILIO_AUTH_TOKEN", "twilio_auth_token"),
