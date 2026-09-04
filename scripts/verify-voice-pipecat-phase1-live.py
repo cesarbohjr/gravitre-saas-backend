@@ -329,6 +329,21 @@ def main() -> int:
             governance_probe = {"ok": True, "skipped": True, "verdict": "PASS", "reason": "flag_off"}
 
     status_ok = bool(status_probe.get("ok")) and "pipecat_ws_path" in status_probe
+    # Honesty: when the flag is on, status must advertise pipecat as default orchestration
+    # (FE also keys off pipecat_enabled; this field must not lie as http_session_turn).
+    if status_ok and status_probe.get("pipecat_enabled"):
+        status_ok = status_probe.get("default_orchestration") == "pipecat"
+        status_probe["orchestration_honesty"] = (
+            "PASS" if status_ok else "FAIL"
+        )
+    elif status_ok and status_probe.get("pipecat_enabled") is False:
+        status_probe["orchestration_honesty"] = (
+            "PASS"
+            if status_probe.get("default_orchestration") == "http_session_turn"
+            else "FAIL"
+        )
+        if status_probe["orchestration_honesty"] == "FAIL":
+            status_ok = False
     gov_ok = governance_probe.get("verdict") == "PASS"
     overall = (
         "PASS"

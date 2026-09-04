@@ -93,15 +93,18 @@ User authorized move to Phase 1 after Phase 0 narrow fixes. Flag-gated; default 
 | Status | `/api/voice/status` exposes `pipecat_enabled`, `pipecat_ws_path`, `default_orchestration` |
 | Live smoke | `scripts/verify-voice-pipecat-phase1-live.py` → `docs/delivery/voice-pipecat-phase1-live.json` |
 
-**Not done until live tip evidence:** Railway install of extras-voice, flag-off duplex regression, flag-on WS `session.ready` + audio, write-governance through Pipecat path. FE still uses HTTP duplex by default.
-
 ### Live evidence (2026-09-04)
 
 | Probe | Tip | Verdict | Evidence |
 |-------|-----|---------|----------|
-| HTTP duplex regression | `9c0072c4` then `5b578100` | **PASS** | `voice-duplex-one-brain-live.json` — barge-in, continuation, write governance, CognitiveTurnKernel |
+| HTTP duplex regression | `9c0072c4` → `5b578100` → `5275df04` | **PASS** | `voice-duplex-one-brain-live.json` — barge-in, continuation, write governance, CognitiveTurnKernel |
 | Pipecat flag-off gate | `9c0072c4` | **PASS** | WS `error_class=not_enabled` |
-| Pipecat flag-on text→audio | `5b578100ffc6a57a77d8cdef0a98a61938a57561` | **PASS** | `voice-pipecat-phase1-live.json` — `session.ready` + PCM audio frames; `VOICE_PIPECAT_ENABLED=true` on Railway |
+| Pipecat flag-on text→audio + status honesty | `5b578100` → `8ac01d95` | **PASS** | `voice-pipecat-phase1-live.json` — `default_orchestration=pipecat`, `session.ready` + PCM; governance write-shaped PASS (`CognitiveTurnKernel` + `nl_yes_same_path_as_text`) |
+| FE duplex → Pipecat WS | Vercel `6b98dbe6` READY @ gravitre.app | **READY** | `useVoiceDuplexSession` uses `pipecat_enabled`; see `voice-pipecat-fe-switch-2026-09-04.md` |
 
-FE duplex remains `POST /api/voice/session/turn` (`default_orchestration=http_session_turn`). Pipecat WS is available when the flag is on (`pipecat_ws_clients_accepted`).
+**Product path with flag on:** browser PCM → `WS /api/voice/pipecat/ws`. HTTP `session/turn` remains fallback / e2e `forceHttpDuplex`.
+
+**Status honesty closed:** Railway tip `8ac01d95` — `default_orchestration=pipecat` with flag on (`voice-pipecat-phase1-live.json`).
+
+**Open (human gate):** Cesar hear + barge-in on `/ai` + two department agents — see `docs/delivery/voice-pipecat-human-verify-and-opt-inventory-2026-09-04.md`. Part 2 optimizations **blocked** until that confirm.
 
