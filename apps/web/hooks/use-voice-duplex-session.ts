@@ -366,8 +366,24 @@ export function useVoiceDuplexSession(options: Options) {
       let assistantText = ""
       let conversationId = optsRef.current.conversationId || null
       let cancelled = false
+      let completionDispatched = false
+      let sawTextDelta = false
       const events: VoiceSessionEvent[] = []
       const stage: DuplexLatencyStages = {}
+
+      const dispatchTurnComplete = () => {
+        if (completionDispatched) return
+        completionDispatched = true
+        optsRef.current.onTurnComplete?.({
+          userText: text,
+          assistantText: assistantText.trim(),
+          conversationId,
+          turnId,
+          cancelled: cancelled || abort.signal.aborted,
+          events: [...events],
+          latency: stage,
+        })
+      }
 
       const result = await streamVoiceSessionTurn({
         text,
@@ -420,8 +436,18 @@ export function useVoiceDuplexSession(options: Options) {
             }
             if (event.cancelled) cancelled = true
           }
+          if (event.type === "voice.turn.complete") {
+            dispatchTurnComplete()
+          }
+          if (event.type === "voice.text.delta" && typeof event.delta === "string") {
+            sawTextDelta = true
+            assistantText += String(event.delta)
+            optsRef.current.onAssistantDelta?.(assistantText)
+          }
           if (event.type === "voice.audio.delta" && typeof event.text_chunk === "string") {
-            optsRef.current.onAssistantDelta?.(String(event.text_chunk))
+            if (!sawTextDelta) {
+              optsRef.current.onAssistantDelta?.(String(event.text_chunk))
+            }
           }
           if (event.type === "voice.error") {
             const billing = Boolean((event as { billing_issue?: boolean }).billing_issue)
@@ -448,15 +474,17 @@ export function useVoiceDuplexSession(options: Options) {
         assistantText ||
         (typeof completeEv?.text === "string" ? completeEv.text : "") ||
         ""
-      optsRef.current.onTurnComplete?.({
-        userText: text,
-        assistantText: finalAssistant,
-        conversationId,
-        turnId,
-        cancelled: cancelled || abort.signal.aborted,
-        events: result.events.length ? result.events : events,
-        latency: stage,
-      })
+      if (!completionDispatched) {
+        optsRef.current.onTurnComplete?.({
+          userText: text,
+          assistantText: finalAssistant,
+          conversationId,
+          turnId,
+          cancelled: cancelled || abort.signal.aborted,
+          events: result.events.length ? result.events : events,
+          latency: stage,
+        })
+      }
 
       agentSpeakingRef.current = false
       turnIdRef.current = null
