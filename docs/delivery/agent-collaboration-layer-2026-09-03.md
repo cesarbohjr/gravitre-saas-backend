@@ -101,3 +101,21 @@ Schema already **rejects** `trust_boundary=external` on `CollaborationTaskHandof
 ## Authorization declaration (customer surfaces)
 
 No new customer-facing prices, badges, Enable toggles, or capability claims invented. API is internal Command-tier operator surface.
+
+## Sign-off (2026-09-03)
+
+**Status: APPROVED / CLOSED**
+
+Authorized by Cesar (product) — “fully complete this request, sign off approved.”
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| Phase 0 audit + prod volume | Done | Organic SQL: councils 10/30d; swarm 0/30d; handoffs were 0 pre-ship |
+| Phase 1 internal handoff | Done | `b2ed7d30`; live OpenAPI `/api/agent-collaboration/handoff` |
+| Write-authority / identity | Done | Shared `run_agent_task` → `react_write_gate` / Agent Identity; no agent bypass |
+| Phase 2 CAC + mutation | Done | Pytest + probe `handoff_id=a7c7e178…`; `receiver.completed` challenge @ `2026-09-04 00:30:33.192492Z` |
+| Phase 3 observability | Done | Run console Agent collaboration + web deploy |
+| Phase 4 external A2A | Diagnosis only | Explicitly **not built**; still gated pending separate review |
+| Deploy / live SHA | Done | Collaboration in live tip `1b95aa7a…` (ancestor `b2ed7d30`); Railway deploy success on feature commit |
+
+**External A2A remains NOT authorized.** Building it still requires a separate Cesar sign-off after reviewing the Phase 4 requirements above.

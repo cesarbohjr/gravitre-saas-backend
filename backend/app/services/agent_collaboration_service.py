@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.capability_ontology.resolver import resolve_capability
 from app.config import Settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.context_prioritization_engine import (
     ContextSource,
     get_context_prioritization_engine,
@@ -177,7 +178,7 @@ def build_ranked_context_for_handoff(
                 label=str(raw.get("label") or f"Context {idx + 1}"),
                 score=float(raw.get("score") or 0.7),
                 content=content[:4_000],
-                metadata=dict(raw.get("metadata") or {}),
+                metadata=safe_normalize_stored_dict(raw, key="metadata"),
             )
         )
 
