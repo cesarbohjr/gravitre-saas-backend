@@ -348,7 +348,8 @@ async def test_a_conversational_turn_writes_no_audit_row(
 
     _, meta = await _build(reasoning_depth="conversational")
 
-    assert meta["evidenceSufficiency"]["skipped"] == "casual_bar"
+    assert meta.get("skipped") == "conversational_depth"
+    assert meta["evidenceSufficiency"]["skipped"] == "conversational_depth"
     assert captured_audits == []
 
 

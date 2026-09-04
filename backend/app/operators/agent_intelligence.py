@@ -1840,79 +1840,117 @@ class AgentIntelligence:
                     )
                     return
 
-        dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
-        sentiment = (
-            get_sentiment_friction_service().analyze(task_text, conversation_history)
-            if dialogue_settings.get("sentiment_detection_enabled", True)
-            else {"recommended_adaptation": "none"}
+        # Spoken conversational fast path: skip expensive understand / cluster-embed
+        # enrich / router enrichments when this is not a connector write. Depth is
+        # otherwise only set *after* those stages, so TTFT paid ~5–7s of dead work.
+        spoken_lite_path = bool(
+            spoken_mode
+            and routing_control.tier == "simple"
+            and not is_direct_connector_write_intent(task_text)
         )
-        understanding = await get_contextual_understanding_service(active_settings).understand(
-            task_text,
-            conversation_history,
-            org_id,
-        )
-        # Sites 9/10 were dormant with no production signal at all: an empty goal
-        # and a low-confidence domain look identical whether the model ran or
-        # threw. modelRan and domainSource are what separate those.
-        try:
-            _domain = understanding.get("domain") if isinstance(understanding, dict) else None
-            _domain = _domain if isinstance(_domain, dict) else {}
-            write_audit_event(
-                client,
-                org_id=org_id,
-                # actor_id must be a real UUID: write_audit_event silently skips
-                # the audit_events insert for a non-uuid actor and only logs a
-                # warning, which is what made three separate instruments in this
-                # file read zero and look like unreached code paths.
-                actor_id=user_id,
-                action="context.understanding.extracted",
-                resource_type="conversation",
-                resource_id=message_id or org_id,
-                metadata={
-                    "modelAttempted": bool(understanding.get("model_attempted")),
-                    "modelRan": bool(understanding.get("model_ran")),
-                    "goalPresent": bool(understanding.get("goal")),
-                    "constraintCount": len(understanding.get("constraints") or []),
-                    "domainSource": _domain.get("source"),
-                    "domainConfidence": _domain.get("confidence"),
-                    "domainRoutingActive": _domain.get("routing_active"),
-                    "wordCount": len((task_text or "").split()),
-                },
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("understanding_audit_failed error=%s", exc)
-        pipeline_classification = await get_task_classifier(active_settings).classify(
-            org_id,
-            task_text,
-            conversation_history,
-            understanding=understanding,
-        )
-        from app.services.chat_intelligence_facade import get_chat_intelligence_facade
 
-        chat_facade = get_chat_intelligence_facade(active_settings)
-        pipeline_classification = await chat_facade.enrich_classification(
-            pipeline_classification,
-            org_id,
-            task_text,
-        )
-        # Phase 1: UI department desk scope must reach persona + classification,
-        # not only the prepare_stream system prompt in assistant.py.
-        department_scope = (department or "").strip() or None
-        if department_scope:
-            pipeline_classification = {
-                **pipeline_classification,
-                "department": department_scope,
-                "ui_department_scope": department_scope,
+        if spoken_lite_path:
+            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+            sentiment = {"recommended_adaptation": "none"}
+            understanding = {
+                "goal": None,
+                "constraints": [],
+                "model_attempted": False,
+                "model_ran": False,
+                "domain": {"source": "spoken_lite_skip", "confidence": 0.0, "routing_active": False},
+                "skipped": "spoken_conversational_lite",
             }
-        router_enrichments = await chat_facade.run_router_enrichments(
-            org_id,
-            task_text,
-            pipeline_classification,
-        )
-        _raw_classification_confidence = pipeline_classification.get("classification_confidence")
-        classification_confidence = (
-            float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
-        )
+            pipeline_classification = {
+                "intent": "informational",
+                "requires_action": False,
+                "classification_confidence": 0.7,
+                "department": (department or "").strip() or None,
+                "routing_tier": routing_control.tier,
+                "spoken_lite": True,
+            }
+            department_scope = (department or "").strip() or None
+            if department_scope:
+                pipeline_classification = {
+                    **pipeline_classification,
+                    "department": department_scope,
+                    "ui_department_scope": department_scope,
+                }
+            router_enrichments: dict[str, Any] = {}
+            classification_confidence = 0.7
+        else:
+            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+            sentiment = (
+                get_sentiment_friction_service().analyze(task_text, conversation_history)
+                if dialogue_settings.get("sentiment_detection_enabled", True)
+                else {"recommended_adaptation": "none"}
+            )
+            understanding = await get_contextual_understanding_service(active_settings).understand(
+                task_text,
+                conversation_history,
+                org_id,
+            )
+            # Sites 9/10 were dormant with no production signal at all: an empty goal
+            # and a low-confidence domain look identical whether the model ran or
+            # threw. modelRan and domainSource are what separate those.
+            try:
+                _domain = understanding.get("domain") if isinstance(understanding, dict) else None
+                _domain = _domain if isinstance(_domain, dict) else {}
+                write_audit_event(
+                    client,
+                    org_id=org_id,
+                    # actor_id must be a real UUID: write_audit_event silently skips
+                    # the audit_events insert for a non-uuid actor and only logs a
+                    # warning, which is what made three separate instruments in this
+                    # file read zero and look like unreached code paths.
+                    actor_id=user_id,
+                    action="context.understanding.extracted",
+                    resource_type="conversation",
+                    resource_id=message_id or org_id,
+                    metadata={
+                        "modelAttempted": bool(understanding.get("model_attempted")),
+                        "modelRan": bool(understanding.get("model_ran")),
+                        "goalPresent": bool(understanding.get("goal")),
+                        "constraintCount": len(understanding.get("constraints") or []),
+                        "domainSource": _domain.get("source"),
+                        "domainConfidence": _domain.get("confidence"),
+                        "domainRoutingActive": _domain.get("routing_active"),
+                        "wordCount": len((task_text or "").split()),
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("understanding_audit_failed error=%s", exc)
+            pipeline_classification = await get_task_classifier(active_settings).classify(
+                org_id,
+                task_text,
+                conversation_history,
+                understanding=understanding,
+            )
+            from app.services.chat_intelligence_facade import get_chat_intelligence_facade
+
+            chat_facade = get_chat_intelligence_facade(active_settings)
+            pipeline_classification = await chat_facade.enrich_classification(
+                pipeline_classification,
+                org_id,
+                task_text,
+            )
+            # Phase 1: UI department desk scope must reach persona + classification,
+            # not only the prepare_stream system prompt in assistant.py.
+            department_scope = (department or "").strip() or None
+            if department_scope:
+                pipeline_classification = {
+                    **pipeline_classification,
+                    "department": department_scope,
+                    "ui_department_scope": department_scope,
+                }
+            router_enrichments = await chat_facade.run_router_enrichments(
+                org_id,
+                task_text,
+                pipeline_classification,
+            )
+            _raw_classification_confidence = pipeline_classification.get("classification_confidence")
+            classification_confidence = (
+                float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
+            )
 
         # Complexity routing Phase 1 — post-classification risk floor (escalate-only).
         from app.services.complexity_routing_guardrails import apply_routing_risk_floor

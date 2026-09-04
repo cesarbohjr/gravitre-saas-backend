@@ -536,9 +536,11 @@ async def test_conversational_turn_pays_nothing_for_the_loop(
         ],
     )
     assert called["n"] == 0
+    assert meta.get("skipped") == "conversational_depth"
     loop = meta["evidenceSufficiency"]
-    assert loop["skipped"] == "casual_bar"
+    assert loop["skipped"] == "conversational_depth"
     assert loop["additional_rounds_used"] == 0
+    assert stub_sources["order"] == []
     assert "internet" not in stub_sources["order"]
 
 

@@ -530,6 +530,26 @@ async def build_unified_turn_knowledge_context(
         "route_reason": "",
         "research_scope": research_scope or "internal_only",
     }
+    # Align with CognitiveTurnKernel conversational depth: skip heavy Fabric/RAG/
+    # internet round-1 entirely (not only the sufficiency loop). Live voice TTFT
+    # was paying ~3s here after kernel already set KNOWLEDGE=0.
+    if (reasoning_depth or "full").strip().lower() == "conversational":
+        meta["skipped"] = "conversational_depth"
+        meta["evidenceSufficiency"] = {
+            "enabled": bool(getattr(settings, "evidence_sufficiency_loop_enabled", True)),
+            "bar": "casual",
+            "max_additional_rounds": 0,
+            "additional_rounds_used": 0,
+            "sources_tried": [],
+            "assessments": [],
+            "stances": [],
+            "discards": 0,
+            "discarded_rows": 0,
+            "refined": False,
+            "skipped": "conversational_depth",
+        }
+        return "", meta
+
     if not should_augment_unified_turn_with_knowledge(query, classification=classification):
         meta["skipped"] = "not_informational"
         return "", meta

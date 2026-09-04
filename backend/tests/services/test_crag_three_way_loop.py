@@ -633,7 +633,8 @@ async def test_a_conversational_turn_pays_for_none_of_this(
         classification={"department": "sales"},
         reasoning_depth="conversational",
     )
-    assert meta["evidenceSufficiency"]["skipped"] == "casual_bar"
+    assert meta.get("skipped") == "conversational_depth"
+    assert meta["evidenceSufficiency"]["skipped"] == "conversational_depth"
     assert called["n"] == 0
     assert meta["evidenceSufficiency"]["discards"] == 0
 
