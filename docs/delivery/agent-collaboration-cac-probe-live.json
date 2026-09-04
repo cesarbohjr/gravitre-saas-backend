@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-09-04T00:22:47.096950+00:00",
+  "probe_kind": "probe_derived_deterministic_llm_stub",
+  "scenario": "Marketing projected CAC assumes 4.2% conversion; Finance challenges with historical healthcare 2.6%",
+  "verdict": "PASS",
+  "api_git_sha": "b2ed7d3012f5ccc54e64de9fc55569ae6d50b450",
+  "agents_found": 14,
+  "marketing_agent_id": "fbfa6e92-c5ec-44a3-963e-753cd6f285dd",
+  "finance_agent_id": "fbfa6e92-c5ec-44a3-963e-753cd6f285dd",
+  "mutation_precheck": "PASS",
+  "trail": {
+    "handoff_id": "856343b2-2e72-4320-b1bb-5a1b03e1cfe2",
+    "label": "Marketing \u2192 Finance",
+    "originating_claim": {
+      "claim": "Projected CAC assumes a 4.2% conversion rate",
+      "projected_conversion_rate": 0.042
+    },
+    "receiver_response": {
+      "stance": "challenge",
+      "reasoning": "Marketing's projected CAC assumes a 4.2% conversion rate; historical healthcare conversion is only 2.6%.",
+      "assumptions_challenged": [
+        "projected_conversion_rate"
+      ],
+      "recommendation": "Recalculate CAC at 2.6% before budget approval"
+    },
+    "originator_reconciliation": {
+      "stance": "revise",
+      "reasoning": "Accepted Finance challenge on conversion rate",
+      "revised_claim": {
+        "projected_conversion_rate": 0.026
+      },
+      "accepted_challenges": [
+        "projected_conversion_rate"
+      ],
+      "unresolved_disagreements": []
+    },
+    "receiver_stance": "challenge",
+    "disagreement_visible": true,
+    "capability_resolution": null,
+    "write_authority": {
+      "requires_write_approval": false,
+      "resolved_action": null,
+      "path": "none"
+    },
+    "ranked_context_count": 2,
+    "audit_actions": [
+      "agent.collaboration.handoff.created",
+      "agent.collaboration.receiver.completed",
+      "agent.collaboration.reconciled"
+    ]
+  },
+  "label": "Marketing \u2192 Finance",
+  "disagreement_visible": true,
+  "receiver_stance": "challenge",
+  "handoff_id": "856343b2-2e72-4320-b1bb-5a1b03e1cfe2",
+  "audit_actions": [
+    "agent.collaboration.handoff.created",
+    "agent.collaboration.receiver.completed",
+    "agent.collaboration.reconciled"
+  ],
+  "evidence_note": "Probe-derived: deterministic stubbed agent turns; real agent_handoffs insert + agent.collaboration.* audit_events when service role can write."
+}
