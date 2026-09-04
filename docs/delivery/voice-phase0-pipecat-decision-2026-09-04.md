@@ -38,6 +38,16 @@ Main `/ai` and department `agents/[id]/chat` both wire `useVoiceDuplexSession` +
 
 Shared helper maps legacy `mpeg` → `mp3_44100_128`; stream + batch TTS use the enum; session default updated. Unit tests assert bare `mpeg` never reaches the URL.
 
+**Shipped:** commit `56dbc87bae37f855cbd42ae13e738afeeff25e2d` on `main`  
+**Live health:** `git_sha=56dbc87bae37f855cbd42ae13e738afeeff25e2d`
+
+### Post-deploy verification (API probes)
+
+| Probe | Verdict | Evidence |
+|-------|---------|----------|
+| Duplex one-brain | **PASS** | `voice-duplex-one-brain-live.json` — continuation turn had `voice.ttfa` + 40 `voice.audio.delta`; barge-in + write-governance PASS |
+| Latency phases | **PARTIAL** | Audio restored (all probes `ok` with TTFA). Gate `ttft_improved_vs_4632` still FAIL — simple conversational TTFT **13339 ms** / TTFA **13511 ms** (warm TTFT 4454 / TTFA 5674). Latency is a separate follow-up, not a Pipecat justification for silence. |
+
 ## Human verification (Cesar) — required before “voice fixed” closure
 
 Do **not** close on API probes alone (program Class C / voice history).
@@ -46,6 +56,10 @@ Do **not** close on API probes alone (program Class C / voice history).
 2. Ask one short uncached question. Confirm **you hear** the reply (not just orb motion).  
 3. Mid-reply say “wait, only show enterprise opportunities” — confirm barge-in stops playback and re-answers.  
 4. Repeat on **two department agent** chats.  
-5. Note felt latency vs prior (~4–5s cold).  
+5. Note felt latency vs prior (~4–5s cold); simple turns may still feel slow (API saw ~13s TTFT on one probe).  
 
 Only Cesar’s direct confirmation closes the human gate.
+
+## Phase 1 (Pipecat)
+
+**NOT STARTED** — Phase 0 recommendation does not authorize orchestration migration for the current bugs.
