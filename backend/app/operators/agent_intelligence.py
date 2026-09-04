@@ -1913,6 +1913,26 @@ class AgentIntelligence:
         classification_confidence = (
             float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
         )
+
+        # Complexity routing Phase 1 — post-classification risk floor (escalate-only).
+        from app.services.complexity_routing_guardrails import apply_routing_risk_floor
+
+        floored = apply_routing_risk_floor(
+            routing_decision,
+            task_text,
+            pipeline_classification if isinstance(pipeline_classification, dict) else None,
+        )
+        if floored.tier != routing_control.tier:
+            routing_control.escalate(floored.tier, "post_classification_risk_floor")
+            routing_decision = floored
+            max_iterations = routing_control.max_iterations
+            routing_sse = {
+                **routing_decision.to_sse(),
+                "routingTier": routing_control.tier,
+                "maxToolRounds": routing_control.max_iterations,
+                "complexityRiskFloor": True,
+            }
+
         task_state = await get_conversation_state_service(active_settings).get_task_state(
             conversation_id or "",
             org_id,
@@ -3696,18 +3716,11 @@ class AgentIntelligence:
             full_content = str(consensus_result.get("response") or full_content)
 
         from app.services.verification_critic_service import get_verification_critic_service
+        from app.services.complexity_routing_guardrails import requires_mandatory_critic
 
         # Phase D item 5 — mandatory critic on consequential writes / high-risk actions.
         _cls = pipeline_classification if isinstance(pipeline_classification, dict) else {}
-        _mandatory_critic = bool(
-            _cls.get("requires_approval")
-            or _cls.get("requires_write_approval")
-            or _cls.get("is_write")
-            or _cls.get("is_destructive")
-            or str(_cls.get("risk_level") or "").lower() in {"high", "critical"}
-            or str(_cls.get("intent") or "").lower()
-            in {"write_confirm", "enrich", "extension_action", "workflow_execution"}
-        )
+        _mandatory_critic = requires_mandatory_critic(task_text, _cls)
         # Voice conversational depth: skip non-mandatory critic LLM (does not skip
         # mandatory critic on consequential writes — Phase 1 constraint).
         if (

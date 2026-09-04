@@ -219,8 +219,11 @@ def classify_routing_tier(
     connected_integrations: list[str] | None = None,
     parameters: dict[str, Any] | None = None,
     prior_tier: str | None = None,
+    classification: dict[str, Any] | None = None,
 ) -> RoutingDecision:
     """Classify turn into simple / multi_step / research with latency budget."""
+    from app.services.complexity_routing_guardrails import apply_routing_risk_floor, assess_message_risk_class
+
     params = parameters or {}
     reasons: list[str] = []
     mode_key = str(mode or "standard").strip().lower()
@@ -228,6 +231,7 @@ def classify_routing_tier(
     words = len(text.split())
     connected = [str(c).strip() for c in (connected_integrations or []) if str(c).strip()]
     pinned_fast = mode_key == "fast"
+    high_risk = assess_message_risk_class(text, classification) == "high_risk"
 
     explicit = str(params.get("routing_tier") or params.get("complexity") or "").strip().lower()
     if explicit in {"research", "high", "complex"} or params.get("require_high_model"):
@@ -251,9 +255,12 @@ def classify_routing_tier(
     elif _MULTI_STEP_HINT.search(text) or (connected and _CONNECTOR_HINT.search(text)):
         tier = "multi_step"
         reasons.append("multi_step_or_connector")
-    elif pinned_fast and words < 80:
+    elif pinned_fast and words < 80 and not high_risk:
         tier = "simple"
         reasons.append("fast_short")
+    elif high_risk:
+        tier = "research"
+        reasons.append("high_risk_message_floor")
     else:
         tier = "multi_step" if words > 40 else "simple"
         reasons.append("default_length")
@@ -264,10 +271,11 @@ def classify_routing_tier(
             tier = _normalize_tier(prior_tier)
             reasons.append("prior_tier_floor")
 
-    # Pinned Fast: stay simple unless deepen OR explicit high/research override.
+    # Pinned Fast: stay simple unless deepen OR explicit high/research override OR high-risk.
     if (
         pinned_fast
         and tier != "simple"
+        and not high_risk
         and not _DEEPEN_HINT.search(text)
         and explicit not in {"research", "high", "complex"}
         and not params.get("require_high_model")
@@ -277,7 +285,7 @@ def classify_routing_tier(
 
     budget = dict(LATENCY_BUDGETS[tier])
     model_tier = model_tier_key_for_routing_tier(tier)
-    return RoutingDecision(
+    decision = RoutingDecision(
         tier=tier,
         model_tier=model_tier,
         model=MODEL_TIERS.get(model_tier, MODEL_TIERS["medium"])["openai"],
@@ -287,6 +295,7 @@ def classify_routing_tier(
         pinned_fast=pinned_fast,
         task_type=task_type_for_routing_tier(tier),
     )
+    return apply_routing_risk_floor(decision, text, classification)
 
 
 def is_user_deepen_message(message: str) -> bool:

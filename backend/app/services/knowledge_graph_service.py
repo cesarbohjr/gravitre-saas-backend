@@ -107,22 +107,31 @@ class KnowledgeGraphService:
             "advisory_only": True,
         }
 
-    async def answer_business_question(
+    async def _identify_primary_entity(
         self,
         org_id: str,
         question: str,
         *,
-        settings: Settings | None = None,
-        client: Any | None = None,
-    ) -> dict[str, Any]:
-        """LLM identifies entity only; graph traversal is deterministic."""
-        active = settings or get_settings()
-        db = client or get_supabase_client(active)
+        settings: Settings,
+        client: Any,
+    ) -> dict[str, str]:
+        from app.services.graph_query_intent import resolve_entity_from_knowledge_nodes
+
+        resolved = resolve_entity_from_knowledge_nodes(org_id, question, client=client)
+        if resolved:
+            return {
+                "entity_type": resolved["entity_type"],
+                "entity_id": resolved["entity_id"],
+                "display_name": resolved.get("display_name") or "",
+                "resolution": "org_knowledge_nodes",
+            }
+
         router = get_model_router()
         prompt = (
             "Identify the primary business entity referenced in the question. "
             "Return JSON only: {\"entity_type\": string, \"entity_id\": string}. "
-            "Use entity_type from: deal, contact, company, workflow, agent, glossary_term, query_cluster. "
+            "Use entity_type from: deal, contact, company, customer, campaign, workflow, agent, "
+            "glossary_term, query_cluster, kpi, project. "
             "If unknown, use entity_type=unknown and entity_id=unknown.\n\n"
             f"Question: {question}"
         )
@@ -145,6 +154,39 @@ class KnowledgeGraphService:
                 entity_id = str(parsed.get("entity_id") or "unknown")
         except Exception as exc:  # noqa: BLE001
             logger.warning("knowledge_graph_entity_identify_failed org_id=%s error=%s", org_id, exc)
+        return {
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "display_name": "",
+            "resolution": "llm",
+        }
+
+    async def answer_business_question(
+        self,
+        org_id: str,
+        question: str,
+        *,
+        settings: Settings | None = None,
+        client: Any | None = None,
+    ) -> dict[str, Any]:
+        """Entity resolution + deterministic graph traversal (one- or multi-hop)."""
+        from app.services.graph_query_intent import (
+            extract_relationship_topic_keywords,
+            is_relationship_traversal_query,
+            rank_paths_for_topic,
+        )
+
+        active = settings or get_settings()
+        db = client or get_supabase_client(active)
+        relationship_query = is_relationship_traversal_query(question)
+        identified = await self._identify_primary_entity(
+            org_id,
+            question,
+            settings=active,
+            client=db,
+        )
+        entity_type = str(identified.get("entity_type") or "unknown")
+        entity_id = str(identified.get("entity_id") or "unknown")
 
         if entity_type == "unknown" or entity_id == "unknown":
             return {
@@ -152,6 +194,41 @@ class KnowledgeGraphService:
                 "question": question,
                 "scopeNote": ONE_HOP_SCOPE_NOTE,
                 "message": "Could not identify a specific entity for graph lookup.",
+                "advisory_only": True,
+                "queryShape": "relationship" if relationship_query else "entity_lookup",
+            }
+
+        if relationship_query:
+            topic_keywords = extract_relationship_topic_keywords(question)
+            traversal = await self.traverse_multi_hop(
+                org_id,
+                entity_type,
+                entity_id,
+                max_hops=self.MAX_HOPS,
+                settings=active,
+                client=db,
+            )
+            paths = list(traversal.get("paths") or [])
+            ranked_paths = rank_paths_for_topic(paths, topic_keywords)
+            reasoning = await self.explain_graph_reasoning(org_id, {"paths": ranked_paths})
+            return {
+                "status": "ok",
+                "question": question,
+                "queryShape": "relationship",
+                "identifiedEntity": {
+                    "entityType": entity_type,
+                    "entityId": entity_id,
+                    "displayName": identified.get("display_name") or "",
+                    "resolution": identified.get("resolution") or "unknown",
+                },
+                "traversal": {
+                    **traversal,
+                    "paths": ranked_paths,
+                    "topicKeywords": topic_keywords,
+                },
+                "graphReasoning": reasoning,
+                "scopeNote": MULTI_HOP_SCOPE_NOTE,
+                "hopLimit": self.MAX_HOPS,
                 "advisory_only": True,
             }
 
@@ -165,9 +242,16 @@ class KnowledgeGraphService:
         return {
             "status": "ok",
             "question": question,
-            "identifiedEntity": {"entityType": entity_type, "entityId": entity_id},
+            "queryShape": "entity_lookup",
+            "identifiedEntity": {
+                "entityType": entity_type,
+                "entityId": entity_id,
+                "displayName": identified.get("display_name") or "",
+                "resolution": identified.get("resolution") or "unknown",
+            },
             "explanation": explanation,
             "scopeNote": ONE_HOP_SCOPE_NOTE,
+            "hopLimit": 1,
             "advisory_only": True,
         }
 

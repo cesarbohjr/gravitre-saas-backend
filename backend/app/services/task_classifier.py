@@ -16,6 +16,11 @@ from app.services.user_intelligence import classify_query
 REVENUE_PATTERN = re.compile(r"revenue|mrr|arr|churn|forecast|pipeline|deal", re.I)
 WORKFLOW_PATTERN = re.compile(r"workflow|run|execute|automation|approve", re.I)
 CRM_PATTERN = re.compile(r"contact|deal|account|hubspot|salesforce|crm", re.I)
+RELATIONSHIP_PATTERN = re.compile(
+    r"\b(how\s+(is|are|does|do).{0,120}(related|connected|linked|tied)|"
+    r"relationship\s+between|what\s+connects|connection\s+between)\b",
+    re.I | re.DOTALL,
+)
 
 TASK_TYPE_PIPELINE_MAP: dict[str, dict[str, Any]] = {
     "question_answering": {
@@ -156,6 +161,10 @@ class TaskClassifier:
             workflow_planning_flags = TASK_TYPE_PIPELINE_MAP["workflow_planning"]
             pipeline_flags = dict(workflow_planning_flags)
             intent = "workflow_planning"
+        elif RELATIONSHIP_PATTERN.search(request):
+            pipeline_flags["requires_graph"] = True
+            intent = "relationship_lookup"
+            pipeline_flags.setdefault("requires_causal", True)
         elif REVENUE_PATTERN.search(request):
             pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["data_analysis"])
             intent = "data_analysis"
