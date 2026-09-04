@@ -723,8 +723,11 @@
       "reason": "Sibling GET must return the written entity id/field"
     },
     "hubspot.deals.update_stage": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+      "assert_field": "dealstage",
+      "mode": "follow_up_field_assert",
+      "read_action": "hubspot.deals.get",
+      "request_field": "stage",
+      "reason": "Stage updates require proving the requested stage value persisted"
     },
     "hubspot.lists.add_contact": {
       "assert_field": "membership_count",
