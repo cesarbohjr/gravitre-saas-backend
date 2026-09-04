@@ -16,7 +16,7 @@ from typing import Any
 
 from app.config import Settings
 from app.core.safe_dict import safe_normalize_stored_dict
-from app.services.tier1_voice_service import synthesize_speech_stream
+from app.services.tier1_voice_service import VoiceProviderError, synthesize_speech_stream
 from app.services.voice_agent_profile import normalize_voice_profile
 from app.services.voice_turn_taking import (
     TurnTakingState,
@@ -177,6 +177,7 @@ async def stream_voice_turn_events(
     first_audio_ms: int | None = None
     agent_audio_started = False
     cancelled = False
+    tts_failed = False
     pending_complete: AssistantStreamComplete | None = None
     stage_ms: dict[str, Any] = {}
     reasoning_depth: str | None = None
@@ -193,38 +194,70 @@ async def stream_voice_turn_events(
     classify_done_ms: int | None = None
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
-        nonlocal first_audio_ms, agent_audio_started, cancelled
+        nonlocal first_audio_ms, agent_audio_started, cancelled, tts_failed
         spoken_chunk = normalize_spoken_text(chunk)
         if not spoken_chunk:
+            return
+            yield  # pragma: no cover — keeps this an async generator
+        if tts_failed:
             return
             yield  # pragma: no cover — keeps this an async generator
         if _cancelled():
             cancelled = True
             return
             yield  # pragma: no cover — keeps this an async generator
-        if not agent_audio_started:
-            agent_audio_started = True
-            yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
-        for audio in synthesize_speech_stream(
-            settings,
-            text=spoken_chunk,
-            voice_key=resolved_voice,
-            model_id=model,
-            output_format=tts_output_format,
-        ):
-            if _cancelled():
-                cancelled = True
-                return
-            if first_audio_ms is None:
-                first_audio_ms = int((time.perf_counter() - t_start) * 1000)
-                yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
+        buffered_audio = bytearray()
+        try:
+            for audio in synthesize_speech_stream(
+                settings,
+                text=spoken_chunk,
+                voice_key=resolved_voice,
+                model_id=model,
+                output_format=tts_output_format,
+            ):
+                if _cancelled():
+                    cancelled = True
+                    return
+                if first_audio_ms is None:
+                    first_audio_ms = int((time.perf_counter() - t_start) * 1000)
+                    yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
+                if not agent_audio_started:
+                    agent_audio_started = True
+                    yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
+                if audio:
+                    buffered_audio.extend(audio)
+        except VoiceProviderError as exc:
+            tts_failed = True
             yield {
-                "type": "voice.audio.delta",
-                "content_type": audio_content_type,
-                "audio_base64": base64.b64encode(audio).decode("ascii"),
-                "text_chunk": spoken_chunk,
+                "type": "voice.error",
+                "detail": str(exc)[:300],
+                "error_class": exc.error_class or "service_failure",
+                "billing_issue": bool((exc.error_class or "") == "billing" or exc.status_code == 402),
+                "provider": "elevenlabs",
                 "turn_id": resolved_turn_id,
             }
+            return
+        except Exception as exc:  # noqa: BLE001
+            tts_failed = True
+            yield {
+                "type": "voice.error",
+                "detail": f"TTS stream failed: {exc.__class__.__name__}:{exc}"[:300],
+                "error_class": "service_failure",
+                "billing_issue": False,
+                "provider": "elevenlabs",
+                "turn_id": resolved_turn_id,
+            }
+            return
+        if not buffered_audio:
+            return
+            yield  # pragma: no cover — keeps this an async generator
+        yield {
+            "type": "voice.audio.delta",
+            "content_type": audio_content_type,
+            "audio_base64": base64.b64encode(bytes(buffered_audio)).decode("ascii"),
+            "text_chunk": spoken_chunk,
+            "turn_id": resolved_turn_id,
+        }
 
     async for event in intelligence.execute_task_streaming(
         settings=settings,
@@ -248,7 +281,7 @@ async def stream_voice_turn_events(
             }
             break
         if isinstance(event, AssistantStreamComplete):
-            # Defer complete until TTS flush so ttfa is present on the same turn.
+            # Store terminal model payload; we emit turn.complete once text is final.
             pending_complete = event
             continue
         if not isinstance(event, AssistantStreamEvent):
@@ -313,6 +346,7 @@ async def stream_voice_turn_events(
         delta = event.payload.get("delta")
         if not isinstance(delta, str) or not delta:
             continue
+        yield {"type": "voice.text.delta", "delta": delta, "turn_id": resolved_turn_id}
         if first_text_ms is None:
             first_text_ms = int((time.perf_counter() - t_start) * 1000)
             yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
@@ -339,32 +373,8 @@ async def stream_voice_turn_events(
             "originating_modality": "voice",
         }
         return
-    # Flush remainder before turn.complete so TTFA is measured on short answers.
-    rem = text_buffer.strip()
-    if rem and not _cancelled():
-        async for audio_ev in _emit_tts(rem):
-            yield audio_ev
-        text_buffer = ""
-    if cancelled:
-        spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
-        yield {
-            "type": "voice.turn.cancelled",
-            "turn_id": resolved_turn_id,
-            "conversation_id": resolved_conversation_id,
-            "reason": "barge_in_or_client_abort",
-            "partial_text": spoken_partial,
-        }
-        yield {
-            "type": "voice.session.ended",
-            "transcript": spoken_partial,
-            "cancelled": True,
-            "turn_id": resolved_turn_id,
-            "conversation_id": resolved_conversation_id,
-            "originating_modality": "voice",
-        }
-        return
-    if agent_audio_started:
-        yield {"type": "voice.agent_speech.end", "turn_id": resolved_turn_id}
+    # Emit turn completion as soon as model text is complete so chat text does not
+    # wait on downstream TTS transport.
     spoken_full_text = normalize_spoken_text("".join(full_text)) or "".join(full_text)
     if pending_complete is not None:
         yield {
@@ -406,6 +416,32 @@ async def stream_voice_turn_events(
                     "unified_breakdown": unified_breakdown or None,
                 },
         }
+    # Flush remainder after turn.complete so audio may continue even after text is rendered.
+    rem = text_buffer.strip()
+    if rem and not _cancelled():
+        async for audio_ev in _emit_tts(rem):
+            yield audio_ev
+        text_buffer = ""
+    if cancelled:
+        spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
+        yield {
+            "type": "voice.turn.cancelled",
+            "turn_id": resolved_turn_id,
+            "conversation_id": resolved_conversation_id,
+            "reason": "barge_in_or_client_abort",
+            "partial_text": spoken_partial,
+        }
+        yield {
+            "type": "voice.session.ended",
+            "transcript": spoken_partial,
+            "cancelled": True,
+            "turn_id": resolved_turn_id,
+            "conversation_id": resolved_conversation_id,
+            "originating_modality": "voice",
+        }
+        return
+    if agent_audio_started:
+        yield {"type": "voice.agent_speech.end", "turn_id": resolved_turn_id}
     yield {
         "type": "voice.session.ended",
         "transcript": spoken_full_text,
