@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analyser"
+import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
   cancelVoiceSessionTurn,
@@ -117,6 +118,7 @@ export function useVoiceDuplexSession(options: Options) {
   const turnIdRef = useRef<string | null>(null)
   const agentSpeakingRef = useRef(false)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
+  const playbackWiredRef = useRef(false)
   const audioQueueRef = useRef<Blob[]>([])
   const playingRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
@@ -130,6 +132,7 @@ export function useVoiceDuplexSession(options: Options) {
   const stopPlayback = useCallback(() => {
     playingRef.current = false
     audioQueueRef.current = []
+    playbackWiredRef.current = false
     const el = audioElRef.current
     if (el) {
       try {
@@ -140,38 +143,55 @@ export function useVoiceDuplexSession(options: Options) {
         /* ignore */
       }
     }
+    audioElRef.current = null
   }, [])
 
-  const playNext = useCallback(() => {
+  const playNext = useCallback(async () => {
     if (playingRef.current) return
     const next = audioQueueRef.current.shift()
     if (!next) return
     playingRef.current = true
+
+    await unlockVoicePlayback()
+
     if (!audioElRef.current) {
-      audioElRef.current = new Audio()
-      audioElRef.current.onended = () => {
+      const el = new Audio()
+      el.onended = () => {
         playingRef.current = false
-        playNext()
+        void playNext()
       }
-      audioElRef.current.onerror = () => {
+      el.onerror = () => {
         playingRef.current = false
-        playNext()
+        optsRef.current.onError?.("Audio playback failed during voice reply")
+        void playNext()
       }
+      audioElRef.current = el
     }
     const el = audioElRef.current
     const url = URL.createObjectURL(next)
-    el.src = url
-    if (analyserRef.current) {
+    if (analyserRef.current && !playbackWiredRef.current) {
       try {
         analyserRef.current.connectElement(el)
+        playbackWiredRef.current = true
       } catch {
-        /* already connected */
+        /* analyser optional — still attempt audible playback */
       }
     }
-    void el.play().catch(() => {
+    el.src = url
+    try {
+      await el.play()
+    } catch (err) {
       playingRef.current = false
       URL.revokeObjectURL(url)
-    })
+      const blocked =
+        err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
+      optsRef.current.onError?.(
+        blocked
+          ? "Audio playback blocked — tap the waveform again to enable sound"
+          : "Audio playback failed during voice reply",
+      )
+      void playNext()
+    }
   }, [])
 
   const enqueueAudio = useCallback(
@@ -536,6 +556,7 @@ export function useVoiceDuplexSession(options: Options) {
   const start = useCallback(async () => {
     if (activeRef.current) return
     if (options.enabled === false) return
+    await unlockVoicePlayback()
     marksRef.current = { mic_open: performance.now() }
     turnStateRef.current = null
 

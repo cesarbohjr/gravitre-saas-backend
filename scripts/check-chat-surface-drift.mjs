@@ -75,6 +75,11 @@ for (const file of files) {
         `${rel}: mounts <VoiceOrbTakeover> outside SharedChatComposerControls — voice presentation must stay shared`,
       )
     }
+    if (/data-voice-orb/.test(src) && !VOICE_UI_DEFINITIONS.has(rel)) {
+      failures.push(
+        `${rel}: uses data-voice-orb outside voice-presentation — orb markup must stay centralized`,
+      )
+    }
   }
 
   if (ALLOWED_DEFINITIONS.has(rel)) continue
@@ -211,6 +216,12 @@ for (const rel of requiredImporters) {
   }
   if (!src.includes("SharedChatComposerControls")) {
     failures.push(`${rel}: must import/use SharedChatComposerControls`)
+  }
+  if (!src.includes("duplex={{")) {
+    failures.push(`${rel}: must wire full-duplex voice via duplex={{ ... }} on SharedChatComposerControls`)
+  }
+  if (rel.includes("agents/") && !/ai-chat-surface/.test(src)) {
+    failures.push(`${rel}: agent chat shell must include ai-chat-surface (same canvas tokens as /ai)`)
   }
   if (!src.includes("spoken_mode")) {
     failures.push(`${rel}: must send spoken_mode on chat transport when Voice modality is active`)

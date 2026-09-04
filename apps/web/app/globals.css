@@ -555,6 +555,11 @@
     /* Desktop tile size per the handoff; mobile narrows below. */
     background-size: 234px 234px, 100% 100%;
     background-attachment: local, local;
+    overscroll-behavior: contain;
+  }
+
+  .ai-chat-canvas-inner {
+    min-height: 100%;
   }
 
   /* Dark: deepen the canvas so lighter `--card` bubbles lift off it. */
@@ -619,6 +624,12 @@
   .ai-surface-shell.ai-chat-surface {
     background: var(--chat-surface);
   }
+}
+
+html.chat-immersive,
+html.chat-immersive body {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ============================================================

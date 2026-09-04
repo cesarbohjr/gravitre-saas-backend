@@ -19,6 +19,8 @@ export function createVoiceAnalyser(): VoiceAnalyserHandle {
   let ctx: AudioContext | null = null
   let analyser: AnalyserNode | null = null
   let source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null = null
+  /** createMediaElementSource is one-shot per element — track to avoid silent playback failure. */
+  let wiredElement: HTMLMediaElement | null = null
   let data: Uint8Array | null = null
 
   const ensure = () => {
@@ -82,13 +84,25 @@ export function createVoiceAnalyser(): VoiceAnalyserHandle {
     connectElement: (el: HTMLAudioElement | HTMLMediaElement) => {
       const audioCtx = ensure()
       if (!audioCtx || !analyser) return
+      if (wiredElement === el && source) {
+        void audioCtx.resume().catch(() => undefined)
+        return
+      }
       disconnectSource()
+      wiredElement = null
       void audioCtx.resume().catch(() => undefined)
-      source = audioCtx.createMediaElementSource(el)
-      source.connect(analyser)
-      analyser.connect(audioCtx.destination)
+      try {
+        source = audioCtx.createMediaElementSource(el)
+        wiredElement = el
+        source.connect(analyser)
+        analyser.connect(audioCtx.destination)
+      } catch {
+        // Element already wired elsewhere — playback may still work via default output.
+        wiredElement = el
+      }
     },
     disconnect: () => {
+      wiredElement = null
       disconnectSource()
       if (analyser) {
         try {

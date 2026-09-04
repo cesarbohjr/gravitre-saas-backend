@@ -11,6 +11,7 @@ import {
   synthesizeViaElevenLabsDetailed,
   type TtsSynthesizeError,
 } from "@/lib/tier1-voice-client"
+import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 
 type SpeakOptions = {
   agentId?: string
@@ -123,6 +124,7 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
       activePlaybackId = options.messageId
       activeStop = stop
       setIsSpeaking(true)
+      await unlockVoicePlayback()
       audio.onended = () => stop()
       audio.onerror = () => {
         stop()

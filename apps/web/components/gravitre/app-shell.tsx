@@ -113,6 +113,11 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
     pathname.startsWith("/ai/") ||
     (pathname.startsWith("/agents/") && pathname.endsWith("/chat")) ||
     pathname === "/connectors"
+  useEffect(() => {
+    if (!isImmersiveChat) return
+    document.documentElement.classList.add("chat-immersive")
+    return () => document.documentElement.classList.remove("chat-immersive")
+  }, [isImmersiveChat])
   const isAssignmentDetail =
     pathname.startsWith("/assignments/") &&
     pathname !== "/assignments" &&

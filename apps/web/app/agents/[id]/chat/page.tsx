@@ -444,7 +444,7 @@ export default function AgentChatPage({
 
   return (
     <AppShell title="Chat">
-      <div className="ai-surface-shell flex h-full min-h-0 flex-col">
+      <div className="ai-surface-shell ai-chat-surface flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex h-9 shrink-0 items-center gap-2 border-b border-success/10 bg-card/80 px-3 backdrop-blur-md md:px-4">
           {!headerCollapsed ? (
             <>
@@ -533,9 +533,10 @@ export default function AgentChatPage({
         </div>
 
         <div
-          className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4"
+          className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 md:px-5 md:py-4"
           data-chat-bg={chatBackground}
         >
+          <div className="ai-chat-canvas-inner mx-auto w-full max-w-[880px]">
           {!hasSentMessage ? (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -582,9 +583,10 @@ export default function AgentChatPage({
               <div ref={messagesEndRef} />
             </>
           )}
+          </div>
         </div>
 
-        <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
+        <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface)] px-3 py-2 md:px-5 md:py-3">
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-[920px]">
             <SharedChatComposerControls
               modality={modality}
