@@ -106,7 +106,14 @@ def _ws_url(path: str, params: dict[str, str]) -> str:
     return urlunparse((scheme, parsed.netloc, path, "", q, ""))
 
 
-async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
+async def _probe_ws(
+    token: str,
+    org_id: str,
+    *,
+    send_text: bool,
+    text: str = "In one short sentence, what is two plus two?",
+    wait_for_assistant_text: bool = False,
+) -> dict:
     try:
         import websockets
     except ImportError:
@@ -185,22 +192,23 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
                         json.dumps(
                             {
                                 "type": "text",
-                                "text": "In one short sentence, what is two plus two?",
+                                "text": text,
                             }
                         )
                     )
+                if kind == "assistant_text":
+                    delta = str(msg.get("delta") or "")
+                    if delta:
+                        events.append({"type": "assistant_text", "delta": delta[:200]})
                 if kind == "error":
                     break
-                if audio_frames >= 1:
+                if audio_frames >= 1 and (
+                    not wait_for_assistant_text
+                    or any(e.get("type") == "assistant_text" for e in events)
+                ):
                     break
                 if kind == "session.ready" and not send_text:
                     break
-                # Allow full cognitive+TTS on spoken path (can exceed 45s cold).
-                if send_text and kind == "session.ready":
-                    # Extend wait window by continuing loop; timeout below is 90s.
-                    pass
-            # Prefer a longer first-wait after text ingress.
-            # (recv timeout is per-call; overall deadline is 120s when send_text)
         finally:
             await ws_cm.__aexit__(None, None, None)
     except Exception as exc:  # noqa: BLE001
@@ -213,6 +221,10 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
 
     err = next((e for e in events if e.get("type") == "error"), None)
     ready = next((e for e in events if e.get("type") == "session.ready"), None)
+    assistant_bits = [
+        str(e.get("delta") or "") for e in events if e.get("type") == "assistant_text"
+    ]
+    assistant_text = "".join(assistant_bits).strip()
     return {
         "ok": True,
         "events": events[:40],
@@ -221,6 +233,8 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
         "error_event": err,
         "cognitive_path": (ready or {}).get("cognitive_path"),
         "architecture": (ready or {}).get("architecture"),
+        "write_confirm_policy": (ready or {}).get("write_confirm_policy"),
+        "assistant_text": assistant_text[:800],
     }
 
 
@@ -253,6 +267,7 @@ def main() -> int:
             status_probe = {"ok": False, "error": f"{exc.__class__.__name__}:{exc}"}
 
     ws_probe: dict = {"ok": False, "skipped": True, "reason": "no_token"}
+    governance_probe: dict = {"ok": False, "skipped": True}
     if token:
         enabled = bool(status_probe.get("pipecat_enabled"))
         ws_probe = asyncio.run(_probe_ws(token, org_id, send_text=enabled))
@@ -262,6 +277,41 @@ def main() -> int:
                 if ws_probe.get("ok")
                 and ws_probe.get("session_ready")
                 and (ws_probe.get("audio_frames") or 0) > 0
+                else "FAIL"
+            )
+            # Separate connection: consequential write-shaped turn — must stay on
+            # CognitiveTurnKernel + nl_yes confirm policy (no voice bypass).
+            governance_probe = asyncio.run(
+                _probe_ws(
+                    token,
+                    org_id,
+                    send_text=True,
+                    text="Email Sarah that the campaign moved to Monday.",
+                    wait_for_assistant_text=True,
+                )
+            )
+            spoken = (governance_probe.get("assistant_text") or "").lower()
+            confirmish = any(
+                needle in spoken
+                for needle in (
+                    "confirm",
+                    "shall i",
+                    "should i",
+                    "want me to",
+                    "before i",
+                    "draft",
+                    "send",
+                    "yes",
+                )
+            )
+            governance_probe["confirm_language_detected"] = confirmish
+            governance_probe["verdict"] = (
+                "PASS"
+                if governance_probe.get("ok")
+                and governance_probe.get("session_ready")
+                and governance_probe.get("cognitive_path") == "CognitiveTurnKernel"
+                and governance_probe.get("write_confirm_policy") == "nl_yes_same_path_as_text"
+                and (governance_probe.get("audio_frames") or 0) > 0
                 else "FAIL"
             )
         else:
@@ -276,9 +326,15 @@ def main() -> int:
                 and not ws_probe.get("session_ready")
             )
             ws_probe["verdict"] = "PASS" if not_enabled else "FAIL"
+            governance_probe = {"ok": True, "skipped": True, "verdict": "PASS", "reason": "flag_off"}
 
     status_ok = bool(status_probe.get("ok")) and "pipecat_ws_path" in status_probe
-    overall = "PASS" if status_ok and ws_probe.get("verdict") == "PASS" else "PARTIAL"
+    gov_ok = governance_probe.get("verdict") == "PASS"
+    overall = (
+        "PASS"
+        if status_ok and ws_probe.get("verdict") == "PASS" and gov_ok
+        else "PARTIAL"
+    )
     if not status_ok:
         overall = "FAIL"
 
@@ -289,10 +345,12 @@ def main() -> int:
         "health": health,
         "status_probe": status_probe,
         "ws_probe": ws_probe,
+        "governance_probe": governance_probe,
         "verdict": overall,
         "notes": (
-            "Default duplex remains /api/voice/session/turn. Pipecat path is flag-gated. "
-            "Enable VOICE_PIPECAT_ENABLED on Railway to exercise session.ready + audio."
+            "FE duplex uses Pipecat WS when VOICE_PIPECAT_ENABLED; HTTP session/turn is fallback. "
+            "Governance probe: write-shaped text ingress must advertise CognitiveTurnKernel + "
+            "nl_yes_same_path_as_text and produce audio (no silent voice bypass)."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

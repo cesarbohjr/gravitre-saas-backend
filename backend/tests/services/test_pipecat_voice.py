@@ -110,6 +110,21 @@ def test_voice_status_exposes_pipecat_fields():
     assert "pipecat_ws_hint" in status
     assert str(status["pipecat_ws_hint"]).startswith("ws")
 
+    class On:
+        elevenlabs_api_key = ""
+        deepgram_api_key = ""
+        elevenlabs_default_voice = "rachel"
+        elevenlabs_tts_model = "eleven_flash_v2_5"
+        elevenlabs_voice_rachel = ""
+        elevenlabs_voice_adam = ""
+        elevenlabs_voice_josh = ""
+        voice_pipecat_enabled = True
+        api_public_url = "https://api.gravitre.app"
+
+    on = voice_status(On())  # type: ignore[arg-type]
+    assert on["default_orchestration"] == "pipecat"
+    assert on["pipecat_ws_clients_accepted"] is True
+    assert on["pipecat_ws_hint"] == "wss://api.gravitre.app"
 
 def test_text_turn_kick_targets_browser_finals_only():
     from pipecat.frames.frames import TranscriptionFrame
