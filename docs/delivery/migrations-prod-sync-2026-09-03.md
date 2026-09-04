@@ -23,3 +23,9 @@ Latest local/remote pairs (CLI `migration list`):
 - `agent_identity_records`, `agent_delegation_grants` exist
 
 No pending migrations to apply.
+
+## Re-check (2026-09-04 — Agent ROI closeout)
+
+`supabase db push --linked --dry-run` → **Remote database is up to date.**
+
+Agent ROI (`a78ef32d`) uses existing `model_calls` / `agent_jobs` / `intelligence_outcome_events` — **no new migration required**.
