@@ -1,0 +1,31 @@
+{
+  "pass": false,
+  "gates": {
+    "prod_health": "PASS",
+    "apollo_search": "PASS",
+    "hubspot_campaigns_list": "FAIL",
+    "hubspot_sync_write": "FAIL"
+  },
+  "probes": {
+    "apollo_people_search": {
+      "success": true,
+      "error_code": null,
+      "action": "apollo.people.search"
+    },
+    "hubspot_campaigns_list": {
+      "success": false,
+      "error_code": "auth_expired",
+      "action": "hubspot.campaigns.list"
+    },
+    "hubspot_contact_create": {
+      "success": false,
+      "error_code": "validation_error",
+      "action": "hubspot.contacts.create"
+    }
+  },
+  "prod_health_sha": "0205c2020941d22241a3fdd2139984ab60aea97b",
+  "connected_integrations": [
+    "apollo",
+    "hubspot"
+  ]
+}
