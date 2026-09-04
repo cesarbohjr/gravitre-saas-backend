@@ -1,0 +1,23 @@
+{
+  "probe": "run_observability_console_live",
+  "checked_at": "2026-09-03T23:56:19.998628+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "api_git_sha": "16244ce0f84d57be4116764bd483926c66337172",
+  "runs_listed": 5,
+  "run_id": "44c9dc41-acb4-4b9b-a166-b70622cd849a",
+  "http_status": 200,
+  "missing_keys": [],
+  "cot_leak": false,
+  "audit_event_count": 1,
+  "replay_len": 1,
+  "sources": {
+    "run": "workflow_runs",
+    "steps": "workflow_steps",
+    "audit": "audit_events",
+    "cognitive": "cognitive_turn_traces",
+    "outcomes": "intelligence_outcome_events"
+  },
+  "final_status": "partial_success",
+  "verdict": "PASS"
+}

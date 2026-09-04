@@ -84,3 +84,11 @@ Cognitive Turns, BusinessOutcome, chat explainability.
 
 - `pytest tests/eval/test_department_eval_suites.py tests/services/test_run_observability_service.py` → **32 passed**
 - Bad-change gate: fake system `not_a_real_connector_xyz` fails the same pack/system assertion MSP CI uses (`BLOCK_PROOF_PASS`)
+
+### Live evidence (2026-09-03)
+
+- Prod `/health` `git_sha=16244ce0f84d57be4116764bd483926c66337172` @ `2026-09-03T23:55:08Z`
+- Department Eval Suites **success**: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/33819358798
+- Railway backend production **success**: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/33819358786
+- Observability live probe **PASS** — run `44c9dc41-acb4-4b9b-a166-b70622cd849a`, HTTP 200, joined sources present, no CoT leak — `docs/delivery/run-observability-console-live.json`
+- Vercel production **READY** for `16244ce0` (`dpl_FYzBzoW3cXddcVCkNv9veZU7JZzk`)
