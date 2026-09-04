@@ -5,8 +5,8 @@
     "defer_early_hubspot": "PASS",
     "allow_at_sync_milestone": "PASS",
     "prod_health": "PASS",
-    "phase3_sales_marketing_pipeline": "PASS",
-    "phase4_execute_plan_defer": "PASS"
+    "phase3_sales_marketing_pipeline": "NOT RUN",
+    "phase4_execute_plan_defer": "NOT RUN"
   },
   "departments": [
     {
@@ -14,7 +14,7 @@
       "pipelineId": "sales-katie",
       "stageCount": 7,
       "syncMilestone": "sync_crm",
-      "honestGapCount": 1
+      "honestGapCount": 0
     },
     {
       "department": "marketing",
@@ -35,70 +35,17 @@
       "pipelineId": "hr-talent",
       "stageCount": 6,
       "syncMilestone": "sync_greenhouse",
-      "honestGapCount": 1
+      "honestGapCount": 0
     },
     {
       "department": "msp",
       "pipelineId": "msp-cyber",
       "stageCount": 7,
       "syncMilestone": "sync_ticketing",
-      "honestGapCount": 2
+      "honestGapCount": 0
     }
   ],
-  "prod_health_sha": "161df8f8f965fec5d065b9343a86a828b92ff683",
-  "deployed_smoke": {
-    "pass": true,
-    "git_sha": "unknown",
-    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-    "connected_integrations": [
-      "apollo",
-      "hubspot"
-    ],
-    "sales_pipeline": {
-      "pipelineId": "sales-katie",
-      "stageCount": 7,
-      "connectAndGoReady": false
-    },
-    "marketing_pipeline": {
-      "pipelineId": "marketing-campaign",
-      "stageCount": 6,
-      "connectAndGoReady": false
-    },
-    "sync_back_defer": {
-      "sales_early": {
-        "success": false,
-        "error_code": "sync_back_deferred",
-        "body": "Sync to the system of record is deferred until the \u300csync crm\u300d milestone. This action will not write to the destination yet.",
-        "integration": "hubspot"
-      },
-      "sales_milestone": {
-        "success": false,
-        "error_code": "validation_error",
-        "body": "Invalid parameters for this Hubspot action (Create contact via hubspot API. Use when you need to create contact via hubspot.). Check required fields and try again.",
-        "integration": "hubspot"
-      },
-      "marketing_early": {
-        "success": false,
-        "error_code": "sync_back_deferred",
-        "body": "Sync to the system of record is deferred until the \u300csync ads hubspot\u300d milestone. This action will not write to the destination yet.",
-        "integration": "hubspot"
-      },
-      "marketing_milestone": {
-        "success": false,
-        "error_code": null,
-        "body": "Hubspot action failed: Backend action not implemented: hubspot.campaigns.update",
-        "integration": "hubspot"
-      }
-    },
-    "gates": {
-      "sales_seven_stages": true,
-      "marketing_six_stages": true,
-      "sales_early_deferred": true,
-      "marketing_early_deferred": true,
-      "sales_milestone_unlock": true,
-      "marketing_milestone_unlock": true
-    },
-    "claim": "PASS \u2014 department pipeline + sync-back defer @ deployed execute_plan"
-  },
-  "deployed_smoke_error": null
+  "prod_health_sha": "c6418a500d19664f0fd1f2b8112f3a64ef138c04",
+  "deployed_smoke": null,
+  "deployed_smoke_error": "http_500:{\"success\":false,\"error\":\"An unexpected error occurred. Our team has been notified.\",\"code\":\"INTERNAL_ERROR\",\"details\":{}}"
 }
