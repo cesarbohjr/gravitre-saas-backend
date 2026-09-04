@@ -54,15 +54,17 @@ def _to_dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _parse_run_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+def _parse_run_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
     params = safe_normalize_stored_dict(row.get("parameters"))
     verified = safe_normalize_stored_dict(params, key="verified_output")
     entity_type = str(verified.get("entity_type") or "").strip().lower()
     entity_id = str(verified.get("entity_id") or "").strip()
     invoke_action = str(params.get("invoke_action") or params.get("tool_name") or "").strip().lower()
-    if not entity_type or not entity_id:
-        return ("", "", "", invoke_action)
-    return (str(row.get("org_id") or ""), entity_type, entity_id, invoke_action)
+    conversation_id = str(params.get("conversation_id") or "").strip()
+    if entity_type in {"connector", "workflow_run", "execution"}:
+        entity_type = ""
+        entity_id = ""
+    return (str(row.get("org_id") or ""), entity_type, entity_id, invoke_action, conversation_id)
 
 
 def main() -> int:
@@ -86,17 +88,30 @@ def main() -> int:
     runs = [row for row in rows if isinstance(row, dict) and str(row.get("status") or "").lower() in TERMINAL]
 
     groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    convo_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     actions_by_group: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+    actions_by_convo: dict[tuple[str, str], set[str]] = defaultdict(set)
     for row in runs:
-        org_id, entity_type, entity_id, invoke_action = _parse_run_key(row)
+        org_id, entity_type, entity_id, invoke_action, conversation_id = _parse_run_key(row)
         if not org_id or not entity_type or not entity_id:
+            if conversation_id:
+                key2 = (org_id, conversation_id)
+                convo_groups[key2].append(row)
+                if invoke_action:
+                    actions_by_convo[key2].add(invoke_action)
             continue
         key3 = (org_id, entity_type, entity_id)
         groups[key3].append(row)
         if invoke_action:
             actions_by_group[key3].add(invoke_action)
+        if conversation_id:
+            key2 = (org_id, conversation_id)
+            convo_groups[key2].append(row)
+            if invoke_action:
+                actions_by_convo[key2].add(invoke_action)
 
     best_key: tuple[str, str, str] | None = None
+    best_convo: tuple[str, str] | None = None
     best_score = -1.0
     best_days = 0.0
     for key3, items in groups.items():
@@ -115,16 +130,46 @@ def main() -> int:
             best_days = span_days
 
     if best_key is None:
+        for key2, items in convo_groups.items():
+            if len(items) < 3:
+                continue
+            actions = actions_by_convo.get(key2, set())
+            if len(actions) < 2:
+                continue
+            created = [str(item.get("created_at") or "") for item in items if item.get("created_at")]
+            if len(created) < 2:
+                continue
+            dates = sorted(_to_dt(ts) for ts in created)
+            span_days = (dates[-1] - dates[0]).total_seconds() / 86400
+            score = (len(items) * 10) + (len(actions) * 5) + span_days
+            if score > best_score:
+                best_score = score
+                best_convo = key2
+                best_days = span_days
+
+    if best_key is None and best_convo is None:
         print("No eligible historical multi-step entity found for lifecycle verification")
         return 1
 
-    org_id, entity_type, entity_id = best_key
-    picked = sorted(groups[best_key], key=lambda row: str(row.get("created_at") or ""))
+    if best_key is not None:
+        org_id, entity_type, entity_id = best_key
+        picked = sorted(groups[best_key], key=lambda row: str(row.get("created_at") or ""))
+        mode = "entity"
+    else:
+        org_id, conversation_id = best_convo or ("", "")
+        entity_type, entity_id = "conversation", conversation_id
+        picked = sorted(convo_groups[(org_id, conversation_id)], key=lambda row: str(row.get("created_at") or ""))
+        mode = "conversation"
     attribution: list[dict[str, Any]] = []
     work_object_id = None
     for row in picked:
         params = safe_normalize_stored_dict(row.get("parameters"))
         verified = safe_normalize_stored_dict(params, key="verified_output")
+        if work_object_id:
+            params["work_object_id"] = work_object_id
+        if mode == "conversation":
+            params.setdefault("work_object_title", f"Conversation lifecycle {entity_id[:8]}")
+            params.setdefault("work_object_type", "objective")
         ref = record_execution_work_object(
             client,
             org_id=org_id,
@@ -153,16 +198,25 @@ def main() -> int:
 
     events = list_work_object_events(client, org_id=org_id, work_object_id=work_object_id, limit=500)
     unique_actions = sorted({str((event.get("actionName") or "")).strip() for event in events if event.get("actionName")})
+    calendar_days = sorted(
+        {
+            str(item.get("created_at") or "")[:10]
+            for item in attribution
+            if str(item.get("created_at") or "")
+        }
+    )
 
     payload = {
         "recorded_at": utcnow(),
+        "selection_mode": mode,
         "entity_anchor": {"org_id": org_id, "entity_type": entity_type, "entity_id": entity_id},
         "work_object_id": work_object_id,
         "picked_runs": attribution,
         "event_count": len(events),
         "unique_actions": unique_actions,
         "span_days": round(best_days, 3),
-        "pass": len(events) >= 2 and len(unique_actions) >= 2,
+        "calendar_days": calendar_days,
+        "pass": len(events) >= 3 and len(unique_actions) >= 2 and len(calendar_days) >= 3,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

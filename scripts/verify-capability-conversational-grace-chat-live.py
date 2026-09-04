@@ -126,7 +126,7 @@ async def chat_turn(
 
 async def main_async() -> dict[str, Any]:
     env = load_env()
-    org_id, actor_id = resolve_isolated_conversation_actor(env)
+    org_id, actor_id, _actor_email = resolve_isolated_conversation_actor(env)
     secret = (env.get("SUPABASE_JWT_SECRET") or "").strip()
     if not secret:
         return {

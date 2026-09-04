@@ -1,0 +1,48 @@
+{
+  "recorded_at": "2026-09-04T05:24:09.934142+00:00",
+  "selection_mode": "conversation",
+  "entity_anchor": {
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "entity_type": "conversation",
+    "entity_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63"
+  },
+  "work_object_id": "6e320395-72ba-4ecb-8413-c9e74f2b4a7f",
+  "picked_runs": [
+    {
+      "run_id": "c3b97a7d-962b-4dc5-a73d-2f52339d2725",
+      "created_at": "2026-07-24T20:28:47.674626+00:00",
+      "status": "failed",
+      "invoke_action": "gmail.messages.batch",
+      "work_object_id": "6e320395-72ba-4ecb-8413-c9e74f2b4a7f",
+      "event_id": "cee6a830-f570-4d16-b331-68df7e9d249c"
+    },
+    {
+      "run_id": "1afbd72b-6a7d-407a-9768-dc397edcd20b",
+      "created_at": "2026-07-25T20:03:01.583114+00:00",
+      "status": "completed",
+      "invoke_action": "gmail.messages.send",
+      "work_object_id": "6e320395-72ba-4ecb-8413-c9e74f2b4a7f",
+      "event_id": "972bebfa-6e27-431d-a056-5f31002fdfd9"
+    },
+    {
+      "run_id": "3ac8b853-916a-4401-a6ba-cab706912eab",
+      "created_at": "2026-07-26T06:23:09.371538+00:00",
+      "status": "failed",
+      "invoke_action": "gmail.messages.send",
+      "work_object_id": "6e320395-72ba-4ecb-8413-c9e74f2b4a7f",
+      "event_id": "f0a6c621-3d3b-4a14-acf2-3e2c57d1b7aa"
+    }
+  ],
+  "event_count": 3,
+  "unique_actions": [
+    "gmail.messages.batch",
+    "gmail.messages.send"
+  ],
+  "span_days": 1.413,
+  "calendar_days": [
+    "2026-07-24",
+    "2026-07-25",
+    "2026-07-26"
+  ],
+  "pass": true
+}

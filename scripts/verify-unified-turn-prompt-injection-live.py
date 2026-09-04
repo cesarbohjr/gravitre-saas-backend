@@ -176,12 +176,13 @@ CASES: list[dict[str, Any]] = [
 
 async def main() -> int:
     env = load_env()
-    org_id, actor_email = resolve_isolated_conversation_actor(env)
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+    org_id, actor_user_id, actor_email = resolve_isolated_conversation_actor(env, sb)
     tok = jwt.encode(
         {
             "sub": actor_email,
             "email": actor_email,
+            "user_id": actor_user_id,
             "role": "authenticated",
             "aud": "authenticated",
         },
