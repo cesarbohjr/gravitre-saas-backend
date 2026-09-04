@@ -703,6 +703,12 @@ export function useVoiceDuplexSession(options: Options) {
   )
 
   const startPipecat = useCallback(async () => {
+    // getVoiceStatus() already can't throw (internally caught). buildPipecatVoiceWsUrl()
+    // returns `{ error }` for the expected auth/org gaps, but getSelectedOrgFromStorage()
+    // reading corrupted localStorage — or anything else unforeseen — is still a bare
+    // `await` with no catch of its own. Belt-and-suspenders: the outer try below (which
+    // already wraps the mic/WS setup) now wraps this too, so no path through
+    // startPipecat() can throw silently past `void start()`'s caller.
     const status = await getVoiceStatus(true)
     const built = await buildPipecatVoiceWsUrl({
       status,
@@ -858,90 +864,115 @@ export function useVoiceDuplexSession(options: Options) {
   const start = useCallback(async () => {
     if (activeRef.current) return
     if (options.enabled === false) return
-    await unlockVoicePlayback()
-    marksRef.current = { mic_open: performance.now() }
-    turnStateRef.current = null
-
-    const status = options.forceHttpDuplex ? null : await getVoiceStatus(true)
-    const usePipecat = !options.forceHttpDuplex && shouldUsePipecatVoice(status)
-    orchestrationRef.current = usePipecat ? "pipecat" : "http"
-    setOrchestration(orchestrationRef.current)
-
-    if (usePipecat) {
-      await startPipecat()
-      return
-    }
-
-    const tokenResult = await mintDeepgramLiveTokenDetailed()
-    if (!tokenResult.ok) {
-      setPresence("error")
-      optsRef.current.onError?.(tokenResult.detail)
-      return
-    }
-    const creds = tokenResult.creds
-
+    // Outer guard for the whole function: toggle() invokes this as `void start()`,
+    // so any uncaught throw anywhere below — a slow/erroring getVoiceStatus,
+    // mintDeepgramLiveTokenDetailed, buildPipecatVoiceWsUrl, or unlockVoicePlayback —
+    // used to vanish completely: no presence change, no onError, no console trace a
+    // typical user would notice. The orb just sat there looking normal, connected to
+    // nothing. This is the single top-level safety net; the inner try below (mic +
+    // WebSocket setup) still owns its own specific error messaging and is unchanged.
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      })
-      streamRef.current = stream
-      analyserRef.current = createVoiceAnalyser()
-      analyserRef.current.connectStream(stream)
-      startRaf()
+      await unlockVoicePlayback()
+      marksRef.current = { mic_open: performance.now() }
+      turnStateRef.current = null
 
-      const AC =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!AC) throw new Error("AudioContext unavailable")
-      const ctx = new AC()
-      audioCtxRef.current = ctx
-      if (ctx.state === "suspended") {
-        await ctx.resume()
-      }
-      const source = ctx.createMediaStreamSource(stream)
-      const processor = ctx.createScriptProcessor(4096, 1, 1)
-      processorRef.current = processor
+      const status = options.forceHttpDuplex ? null : await getVoiceStatus(true)
+      const usePipecat = !options.forceHttpDuplex && shouldUsePipecatVoice(status)
+      orchestrationRef.current = usePipecat ? "pipecat" : "http"
+      setOrchestration(orchestrationRef.current)
 
-      // Temporary JWT from /v1/auth/grant uses bearer subprotocol (not Token master key).
-      const ws = new WebSocket(creds.ws_url, ["bearer", creds.access_token])
-      ws.binaryType = "arraybuffer"
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        activeRef.current = true
-        setIsActive(true)
-        setPresence("listening")
-      }
-      ws.onmessage = (ev) => {
-        void handleDeepgramMessage(ev)
-      }
-      ws.onerror = () => {
-        setPresence("disconnected")
-        optsRef.current.onError?.("Voice connection interrupted")
-      }
-      ws.onclose = () => {
-        if (activeRef.current) setPresence("disconnected")
+      if (usePipecat) {
+        await startPipecat()
+        return
       }
 
-      processor.onaudioprocess = (e) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        const input = e.inputBuffer.getChannelData(0)
-        const pcm = downsampleTo16k(input, ctx.sampleRate)
-        wsRef.current.send(pcm.buffer)
+      const tokenResult = await mintDeepgramLiveTokenDetailed()
+      if (!tokenResult.ok) {
+        setPresence("error")
+        optsRef.current.onError?.(tokenResult.detail)
+        return
       }
-      source.connect(processor)
-      processor.connect(ctx.destination)
+      const creds = tokenResult.creds
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        })
+        streamRef.current = stream
+        analyserRef.current = createVoiceAnalyser()
+        analyserRef.current.connectStream(stream)
+        startRaf()
+
+        const AC =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (!AC) throw new Error("AudioContext unavailable")
+        const ctx = new AC()
+        audioCtxRef.current = ctx
+        if (ctx.state === "suspended") {
+          await ctx.resume()
+        }
+        const source = ctx.createMediaStreamSource(stream)
+        const processor = ctx.createScriptProcessor(4096, 1, 1)
+        processorRef.current = processor
+
+        // Temporary JWT from /v1/auth/grant uses bearer subprotocol (not Token master key).
+        const ws = new WebSocket(creds.ws_url, ["bearer", creds.access_token])
+        ws.binaryType = "arraybuffer"
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          activeRef.current = true
+          setIsActive(true)
+          setPresence("listening")
+        }
+        ws.onmessage = (ev) => {
+          // handleDeepgramMessage now degrades gracefully on its own internal
+          // failures (postTurnTakingEvent is hardened not to throw), but this
+          // .catch is a second, cheaper-than-nothing safety net: anything still
+          // unforeseen surfaces as a real error instead of a dropped turn.
+          handleDeepgramMessage(ev).catch((err) => {
+            optsRef.current.onError?.(
+              err instanceof Error ? err.message : "Voice turn failed unexpectedly",
+            )
+          })
+        }
+        ws.onerror = () => {
+          setPresence("disconnected")
+          optsRef.current.onError?.("Voice connection interrupted")
+        }
+        ws.onclose = () => {
+          if (activeRef.current) setPresence("disconnected")
+        }
+
+        processor.onaudioprocess = (e) => {
+          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+          const input = e.inputBuffer.getChannelData(0)
+          const pcm = downsampleTo16k(input, ctx.sampleRate)
+          wsRef.current.send(pcm.buffer)
+        }
+        source.connect(processor)
+        processor.connect(ctx.destination)
+      } catch (err) {
+        teardownMic()
+        activeRef.current = false
+        setIsActive(false)
+        setPresence("error")
+        optsRef.current.onError?.(
+          err instanceof Error ? err.message : "Microphone permission denied",
+        )
+      }
     } catch (err) {
       teardownMic()
       activeRef.current = false
       setIsActive(false)
       setPresence("error")
       optsRef.current.onError?.(
-        err instanceof Error ? err.message : "Microphone permission denied",
+        err instanceof Error ? err.message : "Voice session failed to start. Try again.",
       )
     }
   }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, startPipecat, teardownMic])

@@ -226,12 +226,26 @@ export type MintLiveTokenResult =
   | { ok: false; status: number; detail: string }
 
 export async function mintDeepgramLiveTokenDetailed(): Promise<MintLiveTokenResult> {
-  const res = await apiFetch("/api/voice/stt/live-token", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: "{}",
-    timeoutMs: 12_000,
-  })
+  // Must never throw — apiFetch throws on timeout/network failure/429, and the
+  // caller (useVoiceDuplexSession.start, invoked as `void start()`) has no
+  // catch of its own, so an uncaught throw here previously vanished with zero
+  // presence change and zero onError — the orb looked "listening" or idle
+  // forever with nothing actually connected.
+  let res: Response
+  try {
+    res = await apiFetch("/api/voice/stt/live-token", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+      timeoutMs: 12_000,
+    })
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      detail: err instanceof Error ? err.message : "Could not reach the voice service. Try again.",
+    }
+  }
   let payload: Record<string, unknown> = {}
   try {
     payload = (await res.json()) as Record<string, unknown>
@@ -271,14 +285,24 @@ export async function postTurnTakingEvent(body: {
   event: Record<string, unknown>
   state?: Record<string, unknown> | null
 }): Promise<TurnTakingEventResult | null> {
-  const res = await apiFetch("/api/voice/turn-taking/event", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    timeoutMs: 8_000,
-  })
-  if (!res.ok) return null
-  return (await res.json()) as TurnTakingEventResult
+  // Must never throw: the caller treats `null` as "no turn-taking verdict,
+  // finalize directly" and degrades gracefully. Before this guard, a timeout
+  // or network blip here (apiFetch throws on both) propagated out of
+  // handleDeepgramMessage, which the WS onmessage handler invokes via
+  // `void` — the whole turn vanished with the user's speech transcribed
+  // but never sent onward, no error, no audio, nothing.
+  try {
+    const res = await apiFetch("/api/voice/turn-taking/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      timeoutMs: 8_000,
+    })
+    if (!res.ok) return null
+    return (await res.json()) as TurnTakingEventResult
+  } catch {
+    return null
+  }
 }
 
 export type VoiceSessionEvent = {
