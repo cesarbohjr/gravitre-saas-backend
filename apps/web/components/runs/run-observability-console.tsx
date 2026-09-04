@@ -36,6 +36,11 @@ export type RunObservabilityDto = {
     action?: string
     fromAgentId?: string
     toAgentId?: string
+    fromDepartment?: string
+    toDepartment?: string
+    label?: string
+    stance?: string
+    disagreementVisible?: boolean
     at?: string
   }>
   actionsTaken: Array<{ action?: string; at?: string; actorId?: string }>
@@ -154,6 +159,34 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
         />
       </div>
 
+      {data.agentHandoffs.length > 0 ? (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Agent collaboration
+          </h3>
+          <ul className="space-y-1">
+            {data.agentHandoffs.slice(0, 12).map((h, idx) => {
+              const label =
+                h.label ||
+                (h.fromDepartment || h.toDepartment
+                  ? `${h.fromDepartment || "?"} → ${h.toDepartment || "?"}`
+                  : `Handoff ${(h.fromAgentId || "?").toString().slice(0, 8)} → ${(h.toAgentId || "?").toString().slice(0, 8)}`)
+              return (
+                <li
+                  key={`${h.action}-${idx}`}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
+                >
+                  <span className="truncate font-medium">{label}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {h.stance ? String(h.stance) : h.action?.replace("agent.", "") || "handoff"}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
+
       {data.conversationId ? (
         <p className="text-xs text-muted-foreground">
           Conversation{" "}
@@ -228,7 +261,12 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
                   : kind === "tool"
                     ? String(event.tool || event.action || "Tool")
                     : kind === "handoff"
-                      ? `Handoff ${event.fromAgentId || "?"} → ${event.toAgentId || "?"}`
+                      ? String(
+                          event.label ||
+                            (event.fromDepartment || event.toDepartment
+                              ? `${event.fromDepartment || "?"} → ${event.toDepartment || "?"}`
+                              : `Handoff ${event.fromAgentId || "?"} → ${event.toAgentId || "?"}`),
+                        )
                       : kind
               return (
                 <li

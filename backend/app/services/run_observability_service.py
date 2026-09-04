@@ -155,17 +155,29 @@ def _tool_calls_from_audit(events: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def _handoffs_from_audit(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Surface handoffs + collaboration trail as distinct, labeled events."""
     out: list[dict[str, Any]] = []
     for ev in events:
         action = str(ev.get("action") or "")
-        if "handoff" not in action.lower():
+        lowered = action.lower()
+        if "handoff" not in lowered and "collaboration" not in lowered:
             continue
         meta = _as_dict(ev.get("metadata"))
+        from_dept = meta.get("from_department") or meta.get("fromDepartment")
+        to_dept = meta.get("to_department") or meta.get("toDepartment")
+        label = meta.get("label")
+        if not label and (from_dept or to_dept):
+            label = f"{from_dept or '?'} → {to_dept or '?'}"
         out.append(
             {
                 "action": action,
                 "fromAgentId": meta.get("from_agent_id") or meta.get("source_agent_id"),
                 "toAgentId": meta.get("to_agent_id") or meta.get("target_agent_id"),
+                "fromDepartment": from_dept,
+                "toDepartment": to_dept,
+                "label": label,
+                "stance": meta.get("stance") or meta.get("receiver_stance"),
+                "disagreementVisible": meta.get("disagreement_visible"),
                 "at": ev.get("created_at"),
                 "metadata": {
                     k: v

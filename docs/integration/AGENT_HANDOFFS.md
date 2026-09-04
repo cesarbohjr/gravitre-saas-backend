@@ -2,6 +2,16 @@
 
 Agents pass structured context to the next agent via the handoff bus. Workflow steps use `metadata.next_agent_id` for automatic routing.
 
+## Internal collaboration layer (2026-09)
+
+Department agents can also run a **structured collaboration handoff** with ranked context, an explicit response contract (`agree|challenge|revise`), and originator reconciliation:
+
+- `POST /api/agent-collaboration/handoff`
+- `backend/app/services/agent_collaboration_service.py`
+- Audits: `agent.collaboration.handoff.created` / `.receiver.completed` / `.reconciled`
+- Observability label example: `Marketing → Finance`
+- External A2A (`trust_boundary=external`) is **rejected** until separate governance sign-off
+
 ## Briefing schema
 
 Stored on `agent_handoffs.briefing`:
@@ -17,6 +27,8 @@ Stored on `agent_handoffs.briefing`:
   ]
 }
 ```
+
+Collaboration handoffs additionally store `briefing.collaboration` (task, ranked_context, response_contract, departments).
 
 ## Workflow step contract
 

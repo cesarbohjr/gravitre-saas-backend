@@ -34,6 +34,7 @@ from app.routers import (
     activity,
     mcp_admin,
     ai_system,
+    agent_collaboration,
     agent_council,
     agent_interrupts,
     agent_jobs,
@@ -578,6 +579,7 @@ app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
+app.include_router(agent_collaboration.router)
 app.include_router(agent_swarm.router)
 app.include_router(department_subagents.router)
 app.include_router(watcher_agents.router)

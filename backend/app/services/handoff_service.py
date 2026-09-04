@@ -95,7 +95,9 @@ def build_handoff_briefing(
 def get_agent(client: Any, org_id: str, agent_id: str) -> dict[str, Any] | None:
     result = (
         client.table("agents")
-        .select("id,org_id,name,purpose,role,model,systems,status,config,trained_model_id")
+        .select(
+            "id,org_id,name,purpose,role,model,systems,status,config,trained_model_id,department"
+        )
         .eq("id", agent_id)
         .eq("org_id", org_id)
         .limit(1)
