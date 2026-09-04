@@ -47,7 +47,7 @@ const PLATFORM_META: Record<DesktopPlatformKey, PlatformMeta> = {
     footer: "Intel Mac? Get the x64 build",
     footerHref: MAC_INTEL_DMG,
     Icon: AppleVendorIcon,
-    iconClassName: "text-zinc-900",
+    iconClassName: "text-foreground",
   },
   windows: {
     label: "Windows",
@@ -63,7 +63,7 @@ const PLATFORM_META: Record<DesktopPlatformKey, PlatformMeta> = {
     index: "03",
     footer: "x86_64 AppImage",
     Icon: LinuxVendorIcon,
-    iconClassName: "text-zinc-900",
+    iconClassName: "text-foreground",
   },
 }
 
@@ -131,7 +131,7 @@ export function DesktopDownloadSection({
   return (
     <section
       className={
-        className ?? "relative overflow-hidden border-t border-zinc-100 bg-white"
+        className ?? "relative overflow-hidden border-t border-border bg-card"
       }
     >
       {/* Same atmosphere language as home / extension — not the darker cream+green wash */}
@@ -142,7 +142,7 @@ export function DesktopDownloadSection({
         {FLOATING_ICONS.map(({ Icon, className: pos, delay }) => (
           <motion.div
             key={pos}
-            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200/70 bg-white/70 text-emerald-600 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm lg:flex ${pos}`}
+            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-primary shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm lg:flex ${pos}`}
             animate={{ y: [0, -12, 0], opacity: [0.45, 0.85, 0.45] }}
             transition={{ duration: 5.5, delay, repeat: Infinity, ease: "easeInOut" }}
           >
@@ -158,31 +158,31 @@ export function DesktopDownloadSection({
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto max-w-3xl text-center"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-4 py-2 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span className="text-sm font-medium text-emerald-700">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/100" />
+            <span className="text-sm font-medium text-primary">
               Desktop companion · Alt+Space
             </span>
           </div>
 
-          <h1 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             Gravitre,{" "}
             <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
               one shortcut away.
             </span>
           </h1>
 
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-600 sm:text-xl">
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
             A lightweight companion for chat, activity, and approvals — summon it from anywhere with
             a global shortcut. Settings, Meson, Agents, and Billing stay on the web.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-            <span className="inline-flex items-center rounded-full border border-zinc-200/80 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-800 shadow-sm shadow-zinc-900/[0.04]">
+            <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-zinc-900/[0.04]">
               v{manifest.version}
             </span>
             {publishedLabel ? (
-              <span className="inline-flex items-center rounded-full border border-zinc-200/80 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 shadow-sm shadow-zinc-900/[0.04]">
+              <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-zinc-900/[0.04]">
                 {publishedLabel}
               </span>
             ) : null}
@@ -211,41 +211,41 @@ export function DesktopDownloadSection({
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: 0.08 + index * 0.07, duration: 0.45 }}
                 className={[
-                  "relative flex flex-col rounded-[1.35rem] border bg-white/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
+                  "relative flex flex-col rounded-[1.35rem] border bg-card/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
                   highlighted
-                    ? "border-emerald-300 ring-2 ring-emerald-400/35"
-                    : "border-zinc-200/80",
+                    ? "border-primary/30 ring-2 ring-emerald-400/35"
+                    : "border-border/80",
                 ].join(" ")}
               >
                 <div className="mb-5 flex items-start justify-between gap-3">
                   <div
                     className={[
-                      "flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-100 bg-zinc-50",
+                      "flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/50",
                       platform.iconClassName,
                     ].join(" ")}
                   >
                     <Icon className="h-7 w-7" />
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className="text-xs font-semibold tabular-nums tracking-wide text-zinc-300">
+                    <span className="text-xs font-semibold tabular-nums tracking-wide text-muted-foreground">
                       {platform.index}
                     </span>
                     {highlighted ? (
-                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Your OS
                       </span>
                     ) : null}
                   </div>
                 </div>
 
-                <h2 className="text-xl font-semibold tracking-tight text-zinc-900">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
                   {platform.label}
                 </h2>
-                <p className="mt-1.5 text-sm text-zinc-500">{platform.blurb}</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">{platform.blurb}</p>
 
                 <a
                   href={platform.href}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2"
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2"
                 >
                   <Download className="h-4 w-4" />
                   Download
@@ -254,12 +254,12 @@ export function DesktopDownloadSection({
                 {platform.footerHref ? (
                   <a
                     href={platform.footerHref}
-                    className="mt-3 text-center text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800"
+                    className="mt-3 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {platform.footer}
                   </a>
                 ) : (
-                  <p className="mt-3 text-center text-xs font-medium text-zinc-400">
+                  <p className="mt-3 text-center text-xs font-medium text-muted-foreground">
                     {platform.footer}
                   </p>
                 )}
@@ -296,26 +296,26 @@ export function DesktopDownloadSection({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm shadow-amber-900/5">
-                <p className="text-sm font-semibold text-zinc-900">
+              <div className="rounded-2xl border border-amber-100 bg-card p-5 shadow-sm shadow-amber-900/5">
+                <p className="text-sm font-semibold text-foreground">
                   Windows — “Windows protected your PC”
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   SmartScreen may block the installer. Click{" "}
-                  <strong className="text-zinc-800">More info</strong>, then{" "}
-                  <strong className="text-zinc-800">Run anyway</strong>. Only continue if you
+                  <strong className="text-foreground">More info</strong>, then{" "}
+                  <strong className="text-foreground">Run anyway</strong>. Only continue if you
                   downloaded from this page or the official GitHub release.
                 </p>
               </div>
-              <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm shadow-amber-900/5">
-                <p className="text-sm font-semibold text-zinc-900">
+              <div className="rounded-2xl border border-amber-100 bg-card p-5 shadow-sm shadow-amber-900/5">
+                <p className="text-sm font-semibold text-foreground">
                   macOS — “Apple could not verify…” / cannot be opened
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  In Finder, <strong className="text-zinc-800">right-click</strong> (or Control-click)
-                  the app → <strong className="text-zinc-800">Open</strong> → confirm{" "}
-                  <strong className="text-zinc-800">Open</strong> again. Or: System Settings → Privacy
-                  &amp; Security → <strong className="text-zinc-800">Open Anyway</strong>.
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  In Finder, <strong className="text-foreground">right-click</strong> (or Control-click)
+                  the app → <strong className="text-foreground">Open</strong> → confirm{" "}
+                  <strong className="text-foreground">Open</strong> again. Or: System Settings → Privacy
+                  &amp; Security → <strong className="text-foreground">Open Anyway</strong>.
                 </p>
               </div>
             </div>
@@ -335,7 +335,7 @@ export function DesktopDownloadSection({
           </motion.div>
         ) : null}
 
-        <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-zinc-500">
+        <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-muted-foreground">
           Browser enrichment stays in the Chrome extension — not in Desktop. Full Settings, Meson,
           Agents, and Billing open in the browser from the companion.
         </p>

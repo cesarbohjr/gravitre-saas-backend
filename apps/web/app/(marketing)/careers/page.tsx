@@ -15,23 +15,23 @@ const benefits = [
 
 export default function CareersPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 mb-6">
+            <span className="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-emerald-600/20 mb-6">
               We&apos;re hiring
             </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl text-balance">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
               Build the future of AI operations with us
             </h1>
-            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
               Join a world-class team working on challenging problems at the intersection of AI, automation, and enterprise software.
             </p>
             <div className="mt-8">
-              <a href="#openings" className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800">
+              <a href="#openings" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90">
                 View open roles
                 <ArrowRight className="h-4 w-4" />
               </a>
@@ -41,11 +41,11 @@ export default function CareersPage() {
       </section>
 
       {/* How we work */}
-      <section className="px-6 py-16 border-t border-zinc-200">
+      <section className="px-6 py-16 border-t border-border">
         <div className="mx-auto max-w-5xl">
           <div className="mb-10 text-center">
-            <h2 className="text-2xl font-semibold text-zinc-900">How we work</h2>
-            <p className="mt-2 text-zinc-600 max-w-2xl mx-auto text-pretty">
+            <h2 className="text-2xl font-semibold text-foreground">How we work</h2>
+            <p className="mt-2 text-muted-foreground max-w-2xl mx-auto text-pretty">
               The principles that shape how we build, collaborate, and grow together.
             </p>
           </div>
@@ -62,10 +62,10 @@ export default function CareersPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="border-l-2 border-emerald-200 pl-4"
+                className="border-l-2 border-primary/20 pl-4"
               >
-                <h3 className="font-medium text-zinc-900">{value.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-600">{value.description}</p>
+                <h3 className="font-medium text-foreground">{value.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{value.description}</p>
               </motion.div>
             ))}
           </div>
@@ -73,22 +73,22 @@ export default function CareersPage() {
       </section>
 
       {/* Why Join */}
-      <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-7xl">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Why join Gravitre?</h2>
-            <p className="text-zinc-600 max-w-2xl mx-auto">We offer competitive compensation and benefits, plus a culture that values impact over hours.</p>
+            <h2 className="text-3xl font-semibold text-foreground mb-4">Why join Gravitre?</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">We offer competitive compensation and benefits, plus a culture that values impact over hours.</p>
           </motion.div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {benefits.map((benefit, i) => {
               const Icon = benefit.icon
               return (
-                <motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon className="h-5 w-5 text-emerald-600" />
+                <motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium text-zinc-900 mb-2">{benefit.title}</h3>
-                  <p className="text-sm text-zinc-600">{benefit.description}</p>
+                  <h3 className="text-lg font-medium text-foreground mb-2">{benefit.title}</h3>
+                  <p className="text-sm text-muted-foreground">{benefit.description}</p>
                 </motion.div>
               )
             })}
@@ -97,37 +97,37 @@ export default function CareersPage() {
       </section>
 
       {/* Open Roles */}
-      <section id="openings" className="px-6 py-24 border-t border-zinc-200">
+      <section id="openings" className="px-6 py-24 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Open roles</h2>
-            <p className="text-zinc-600">
-              Don&apos;t see a role that fits? Send us your resume at <a href="mailto:careers@gravitre.app" className="text-emerald-600 hover:text-emerald-500">careers@gravitre.app</a>
+            <h2 className="text-3xl font-semibold text-foreground mb-4">Open roles</h2>
+            <p className="text-muted-foreground">
+              Don&apos;t see a role that fits? Send us your resume at <a href="mailto:careers@gravitre.app" className="text-primary hover:text-primary">careers@gravitre.app</a>
             </p>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-12 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-              <Users className="h-6 w-6 text-emerald-600" />
+          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="rounded-2xl border border-border bg-muted/50 p-12 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15">
+              <Users className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-lg font-medium text-zinc-900 mb-2">No open roles right now</h3>
-            <p className="text-sm text-zinc-600 max-w-md mx-auto">
+            <h3 className="text-lg font-medium text-foreground mb-2">No open roles right now</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
               We don&apos;t have any positions open at the moment, but we&apos;re always growing. Send your resume to{" "}
-              <a href="mailto:careers@gravitre.app" className="text-emerald-600 hover:text-emerald-500">careers@gravitre.app</a> and we&apos;ll reach out when something opens up.
+              <a href="mailto:careers@gravitre.app" className="text-primary hover:text-primary">careers@gravitre.app</a> and we&apos;ll reach out when something opens up.
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-4xl text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Not ready to apply?</h2>
-            <p className="text-zinc-600 mb-8">Follow us on social media and our blog to stay updated on new roles and company news.</p>
+            <h2 className="text-3xl font-semibold text-foreground mb-4">Not ready to apply?</h2>
+            <p className="text-muted-foreground mb-8">Follow us on social media and our blog to stay updated on new roles and company news.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/blog" className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100">Read our blog</Link>
-              <a href="https://twitter.com" className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100">Follow on X</a>
+              <Link href="/blog" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">Read our blog</Link>
+              <a href="https://twitter.com" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">Follow on X</a>
             </div>
           </motion.div>
         </div>

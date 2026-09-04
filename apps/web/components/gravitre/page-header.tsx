@@ -1,14 +1,17 @@
 "use client"
 
+import type { ComponentType } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { RADIUS, TYPE } from "@/lib/design-system"
-import { type LucideIcon } from "lucide-react"
+
+/** Lucide or Nucleo semantic icons — only `className` is required at call sites. */
+type HeaderIcon = ComponentType<{ className?: string }>
 
 interface PageHeaderProps {
   title: string
   description?: string
-  icon?: LucideIcon
+  icon?: HeaderIcon
   iconColor?: string
   actions?: React.ReactNode
   children?: React.ReactNode

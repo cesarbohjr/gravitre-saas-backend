@@ -27,7 +27,10 @@
 import { motion, useReducedMotion } from "framer-motion"
 import { AlertCircle, CreditCard, Maximize2, Mic } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { GravitreVoiceWaveform } from "@/components/gravitre/assistant/voice-presentation"
+import {
+  VoiceStateVisualizer,
+  resolveVoiceVisualizer,
+} from "@/components/gravitre/assistant/voice-presentation"
 
 /** Full-duplex voice UX states (Part 2). Idle/listening/speaking/error preserved. */
 export type VoicePresenceState =
@@ -83,7 +86,7 @@ export function VoiceSessionPresence({
   const isUnderstanding = state === "understanding"
   const isThinking = state === "thinking"
   const isSpeaking = state === "speaking"
-  const isLiveFloor = isListening || isUnderstanding || isThinking || isSpeaking
+  const { liveFloor: isLiveFloor } = resolveVoiceVisualizer(state)
 
   // Speaker pills (11a/11b): emerald for You, graphite for the agent. Idle/error
   // keep the quieter status treatment so an open-but-silent session stays calm.
@@ -92,9 +95,9 @@ export function VoiceSessionPresence({
       ? "text-warning"
       : "text-muted-foreground"
     : isListening || isUnderstanding
-      ? "text-[#16a374]"
+      ? "text-[color:var(--gv-voice-user)]"
       : isSpeaking || isThinking
-        ? "text-[#3f5b52] dark:text-[#e9e9e6]"
+        ? "text-[color:var(--gv-voice-agent)] dark:text-[color:var(--gv-voice-agent-fg)]"
         : "text-muted-foreground"
 
   const label = isError
@@ -148,15 +151,8 @@ export function VoiceSessionPresence({
         ) : state === "idle" ? (
           <Mic className="h-3.5 w-3.5" aria-hidden />
         ) : (
-          <GravitreVoiceWaveform
-            // Same seven-bar component the composer and orb use, rendered at icon
-            // scale. Previously this was a separate five-bar implementation, which
-            // is precisely the second-waveform drift this pass exists to remove.
-            speaker={isSpeaking || isThinking ? "agent" : "user"}
-            compact
-            active={isLiveFloor}
-            levels={levels}
-          />
+          // Canonical mapper → shared Wave (no second bar DOM).
+          <VoiceStateVisualizer state={state} levels={levels} compact />
         )}
       </span>
 

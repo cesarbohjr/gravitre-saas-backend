@@ -83,6 +83,31 @@
      green the handoff specified as #16a374. */
   --assistant-avatar: oklch(0.42 0.035 165);
   --assistant-avatar-foreground: oklch(0.99 0 0);
+  /* Voice presentation (Pilot E) — hex SOTs from voice handoff, tokenized so
+     Wave/Orb never ship hard-coded literals again. */
+  --gv-voice-user: #16a374;
+  --gv-voice-user-bright: #34d399;
+  --gv-voice-user-deep: #0f5132;
+  --gv-voice-user-hover: #128a63;
+  --gv-voice-idle: #9a9a96;
+  --gv-voice-idle-dark: #6b6b68;
+  --gv-voice-agent: #3f5b52;
+  --gv-voice-agent-fg: #e9e9e6;
+  --gv-voice-agent-mid: #b9b9b6;
+  --gv-voice-agent-light: #f2f2f0;
+  --gv-voice-orb-backdrop-mid: #1a2a66;
+  --gv-voice-orb-backdrop-deep: #0f1738;
+  --gv-voice-orb-backdrop-edge: #0a1028;
+  /* Semantic runtime / governance status (Phase 9) — map to BO/approval/agent
+     honesty chips. Never paint "TRAINED" or live ops claims from these alone. */
+  --status-pending: var(--warning);
+  --status-approved: var(--success);
+  --status-rejected: var(--destructive);
+  --status-running: var(--info);
+  --status-failed: var(--destructive);
+  --status-verified: var(--success);
+  --status-estimate: var(--warning);
+  --status-idle: var(--muted-foreground);
 }
 
 .dark {
@@ -157,6 +182,15 @@
      rather than dissolving into the background. */
   --assistant-avatar: oklch(0.46 0.042 165);
   --assistant-avatar-foreground: oklch(0.99 0 0);
+  /* Status aliases inherit theme success/warning/info/destructive above. */
+  --status-pending: var(--warning);
+  --status-approved: var(--success);
+  --status-rejected: var(--destructive);
+  --status-running: var(--info);
+  --status-failed: var(--destructive);
+  --status-verified: var(--success);
+  --status-estimate: var(--warning);
+  --status-idle: var(--muted-foreground);
 }
 
 @theme inline {
@@ -187,6 +221,14 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-status-pending: var(--status-pending);
+  --color-status-approved: var(--status-approved);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-running: var(--status-running);
+  --color-status-failed: var(--status-failed);
+  --color-status-verified: var(--status-verified);
+  --color-status-estimate: var(--status-estimate);
+  --color-status-idle: var(--status-idle);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

@@ -5,7 +5,7 @@ import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 import Link from "next/link"
 
 function Cite({ children }: { children: ReactNode }) {
-  return <em className="text-zinc-700">{children}</em>
+  return <em className="text-foreground">{children}</em>
 }
 
 export const enterpriseAiGovernancePost: BlogPost = {
@@ -22,7 +22,7 @@ export const enterpriseAiGovernancePost: BlogPost = {
   displayDate: "March 8, 2026",
   readTime: "12 min read",
   heroImage: "",
-  heroGradient: "from-indigo-50 via-zinc-50 to-emerald-50",
+  heroGradient: "from-indigo-50 via-muted/50 to-primary/10",
   heroAlt: "Layered diagram representing enterprise AI governance controls.",
   keywords: [
     "enterprise AI governance",
@@ -172,8 +172,8 @@ export const enterpriseAiGovernancePost: BlogPost = {
         Gravitre surfaces evidence with every recommendation. Sources cited. Confidence level shown. When confidence is
         low, that is stated plainly — not softened into false certainty.
       </p>
-      <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-base text-zinc-600">
-        <strong className="text-zinc-900">Confidence: Medium.</strong> Not enough CRM history to verify this trend.
+      <p className="rounded-xl border border-border bg-muted/50 px-5 py-4 text-base text-muted-foreground">
+        <strong className="text-foreground">Confidence: Medium.</strong> Not enough CRM history to verify this trend.
       </p>
       <p>That is what transparency looks like in practice.</p>
 

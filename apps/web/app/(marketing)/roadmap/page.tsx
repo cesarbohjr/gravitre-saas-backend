@@ -110,7 +110,7 @@ const roadmapItems = {
 
 const StatusBadge = ({ status }: { status: string }) => {
   const styles = {
-    shipped: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    shipped: "bg-primary/15 text-primary border-primary/20",
     inProgress: "bg-amber-100 text-amber-700 border-amber-200",
     planned: "bg-cyan-100 text-cyan-700 border-cyan-200",
     exploring: "bg-purple-100 text-purple-700 border-purple-200",
@@ -130,33 +130,33 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 export default function RoadmapPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Product Roadmap
             </h1>
-            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
               See what we&apos;re building, vote on features you want, and help shape the future of Gravitre.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href="#suggest"
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90"
               >
                 Suggest a feature
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link
                 href="/changelog"
-                className="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-500"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary"
               >
                 View changelog
                 <ArrowRight className="h-4 w-4" />
@@ -171,27 +171,27 @@ export default function RoadmapPage() {
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-wrap items-center justify-center gap-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm text-zinc-600">Shipped</span>
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Shipped</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-600" />
-              <span className="text-sm text-zinc-600">In Progress</span>
+              <span className="text-sm text-muted-foreground">In Progress</span>
             </div>
             <div className="flex items-center gap-2">
               <Circle className="h-4 w-4 text-cyan-600" />
-              <span className="text-sm text-zinc-600">Planned</span>
+              <span className="text-sm text-muted-foreground">Planned</span>
             </div>
             <div className="flex items-center gap-2">
               <Circle className="h-4 w-4 text-purple-600" />
-              <span className="text-sm text-zinc-600">Exploring</span>
+              <span className="text-sm text-muted-foreground">Exploring</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* In Progress */}
-      <section className="px-6 py-12 border-t border-zinc-200">
+      <section className="px-6 py-12 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -200,7 +200,7 @@ export default function RoadmapPage() {
             className="flex items-center gap-3 mb-8"
           >
             <Clock className="h-5 w-5 text-amber-600" />
-            <h2 className="text-xl font-semibold text-zinc-900">In Progress</h2>
+            <h2 className="text-xl font-semibold text-foreground">In Progress</h2>
           </motion.div>
           <div className="space-y-4">
             {roadmapItems.inProgress.map((item, i) => (
@@ -210,15 +210,15 @@ export default function RoadmapPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-border bg-card p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-medium text-zinc-900">{item.title}</h3>
+                      <h3 className="font-medium text-foreground">{item.title}</h3>
                       <StatusBadge status="inProgress" />
                     </div>
-                    <p className="text-sm text-zinc-600 mb-4">{item.description}</p>
+                    <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
                     {/* Progress bar */}
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 rounded-full bg-zinc-200">
@@ -227,10 +227,10 @@ export default function RoadmapPage() {
                           style={{ width: `${item.progress}%` }}
                         />
                       </div>
-                      <span className="text-xs text-zinc-500">{item.progress}%</span>
+                      <span className="text-xs text-muted-foreground">{item.progress}%</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-zinc-500">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <ThumbsUp className="h-3 w-3" />
                       {item.votes}
@@ -248,7 +248,7 @@ export default function RoadmapPage() {
       </section>
 
       {/* Planned */}
-      <section className="px-6 py-12 border-t border-zinc-200">
+      <section className="px-6 py-12 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -257,7 +257,7 @@ export default function RoadmapPage() {
             className="flex items-center gap-3 mb-8"
           >
             <Circle className="h-5 w-5 text-cyan-600" />
-            <h2 className="text-xl font-semibold text-zinc-900">Planned</h2>
+            <h2 className="text-xl font-semibold text-foreground">Planned</h2>
           </motion.div>
           <div className="space-y-3">
             {roadmapItems.planned.map((item, i) => (
@@ -267,14 +267,14 @@ export default function RoadmapPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+                className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-sm"
               >
                 <div>
-                  <h3 className="font-medium text-zinc-900">{item.title}</h3>
-                  <p className="text-sm text-zinc-500 mt-0.5">{item.description}</p>
+                  <h3 className="font-medium text-foreground">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{item.description}</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-zinc-500 shrink-0">
-                  <button className="flex items-center gap-1 hover:text-emerald-600 transition-colors">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+                  <button className="flex items-center gap-1 hover:text-primary transition-colors">
                     <ThumbsUp className="h-3 w-3" />
                     {item.votes}
                   </button>
@@ -290,7 +290,7 @@ export default function RoadmapPage() {
       </section>
 
       {/* Exploring */}
-      <section className="px-6 py-12 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-12 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -299,8 +299,8 @@ export default function RoadmapPage() {
             className="flex items-center gap-3 mb-8"
           >
             <Circle className="h-5 w-5 text-purple-600" />
-            <h2 className="text-xl font-semibold text-zinc-900">Exploring</h2>
-            <span className="text-xs text-zinc-500">Ideas we&apos;re considering</span>
+            <h2 className="text-xl font-semibold text-foreground">Exploring</h2>
+            <span className="text-xs text-muted-foreground">Ideas we&apos;re considering</span>
           </motion.div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {roadmapItems.exploring.map((item, i) => (
@@ -310,12 +310,12 @@ export default function RoadmapPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-border bg-card p-4 shadow-sm"
               >
-                <h3 className="font-medium text-zinc-900 text-sm">{item.title}</h3>
-                <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.description}</p>
-                <div className="flex items-center gap-3 mt-3 text-xs text-zinc-500">
-                  <button className="flex items-center gap-1 hover:text-emerald-600 transition-colors">
+                <h3 className="font-medium text-foreground text-sm">{item.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                  <button className="flex items-center gap-1 hover:text-primary transition-colors">
                     <ThumbsUp className="h-3 w-3" />
                     {item.votes}
                   </button>
@@ -327,7 +327,7 @@ export default function RoadmapPage() {
       </section>
 
       {/* Recently Shipped */}
-      <section className="px-6 py-12 border-t border-zinc-200">
+      <section className="px-6 py-12 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -335,8 +335,8 @@ export default function RoadmapPage() {
             viewport={{ once: true }}
             className="flex items-center gap-3 mb-8"
           >
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-xl font-semibold text-zinc-900">Recently Shipped</h2>
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Recently Shipped</h2>
           </motion.div>
           <div className="grid gap-3 sm:grid-cols-2">
             {roadmapItems.shipped.map((item, i) => (
@@ -346,13 +346,13 @@ export default function RoadmapPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+                className="rounded-xl border border-primary/20 bg-primary/10 p-4"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <h3 className="font-medium text-zinc-900 text-sm">{item.title}</h3>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <h3 className="font-medium text-foreground text-sm">{item.title}</h3>
                 </div>
-                <p className="text-xs text-zinc-600 ml-6">{item.description}</p>
+                <p className="text-xs text-muted-foreground ml-6">{item.description}</p>
               </motion.div>
             ))}
           </div>
@@ -360,31 +360,31 @@ export default function RoadmapPage() {
       </section>
 
       {/* Suggest Feature */}
-      <section id="suggest" className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section id="suggest" className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Have an idea?</h2>
-            <p className="text-zinc-600 mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Have an idea?</h2>
+            <p className="text-muted-foreground mb-8">
               We&apos;d love to hear your feature requests and feedback.
             </p>
             <form className="space-y-4">
               <input
                 type="email"
                 placeholder="Your email"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none"
               />
               <textarea
                 placeholder="Describe your feature idea..."
                 rows={4}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-emerald-500 focus:outline-none resize-none"
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none resize-none"
               />
               <button
                 type="submit"
-                className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition-all hover:bg-emerald-500"
+                className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-primary/100"
               >
                 Submit suggestion
               </button>

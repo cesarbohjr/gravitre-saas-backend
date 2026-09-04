@@ -15,7 +15,7 @@ export const measuringAiRoiPost: BlogPost = {
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
   heroImage: "",
-  heroGradient: "from-slate-50 via-emerald-50/40 to-zinc-100",
+  heroGradient: "from-slate-50 via-primary/5/40 to-zinc-100",
   heroAlt:
     "Dashboard showing real automation activity alongside a clearly labeled estimate figure",
   keywords: [
@@ -62,10 +62,10 @@ export const measuringAiRoiPost: BlogPost = {
 
       <aside
         aria-label="Quick answer"
-        className="not-prose mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6"
+        className="not-prose mt-8 rounded-2xl border border-border bg-muted/50 p-6"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Quick answer</p>
-        <p className="mt-3 text-base leading-relaxed text-zinc-700">
+        <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quick answer</p>
+        <p className="mt-3 text-base leading-relaxed text-foreground">
           Gravitre shows you real, live activity from every automation you run, clearly labels any estimated figures with
           their source, and openly says &ldquo;not enough data yet&rdquo; rather than inventing an outcome it has not
           measured. Fully verified, real-dollar ROI reporting is on the roadmap next.

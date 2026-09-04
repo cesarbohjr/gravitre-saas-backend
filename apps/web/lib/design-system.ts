@@ -81,18 +81,57 @@ export const RADIUS = {
 } as const
 
 /**
- * Shared motion timings. Durations stay short enough to feel like feedback
- * rather than animation; every consumer must still honour `useReducedMotion()`.
+ * Shared motion timings (UI 2.0 Phase 9 — single source for MOTION + animations.timing).
+ * Durations stay short enough to feel like feedback rather than animation;
+ * every consumer must still honour `useMotionPrefs()` / `useReducedMotion()`.
+ *
+ * Scale: micro 150 · ui/base 250 · major 400 · slow 600 (seconds for Framer).
  */
 export const MOTION = {
-  /** Hover / press feedback. */
+  /** Hover / press / exit micro interactions (150ms). */
+  micro: 0.15,
+  /** Alias of micro — prefer `micro` in new code. */
   fast: 0.15,
-  /** Enter + exit transitions. */
-  base: 0.22,
+  /** Standard UI enter/exit (250ms). */
+  ui: 0.25,
+  /** Alias of ui — existing hub consumers; keep in sync with `ui`. */
+  base: 0.25,
+  /** Major surface / route transitions (400ms). */
+  major: 0.4,
+  /** Emphasis / slow reveals (600ms). */
+  slow: 0.6,
   /** Staggered list reveals. */
   stagger: 0.04,
   /** Sliding indicators (tab pills, segmented controls). */
   spring: { type: "spring" as const, stiffness: 400, damping: 32 },
+} as const
+
+/**
+ * Motion concepts (Phase 6). Labels only — intensity and reduced-motion
+ * behaviour live in `animations.ts` / voice presentation, not here.
+ */
+export const MOTION_CONCEPT = {
+  FLOW: "flow",
+  PULSE: "pulse",
+  WAVE: "wave",
+  ORBIT: "orbit",
+  TRACE: "trace",
+  RESOLVE: "resolve",
+} as const
+
+/**
+ * Semantic status chip classes mapped to CSS status tokens.
+ * Use for BO / approval / agent honesty chips — never invent TRAINED/live claims.
+ */
+export const STATUS = {
+  pending: "border border-[color:var(--status-pending)]/30 bg-[color:var(--status-pending)]/15 text-[color:var(--status-pending)]",
+  approved: "border border-[color:var(--status-approved)]/30 bg-[color:var(--status-approved)]/15 text-[color:var(--status-approved)]",
+  rejected: "border border-[color:var(--status-rejected)]/30 bg-[color:var(--status-rejected)]/15 text-[color:var(--status-rejected)]",
+  running: "border border-[color:var(--status-running)]/30 bg-[color:var(--status-running)]/15 text-[color:var(--status-running)]",
+  failed: "border border-[color:var(--status-failed)]/30 bg-[color:var(--status-failed)]/15 text-[color:var(--status-failed)]",
+  verified: "border border-[color:var(--status-verified)]/30 bg-[color:var(--status-verified)]/15 text-[color:var(--status-verified)]",
+  estimate: "border border-[color:var(--status-estimate)]/30 bg-[color:var(--status-estimate)]/15 text-[color:var(--status-estimate)]",
+  idle: "border border-border bg-muted/50 text-muted-foreground",
 } as const
 
 /**

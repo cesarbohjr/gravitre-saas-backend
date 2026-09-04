@@ -23,19 +23,19 @@ export function PricingRoleTooltip({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1 cursor-help border-b border-dashed border-zinc-300">
+          <span className="inline-flex items-center gap-1 cursor-help border-b border-dashed border-border">
             {children}
-            <Info className="h-3 w-3 text-zinc-400" />
+            <Info className="h-3 w-3 text-muted-foreground" />
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs bg-white border-zinc-200 text-zinc-900 p-3 shadow-lg">
+        <TooltipContent side="top" className="max-w-xs bg-card border-border text-foreground p-3 shadow-lg">
           <div className="flex items-start gap-2">
-            <div className="h-6 w-6 rounded-md bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
-              <Icon className="h-3.5 w-3.5 text-zinc-600" />
+            <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
+              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium text-sm text-zinc-900">{roleData.name}</p>
-              <p className="text-xs text-zinc-500 mt-1">{roleData.description}</p>
+              <p className="font-medium text-sm text-foreground">{roleData.name}</p>
+              <p className="text-xs text-muted-foreground mt-1">{roleData.description}</p>
             </div>
           </div>
         </TooltipContent>

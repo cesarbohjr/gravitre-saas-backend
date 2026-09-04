@@ -13,7 +13,7 @@ export function ParticleField() {
       {Array.from({ length: 50 }).map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-emerald-500/30 rounded-full"
+          className="absolute w-1 h-1 bg-primary/100/30 rounded-full"
           initial={{
             x: `${seededUnit(i + 1) * 100}%`,
             y: `${seededUnit(i + 101) * 100}%`,

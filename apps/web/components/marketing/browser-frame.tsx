@@ -61,7 +61,7 @@ export interface BrowserFrameProps {
  */
 function PagePlaceholder() {
   return (
-    <div aria-hidden="true" className="h-full w-full bg-zinc-50 select-none">
+    <div aria-hidden="true" className="h-full w-full bg-muted/50 select-none">
       <div className="h-[22%] w-full bg-gradient-to-r from-zinc-200 via-zinc-100 to-zinc-200" />
       <div className="px-[6%]">
         <div className="-mt-[7%] h-[14%] w-[14%] rounded-full border-4 border-white bg-zinc-300" />
@@ -71,20 +71,20 @@ function PagePlaceholder() {
           <div className="h-2 w-[26%] rounded-full bg-zinc-200" />
         </div>
         <div className="mt-[5%] flex flex-col gap-3 pb-[6%]">
-          <div className="rounded-lg border border-zinc-200 bg-white p-[3%]">
+          <div className="rounded-lg border border-border bg-card p-[3%]">
             <div className="h-2 w-[30%] rounded-full bg-zinc-200" />
-            <div className="mt-2 h-2 w-[74%] rounded-full bg-zinc-100" />
-            <div className="mt-2 h-2 w-[62%] rounded-full bg-zinc-100" />
+            <div className="mt-2 h-2 w-[74%] rounded-full bg-muted" />
+            <div className="mt-2 h-2 w-[62%] rounded-full bg-muted" />
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-[3%]">
+          <div className="rounded-lg border border-border bg-card p-[3%]">
             <div className="h-2 w-[24%] rounded-full bg-zinc-200" />
-            <div className="mt-2 h-2 w-[68%] rounded-full bg-zinc-100" />
-            <div className="mt-2 h-2 w-[55%] rounded-full bg-zinc-100" />
+            <div className="mt-2 h-2 w-[68%] rounded-full bg-muted" />
+            <div className="mt-2 h-2 w-[55%] rounded-full bg-muted" />
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-[3%]">
+          <div className="rounded-lg border border-border bg-card p-[3%]">
             <div className="h-2 w-[34%] rounded-full bg-zinc-200" />
-            <div className="mt-2 h-2 w-[70%] rounded-full bg-zinc-100" />
-            <div className="mt-2 h-2 w-[46%] rounded-full bg-zinc-100" />
+            <div className="mt-2 h-2 w-[70%] rounded-full bg-muted" />
+            <div className="mt-2 h-2 w-[46%] rounded-full bg-muted" />
           </div>
         </div>
       </div>
@@ -104,7 +104,7 @@ export function BrowserFrame({
 }: BrowserFrameProps) {
   return (
     <figure className={cn("flex flex-col gap-3", className)}>
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 shadow-xl shadow-zinc-900/5">
+      <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-xl shadow-zinc-900/5">
         {/* Tab strip */}
         <div className="flex items-end gap-2 px-3 pt-3">
           <div className="flex items-center gap-1.5 pb-2.5 pr-1">
@@ -112,19 +112,19 @@ export function BrowserFrame({
             <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
           </div>
-          <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-t-lg bg-white px-3 py-2">
+          <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-t-lg bg-card px-3 py-2">
             <span className="h-3 w-3 shrink-0 rounded-sm bg-zinc-300" />
-            <span className="truncate text-[11px] font-medium text-zinc-600">
+            <span className="truncate text-[11px] font-medium text-muted-foreground">
               {tabTitle}
             </span>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-2 bg-white px-3 py-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5">
-            <Lock className="h-3 w-3 shrink-0 text-zinc-400" />
-            <span className="truncate text-[11px] text-zinc-500">{url}</span>
+        <div className="flex items-center gap-2 bg-card px-3 py-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-3 py-1.5">
+            <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="truncate text-[11px] text-muted-foreground">{url}</span>
           </div>
           {/* Anchor for the popup: this is the extensions button a real popup
               drops out of. */}
@@ -132,14 +132,14 @@ export function BrowserFrame({
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
               placement === "popup"
-                ? "bg-emerald-100 ring-2 ring-emerald-500"
-                : "bg-zinc-100",
+                ? "bg-primary/15 ring-2 ring-primary"
+                : "bg-muted",
             )}
           >
             <Puzzle
               className={cn(
                 "h-3.5 w-3.5",
-                placement === "popup" ? "text-emerald-700" : "text-zinc-400",
+                placement === "popup" ? "text-primary" : "text-muted-foreground",
               )}
             />
           </div>
@@ -153,7 +153,7 @@ export function BrowserFrame({
             the confirm block. */}
         <div
           className={cn(
-            "relative w-full overflow-hidden bg-white",
+            "relative w-full overflow-hidden bg-card",
             placement === "popup"
               ? "aspect-square sm:aspect-[16/8]"
               : // lg is where these frames often sit two-up in a grid, so the
@@ -168,7 +168,7 @@ export function BrowserFrame({
 
           <div
             className={cn(
-              "absolute overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/25",
+              "absolute overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-zinc-900/25",
               // Width is deliberately a large fraction of the frame and
               // larger still on small screens. These captures are 720-760px
               // wide natively, so a narrow render shrinks the UI text past

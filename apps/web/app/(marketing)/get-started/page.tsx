@@ -42,7 +42,7 @@ function getPasswordStrength(password: string): { label: string; color: string }
   const hasNumber = /[0-9]/.test(password)
   const hasSpecial = /[^a-zA-Z0-9]/.test(password)
   const score = [hasLower, hasUpper, hasNumber, hasSpecial].filter(Boolean).length
-  if (password.length >= 12 && score >= 3) return { label: "Strong", color: "bg-emerald-500" }
+  if (password.length >= 12 && score >= 3) return { label: "Strong", color: "bg-primary/100" }
   if (password.length >= 8 && score >= 2) return { label: "Fair", color: "bg-amber-500" }
   return { label: "Weak", color: "bg-red-400" }
 }
@@ -177,9 +177,9 @@ export default function GetStartedPage() {
   const anyLoading = isLoading || loadingProvider !== null
 
   return (
-    <div className="min-h-screen bg-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-card relative overflow-x-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/50 via-white to-white" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/10/50 via-white to-white" />
       <div 
         className="absolute inset-0 opacity-[0.02]"
         style={{
@@ -198,25 +198,25 @@ export default function GetStartedPage() {
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               Build your AI team in minutes
             </h1>
-            <p className="mt-3 text-zinc-500">
+            <p className="mt-3 text-muted-foreground">
               Agents that work like employees, integrations they use as tools.
               <br className="hidden sm:block" />
               No credit card required.
             </p>
-            <p className="mt-4 text-xs text-zinc-400">
+            <p className="mt-4 text-xs text-muted-foreground">
               7-day free trial · Cancel anytime · Encrypted by default
             </p>
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8">
+          <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8">
             {/* Success message */}
             {successMessage && (
-              <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 flex items-start gap-3">
-                <Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-3">
+                <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <span>{successMessage}</span>
               </div>
             )}
@@ -256,7 +256,7 @@ export default function GetStartedPage() {
                   key={provider.id}
                   onClick={() => handleOAuth(provider.id)}
                   disabled={anyLoading}
-                  className="w-full flex items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-3 rounded-xl border border-border bg-card px-4 py-3 min-h-[48px] text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingProvider === provider.id ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -273,14 +273,14 @@ export default function GetStartedPage() {
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
               <div className="h-px flex-1 bg-zinc-200" />
-              <span className="text-xs text-zinc-400 uppercase tracking-wide">or continue with email</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">or continue with email</span>
               <div className="h-px flex-1 bg-zinc-200" />
             </div>
 
             {/* Email Form */}
             <form onSubmit={handleEmailSignup} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-700 mb-1.5">
+                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
                   Work email
                 </label>
                 <input
@@ -291,13 +291,13 @@ export default function GetStartedPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={anyLoading}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:bg-zinc-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 min-h-[48px] text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-muted/50 disabled:cursor-not-allowed"
                   placeholder="you@company.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-zinc-700 mb-1.5">
+                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
                   Password
                 </label>
                 <div className="relative">
@@ -310,14 +310,14 @@ export default function GetStartedPage() {
                     required
                     minLength={8}
                     disabled={anyLoading}
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 pr-12 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:bg-zinc-50 disabled:cursor-not-allowed"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 pr-12 min-h-[48px] text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-muted/50 disabled:cursor-not-allowed"
                     placeholder="Min 8 characters"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={anyLoading}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors disabled:cursor-not-allowed"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-muted-foreground transition-colors disabled:cursor-not-allowed"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -326,13 +326,13 @@ export default function GetStartedPage() {
                 {/* Password strength indicator */}
                 {passwordStrength && password.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                       <div 
                         className={`h-full transition-all ${passwordStrength.color}`}
                         style={{ width: passwordStrength.label === "Strong" ? "100%" : passwordStrength.label === "Fair" ? "66%" : "33%" }}
                       />
                     </div>
-                    <span className="text-xs text-zinc-500">{passwordStrength.label}</span>
+                    <span className="text-xs text-muted-foreground">{passwordStrength.label}</span>
                   </div>
                 )}
               </div>
@@ -345,15 +345,15 @@ export default function GetStartedPage() {
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
                   disabled={anyLoading}
-                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500/20 disabled:cursor-not-allowed"
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/20 disabled:cursor-not-allowed"
                 />
-                <label htmlFor="terms" className="text-xs text-zinc-500">
+                <label htmlFor="terms" className="text-xs text-muted-foreground">
                   I agree to the{" "}
-                  <Link href="/terms" className="text-emerald-600 hover:text-emerald-700 underline">
+                  <Link href="/terms" className="text-primary hover:text-primary underline">
                     Terms of Service
                   </Link>
                   {" "}and{" "}
-                  <Link href="/privacy" className="text-emerald-600 hover:text-emerald-700 underline">
+                  <Link href="/privacy" className="text-primary hover:text-primary underline">
                     Privacy Policy
                   </Link>
                 </label>
@@ -363,7 +363,7 @@ export default function GetStartedPage() {
               <button
                 type="submit"
                 disabled={anyLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 min-h-[48px] text-sm font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-medium text-white transition-all hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>
@@ -378,22 +378,22 @@ export default function GetStartedPage() {
           </div>
 
           {/* Footer link */}
-          <p className="mt-6 text-center text-sm text-zinc-500">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            <Link href="/login" className="text-primary hover:text-primary font-medium">
               Sign in
             </Link>
           </p>
           
           {/* Legal footer */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-400">
-            <Link href="/privacy" className="hover:text-zinc-600 transition-colors">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-muted-foreground transition-colors">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-zinc-600 transition-colors">
+            <Link href="/terms" className="hover:text-muted-foreground transition-colors">
               Terms
             </Link>
-            <Link href="/security" className="hover:text-zinc-600 transition-colors">
+            <Link href="/security" className="hover:text-muted-foreground transition-colors">
               Security
             </Link>
           </div>

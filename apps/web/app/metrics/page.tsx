@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { PageHeader } from "@/components/gravitre/page-header"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
@@ -508,23 +509,13 @@ export default function MetricsPage() {
   return (
     <AppShell title={SURFACE_COPY.pages.metrics.title}>
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Intelligence · Operational health
-              </p>
-              <h1 className="text-lg md:text-xl font-semibold text-foreground">{SURFACE_COPY.pages.metrics.headline}</h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">{SURFACE_COPY.pages.metrics.description}</p>
-              <a
-                href="/intelligence"
-                className="mt-1 inline-block text-xs text-primary underline-offset-4 hover:underline"
-              >
-                Back to Intelligence hub
-              </a>
-            </div>
-            <div className="flex items-center gap-2">
+        <PageHeader
+          eyebrow="Intelligence · Operational health"
+          title={SURFACE_COPY.pages.metrics.headline}
+          description={SURFACE_COPY.pages.metrics.description}
+          icon={Activity}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-2">
@@ -577,8 +568,15 @@ export default function MetricsPage() {
                 <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
               </Button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <a
+            href="/intelligence"
+            className="inline-block text-xs text-primary underline-offset-4 hover:underline"
+          >
+            Back to Intelligence hub
+          </a>
+        </PageHeader>
 
         <div className="flex-1 overflow-auto">
           <div className="p-4 md:p-6 space-y-4 md:space-y-6">

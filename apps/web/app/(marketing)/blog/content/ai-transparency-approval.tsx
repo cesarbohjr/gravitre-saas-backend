@@ -15,7 +15,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
   heroImage: "/images/blog/ai-transparency-governance-hero.jpg",
-  heroGradient: "from-emerald-50 via-white to-slate-100",
+  heroGradient: "from-primary/10 via-white to-slate-100",
   heroAlt:
     "Governance flow diagram showing chat, guided task, and workflow paths converging on a human approval gate, with verification outcomes, assumptions notes, and an audit log",
   keywords: [
@@ -67,10 +67,10 @@ export const aiTransparencyApprovalPost: BlogPost = {
 
       <aside
         aria-label="Quick answer"
-        className="not-prose mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6"
+        className="not-prose mt-8 rounded-2xl border border-border bg-muted/50 p-6"
       >
-        <p className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Quick answer</p>
-        <p className="mt-3 text-base leading-relaxed text-zinc-700">
+        <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quick answer</p>
+        <p className="mt-3 text-base leading-relaxed text-foreground">
           Gravitre requires human approval before any AI action that changes your data, shows verifiable proof when
           that action succeeds, tells you when it had to guess at a detail, and logs every approval and result so you
           can review it later. This applies the same way whether the request comes from chat, a guided task, or an

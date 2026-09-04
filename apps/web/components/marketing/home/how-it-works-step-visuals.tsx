@@ -6,7 +6,7 @@ import { GibeHonestyCards } from "@/components/marketing/gibe-honesty-cards"
 
 export function ConnectorsStepVisual() {
   return (
-    <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-zinc-800">
       <div className="space-y-3">
         {[
           { label: "HubSpot", status: "Executable", ok: true },
@@ -18,12 +18,12 @@ export function ConnectorsStepVisual() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-800/50"
+            className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-foreground/90/50"
           >
             <span className="text-sm text-zinc-200">{row.label}</span>
             <span
               className={`text-xs px-2 py-1 rounded-full ${
-                row.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                row.ok ? "bg-primary/100/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
               }`}
             >
               {row.status}
@@ -37,7 +37,7 @@ export function ConnectorsStepVisual() {
 
 export function GibeHonestyStepVisual() {
   return (
-    <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-zinc-800">
       <GibeHonestyCards />
     </div>
   )
@@ -45,7 +45,7 @@ export function GibeHonestyStepVisual() {
 
 export function AgentsStepVisual() {
   return (
-    <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-zinc-800">
       <div className="flex items-center justify-center gap-2">
         {[
           { icon: Zap, color: "emerald" },
@@ -63,7 +63,7 @@ export function AgentsStepVisual() {
             <div
               className={`h-12 w-12 rounded-xl flex items-center justify-center border ${
                 node.color === "emerald"
-                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  ? "border-primary/30 bg-primary/100/10"
                   : node.color === "blue"
                     ? "border-blue-500/30 bg-blue-500/10"
                     : node.color === "purple"

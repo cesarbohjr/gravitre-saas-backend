@@ -72,23 +72,23 @@ const practices = [
 
 export default function SecurityPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100">
-              <Shield className="h-8 w-8 text-emerald-600" />
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15">
+              <Shield className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Enterprise-grade security
             </h1>
-            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your data security is our priority. Gravitre is built with security-first architecture,
               human approval on writes, and audit trails you can review — with plan-specific details available on request.
             </p>
@@ -97,7 +97,7 @@ export default function SecurityPage() {
       </section>
 
       {/* Certifications */}
-      <section className="px-6 py-16 border-t border-zinc-200">
+      <section className="px-6 py-16 border-t border-border">
         <div className="mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -105,7 +105,7 @@ export default function SecurityPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Security controls</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Security controls</h2>
           </motion.div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {certifications.map((cert, i) => (
@@ -115,10 +115,10 @@ export default function SecurityPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="rounded-xl border border-zinc-200 bg-white p-4 text-center shadow-sm"
+                className="rounded-xl border border-border bg-card p-4 text-center shadow-sm"
               >
-                <div className="text-sm font-medium text-zinc-900 mb-1">{cert.name}</div>
-                <div className="text-xs text-zinc-500">{cert.description}</div>
+                <div className="text-sm font-medium text-foreground mb-1">{cert.name}</div>
+                <div className="text-xs text-muted-foreground">{cert.description}</div>
               </motion.div>
             ))}
           </div>
@@ -126,7 +126,7 @@ export default function SecurityPage() {
       </section>
 
       {/* Security Features */}
-      <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -134,8 +134,8 @@ export default function SecurityPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Security Features</h2>
-            <p className="text-zinc-600 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-semibold text-foreground mb-4">Security Features</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
               Comprehensive security controls built into every layer of our platform.
             </p>
           </motion.div>
@@ -149,13 +149,13 @@ export default function SecurityPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+                  className="rounded-2xl border border-border bg-card p-6 shadow-sm"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon className="h-5 w-5 text-emerald-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium text-zinc-900 mb-2">{feature.title}</h3>
-                  <p className="text-sm text-zinc-600">{feature.description}</p>
+                  <h3 className="text-lg font-medium text-foreground mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </motion.div>
               )
             })}
@@ -164,7 +164,7 @@ export default function SecurityPage() {
       </section>
 
       {/* Security Practices */}
-      <section className="px-6 py-24 border-t border-zinc-200">
+      <section className="px-6 py-24 border-t border-border">
         <div className="mx-auto max-w-4xl">
           <div className="grid gap-12 lg:grid-cols-2 items-start">
             <motion.div
@@ -172,14 +172,14 @@ export default function SecurityPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-semibold text-zinc-900 mb-6">Our Security Practices</h2>
-              <p className="text-zinc-600 mb-6">
+              <h2 className="text-3xl font-semibold text-foreground mb-6">Our Security Practices</h2>
+              <p className="text-muted-foreground mb-6">
                 We implement comprehensive security practices across our organization, from secure 
                 development to operational security.
               </p>
               <Link
                 href="/docs/security"
-                className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-500 transition-colors"
+                className="inline-flex items-center gap-2 text-primary hover:text-primary transition-colors"
               >
                 View security documentation
                 <ArrowRight className="h-4 w-4" />
@@ -200,8 +200,8 @@ export default function SecurityPage() {
                     transition={{ delay: i * 0.05 }}
                     className="flex items-center gap-3"
                   >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span className="text-sm text-zinc-700">{practice}</span>
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm text-foreground">{practice}</span>
                   </motion.li>
                 ))}
               </ul>
@@ -211,7 +211,7 @@ export default function SecurityPage() {
       </section>
 
       {/* Data Centers */}
-      <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -219,20 +219,20 @@ export default function SecurityPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <Globe className="h-8 w-8 text-emerald-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Data residency</h2>
-            <p className="text-zinc-600 max-w-2xl mx-auto">
+            <Globe className="h-8 w-8 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl font-semibold text-foreground mb-4">Data residency</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
               Hosting regions and data residency options depend on your plan and contract. Contact us for
               current availability — we do not publish specific region lists without confirming your deployment.
             </p>
           </motion.div>
-          <div className="mx-auto max-w-xl rounded-xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
-            <p className="text-sm text-zinc-600">
+          <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">
               Enterprise customers can request deployment details, subprocessors, and DPA terms through our Trust Center.
             </p>
             <Link
               href="/contact?subject=trust-center"
-              className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-500"
+              className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary"
             >
               Request Trust Center access
               <ArrowRight className="h-4 w-4" />
@@ -242,28 +242,28 @@ export default function SecurityPage() {
       </section>
 
       {/* Report Vulnerability */}
-      <section className="px-6 py-24 border-t border-zinc-200">
+      <section className="px-6 py-24 border-t border-border">
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Report a Security Vulnerability</h2>
-            <p className="text-zinc-600 mb-8 max-w-xl mx-auto">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Report a Security Vulnerability</h2>
+            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               We take security seriously. If you&apos;ve discovered a vulnerability, please report it responsibly.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href="mailto:security@gravitre.app"
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90"
               >
                 security@gravitre.app
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link
                 href="/contact?subject=bug-bounty"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted"
               >
                 Bug bounty program
               </Link>
@@ -273,22 +273,22 @@ export default function SecurityPage() {
       </section>
 
       {/* Trust Center CTA */}
-      <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
+      <section className="px-6 py-24 border-t border-border bg-muted/50">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="rounded-2xl border border-zinc-200 bg-white p-8 lg:p-12 text-center shadow-sm"
+            className="rounded-2xl border border-border bg-card p-8 lg:p-12 text-center shadow-sm"
           >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Need more details?</h2>
-            <p className="text-zinc-600 mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Need more details?</h2>
+            <p className="text-muted-foreground mb-8">
               Request access to our Trust Center for detailed security documentation, 
               audit reports, and compliance certifications.
             </p>
             <Link
               href="/contact?subject=trust-center"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-emerald-500"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition-all hover:bg-primary/100"
             >
               Request access
               <ArrowRight className="h-4 w-4" />

@@ -29,7 +29,6 @@ export { SessionItem } from "./session-item"
 export { TimelineItem, Timeline } from "./timeline-item"
 
 // AI Components
-export { AICommandInput } from "./ai-command-input"
 export { MesonInsightsPanel, AIInsightsPanel } from "./ai-insights-panel"
 export { MesonPagePanel } from "./meson-page-panel"
 export { AIPresence } from "./ai-presence"
@@ -55,7 +54,6 @@ export { ActionProposal } from "./action-proposal"
 export { IconButton } from "./icon-button"
 export { VendorLogo } from "./vendor-logo"
 export { ConnectorIcon, ConnectorIconGrid, ConnectorFallbackIcon, hasConnectorBrandLogo } from "./connector-icon"
-export { LottieAnimation } from "./lottie-animation"
 
 // Avatar Components
 export { AgentAvatar, UserAvatar, ChatMessage } from "./chat-avatars"

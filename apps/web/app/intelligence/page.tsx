@@ -12,16 +12,21 @@ import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
+import { formatPercent, readNumber } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
 import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-suggestion-cards"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
-import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
-import { StatusBadge, formatStatusLabel } from "@/components/gravitre/status-badge"
+import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
+import { IntelligenceNetworkWebGL } from "@/components/intelligence/intelligence-network-webgl"
+import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
+import { TYPE, RADIUS } from "@/lib/design-system"
+import { ESTIMATED_CONFIDENCE_LABEL } from "@/lib/outcome-labels"
+import { cn } from "@/lib/utils"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import {
   ArrowRight,
   Brain,
@@ -145,70 +150,27 @@ function IntelligenceCenterInner() {
     trustRecord?.confidence_is_estimate ?? trustRecord?.confidenceIsEstimate,
   )
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
-  const runtimeEntries = Object.entries(orgTraining).slice(0, 6)
-  const heuristicRuntimeCount = runtimeEntries.filter(
-    ([, row]) => readString(row?.runtime_status, "") === "heuristic",
-  ).length
-  const trainedRuntimeCount = runtimeEntries.filter(
-    ([, row]) =>
-      readString(row?.runtime_status, "") === "trained" || Boolean(row?.artifact_loaded),
-  ).length
+  const hasRuntimeRows = Object.keys(orgTraining).length > 0
 
   return (
     <AppShell title={copy.title}>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="relative space-y-6 p-4 md:p-6">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 overflow-hidden rounded-b-2xl">
+          <IntelligenceNetworkWebGL className="opacity-30" />
+        </div>
         <IntelligenceSectionRedirect />
-        <PageHeader title={copy.title} description={copy.description} />
+        <PageHeader
+          className="relative border-border/60 bg-background/70 backdrop-blur-sm"
+          eyebrow="GIBE"
+          title={copy.title}
+          description={copy.description}
+          icon={NucleoIntelligence}
+        />
 
-        {runtimeEntries.length > 0 ? (
-          <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">Model runtime</h2>
-                <p className="mt-1 text-sm text-muted-foreground text-pretty">
-                  Whether each model is actually running a loaded artifact or falling back to a
-                  heuristic — not the catalog{" "}
-                  <span className="font-medium text-foreground">Trained</span> label alone.
-                </p>
-              </div>
-              {/* Semantic tones, not raw hues: a heuristic fallback is a degraded
-                  state (warning) and a loaded artifact is the healthy one (success). */}
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge variant="warning" dot>
-                  {heuristicRuntimeCount} heuristic
-                </StatusBadge>
-                <StatusBadge variant="success" dot>
-                  {trainedRuntimeCount} artifact-loaded
-                </StatusBadge>
-              </div>
-            </div>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {runtimeEntries.map(([name, row]) => {
-                const status = readString(row?.runtime_status, "unknown")
-                const isHeuristic = status === "heuristic"
-                return (
-                  <li key={name}>
-                    <StatusBadge
-                      variant={isHeuristic ? "warning" : "success"}
-                      title={
-                        row?.artifact_loaded
-                          ? "Trained artifact loaded at runtime"
-                          : "Heuristic path — no trained artifact loaded"
-                      }
-                    >
-                      {formatStatusLabel(name)} · {formatStatusLabel(status)}
-                    </StatusBadge>
-                  </li>
-                )
-              })}
-            </ul>
-            <div className="mt-3">
-              <Button variant="link" size="sm" className="h-auto px-0" asChild>
-                <Link href={APP_ROUTES.builtInModels}>View all models</Link>
-              </Button>
-            </div>
-          </section>
-        ) : null}
+        {/* Always show Module C strip — empty state is honest when catalog has no rows */}
+        <div className="relative">
+          <GibeHonestyStrip orgTraining={hasRuntimeRows ? orgTraining : null} />
+        </div>
 
         {isLoading && !outcomes ? (
           <StatsSkeleton count={4} />
@@ -223,9 +185,27 @@ function IntelligenceCenterInner() {
           <StatsGrid columns={4}>
             <StatCard label={SURFACE_COPY.stats.outcomeEvents} value={totalEvents} variant="info" />
             <StatCard
-              label={SURFACE_COPY.stats.avgConfidence}
-              value={avgConfidence != null ? formatPercent(avgConfidence) : "—"}
-              variant="success"
+              label={
+                confidenceIsEstimate
+                  ? ESTIMATED_CONFIDENCE_LABEL
+                  : SURFACE_COPY.stats.avgConfidence
+              }
+              value={
+                avgConfidence != null ? (
+                  <span className="inline-flex flex-col items-center gap-1">
+                    <span>{formatPercent(avgConfidence)}</span>
+                    <ConfidenceBadge
+                      score={avgConfidence}
+                      isEstimate={confidenceIsEstimate}
+                      showScore={false}
+                      className="text-[10px] normal-case tracking-normal"
+                    />
+                  </span>
+                ) : (
+                  "—"
+                )
+              }
+              variant={confidenceIsEstimate ? "warning" : "success"}
             />
             <StatCard
               label={SURFACE_COPY.stats.recommendationsCreated}
@@ -238,6 +218,12 @@ function IntelligenceCenterInner() {
             />
           </StatsGrid>
         )}
+
+        {avgConfidence == null && !isLoading ? (
+          <p className={cn(TYPE.meta, "rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2", RADIUS.tile)}>
+            Avg confidence not yet available for this period — shown as — rather than a fabricated score.
+          </p>
+        ) : null}
 
         <RecommendationExplanation
           summary={SURFACE_COPY.sections.recommendationSummary}
@@ -252,36 +238,27 @@ function IntelligenceCenterInner() {
         <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <h2 className="text-base font-semibold text-foreground">{SURFACE_COPY.sections.routingTrace}</h2>
-            <p className="mt-1 text-sm text-muted-foreground text-pretty">
+          <section className={cn("border border-border bg-card p-5 shadow-sm", RADIUS.panel)}>
+            <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h2>
+            <p className={cn(TYPE.bodyMuted, "mt-1")}>
               {SURFACE_COPY.sections.routingTraceHint}
             </p>
-            <div className="mt-4">
-              <IntelligenceTrace
-                stages={[
-                  {
-                    label: "Task classified",
-                    detail: readString(outcomes?.scopeNote, "Org-scoped classification"),
-                    status: "ok",
-                  },
-                  {
-                    label: "Context assembled",
-                    detail: "Retrieval and connector signals merged for the request.",
-                    status: "ok",
-                  },
-                  {
-                    label: "Risk evaluated",
-                    detail: `${readNumber(trust?.advisory_only_rate, 0) > 0 ? "Some actions require approval." : "Advisory-only routing active."}`,
-                    status: "pending",
-                  },
-                ]}
-              />
+            <div
+              className={cn(
+                "mt-4 border border-dashed border-border bg-muted/30 px-4 py-6 text-center",
+                RADIUS.card,
+              )}
+            >
+              <p className={TYPE.cardTitle}>No live routing trace on this hub</p>
+              <p className={cn(TYPE.meta, "mt-1")}>
+                Per-turn traces appear on chat / decision surfaces with real SSE metadata — this page
+                does not invent “ok” stage chips.
+              </p>
             </div>
           </section>
-          <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <h2 className="text-base font-semibold text-foreground">{SURFACE_COPY.sections.latestSimulation}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{SURFACE_COPY.sections.latestSimulationHint}</p>
+          <section className={cn("border border-border bg-card p-5 shadow-sm", RADIUS.panel)}>
+            <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h2>
+            <p className={cn(TYPE.bodyMuted, "mt-1")}>{SURFACE_COPY.sections.latestSimulationHint}</p>
             <div className="mt-4">
               <SimulationCard simulation={(simulations as Record<string, unknown> | undefined) ?? null} />
             </div>
@@ -292,13 +269,10 @@ function IntelligenceCenterInner() {
           {LINK_GROUPS.map((group) => (
             <section key={group.heading} aria-labelledby={`links-${group.heading}`}>
               <div className="mb-3">
-                <h2
-                  id={`links-${group.heading}`}
-                  className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-                >
+                <h2 id={`links-${group.heading}`} className={TYPE.eyebrow}>
                   {group.heading}
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground text-pretty">{group.description}</p>
+                <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {group.links.map((link) => {
@@ -307,17 +281,23 @@ function IntelligenceCenterInner() {
                     <Link
                       key={link.route}
                       href={link.route}
-                      className="group rounded-2xl border border-border/70 bg-card p-5 transition-colors hover:border-primary/30 hover:bg-accent/50"
+                      className={cn(
+                        "group border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30 hover:bg-accent/50",
+                        RADIUS.panel,
+                      )}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <span
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center bg-primary/10 text-primary",
+                            RADIUS.tile,
+                          )}
+                        >
                           <LinkIcon className="h-5 w-5" weight="duotone" aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="font-semibold text-foreground">{link.title}</span>
-                          <p className="mt-1 text-sm text-muted-foreground text-pretty">
-                            {link.summary}
-                          </p>
+                          <span className={TYPE.cardTitle}>{link.title}</span>
+                          <p className={cn(TYPE.bodyMuted, "mt-1")}>{link.summary}</p>
                         </span>
                         <ArrowRight
                           className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
@@ -332,12 +312,8 @@ function IntelligenceCenterInner() {
           ))}
         </div>
 
-        {/* Deep links that aren't destinations of their own: a specific anchor
-            within Learning, and a jump across to the Agents hub. */}
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-6">
-          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Jump to
-          </span>
+          <span className={TYPE.eyebrow}>Jump to</span>
           <Button variant="outline" size="sm" asChild>
             <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
           </Button>

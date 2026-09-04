@@ -16,7 +16,7 @@ export const securityFirstPost: BlogPost = {
   displayDate: "March 28, 2026",
   readTime: "6 min read",
   heroImage: "/images/blog/security-first-hero.jpg",
-  heroGradient: "from-slate-100 via-emerald-50 to-zinc-100",
+  heroGradient: "from-slate-100 via-primary/5 to-zinc-100",
   heroAlt:
     "Glossy translucent glass blocks refracting glowing streams of AI action words, evoking layered, controlled AI automation.",
   keywords: [

@@ -8,10 +8,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
 import { 
-  ParticleField, 
-  GlowOrb, 
-  MorphingBackground, 
-  NeuralNetwork,
   StatusBeacon,
   AnimatedCounter
 } from "@/components/gravitre/premium-effects"
@@ -35,21 +31,19 @@ import {
 } from "@/components/ui/tooltip"
 import { useMotionPrefs } from "@/lib/animations"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
+import { NucleoAgent } from "@/components/icons/nucleo/semantic"
 import { 
   Plus, 
   Search,
   RefreshCw,
   Sparkles,
   Brain,
-  Zap,
   MessageSquare,
-  Activity,
   TrendingUp,
   Megaphone,
   Database,
   PieChart,
   Headphones,
-  Bot,
   Play,
   Pause,
   Settings,
@@ -59,11 +53,12 @@ import {
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
-  Circle,
-  Workflow,
   Shield,
   BookOpen,
   Users,
+  Activity,
+  Zap,
+  Bot,
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -79,6 +74,13 @@ import { resolveAgentIdentity } from "@/lib/agent-identity"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { departmentGradient } from "@/lib/department-gradient"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
+import {
+  agentStatusIsLiveWork,
+  normalizeAgentStatus,
+  presentAgentStatus,
+  taskRuntimeBadgeClass,
+  taskRuntimeLabel,
+} from "@/lib/agent-runtime-status"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 
@@ -125,7 +127,7 @@ function deriveKnowledgeDocCount(input: Record<string, unknown>, stats: Record<s
 function normalizeAgent(input: Record<string, unknown>): Agent {
   const personality = (input.personality ?? {}) as Record<string, unknown>
   const stats = (input.stats ?? {}) as Record<string, unknown>
-  const status = String(input.status ?? "idle") as AgentStatus
+  const status = normalizeAgentStatus(input.status)
   const department = String(input.department ?? "Operations")
   return {
     id: String(input.id ?? ""),
@@ -140,10 +142,7 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
         ? department
         : "Operations",
     description: String(input.description ?? ""),
-    status:
-      status === "active" || status === "processing" || status === "error"
-        ? status
-        : "idle",
+    status,
     icon: typeof input.icon === "string" ? input.icon : null,
     avatarColor:
       typeof input.avatarColor === "string"
@@ -234,11 +233,11 @@ function getAgentIcon(agent: Agent): LucideIcon {
 }
 
 const statusConfig = {
-  active: { label: "Active", color: "text-success", dotColor: "bg-success", animate: true },
-  idle: { label: "Idle", color: "text-muted-foreground", dotColor: "bg-muted-foreground", animate: false },
-  processing: { label: "Processing", color: "text-info", dotColor: "bg-info", animate: true },
-  error: { label: "Error", color: "text-destructive", dotColor: "bg-destructive", animate: false },
-}
+  active: presentAgentStatus("active"),
+  idle: presentAgentStatus("idle"),
+  processing: presentAgentStatus("processing"),
+  error: presentAgentStatus("error"),
+} as const
 
 /** Phase 5 honesty: withhold rate when null / no tasks / idle-zero. */
 function getDisplaySuccessRate(agent: Agent): number | null {
@@ -344,32 +343,15 @@ function getAgentRecentTasks(agent: Agent): AgentRecentTask[] {
   return []
 }
 
-function taskStatusBadgeClass(status: string): string {
-  switch (status) {
-    case "completed":
-      return "bg-success/10 text-success"
-    case "running":
-    case "processing":
-      return "bg-info/10 text-info"
-    case "failed":
-    case "error":
-      return "bg-destructive/10 text-destructive"
-    case "paused":
-      return "bg-warning/10 text-warning"
-    default:
-      return "bg-secondary text-muted-foreground"
-  }
-}
-
 // Agent Orb Component - Premium visual personality representation with depth
 function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
   const { reduced } = useMotionPrefs()
-  const status = statusConfig[agent.status]
+  const status = presentAgentStatus(agent.status)
 
   // Shared identity gradient (stored icon/color when present, otherwise department fallback).
   const identity = resolveAgentIdentity(agent)
-  const { gradient, glow } = identity.personality
-  const isLive = agent.status === "active" || agent.status === "processing"
+  const { gradient } = identity.personality
+  const isRunning = agentStatusIsLiveWork(agent.status)
 
   return (
     <motion.button
@@ -399,21 +381,15 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       />
 
       <div className="relative mb-4 flex h-28 w-28 items-center justify-center">
-        {(agent.status === "active" || agent.status === "processing") && !reduced && (
+        {(agent.status === "processing") && !reduced && (
           <>
             <motion.div
-              className={cn(
-                "absolute inset-0 rounded-full border-2",
-                agent.status === "processing" ? "border-info/40" : "border-success/30",
-              )}
+              className="absolute inset-0 rounded-full border-2 border-info/40"
               animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
             />
             <motion.div
-              className={cn(
-                "absolute inset-0 rounded-full border",
-                agent.status === "processing" ? "border-info/20" : "border-success/20",
-              )}
+              className="absolute inset-0 rounded-full border border-info/20"
               animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0, 0.4] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
             />
@@ -486,31 +462,17 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
           <span>{agent.stats.tasksToday} today</span>
         </p>
 
-        {/* Status pill — instant active/idle/error read */}
+        {/* Status pill — API AgentStatus only (Active / Idle / Running / Failed) */}
         <div
           className={cn(
             "relative mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1",
-            agent.status === "error"
-              ? "border-destructive/40 bg-destructive/10 text-destructive"
-              : agent.status === "processing"
-                ? "border-info/30 bg-info/10 text-info"
-                : agent.status === "active"
-                  ? "border-success/40 bg-success/10 text-success"
-                  : "border-border bg-muted text-muted-foreground",
+            status.chipClass,
           )}
         >
           <StatusBeacon
-            status={
-              agent.status === "error"
-                ? "error"
-                : agent.status === "processing"
-                  ? "processing"
-                  : agent.status === "active"
-                    ? "active"
-                    : "idle"
-            }
+            status={status.beacon}
             size="sm"
-            pulse={isLive}
+            pulse={isRunning && !reduced}
           />
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{status.label}</span>
         </div>
@@ -552,7 +514,7 @@ function AgentDetailPanel({
   isMutating: boolean
 }) {
   const router = useRouter()
-  const status = statusConfig[agent.status]
+  const status = presentAgentStatus(agent.status)
 
   return (
     <motion.div
@@ -571,6 +533,19 @@ function AgentDetailPanel({
                 <h2 className={TYPE.sectionTitle}>{agent.name}</h2>
                 <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
                   {agent.department}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                    status.chipClass,
+                  )}
+                >
+                  <StatusBeacon
+                    status={status.beacon}
+                    size="sm"
+                    pulse={status.pulse}
+                  />
+                  {status.label}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">{agent.role}</p>
@@ -821,7 +796,7 @@ function AgentPreviewSheet({
   onOpenProfile: () => void
 }) {
   const recentTasks = getAgentRecentTasks(agent)
-  const status = statusConfig[agent.status]
+  const status = presentAgentStatus(agent.status)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -837,16 +812,11 @@ function AgentPreviewSheet({
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
-                agent.status === "error"
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : agent.status === "processing"
-                    ? "border-info/30 bg-info/10 text-info"
-                    : agent.status === "active"
-                      ? "border-success/30 bg-success/10 text-success"
-                      : "border-border bg-secondary text-muted-foreground",
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                status.chipClass,
               )}
             >
+              <StatusBeacon status={status.beacon} size="sm" pulse={status.pulse} />
               {status.label}
             </span>
             {agent.model ? (
@@ -886,10 +856,10 @@ function AgentPreviewSheet({
               <ul className="mt-2 space-y-2">
                 {recentTasks.slice(0, 3).map((task) => (
                   <li key={task.id} className="flex items-center gap-2 text-xs">
-                    <Zap className="h-3 w-3 shrink-0 text-info/80" />
+                    <Sparkles className="h-3 w-3 shrink-0 text-info/80" />
                     <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
-                    <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", taskStatusBadgeClass(task.status))}>
-                      {task.status}
+                    <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", taskRuntimeBadgeClass(task.status))}>
+                      {taskRuntimeLabel(task.status)}
                     </span>
                   </li>
                 ))}
@@ -1116,20 +1086,22 @@ export default function AgentsPage() {
     return null
   }, [selectedAgent, filteredAgents])
 
-  const activeCount = agents.filter((a) => a.status === "active" || a.status === "processing").length
+  const activeCount = agents.filter((a) => a.status === "active").length
+  const runningCount = agents.filter((a) => a.status === "processing").length
+  const failedCount = agents.filter((a) => a.status === "error").length
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
   const totalAgents = agents.length
 
-  const prevActiveCountRef = useRef(activeCount)
-  const [activeStatPulse, setActiveStatPulse] = useState(false)
+  const prevRunningCountRef = useRef(runningCount)
+  const [runningStatPulse, setRunningStatPulse] = useState(false)
 
   useEffect(() => {
-    if (prevActiveCountRef.current === activeCount) return
-    prevActiveCountRef.current = activeCount
-    setActiveStatPulse(true)
-    const timer = window.setTimeout(() => setActiveStatPulse(false), 800)
-    return () => window.clearTimeout(timer)
-  }, [activeCount])
+    if (prevRunningCountRef.current === runningCount) return
+    prevRunningCountRef.current = runningCount
+    setRunningStatPulse(true)
+    const t = window.setTimeout(() => setRunningStatPulse(false), 700)
+    return () => window.clearTimeout(t)
+  }, [runningCount])
 
   const rosterActions = (
     <>
@@ -1161,28 +1133,9 @@ export default function AgentsPage() {
 
   return (
   <AppShell title={SURFACE_COPY.pages.agents.title}>
-    <div className="relative flex flex-col lg:flex-row h-full overflow-hidden">
-      {/* Premium ambient background */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <MorphingBackground colors={["violet", "blue", "emerald"]} />
-        <div className="absolute inset-0 bg-background/85 backdrop-blur-3xl" />
-      </div>
-      
-      {/* Neural network visualization */}
-      <div className="absolute inset-0 pointer-events-none z-0 opacity-20">
-        <NeuralNetwork nodeCount={25} color="violet" />
-      </div>
-      
-      {/* Floating orbs in background */}
-      <div className="absolute top-20 left-20 pointer-events-none z-0">
-        <GlowOrb size={300} color="violet" intensity={0.3} />
-      </div>
-      <div className="absolute bottom-20 right-1/3 pointer-events-none z-0">
-        <GlowOrb size={200} color="blue" intensity={0.25} />
-      </div>
-
+    <div className="relative flex h-full flex-col overflow-hidden bg-background lg:flex-row">
   {/* Left - Agent Roster with Orbs */}
-  <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
+  <div className="relative z-10 flex flex-1 flex-col border-border/50 lg:border-r">
           <div className="relative z-10 px-4 pt-4 md:px-6 space-y-3">
             <Suspense fallback={null}>
               <AgentsHubTabs active="roster" />
@@ -1195,34 +1148,41 @@ export default function AgentsPage() {
               eyebrow="AI Team"
               title={SURFACE_COPY.pages.agents.rosterTitle}
               description={SURFACE_COPY.pages.agents.description}
-              icon={Brain}
+              icon={NucleoAgent}
               actions={rosterActions}
             >
-              <StatsGrid columns={3}>
+              <StatsGrid columns={4}>
                 <StatCard
                   label="Total"
                   value={<AnimatedCounter value={totalAgents} duration={0.8} />}
                 />
+                <StatCard
+                  label="Active"
+                  value={<AnimatedCounter value={activeCount} duration={0.8} />}
+                  variant="success"
+                  className={activeCount > 0 ? "border-success/30" : undefined}
+                />
                 <motion.div
                   animate={
-                    activeStatPulse
-                      ? { scale: [1, 1.04, 1], boxShadow: ["0 0 0 rgba(16,185,129,0)", "0 0 20px rgba(16,185,129,0.25)", "0 0 0 rgba(16,185,129,0)"] }
+                    runningStatPulse
+                      ? { scale: [1, 1.04, 1] }
                       : { scale: 1 }
                   }
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="rounded-lg"
+                  className={RADIUS.tile}
                 >
                   <StatCard
-                    label="Active"
-                    value={<AnimatedCounter value={activeCount} duration={0.8} />}
-                    variant="success"
-                    className={activeCount > 0 ? "border-success/30" : undefined}
+                    label="Running"
+                    value={<AnimatedCounter value={runningCount} duration={0.8} />}
+                    variant="info"
+                    className={runningCount > 0 ? "border-info/30" : undefined}
                   />
                 </motion.div>
                 <StatCard
-                  label="Tasks"
-                  value={<AnimatedCounter value={totalTasks} duration={1} />}
-                  variant="info"
+                  label="Failed"
+                  value={<AnimatedCounter value={failedCount} duration={0.8} />}
+                  variant={failedCount > 0 ? "danger" : "default"}
+                  className={failedCount > 0 ? "border-destructive/30" : undefined}
                 />
               </StatsGrid>
             </PageHeader>
@@ -1233,7 +1193,9 @@ export default function AgentsPage() {
                   {SURFACE_COPY.pages.agents.rosterTitle}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {activeCount} active · {totalAgents} total · {totalTasks} tasks today
+                  {runningCount} running · {activeCount} active · {totalAgents} total
+                  {failedCount > 0 ? ` · ${failedCount} failed` : ""}
+                  {totalTasks > 0 ? ` · ${totalTasks} tasks today` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">{rosterActions}</div>
@@ -1289,10 +1251,7 @@ export default function AgentsPage() {
           </div>
 
           {/* Agent Orb Grid - Premium with particle field */}
-          <div className="relative flex flex-1 flex-col p-4 sm:p-8 overflow-y-auto overflow-x-hidden">
-            {/* Particle field behind orbs */}
-            <ParticleField count={30} color="violet" interactive className="opacity-40" />
-            
+          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 sm:p-8">
             {/* Center stage area. On mobile it keeps a fixed-height band for the
                horizontal carousel; on desktop it grows with content (min-h-0) so
                a tall, wrapped constellation flows from the top and scrolls in the

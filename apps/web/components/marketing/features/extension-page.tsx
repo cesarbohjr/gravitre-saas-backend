@@ -69,35 +69,35 @@ export function ExtensionPage() {
   const storeListing = installHref.startsWith("http")
 
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-24">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/80 via-white to-white" />
-        <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-emerald-100/50 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10/80 via-white to-white" />
+        <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-primary/15/50 blur-3xl" />
         <div className="relative mx-auto max-w-3xl px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 shadow-sm shadow-zinc-900/[0.04]">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="text-sm font-medium text-emerald-700">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 shadow-sm shadow-zinc-900/[0.04]">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/100" />
+              <span className="text-sm font-medium text-primary">
                 Chrome · Edge · Brave · overlay and approve
               </span>
             </div>
 
-            <h1 className="text-balance text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
+            <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
               Enrich the page.{" "}
               <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
                 Approve the write.
               </span>
             </h1>
 
-            <div className="mx-auto mt-6 max-w-2xl space-y-3 text-lg leading-relaxed text-zinc-600">
+            <div className="mx-auto mt-6 max-w-2xl space-y-3 text-lg leading-relaxed text-muted-foreground">
               <p>
                 Gravitre lives where you already work: LinkedIn, Gmail, Outlook, company
                 sites.{" "}
-                <span className="font-semibold text-zinc-800">Real actions, not guesses.</span>{" "}
+                <span className="font-semibold text-foreground">Real actions, not guesses.</span>{" "}
                 Your approval before every write. Full audit in Outcomes.
               </p>
               <p>Not another CRM bot. Just Gravitre, closer.</p>
@@ -109,14 +109,14 @@ export function ExtensionPage() {
                 {...(storeListing
                   ? { target: "_blank", rel: "noopener noreferrer" }
                   : {})}
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
               >
                 {installLabel}
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link
                 href="/docs/guides/how-to/browser-extension"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50"
               >
                 Setup guide
               </Link>
@@ -134,10 +134,10 @@ export function ExtensionPage() {
                 ] as const
               ).map(({ label, Icon }) => (
                 <li key={label} className="flex flex-col items-center gap-2.5">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/[0.04]">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card shadow-sm shadow-zinc-900/[0.04]">
                     <Icon className="h-7 w-7" />
                   </span>
-                  <span className="text-xs font-medium text-zinc-500">{label}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{label}</span>
                 </li>
               ))}
             </ul>
@@ -145,12 +145,12 @@ export function ExtensionPage() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-100 py-16">
+      <section className="border-t border-border py-16">
         <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl">
+          <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
             Activation in five steps
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-600">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
             The milestone that matters: install → connect → enrich → approve →
             Outcomes. Minutes, not a project plan.
           </p>
@@ -162,25 +162,25 @@ export function ExtensionPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-border bg-card p-5 shadow-sm"
               >
-                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
+                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
                   {step.n}
                 </div>
-                <h3 className="font-semibold text-zinc-900">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">{step.body}</p>
+                <h3 className="font-semibold text-foreground">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
               </motion.li>
             ))}
           </ol>
         </div>
       </section>
 
-      <section className="border-t border-zinc-100 py-16">
+      <section className="border-t border-border py-16">
         <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl">
+          <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
             Steps 3 and 4, on the page
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-600">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
             The overlay opens beside whatever you are already looking at. You
             never leave the tab to enrich, and you never leave it to approve.
           </p>
@@ -190,10 +190,10 @@ export function ExtensionPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h3 className="font-semibold text-zinc-900">
+              <h3 className="font-semibold text-foreground">
                 Step 3 — enrich from page context
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Catalog reads run against the tab you are on. Nothing is read
                 until you open the overlay.
               </p>
@@ -215,10 +215,10 @@ export function ExtensionPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.05 }}
             >
-              <h3 className="font-semibold text-zinc-900">
+              <h3 className="font-semibold text-foreground">
                 Step 4 — confirm the write
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 The overlay names the exact catalog action before anything is
                 committed. One confirmation, in the same panel.
               </p>
@@ -241,15 +241,15 @@ export function ExtensionPage() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-100 py-16">
+      <section className="border-t border-border py-16">
         <div className="mx-auto max-w-5xl px-6">
-          <p className="text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Supporting proof
           </p>
-          <h2 className="mt-2 text-center text-xl font-bold text-zinc-900">
+          <h2 className="mt-2 text-center text-xl font-bold text-foreground">
             No separate queue, no separate audit trail
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-zinc-600">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted-foreground">
             The overlay does not get its own approval queue or audit trail. A
             staged write waits in the same Approvals queue as chat, and the run
             lands in the same Activity feed — tagged with its source.
@@ -263,10 +263,10 @@ export function ExtensionPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h3 className="text-sm font-semibold text-zinc-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 Step 4, in the app — the shared Approvals queue
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 The same confirmation you just saw in the overlay also appears
                 here, with the exact catalog action, its blast radius, and who
                 asked for it.
@@ -282,12 +282,12 @@ export function ExtensionPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h3 className="text-sm font-semibold text-zinc-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 Step 5, in the app — see it in Outcomes
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 Extension runs appear with source{" "}
-                <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs text-zinc-800">
+                <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
                   browser_extension
                 </code>{" "}
                 and the same lifecycle chain as chat — planned, approved,
@@ -303,11 +303,11 @@ export function ExtensionPage() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-100 bg-zinc-50/60 py-16">
+      <section className="border-t border-border bg-muted/50/60 py-16">
         <div className="mx-auto grid max-w-5xl gap-10 px-6 lg:grid-cols-2">
           <div>
-            <h2 className="text-2xl font-bold text-zinc-900">Supported surfaces</h2>
-            <p className="mt-3 text-zinc-600">
+            <h2 className="text-2xl font-bold text-foreground">Supported surfaces</h2>
+            <p className="mt-3 text-muted-foreground">
               Explicit host allowlist — no silent expansion. Page context only;
               creates and list membership use governed catalog actions (Apollo /
               HubSpot where connected). Outside-allowlist attempts are recorded
@@ -315,13 +315,13 @@ export function ExtensionPage() {
             </p>
             <ul className="mt-6 space-y-3">
               {surfacesProven.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-zinc-800">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                <li key={s} className="flex items-start gap-2 text-foreground">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <span>{s}</span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-sm text-zinc-500">
+            <p className="mt-4 text-sm text-muted-foreground">
               Salesforce and Slack overlays use page context plus connected
               catalog actions (Apollo / HubSpot today). Native Salesforce lead
               search/create and Slack user lookup activate when those connectors
@@ -329,34 +329,34 @@ export function ExtensionPage() {
             </p>
           </div>
           <div className="space-y-4">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <Shield className="mb-3 h-6 w-6 text-emerald-600" />
-              <h3 className="font-semibold text-zinc-900">Same governance as chat</h3>
-              <p className="mt-2 text-sm text-zinc-600">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <Shield className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold text-foreground">Same governance as chat</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Writes stage awaiting confirmation with a server-issued token.
                 Org membership is enforced. Outcomes use Module A finalize —
                 not a side channel.
               </p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <ListChecks className="mb-3 h-6 w-6 text-emerald-600" />
-              <h3 className="font-semibold text-zinc-900">What it will not do</h3>
-              <p className="mt-2 text-sm text-zinc-600">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <ListChecks className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold text-foreground">What it will not do</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
                 No InMail spam, no clicking Salesforce/HubSpot UI for you, no
                 agentic multi-step form control. If a catalog action exists, we
                 call it.
               </p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <MessageSquare className="mb-3 h-6 w-6 text-emerald-600" />
-              <h3 className="font-semibold text-zinc-900">Quick chat on the page</h3>
-              <p className="mt-2 text-sm text-zinc-600">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <MessageSquare className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold text-foreground">Quick chat on the page</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Ask a short, page-contextual question in the overlay — same
                 unified-turn path as Gravitre chat. Writes and multi-step work
                 hand off to the full app on the same conversation thread (where
                 the progress panel lives). Proven thread:{" "}
                 <a
-                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                   href="https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
                   target="_blank"
                   rel="noreferrer"
@@ -366,15 +366,15 @@ export function ExtensionPage() {
                 .
               </p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <Workflow className="mb-3 h-6 w-6 text-emerald-600" />
-              <h3 className="font-semibold text-zinc-900">Workflows from the overlay</h3>
-              <p className="mt-2 text-sm text-zinc-600">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <Workflow className="mb-3 h-6 w-6 text-primary" />
+              <h3 className="font-semibold text-foreground">Workflows from the overlay</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Trigger existing typed workflows with the same plan-bar approve
                 pattern as chat — named step labels stay visible while it runs,
                 then open the Outcomes chain. Proven runs:{" "}
                 <a
-                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                   href="https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea"
                   target="_blank"
                   rel="noreferrer"
@@ -383,7 +383,7 @@ export function ExtensionPage() {
                 </a>
                 ,{" "}
                 <a
-                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                   href="https://gravitre.app/outcomes/54914197-9516-48c3-90be-703980deb6ec"
                   target="_blank"
                   rel="noreferrer"
@@ -392,7 +392,7 @@ export function ExtensionPage() {
                 </a>
                 ,{" "}
                 <a
-                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                   href="https://gravitre.app/outcomes/6d314587-bafb-4b11-a78b-da6c4d5245d6"
                   target="_blank"
                   rel="noreferrer"
@@ -406,11 +406,11 @@ export function ExtensionPage() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-100 py-16">
+      <section className="border-t border-border py-16">
         <div className="mx-auto max-w-3xl px-6 text-center">
-          <Sparkles className="mx-auto h-8 w-8 text-emerald-600" />
-          <h2 className="mt-4 text-2xl font-bold text-zinc-900">Ready for first value?</h2>
-          <p className="mt-3 text-zinc-600">
+          <Sparkles className="mx-auto h-8 w-8 text-primary" />
+          <h2 className="mt-4 text-2xl font-bold text-foreground">Ready for first value?</h2>
+          <p className="mt-3 text-muted-foreground">
             Connect HubSpot or Apollo, install the extension, enrich one profile,
             approve one write, open Outcomes.
           </p>
@@ -420,14 +420,14 @@ export function ExtensionPage() {
               {...(storeListing
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary/100"
             >
               {installLabel}
               <ArrowRight className="h-4 w-4" />
             </a>
             <Link
               href="/get-started"
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted/50"
             >
               <Link2 className="h-4 w-4" />
               Create a Gravitre account

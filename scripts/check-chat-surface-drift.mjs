@@ -27,11 +27,22 @@ const AVATAR_DEFINITIONS = new Set([
   "app/e2e/shots/avatar-states/page.tsx",
 ])
 
-// The only files allowed to render voice waveform bars or mount the orb. The
-// waveform previously existed twice (a 5-bar copy inside voice-session-presence
-// plus the 7-bar spec version), which is how the handoff and the shipped UI
-// drifted apart the moment the spec landed.
+// The only files allowed to *define* voice waveform bars, orb circle, or the
+// Orb/Wave/Visualizer primitives. Consumers must import GravitreWave /
+// GravitreOrb / VoiceStateVisualizer / VoiceOrbTakeover — never hand-roll.
 const VOICE_UI_DEFINITIONS = new Set([
+  "components/gravitre/assistant/voice-presentation.tsx",
+  "app/e2e/shots/voice-states/page.tsx",
+])
+
+/** Surfaces allowed to mount the full-screen orb shell (not a private fork). */
+const VOICE_ORB_MOUNTERS = new Set([
+  "components/gravitre/assistant/shared-chat-composer-controls.tsx",
+  "app/e2e/shots/voice-states/page.tsx",
+])
+
+/** Surfaces allowed to mount GravitreOrb directly (circle primitive). */
+const GRAVITRE_ORB_MOUNTERS = new Set([
   "components/gravitre/assistant/voice-presentation.tsx",
   "app/e2e/shots/voice-states/page.tsx",
 ])
@@ -64,20 +75,33 @@ for (const file of files) {
   if (!VOICE_UI_DEFINITIONS.has(rel)) {
     if (/gv-wave-bar/.test(src)) {
       failures.push(
-        `${rel}: hand-rolls waveform bars — import GravitreVoiceWaveform from voice-presentation`,
+        `${rel}: hand-rolls waveform bars — import GravitreWave (or GravitreVoiceWaveform) from voice-presentation`,
       )
     }
-    if (
-      /<VoiceOrbTakeover\b/.test(src) &&
-      rel !== "components/gravitre/assistant/shared-chat-composer-controls.tsx"
-    ) {
+    if (/data-gravitre-orb|data-voice-orb-circle/.test(src) && !VOICE_UI_DEFINITIONS.has(rel)) {
+      failures.push(
+        `${rel}: hand-rolls orb circle — import GravitreOrb from voice-presentation`,
+      )
+    }
+    if (/<VoiceOrbTakeover\b/.test(src) && !VOICE_ORB_MOUNTERS.has(rel)) {
       failures.push(
         `${rel}: mounts <VoiceOrbTakeover> outside SharedChatComposerControls — voice presentation must stay shared`,
       )
     }
-    if (/data-voice-orb/.test(src) && !VOICE_UI_DEFINITIONS.has(rel)) {
+    if (/<GravitreOrb\b/.test(src) && !GRAVITRE_ORB_MOUNTERS.has(rel)) {
+      failures.push(
+        `${rel}: mounts <GravitreOrb> outside voice-presentation — use VoiceOrbTakeover via SharedChatComposerControls`,
+      )
+    }
+    if (/data-voice-orb(?!-circle)/.test(src) && !VOICE_UI_DEFINITIONS.has(rel)) {
       failures.push(
         `${rel}: uses data-voice-orb outside voice-presentation — orb markup must stay centralized`,
+      )
+    }
+    // Forked marketing / surface-specific orb names are banned by design.
+    if (/MarketingGravitreOrb|MarketingVoiceOrb|<GravitreVoiceOrb\b/.test(src)) {
+      failures.push(
+        `${rel}: forked orb name — import GravitreOrb / VoiceOrbTakeover from voice-presentation only`,
       )
     }
   }
@@ -240,6 +264,33 @@ for (const rel of requiredImporters) {
   }
   if (/\bDictate\b|\bonDictateError\b/.test(src)) {
     failures.push(`${rel}: Dictate affordance must remain removed`)
+  }
+}
+
+// 5. Voice presentation module must export the Pilot E canonical names so
+//    surfaces share one Wave / Orb / Visualizer path (aliases, not forks).
+{
+  const rel = "components/gravitre/assistant/voice-presentation.tsx"
+  let src = ""
+  try {
+    src = readFileSync(join(WEB, rel), "utf8")
+  } catch {
+    failures.push(`${rel}: missing voice presentation module`)
+    src = ""
+  }
+  if (src) {
+    for (const symbol of [
+      "export function GravitreVoiceWaveform",
+      "export const GravitreWave",
+      "export function GravitreOrb",
+      "export function VoiceStateVisualizer",
+      "export function resolveVoiceVisualizer",
+      "export function VoiceOrbTakeover",
+    ]) {
+      if (!src.includes(symbol)) {
+        failures.push(`${rel}: must export ${symbol.replace(/^export (function|const) /, "")}`)
+      }
+    }
   }
 }
 

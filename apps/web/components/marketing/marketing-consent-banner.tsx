@@ -90,24 +90,24 @@ export function MarketingConsentBanner({ country }: Props) {
     >
       <div
         className={cn(
-          "mx-auto max-w-3xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10",
+          "mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-zinc-900/10",
           panel === "preferences" && "max-w-lg",
         )}
       >
         {panel === "banner" ? (
           <div className="p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-700">
+              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
                 <Cookie className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 id="marketing-consent-title" className="text-sm font-semibold text-zinc-900">
+                <h2 id="marketing-consent-title" className="text-sm font-semibold text-foreground">
                   Cookies & measurement
                 </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                   We use cookies and similar technologies for analytics and advertising measurement.
                   You can accept all, reject non-essential cookies, or manage preferences. See our{" "}
-                  <Link href="/privacy" className="font-medium text-zinc-900 underline underline-offset-2">
+                  <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">
                     Privacy Policy
                   </Link>
                   .
@@ -119,7 +119,7 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={() => setPanel("preferences")}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
                 <Settings2 className="h-3.5 w-3.5" aria-hidden />
                 Manage preferences
@@ -127,14 +127,14 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={rejectNonEssential}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Reject non-essential
               </button>
               <button
                 type="button"
                 onClick={acceptAll}
-                className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-foreground px-4 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
               >
                 Accept all
               </button>
@@ -144,10 +144,10 @@ export function MarketingConsentBanner({ country }: Props) {
           <div className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 id="marketing-consent-title" className="text-sm font-semibold text-zinc-900">
+                <h2 id="marketing-consent-title" className="text-sm font-semibold text-foreground">
                   Cookie preferences
                 </h2>
-                <p className="mt-1 text-sm text-zinc-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Choose which categories Gravitre may use. Essential site operation never requires
                   this consent.
                 </p>
@@ -155,7 +155,7 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={() => setPanel(null)}
-                className="grid h-8 w-8 place-items-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Close cookie preferences"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -194,21 +194,21 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={rejectNonEssential}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Reject all
               </button>
               <button
                 type="button"
                 onClick={savePreferences}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
               >
                 Save preferences
               </button>
               <button
                 type="button"
                 onClick={acceptAll}
-                className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-foreground px-4 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
               >
                 Accept all
               </button>
@@ -232,10 +232,10 @@ function PreferenceRow({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <li className="flex items-start justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3.5 py-3">
+    <li className="flex items-start justify-between gap-4 rounded-xl border border-border bg-muted/50/80 px-3.5 py-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-zinc-900">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">{description}</p>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
       <button
         type="button"
@@ -244,12 +244,12 @@ function PreferenceRow({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-zinc-900" : "bg-zinc-300",
+          checked ? "bg-foreground" : "bg-zinc-300",
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+            "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-card shadow transition-transform",
             checked && "translate-x-5",
           )}
         />

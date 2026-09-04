@@ -31,7 +31,7 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
         className={`relative h-full rounded-2xl sm:rounded-3xl border p-5 sm:p-8 transition-all ${
           tier.highlighted
             ? "border-amber-300 bg-amber-50/50 shadow-lg"
-            : "border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-md"
+            : "border-border bg-card hover:border-border hover:shadow-md"
         }`}
       >
         {"badge" in tier && tier.badge ? (
@@ -49,50 +49,50 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
             <div className={`h-8 w-8 rounded-lg bg-gradient-to-r ${tier.gradient} flex items-center justify-center`}>
               <TierIcon className="h-4 w-4 text-white" />
             </div>
-            <h3 className="text-xl font-semibold text-zinc-900">{tier.name}</h3>
+            <h3 className="text-xl font-semibold text-foreground">{tier.name}</h3>
           </div>
-          <p className="text-sm text-zinc-500">{tier.tagline}</p>
+          <p className="text-sm text-muted-foreground">{tier.tagline}</p>
         </div>
 
         <div className="mb-5 sm:mb-6">
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl sm:text-5xl font-bold text-zinc-900">${price}</span>
-            <span className="text-zinc-500 text-sm sm:text-base">/month</span>
+            <span className="text-4xl sm:text-5xl font-bold text-foreground">${price}</span>
+            <span className="text-muted-foreground text-sm sm:text-base">/month</span>
           </div>
           {isAnnual && (
-            <p className="mt-1 text-xs text-emerald-600">
+            <p className="mt-1 text-xs text-primary">
               Billed annually (save ${(tier.price.monthly - tier.price.annual) * 12}/year)
             </p>
           )}
         </div>
 
-        <div className="mb-6 p-4 rounded-2xl bg-zinc-50 border border-zinc-200">
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Team Structure</p>
+        <div className="mb-6 p-4 rounded-2xl bg-muted/50 border border-border">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Team Structure</p>
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-600 flex items-center gap-2">
-                <Cpu className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-sm text-muted-foreground flex items-center gap-2">
+                <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
                 Agents
               </span>
-              <span className="text-sm font-medium text-zinc-900">{tier.team.agents}</span>
+              <span className="text-sm font-medium text-foreground">{tier.team.agents}</span>
             </div>
             <div className="flex items-center justify-between">
               <PricingRoleTooltip role="coreUser">
-                <span className="text-sm text-zinc-600 flex items-center gap-2">
-                  <Monitor className="h-3.5 w-3.5 text-zinc-400" />
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
                   Core Users
                 </span>
               </PricingRoleTooltip>
-              <span className="text-sm font-medium text-zinc-900">{tier.team.coreUsers}</span>
+              <span className="text-sm font-medium text-foreground">{tier.team.coreUsers}</span>
             </div>
             <div className="flex items-center justify-between">
               <PricingRoleTooltip role="liteUser">
-                <span className="text-sm text-zinc-600 flex items-center gap-2">
-                  <Smartphone className="h-3.5 w-3.5 text-zinc-400" />
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
                   Lite Users
                 </span>
               </PricingRoleTooltip>
-              <span className="text-sm font-medium text-zinc-900">{tier.team.liteUsers}</span>
+              <span className="text-sm font-medium text-foreground">{tier.team.liteUsers}</span>
             </div>
           </div>
         </div>
@@ -105,34 +105,34 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
         >
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full bg-gradient-to-r ${tier.gradient}`} />
-            <span className="text-sm font-semibold text-zinc-900">{tier.outputs}</span>
+            <span className="text-sm font-semibold text-foreground">{tier.outputs}</span>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">Campaigns, email sequences, reports, workflows</p>
+          <p className="mt-1 text-xs text-muted-foreground">Campaigns, email sequences, reports, workflows</p>
         </div>
 
         <div
-          className={`mb-6 p-4 rounded-2xl border ${tier.meson ? "border-violet-200 bg-violet-50" : "border-zinc-200 bg-zinc-50"}`}
+          className={`mb-6 p-4 rounded-2xl border ${tier.meson ? "border-violet-200 bg-violet-50" : "border-border bg-muted/50"}`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Blocks className={`h-4 w-4 ${tier.meson ? "text-violet-600" : "text-zinc-400"}`} />
+            <Blocks className={`h-4 w-4 ${tier.meson ? "text-violet-600" : "text-muted-foreground"}`} />
             <span
-              className={`text-xs font-semibold uppercase tracking-wider ${tier.meson ? "text-violet-600" : "text-zinc-400"}`}
+              className={`text-xs font-semibold uppercase tracking-wider ${tier.meson ? "text-violet-600" : "text-muted-foreground"}`}
             >
               Meson
             </span>
           </div>
           {tier.meson ? (
             <>
-              <p className="text-sm font-medium text-zinc-900">{tier.meson.label}</p>
-              <p className="mt-1 text-xs text-zinc-500">Build systems from a single request</p>
+              <p className="text-sm font-medium text-foreground">{tier.meson.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Build systems from a single request</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-zinc-400 flex items-center gap-2">
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <X className="h-3.5 w-3.5" />
                 Not included
               </p>
-              <p className="mt-1 text-xs text-zinc-400">Upgrade to Control for Meson access</p>
+              <p className="mt-1 text-xs text-muted-foreground">Upgrade to Control for Meson access</p>
             </>
           )}
         </div>
@@ -145,8 +145,8 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
                 Research Lookups
               </span>
             </div>
-            <p className="text-sm font-medium text-zinc-900">{researchLookupsIncludedLabel(tier.planCode)}</p>
-            <p className="mt-1 text-xs text-zinc-500">Live internet research when enabled for your workspace</p>
+            <p className="text-sm font-medium text-foreground">{researchLookupsIncludedLabel(tier.planCode)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Live internet research when enabled for your workspace</p>
           </div>
         ) : null}
 
@@ -155,12 +155,12 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
             <li key={feature} className="flex items-start gap-3">
               <div
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                  tier.highlighted ? "bg-amber-100" : "bg-zinc-100"
+                  tier.highlighted ? "bg-amber-100" : "bg-muted"
                 }`}
               >
-                <Check className={`h-3 w-3 ${tier.highlighted ? "text-amber-600" : "text-zinc-500"}`} />
+                <Check className={`h-3 w-3 ${tier.highlighted ? "text-amber-600" : "text-muted-foreground"}`} />
               </div>
-              <span className="text-sm text-zinc-600">{feature}</span>
+              <span className="text-sm text-muted-foreground">{feature}</span>
             </li>
           ))}
         </ul>
@@ -169,8 +169,8 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
           href={`/get-started?plan=${tier.planCode}&interval=${isAnnual ? "annual" : "monthly"}`}
           className={`group/btn inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-all ${
             tier.highlighted
-              ? "bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-zinc-900/20"
-              : "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 hover:border-zinc-400"
+              ? "bg-foreground text-white hover:bg-foreground/90 shadow-lg shadow-zinc-900/20"
+              : "border border-border bg-card text-foreground hover:bg-muted/50 hover:border-zinc-400"
           }`}
         >
           {tier.cta}

@@ -50,12 +50,12 @@ const DesktopDownloadSection = dynamic(
  */
 export default function HomePage() {
   return (
-    <div className="relative overflow-hidden bg-white">
+    <div className="relative overflow-hidden bg-background">
       <HeroParallax />
 
       <IntegrationStrip />
 
-      <section className="relative py-32 bg-white">
+      <section className="relative py-32 bg-background">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {MARKETING_COPY.stats.map((stat) => (
@@ -70,15 +70,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative py-32 bg-zinc-50">
-        <FloatingOrb className="w-[500px] h-[500px] bg-emerald-100 top-1/4 -left-64" delay={1} />
+      <section className="relative py-32 bg-muted/50">
+        <FloatingOrb className="w-[500px] h-[500px] bg-primary/10 top-1/4 -left-64" delay={1} />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-20">
-            <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
+            <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
               Built for operators, not chatbots
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">
+            <p className="mt-4 text-lg text-muted-foreground">
               Connect, learn, execute, and measure — with approval gates and evidence at every step.
             </p>
           </div>
@@ -98,35 +98,35 @@ export default function HomePage() {
           <div className="mt-12 flex flex-wrap items-center justify-center gap-3 text-sm">
             <Link
               href="/features"
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Platform features
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/features/technology"
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Technology
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/features/marketplace"
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Marketplace
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/features/extension"
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Browser extension
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/download"
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               Desktop download
               <ArrowRight className="h-3.5 w-3.5" />
@@ -137,11 +137,11 @@ export default function HomePage() {
 
       <DesktopDownloadSection />
 
-      <section className="relative py-32 border-t border-zinc-200 bg-white">
+      <section className="relative py-32 border-t border-border bg-background">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight text-zinc-900">Connects to your entire stack</h2>
-            <p className="mt-4 text-zinc-600">
+            <h2 className="text-4xl font-bold tracking-tight text-foreground">Connects to your entire stack</h2>
+            <p className="mt-4 text-muted-foreground">
               50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </div>
@@ -150,19 +150,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative py-32 border-t border-zinc-200 overflow-hidden bg-zinc-50">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-50/30 to-transparent" />
+      <section className="relative py-32 border-t border-border overflow-hidden bg-muted/50">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 mb-6">
-              <Play strokeWidth={1.5} className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700">Discover the platform</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 mb-6">
+              <Play strokeWidth={1.5} className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Discover the platform</span>
             </div>
-            <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
+            <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
               Powerful features, simple interface
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">
+            <p className="mt-4 text-lg text-muted-foreground">
               See agents, workflows, runs, and learning surfaces in one interface.
             </p>
           </div>
@@ -171,16 +171,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative py-32 border-t border-zinc-200 bg-white">
+      <section className="relative py-32 border-t border-border bg-background">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-20">
-            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">
+            <span className="text-sm font-semibold text-primary tracking-wide uppercase">
               {MARKETING_COPY.howItWorks.eyebrow}
             </span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
               {MARKETING_COPY.howItWorks.title}
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">{MARKETING_COPY.howItWorks.subtitle}</p>
+            <p className="mt-4 text-lg text-muted-foreground">{MARKETING_COPY.howItWorks.subtitle}</p>
           </div>
 
           <HowItWorks
@@ -209,12 +209,12 @@ export default function HomePage() {
       </section>
 
       {SHOW_MARKETING_TESTIMONIALS ? (
-        <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
+        <section className="relative py-32 border-t border-border bg-muted/50">
           <div className="mx-auto max-w-7xl px-6">
             <div className="mx-auto max-w-2xl text-center mb-16">
-              <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">Testimonials</span>
-              <h2 className="mt-4 text-4xl font-bold tracking-tight text-zinc-900">What people say</h2>
-              <p className="mt-4 text-zinc-600">
+              <span className="text-sm font-semibold text-primary tracking-wide uppercase">Testimonials</span>
+              <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground">What people say</h2>
+              <p className="mt-4 text-muted-foreground">
                 With over 10,000 clients served, here&apos;s what they have to say
               </p>
             </div>
@@ -250,32 +250,32 @@ export default function HomePage() {
         </section>
       ) : null}
 
-      <section className="relative py-32 bg-zinc-50">
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-50 via-transparent to-transparent" />
-        <FloatingOrb className="w-[600px] h-[600px] bg-emerald-100 -bottom-48 left-1/2 -translate-x-1/2" />
+      <section className="relative py-32 bg-muted/50">
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent" />
+        <FloatingOrb className="w-[600px] h-[600px] bg-primary/10 -bottom-48 left-1/2 -translate-x-1/2" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
               {MARKETING_COPY.cta.title}
             </h2>
-            <p className="mt-6 text-lg text-zinc-600">{MARKETING_COPY.cta.subtitle}</p>
+            <p className="mt-6 text-lg text-muted-foreground">{MARKETING_COPY.cta.subtitle}</p>
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-all hover:opacity-90"
               >
                 <span>Start Free Trial</span>
                 <ArrowRight strokeWidth={1.5} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-all hover:bg-zinc-50"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-8 py-4 text-base font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50"
               >
                 Contact Sales
               </Link>
             </div>
-            <p className="mt-6 text-sm text-zinc-500">Start your 7-day free trial today.</p>
+            <p className="mt-6 text-sm text-muted-foreground">Start your 7-day free trial today.</p>
           </div>
         </div>
       </section>

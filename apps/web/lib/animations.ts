@@ -20,18 +20,19 @@
 
 import { useEffect, useState } from "react"
 import type { Variants, Transition } from "framer-motion"
+import { MOTION } from "@/lib/design-system"
 
 // Cubic-bezier easing tuple type accepted by framer-motion's `ease`.
 type Bezier = [number, number, number, number]
 
 // ============================================
-// TIMING CONSTANTS
+// TIMING CONSTANTS (re-export of design-system MOTION — do not diverge)
 // ============================================
 export const timing = {
-  micro: 0.15,      // 150ms - micro interactions (hover, press)
-  ui: 0.25,         // 250ms - UI transitions
-  major: 0.4,       // 400ms - major transitions
-  slow: 0.6,        // 600ms - emphasis animations
+  micro: MOTION.micro,
+  ui: MOTION.ui,
+  major: MOTION.major,
+  slow: MOTION.slow,
 } as const
 
 // ============================================

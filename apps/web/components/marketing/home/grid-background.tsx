@@ -6,7 +6,7 @@ import { NeuralLines } from "./neural-lines"
 export function GridBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10/80 via-white to-blue-50/50" />
 
       <motion.div
         className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-emerald-200/40 to-transparent blur-3xl"
@@ -49,7 +49,7 @@ export function GridBackground() {
       <NeuralLines />
 
       <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50/40 to-transparent"
         animate={{ y: [0, 1000] }}
         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       />
@@ -60,12 +60,12 @@ export function GridBackground() {
       />
 
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-primary/10"
         animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeOut" }}
       />
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-primary/10"
         animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
       />

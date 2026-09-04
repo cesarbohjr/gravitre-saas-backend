@@ -255,7 +255,7 @@ function LoginPageContent() {
 
   // Don't block render - show form immediately, redirect happens via useEffect if logged in
   return (
-    <div className="min-h-screen bg-zinc-50 relative overflow-x-hidden">
+    <div className="min-h-screen bg-muted/50 relative overflow-x-hidden">
       {/* Background grid */}
       <div 
         className="absolute inset-0 opacity-[0.03]"
@@ -282,10 +282,10 @@ function LoginPageContent() {
             transition={{ duration: 0.6 }}
             className="relative z-10 flex flex-col items-center text-center"
           >
-            <h1 className="text-4xl xl:text-5xl font-bold text-zinc-900 leading-[1.15] tracking-tight">
+            <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-[1.15] tracking-tight">
               Your AI team,
               <br />
-              <span className="text-emerald-600">managed simply.</span>
+              <span className="text-primary">managed simply.</span>
             </h1>
             
             {/* Animated feature text */}
@@ -296,7 +296,7 @@ function LoginPageContent() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="text-lg text-zinc-500"
+                  className="text-lg text-muted-foreground"
                 >
                   {features[activeFeature]}
                 </motion.p>
@@ -304,7 +304,7 @@ function LoginPageContent() {
             </div>
 
             {/* Trust indicators */}
-            <div className="mt-12 flex items-center gap-6 text-zinc-400">
+            <div className="mt-12 flex items-center gap-6 text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
                 <span className="text-sm">Secure by Design</span>
@@ -325,15 +325,15 @@ function LoginPageContent() {
             transition={{ duration: 0.5 }}
             className="w-full max-w-[440px]"
           >
-            <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8 lg:p-10">
+            <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8 lg:p-10">
               {/* Header */}
               <div className="text-center mb-8">
                 {/* Mobile logo */}
                 <div className="lg:hidden mb-6">
                   <GravitreMarketingLogo height={40} className="h-10" />
                 </div>
-                <h1 className="text-2xl font-bold text-zinc-900">Sign in</h1>
-                <p className="mt-2 text-sm text-zinc-500">
+                <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
                   Access your AI command center
                 </p>
                 {displayedAuthError && (
@@ -344,7 +344,7 @@ function LoginPageContent() {
                         type="button"
                         onClick={handleResendVerification}
                         disabled={isResendingVerification}
-                        className="inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-50"
+                        className="inline-block text-sm font-medium text-primary hover:text-primary transition-colors disabled:opacity-50"
                       >
                         {isResendingVerification ? "Sending..." : "Resend verification email"}
                       </button>
@@ -352,14 +352,14 @@ function LoginPageContent() {
                     {showSignupCta && (
                       <Link
                         href="/get-started"
-                        className="inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                        className="inline-block text-sm font-medium text-primary hover:text-primary transition-colors"
                       >
                         Sign up here
                       </Link>
                     )}
                   </div>
                 )}
-                {authInfo && <p className="mt-3 text-sm text-emerald-700">{authInfo}</p>}
+                {authInfo && <p className="mt-3 text-sm text-primary">{authInfo}</p>}
               </div>
 
               {/* OAuth buttons */}
@@ -375,7 +375,7 @@ function LoginPageContent() {
                     disabled={isLoading || loadingProvider !== null}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-border bg-card px-4 py-3 min-h-[48px] text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border disabled:opacity-50"
                   >
                     {loadingProvider === provider.id ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -392,14 +392,14 @@ function LoginPageContent() {
               {/* Divider */}
               <div className="flex items-center gap-4 mb-6">
                 <div className="h-px flex-1 bg-zinc-200" />
-                <span className="text-xs text-zinc-400 uppercase tracking-wide">or</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">or</span>
                 <div className="h-px flex-1 bg-zinc-200" />
               </div>
 
               {/* Email form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1.5">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
                     Email
                   </label>
                   <input
@@ -409,18 +409,18 @@ function LoginPageContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     required
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 min-h-[48px] text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
+                    <label className="block text-sm font-medium text-foreground">
                       Password
                     </label>
                     <Link 
                       href="/forgot-password" 
-                      className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors"
+                      className="text-xs text-primary hover:text-primary transition-colors"
                     >
                       Forgot password?
                     </Link>
@@ -433,17 +433,17 @@ function LoginPageContent() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       required
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 pr-12 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 pr-12 min-h-[48px] text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-muted-foreground transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  <p className="mt-1.5 text-xs text-zinc-500">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     Use Google or Microsoft above if you signed up with SSO — password login is for email accounts only.
                   </p>
                 </div>
@@ -453,7 +453,7 @@ function LoginPageContent() {
                   disabled={isLoading || loadingProvider !== null}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 min-h-[48px] text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-semibold text-white transition-all hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -467,22 +467,22 @@ function LoginPageContent() {
               </form>
 
               {/* Sign up link */}
-              <p className="mt-6 text-center text-sm text-zinc-500">
+              <p className="mt-6 text-center text-sm text-muted-foreground">
                 {"Don't have an account? "}
-                <Link href="/get-started" className="text-emerald-600 hover:text-emerald-700 transition-colors font-medium">
+                <Link href="/get-started" className="text-primary hover:text-primary transition-colors font-medium">
                   Get started free
                 </Link>
               </p>
               
               {/* Legal footer */}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-400">
-                <Link href="/privacy" className="hover:text-zinc-600 transition-colors">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                <Link href="/privacy" className="hover:text-muted-foreground transition-colors">
                   Privacy
                 </Link>
-                <Link href="/terms" className="hover:text-zinc-600 transition-colors">
+                <Link href="/terms" className="hover:text-muted-foreground transition-colors">
                   Terms
                 </Link>
-                <Link href="/security" className="hover:text-zinc-600 transition-colors">
+                <Link href="/security" className="hover:text-muted-foreground transition-colors">
                   Security
                 </Link>
               </div>
@@ -496,8 +496,8 @@ function LoginPageContent() {
 
 function LoginPageFallback() {
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+    <div className="min-h-screen bg-muted/50 flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   )
 }

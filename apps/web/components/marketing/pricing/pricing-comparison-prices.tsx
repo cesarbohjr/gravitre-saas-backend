@@ -21,7 +21,7 @@ export function PricingComparisonPrices() {
         return (
           <div
             key={tier.name}
-            className={`p-6 text-center ${planMeta.highlighted ? "bg-gradient-to-b from-amber-50 to-amber-50/30 relative pt-10" : "bg-white"}`}
+            className={`p-6 text-center ${planMeta.highlighted ? "bg-gradient-to-b from-amber-50 to-amber-50/30 relative pt-10" : "bg-card"}`}
           >
             {planMeta.highlighted && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2">
@@ -31,12 +31,12 @@ export function PricingComparisonPrices() {
                 </span>
               </div>
             )}
-            <h3 className="font-semibold text-zinc-900 text-lg">{tier.name}</h3>
+            <h3 className="font-semibold text-foreground text-lg">{tier.name}</h3>
             <div className="mt-1">
-              <span className="text-2xl font-bold text-zinc-900">${displayPrice}</span>
-              <span className="text-sm text-zinc-500">/mo</span>
+              <span className="text-2xl font-bold text-foreground">${displayPrice}</span>
+              <span className="text-sm text-muted-foreground">/mo</span>
             </div>
-            <p className="mt-1 text-xs text-zinc-500">{planMeta.desc}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{planMeta.desc}</p>
           </div>
         )
       })}

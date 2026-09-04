@@ -117,7 +117,7 @@ export function ConnectorDemo() {
                     disabled={connector.status === "connected"}
                     className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                       connector.status === "connected"
-                        ? "border-emerald-200 bg-emerald-50"
+                        ? "border-primary/20 bg-primary/10"
                         : "border-border hover:border-amber-500/50 hover:bg-amber-50/30"
                     }`}
                   >
@@ -125,7 +125,7 @@ export function ConnectorDemo() {
                       connector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
                       connector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
                       connector.id === "slack" ? "bg-purple-100 text-purple-600" :
-                      "bg-zinc-100 text-zinc-600"
+                      "bg-muted text-muted-foreground"
                     }`}>
                       {connector.icon}
                     </div>
@@ -133,7 +133,7 @@ export function ConnectorDemo() {
                       <div className="text-sm font-medium text-foreground">{connector.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {connector.status === "connected" ? (
-                          <span className="text-emerald-600 flex items-center gap-1">
+                          <span className="text-primary flex items-center gap-1">
                             <Check className="h-3 w-3" /> Connected
                           </span>
                         ) : (
@@ -162,7 +162,7 @@ export function ConnectorDemo() {
                   currentConnector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
                   currentConnector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
                   currentConnector.id === "slack" ? "bg-purple-100 text-purple-600" :
-                  "bg-zinc-100 text-zinc-600"
+                  "bg-muted text-muted-foreground"
                 }`}>
                   {currentConnector.icon}
                 </div>
@@ -229,7 +229,7 @@ export function ConnectorDemo() {
                   currentConnector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
                   currentConnector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
                   currentConnector.id === "slack" ? "bg-purple-100 text-purple-600" :
-                  "bg-zinc-100 text-zinc-600"
+                  "bg-muted text-muted-foreground"
                 }`}>
                   {currentConnector.icon}
                 </div>
@@ -258,8 +258,8 @@ export function ConnectorDemo() {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center py-8"
             >
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <Check className="h-8 w-8 text-emerald-600" />
+              <div className="h-16 w-16 rounded-full bg-primary/15 flex items-center justify-center mb-4">
+                <Check className="h-8 w-8 text-primary" />
               </div>
               <h3 className="font-medium text-foreground mb-1">Connected!</h3>
               <p className="text-sm text-muted-foreground mb-4">

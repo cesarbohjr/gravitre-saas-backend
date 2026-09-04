@@ -69,19 +69,19 @@ export function TestimonialsMarquee({ testimonials = defaultTestimonials }: { te
         {allTestimonials.map((testimonial, i) => (
           <div
             key={`${testimonial.author}-${i}`}
-            className="shrink-0 w-[400px] p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow"
+            className="shrink-0 w-[400px] p-6 rounded-2xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-semibold text-lg shrink-0">
                 {testimonial.author.charAt(0)}
               </div>
               <div>
-                <div className="font-semibold text-zinc-900">{testimonial.author}</div>
-                <div className="text-sm text-zinc-500">{testimonial.role}</div>
-                <div className="text-sm text-emerald-600 font-medium">{testimonial.company}</div>
+                <div className="font-semibold text-foreground">{testimonial.author}</div>
+                <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                <div className="text-sm text-primary font-medium">{testimonial.company}</div>
               </div>
             </div>
-            <p className="text-zinc-600 text-sm leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed">
               &ldquo;{testimonial.quote}&rdquo;
             </p>
           </div>
@@ -97,23 +97,23 @@ export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testi
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Large featured testimonial */}
-      <div className="lg:col-span-2 lg:row-span-2 p-8 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
+      <div className="lg:col-span-2 lg:row-span-2 p-8 rounded-2xl bg-gradient-to-br from-primary/10 to-teal-50 border border-primary/20">
         <Quote className="h-10 w-10 text-emerald-300 mb-6" />
-        <p className="text-xl text-zinc-700 leading-relaxed mb-8">
+        <p className="text-xl text-foreground leading-relaxed mb-8">
           &ldquo;{testimonials[0].quote}&rdquo;
         </p>
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
+          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary/100 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
             {testimonials[0].author.charAt(0)}
           </div>
           <div>
-            <div className="font-semibold text-zinc-900">{testimonials[0].author}</div>
-            <div className="text-sm text-zinc-500">{testimonials[0].role}, {testimonials[0].company}</div>
+            <div className="font-semibold text-foreground">{testimonials[0].author}</div>
+            <div className="text-sm text-muted-foreground">{testimonials[0].role}, {testimonials[0].company}</div>
           </div>
         </div>
         {testimonials[0].highlight && (
-          <div className="mt-8 pt-6 border-t border-emerald-200">
-            <div className="text-3xl font-bold text-emerald-600">{testimonials[0].highlight}</div>
+          <div className="mt-8 pt-6 border-t border-primary/20">
+            <div className="text-3xl font-bold text-primary">{testimonials[0].highlight}</div>
           </div>
         )}
       </div>
@@ -126,23 +126,23 @@ export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testi
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: i * 0.1 }}
-          className="p-6 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-md transition-all"
+          className="p-6 rounded-2xl bg-card border border-border hover:border-border hover:shadow-md transition-all"
         >
           <div className="flex mb-3">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
             ))}
           </div>
-          <p className="text-sm text-zinc-600 leading-relaxed mb-4 line-clamp-4">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-4">
             &ldquo;{testimonial.quote}&rdquo;
           </p>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 font-semibold text-sm">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">
               {testimonial.author.charAt(0)}
             </div>
             <div>
-              <div className="text-sm font-semibold text-zinc-900">{testimonial.author}</div>
-              <div className="text-xs text-zinc-500">{testimonial.company}</div>
+              <div className="text-sm font-semibold text-foreground">{testimonial.author}</div>
+              <div className="text-xs text-muted-foreground">{testimonial.company}</div>
             </div>
           </div>
         </motion.div>
@@ -166,13 +166,13 @@ export function LogoCloud() {
   ]
 
   return (
-    <div className="py-16 border-y border-zinc-200 bg-white">
+    <div className="py-16 border-y border-border bg-card">
       <div className="mx-auto max-w-7xl px-6">
         <motion.p 
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="text-center text-sm font-medium text-zinc-500 mb-10"
+          className="text-center text-sm font-medium text-muted-foreground mb-10"
         >
           Trusted by innovative teams at
         </motion.p>
@@ -190,7 +190,7 @@ export function LogoCloud() {
             {[...companies, ...companies].map((name, i) => (
               <span
                 key={`${name}-${i}`}
-                className="shrink-0 text-xl font-semibold text-zinc-300 hover:text-zinc-500 transition-colors cursor-default whitespace-nowrap"
+                className="shrink-0 text-xl font-semibold text-muted-foreground hover:text-muted-foreground transition-colors cursor-default whitespace-nowrap"
               >
                 {name}
               </span>
@@ -242,7 +242,7 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="bg-white rounded-3xl border border-zinc-200 p-8 md:p-12 shadow-lg"
+            className="bg-card rounded-3xl border border-border p-8 md:p-12 shadow-lg"
           >
             <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
               <div className="shrink-0">
@@ -256,12 +256,12 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
                     <Star key={star} className="h-5 w-5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <blockquote className="text-xl md:text-2xl text-zinc-700 leading-relaxed mb-6">
+                <blockquote className="text-xl md:text-2xl text-foreground leading-relaxed mb-6">
                   &ldquo;{testimonials[activeIndex].quote}&rdquo;
                 </blockquote>
                 <div>
-                  <div className="font-semibold text-zinc-900 text-lg">{testimonials[activeIndex].author}</div>
-                  <div className="text-zinc-500">
+                  <div className="font-semibold text-foreground text-lg">{testimonials[activeIndex].author}</div>
+                  <div className="text-muted-foreground">
                     {testimonials[activeIndex].role}, {testimonials[activeIndex].company}
                   </div>
                 </div>
@@ -282,7 +282,7 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
                 setActiveIndex(i)
               }}
               className={`h-2 rounded-full transition-all ${
-                i === activeIndex ? "w-8 bg-emerald-600" : "w-2 bg-zinc-300 hover:bg-zinc-400"
+                i === activeIndex ? "w-8 bg-primary" : "w-2 bg-zinc-300 hover:bg-zinc-400"
               }`}
             />
           ))}
@@ -290,13 +290,13 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
         <div className="flex items-center gap-2">
           <button
             onClick={goToPrevious}
-            className="h-10 w-10 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+            className="h-10 w-10 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:bg-muted/50 hover:border-border transition-colors"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={goToNext}
-            className="h-10 w-10 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+            className="h-10 w-10 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:bg-muted/50 hover:border-border transition-colors"
           >
             <ChevronRight className="h-5 w-5" />
           </button>

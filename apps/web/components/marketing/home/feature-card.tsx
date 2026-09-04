@@ -37,13 +37,13 @@ export function FeatureCard({
       className="group relative"
     >
       <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-emerald-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="relative h-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all group-hover:border-zinc-300 group-hover:shadow-lg">
-        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 ring-1 ring-emerald-200 group-hover:ring-emerald-300 transition-all">
-          <Icon className="h-6 w-6 text-emerald-600" strokeWidth={1.5} />
+      <div className="relative h-full rounded-2xl border border-border bg-card p-6 shadow-sm transition-all group-hover:border-border group-hover:shadow-lg">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-primary/10 ring-1 ring-emerald-200 group-hover:ring-emerald-300 transition-all">
+          <Icon className="h-6 w-6 text-primary" strokeWidth={1.5} />
         </div>
-        <h3 className="text-lg font-semibold text-zinc-900 group-hover:text-emerald-900 transition-colors">{title}</h3>
-        <p className="mt-2 text-sm text-zinc-600 leading-relaxed">{description}</p>
-        <div className="mt-4 flex items-center text-sm text-emerald-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{description}</p>
+        <div className="mt-4 flex items-center text-sm text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
           <span>Learn more</span>
           <ChevronRight strokeWidth={1.5} className="ml-1 h-4 w-4" />
         </div>

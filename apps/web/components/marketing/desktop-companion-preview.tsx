@@ -23,34 +23,34 @@ export function DesktopCompanionPreview() {
 
       {/* Floating accent chips */}
       <motion.div
-        className="absolute -left-2 top-10 z-10 hidden rounded-2xl border border-zinc-200/80 bg-white/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-left-8"
+        className="absolute -left-2 top-10 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-left-8"
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <Keyboard className="h-4 w-4 text-emerald-600" />
-        <span className="text-xs font-semibold text-zinc-700">Alt+Space</span>
+        <Keyboard className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-foreground">Alt+Space</span>
       </motion.div>
       <motion.div
-        className="absolute -right-2 top-24 z-10 hidden rounded-2xl border border-zinc-200/80 bg-white/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-right-6"
+        className="absolute -right-2 top-24 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-right-6"
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
       >
-        <Shield className="h-4 w-4 text-emerald-600" />
-        <span className="text-xs font-semibold text-zinc-700">Approve writes</span>
+        <Shield className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-foreground">Approve writes</span>
       </motion.div>
 
-      <div className="relative overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-white p-2 shadow-[0_28px_80px_-36px_rgba(24,24,27,0.45)]">
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-border bg-card p-2 shadow-[0_28px_80px_-36px_rgba(24,24,27,0.45)]">
         {/* macOS-style title bar */}
-        <div className="flex items-center gap-2 rounded-t-[1.05rem] border-b border-zinc-100 bg-zinc-50 px-4 py-3">
+        <div className="flex items-center gap-2 rounded-t-[1.05rem] border-b border-border bg-muted/50 px-4 py-3">
           <div className="flex gap-1.5">
             <span className="h-3 w-3 rounded-full bg-red-400" />
             <span className="h-3 w-3 rounded-full bg-amber-400" />
             <span className="h-3 w-3 rounded-full bg-emerald-400" />
           </div>
           <div className="flex-1 text-center">
-            <span className="text-xs font-medium text-zinc-400">Gravitre Desktop</span>
+            <span className="text-xs font-medium text-muted-foreground">Gravitre Desktop</span>
           </div>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+          <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
             Connected
           </span>
         </div>

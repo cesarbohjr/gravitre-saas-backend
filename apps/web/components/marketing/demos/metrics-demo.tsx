@@ -56,7 +56,7 @@ function MiniChart({ data }: { data: typeof CHART_DATA }) {
             initial={{ height: 0 }}
             animate={{ height: `${(item.completed / maxValue) * 100}%` }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            className="bg-emerald-500 rounded-t-sm w-full"
+            className="bg-primary/100 rounded-t-sm w-full"
           />
           {item.failed > 0 && (
             <motion.div
@@ -108,8 +108,8 @@ export function MetricsDemo() {
           </div>
           <span className="font-medium text-sm text-foreground">Metrics Dashboard</span>
           {isLive && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/100 animate-pulse" />
               Live
             </span>
           )}
@@ -156,7 +156,7 @@ export function MetricsDemo() {
                 )}
               </div>
               <div className={`flex items-center gap-0.5 text-xs mt-1 ${
-                metric.trendUp ? "text-emerald-600" : "text-amber-600"
+                metric.trendUp ? "text-primary" : "text-amber-600"
               }`}>
                 {metric.trendUp ? (
                   <TrendingUp className="h-3 w-3" />
@@ -175,7 +175,7 @@ export function MetricsDemo() {
             <span className="text-sm font-medium text-foreground">Workflow Runs</span>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1 text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="h-2 w-2 rounded-full bg-primary/100" />
                 Completed
               </span>
               <span className="flex items-center gap-1 text-muted-foreground">
@@ -211,7 +211,7 @@ export function MetricsDemo() {
                 </div>
                 <div className="flex items-center gap-4 text-xs">
                   <span className="text-muted-foreground">{workflow.runs} runs</span>
-                  <span className="flex items-center gap-1 text-emerald-600">
+                  <span className="flex items-center gap-1 text-primary">
                     <CheckCircle2 className="h-3 w-3" />
                     {Math.round((workflow.success / workflow.runs) * 100)}%
                   </span>

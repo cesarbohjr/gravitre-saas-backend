@@ -82,14 +82,14 @@ export default async function DocsSlugPage({
   const sections = getDocsNavSections()
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
       <DocsShell sections={sections} headings={headings}>
         <DocPageMotion>
           <DocsBreadcrumb category={frontmatter.category} title={frontmatter.title} />
 
           <div className="mb-4 flex flex-wrap items-center gap-2.5">
             {frontmatter.category ? (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 {frontmatter.category}
               </span>
             ) : null}
@@ -97,28 +97,28 @@ export default async function DocsSlugPage({
               <PlanBadge tier={frontmatter.tier} />
             ) : null}
             {frontmatter.readTime ? (
-              <span className="flex items-center gap-1 text-xs text-zinc-500">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {frontmatter.readTime} read
               </span>
             ) : null}
           </div>
 
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl text-balance">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl text-balance">
             {frontmatter.title}
           </h1>
           {frontmatter.description ? (
-            <p className="mt-4 text-lg leading-relaxed text-zinc-600 text-pretty">
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground text-pretty">
               {frontmatter.description}
             </p>
           ) : null}
 
-          <div className="mt-4 flex items-center gap-4 border-b border-zinc-200 pb-6 text-sm">
+          <div className="mt-4 flex items-center gap-4 border-b border-border pb-6 text-sm">
             <a
               href={`https://github.com/gravitre/docs/edit/main/content/docs/public/${doc.slug}.mdx`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-zinc-500 transition-colors hover:text-zinc-900"
+              className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Edit on GitHub
@@ -129,17 +129,17 @@ export default async function DocsSlugPage({
         <article className="prose prose-zinc mt-8 max-w-none">{content}</article>
 
         {(frontmatter.prev || frontmatter.next) && (
-          <div className="mt-16 border-t border-zinc-200 pt-8">
+          <div className="mt-16 border-t border-border pt-8">
             <div className="flex items-center justify-between gap-4">
               {frontmatter.prev ? (
                 <Link
                   href={frontmatter.prev.href}
-                  className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900"
+                  className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                   <span>
-                    <span className="block text-xs text-zinc-500">Previous</span>
-                    <span className="font-medium text-zinc-900">{frontmatter.prev.title}</span>
+                    <span className="block text-xs text-muted-foreground">Previous</span>
+                    <span className="font-medium text-foreground">{frontmatter.prev.title}</span>
                   </span>
                 </Link>
               ) : (
@@ -149,11 +149,11 @@ export default async function DocsSlugPage({
               {frontmatter.next ? (
                 <Link
                   href={frontmatter.next.href}
-                  className="group flex items-center gap-2 text-right text-sm text-zinc-500 hover:text-zinc-900"
+                  className="group flex items-center gap-2 text-right text-sm text-muted-foreground hover:text-foreground"
                 >
                   <span>
-                    <span className="block text-xs text-zinc-500">Next</span>
-                    <span className="font-medium text-zinc-900">{frontmatter.next.title}</span>
+                    <span className="block text-xs text-muted-foreground">Next</span>
+                    <span className="font-medium text-foreground">{frontmatter.next.title}</span>
                   </span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
@@ -165,22 +165,22 @@ export default async function DocsSlugPage({
         )}
       </DocsShell>
 
-      <section className="border-t border-zinc-200 bg-zinc-50/50 px-6 py-12">
+      <section className="border-t border-border bg-muted/50/50 px-6 py-12">
         <div className="mx-auto max-w-4xl text-center">
-          <h3 className="mb-2 text-lg font-medium text-zinc-900">Need more help?</h3>
-          <p className="mb-4 text-sm text-zinc-500">
+          <h3 className="mb-2 text-lg font-medium text-foreground">Need more help?</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
             Can&apos;t find what you&apos;re looking for? Our team is here to help.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
             >
               Contact Support
             </Link>
             <a
               href="https://github.com/gravitre"
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               <ExternalLink className="h-4 w-4" />
               GitHub

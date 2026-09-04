@@ -24,11 +24,14 @@ import {
 } from "@/components/gravitre/agent-profile-editors"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
+import { presentAgentStatus, agentStatusIsLiveWork } from "@/lib/agent-runtime-status"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useMotionPrefs } from "@/lib/animations"
+import { TYPE, RADIUS } from "@/lib/design-system"
 
 // Types
 interface Agent {
@@ -37,8 +40,8 @@ interface Agent {
   role: string
   tagline: string
   description: string
-  status: "active" | "training" | "limited" | "error"
-  trainingProgress: number
+  /** API AgentStatus — never remapped to invented Training/Limited labels. */
+  status: AgentStatus
   personality: {
     gradient: string
     glow: string
@@ -46,7 +49,7 @@ interface Agent {
   }
   stats: {
     tasksCompleted: number
-    successRate: number
+    successRate: number | null
     avgResponseTime: string
     hoursActive: number
     decisionsToday: number
@@ -57,100 +60,97 @@ interface Agent {
   recentWork: { title: string; type: string; time: string; status: "completed" | "pending" | "failed"; confidence: number }[]
 }
 
-function mapProfileStatus(status: AgentStatus): Agent["status"] {
-  if (status === "processing") return "training"
-  if (status === "idle") return "limited"
-  if (status === "error") return "error"
-  return "active"
-}
-
 function toProfileAgent(api: ApiAgent): Agent {
   const gradient = api.personality?.gradient || "from-emerald-500 to-teal-500"
   const glow = api.personality?.glow || "shadow-success/30"
+  const rawRate = api.stats?.successRate
+  const successRate =
+    typeof rawRate === "number" && Number.isFinite(rawRate) ? rawRate : null
   return {
     id: api.id,
     name: api.name,
     role: api.role || "Agent",
     tagline: api.department ? `${api.department} specialist` : api.role || "AI teammate",
     description: api.description || "No description yet.",
-    status: mapProfileStatus(api.status),
-    trainingProgress: Math.min(100, Math.max(0, Math.round(api.stats?.successRate ?? 0))),
+    status: api.status,
     personality: {
       gradient,
       glow,
-      accent: api.personality?.color || "emerald",
+      accent: "emerald",
     },
     stats: {
       tasksCompleted: api.stats?.tasksToday ?? 0,
-      successRate: api.stats?.successRate ?? 0,
-      avgResponseTime: api.stats?.avgResponseTime || "-",
+      successRate,
+      avgResponseTime: String(api.stats?.avgResponseTime ?? "—"),
       hoursActive: api.stats?.workflowsUsing ?? 0,
       decisionsToday: api.stats?.tasksToday ?? 0,
       approvalsNeeded: 0,
     },
-    systems: (api.capabilities?.length ? api.capabilities : api.permissions).map((name) => ({
+    systems: (api.permissions ?? []).slice(0, 6).map((name) => ({
       name,
       status: "connected" as const,
-      icon: "database",
+      icon: "link",
     })),
     skills: (api.capabilities || []).map((name) => ({
       name: name.replace(/_/g, " "),
-      // Phase 5: do not invent a 40–75% skill floor from missing stats.
-      level: Math.min(100, Math.max(0, Math.round(api.stats?.successRate ?? 0))),
+      // Only show a numeric level when successRate exists — never invent a floor.
+      level: successRate != null ? Math.min(100, Math.max(0, Math.round(successRate))) : 0,
       color: "emerald",
     })),
     recentWork: api.lastAction
-      ? [{
-          title: api.lastAction,
-          type: "Task",
-          time: api.lastActionTime || "Recently",
-          status: "completed" as const,
-          confidence: Math.round(api.stats?.successRate ?? 0),
-        }]
+      ? [
+          {
+            title: api.lastAction,
+            type: "Task",
+            time: api.lastActionTime || "Recently",
+            status: "completed" as const,
+            confidence: successRate != null ? Math.round(successRate) : 0,
+          },
+        ]
       : [],
   }
 }
 
-const statusConfig = {
-  active: { label: "Active", color: "text-success", bgColor: "bg-success/10", dotColor: "bg-emerald-500" },
-  training: { label: "Training", color: "text-blue-400", bgColor: "bg-blue-500/10", dotColor: "bg-blue-500" },
-  limited: { label: "Limited", color: "text-warning", bgColor: "bg-warning/10", dotColor: "bg-amber-500" },
-  error: { label: "Error", color: "text-destructive", bgColor: "bg-destructive/10", dotColor: "bg-red-500" },
-}
+// Animated Avatar — shared identity treatment; pulse only while Running (processing).
+function AgentOrb({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAgent }) {
+  const { reduced } = useMotionPrefs()
+  const status = presentAgentStatus(agent.status)
+  const isRunning = agentStatusIsLiveWork(agent.status)
 
-// Animated Avatar — shared identity treatment
-function AgentOrb({ agent, apiAgent, status }: { agent: Agent; apiAgent: ApiAgent; status: typeof statusConfig.active }) {
   return (
     <div className="relative">
-      <motion.div
-        className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20"
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.5, 0.3, 0.5],
-        }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      <div
+        className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-emerald-500/20"
         style={{ filter: "blur(20px)" }}
       />
 
       <AgentIdentityAvatar agent={apiAgent} size="xl" />
 
-      {agent.status === "active" && (
+      {isRunning && !reduced ? (
         <motion.div
-          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-success bg-card"
+          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-info bg-card"
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          <Icon name="activity" size="sm" className="text-success" />
+          <Icon name="activity" size="sm" className="text-info" />
         </motion.div>
-      )}
+      ) : null}
 
-      <div className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 shadow-lg">
-        <motion.div
-          className={cn("h-2 w-2 rounded-full", status.dotColor)}
-          animate={{ opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+      <div
+        className={cn(
+          "absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 border bg-card px-3 py-1.5 shadow-sm",
+          RADIUS.control,
+          status.chipClass,
+        )}
+      >
+        <span
+          className={cn(
+            "h-2 w-2 rounded-full",
+            status.dotColor,
+            isRunning && !reduced && "animate-pulse",
+          )}
         />
-        <span className={cn("text-xs font-semibold uppercase tracking-wider", status.color)}>
+        <span className={cn("text-xs font-semibold uppercase tracking-[0.14em]", status.color)}>
           {status.label}
         </span>
       </div>
@@ -304,7 +304,6 @@ export default function AgentProfilePage({
   }
 
   const agent = toProfileAgent(apiAgent)
-  const status = statusConfig[agent.status]
   const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
   return (
@@ -338,7 +337,7 @@ export default function AgentProfilePage({
               {/* Left: Agent Identity */}
               <div className="lg:col-span-4">
                 <div className="flex flex-col items-center text-center">
-                  <AgentOrb agent={agent} apiAgent={apiAgent} status={status} />
+                  <AgentOrb agent={agent} apiAgent={apiAgent} />
                   
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -401,9 +400,9 @@ export default function AgentProfilePage({
                 >
                   {[
                     { label: "Tasks completed (operational)", value: agent.stats.tasksCompleted.toLocaleString(), icon: "check", color: "emerald" },
-                    { label: "Success rate (operational)", value: `${agent.stats.successRate}%`, icon: "target", color: "blue" },
+                    { label: "Success rate (operational)", value: agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—", icon: "target", color: "blue" },
                     { label: "Avg Response", value: agent.stats.avgResponseTime, icon: "clock", color: "violet" },
-                    { label: "Hours Active", value: agent.stats.hoursActive.toLocaleString(), icon: "activity", color: "amber" },
+                    { label: "Workflows using", value: agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—", icon: "activity", color: "amber" },
                     { label: "Decisions Today", value: agent.stats.decisionsToday.toString(), icon: "sparkles", color: "rose" },
                     { label: "Needs Approval", value: agent.stats.approvalsNeeded.toString(), icon: "shield", color: agent.stats.approvalsNeeded > 0 ? "amber" : "emerald" },
                   ].map((stat, i) => (
@@ -445,30 +444,26 @@ export default function AgentProfilePage({
                 </motion.div>
                 <p className="mb-6 text-xs text-muted-foreground">{OPERATIONAL_METHODOLOGY_SHORT}</p>
 
-                {/* Training Progress */}
+                {/* Success rate — only when API provides it; never invent Training Progress */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="p-4 rounded-xl border border-border bg-card/50 backdrop-blur-sm"
+                  className={cn("border border-border bg-card/50 p-4 backdrop-blur-sm", RADIUS.card)}
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Icon name="brain" size="sm" className="text-success" />
-                      <span className="text-sm font-medium text-foreground">Training Progress</span>
+                      <Icon name="brain" size="sm" className="text-primary" />
+                      <span className={TYPE.cardTitle}>Success rate</span>
                     </div>
-                    <span className="text-sm font-semibold text-success">{agent.trainingProgress}%</span>
+                    <span className="text-sm font-semibold tabular-nums text-foreground">
+                      {agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
+                    </span>
                   </div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${agent.trainingProgress}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Add more business context and examples to improve performance
+                  <p className={TYPE.meta}>
+                    {agent.stats.successRate != null
+                      ? "From agent stats when tasks exist — not a training completion badge."
+                      : "No success rate yet. Completes after the agent has task outcomes."}
                   </p>
                 </motion.div>
               </div>

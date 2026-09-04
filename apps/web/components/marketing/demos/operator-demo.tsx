@@ -146,7 +146,7 @@ export function OperatorDemo() {
           </div>
           <div>
             <span className="font-medium text-sm text-foreground">Gravitre AI</span>
-            <span className="text-xs text-emerald-600 ml-2">Online</span>
+            <span className="text-xs text-primary ml-2">Online</span>
           </div>
         </div>
         {messages.length > 0 && (
@@ -173,7 +173,7 @@ export function OperatorDemo() {
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:border-emerald-500/50 hover:bg-emerald-50/30 hover:text-foreground transition-all group"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:border-primary/50 hover:bg-primary/10/30 hover:text-foreground transition-all group"
                 >
                   <span className="truncate">{prompt}</span>
                   <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -198,7 +198,7 @@ export function OperatorDemo() {
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     message.role === "user"
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-primary text-white"
                       : "bg-muted"
                   }`}
                 >
@@ -248,12 +248,12 @@ export function OperatorDemo() {
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Ask Gravitre AI..."
             disabled={isTyping}
-            className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-50"
+            className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
           />
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}
-            className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-lg bg-primary text-white hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>

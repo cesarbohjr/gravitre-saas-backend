@@ -20,18 +20,18 @@ export default function ApiSwaggerPage() {
   const specUrl = "/docs/api/openapi.json"
 
   return (
-    <div className="min-h-screen bg-white">
-      <section className="border-b border-zinc-200 bg-gradient-to-b from-zinc-50 to-white px-6 py-10">
+    <div className="min-h-screen bg-card">
+      <section className="border-b border-border bg-gradient-to-b from-muted/50 to-white px-6 py-10">
         <div className="mx-auto max-w-6xl">
           <Link
             href="/docs/api/quickstart"
-            className="mb-6 inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-emerald-700"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
             API quickstart
           </Link>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">API reference</h1>
-          <p className="mt-3 max-w-3xl text-zinc-600">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">API reference</h1>
+          <p className="mt-3 max-w-3xl text-muted-foreground">
             Interactive explorer for the public Gravitre REST API. Authorize with your API key and
             run requests directly from the browser. Internal admin routes are omitted from the
             published spec.
@@ -43,24 +43,24 @@ export default function ApiSwaggerPage() {
               return (
                 <div
                   key={card.label}
-                  className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-zinc-500">{card.label}</p>
-                    <p className="truncate font-mono text-sm text-zinc-900">{card.value}</p>
+                    <p className="text-xs text-muted-foreground">{card.label}</p>
+                    <p className="truncate font-mono text-sm text-foreground">{card.value}</p>
                   </div>
                 </div>
               )
             })}
           </div>
 
-          <p className="mt-4 inline-flex items-center gap-1.5 text-sm text-zinc-500">
+          <p className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
             <FileJson className="h-4 w-4" />
             Raw spec:{" "}
-            <a className="font-medium text-emerald-700 hover:underline" href={specUrl}>
+            <a className="font-medium text-primary hover:underline" href={specUrl}>
               {specUrl}
             </a>
           </p>

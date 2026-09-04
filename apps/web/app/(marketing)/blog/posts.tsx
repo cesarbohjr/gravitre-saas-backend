@@ -18,7 +18,7 @@ const cesar = GRAVITRE_BLOG_AUTHOR
  * engines preferentially surface claims that are backed by named, datable sources.
  */
 function Cite({ children }: { children: ReactNode }) {
-  return <em className="text-zinc-700">{children}</em>
+  return <em className="text-foreground">{children}</em>
 }
 
 const aiWontTakeYourJob: BlogPost = {

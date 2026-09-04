@@ -44,11 +44,11 @@ function StepIcon({ type, status }: { type: string; status: string }) {
   const iconClass = status === "running" ? "animate-pulse" : ""
   
   if (status === "completed") {
-    return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+    return <CheckCircle2 className="h-4 w-4 text-primary" />
   }
   
   if (status === "running") {
-    return <Loader2 className="h-4 w-4 text-emerald-500 animate-spin" />
+    return <Loader2 className="h-4 w-4 text-primary animate-spin" />
   }
   
   switch (type) {
@@ -136,7 +136,7 @@ export function WorkflowDemo() {
         </div>
         <div className="flex items-center gap-2">
           {isComplete && (
-            <span className="text-xs text-emerald-600 font-medium">
+            <span className="text-xs text-primary font-medium">
               {totalDuration}ms
             </span>
           )}
@@ -152,10 +152,10 @@ export function WorkflowDemo() {
             disabled={isComplete}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               isComplete
-                ? "bg-emerald-100 text-emerald-700"
+                ? "bg-primary/15 text-primary"
                 : isRunning
                 ? "bg-amber-100 text-amber-700"
-                : "bg-emerald-600 text-white hover:bg-emerald-500"
+                : "bg-primary text-white hover:bg-primary/100"
             }`}
           >
             {isComplete ? (

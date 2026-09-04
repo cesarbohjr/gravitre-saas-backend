@@ -1,15 +1,47 @@
 :root {
+  /**
+   * Desktop token bridge (UI 2.0 Phase 9) — aliases map to the same semantic
+   * roles as apps/web/app/globals.css dark theme. Layout chrome stays local;
+   * only color/type tokens are shared by name.
+   *
+   * Web dark SOT (approx):
+   *   --background ≈ oklch(0.08 0.01 250) → #0B0F14
+   *   --primary    ≈ oklch(0.72 0.14 162) → #16a374 family
+   *   --card       ≈ oklch(0.11 0.01 250)
+   */
   color-scheme: light dark;
-  --bg: #0f1412;
-  --panel: #171c19;
+  --background: #0b0f14;
+  --foreground: #f2f4f3;
+  --card: #11161d;
   --border: #2a332e;
-  --text: #e8eee9;
-  --muted: #8b968f;
-  --accent: #16a374;
-  --accent-dim: #0f6b4d;
-  --danger: #c45c5c;
-  --warn: #c9a227;
-  font-family: "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+  --muted: #171c19;
+  --muted-foreground: #8b968f;
+  --primary: #16a374;
+  --primary-foreground: #f5fffa;
+  --destructive: #c45c5c;
+  --warning: #c9a227;
+  --success: #16a374;
+  --info: #4d8fd9;
+  --ring: #16a374;
+  --status-pending: var(--warning);
+  --status-approved: var(--success);
+  --status-rejected: var(--destructive);
+  --status-running: var(--info);
+  --status-failed: var(--destructive);
+  --status-verified: var(--success);
+  --status-estimate: var(--warning);
+  --status-idle: var(--muted-foreground);
+
+  /* Legacy desktop aliases (keep class names working) */
+  --bg: var(--background);
+  --panel: var(--card);
+  --text: var(--foreground);
+  --accent: var(--primary);
+  --accent-dim: color-mix(in srgb, var(--primary) 55%, #0b0f14);
+  --danger: var(--destructive);
+  --warn: var(--warning);
+
+  font-family: "Geist", "Segoe UI", "SF Pro Text", system-ui, sans-serif;
 }
 
 * {
@@ -21,8 +53,8 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 button,
@@ -57,7 +89,7 @@ textarea {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--muted-foreground);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.2rem 0.55rem;
@@ -78,7 +110,7 @@ textarea {
 .tab {
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--muted-foreground);
   padding: 0.4rem 0.65rem;
   border-radius: 0.45rem;
   cursor: pointer;
@@ -152,7 +184,7 @@ textarea {
   border: 0;
   border-radius: 0.65rem;
   background: var(--accent);
-  color: white;
+  color: var(--primary-foreground);
   padding: 0.55rem 0.8rem;
   cursor: pointer;
 }
@@ -181,7 +213,7 @@ textarea {
 .modality button {
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--muted);
+  color: var(--muted-foreground);
   border-radius: 999px;
   padding: 0.2rem 0.65rem;
   font-size: 0.75rem;
@@ -209,7 +241,7 @@ textarea {
 
 .wave span {
   width: 3px;
-  background: var(--muted);
+  background: var(--muted-foreground);
   border-radius: 2px;
   animation: pulse 1s ease-in-out infinite;
 }
@@ -228,6 +260,13 @@ textarea {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave span {
+    animation: none;
+    height: 45%;
+  }
 }
 
 @keyframes pulse {
@@ -260,7 +299,7 @@ textarea {
 
 .card p {
   margin: 0;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.78rem;
 }
 
@@ -271,7 +310,7 @@ textarea {
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.82rem;
 }
 

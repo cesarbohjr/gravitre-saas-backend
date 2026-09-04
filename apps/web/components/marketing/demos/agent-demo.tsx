@@ -48,8 +48,8 @@ export function AgentDemo() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-            <Bot className="h-4 w-4 text-emerald-600" />
+          <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Bot className="h-4 w-4 text-primary" />
           </div>
           <span className="font-medium text-sm text-foreground">Create AI Agent</span>
         </div>
@@ -58,7 +58,7 @@ export function AgentDemo() {
             <div
               key={i}
               className={`h-1.5 w-6 rounded-full transition-colors ${
-                i <= step ? "bg-emerald-500" : "bg-muted"
+                i <= step ? "bg-primary/100" : "bg-muted"
               }`}
             />
           ))}
@@ -75,8 +75,8 @@ export function AgentDemo() {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center h-full py-8"
             >
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <Check className="h-8 w-8 text-emerald-600" />
+              <div className="h-16 w-16 rounded-full bg-primary/15 flex items-center justify-center mb-4">
+                <Check className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">Agent Created!</h3>
               <p className="text-sm text-muted-foreground text-center mb-6">
@@ -106,9 +106,9 @@ export function AgentDemo() {
                       setSelectedTemplate(template.id)
                       setStep(1)
                     }}
-                    className={`p-4 rounded-lg border text-left transition-all hover:border-emerald-500/50 hover:bg-emerald-50/50 ${
+                    className={`p-4 rounded-lg border text-left transition-all hover:border-primary/50 hover:bg-primary/10/50 ${
                       selectedTemplate === template.id
-                        ? "border-emerald-500 bg-emerald-50"
+                        ? "border-primary bg-primary/10"
                         : "border-border"
                     }`}
                   >
@@ -143,7 +143,7 @@ export function AgentDemo() {
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     placeholder="e.g., Sales Lead Router"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
                 
@@ -162,7 +162,7 @@ export function AgentDemo() {
                         }}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                           selectedCapabilities.includes(cap.id)
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                            ? "bg-primary/15 text-primary border border-primary/20"
                             : "bg-muted text-muted-foreground border border-transparent hover:bg-muted/80"
                         }`}
                       >
@@ -204,7 +204,7 @@ export function AgentDemo() {
               
               {isCreating && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" />
+                  <Sparkles className="h-4 w-4 animate-pulse text-primary" />
                   <span>Creating agent...</span>
                 </div>
               )}
@@ -227,7 +227,7 @@ export function AgentDemo() {
             <button
               onClick={() => setStep(step + 1)}
               disabled={step === 1 && !agentName}
-              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Continue
               <ChevronRight className="h-4 w-4" />
@@ -236,7 +236,7 @@ export function AgentDemo() {
             <button
               onClick={handleCreate}
               disabled={isCreating}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/100 disabled:opacity-50 transition-colors"
             >
               {isCreating ? (
                 <>

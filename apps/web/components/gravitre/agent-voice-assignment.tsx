@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
 import type { AgentVoiceProfile } from "@/types/api"
 import { toast } from "sonner"
-import { GravitreVoiceWaveform } from "@/components/gravitre/assistant/voice-presentation"
+import { GravitreWave } from "@/components/gravitre/assistant/voice-presentation"
 import { Check, Loader2, Play, Sparkles } from "lucide-react"
 
 type LibraryVoice = {
@@ -294,7 +294,7 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                         {isPreviewing ? (
                           // Decorative: the same waveform motif as the chat
                           // presence, standing in for a spinner while audio plays.
-                          <GravitreVoiceWaveform speaker="agent" compact />
+                          <GravitreWave speaker="agent" compact />
                         ) : (
                           <Play className="h-3.5 w-3.5" />
                         )}

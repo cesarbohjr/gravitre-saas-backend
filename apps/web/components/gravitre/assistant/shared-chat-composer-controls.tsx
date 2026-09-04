@@ -34,7 +34,7 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
-  GravitreVoiceWaveform,
+  GravitreWave,
   VoiceOrbTakeover,
   type VoiceSpeaker,
 } from "@/components/gravitre/assistant/voice-presentation"
@@ -284,7 +284,7 @@ export function SharedChatComposerControls({
             {!voiceEntitled ? (
               <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
             ) : (
-              <GravitreVoiceWaveform
+              <GravitreWave
                 speaker={speaker}
                 active={waveActive}
                 compact

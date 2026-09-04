@@ -10,6 +10,11 @@
  * or collapsing cannot restart a mic or drop a transcript — there is simply no
  * session state in here to lose.
  *
+ * Canonical exports (UI 2.0 Pilot E):
+ *   GravitreWave          — alias of GravitreVoiceWaveform (keep both names)
+ *   GravitreOrb           — orb circle only; VoiceOrbTakeover composes it
+ *   VoiceStateVisualizer  — maps VoicePresenceState → Wave (no second DOM path)
+ *
  * Two distinct axes, deliberately not conflated:
  *   presentation  waveform <-> orb   (stays in voice mode)
  *   modality      voice    <-> text  (leaves voice mode entirely)
@@ -19,11 +24,14 @@
  * Amplitude: real AnalyserNode levels when the duplex session supplies `levels`
  * (7 bins, 0–1). Keyframes remain the fallback when levels are omitted so idle /
  * unsupported paths still read as a waveform.
+ *
+ * Duplex presence states are **client UX** — not PSTN VoiceSessionStatus parity.
  */
 
 import { useEffect, useRef } from "react"
 import { Mic, MicOff, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 
 /**
  * Who currently holds the floor. This maps 1:1 onto the presence state the chat
@@ -31,6 +39,32 @@ import { cn } from "@/lib/utils"
  * playing = the agent), so no new state detection is introduced.
  */
 export type VoiceSpeaker = "user" | "agent"
+
+/** Resolved wave props from a duplex presence state (client-only). */
+export type VoiceVisualizerResolved = {
+  speaker: VoiceSpeaker
+  active: boolean
+  /** Whether the live floor is open (listening / thinking / speaking / …). */
+  liveFloor: boolean
+}
+
+/**
+ * Map client VoicePresenceState → Wave props. Shared by presence strip and any
+ * future consumer so speaker/active never fork per surface.
+ */
+export function resolveVoiceVisualizer(
+  state: VoicePresenceState,
+): VoiceVisualizerResolved {
+  const liveFloor =
+    state === "listening" ||
+    state === "understanding" ||
+    state === "thinking" ||
+    state === "speaking" ||
+    state === "interrupted"
+  const speaker: VoiceSpeaker =
+    state === "speaking" || state === "thinking" ? "agent" : "user"
+  return { speaker, active: liveFloor, liveFloor }
+}
 
 /** Per-speaker motion and color, verbatim from the handoff. */
 const WAVE_DURATION: Record<VoiceSpeaker, string> = {
@@ -76,15 +110,16 @@ export function GravitreVoiceWaveform({
     <span
       aria-hidden
       data-voice-waveform={reactive ? "analyser" : "keyframe"}
+      data-gravitre-wave=""
       className={cn(
         "flex items-center gap-[3px]",
         // Bars are `background-color: currentColor`, so speaker color is set here
         // once rather than on each of the seven.
         !active
-          ? "text-[#9a9a96] dark:text-[#6b6b68]"
+          ? "text-[color:var(--gv-voice-idle)] dark:text-[color:var(--gv-voice-idle-dark)]"
           : speaker === "user"
-            ? "text-[#16a374]"
-            : "text-[#3f5b52] dark:text-[#e9e9e6]",
+            ? "text-[color:var(--gv-voice-user)]"
+            : "text-[color:var(--gv-voice-agent)] dark:text-[color:var(--gv-voice-agent-fg)]",
         // Animation is opt-in via this class — see globals.css `.gv-wave-active`.
         // Skip keyframes when AnalyserNode levels drive height.
         active && !reactive && "gv-wave-active",
@@ -110,6 +145,85 @@ export function GravitreVoiceWaveform({
         )
       })}
     </span>
+  )
+}
+
+/** Canonical Wave name (Pilot E). Same implementation as GravitreVoiceWaveform. */
+export const GravitreWave = GravitreVoiceWaveform
+
+/**
+ * Maps a duplex presence state onto the shared Wave — no second bar DOM.
+ * Idle/error omit bars (callers that need icons wrap this or branch themselves).
+ */
+export function VoiceStateVisualizer({
+  state,
+  levels,
+  compact = true,
+  className,
+}: {
+  state: VoicePresenceState
+  levels?: number[] | null
+  compact?: boolean
+  className?: string
+}) {
+  const { speaker, active, liveFloor } = resolveVoiceVisualizer(state)
+  if (!liveFloor && state !== "idle") {
+    // Error / disconnected: no wave — presence strip owns icons for those.
+    return null
+  }
+  if (state === "idle") {
+    return null
+  }
+  return (
+    <span data-voice-state-visualizer={state} className="contents">
+      <GravitreWave
+        speaker={speaker}
+        active={active}
+        compact={compact}
+        levels={levels}
+        className={className}
+      />
+    </span>
+  )
+}
+
+/**
+ * Orb circle only — the visual primitive. VoiceOrbTakeover owns chrome (exit,
+ * mic, labels). Never fork a MarketingGravitreOrb; import this.
+ */
+export function GravitreOrb({
+  speaker,
+  amplitude,
+  className,
+}: {
+  speaker: VoiceSpeaker
+  /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
+  amplitude?: number | null
+  className?: string
+}) {
+  const isUser = speaker === "user"
+  return (
+    <div
+      aria-hidden
+      data-voice-orb-circle=""
+      data-gravitre-orb=""
+      data-voice-orb-reactive={amplitude != null ? "analyser" : "keyframe"}
+      className={cn(
+        "pointer-events-none relative z-0 h-[220px] w-[220px] rounded-full sm:h-[280px] sm:w-[280px]",
+        isUser ? "gv-orb-user" : "gv-orb-agent",
+        className,
+      )}
+      style={{
+        backgroundImage: isUser
+          ? "radial-gradient(circle at 35% 30%, var(--gv-voice-user-bright), var(--gv-voice-user) 55%, var(--gv-voice-user-deep) 100%)"
+          : "radial-gradient(circle at 35% 30%, var(--gv-voice-agent-light), var(--gv-voice-agent-mid) 55%, var(--gv-voice-idle-dark) 100%)",
+        transform:
+          amplitude != null
+            ? `scale(${(1 + Math.min(1, Math.max(0, amplitude)) * 0.12).toFixed(3)})`
+            : undefined,
+        transition: amplitude != null ? "transform 80ms linear" : undefined,
+      }}
+    />
   )
 }
 
@@ -184,7 +298,7 @@ export function VoiceOrbTakeover({
       aria-modal="true"
       aria-label={`Voice session — ${label}`}
       data-voice-orb=""
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,#1a2a66_0%,#0f1738_58%,#0a1028_100%)] sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,var(--gv-voice-orb-backdrop-mid)_0%,var(--gv-voice-orb-backdrop-deep)_58%,var(--gv-voice-orb-backdrop-edge)_100%)] sm:p-6"
     >
       {/* Desktop caps the surface while mobile remains full-bleed. */}
       <div className="relative flex h-full w-full max-w-full flex-col items-center justify-center overflow-hidden sm:h-[560px] sm:w-[900px] sm:rounded-2xl">
@@ -198,25 +312,7 @@ export function VoiceOrbTakeover({
           <X className="h-5 w-5" aria-hidden />
         </button>
 
-        <div
-          aria-hidden
-          data-voice-orb-circle=""
-          data-voice-orb-reactive={amplitude != null ? "analyser" : "keyframe"}
-          className={cn(
-            "pointer-events-none relative z-0 h-[220px] w-[220px] rounded-full sm:h-[280px] sm:w-[280px]",
-            isUser ? "gv-orb-user" : "gv-orb-agent",
-          )}
-          style={{
-            backgroundImage: isUser
-              ? "radial-gradient(circle at 35% 30%, #34d399, #16a374 55%, #0f5132 100%)"
-              : "radial-gradient(circle at 35% 30%, #f2f2f0, #b9b9b6 55%, #6b6b68 100%)",
-            transform:
-              amplitude != null
-                ? `scale(${(1 + Math.min(1, Math.max(0, amplitude)) * 0.12).toFixed(3)})`
-                : undefined,
-            transition: amplitude != null ? "transform 80ms linear" : undefined,
-          }}
-        />
+        <GravitreOrb speaker={speaker} amplitude={amplitude} />
 
         <div className="pointer-events-none mt-8 text-center text-white">
           <p className="text-4xl font-semibold leading-tight">{label}</p>
@@ -257,7 +353,7 @@ export function VoiceOrbTakeover({
               "ml-2 flex h-14 w-14 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
               micActive
                 ? "bg-white/15 text-white hover:bg-white/20"
-                : "bg-[#16a374] text-white hover:bg-[#128a63]",
+                : "bg-[color:var(--gv-voice-user)] text-white hover:bg-[color:var(--gv-voice-user-hover)]",
             )}
           >
             {micActive ? <Mic className="h-6 w-6" aria-hidden /> : <MicOff className="h-6 w-6" aria-hidden />}

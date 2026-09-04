@@ -54,45 +54,45 @@ export default async function FaqPage() {
   )
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
       <div className="mx-auto max-w-5xl px-6 py-16">
         <Link
           href="/docs"
-          className="mb-8 inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-900"
+          className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to docs
         </Link>
 
         <header className="mb-12">
-          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             FAQ
           </span>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl text-balance">
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl text-balance">
             Frequently asked questions
           </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-600 text-pretty">
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground text-pretty">
             {MARKETING_COPY.docs.faqIntro}
           </p>
         </header>
 
         <FaqExperience sections={sections} />
 
-        <div className="mt-16 rounded-2xl border border-zinc-200 bg-zinc-50/60 px-6 py-10 text-center">
-          <h2 className="text-lg font-medium text-zinc-900">Still have questions?</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">
+        <div className="mt-16 rounded-2xl border border-border bg-muted/50/60 px-6 py-10 text-center">
+          <h2 className="text-lg font-medium text-foreground">Still have questions?</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             Can&apos;t find the answer you&apos;re looking for? Reach out and our team will help.
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
             >
               Contact support
             </Link>
             <a
               href="mailto:support@gravitre.app"
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
             >
               <ExternalLink className="h-4 w-4" />
               support@gravitre.app

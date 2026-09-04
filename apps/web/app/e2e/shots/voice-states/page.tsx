@@ -12,7 +12,7 @@ import { useState } from "react"
 
 import { AgentVoiceAssignment } from "@/components/gravitre/agent-voice-assignment"
 import {
-  GravitreVoiceWaveform,
+  GravitreWave,
   VoiceOrbTakeover,
   type VoiceSpeaker,
 } from "@/components/gravitre/assistant/voice-presentation"
@@ -52,7 +52,7 @@ function InputPill({
       className="flex h-11 w-full max-w-xl items-center gap-2 rounded-full border border-border/70 bg-white px-3 dark:bg-[#262626]"
       data-shot={active ? `wave-${speaker}` : "wave-idle"}
     >
-      <GravitreVoiceWaveform speaker={speaker} active={active} compact />
+      <GravitreWave speaker={speaker} active={active} compact />
       <span className="flex-1 text-xs text-muted-foreground">Ask, delegate, or search…</span>
       {label ? (
         <span

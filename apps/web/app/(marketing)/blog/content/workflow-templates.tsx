@@ -12,9 +12,9 @@ function TemplateEntry({
   children: ReactNode
 }) {
   return (
-    <div className="mt-6 border-t border-zinc-100 pt-6 first:mt-0 first:border-t-0 first:pt-0">
-      <h4 className="text-lg font-semibold text-zinc-900">{title}</h4>
-      <div className="mt-2 space-y-2 text-base leading-relaxed text-zinc-700">{children}</div>
+    <div className="mt-6 border-t border-border pt-6 first:mt-0 first:border-t-0 first:pt-0">
+      <h4 className="text-lg font-semibold text-foreground">{title}</h4>
+      <div className="mt-2 space-y-2 text-base leading-relaxed text-foreground">{children}</div>
     </div>
   )
 }
@@ -29,10 +29,10 @@ function BlogFigure({
   caption: string
 }) {
   return (
-    <figure className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+    <figure className="mt-8 overflow-hidden rounded-2xl border border-border bg-muted/50">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} width={1200} height={675} className="w-full object-cover object-top" />
-      <figcaption className="border-t border-zinc-200 px-4 py-3 text-sm text-zinc-600">{caption}</figcaption>
+      <figcaption className="border-t border-border px-4 py-3 text-sm text-muted-foreground">{caption}</figcaption>
     </figure>
   )
 }
@@ -49,7 +49,7 @@ export const workflowTemplatesPost: BlogPost = {
   ...createBlogDates("2026-07-15"),
   readTime: "12 min read",
   heroImage: "/images/blog/workflow-templates-hero.jpg",
-  heroGradient: "from-amber-50 via-white to-emerald-50",
+  heroGradient: "from-amber-50 via-white to-primary/10",
   heroAlt:
     "Stylized Gravitre Marketplace illustration with department pack cards for Customer Success, RevOps, Support, and Marketing, plus Browse, Connect, and Install steps.",
   keywords: [

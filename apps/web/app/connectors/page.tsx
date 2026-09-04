@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { PageHeader } from "@/components/gravitre/page-header"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
@@ -50,6 +51,7 @@ import {
   Code2,
   ShieldCheck,
 } from "lucide-react"
+import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2717,9 +2719,9 @@ function ConnectorsPageContent() {
 
   const statusFilterOptions = [
     { value: "all", label: "All", color: "text-foreground" },
-    { value: "connected", label: "Connected", color: "text-success", dot: "bg-emerald-500" },
-    { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
-    { value: "error", label: "Error", color: "text-destructive", dot: "bg-red-500" },
+    { value: "connected", label: "Connected", color: "text-success", dot: "bg-success" },
+    { value: "syncing", label: "Syncing", color: "text-info", dot: "bg-info" },
+    { value: "error", label: "Error", color: "text-destructive", dot: "bg-destructive" },
     { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
   ] as const
   const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
@@ -2731,23 +2733,12 @@ function ConnectorsPageContent() {
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-        {/* Header */}
-        <div className="w-full min-w-0 border-b border-border px-4 py-4 md:px-6">
-          <div className="flex w-full min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              {/* Fixed 40×40 tile (same as PageHeader sm). Explicit width/height
-                  beats flex compression that was oval-stretching the chip. */}
-              <div
-                className="flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60"
-                style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
-              >
-                <Cable className="h-5 w-5 shrink-0 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>
-                <p className="text-xs md:text-sm text-muted-foreground">{SURFACE_COPY.pages.connectors.description}</p>
-              </div>
-            </div>
+        <PageHeader
+          title={SURFACE_COPY.pages.connectors.headline}
+          description={SURFACE_COPY.pages.connectors.description}
+          icon={NucleoConnector}
+          className="w-full min-w-0"
+          actions={
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
               <div className="relative w-full min-w-0 md:w-auto md:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2955,15 +2946,15 @@ function ConnectorsPageContent() {
                 <span className="hidden sm:inline">Add Connector</span>
               </Button>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Live Stats Bar */}
         <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4 md:gap-8">
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-success" />
                 <span className="text-xs md:text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{connectedCount}</span> connected
                 </span>
@@ -2975,15 +2966,15 @@ function ConnectorsPageContent() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Activity className="h-3.5 w-3.5 text-blue-500" />
+                <Activity className="h-3.5 w-3.5 text-info" />
                 <span className="text-xs md:text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{avgLatency}ms</span> <span className="hidden sm:inline">avg</span> latency
                 </span>
               </div>
             </div>
             <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live monitoring active
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Status from last refresh
             </div>
           </div>
         </div>

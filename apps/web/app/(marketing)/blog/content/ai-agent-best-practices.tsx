@@ -4,7 +4,7 @@ import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 import Link from "next/link"
 
 function Cite({ children }: { children: ReactNode }) {
-  return <em className="text-zinc-700">{children}</em>
+  return <em className="text-foreground">{children}</em>
 }
 
 export const aiAgentBestPracticesPost: BlogPost = {
@@ -21,7 +21,7 @@ export const aiAgentBestPracticesPost: BlogPost = {
   displayDate: "February 20, 2026",
   readTime: "11 min read",
   heroImage: "/images/blog/ai-agent-best-practices-hero.png",
-  heroGradient: "from-stone-100 via-zinc-50 to-emerald-50/30",
+  heroGradient: "from-stone-100 via-muted/50 to-primary/10/30",
   heroAlt:
     "Editorial poster with a large numeral 10 and the practices Scope, Connect, Approve, and Prove.",
   keywords: [
