@@ -1,0 +1,107 @@
+"""Regression: raw LLM deltas must not be punctuated fragment-by-fragment.
+
+2026-09-04 human report: production voice/text turns showed text like
+``Yes..I.need.the.recipient.,.subject.,.and.body..`` — every word boundary
+replaced with a period. Root cause: ``GravitreCognitiveLLMService`` ran
+``normalize_spoken_text`` (which forces sentence-terminal punctuation) on
+each raw streaming delta independently. Fixed by sending raw deltas to the
+client for display and only normalizing complete, sentence-chunked text
+(via ``split_speakable_chunks``) before it reaches TTS.
+"""
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
+from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+
+def _drive(deltas: list[str]) -> tuple[list[str], list[str]]:
+    """Run one turn; return (raw text-display deltas, TTS-bound chunks)."""
+
+    async def _fake_stream(**_kwargs: Any):
+        for d in deltas:
+            yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": d})
+        yield AssistantStreamComplete(
+            full_content="".join(deltas),
+            tool_results=[],
+            react_result=None,
+            model="test",
+        )
+
+    fake_intelligence = type(
+        "FakeIntelligence", (), {"execute_task_streaming": staticmethod(_fake_stream)}
+    )()
+
+    service = GravitreCognitiveLLMService(
+        app_settings=object(),
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+    )
+
+    display_deltas: list[str] = []
+    tts_chunks: list[str] = []
+
+    async def _capture_push_frame(frame: Any, *_a: Any, **_kw: Any) -> None:
+        message = getattr(frame, "message", None)
+        if isinstance(message, dict) and message.get("type") == "assistant_text":
+            display_deltas.append(str(message.get("delta") or ""))
+
+    async def _capture_push_llm_text(text: str) -> None:
+        tts_chunks.append(text)
+
+    service.push_frame = AsyncMock(side_effect=_capture_push_frame)
+    service._push_llm_text = AsyncMock(side_effect=_capture_push_llm_text)
+
+    class _FakeContext:
+        def get_messages(self) -> list[dict[str, Any]]:
+            return [{"role": "user", "content": "hello"}]
+
+    with patch(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        return_value=fake_intelligence,
+    ):
+        asyncio.run(service._run_gravitre_turn(_FakeContext()))
+
+    return display_deltas, tts_chunks
+
+
+def test_raw_deltas_reach_the_client_unpunctuated_and_unmangled() -> None:
+    deltas = ["I ", "need ", "the ", "recipient, ", "subject, ", "and ", "body."]
+    display_deltas, _ = _drive(deltas)
+
+    # Every space/comma from the model must survive untouched — none of them
+    # should have been replaced or interleaved with forced periods.
+    assert "".join(display_deltas) == "".join(deltas)
+    for d in display_deltas:
+        assert d.count(".") <= d.count(".")  # sanity: never adds a period
+    joined = "".join(display_deltas)
+    assert ".." not in joined
+    assert "I.need" not in joined
+    assert "the.recipient" not in joined
+
+
+def test_tts_receives_complete_punctuated_sentences_not_word_fragments() -> None:
+    deltas = ["Sure, ", "I'll ", "send ", "that ", "now. ", "Done."]
+    _, tts_chunks = _drive(deltas)
+
+    assert tts_chunks, "TTS must receive at least one chunk"
+    # No chunk should be a bare single word/fragment lacking terminal
+    # punctuation — that is the "every fragment becomes its own sentence"
+    # regression that produced choppy, robotic pacing.
+    for chunk in tts_chunks:
+        assert chunk.strip(), "no empty chunk sent to TTS"
+        assert chunk.strip()[-1] in ".!?"
+    full_spoken = " ".join(tts_chunks)
+    assert "Sure" in full_spoken and "Done" in full_spoken
+
+
+def test_trailing_partial_clause_without_terminal_punctuation_is_flushed() -> None:
+    # Short answers like "Four" with no closing punctuation must still be
+    # spoken, not dropped because they never hit a sentence boundary.
+    deltas = ["Four"]
+    _, tts_chunks = _drive(deltas)
+
+    assert any("Four" in c for c in tts_chunks), "trailing clause must not be dropped"

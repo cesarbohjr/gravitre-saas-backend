@@ -21,7 +21,7 @@ from pipecat.services.llm_service import LLMService
 
 from app.core.logging import get_logger
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
-from app.services.voice_session_service import normalize_spoken_text
+from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
 
 logger = get_logger(__name__)
 
@@ -100,6 +100,19 @@ class GravitreCognitiveLLMService(LLMService):
         if not user_text:
             return
         intelligence = get_agent_intelligence()
+        # `normalize_spoken_text` forces sentence-terminal punctuation onto
+        # whatever text it is given. Raw LLM deltas arrive as small,
+        # sentence-unaware fragments ("I need", " the", " recipient,"), so
+        # normalizing each delta independently punctuated *every fragment*
+        # ("I.need.the.recipient.,...") — corrupting both the displayed chat
+        # text and the TTS input (each fragment was then spoken as its own
+        # isolated "sentence", producing the choppy, robotic pacing).
+        #
+        # Fix: send raw deltas to the client for progressive text display
+        # (matches the HTTP-duplex path), and only feed TTS complete,
+        # sentence-chunked text via `split_speakable_chunks` + normalize —
+        # exactly the pattern `stream_voice_turn_events` already uses.
+        text_buffer = ""
         async for event in intelligence.execute_task_streaming(
             settings=self._app_settings,
             org_id=self._org_id,
@@ -121,11 +134,20 @@ class GravitreCognitiveLLMService(LLMService):
             delta = str(payload.get("delta") or payload.get("textDelta") or "")
             if not delta:
                 continue
-            spoken = normalize_spoken_text(delta)
-            if spoken:
-                await self._push_llm_text(spoken)
-                await self.push_frame(
-                    OutputTransportMessageUrgentFrame(
-                        message={"type": "assistant_text", "delta": spoken}
-                    )
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={"type": "assistant_text", "delta": delta}
                 )
+            )
+            text_buffer += delta
+            chunks, text_buffer = split_speakable_chunks(text_buffer)
+            for chunk in chunks:
+                spoken = normalize_spoken_text(chunk)
+                if spoken:
+                    await self._push_llm_text(spoken)
+        # Flush any trailing clause that never hit a sentence boundary (e.g.
+        # a short answer with no terminal punctuation) so the tail of the
+        # reply is not silently dropped from speech.
+        tail = normalize_spoken_text(text_buffer)
+        if tail:
+            await self._push_llm_text(tail)

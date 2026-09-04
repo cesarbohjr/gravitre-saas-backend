@@ -1107,10 +1107,11 @@ async def run_unified_turn_shadow(
                 args = {}
             if is_search_catalog_tools(tool_name):
                 # Exhausted progressive rounds without a connector tool.
+                # Natural language only — never mention "catalog schemas" or
+                # "connector action" out loud on the voice path.
                 result.outcome_kind = "clarifying_question"
                 result.user_message = (
-                    "I loaded catalog schemas but still need a specific action. "
-                    "Which connector action should I take?"
+                    "Sorry, what would you like me to do?"
                 )
                 return result
             if progressive_on and full_by_name:
@@ -1119,12 +1120,118 @@ async def run_unified_turn_shadow(
                     loaded_names=loaded_names,
                     full_by_name=full_by_name,
                 )
+                retried_schema_load = False
+                if (
+                    not allowed
+                    and gate_reason == "full_schema_not_loaded"
+                    and tool_name in full_by_name
+                ):
+                    # The model tried to call a real, in-candidate-set tool
+                    # before calling search_catalog_tools for it. Recover
+                    # silently: load the schema server-side and give the
+                    # model exactly one more turn to retry with real
+                    # arguments. The user (text or voice) must never see
+                    # this recovery happen and must never be told to repeat
+                    # themselves for something the system can fix itself.
+                    retried_schema_load = True
+                    loaded_names, auto_search_result = execute_search_catalog_tools(
+                        {"tool_names": [tool_name]},
+                        full_by_name=full_by_name,
+                        loaded_names=loaded_names,
+                    )
+                    attach_tools, full_by_name, loaded_names = apply_progressive_disclosure(
+                        list(visible), loaded_names=loaded_names
+                    )
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": content or None,
+                            "tool_calls": [
+                                {
+                                    "id": getattr(tc, "id", None) or "auto_schema_1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_name,
+                                        "arguments": tc.function.arguments or "{}",
+                                    },
+                                }
+                            ],
+                        }
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": getattr(tc, "id", None) or "auto_schema_1",
+                            "content": json.dumps(
+                                {
+                                    **auto_search_result,
+                                    "note": (
+                                        "Full schema is now loaded for this tool. "
+                                        "Call it again now with the complete "
+                                        "arguments the user already gave you — do "
+                                        "not ask the user to repeat information "
+                                        "you already have."
+                                    ),
+                                }
+                            ),
+                        }
+                    )
+                    retry_kwargs: dict[str, Any] = {"model": model, "messages": messages}
+                    assert_tools_narrowed(attach_tools, where="unified_turn.auto_schema_retry")
+                    if attach_tools:
+                        retry_kwargs["tools"] = openai_tools_payload(
+                            attach_tools, where="unified_turn.auto_schema_retry"
+                        )
+                        retry_kwargs["tool_choice"] = "auto"
+                    if _supports_custom_temperature(model):
+                        retry_kwargs["temperature"] = 0.2
+                    retry_start = time.perf_counter()
+                    completion = await _complete_unified_turn(
+                        router,
+                        openai_client,
+                        model=model,
+                        kwargs=retry_kwargs,
+                        wall_start=wall_start,
+                        model_start=time.perf_counter(),
+                        timeout_s=stream_timeout_s,
+                        on_text_delta=on_text_delta,
+                    )
+                    breakdown["auto_schema_retry_ms"] = int(
+                        (time.perf_counter() - retry_start) * 1000
+                    )
+                    content = completion.content
+                    tool_calls = list(completion.tool_calls or [])
+                    if tool_calls and not is_search_catalog_tools(
+                        str(tool_calls[0].function.name or "")
+                    ):
+                        tc = tool_calls[0]
+                        tool_name = str(tc.function.name or "")
+                        args = {}
+                        try:
+                            parsed = json.loads(tc.function.arguments or "{}")
+                            if isinstance(parsed, dict):
+                                args = parsed
+                        except json.JSONDecodeError:
+                            args = {}
+                        allowed, gate_reason = gate_deferred_tool_call(
+                            tool_name,
+                            loaded_names=loaded_names,
+                            full_by_name=full_by_name,
+                        )
+                    else:
+                        allowed = False
+                    breakdown["progressive_gate_auto_retry"] = True
+                    breakdown["progressive_gate_auto_retry_resolved"] = allowed
                 if not allowed:
                     result.outcome_kind = "clarifying_question"
+                    # Never expose tool_name, gate_reason, "progressive
+                    # disclosure", or search_catalog_tools to the user —
+                    # those are internal implementation details (voice +
+                    # text share this path per the spoken-output boundary).
                     result.user_message = (
-                        f"I need the full schema for `{tool_name}` before I can run it "
-                        f"(progressive disclosure: {gate_reason}). "
-                        f"Ask me again and I'll load parameters via {SEARCH_CATALOG_TOOLS_NAME} first."
+                        content.strip()
+                        if content and content.strip() and not tool_calls
+                        else "I hit a snag setting that up on my end — could you tell me again what you'd like me to do?"
                     )
                     breakdown["progressive_gate_blocked"] = gate_reason
                     return result

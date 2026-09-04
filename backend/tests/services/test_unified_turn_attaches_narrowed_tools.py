@@ -149,3 +149,101 @@ def test_tool_choice_accompanies_tools() -> None:
     _, seen = _drive("search my hubspot deals for acme")
 
     assert ("tool_choice" in seen) == bool(seen.get("tools"))
+
+
+def _tool_call(name: str, args: dict[str, Any], call_id: str = "call_0") -> Any:
+    return SimpleNamespace(
+        id=call_id,
+        function=SimpleNamespace(name=name, arguments=__import__("json").dumps(args)),
+    )
+
+
+def test_model_skipping_search_catalog_tools_is_recovered_silently_not_told_to_repeat() -> None:
+    """The 2026-09-04 leak: a model that calls a real connector tool before
+    search_catalog_tools used to get told, in raw internal language,
+    'Ask me again and I'll load parameters via search_catalog_tools first.'
+    That forced the user to repeat themselves and leaked implementation
+    details into text AND spoken voice output (same shared path).
+
+    The fix auto-loads the schema server-side and gives the model one more
+    silent retry. This test proves: (1) the user-visible outcome is not the
+    old clarifying-question bounce, and (2) if a retry has to happen, no
+    internal identifier ever reaches ``result.user_message``.
+    """
+    registry = MagicMock()
+    registry.get_tools_for_agent.return_value = _catalog()
+    registry._specs = {}
+
+    router = MagicMock()
+    router._openai = MagicMock()
+
+    settings = _Settings()
+    settings.unified_turn_progressive_preload_top = 0  # force the skip-ahead case
+
+    calls: list[Any] = []
+
+    async def _capture(router: Any, openai_client: Any, **kw: Any) -> Any:
+        calls.append(kw)
+        if len(calls) == 1:
+            # Model calls the real tool directly — skips search_catalog_tools.
+            return _StreamedCompletion(
+                content="",
+                tool_calls=[_tool_call("hubspot_action_0", {"query": "acme"})],
+                first_token_ms=40,
+                model_ttft_ms=35,
+                latency_ms=120,
+                model_total_ms=110,
+                streamed=False,
+            )
+        # Auto-schema retry round: model now has the full schema attached
+        # and calls the same tool again with real arguments.
+        return _StreamedCompletion(
+            content="",
+            tool_calls=[_tool_call("hubspot_action_0", {"query": "acme"}, call_id="call_1")],
+            first_token_ms=10,
+            model_ttft_ms=8,
+            latency_ms=60,
+            model_total_ms=55,
+            streamed=False,
+        )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.get_model_router",
+        return_value=router,
+    ), patch(
+        "app.services.unified_turn_reasoning_service.get_tool_registry",
+        return_value=registry,
+    ), patch(
+        "app.services.providers.provider_tool_router.provider_tools_configured",
+        return_value=True,
+    ), patch(
+        "app.services.unified_turn_reasoning_service._complete_unified_turn",
+        new=AsyncMock(side_effect=_capture),
+    ):
+        result = asyncio.run(
+            run_unified_turn_shadow(
+                org_id="00000000-0000-4000-8000-000000000001",
+                user_id="00000000-0000-4000-8000-000000000002",
+                conversation_id=None,
+                message="search my hubspot deals for acme",
+                task_state=None,
+                conversation_history=None,
+                connected_integrations=["hubspot"],
+                settings=settings,
+            )
+        )
+
+    assert len(calls) == 2, "expected exactly one silent auto-retry round, not the old bounce"
+    breakdown = getattr(result, "latency_breakdown", None) or {}
+    assert breakdown.get("progressive_gate_auto_retry") is True
+
+    message = str(getattr(result, "user_message", "") or "")
+    for leaked in (
+        "progressive disclosure",
+        "search_catalog_tools",
+        "full_schema_not_loaded",
+        "hubspot_action_0",
+        "catalog schemas",
+        "Ask me again",
+    ):
+        assert leaked not in message, f"internal detail leaked into user_message: {leaked!r}"
