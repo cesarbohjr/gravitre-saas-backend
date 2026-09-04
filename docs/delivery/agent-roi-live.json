@@ -1,9 +1,9 @@
 {
   "probe": "agent_roi_live",
-  "checked_at": "2026-09-03T23:55:12.016079+00:00",
+  "checked_at": "2026-09-04T00:12:46.069301+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "api_git_sha": "16244ce0f84d57be4116764bd483926c66337172",
+  "api_git_sha": "834cc43157a7141746e6c65c31906d74baa74ec7",
   "roi_http": 200,
   "period_days": 30,
   "agent_count": 16,
