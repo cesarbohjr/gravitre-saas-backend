@@ -47,6 +47,17 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _resolve_voice_audit_actor(client: Any, org_id: str) -> str | None:
+    """Best-effort actor for background PSTN lifecycle events."""
+    try:
+        from app.connectors.health_monitor_service import resolve_connector_audit_actor
+
+        return resolve_connector_audit_actor(client, org_id, {})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("voice_pstn_audit_actor_resolve_failed org_id=%s error=%s", org_id, exc)
+        return None
+
+
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     out = dict(row)
     for key in ("policy", "transcript", "tool_calls", "approval_events", "outcome", "metadata"):
@@ -393,15 +404,24 @@ def handle_twilio_status_event(
         action = AUDIT_PSTN_ANSWERED
     else:
         action = f"voice.pstn.status.{mapped}"
-    write_audit_event(
-        client,
-        org_id=org_id,
-        actor_id=None,
-        action=action,
-        resource_type="voice_pstn_session",
-        resource_id=session_id,
-        metadata={"call_sid": call_sid, "call_status": call_status, **(metadata or {})},
-    )
+    actor_id = _resolve_voice_audit_actor(client, org_id)
+    if actor_id:
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=actor_id,
+            action=action,
+            resource_type="voice_pstn_session",
+            resource_id=session_id,
+            metadata={"call_sid": call_sid, "call_status": call_status, **(metadata or {})},
+        )
+    else:
+        logger.warning(
+            "voice_pstn_audit_skipped_missing_actor org_id=%s session_id=%s action=%s",
+            org_id,
+            session_id,
+            action,
+        )
     return updated
 
 
@@ -412,13 +432,22 @@ def mark_voicemail_detected(client: Any, *, session_id: str) -> dict[str, Any] |
         patch={"status": "voicemail", "ended_at": _now_iso()},
     )
     if updated:
-        write_audit_event(
-            client,
-            org_id=str(updated["org_id"]),
-            actor_id=None,
-            action=AUDIT_PSTN_VOICEMAIL,
-            resource_type="voice_pstn_session",
-            resource_id=session_id,
-            metadata={},
-        )
+        org_id = str(updated["org_id"])
+        actor_id = _resolve_voice_audit_actor(client, org_id)
+        if actor_id:
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=actor_id,
+                action=AUDIT_PSTN_VOICEMAIL,
+                resource_type="voice_pstn_session",
+                resource_id=session_id,
+                metadata={},
+            )
+        else:
+            logger.warning(
+                "voice_pstn_voicemail_audit_skipped_missing_actor org_id=%s session_id=%s",
+                org_id,
+                session_id,
+            )
     return updated
