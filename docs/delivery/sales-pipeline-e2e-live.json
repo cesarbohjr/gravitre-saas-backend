@@ -2,14 +2,14 @@
   "pass": false,
   "gates": {
     "prod_health": "PASS",
-    "apollo_search": "PASS",
+    "apollo_search": "FAIL",
     "hubspot_campaigns_list": "FAIL",
     "hubspot_sync_write": "FAIL"
   },
   "probes": {
     "apollo_people_search": {
-      "success": true,
-      "error_code": null,
+      "success": false,
+      "error_code": "rate_limited",
       "action": "apollo.people.search"
     },
     "hubspot_campaigns_list": {
@@ -23,9 +23,11 @@
       "action": "hubspot.contacts.create"
     }
   },
-  "prod_health_sha": "0205c2020941d22241a3fdd2139984ab60aea97b",
+  "prod_health_sha": "40997f5da929f5599394439e6631c033067a5ff1",
   "connected_integrations": [
     "apollo",
+    "google_analytics",
+    "google_search_console",
     "hubspot"
   ]
 }
