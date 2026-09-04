@@ -20,7 +20,6 @@ import {
   encodePipecatInterrupt,
   base64ToPcm16,
   shouldUsePipecatVoice,
-  type PipecatServerMessage,
 } from "@/lib/pipecat-voice-client"
 import {
   cancelVoiceSessionTurn,
@@ -759,20 +758,19 @@ export function useVoiceDuplexSession(options: Options) {
         } catch {
           return
         }
-        const kind = String(msg.type || "")
-        if (kind === "session.ready") {
+        if (msg.type === "session.ready") {
           const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
           if (cid) optsRef.current.onConversationId?.(cid)
           return
         }
-        if (kind === "error") {
+        if (msg.type === "error") {
           const err = String(msg.error || "Voice session failed")
           const billing = String(msg.error_class || "") === "billing"
           optsRef.current.onError?.(err, billing)
           setPresence("error")
           return
         }
-        if (kind === "transcript") {
+        if (msg.type === "transcript") {
           const text = String(msg.text || "").trim()
           if (!text) return
           setProvisionalTranscript(text)
@@ -787,14 +785,14 @@ export function useVoiceDuplexSession(options: Options) {
           }
           return
         }
-        if (kind === "assistant_text") {
+        if (msg.type === "assistant_text") {
           const delta = String(msg.delta || "")
           if (!delta) return
           assistantTextRef.current += delta
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
           return
         }
-        if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
+        if (msg.type === "audio" && typeof msg.pcm16_b64 === "string") {
           const pcm = base64ToPcm16(msg.pcm16_b64)
           enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
         }
