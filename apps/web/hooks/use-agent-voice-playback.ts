@@ -29,6 +29,17 @@ export type AgentVoicePlayback = {
   stop: () => void
   clearBilling: () => void
   clearErrors: () => void
+  /**
+   * Browser autoplay gate tripped on this synthesized reply. Same failure
+   * class as the full-duplex orb (see use-voice-duplex-session.ts): a
+   * slow/cold TTS round-trip can outlive the click's user-activation window.
+   * The audio element + blob are kept alive (not destroyed) until a fresh
+   * gesture calls resumeBlockedPlayback() — previously `stop()` ran in the
+   * catch and revoked the object URL, permanently losing the reply with no
+   * way to hear it short of re-sending the message.
+   */
+  playbackBlocked: boolean
+  resumeBlockedPlayback: () => Promise<void>
 }
 
 let activePlaybackId: string | null = null
@@ -40,11 +51,15 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
   const [billingDetail, setBillingDetail] = useState<string | undefined>()
   const [serviceError, setServiceError] = useState(false)
   const [serviceDetail, setServiceDetail] = useState<string | undefined>()
+  const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const objectUrlRef = useRef<string | null>(null)
   const messageIdRef = useRef<string | null>(null)
+  const playbackBlockedRef = useRef(false)
 
   const stop = useCallback(() => {
+    playbackBlockedRef.current = false
+    setPlaybackBlocked(false)
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.src = ""
@@ -133,7 +148,20 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
       }
       try {
         await audio.play()
-      } catch {
+      } catch (err) {
+        const blocked =
+          err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
+        if (blocked) {
+          // Keep the audio element + blob alive — a fresh gesture via
+          // resumeBlockedPlayback() retries the SAME reply instead of the
+          // reply being silently gone with only a re-send able to hear it.
+          setIsSpeaking(false)
+          playbackBlockedRef.current = true
+          setPlaybackBlocked(true)
+          setServiceError(true)
+          setServiceDetail("Audio playback is blocked. Tap Talk once to enable sound, then try again.")
+          return
+        }
         stop()
         setServiceError(true)
         setServiceDetail("Audio playback is blocked. Tap Talk once to enable sound, then try again.")
@@ -141,6 +169,29 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
     },
     [applyFailure, clearErrors, stop],
   )
+
+  /** Fresh user gesture — retry the held reply instead of re-synthesizing it. */
+  const resumeBlockedPlayback = useCallback(async () => {
+    if (!playbackBlockedRef.current) return
+    const audio = audioRef.current
+    if (!audio) {
+      playbackBlockedRef.current = false
+      setPlaybackBlocked(false)
+      return
+    }
+    await unlockVoicePlayback()
+    try {
+      await audio.play()
+      playbackBlockedRef.current = false
+      setPlaybackBlocked(false)
+      setIsSpeaking(true)
+      setServiceError(false)
+      setServiceDetail(undefined)
+    } catch {
+      // Still blocked (or the element decayed) — leave state as-is so the
+      // "Enable sound" affordance stays visible for another attempt.
+    }
+  }, [])
 
   useEffect(() => {
     return () => stop()
@@ -156,5 +207,7 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
     stop,
     clearBilling,
     clearErrors,
+    playbackBlocked,
+    resumeBlockedPlayback,
   }
 }

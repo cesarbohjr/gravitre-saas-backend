@@ -282,6 +282,11 @@ export function AiWorkspace({
     speak: speakAgentVoice,
     stop: stopAgentVoice,
     clearErrors: clearVoiceErrors,
+    // Separate blocked-autoplay signal from the "read typed reply aloud" TTS
+    // path — distinct from voiceDuplex's own gate below. Combined where the
+    // composer needs a single playbackBlocked/resumeBlockedPlayback pair.
+    playbackBlocked: agentVoicePlaybackBlocked,
+    resumeBlockedPlayback: resumeAgentVoicePlayback,
   } = useAgentVoicePlayback()
 
   const operatorContextRef = useRef<string | null>(null)
@@ -1701,6 +1706,7 @@ export function AiWorkspace({
       if (result.cancelled && !result.assistantText.trim()) return
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
+      const spokeDuringTurn = typeof result.latency?.session_ttfa_ms === "number"
       const userId = `voice-user-${result.turnId || stamp}`
       const assistantId = `voice-assistant-${result.turnId || stamp}`
       setMessages((prev) => {
@@ -1733,7 +1739,10 @@ export function AiWorkspace({
               latency: result.latency,
             },
           } as (typeof prev)[number])
-          lastSpokenMessageIdRef.current = assistantId
+          // Only mark as already-spoken when duplex TTS actually started.
+          // If duplex audio failed, allow post-turn /api/voice/tts fallback to speak it.
+          lastSpokenMessageIdRef.current =
+            spokeDuringTurn && !result.cancelled ? assistantId : null
         }
         const conversationId = activeConversationIdRef.current || result.conversationId
         if (conversationId && next.length > 0) {
@@ -2239,9 +2248,10 @@ export function AiWorkspace({
                     void voiceDuplex.bargeIn()
                   },
                   supported: typeof window !== "undefined" && !!navigator.mediaDevices,
-                  playbackBlocked: voiceDuplex.playbackBlocked,
+                  playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
                   resumeBlockedPlayback: () => {
                     void voiceDuplex.resumeBlockedPlayback()
+                    void resumeAgentVoicePlayback()
                   },
                 }}
               />
@@ -2489,9 +2499,10 @@ export function AiWorkspace({
                     void voiceDuplex.bargeIn()
                   },
                   supported: typeof window !== "undefined" && !!navigator.mediaDevices,
-                  playbackBlocked: voiceDuplex.playbackBlocked,
+                  playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
                   resumeBlockedPlayback: () => {
                     void voiceDuplex.resumeBlockedPlayback()
+                    void resumeAgentVoicePlayback()
                   },
                 }}
                 onVoiceInputError={(message) => {

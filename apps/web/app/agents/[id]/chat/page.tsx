@@ -133,6 +133,11 @@ export default function AgentChatPage({
     speak: speakAgentVoice,
     stop: stopAgentVoice,
     clearErrors: clearVoiceErrors,
+    // Separate blocked-autoplay signal from the "read typed reply aloud" TTS
+    // path — distinct from voiceDuplex's own gate. Combined below into the
+    // single playbackBlocked/resumeBlockedPlayback pair the composer reads.
+    playbackBlocked: agentVoicePlaybackBlocked,
+    resumeBlockedPlayback: resumeAgentVoicePlayback,
   } = useAgentVoicePlayback()
 
   const { data: agent, isLoading: agentLoading } = useSWR(
@@ -257,6 +262,7 @@ export default function AgentChatPage({
       if (result.cancelled && !result.assistantText.trim()) return
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
+      const spokeDuringTurn = typeof result.latency?.session_ttfa_ms === "number"
       setMessages((prev) => {
         const next = [
           ...prev,
@@ -272,7 +278,10 @@ export default function AgentChatPage({
             role: "assistant" as const,
             parts: [{ type: "text" as const, text: result.assistantText }],
           } as (typeof prev)[number])
-          lastSpokenMessageIdRef.current = `voice-assistant-${result.turnId || stamp}`
+          lastSpokenMessageIdRef.current =
+            spokeDuringTurn && !result.cancelled
+              ? `voice-assistant-${result.turnId || stamp}`
+              : null
         }
         return next
       })
@@ -653,6 +662,11 @@ export default function AgentChatPage({
                   void voiceDuplex.bargeIn()
                 },
                 supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+                playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
+                resumeBlockedPlayback: () => {
+                  void voiceDuplex.resumeBlockedPlayback()
+                  void resumeAgentVoicePlayback()
+                },
               }}
               onVoiceInputError={(message) => {
                 if (!message) return
