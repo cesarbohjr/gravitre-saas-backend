@@ -7,7 +7,7 @@ export function PricingBillingToggle() {
 
   return (
     <>
-      <div className="mt-8 sm:mt-10 inline-flex items-center gap-2 sm:gap-4 rounded-full border border-border bg-card/80 backdrop-blur-sm p-1 sm:p-1.5 shadow-lg shadow-zinc-200/50">
+      <div className="mt-8 sm:mt-10 inline-flex items-center gap-2 sm:gap-4 rounded-full border border-border bg-card/80 backdrop-blur-sm p-1 sm:p-1.5 shadow-lg shadow-border/50">
         <button
           type="button"
           onClick={() => setIsAnnual(false)}

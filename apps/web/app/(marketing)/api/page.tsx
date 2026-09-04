@@ -169,7 +169,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button 
       onClick={copy}
-      className="p-2 rounded-lg hover:bg-zinc-700 transition-colors"
+      className="p-2 rounded-lg hover:bg-muted transition-colors"
     >
       {copied ? (
         <Check className="h-4 w-4 text-emerald-400" />
@@ -277,7 +277,7 @@ export default function APIPage() {
             viewport={{ once: true }}
             className="relative rounded-2xl border border-border bg-foreground overflow-hidden"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1.5">
                   <div className="h-3 w-3 rounded-full bg-red-500/80" />
@@ -390,7 +390,7 @@ export default function APIPage() {
                 className="p-6 rounded-xl border border-border bg-muted/50"
               >
                 <h3 className={`text-lg font-semibold ${sdk.color.replace('400', '600')} mb-3`}>{sdk.name}</h3>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-foreground border border-zinc-800 mb-4">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-foreground border border-border mb-4">
                   <code className="text-xs text-muted-foreground font-mono flex-1 truncate">{sdk.install}</code>
                   <CopyButton text={sdk.install} />
                 </div>

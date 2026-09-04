@@ -130,7 +130,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
               className="group block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
             >
               <div className="grid lg:grid-cols-2">
-                <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-emerald-100 to-zinc-100 lg:aspect-auto">
+                <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/15 to-muted lg:aspect-auto">
                   {featuredPost.heroImage ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -140,7 +140,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
                     />
                   ) : (
                     <div
-                      className={`absolute inset-0 bg-gradient-to-br ${featuredPost.heroGradient ?? "from-primary/10 to-zinc-100"}`}
+                      className={`absolute inset-0 bg-gradient-to-br ${featuredPost.heroGradient ?? "from-primary/10 to-muted"}`}
                       role="img"
                       aria-label={featuredPost.heroAlt}
                     />
@@ -216,7 +216,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="flex-1 rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <button
                 type="submit"

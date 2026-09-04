@@ -58,9 +58,9 @@ function OperatorScreen() {
   const visibleMessages = messages.slice(0, messageIndex)
 
   return (
-    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-foreground/80">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/80">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="h-3 w-3 rounded-full bg-red-500" />
@@ -80,7 +80,7 @@ function OperatorScreen() {
       </div>
 
       {/* Chat Area */}
-      <div className="p-4 min-h-[320px] space-y-4 bg-gradient-to-b from-zinc-900 to-zinc-950">
+      <div className="p-4 min-h-[320px] space-y-4 bg-gradient-to-b from-card to-background">
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div
@@ -92,13 +92,13 @@ function OperatorScreen() {
               className={`flex gap-3 ${msg.type === 'ai' ? 'justify-end' : ''}`}
             >
               {msg.type === 'user' && (
-                <div className="h-8 w-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
                   JD
                 </div>
               )}
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                 msg.type === 'user' 
-                  ? 'bg-foreground/90 text-zinc-200 rounded-tl-sm' 
+                  ? 'bg-foreground/90 text-foreground rounded-tl-sm' 
                   : 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-tr-sm'
               }`}>
                 {msg.type === 'ai' && (
@@ -140,11 +140,11 @@ function OperatorScreen() {
         )}
 
         {/* Input */}
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-zinc-700 bg-foreground/90/50 px-4 py-3">
+        <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-foreground/90/50 px-4 py-3">
           <input
             type="text"
             placeholder="Ask anything..."
-            className="flex-1 bg-transparent text-sm text-muted-foreground placeholder-zinc-500 outline-none"
+            className="flex-1 bg-transparent text-sm text-muted-foreground placeholder:text-muted-foreground outline-none"
             readOnly
           />
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -167,9 +167,9 @@ function AgentsScreen() {
   ]
 
   return (
-    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="h-3 w-3 rounded-full bg-red-500" />
@@ -192,7 +192,7 @@ function AgentsScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
             whileHover={{ scale: 1.02, y: -2 }}
-            className="relative p-4 rounded-xl border border-zinc-800 bg-foreground/90/50 cursor-pointer hover:border-zinc-700 transition-all group"
+            className="relative p-4 rounded-xl border border-border bg-foreground/90/50 cursor-pointer hover:border-border transition-all group"
           >
             {/* Status indicator */}
             {agent.status === "active" && (
@@ -215,7 +215,7 @@ function AgentsScreen() {
               }`} />
             </div>
             
-            <h4 className="text-sm font-medium text-zinc-200">{agent.name}</h4>
+            <h4 className="text-sm font-medium text-foreground">{agent.name}</h4>
             <div className="flex items-center gap-2 mt-1">
               <span className={`text-xs ${agent.status === 'active' ? 'text-emerald-400' : 'text-muted-foreground'}`}>
                 {agent.status}
@@ -243,9 +243,9 @@ function WorkflowsScreen() {
   ]
 
   return (
-    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="h-3 w-3 rounded-full bg-red-500" />
@@ -289,7 +289,7 @@ function WorkflowsScreen() {
                   initial={{ width: 0 }}
                   animate={{ width: 32 }}
                   transition={{ delay: i * 0.15 + 0.2 }}
-                  className="h-0.5 bg-gradient-to-r from-zinc-600 to-zinc-700"
+                  className="h-0.5 bg-gradient-to-r from-muted-foreground to-muted-foreground"
                 />
               )}
             </motion.div>
@@ -304,10 +304,10 @@ function WorkflowsScreen() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 + i * 0.1 }}
-              className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-foreground/90/30 hover:border-zinc-700 transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-foreground/90/30 hover:border-border transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className={`h-2 w-2 rounded-full ${wf.status === 'active' ? 'bg-primary/100' : 'bg-zinc-600'}`} />
+                <div className={`h-2 w-2 rounded-full ${wf.status === 'active' ? 'bg-primary/100' : 'bg-muted-foreground'}`} />
                 <span className="text-sm text-muted-foreground">{wf.name}</span>
               </div>
               <div className="flex items-center gap-4 text-xs">
@@ -346,9 +346,9 @@ function AnalyticsScreen() {
   ]
 
   return (
-    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-zinc-800">
+    <div className="bg-foreground rounded-xl overflow-hidden shadow-2xl border border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="h-3 w-3 rounded-full bg-red-500" />
@@ -371,10 +371,10 @@ function AnalyticsScreen() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="p-4 rounded-xl border border-zinc-800 bg-foreground/90/30"
+            className="p-4 rounded-xl border border-border bg-foreground/90/30"
           >
             <div className="text-xs text-muted-foreground mb-1">{stat.label}</div>
-            <div className="text-lg font-bold text-zinc-200 leading-tight">{stat.value}</div>
+            <div className="text-lg font-bold text-foreground leading-tight">{stat.value}</div>
             <div className={`text-xs mt-1 ${
               stat.color === 'emerald' ? 'text-emerald-400' :
               stat.color === 'blue' ? 'text-blue-400' : 'text-purple-400'
@@ -387,7 +387,7 @@ function AnalyticsScreen() {
 
       {/* Chart placeholder */}
       <div className="px-4 pb-4">
-        <div className="h-32 rounded-xl border border-zinc-800 bg-foreground/90/20 flex items-end justify-around p-4 gap-2">
+        <div className="h-32 rounded-xl border border-border bg-foreground/90/20 flex items-end justify-around p-4 gap-2">
           {[65, 45, 80, 55, 90, 70, 85].map((height, i) => (
             <motion.div
               key={i}
@@ -614,7 +614,7 @@ function TestimonialsCarouselActive({ testimonials }: { testimonials: Testimonia
             key={i}
             onClick={() => setActiveIndex(i)}
             className={`h-2 rounded-full transition-all ${
-              i === activeIndex ? "w-8 bg-primary" : "w-2 bg-zinc-300 hover:bg-zinc-400"
+              i === activeIndex ? "w-8 bg-primary" : "w-2 bg-muted hover:bg-muted-foreground/40"
             }`}
           />
         ))}

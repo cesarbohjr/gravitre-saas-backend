@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { Brain } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
@@ -108,7 +108,7 @@ export default function IntelligenceModelsPage() {
         <PageHeader
           title={copy.title}
           description={copy.intro}
-          icon={Brain}
+          icon={NucleoIntelligence}
           iconColor="from-primary/25 to-[oklch(0.55_0.16_250)]/20"
         />
 

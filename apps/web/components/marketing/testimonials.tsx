@@ -282,7 +282,7 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
                 setActiveIndex(i)
               }}
               className={`h-2 rounded-full transition-all ${
-                i === activeIndex ? "w-8 bg-primary" : "w-2 bg-zinc-300 hover:bg-zinc-400"
+                i === activeIndex ? "w-8 bg-primary" : "w-2 bg-muted hover:bg-muted-foreground/40"
               }`}
             />
           ))}

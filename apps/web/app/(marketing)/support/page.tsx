@@ -113,7 +113,7 @@ export default function SupportPage() {
                 <input
                   type="text"
                   placeholder="Search for help..."
-                  className="w-full rounded-xl border border-border bg-card pl-12 pr-4 py-4 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-card pl-12 pr-4 py-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>

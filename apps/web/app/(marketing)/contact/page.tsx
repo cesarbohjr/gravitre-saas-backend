@@ -78,16 +78,16 @@ export default function ContactPage() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1.5">Name</label>
-                      <input type="text" value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} required className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Your name" />
+                      <input type="text" value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} required className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Your name" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
-                      <input type="email" value={formState.email} onChange={(e) => setFormState({ ...formState, email: e.target.value })} required className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="you@company.com" />
+                      <input type="email" value={formState.email} onChange={(e) => setFormState({ ...formState, email: e.target.value })} required className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="you@company.com" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1.5">Company</label>
-                    <input type="text" value={formState.company} onChange={(e) => setFormState({ ...formState, company: e.target.value })} className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Your company" />
+                    <input type="text" value={formState.company} onChange={(e) => setFormState({ ...formState, company: e.target.value })} className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Your company" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1.5">Subject</label>
@@ -101,7 +101,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1.5">Message</label>
-                    <textarea value={formState.message} onChange={(e) => setFormState({ ...formState, message: e.target.value })} required rows={5} className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none" placeholder="How can we help?" />
+                    <textarea value={formState.message} onChange={(e) => setFormState({ ...formState, message: e.target.value })} required rows={5} className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none" placeholder="How can we help?" />
                   </div>
                   <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-primary/100 disabled:opacity-50">
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Send message</span><ArrowRight className="h-4 w-4" /></>}

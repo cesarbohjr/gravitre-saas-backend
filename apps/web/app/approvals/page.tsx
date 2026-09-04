@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { AutoStatusBadge } from "@/components/gravitre/status-badge"
+import { PageHeader } from "@/components/gravitre/page-header"
+import { NucleoApproval } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
@@ -905,23 +907,26 @@ function ApprovalsContent() {
           selectedApproval ? "hidden lg:flex" : "flex",
         )}>
           {/* Header */}
-          <div className="flex-shrink-0 p-3 sm:p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Decision Queue</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {queueTab === "pending"
-                    ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
-                    : `${historyApprovals.length} past decision${historyApprovals.length !== 1 ? "s" : ""}`}
-                </p>
-              </div>
-              <DataFreshness
-                updatedAt={data ? Date.now() : null}
-                isRefreshing={isValidating}
-                onRefresh={() => mutate()}
-              />
-            </div>
-
+          <div className="flex-shrink-0 border-b border-border">
+            <PageHeader
+              className="border-0"
+              eyebrow="Governance"
+              title="Decision Queue"
+              description={
+                queueTab === "pending"
+                  ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
+                  : `${historyApprovals.length} past decision${historyApprovals.length !== 1 ? "s" : ""}`
+              }
+              icon={NucleoApproval}
+              actions={
+                <DataFreshness
+                  updatedAt={data ? Date.now() : null}
+                  isRefreshing={isValidating}
+                  onRefresh={() => mutate()}
+                />
+              }
+            />
+            <div className="px-3 sm:px-4 pb-3 sm:pb-4">
             <div className="mb-3 flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
               <button
                 type="button"
@@ -969,6 +974,7 @@ function ApprovalsContent() {
                   <span className="text-xs font-medium text-success">{aiRecommendedCount} AI-approved</span>
                 </div>
               )}
+            </div>
             </div>
           </div>
 

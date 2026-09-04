@@ -53,7 +53,6 @@ import {
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
 import {
-  Brain,
   ChevronRight,
   Filter,
   Link2,
@@ -61,6 +60,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -301,7 +301,7 @@ export default function ModelsPage() {
         <PageHeader
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
-          icon={Brain}
+          icon={NucleoIntelligence}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           actions={
             <div className="flex gap-2">
@@ -388,7 +388,7 @@ export default function ModelsPage() {
         ) : models.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
             <EmptyState
-              icon={Brain}
+              icon={NucleoIntelligence}
               title="No models yet"
               description="Register a scoring model, forecast, fine-tuned assistant, or anomaly detector. Available bases follow your connected data and LLM providers."
               action={{ label: "Register model", onClick: openRegisterDialog }}

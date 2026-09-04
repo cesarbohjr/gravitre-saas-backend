@@ -15,7 +15,7 @@ export const measuringAiRoiPost: BlogPost = {
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
   heroImage: "",
-  heroGradient: "from-slate-50 via-primary/5/40 to-zinc-100",
+  heroGradient: "from-slate-50 via-primary/5/40 to-muted",
   heroAlt:
     "Dashboard showing real automation activity alongside a clearly labeled estimate figure",
   keywords: [

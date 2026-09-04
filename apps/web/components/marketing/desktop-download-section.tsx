@@ -142,7 +142,7 @@ export function DesktopDownloadSection({
         {FLOATING_ICONS.map(({ Icon, className: pos, delay }) => (
           <motion.div
             key={pos}
-            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-primary shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm lg:flex ${pos}`}
+            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-primary shadow-sm shadow-foreground/5 backdrop-blur-sm lg:flex ${pos}`}
             animate={{ y: [0, -12, 0], opacity: [0.45, 0.85, 0.45] }}
             transition={{ duration: 5.5, delay, repeat: Infinity, ease: "easeInOut" }}
           >
@@ -158,7 +158,7 @@ export function DesktopDownloadSection({
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto max-w-3xl text-center"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 shadow-sm shadow-zinc-900/[0.04] backdrop-blur-sm">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 shadow-sm shadow-foreground/5 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-primary/100" />
             <span className="text-sm font-medium text-primary">
               Desktop companion · Alt+Space
@@ -178,11 +178,11 @@ export function DesktopDownloadSection({
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-            <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-zinc-900/[0.04]">
+            <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
               v{manifest.version}
             </span>
             {publishedLabel ? (
-              <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-zinc-900/[0.04]">
+              <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
                 {publishedLabel}
               </span>
             ) : null}
@@ -245,7 +245,7 @@ export function DesktopDownloadSection({
 
                 <a
                   href={platform.href}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2"
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Download className="h-4 w-4" />
                   Download

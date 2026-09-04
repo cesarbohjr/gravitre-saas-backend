@@ -169,8 +169,8 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
           href={`/get-started?plan=${tier.planCode}&interval=${isAnnual ? "annual" : "monthly"}`}
           className={`group/btn inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-all ${
             tier.highlighted
-              ? "bg-foreground text-white hover:bg-foreground/90 shadow-lg shadow-zinc-900/20"
-              : "border border-border bg-card text-foreground hover:bg-muted/50 hover:border-zinc-400"
+              ? "bg-foreground text-white hover:bg-foreground/90 shadow-lg shadow-foreground/20"
+              : "border border-border bg-card text-foreground hover:bg-muted/50 hover:border-border"
           }`}
         >
           {tier.cta}

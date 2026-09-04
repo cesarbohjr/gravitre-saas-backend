@@ -23,7 +23,7 @@ export function DesktopCompanionPreview() {
 
       {/* Floating accent chips */}
       <motion.div
-        className="absolute -left-2 top-10 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-left-8"
+        className="absolute -left-2 top-10 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-foreground/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-left-8"
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       >
@@ -31,7 +31,7 @@ export function DesktopCompanionPreview() {
         <span className="text-xs font-semibold text-foreground">Alt+Space</span>
       </motion.div>
       <motion.div
-        className="absolute -right-2 top-24 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-zinc-900/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-right-6"
+        className="absolute -right-2 top-24 z-10 hidden rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-lg shadow-foreground/10 backdrop-blur sm:flex sm:items-center sm:gap-2 lg:-right-6"
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
       >

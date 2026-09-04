@@ -62,7 +62,7 @@ export default function ChangelogPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">
             <p className="text-sm text-muted-foreground mb-4">Get notified when we ship new features</p>
             <form className="flex gap-3 max-w-md mx-auto">
-              <input type="email" placeholder="Enter your email" className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+              <input type="email" placeholder="Enter your email" className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
               <button type="submit" className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-primary/100">Subscribe</button>
             </form>
           </motion.div>
@@ -73,7 +73,7 @@ export default function ChangelogPage() {
       <section className="px-6 py-16 border-t border-border">
         <div className="mx-auto max-w-3xl">
           <div className="relative">
-            <div className="absolute left-0 md:left-24 top-0 bottom-0 w-px bg-zinc-200" />
+            <div className="absolute left-0 md:left-24 top-0 bottom-0 w-px bg-muted" />
             <div className="space-y-12">
               {releases.map((release, i) => (
                 <motion.div key={release.version} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="relative pl-8 md:pl-36">

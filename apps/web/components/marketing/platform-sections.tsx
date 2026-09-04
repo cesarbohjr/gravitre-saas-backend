@@ -111,7 +111,7 @@ export function TransparencyMetricsSection() {
               <ul className="mt-4 space-y-2">
                 {tier.examples.map((example) => (
                   <li key={example} className="flex gap-2 text-sm text-muted-foreground">
-                    <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
+                    <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
                     {example}
                   </li>
                 ))}

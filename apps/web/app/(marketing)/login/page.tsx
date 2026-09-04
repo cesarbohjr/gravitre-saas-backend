@@ -325,7 +325,7 @@ function LoginPageContent() {
             transition={{ duration: 0.5 }}
             className="w-full max-w-[440px]"
           >
-            <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8 lg:p-10">
+            <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-border/40 p-6 sm:p-8 lg:p-10">
               {/* Header */}
               <div className="text-center mb-8">
                 {/* Mobile logo */}
@@ -391,9 +391,9 @@ function LoginPageContent() {
 
               {/* Divider */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="h-px flex-1 bg-zinc-200" />
+                <div className="h-px flex-1 bg-muted" />
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">or</span>
-                <div className="h-px flex-1 bg-zinc-200" />
+                <div className="h-px flex-1 bg-muted" />
               </div>
 
               {/* Email form */}

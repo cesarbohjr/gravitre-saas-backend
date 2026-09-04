@@ -257,7 +257,7 @@ export default function AboutPage() {
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-px h-16 bg-gradient-to-b from-zinc-300 to-transparent"
+            className="w-px h-16 bg-gradient-to-b from-border to-transparent"
           />
         </motion.div>
       </section>
@@ -265,7 +265,7 @@ export default function AboutPage() {
       {/* Stats - Clean horizontal layout */}
       <section className="border-y border-border">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
             {stats.map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -373,7 +373,7 @@ export default function AboutPage() {
                   {milestone.year}
                 </span>
                 <div className="flex items-center gap-4 flex-1">
-                  <div className={`h-2 w-2 rounded-full ${milestone.current ? 'bg-primary/100' : 'bg-zinc-300'}`} />
+                  <div className={`h-2 w-2 rounded-full ${milestone.current ? 'bg-primary/100' : 'bg-muted'}`} />
                   <span className={`text-lg ${milestone.current ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                     {milestone.text}
                   </span>

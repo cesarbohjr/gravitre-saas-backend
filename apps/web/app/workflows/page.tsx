@@ -22,7 +22,8 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp, LayoutGrid, Rows3 } from "lucide-react"
+import { Blocks, Edit, Activity, Zap, Clock, TrendingUp, LayoutGrid, Rows3 } from "lucide-react"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -346,7 +347,7 @@ export default function WorkflowsPage() {
             eyebrow="Automation"
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
-            icon={Workflow}
+            icon={NucleoWorkflow}
             actions={
             <>
               <DropdownMenu>
@@ -544,7 +545,7 @@ export default function WorkflowsPage() {
 
           {!isLoading && !error && workflows.length === 0 && (
             <EmptyState
-              icon={Workflow}
+              icon={NucleoWorkflow}
               title="No workflows yet"
               description="Create your first workflow to automate work across your systems."
               action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}

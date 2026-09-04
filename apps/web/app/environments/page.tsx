@@ -1,5 +1,6 @@
 "use client"
 
+import { type ComponentType } from "react"
 import { useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
@@ -15,10 +16,7 @@ import {
   Server,
   Shield,
   Users,
-  Workflow,
   Database,
-  Plug,
-  Bot,
   Copy,
   Check,
   ArrowRight,
@@ -27,6 +25,7 @@ import {
   ExternalLink,
   GitBranch
 } from "lucide-react"
+import { NucleoAgent, NucleoConnector, NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -146,7 +145,7 @@ function ResourceIndicator({
   count, 
   label 
 }: { 
-  icon: typeof Workflow
+  icon: ComponentType<{ className?: string }>
   count: number
   label: string
 }) {
@@ -254,9 +253,9 @@ function EnvironmentNode({
       {/* Resources */}
       <div className="p-5 border-b border-border/50">
         <div className="grid grid-cols-2 gap-2">
-          <ResourceIndicator icon={Workflow} count={environment.resources.workflows} label="workflows" />
-          <ResourceIndicator icon={Bot} count={environment.resources.agents} label="agents" />
-          <ResourceIndicator icon={Plug} count={environment.resources.connectors} label="connectors" />
+          <ResourceIndicator icon={NucleoWorkflow} count={environment.resources.workflows} label="workflows" />
+          <ResourceIndicator icon={NucleoAgent} count={environment.resources.agents} label="agents" />
+          <ResourceIndicator icon={NucleoConnector} count={environment.resources.connectors} label="connectors" />
           <ResourceIndicator icon={Database} count={environment.resources.sources} label="sources" />
         </div>
       </div>
@@ -436,21 +435,21 @@ export default function EnvironmentsPage() {
 
           {/* Quick stats */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-medium text-emerald-400">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20">
+              <div className="h-2 w-2 rounded-full bg-success" />
+              <span className="text-xs font-medium text-success">
                 {environments.filter(e => e.status === "active").length} active
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <Workflow className="h-3 w-3 text-blue-400" />
-              <span className="text-xs font-medium text-blue-400">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-info/10 border border-info/20">
+              <NucleoWorkflow className="h-3 w-3 text-info" />
+              <span className="text-xs font-medium text-info">
                 {environments.reduce((a, e) => a + e.resources.workflows, 0)} total workflows
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
-              <Bot className="h-3 w-3 text-violet-400" />
-              <span className="text-xs font-medium text-violet-400">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+              <NucleoAgent className="h-3 w-3 text-primary" />
+              <span className="text-xs font-medium text-primary">
                 {environments.reduce((a, e) => a + e.resources.agents, 0)} total agents
               </span>
             </div>

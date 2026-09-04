@@ -62,27 +62,27 @@ export interface BrowserFrameProps {
 function PagePlaceholder() {
   return (
     <div aria-hidden="true" className="h-full w-full bg-muted/50 select-none">
-      <div className="h-[22%] w-full bg-gradient-to-r from-zinc-200 via-zinc-100 to-zinc-200" />
+      <div className="h-[22%] w-full bg-gradient-to-r from-muted via-muted to-muted" />
       <div className="px-[6%]">
-        <div className="-mt-[7%] h-[14%] w-[14%] rounded-full border-4 border-white bg-zinc-300" />
+        <div className="-mt-[7%] h-[14%] w-[14%] rounded-full border-4 border-white bg-muted" />
         <div className="mt-[3%] flex flex-col gap-2">
-          <div className="h-3 w-[38%] rounded-full bg-zinc-300" />
-          <div className="h-2 w-[52%] rounded-full bg-zinc-200" />
-          <div className="h-2 w-[26%] rounded-full bg-zinc-200" />
+          <div className="h-3 w-[38%] rounded-full bg-muted" />
+          <div className="h-2 w-[52%] rounded-full bg-muted" />
+          <div className="h-2 w-[26%] rounded-full bg-muted" />
         </div>
         <div className="mt-[5%] flex flex-col gap-3 pb-[6%]">
           <div className="rounded-lg border border-border bg-card p-[3%]">
-            <div className="h-2 w-[30%] rounded-full bg-zinc-200" />
+            <div className="h-2 w-[30%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[74%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[62%] rounded-full bg-muted" />
           </div>
           <div className="rounded-lg border border-border bg-card p-[3%]">
-            <div className="h-2 w-[24%] rounded-full bg-zinc-200" />
+            <div className="h-2 w-[24%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[68%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[55%] rounded-full bg-muted" />
           </div>
           <div className="rounded-lg border border-border bg-card p-[3%]">
-            <div className="h-2 w-[34%] rounded-full bg-zinc-200" />
+            <div className="h-2 w-[34%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[70%] rounded-full bg-muted" />
             <div className="mt-2 h-2 w-[46%] rounded-full bg-muted" />
           </div>
@@ -104,16 +104,16 @@ export function BrowserFrame({
 }: BrowserFrameProps) {
   return (
     <figure className={cn("flex flex-col gap-3", className)}>
-      <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-xl shadow-zinc-900/5">
+      <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-xl shadow-foreground/5">
         {/* Tab strip */}
         <div className="flex items-end gap-2 px-3 pt-3">
           <div className="flex items-center gap-1.5 pb-2.5 pr-1">
-            <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted" />
           </div>
           <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-t-lg bg-card px-3 py-2">
-            <span className="h-3 w-3 shrink-0 rounded-sm bg-zinc-300" />
+            <span className="h-3 w-3 shrink-0 rounded-sm bg-muted" />
             <span className="truncate text-[11px] font-medium text-muted-foreground">
               {tabTitle}
             </span>
@@ -164,11 +164,11 @@ export function BrowserFrame({
         >
           <PagePlaceholder />
           {/* Fades the placeholder back so the real capture carries the eye. */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-zinc-900/10 via-transparent to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-foreground/10 via-transparent to-transparent" />
 
           <div
             className={cn(
-              "absolute overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-zinc-900/25",
+              "absolute overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-foreground/25",
               // Width is deliberately a large fraction of the frame and
               // larger still on small screens. These captures are 720-760px
               // wide natively, so a narrow render shrinks the UI text past

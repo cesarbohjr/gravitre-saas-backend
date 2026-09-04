@@ -1,14 +1,16 @@
 "use client"
 
-import { type ReactNode } from "react"
+import { type ComponentType, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { type LucideIcon, Inbox, Search, AlertCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+type HeaderIcon = ComponentType<{ className?: string }>
+
 interface EmptyStateProps {
-  /** Icon to display */
-  icon?: LucideIcon
+  /** Icon to display (Lucide or Nucleo semantic). */
+  icon?: HeaderIcon
   /** Optional custom icon node (e.g. Phosphor) rendered instead of Lucide icon */
   iconSlot?: ReactNode
   /** Title text */

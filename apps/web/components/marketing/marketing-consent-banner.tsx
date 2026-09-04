@@ -90,7 +90,7 @@ export function MarketingConsentBanner({ country }: Props) {
     >
       <div
         className={cn(
-          "mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-zinc-900/10",
+          "mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10",
           panel === "preferences" && "max-w-lg",
         )}
       >
@@ -244,7 +244,7 @@ function PreferenceRow({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-foreground" : "bg-zinc-300",
+          checked ? "bg-foreground" : "bg-muted",
         )}
       >
         <span

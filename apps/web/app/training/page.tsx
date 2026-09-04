@@ -27,7 +27,8 @@ import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-head
 import { TrainingOverview } from "@/components/gravitre/training-overview"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { DATASET_TYPE_META, TRAINABLE_BASE_MODELS, datasetTypeMeta } from "@/lib/training-ui-copy"
-import { Brain, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
@@ -533,7 +534,7 @@ function TrainingPageContent() {
         <PageHeader
           title={SURFACE_COPY.training.title}
           description={SURFACE_COPY.training.description}
-          icon={Brain}
+          icon={NucleoIntelligence}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6"
           actions={

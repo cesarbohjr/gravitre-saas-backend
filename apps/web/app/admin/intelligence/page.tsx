@@ -26,7 +26,7 @@ import { CognitiveTurnsTab } from "./_components/cognitive-turns-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { Brain } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 type TabKey =
   | "overview"
@@ -76,7 +76,7 @@ export default function AdminIntelligencePage() {
         <PageHeader
           title={copy.title}
           description={copy.description}
-          icon={Brain}
+          icon={NucleoIntelligence}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           className="rounded-2xl border border-border/70 bg-card/40 p-0 sm:p-0"
           actions={

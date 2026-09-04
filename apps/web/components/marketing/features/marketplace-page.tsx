@@ -221,7 +221,7 @@ export function MarketplacePage() {
                 onClick={() => setActive(cat)}
                 className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all ${
                   active === cat
-                    ? "border-zinc-900 bg-foreground text-white"
+                    ? "border-foreground bg-foreground text-white"
                     : "border-border bg-card text-foreground hover:border-border hover:bg-muted/50"
                 }`}
               >

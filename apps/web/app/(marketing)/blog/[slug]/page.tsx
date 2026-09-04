@@ -202,7 +202,7 @@ export default async function BlogPostPage({
               />
             ) : (
               <div
-                className={`aspect-video w-full bg-gradient-to-br ${post.heroGradient ?? "from-primary/10 to-zinc-100"} flex items-center justify-center px-8`}
+                className={`aspect-video w-full bg-gradient-to-br ${post.heroGradient ?? "from-primary/10 to-muted"} flex items-center justify-center px-8`}
                 role="img"
                 aria-label={post.heroAlt}
               >

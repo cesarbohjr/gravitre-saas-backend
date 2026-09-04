@@ -188,7 +188,7 @@ function AssignmentsScreen() {
                   <span className="text-sm font-medium text-foreground">{task.title}</span>
                   <span className={`h-1.5 w-1.5 rounded-full ${
                     task.priority === 'high' ? 'bg-red-500' :
-                    task.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
+                    task.priority === 'medium' ? 'bg-amber-500' : 'bg-muted-foreground'
                   }`} />
                 </div>
                 <span className="text-[10px] text-muted-foreground">Assigned to {task.agent}</span>
@@ -346,7 +346,7 @@ function WorkflowBuilderScreen() {
           <div className="space-y-1">
             {['Agent', 'Condition', 'Action'].map((item) => (
               <div key={item} className="text-[9px] text-muted-foreground flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                <div className="h-1.5 w-1.5 rounded-full bg-muted" />
                 {item}
               </div>
             ))}
@@ -449,7 +449,7 @@ function AIOperatorScreen() {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center shrink-0 text-xs font-medium text-muted-foreground">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-medium text-muted-foreground">
                     JD
                   </div>
                   <div className="flex-1 rounded-2xl rounded-tl-sm bg-card border border-border p-3 shadow-sm">
@@ -512,7 +512,7 @@ function AIOperatorScreen() {
           <input
             type="text"
             placeholder="Ask anything..."
-            className="flex-1 text-sm text-foreground placeholder-zinc-400 bg-transparent outline-none"
+            className="flex-1 text-sm text-foreground placeholder:text-muted-foreground bg-transparent outline-none"
             readOnly
           />
           <div className="h-7 w-7 rounded-lg bg-primary/100 flex items-center justify-center cursor-pointer hover:bg-primary transition-colors">
@@ -800,7 +800,7 @@ export function FeaturesLegacyContent({
                   className="flex flex-col items-center"
                 >
                   <div className="relative">
-                    <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-zinc-100 to-muted/50 border border-border flex items-center justify-center shadow-sm">
+                    <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-muted to-muted/50 border border-border flex items-center justify-center shadow-sm">
                       <Users className="h-10 w-10 text-muted-foreground" />
                     </div>
                     <motion.div 
@@ -821,7 +821,7 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.2 }}
                   className="hidden lg:flex items-center"
                 >
-                  <div className="w-16 h-0.5 bg-gradient-to-r from-zinc-300 to-emerald-400" />
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-border to-primary" />
                   <ArrowRight className="h-5 w-5 text-primary -ml-1" />
                 </motion.div>
                 <motion.div
@@ -831,7 +831,7 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.2 }}
                   className="lg:hidden flex flex-col items-center"
                 >
-                  <div className="w-0.5 h-8 bg-gradient-to-b from-zinc-300 to-emerald-400" />
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-border to-primary" />
                 </motion.div>
 
                 {/* Gravitre AI (Central Hub) */}

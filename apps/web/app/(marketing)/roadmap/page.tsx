@@ -221,7 +221,7 @@ export default function RoadmapPage() {
                     <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
                     {/* Progress bar */}
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2 rounded-full bg-zinc-200">
+                      <div className="flex-1 h-2 rounded-full bg-muted">
                         <div 
                           className="h-2 rounded-full bg-amber-500 transition-all"
                           style={{ width: `${item.progress}%` }}
@@ -375,12 +375,12 @@ export default function RoadmapPage() {
               <input
                 type="email"
                 placeholder="Your email"
-                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none"
               />
               <textarea
                 placeholder="Describe your feature idea..."
                 rows={4}
-                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder-zinc-400 transition-colors focus:border-primary focus:outline-none resize-none"
+                className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none resize-none"
               />
               <button
                 type="submit"

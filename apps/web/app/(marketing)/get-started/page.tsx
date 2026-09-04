@@ -36,7 +36,7 @@ function humanizeAuthError(message: string): string {
 
 // Password strength indicator
 function getPasswordStrength(password: string): { label: string; color: string } {
-  if (password.length < 8) return { label: "Too short", color: "bg-zinc-200" }
+  if (password.length < 8) return { label: "Too short", color: "bg-muted" }
   const hasLower = /[a-z]/.test(password)
   const hasUpper = /[A-Z]/.test(password)
   const hasNumber = /[0-9]/.test(password)
@@ -212,7 +212,7 @@ export default function GetStartedPage() {
           </div>
 
           {/* Card */}
-          <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8">
+          <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-border/40 p-6 sm:p-8">
             {/* Success message */}
             {successMessage && (
               <div className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-3">
@@ -272,9 +272,9 @@ export default function GetStartedPage() {
 
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
-              <div className="h-px flex-1 bg-zinc-200" />
+              <div className="h-px flex-1 bg-muted" />
               <span className="text-xs text-muted-foreground uppercase tracking-wide">or continue with email</span>
-              <div className="h-px flex-1 bg-zinc-200" />
+              <div className="h-px flex-1 bg-muted" />
             </div>
 
             {/* Email Form */}
