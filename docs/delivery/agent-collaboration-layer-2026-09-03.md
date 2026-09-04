@@ -58,6 +58,20 @@ Reuse only: `backend/app/capability_ontology/resolver.py` (`resolve_capability`)
   - **Mutation proof:** stripping `healthcare_hist` from ranked context fails `assert_ranked_context_preserved`
 - Probe script: `scripts/verify-agent-collaboration-cac-live.py` (honestly labeled probe-derived LLM stub; real handoff/audit writes when service role available)
 
+### Live probe evidence (probe-derived LLM stub; real DB writes)
+
+| Field | Value |
+|-------|-------|
+| Verdict | **PASS** |
+| `handoff_id` | `a7c7e178-f746-436a-a339-d91502a997d8` |
+| Agents | `fbfa6e92…` → `1d556b8e…` (distinct) |
+| Label | `Marketing → Finance` |
+| `agent.collaboration.receiver.completed` | `2026-09-04 00:30:33.192492Z` stance=`challenge` disagreement=`true` |
+| `agent.collaboration.reconciled` | `2026-09-04 00:30:33.40163Z` |
+| Artifact | `docs/delivery/agent-collaboration-cac-probe-live.json` |
+| Live backend at probe | `git_sha=1b95aa7a…` (includes collaboration commit `b2ed7d30`) |
+| Collaboration ship SHA | `b2ed7d3012f5ccc54e64de9fc55569ae6d50b450` confirmed on Railway after deploy |
+
 ## Phase 3 — Observability
 
 - `run_observability_service._handoffs_from_audit` now includes collaboration audits with `label`, departments, stance

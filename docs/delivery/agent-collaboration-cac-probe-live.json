@@ -1,15 +1,17 @@
 {
-  "generated_at": "2026-09-04T00:22:47.096950+00:00",
+  "generated_at": "2026-09-04T00:30:28.804998+00:00",
   "probe_kind": "probe_derived_deterministic_llm_stub",
   "scenario": "Marketing projected CAC assumes 4.2% conversion; Finance challenges with historical healthcare 2.6%",
   "verdict": "PASS",
-  "api_git_sha": "b2ed7d3012f5ccc54e64de9fc55569ae6d50b450",
+  "api_git_sha": "1b95aa7a14a363ab9fcc28664a4d8baa9ffc4651",
   "agents_found": 14,
   "marketing_agent_id": "fbfa6e92-c5ec-44a3-963e-753cd6f285dd",
-  "finance_agent_id": "fbfa6e92-c5ec-44a3-963e-753cd6f285dd",
+  "finance_agent_id": "1d556b8e-1eb2-4da8-a800-7ea1f68a7ad1",
+  "distinct_agents": true,
   "mutation_precheck": "PASS",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "trail": {
-    "handoff_id": "856343b2-2e72-4320-b1bb-5a1b03e1cfe2",
+    "handoff_id": "a7c7e178-f746-436a-a339-d91502a997d8",
     "label": "Marketing \u2192 Finance",
     "originating_claim": {
       "claim": "Projected CAC assumes a 4.2% conversion rate",
@@ -52,7 +54,7 @@
   "label": "Marketing \u2192 Finance",
   "disagreement_visible": true,
   "receiver_stance": "challenge",
-  "handoff_id": "856343b2-2e72-4320-b1bb-5a1b03e1cfe2",
+  "handoff_id": "a7c7e178-f746-436a-a339-d91502a997d8",
   "audit_actions": [
     "agent.collaboration.handoff.created",
     "agent.collaboration.receiver.completed",

@@ -113,11 +113,16 @@ async def main() -> int:
         (
             a
             for a in rows
-            if a is not marketing
+            if str(a.get("id")) != str((marketing or {}).get("id"))
             and "financ" in str(a.get("department") or a.get("name") or "").lower()
         ),
-        rows[1] if len(rows) > 1 else marketing,
+        None,
     )
+    if finance is None and marketing is not None:
+        finance = next(
+            (a for a in rows if str(a.get("id")) != str(marketing.get("id"))),
+            marketing,
+        )
     report["agents_found"] = len(rows)
     report["marketing_agent_id"] = (marketing or {}).get("id")
     report["finance_agent_id"] = (finance or {}).get("id")
@@ -132,6 +137,7 @@ async def main() -> int:
     # Ensure department labels for observability even if DB rows omit them.
     marketing = {**marketing, "department": marketing.get("department") or "Marketing"}
     finance = {**finance, "department": finance.get("department") or "Finance"}
+    report["distinct_agents"] = str(marketing["id"]) != str(finance["id"])
 
     ranked = build_ranked_context_for_handoff(
         task="Review Marketing CAC projection before budget approval",
@@ -203,7 +209,28 @@ async def main() -> int:
         },
     }
 
-    actor_id = str(env.get("PROBE_ACTOR_USER_ID") or uuid4())
+    actor_id = (
+        str(env.get("PROBE_ACTOR_USER_ID") or "").strip()
+        or str(
+            (
+                client.table("organization_members")
+                .select("user_id")
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+                .data
+                or [{}]
+            )[0].get("user_id")
+            or ""
+        ).strip()
+    )
+    if not actor_id:
+        report["verdict"] = "FAIL"
+        report["error"] = "No org member user_id available for audit actor_id FK"
+        OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(json.dumps(report, indent=2))
+        return 1
+    report["actor_id"] = actor_id
 
     def _get_agent(_client, _org_id: str, agent_id: str):
         if str(agent_id) == str(marketing["id"]):
