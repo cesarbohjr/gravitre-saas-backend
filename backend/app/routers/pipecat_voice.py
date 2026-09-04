@@ -180,16 +180,6 @@ async def pipecat_voice_ws(
             conversation_id=conversation_id,
             voice_key=voice,
         )
-        await websocket.send_json(
-            {
-                "type": "session.ready",
-                "architecture": "pipecat_deepgram_cognitive_elevenlabs",
-                "cognitive_path": "CognitiveTurnKernel",
-                "write_confirm_policy": "nl_yes_same_path_as_text",
-                "org_id": resolved_org,
-                "conversation_id": conversation_id,
-            }
-        )
         runner = PipelineRunner(handle_sigint=False)
         await runner.run(task)
     except WebSocketDisconnect:

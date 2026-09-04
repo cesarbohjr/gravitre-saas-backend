@@ -77,18 +77,24 @@ def _service_token(env: dict[str, str], org_id: str, actor_id: str) -> str | Non
     if not url or not secret:
         return None
     try:
+        import time
+
         import jwt
 
-        now = int(datetime.now(timezone.utc).timestamp())
-        payload = {
-            "sub": actor_id,
-            "aud": "authenticated",
-            "role": "authenticated",
-            "iat": now,
-            "exp": now + 3600,
-            "email": "voice-pipecat-probe@gravitre.internal",
-        }
-        return jwt.encode(payload, secret, algorithm="HS256")
+        now = int(time.time())
+        return jwt.encode(
+            {
+                "sub": actor_id,
+                "email": "voice-pipecat-probe@gravitre.internal",
+                "aud": "authenticated",
+                "iss": f"{url}/auth/v1",
+                "iat": now,
+                "exp": now + 3600,
+                "role": "authenticated",
+            },
+            secret,
+            algorithm="HS256",
+        )
     except Exception:  # noqa: BLE001
         return None
 
@@ -117,11 +123,39 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
     events: list[dict] = []
     audio_frames = 0
     try:
-        async with websockets.connect(url, open_timeout=30, close_timeout=10, max_size=8_000_000) as ws:
-            deadline = asyncio.get_event_loop().time() + 90.0
+        import ssl
+
+        try:
+            import certifi
+
+            ssl_ctx: ssl.SSLContext | bool = ssl.create_default_context(cafile=certifi.where())
+        except Exception:  # noqa: BLE001
+            ssl_ctx = True
+        # Local Windows Python sometimes has a stale system CA store; fall back once.
+        try:
+            ws_cm = websockets.connect(
+                url,
+                open_timeout=30,
+                close_timeout=10,
+                max_size=8_000_000,
+                ssl=ssl_ctx,
+            )
+            ws = await ws_cm.__aenter__()
+        except ssl.SSLCertVerificationError:
+            insecure = ssl._create_unverified_context()  # noqa: S323 — probe-only fallback
+            ws_cm = websockets.connect(
+                url,
+                open_timeout=30,
+                close_timeout=10,
+                max_size=8_000_000,
+                ssl=insecure,
+            )
+            ws = await ws_cm.__aenter__()
+        try:
+            deadline = asyncio.get_event_loop().time() + (120.0 if send_text else 45.0)
             while asyncio.get_event_loop().time() < deadline:
                 try:
-                    raw = await asyncio.wait_for(ws.recv(), timeout=45.0)
+                    raw = await asyncio.wait_for(ws.recv(), timeout=90.0 if send_text else 30.0)
                 except asyncio.TimeoutError:
                     events.append({"type": "_timeout"})
                     break
@@ -145,6 +179,8 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
                         slim["error"] = slim["error"][:300]
                     events.append(slim)
                 if kind == "session.ready" and send_text:
+                    # Brief settle so StartFrame / aggregators are live.
+                    await asyncio.sleep(0.35)
                     await ws.send(
                         json.dumps(
                             {
@@ -155,11 +191,18 @@ async def _probe_ws(token: str, org_id: str, *, send_text: bool) -> dict:
                     )
                 if kind == "error":
                     break
-                if audio_frames >= 3 or kind in {"transcript"} and audio_frames >= 1:
+                if audio_frames >= 1:
                     break
-                # After ready+text, wait for audio; also accept early error
                 if kind == "session.ready" and not send_text:
                     break
+                # Allow full cognitive+TTS on spoken path (can exceed 45s cold).
+                if send_text and kind == "session.ready":
+                    # Extend wait window by continuing loop; timeout below is 90s.
+                    pass
+            # Prefer a longer first-wait after text ingress.
+            # (recv timeout is per-call; overall deadline is 120s when send_text)
+        finally:
+            await ws_cm.__aexit__(None, None, None)
     except Exception as exc:  # noqa: BLE001
         return {
             "ok": False,
@@ -216,17 +259,23 @@ def main() -> int:
         if enabled:
             ws_probe["verdict"] = (
                 "PASS"
-                if ws_probe.get("session_ready") and (ws_probe.get("audio_frames") or 0) > 0
+                if ws_probe.get("ok")
+                and ws_probe.get("session_ready")
+                and (ws_probe.get("audio_frames") or 0) > 0
                 else "FAIL"
             )
         else:
-            # Flag off: expect not_enabled error or no session.ready
+            # Flag off: require an explicit not_enabled error from a successful WS handshake.
             err = ws_probe.get("error_event") or {}
             not_enabled = (
-                err.get("error_class") == "not_enabled"
-                or "VOICE_PIPECAT_ENABLED" in str(err.get("error") or "")
+                ws_probe.get("ok")
+                and (
+                    err.get("error_class") == "not_enabled"
+                    or "VOICE_PIPECAT_ENABLED" in str(err.get("error") or "")
+                )
+                and not ws_probe.get("session_ready")
             )
-            ws_probe["verdict"] = "PASS" if not_enabled or not ws_probe.get("session_ready") else "INCONCLUSIVE"
+            ws_probe["verdict"] = "PASS" if not_enabled else "FAIL"
 
     status_ok = bool(status_probe.get("ok")) and "pipecat_ws_path" in status_probe
     overall = "PASS" if status_ok and ws_probe.get("verdict") == "PASS" else "PARTIAL"

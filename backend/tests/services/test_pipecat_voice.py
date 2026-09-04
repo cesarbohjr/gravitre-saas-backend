@@ -82,8 +82,7 @@ async def test_json_serializer_roundtrip_audio_and_text():
     assert interrupt.__class__.__name__ == "InterruptionFrame"
 
 
-@pytest.mark.asyncio
-async def test_voice_status_exposes_pipecat_fields():
+def test_voice_status_exposes_pipecat_fields():
     from app.services.tier1_voice_service import voice_status
 
     class S:
@@ -100,4 +99,30 @@ async def test_voice_status_exposes_pipecat_fields():
     assert status["pipecat_enabled"] is False
     assert status["pipecat_ws_path"] == "/api/voice/pipecat/ws"
     assert status["default_orchestration"] == "http_session_turn"
+    assert status["pipecat_ws_clients_accepted"] is False
     assert "pipecat_available" in status
+
+
+@pytest.mark.asyncio
+async def test_text_turn_kick_emits_bookends():
+    from pipecat.frames.frames import TranscriptionFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame
+
+    from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
+
+    pushed: list = []
+    kick = TextTurnKickProcessor()
+
+    async def _capture(frame, direction=None):
+        pushed.append(frame)
+
+    kick.push_frame = _capture  # type: ignore[method-assign]
+    # FrameProcessor.process_frame expects setup; call our override path directly.
+    frame = TranscriptionFrame(text="hi", user_id="browser", timestamp="", finalized=True)
+    await kick.process_frame(frame, None)  # type: ignore[arg-type]
+    # super().process_frame may fail without full setup — if so, call logic inline:
+    if not pushed:
+        await TextTurnKickProcessor.process_frame(kick, frame, None)  # type: ignore[arg-type]
+    kinds = [type(f).__name__ for f in pushed]
+    assert "UserStartedSpeakingFrame" in kinds or isinstance(pushed[0], UserStartedSpeakingFrame)
+    assert any(isinstance(f, TranscriptionFrame) for f in pushed)
+    assert any(isinstance(f, UserStoppedSpeakingFrame) for f in pushed)

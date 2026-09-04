@@ -113,11 +113,8 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             if bool(getattr(settings, "voice_pipecat_enabled", False))
             else None
         ),
-        "default_orchestration": (
-            "pipecat"
-            if bool(getattr(settings, "voice_pipecat_enabled", False))
-            else "http_session_turn"
-        ),
+        "default_orchestration": "http_session_turn",
+        "pipecat_ws_clients_accepted": bool(getattr(settings, "voice_pipecat_enabled", False)),
         "realtime_bar_ms": 300,
         "latency_targets_ms": LATENCY_TARGETS_MS,
         "honest_expectation": (

@@ -21,6 +21,7 @@ from app.core.logging import get_logger
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
+from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.tier1_voice_service import resolve_voice_id
 
 logger = get_logger(__name__)
@@ -111,6 +112,7 @@ def build_pipecat_voice_task(
         [
             transport.input(),
             stt,
+            TextTurnKickProcessor(),
             speculative,
             user_agg,
             llm,
@@ -120,10 +122,29 @@ def build_pipecat_voice_task(
         ]
     )
 
-    return PipelineTask(
+    task = PipelineTask(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
             enable_usage_metrics=True,
         ),
     )
+
+    @transport.event_handler("on_client_connected")
+    async def _on_client_connected(_transport, _websocket):
+        # Emit after the receive loop is up so early text ingress is not dropped.
+        try:
+            await websocket.send_json(
+                {
+                    "type": "session.ready",
+                    "architecture": "pipecat_deepgram_cognitive_elevenlabs",
+                    "cognitive_path": "CognitiveTurnKernel",
+                    "write_confirm_policy": "nl_yes_same_path_as_text",
+                    "org_id": org_id,
+                    "conversation_id": conversation_id,
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_session_ready_send_failed error=%s", exc)
+
+    return task

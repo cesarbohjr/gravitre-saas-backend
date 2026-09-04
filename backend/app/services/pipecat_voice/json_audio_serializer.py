@@ -21,6 +21,7 @@ from pipecat.frames.frames import (
     OutputAudioRawFrame,
     StartFrame,
     TranscriptionFrame,
+    TTSAudioRawFrame,
 )
 from pipecat.serializers.base_serializer import FrameSerializer
 
@@ -30,13 +31,13 @@ class GravitreJsonAudioSerializer(FrameSerializer):
         pass
 
     async def serialize(self, frame: Frame) -> str | bytes | None:
-        if isinstance(frame, OutputAudioRawFrame):
+        if isinstance(frame, (OutputAudioRawFrame, TTSAudioRawFrame)):
             return json.dumps(
                 {
                     "type": "audio",
                     "pcm16_b64": base64.b64encode(frame.audio).decode("ascii"),
-                    "sample_rate": int(frame.sample_rate or 16000),
-                    "num_channels": int(frame.num_channels or 1),
+                    "sample_rate": int(getattr(frame, "sample_rate", None) or 16000),
+                    "num_channels": int(getattr(frame, "num_channels", None) or 1),
                 }
             )
         if isinstance(frame, TranscriptionFrame):
