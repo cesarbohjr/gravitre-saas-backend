@@ -233,12 +233,7 @@ class TestHybridFusion:
         assert row["semantic_score"] <= 1.0
 
     def test_fusion_is_not_rrf_because_the_keyword_arm_is_unranked(self):
-        """Guard against a future 'upgrade' to RRF over an arbitrary row order.
-
-        postgrest cannot order by ts_rank, so keyword rows arrive unordered.
-        RRF over that order would manufacture a precision signal that does not
-        exist. Reordering the keyword rows must therefore change nothing.
-        """
+        """Unranked keyword rows (postgrest fallback) must not gain order sensitivity."""
         from app.knowledge_fabric.retrieval import fuse_hybrid_candidates
 
         forward = fuse_hybrid_candidates(
@@ -250,6 +245,22 @@ class TestHybridFusion:
         assert {r["id"]: r["semantic_score"] for r in forward} == {
             r["id"]: r["semantic_score"] for r in reverse
         }
+
+    def test_ranked_keyword_rows_keep_rank_scaled_scores(self):
+        from app.knowledge_fabric.retrieval import _score_fts_rows, fuse_hybrid_candidates
+
+        ranked = _score_fts_rows(
+            [{"id": "a", "ts_rank": 0.9}, {"id": "b", "ts_rank": 0.3}]
+        )
+        assert ranked[0]["semantic_score"] > ranked[1]["semantic_score"]
+        [row] = fuse_hybrid_candidates([ranked[0]])
+        assert row["semantic_score"] > 0.55
+
+
+def test_retrieve_prefers_fts_rpc_before_postgrest_text_search():
+    """Ranked keyword search must go through search_knowledge_chunks_fts first."""
+    assert "search_knowledge_chunks_fts" in SOURCE
+    assert "_retrieve_fts_via_rpc" in SOURCE
 
 
 def test_retrieval_health_is_reported_on_every_return_path():

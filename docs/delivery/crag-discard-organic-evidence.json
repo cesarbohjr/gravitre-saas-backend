@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-09-04T07:18:00Z",
+  "query": "audit_events where action=evidence.sufficiency.assessed and discards>0",
+  "organic_discards": 0,
+  "probe_derived_discards": 67,
+  "probe_actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "probe_actor_note": "isolated test/service credential used by standing live probes",
+  "latest_probe_discard": {
+    "audit_event_id": "61d2178e-6e41-40de-9e84-2163d37bc2eb",
+    "created_at": "2026-09-04T06:33:11.571437+00",
+    "discards": 1,
+    "discarded_rows": 6,
+    "assessor_ran": true,
+    "bar": "business",
+    "stopped_because": "no_untried_source"
+  },
+  "verdict": {
+    "organic": "NOT PROVEN — 0 discards from non-test actors",
+    "probe_derived": "PASS — 67 real production audit rows with discarded_rows>0"
+  }
+}

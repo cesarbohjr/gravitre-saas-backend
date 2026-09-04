@@ -16,6 +16,14 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# PostgREST errors often stringify to "" — log type + repr so production traces
+# are not empty (Class C: silence mistaken for health).
+def _format_exc(exc: BaseException) -> str:
+    msg = str(exc).strip()
+    if msg:
+        return f"{type(exc).__name__}: {msg}"
+    return f"{type(exc).__name__}: {repr(exc)}"
+
 TEMPORAL_CATEGORIES = frozenset({"decision", "preference", "relationship", "procedural"})
 
 # Append-only — each event is a new row, not a supersede.
@@ -81,7 +89,11 @@ def _copy_to_history(
             }
         ).execute()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("memory_history_copy_failed memory_id=%s error=%s", row.get("id"), exc)
+        logger.warning(
+            "memory_history_copy_failed memory_id=%s error=%s",
+            row.get("id"),
+            _format_exc(exc),
+        )
 
 
 def get_current_by_key(client: Any, org_id: str, memory_key: str) -> dict[str, Any] | None:
@@ -165,7 +177,7 @@ def upsert_temporal_memory(
             inserted = client.table("agent_memories").insert(payload).execute().data or []
             return inserted[0] if inserted else payload
         except Exception as exc:  # noqa: BLE001
-            logger.debug("memory_temporal_insert_failed error=%s", exc)
+            logger.debug("memory_temporal_insert_failed error=%s", _format_exc(exc))
             return None
 
     if _content_equivalent(str(current.get("content") or ""), content):
@@ -203,5 +215,12 @@ def upsert_temporal_memory(
         )
         return new_row if isinstance(new_row, dict) else payload
     except Exception as exc:  # noqa: BLE001
-        logger.warning("memory_temporal_supersede_failed error=%s", exc)
+        logger.warning(
+            "memory_temporal_supersede_failed org_id=%s key=%s old_id=%s new_id=%s error=%s",
+            payload.get("org_id"),
+            memory_key,
+            current.get("id"),
+            new_id,
+            _format_exc(exc),
+        )
         return None

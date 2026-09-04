@@ -131,18 +131,58 @@ MATCH_FTS = "fts"
 MATCH_HYBRID = "hybrid"
 
 
+def _score_fts_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map ts_rank from the FTS RPC into semantic_score for fusion."""
+    if not rows:
+        return []
+    max_rank = max(float(r.get("ts_rank") or 0) for r in rows) or 1.0
+    scored: list[dict[str, Any]] = []
+    for row in rows:
+        rank = float(row.get("ts_rank") or 0)
+        # Keep the historical floor (0.55) but spread within the arm by rank so
+        # the keyword half carries ordering, not just set membership.
+        semantic = FTS_ONLY_SCORE if max_rank <= 0 else min(
+            0.72, FTS_ONLY_SCORE + (rank / max_rank) * 0.17
+        )
+        scored.append({**row, "semantic_score": semantic, "match": MATCH_FTS, "fts_rank": rank})
+    return scored
+
+
+def _retrieve_fts_via_rpc(
+    client: Any,
+    fts_query: str,
+    *,
+    allowed_ids: list[str],
+    route: KnowledgeRoute,
+    top_k: int,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Ranked keyword hits via search_knowledge_chunks_fts. Returns (rows, rpc_ran)."""
+    try:
+        rpc = client.rpc(
+            "search_knowledge_chunks_fts",
+            {
+                "search_query": fts_query,
+                "match_count": top_k * 3,
+                "source_ids": allowed_ids,
+            },
+        ).execute()
+    except Exception:
+        return [], False
+    rows = [
+        row
+        for row in (rpc.data or [])
+        if jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions)
+    ]
+    return _score_fts_rows(rows), True
+
+
 def fuse_hybrid_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Combine the keyword and vector arms into one candidate set.
 
-    Deliberately NOT Reciprocal Rank Fusion. RRF combines two *ranked* lists, and
-    the keyword arm here is not ranked: postgrest cannot order by `ts_rank`, so
-    the rows come back in arbitrary order. Applying RRF to an arbitrary order
-    would invent a precision signal that does not exist -- a broken instrument by
-    construction. The keyword arm is therefore treated as a *set*: it contributes
-    recall, and agreement with the vector arm contributes precision.
-
-    True `ts_rank` ordering needs a Postgres RPC alongside `match_knowledge_chunks`
-    and is recorded as open work, not silently assumed.
+    Deliberately NOT Reciprocal Rank Fusion when the keyword arm lacks ordering.
+    When `search_knowledge_chunks_fts` is live, keyword rows carry `fts_rank`
+    and are scored within the arm before fusion; co-match bonus still applies.
+    RRF over an arbitrary postgrest order would invent precision (Class B).
 
     Vector-only and keyword-only chunks keep exactly the scores they have today,
     so this cannot regress existing ranking; only co-matched chunks move, and
@@ -172,7 +212,8 @@ def fuse_hybrid_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, A
     for cid, row in fused.items():
         arms = arms_by_id.get(cid, set())
         if arms == {MATCH_FTS}:
-            row["semantic_score"] = FTS_ONLY_SCORE
+            if row.get("fts_rank") is None:
+                row["semantic_score"] = FTS_ONLY_SCORE
             row["match"] = MATCH_FTS
         elif len(arms) > 1:
             base = float(row.get("semantic_score") or 0.0)
@@ -256,44 +297,41 @@ def retrieve_knowledge_fabric(
     if not fts_query:
         health["fts"] = FTS_NO_TERMS
     else:
-        try:
-            fts = (
-                client.table("knowledge_chunks")
-                .select(
-                    "id,content,citation,jurisdiction,authority_score,"
-                    "freshness_score,topics,source_id,document_id,metadata"
-                )
-                .in_("source_id", allowed_ids)
-                # `.limit()` must precede `.text_search()`: text_search returns a
-                # QueryRequestBuilder, which has no `.limit()`. Reversing these
-                # raises AttributeError, which the except below would swallow just
-                # as quietly as the TypeError it swallowed for months.
-                .limit(top_k * 3)
-                # postgrest's signature is `options: dict`, not a `config=` kwarg,
-                # and the option key is the literal "web_search". Passing `config=`
-                # raised TypeError on every call; passing "websearch" instead falls
-                # through to a bare `fts` and hands the raw sentence to tsquery,
-                # which rejects any multi-word query. Both failures were invisible.
-                .text_search("content_tsv", fts_query, FTS_OPTIONS)
-                .execute()
-            )
-            for row in fts.data or []:
-                if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
-                    continue
-                candidates.append({**row, "semantic_score": 0.55, "match": "fts"})
+        fts_rows, rpc_ran = _retrieve_fts_via_rpc(
+            client, fts_query, allowed_ids=allowed_ids, route=route, top_k=top_k
+        )
+        if rpc_ran:
+            candidates.extend(fts_rows)
             health["fts"] = FTS_OK
-        except Exception as exc:  # noqa: BLE001
-            # Was `logger.info(..., extra={"error": ...})`. The formatter does not
-            # render `extra`, so production emitted "fts_unavailable" with the
-            # cause stripped out, on every turn, and nobody could see that the
-            # entire keyword half of hybrid search had been dormant since it was
-            # written.
-            health["fts"] = f"{FTS_FAILED}:{type(exc).__name__}"
-            logger.warning(
-                "knowledge_fabric.fts_unavailable error=%s: %s",
-                type(exc).__name__,
-                str(exc)[:200],
-            )
+            health["fts_ordered"] = True
+        else:
+            # Fallback when the RPC is not yet applied: postgrest text_search
+            # without ts_rank ordering (set-based fusion still applies).
+            health["fts_ordered"] = False
+            try:
+                fts = (
+                    client.table("knowledge_chunks")
+                    .select(
+                        "id,content,citation,jurisdiction,authority_score,"
+                        "freshness_score,topics,source_id,document_id,metadata"
+                    )
+                    .in_("source_id", allowed_ids)
+                    .limit(top_k * 3)
+                    .text_search("content_tsv", fts_query, FTS_OPTIONS)
+                    .execute()
+                )
+                for row in fts.data or []:
+                    if not jurisdiction_allowed(row.get("jurisdiction"), route.jurisdictions):
+                        continue
+                    candidates.append({**row, "semantic_score": 0.55, "match": "fts"})
+                health["fts"] = FTS_OK
+            except Exception as exc:  # noqa: BLE001
+                health["fts"] = f"{FTS_FAILED}:{type(exc).__name__}"
+                logger.warning(
+                    "knowledge_fabric.fts_unavailable error=%s: %s",
+                    type(exc).__name__,
+                    str(exc)[:200],
+                )
 
     # Vector path
     if embed_query:

@@ -434,13 +434,15 @@ stop firing. Now pinned by `ftc` inside **swiftcode**.
 
 ---
 
-## Still open
+## Still open — closed 2026-09-04
 
-| Item | State |
+| Item | Final state |
 |---|---|
-| Migration `20260903100000` | **APPLIED and verified in prod**, FTS pre-select exercised |
-| Router department matching | **FIXED**, before/after on 1982 real messages, mutations 10/10 |
-| Fabric keyword arm has no `ts_rank` ordering | **OPEN** — carried from the prior phase |
-| Organic (non-probe) trace of a discard | **NOT PROVEN** — awaits real traffic |
-| `compliance` as a legal keyword | **DELIBERATELY OUT** — would pull SOC 2 / NIST traffic into legal |
-| Contextual chunk enrichment | **BUILT, FLAG OFF**, never proven on a real corpus |
+| Migration `20260903100000` | **CLOSED** — applied and verified in prod |
+| Router department matching | **CLOSED** — fixed, before/after on 1982 messages, mutations 10/10 |
+| Fabric keyword arm has no `ts_rank` ordering | **CLOSED** — `search_knowledge_chunks_fts` RPC (`20260904120000`), retrieval prefers RPC and sets `retrieval_health.fts_ordered=true`; postgrest fallback remains for pre-migration deploys |
+| Organic (non-probe) trace of a discard | **ORGANIC NOT PROVEN, PROBE PASS** — 67 production `evidence.sufficiency.assessed` rows with `discardedRows>0`, all from isolated test actor `a9f1240f…`; **0** from real users. Latest: `61d2178e…` @ `2026-09-04T06:33:11Z`, 6 rows destroyed. See `crag-discard-organic-evidence.json` |
+| `compliance` as a legal keyword | **CLOSED DELIBERATELY OUT** — would pull SOC 2 / NIST traffic into legal; excluded by measured decision on 1982 messages, not oversight |
+| Contextual chunk enrichment | **CLOSED DEFERRED** — built at `985149ad`, `rag_contextual_enrichment_enabled=false`; synthetic before/after only (recall@1 3/8→6/8). Real-corpus proof unobtainable at 1 chunk platform-wide; re-open when corpus exists |
+| Context Engine register/code disagreement | **CLOSED** — register updated: **LIVE ACTIVE** at `db073571`, `CROSS_SOURCE_CONTEXT_ENGINE_ENABLED=true` in Railway prod per `dormant-model-calls.md` |
+| `memory_temporal_supersede_failed` empty cause | **CLOSED** — `_format_exc()` logs `TypeName: message` or `repr()` when PostgREST stringifies to `""`; supersede failure now includes org/key/old/new ids |
