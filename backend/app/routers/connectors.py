@@ -619,6 +619,16 @@ async def list_connector_action_catalog(
     return list_full_catalog()
 
 
+@connectors_router.get("/catalog/source-action-destination")
+async def list_connector_source_action_destination_coverage(
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Connector SOURCE/ACTION/DESTINATION coverage (complements integrationClass)."""
+    from app.connectors.action_catalog import source_action_destination_coverage_report
+
+    return source_action_destination_coverage_report()
+
+
 @connectors_router.get("/catalog/capability-recipes")
 async def list_capability_department_recipes(
     _user: Annotated[dict, Depends(get_current_user)],

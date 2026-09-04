@@ -922,6 +922,32 @@ export const businessOutcomesApi = {
   },
 }
 
+export const workObjectsApi = {
+  list: (params?: {
+    objectType?: string
+    department?: string
+    status?: string
+    priority?: string
+    limit?: number
+  }) => {
+    const search = new URLSearchParams()
+    if (params?.objectType) search.set("objectType", params.objectType)
+    if (params?.department) search.set("department", params.department)
+    if (params?.status) search.set("status", params.status)
+    if (params?.priority) search.set("priority", params.priority)
+    if (params?.limit != null) search.set("limit", String(params.limit))
+    const query = search.toString()
+    return fetcher<{ workObjects: Record<string, unknown>[]; count: number }>(
+      apiUrl(`/api/work-objects${query ? `?${query}` : ""}`),
+    )
+  },
+  get: (id: string, eventsLimit = 150) =>
+    fetcher<{ workObject: Record<string, unknown>; events: Record<string, unknown>[] }>(
+      apiUrl(`/api/work-objects/${id}?eventsLimit=${eventsLimit}`),
+    ),
+  coverage: () => fetcher<{ coverage: Record<string, unknown> }>(apiUrl("/api/work-objects/coverage")),
+}
+
 export const runsApi = {
   list: (filters?: { status?: string; workflow_id?: string; limit?: number; offset?: number }) => {
     const params = new URLSearchParams()
@@ -1373,6 +1399,26 @@ export const connectorsApi = {
     fetcher<import("@/lib/connector-actions").VendorActionCatalog>(
       apiUrl(`/api/connectors/catalog/actions/${encodeURIComponent(vendor)}`)
     ),
+  sourceActionDestinationCoverage: () =>
+    fetcher<{
+      summary: {
+        vendorCount: number
+        sourceCount: number
+        actionCount: number
+        destinationCount: number
+        sourceCoveragePct: number
+        actionCoveragePct: number
+        destinationCoveragePct: number
+      }
+      rows: Array<{
+        vendor: string
+        integrationClass: string
+        source: boolean
+        action: boolean
+        destination: boolean
+        reason: string
+      }>
+    }>(apiUrl("/api/connectors/catalog/source-action-destination")),
   get: (id: string) => fetcher<Connector>(apiUrl(`/api/connectors/${id}`)),
   create: (data: CreateConnectorRequest) => postJson<Connector>(apiUrl("/api/connectors"), data),
   update: (id: string, data: Partial<Connector>) =>

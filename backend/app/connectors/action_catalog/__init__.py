@@ -10,6 +10,7 @@ from app.connectors.action_catalog.registry import (
     list_catalog_vendors,
     list_full_catalog,
     read_tools_for_vendor,
+    source_action_destination_coverage_report,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "list_catalog_vendors",
     "list_full_catalog",
     "read_tools_for_vendor",
+    "source_action_destination_coverage_report",
 ]

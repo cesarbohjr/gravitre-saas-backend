@@ -54,6 +54,51 @@ def list_full_catalog() -> dict[str, Any]:
     }
 
 
+def source_action_destination_coverage_report() -> dict[str, Any]:
+    """Coverage summary for SOURCE/ACTION/DESTINATION connector capability axis."""
+    from app.connectors.action_catalog.integration_taxonomy import (
+        get_integration_class,
+        source_action_destination_profile,
+    )
+
+    rows: list[dict[str, Any]] = []
+    source_count = 0
+    action_count = 0
+    destination_count = 0
+    for vendor, spec in sorted(get_vendor_catalog().items()):
+        sad = source_action_destination_profile(vendor, actions=list(spec.all_actions()))
+        if sad["source"]:
+            source_count += 1
+        if sad["action"]:
+            action_count += 1
+        if sad["destination"]:
+            destination_count += 1
+        rows.append(
+            {
+                "vendor": vendor,
+                "integrationClass": get_integration_class(vendor),
+                "source": sad["source"],
+                "action": sad["action"],
+                "destination": sad["destination"],
+                "reason": sad["reason"],
+            }
+        )
+
+    total = len(rows) or 1
+    return {
+        "summary": {
+            "vendorCount": len(rows),
+            "sourceCount": source_count,
+            "actionCount": action_count,
+            "destinationCount": destination_count,
+            "sourceCoveragePct": round((source_count / total) * 100, 2),
+            "actionCoveragePct": round((action_count / total) * 100, 2),
+            "destinationCoveragePct": round((destination_count / total) * 100, 2),
+        },
+        "rows": rows,
+    }
+
+
 def connector_actions_for_goal_service() -> dict[str, list[str]]:
     """Flatten v1–v3 catalog actions for workflow goal planning."""
     result: dict[str, list[str]] = {}

@@ -49,6 +49,27 @@ _CUSTOMER_ENTITLEMENT: frozenset[str] = frozenset(
     }
 )
 
+# Connectors where Gravitre can act as a destination system of record for the
+# final business object state (not just emit side effects).
+_DESTINATION_SYSTEM_OF_RECORD: frozenset[str] = frozenset(
+    {
+        "hubspot",
+        "salesforce",
+        "jira",
+        "zendesk",
+        "notion",
+        "confluence",
+        "quickbooks",
+        "xero",
+        "workday",
+        "github",
+        "monday",
+        "asana",
+        "clickup",
+        "airtable",
+    }
+)
+
 # Not in catalog yet — classification for Phase 0 missing vendors (planning only).
 _MISSING_VENDOR_CLASS: dict[str, IntegrationClass] = {
     "gitlab": "OPEN_API",
@@ -101,6 +122,34 @@ def mcp_preference_for_vendor(vendor: str) -> dict[str, Any]:
 
 def tool_knowledge_pack_id(vendor: str) -> str:
     return f"pack.tool.{(vendor or '').strip().lower()}"
+
+
+def source_action_destination_profile(
+    vendor: str,
+    *,
+    actions: list[Any] | tuple[Any, ...],
+) -> dict[str, Any]:
+    """Classify connector capability on SOURCE/ACTION/DESTINATION axis."""
+    v = (vendor or "").strip().lower()
+    kinds = {str(getattr(action, "kind", "")).lower() for action in (actions or [])}
+    source = "read" in kinds
+    action = bool({"write", "advanced"} & kinds)
+    destination = v in _DESTINATION_SYSTEM_OF_RECORD and action
+    reason = (
+        "connector has business-record mutating actions and is approved as a system-of-record destination"
+        if destination
+        else "connector can execute actions but is currently treated as an operational surface, not final system of record"
+        if action
+        else "connector currently exposes read-only capabilities in catalog"
+        if source
+        else "connector has no active ActionSpec capability"
+    )
+    return {
+        "source": source,
+        "action": action,
+        "destination": destination,
+        "reason": reason,
+    }
 
 
 def classify_wave1_report() -> list[dict[str, Any]]:

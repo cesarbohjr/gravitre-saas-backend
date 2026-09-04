@@ -1,0 +1,688 @@
+{
+  "generated_at": "2026-09-04T01:34:50.360027+00:00",
+  "report": {
+    "summary": {
+      "vendorCount": 84,
+      "sourceCount": 83,
+      "actionCount": 83,
+      "destinationCount": 14,
+      "sourceCoveragePct": 98.81,
+      "actionCoveragePct": 98.81,
+      "destinationCoveragePct": 16.67
+    },
+    "rows": [
+      {
+        "vendor": "absorb_lms",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "adp",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "ahrefs",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "ai_visibility_ui",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "airtable",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "apollo",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "asana",
+        "integrationClass": "MCP_AVAILABLE",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "aws_s3",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "bamboohr",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "brevo",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "canva",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "cisa_kev",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "clay",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "clickup",
+        "integrationClass": "MCP_AVAILABLE",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "clio",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "confluence",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "constant_contact",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "email",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "engagebay",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "fhir",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "figma",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "finseo",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "fred",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "freshdesk",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "github",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "gitlab",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "gmail",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_ads",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_analytics",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_calendar",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_docs",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_drive",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_search_console",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "google_sheets",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "gorgias",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "greenhouse",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "gusto",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "hootsuite",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "hubspot",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "intercom",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "jira",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "linear",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "linkedin",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "mailchimp",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "marketo",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "meta_marketing",
+        "integrationClass": "DEVELOPER_APPROVAL",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "microsoft365",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "microsoft_teams",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "mixpanel",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "monday",
+        "integrationClass": "MCP_AVAILABLE",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "mongodb",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "motion",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "n8n",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "netsuite",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "notion",
+        "integrationClass": "MCP_AVAILABLE",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "nvd",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "odoo",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "outlook",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "pagerduty",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "paypal",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "pdl",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": false,
+        "destination": false,
+        "reason": "connector currently exposes read-only capabilities in catalog"
+      },
+      {
+        "vendor": "pipedrive",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "plaid",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "platform",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "postgresql",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "quickbooks",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "real_estate",
+        "integrationClass": "OPEN_API",
+        "source": false,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "salesforce",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "sec_edgar",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "segment",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "semrush",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "sendgrid",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "shopify",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "slack",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "snowflake",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "stackadapt",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "stripe",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "twilio",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "vapi",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "webhook",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "workday",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "xero",
+        "integrationClass": "OPEN_API_CUSTOMER_ENTITLEMENT",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      {
+        "vendor": "zapier",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      {
+        "vendor": "zendesk",
+        "integrationClass": "OPEN_API",
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      }
+    ]
+  }
+}

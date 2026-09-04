@@ -98,6 +98,7 @@ from app.routers import (
     platform,
     platform_cs_internal,
     ops_internal,
+    work_objects,
 )
 from app.routers import (
     hubspot_triggers,
@@ -521,6 +522,7 @@ app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
 app.include_router(business_outcomes.router)
+app.include_router(work_objects.router)
 app.include_router(ops_internal.router)
 app.include_router(knowledge_sync.internal_router)
 app.include_router(knowledge_sync.admin_router)

@@ -295,6 +295,8 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "integration",
             "tool_name",
             "conversation_id",
+            "work_object_id",
+            "work_object_type",
             "already_existed",
             "outcome_effect",
             "step_results",
@@ -705,12 +707,51 @@ def finalize_execution_outcome(
             },
         )
 
+    try:
+        from app.services.work_object_service import record_execution_work_object
+
+        work_ref = record_execution_work_object(
+            client,
+            org_id=event.org_id,
+            run_id=event.run_id,
+            terminal_status=terminal,
+            metadata=event.metadata,
+            verified_output=(
+                {
+                    "summary": event.verified_output.summary,
+                    "result_url": event.verified_output.result_url,
+                    "external_url": event.verified_output.external_url,
+                    "entity_type": event.verified_output.entity_type,
+                    "entity_id": event.verified_output.entity_id,
+                    "integration": event.verified_output.integration,
+                }
+                if event.verified_output
+                else None
+            ),
+            actor_id=event.actor_id,
+            workflow_id=event.workflow_id,
+            error_summary=event.error_summary,
+        )
+        if work_ref and isinstance(work_ref.get("work_object_id"), str):
+            event.metadata["work_object_id"] = work_ref["work_object_id"]
+            event.metadata.setdefault(
+                "work_object_type",
+                ((work_ref.get("work_object") or {}).get("objectType")),
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "execution_outcome_work_object_attribution_skipped run_id=%s error=%s",
+            event.run_id,
+            exc,
+        )
+
     fanout = {
         "run_persisted": False,
         "audit_written": False,
         "notification_emitted": False,
         "learning_recorded": False,
         "failure_alert_correlated": False,
+        "work_object_attributed": bool(event.metadata.get("work_object_id")),
     }
     audit_action: str | None = None
     notification_event: str | None = None

@@ -213,6 +213,7 @@ class VendorCatalogSpec:
         from app.connectors.action_catalog.integration_taxonomy import (
             get_integration_class,
             mcp_preference_for_vendor,
+            source_action_destination_profile,
             tool_knowledge_pack_id,
         )
         from app.knowledge_fabric.tool_knowledge import tool_knowledge_vendors
@@ -225,6 +226,10 @@ class VendorCatalogSpec:
             "apiDocsUrl": self.api_docs_url,
             "shipped": self.shipped,
             "integrationClass": get_integration_class(self.vendor),
+            "sourceActionDestination": source_action_destination_profile(
+                self.vendor,
+                actions=list(self.all_actions()),
+            ),
             "toolKnowledgePackId": tool_knowledge_pack_id(self.vendor) if has_tool_knowledge else None,
             "mcpPreference": mcp_preference_for_vendor(self.vendor),
             "tiers": tiers,
