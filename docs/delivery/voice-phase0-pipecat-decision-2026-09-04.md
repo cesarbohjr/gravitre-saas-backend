@@ -63,3 +63,19 @@ Only Cesar’s direct confirmation closes the human gate.
 ## Phase 1 (Pipecat)
 
 **NOT STARTED** — Phase 0 recommendation does not authorize orchestration migration for the current bugs.
+
+## Latency re-measure (2026-09-04, tip `0205c202`)
+
+Post `fix(voice): skip knowledge + cold classify on spoken conversational turns` deploy. Health `git_sha=0205c2020941d22241a3fdd2139984ab60aea97b` @ `2026-09-04T09:08:37Z`.
+
+| Probe | TTFT ms | TTFA ms | depth | KNOWLEDGE ms | Evidence |
+|-------|--------:|--------:|-------|-------------:|----------|
+| simple_conversational | 3330 | 3514 | conversational | 0.0 | turn `2776155f-5711-4929-aac7-13de1ee2a185` |
+| warm | 3337 | 3536 | conversational | 0.0 | turn `02233353-36bc-43ac-aba8-33a259611cff` |
+| consequential_write_shaped | 5361 | 5544 | full | 474.5 | turn `2b7bda60-ea13-42d8-a213-08966d087e8f` |
+
+- Delta vs user baseline (simple): TTFT **-1302** ms (3330 vs 4632); TTFA **-1299** ms (3514 vs 4813). Gate `ttft_improved_vs_4632` **PASS**.
+- Latency artifact verdict **PASS** — `docs/delivery/voice-latency-phases-live.json` `generated_at=2026-09-04T09:08:54.311350+00:00`.
+- Duplex one-brain **PASS** (barge-in, continuation, write governance, cognitive kernel) — tip `0205c202`; `docs/delivery/voice-duplex-one-brain-live.json`.
+- Note: `simple_conversational_turn2` hit `UnboundLocalError: chat_facade` (service_failure); overall latency verdict still PASS on primary simple/write gates.
+
