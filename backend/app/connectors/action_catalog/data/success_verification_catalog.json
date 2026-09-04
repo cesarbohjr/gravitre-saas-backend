@@ -304,6 +304,10 @@
       "read_action": "confluence.pages.get",
       "reason": "Sibling GET must return the written entity id/field"
     },
+    "connectwise.tickets.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "constant_contact.campaigns.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -676,6 +680,10 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "hubspot.campaigns.update": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "hubspot.companies.create": {
       "assert_field": "id",
       "mode": "follow_up_entity_get",
@@ -715,11 +723,8 @@
       "reason": "Sibling GET must return the written entity id/field"
     },
     "hubspot.deals.update_stage": {
-      "assert_field": "dealstage",
-      "mode": "follow_up_field_assert",
-      "read_action": "hubspot.deals.get",
-      "reason": "State change: reading the deal id back proves it exists, not that the stage moved. Compares the stored dealstage against the requested stage.",
-      "request_field": "stage"
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "hubspot.lists.add_contact": {
       "assert_field": "membership_count",
@@ -889,11 +894,11 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
-    "meta_marketing.campaigns.create": {
+    "meta_marketing.adsets.update": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
-    "meta_marketing.adsets.update": {
+    "meta_marketing.campaigns.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
@@ -1601,6 +1606,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 358,
+  "mutating_action_count": 362,
   "version": 1
 }

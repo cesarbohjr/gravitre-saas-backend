@@ -264,6 +264,8 @@ VERIFIED_OUTPUT_BATCH_10: frozenset[str] = frozenset(
         "brevo.email.send",
         "brevo.contacts.create",
         "brevo.contacts.update",
+        "connectwise.tickets.create",
+        "hubspot.campaigns.update",
         "meta_marketing.campaigns.create",
         "meta_marketing.campaigns.update",
         "meta_marketing.adsets.update",

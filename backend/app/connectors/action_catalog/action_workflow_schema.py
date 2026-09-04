@@ -85,6 +85,31 @@ HUBSPOT_COMPANIES_CREATE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+HUBSPOT_CAMPAIGNS_UPDATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Update HubSpot marketing campaign",
+    required_fields=(
+        WorkflowFieldSpec("campaign id", ("campaign_id", "id")),
+        WorkflowFieldSpec(
+            "update properties",
+            ("properties", "payload", "name", "subject"),
+            validator="named_or_payload",
+        ),
+    ),
+)
+
+CONNECTWISE_TICKETS_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create ConnectWise service ticket",
+    required_fields=(
+        WorkflowFieldSpec("ticket summary", ("summary", "subject")),
+        WorkflowFieldSpec("board id", ("board_id", "boardId")),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("Company record id", ("company_record_id", "companyRecordId")),
+        WorkflowFieldSpec("Description", ("description", "body")),
+        WorkflowFieldSpec("Priority id", ("priority_id",)),
+    ),
+)
+
 SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     intent_label="Post Slack message",
     required_fields=(

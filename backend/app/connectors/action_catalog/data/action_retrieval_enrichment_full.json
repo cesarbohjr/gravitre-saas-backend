@@ -1,8 +1,8 @@
 {
   "generated_at": "2026-08-13T08:32:00.083626+00:00",
-  "catalog_action_count": 727,
+  "catalog_action_count": 731,
   "vendor_count": 84,
-  "enriched_action_count": 727,
+  "enriched_action_count": 731,
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
@@ -5171,23 +5171,6 @@
         "api",
         "lookup",
         "search-files"
-      ]
-    },
-    "google_search_console.searchAnalytics.query": {
-      "examples": [
-        "Query the search analytics data in Google Search Console.",
-        "Can you run a search analytics query for my site?",
-        "I need to analyze search queries in Google Search Console.",
-        "Please provide the search analytics report from Google Search Console.",
-        "Show me the results of my search analytics query in Google Search Console."
-      ],
-      "tags": [
-        "google_search_console",
-        "searchanalytics",
-        "read",
-        "search_console",
-        "query",
-        "lookup"
       ]
     },
     "google_search_console.sitemaps.list": {
@@ -13499,6 +13482,86 @@
         "api",
         "lookup",
         "support"
+      ]
+    },
+    "connectwise.companies.list": {
+      "examples": [
+        "List ConnectWise client companies for my MSP org",
+        "Show me ConnectWise companies matching Acme",
+        "Find customer companies in ConnectWise Manage"
+      ],
+      "tags": [
+        "connectwise",
+        "companies",
+        "list",
+        "read",
+        "msp",
+        "psa",
+        "lookup"
+      ]
+    },
+    "connectwise.tickets.create": {
+      "examples": [
+        "Create a ConnectWise service ticket for an outage",
+        "Open a ConnectWise ticket on board 12 for Acme",
+        "Add a new ConnectWise Manage support ticket"
+      ],
+      "tags": [
+        "connectwise",
+        "tickets",
+        "create",
+        "write",
+        "msp",
+        "psa",
+        "support"
+      ]
+    },
+    "hubspot.campaigns.list": {
+      "examples": [
+        "List HubSpot marketing email campaigns",
+        "Show recent HubSpot campaigns for this quarter",
+        "Find HubSpot marketing emails I can review"
+      ],
+      "tags": [
+        "hubspot",
+        "campaigns",
+        "list",
+        "read",
+        "marketing",
+        "emails",
+        "crm"
+      ]
+    },
+    "hubspot.campaigns.update": {
+      "examples": [
+        "Update this HubSpot campaign subject line",
+        "Change properties on HubSpot marketing email 123",
+        "Edit a HubSpot campaign configuration"
+      ],
+      "tags": [
+        "hubspot",
+        "campaigns",
+        "update",
+        "write",
+        "marketing",
+        "emails",
+        "crm"
+      ]
+    },
+    "google_search_console.searchanalytics.query": {
+      "examples": [
+        "Query Google Search Console search analytics for last 30 days",
+        "Show Search Console queries by clicks and impressions",
+        "Run a Google Search Console searchanalytics report for this page"
+      ],
+      "tags": [
+        "google-search-console",
+        "searchanalytics",
+        "query",
+        "read",
+        "seo",
+        "search",
+        "analytics"
       ]
     }
   }

@@ -1254,6 +1254,20 @@
       "vendor_validated": false,
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
+    "connectwise.companies.list": {
+      "api_reference": "GET /company/companies",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/connectwise.py:80",
+      "style": "rest",
+      "vendor_validated": false
+    },
+    "connectwise.tickets.create": {
+      "api_reference": "POST /service/tickets",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/connectwise.py:118",
+      "style": "rest",
+      "vendor_validated": false
+    },
     "constant_contact.campaigns.create": {
       "api_reference": "POST /emails",
       "provenance": "dedicated",
@@ -2790,10 +2804,30 @@
       "vendor_contract_type": "openapi",
       "vendor_validated": false
     },
+    "hubspot.campaigns.list": {
+      "api_reference": "GET /marketing/v3/emails",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:727",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
+    "hubspot.campaigns.update": {
+      "api_reference": "PATCH /marketing/v3/emails/{email_id}",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:745",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
     "hubspot.companies.create": {
       "api_reference": "POST /crm/v3/objects/companies",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:644",
+      "source": "backend/app/connectors/hubspot.py:678",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -2803,7 +2837,7 @@
     "hubspot.companies.get": {
       "api_reference": "GET /crm/v3/objects/companies/{company_id}",
       "provenance": "dedicated_multi",
-      "source": "backend/app/connectors/hubspot.py:595",
+      "source": "backend/app/connectors/hubspot.py:629",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "endpoints": [
@@ -2816,10 +2850,14 @@
     },
     "hubspot.companies.search": {
       "api_reference": "POST /crm/v3/objects/companies/search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "source": "backend/app/connectors/hubspot.py:524",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
+      "endpoints": [
+        "POST /crm/v3/objects/companies/search",
+        "GET /crm/v3/objects/companies"
+      ],
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
       "vendor_contract_type": "openapi",
       "vendor_validated": false
@@ -2929,7 +2967,7 @@
     "hubspot.deals.list": {
       "api_reference": "GET /crm/v3/objects/deals",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:578",
+      "source": "backend/app/connectors/hubspot.py:612",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -2938,10 +2976,14 @@
     },
     "hubspot.deals.search": {
       "api_reference": "POST /crm/v3/objects/deals/search",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:562",
+      "provenance": "dedicated_multi",
+      "source": "backend/app/connectors/hubspot.py:596",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
+      "endpoints": [
+        "POST /crm/v3/objects/deals/search",
+        "GET /crm/v3/objects/deals"
+      ],
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
       "vendor_contract_type": "openapi",
       "vendor_validated": false
@@ -3035,7 +3077,7 @@
     "hubspot.owners.list": {
       "api_reference": "GET /crm/v3/owners",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:660",
+      "source": "backend/app/connectors/hubspot.py:694",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -3045,7 +3087,7 @@
     "hubspot.pipelines.list": {
       "api_reference": "GET /crm/v3/pipelines/deals",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:537",
+      "source": "backend/app/connectors/hubspot.py:571",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -3065,7 +3107,7 @@
     "hubspot.tickets.create": {
       "api_reference": "POST /crm/v3/objects/tickets",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:543",
+      "source": "backend/app/connectors/hubspot.py:577",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -3075,7 +3117,7 @@
     "hubspot.tickets.get": {
       "api_reference": "GET /crm/v3/objects/tickets/{ticket_id}",
       "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:678",
+      "source": "backend/app/connectors/hubspot.py:712",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
@@ -3084,10 +3126,14 @@
     },
     "hubspot.tickets.search": {
       "api_reference": "POST /crm/v3/objects/tickets/search",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/hubspot.py:632",
+      "provenance": "dedicated_multi",
+      "source": "backend/app/connectors/hubspot.py:666",
       "style": "rest",
       "base_url": "https://api.hubapi.com",
+      "endpoints": [
+        "POST /crm/v3/objects/tickets/search",
+        "GET /crm/v3/objects/tickets"
+      ],
       "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
       "vendor_contract_type": "openapi",
       "vendor_validated": false
@@ -5851,7 +5897,7 @@
     "twilio.calls.create": {
       "api_reference": "POST /Accounts/{account_sid}/Calls.json",
       "provenance": "route_table",
-      "source": "backend/app/connectors/twilio_api.py:156",
+      "source": "backend/app/connectors/twilio_api.py:188",
       "base_url": "https://api.twilio.com/2010-04-01",
       "vendor_contract": "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
       "vendor_contract_type": "openapi",
@@ -5888,7 +5934,7 @@
     "twilio.messages.create": {
       "api_reference": "POST /Accounts/{account_sid}/Messages.json",
       "provenance": "route_table",
-      "source": "backend/app/connectors/twilio_api.py:164",
+      "source": "backend/app/connectors/twilio_api.py:196",
       "base_url": "https://api.twilio.com/2010-04-01",
       "vendor_contract": "https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json",
       "vendor_contract_type": "openapi",

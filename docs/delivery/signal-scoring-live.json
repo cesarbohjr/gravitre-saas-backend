@@ -1,0 +1,159 @@
+{
+  "probe": "verify_signal_scoring_live",
+  "mode": "representative_equivalent_isolated_fixture",
+  "started_at": "2026-09-04T18:15:40.738177+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "fixtureRunId": "signal-fixture-1788545739",
+  "fixture": {
+    "workObjectsInserted": 5,
+    "eventsInserted": 9,
+    "connectorsEnsured": [
+      "clay",
+      "google_analytics",
+      "google_search_console",
+      "greenhouse",
+      "linkedin",
+      "stripe"
+    ]
+  },
+  "departments": {
+    "sales": {
+      "http": 200,
+      "count": 3,
+      "explainableCount": 0,
+      "top": {
+        "workObjectId": "c08d2e87-44ca-402e-b590-06ba4d4be2a0",
+        "title": "Sales target signal-fixture-1788545739",
+        "priorityScore": 0.0,
+        "priorityBand": "low",
+        "explanations": []
+      },
+      "gaps": [
+        "Technology adoption: missing source(s) Clay enrichment."
+      ]
+    },
+    "marketing": {
+      "http": 200,
+      "count": 3,
+      "explainableCount": 3,
+      "top": {
+        "workObjectId": "6df68fea-6e6d-4c03-891e-145d6a2a648d",
+        "title": "Marketing campaign signal-fixture-1788545739",
+        "priorityScore": 20.11,
+        "priorityBand": "low",
+        "explanations": [
+          "Channel demand +8.2 pts (signal=0.20, weight=0.40)",
+          "Paid efficiency +6.1 pts (signal=0.17, weight=0.35)",
+          "Search intent +5.8 pts (signal=0.23, weight=0.25)"
+        ]
+      },
+      "gaps": []
+    },
+    "finance": {
+      "http": 200,
+      "count": 3,
+      "explainableCount": 0,
+      "top": {
+        "workObjectId": "35fc5578-4677-487c-ba61-9a257f779e01",
+        "title": "Collections risk signal-fixture-1788545739",
+        "priorityScore": 0.0,
+        "priorityBand": "low",
+        "explanations": []
+      },
+      "gaps": [
+        "Collections velocity: missing source(s) Stripe payment/invoice history, QuickBooks payment history.",
+        "Payment risk: missing source(s) Stripe payment/invoice history, QuickBooks payment history."
+      ]
+    },
+    "hr": {
+      "http": 200,
+      "count": 3,
+      "explainableCount": 0,
+      "top": {
+        "workObjectId": "fcf001ee-3946-40df-90a9-4dd8c8bd6060",
+        "title": "Candidate pipeline signal-fixture-1788545739",
+        "priorityScore": 0.0,
+        "priorityBand": "low",
+        "explanations": []
+      },
+      "gaps": [
+        "Candidate engagement: missing source(s) LinkedIn candidate profile signals, Greenhouse ATS.",
+        "Hiring pressure: missing source(s) Greenhouse ATS, LinkedIn candidate profile signals."
+      ]
+    },
+    "msp": {
+      "http": 200,
+      "count": 3,
+      "explainableCount": 3,
+      "top": {
+        "workObjectId": "3d010e34-2beb-406c-a019-633f018ee2b8",
+        "title": "Client exposure signal-fixture-1788545739",
+        "priorityScore": 35.0,
+        "priorityBand": "low",
+        "explanations": [
+          "Vulnerability severity +21.0 pts (signal=0.35, weight=0.60)",
+          "Client risk exposure +14.0 pts (signal=0.35, weight=0.40)"
+        ]
+      },
+      "gaps": []
+    }
+  },
+  "global_gaps": [
+    "sales: scored rows exist but missing contribution explanations.",
+    "finance: scored rows exist but missing contribution explanations.",
+    "hr: scored rows exist but missing contribution explanations."
+  ],
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-09-04T18:15:41.285888+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "c6418a500d19664f0fd1f2b8112f3a64ef138c04",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "source_audit_http": 200,
+  "source_audit": {
+    "sales": {
+      "live_connector": 2,
+      "knowledge_fabric_only": 1,
+      "missing": 2
+    },
+    "marketing": {
+      "live_connector": 2,
+      "knowledge_fabric_only": 0,
+      "missing": 1
+    },
+    "finance": {
+      "live_connector": 0,
+      "knowledge_fabric_only": 0,
+      "missing": 2
+    },
+    "hr": {
+      "live_connector": 0,
+      "knowledge_fabric_only": 0,
+      "missing": 2
+    },
+    "msp": {
+      "live_connector": 2,
+      "knowledge_fabric_only": 0,
+      "missing": 1
+    }
+  },
+  "verdict": "FAIL",
+  "finished_at": "2026-09-04T18:15:54.341628+00:00"
+}

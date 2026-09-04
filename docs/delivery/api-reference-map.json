@@ -1,21 +1,21 @@
 {
-  "catalog_action_total": 727,
-  "mapped": 727,
+  "catalog_action_total": 731,
+  "mapped": 731,
   "counts": {
     "name_inferred": 233,
-    "dedicated": 420,
+    "dedicated": 421,
     "no_endpoint_local": 12,
     "no_endpoint_browser_agent": 2,
-    "dedicated_multi": 33,
+    "dedicated_multi": 36,
     "manual_verified": 15,
     "no_endpoint_smtp": 3,
     "route_table": 7,
     "no_endpoint_unregistered": 2
   },
   "undetermined_total": 0,
-  "ambiguous_total": 33,
+  "ambiguous_total": 36,
   "no_vendor_endpoint_total": 19,
-  "with_vendor_contract": 271,
+  "with_vendor_contract": 273,
   "entries": {
     "absorb_lms.batch.enroll": {
       "action": "absorb_lms.batch.enroll",
@@ -3167,6 +3167,56 @@
         "verified_at": "2026-08-29",
         "note": null
       }
+    },
+    "connectwise.companies.list": {
+      "action": "connectwise.companies.list",
+      "provenance": "dedicated",
+      "method": "GET",
+      "path": "/company/companies",
+      "base_url": null,
+      "base_const": null,
+      "api_reference": "GET /company/companies",
+      "style": "rest",
+      "graphql_op": null,
+      "operation": null,
+      "source": "backend/app/connectors/connectwise.py:80",
+      "registry_key": "connectwise.companies.list",
+      "module": "app.services.connectwise_tools",
+      "candidate_count": 1,
+      "endpoints": [
+        {
+          "reference": "GET /company/companies",
+          "source": "backend/app/connectors/connectwise.py:80"
+        }
+      ],
+      "review": null,
+      "vendor_validated": false,
+      "vendor_contract": null
+    },
+    "connectwise.tickets.create": {
+      "action": "connectwise.tickets.create",
+      "provenance": "dedicated",
+      "method": "POST",
+      "path": "/service/tickets",
+      "base_url": null,
+      "base_const": null,
+      "api_reference": "POST /service/tickets",
+      "style": "rest",
+      "graphql_op": null,
+      "operation": null,
+      "source": "backend/app/connectors/connectwise.py:118",
+      "registry_key": "connectwise.tickets.create",
+      "module": "app.services.connectwise_tools",
+      "candidate_count": 1,
+      "endpoints": [
+        {
+          "reference": "POST /service/tickets",
+          "source": "backend/app/connectors/connectwise.py:118"
+        }
+      ],
+      "review": null,
+      "vendor_validated": false,
+      "vendor_contract": null
     },
     "constant_contact.campaigns.create": {
       "action": "constant_contact.campaigns.create",
@@ -7388,6 +7438,66 @@
         "note": "Index of per-API OpenAPI specs; the CRM v3 objects spec is the one the crm/v3/objects/* actions map to."
       }
     },
+    "hubspot.campaigns.list": {
+      "action": "hubspot.campaigns.list",
+      "provenance": "dedicated",
+      "method": "GET",
+      "path": "/marketing/v3/emails",
+      "base_url": "https://api.hubapi.com",
+      "base_const": null,
+      "api_reference": "GET /marketing/v3/emails",
+      "style": "rest",
+      "graphql_op": null,
+      "operation": null,
+      "source": "backend/app/connectors/hubspot.py:727",
+      "registry_key": "hubspot.campaigns.list",
+      "module": "app.services.tool_service",
+      "candidate_count": 1,
+      "endpoints": [
+        {
+          "reference": "GET /marketing/v3/emails",
+          "source": "backend/app/connectors/hubspot.py:727"
+        }
+      ],
+      "review": null,
+      "vendor_validated": false,
+      "vendor_contract": {
+        "type": "openapi",
+        "url": "https://api.hubspot.com/public/api/spec/v1/specs",
+        "verified_at": "2026-08-29",
+        "note": "Index of per-API OpenAPI specs; the CRM v3 objects spec is the one the crm/v3/objects/* actions map to."
+      }
+    },
+    "hubspot.campaigns.update": {
+      "action": "hubspot.campaigns.update",
+      "provenance": "dedicated",
+      "method": "PATCH",
+      "path": "/marketing/v3/emails/{email_id}",
+      "base_url": "https://api.hubapi.com",
+      "base_const": null,
+      "api_reference": "PATCH /marketing/v3/emails/{email_id}",
+      "style": "rest",
+      "graphql_op": null,
+      "operation": null,
+      "source": "backend/app/connectors/hubspot.py:745",
+      "registry_key": "hubspot.campaigns.update",
+      "module": "app.services.tool_service",
+      "candidate_count": 1,
+      "endpoints": [
+        {
+          "reference": "PATCH /marketing/v3/emails/{email_id}",
+          "source": "backend/app/connectors/hubspot.py:745"
+        }
+      ],
+      "review": null,
+      "vendor_validated": false,
+      "vendor_contract": {
+        "type": "openapi",
+        "url": "https://api.hubspot.com/public/api/spec/v1/specs",
+        "verified_at": "2026-08-29",
+        "note": "Index of per-API OpenAPI specs; the CRM v3 objects spec is the one the crm/v3/objects/* actions map to."
+      }
+    },
     "hubspot.companies.create": {
       "action": "hubspot.companies.create",
       "provenance": "dedicated",
@@ -7399,14 +7509,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:644",
+      "source": "backend/app/connectors/hubspot.py:678",
       "registry_key": "hubspot.companies.create",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "POST /crm/v3/objects/companies",
-          "source": "backend/app/connectors/hubspot.py:644"
+          "source": "backend/app/connectors/hubspot.py:678"
         }
       ],
       "review": null,
@@ -7429,14 +7539,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:595",
+      "source": "backend/app/connectors/hubspot.py:629",
       "registry_key": "hubspot.companies.get",
       "module": "app.services.tool_service",
       "candidate_count": 2,
       "endpoints": [
         {
           "reference": "GET /crm/v3/objects/companies/{company_id}",
-          "source": "backend/app/connectors/hubspot.py:595"
+          "source": "backend/app/connectors/hubspot.py:629"
         },
         {
           "reference": "POST /crm/v3/objects/companies/search",
@@ -7458,7 +7568,7 @@
     },
     "hubspot.companies.search": {
       "action": "hubspot.companies.search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/companies/search",
       "base_url": "https://api.hubapi.com",
@@ -7470,11 +7580,15 @@
       "source": "backend/app/connectors/hubspot.py:524",
       "registry_key": "hubspot.companies.search",
       "module": "app.services.tool_service",
-      "candidate_count": 1,
+      "candidate_count": 2,
       "endpoints": [
         {
           "reference": "POST /crm/v3/objects/companies/search",
           "source": "backend/app/connectors/hubspot.py:524"
+        },
+        {
+          "reference": "GET /crm/v3/objects/companies",
+          "source": "backend/app/connectors/hubspot.py:545"
         }
       ],
       "review": null,
@@ -7791,14 +7905,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:578",
+      "source": "backend/app/connectors/hubspot.py:612",
       "registry_key": "hubspot.deals.list",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "GET /crm/v3/objects/deals",
-          "source": "backend/app/connectors/hubspot.py:578"
+          "source": "backend/app/connectors/hubspot.py:612"
         }
       ],
       "review": null,
@@ -7812,7 +7926,7 @@
     },
     "hubspot.deals.search": {
       "action": "hubspot.deals.search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/deals/search",
       "base_url": "https://api.hubapi.com",
@@ -7821,14 +7935,18 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:562",
+      "source": "backend/app/connectors/hubspot.py:596",
       "registry_key": "hubspot.deals.search",
       "module": "app.services.tool_service",
-      "candidate_count": 1,
+      "candidate_count": 2,
       "endpoints": [
         {
           "reference": "POST /crm/v3/objects/deals/search",
-          "source": "backend/app/connectors/hubspot.py:562"
+          "source": "backend/app/connectors/hubspot.py:596"
+        },
+        {
+          "reference": "GET /crm/v3/objects/deals",
+          "source": "backend/app/connectors/hubspot.py:612"
         }
       ],
       "review": null,
@@ -8093,14 +8211,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:660",
+      "source": "backend/app/connectors/hubspot.py:694",
       "registry_key": "hubspot.owners.list",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "GET /crm/v3/owners",
-          "source": "backend/app/connectors/hubspot.py:660"
+          "source": "backend/app/connectors/hubspot.py:694"
         }
       ],
       "review": null,
@@ -8123,14 +8241,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:537",
+      "source": "backend/app/connectors/hubspot.py:571",
       "registry_key": "hubspot.pipelines.list",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "GET /crm/v3/pipelines/deals",
-          "source": "backend/app/connectors/hubspot.py:537"
+          "source": "backend/app/connectors/hubspot.py:571"
         }
       ],
       "review": null,
@@ -8183,14 +8301,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:543",
+      "source": "backend/app/connectors/hubspot.py:577",
       "registry_key": "hubspot.tickets.create",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "POST /crm/v3/objects/tickets",
-          "source": "backend/app/connectors/hubspot.py:543"
+          "source": "backend/app/connectors/hubspot.py:577"
         }
       ],
       "review": null,
@@ -8213,14 +8331,14 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:678",
+      "source": "backend/app/connectors/hubspot.py:712",
       "registry_key": "hubspot.tickets.get",
       "module": "app.services.tool_service",
       "candidate_count": 1,
       "endpoints": [
         {
           "reference": "GET /crm/v3/objects/tickets/{ticket_id}",
-          "source": "backend/app/connectors/hubspot.py:678"
+          "source": "backend/app/connectors/hubspot.py:712"
         }
       ],
       "review": null,
@@ -8234,7 +8352,7 @@
     },
     "hubspot.tickets.search": {
       "action": "hubspot.tickets.search",
-      "provenance": "dedicated",
+      "provenance": "dedicated_multi",
       "method": "POST",
       "path": "/crm/v3/objects/tickets/search",
       "base_url": "https://api.hubapi.com",
@@ -8243,14 +8361,18 @@
       "style": "rest",
       "graphql_op": null,
       "operation": null,
-      "source": "backend/app/connectors/hubspot.py:632",
+      "source": "backend/app/connectors/hubspot.py:666",
       "registry_key": "hubspot.tickets.search",
       "module": "app.services.tool_service",
-      "candidate_count": 1,
+      "candidate_count": 2,
       "endpoints": [
         {
           "reference": "POST /crm/v3/objects/tickets/search",
-          "source": "backend/app/connectors/hubspot.py:632"
+          "source": "backend/app/connectors/hubspot.py:666"
+        },
+        {
+          "reference": "GET /crm/v3/objects/tickets",
+          "source": "backend/app/connectors/hubspot.py:562"
         }
       ],
       "review": null,
@@ -15410,7 +15532,7 @@
       "path": "/Accounts/{account_sid}/Calls.json",
       "base_url": "https://api.twilio.com/2010-04-01",
       "api_reference": "POST /Accounts/{account_sid}/Calls.json",
-      "source": "backend/app/connectors/twilio_api.py:156",
+      "source": "backend/app/connectors/twilio_api.py:188",
       "vendor_validated": false,
       "vendor_contract": {
         "type": "openapi",
@@ -15475,7 +15597,7 @@
       "path": "/Accounts/{account_sid}/Messages.json",
       "base_url": "https://api.twilio.com/2010-04-01",
       "api_reference": "POST /Accounts/{account_sid}/Messages.json",
-      "source": "backend/app/connectors/twilio_api.py:164",
+      "source": "backend/app/connectors/twilio_api.py:196",
       "vendor_validated": false,
       "vendor_contract": {
         "type": "openapi",
@@ -16657,11 +16779,28 @@
       "candidates": [
         {
           "reference": "GET /crm/v3/objects/companies/{company_id}",
-          "source": "backend/app/connectors/hubspot.py:595"
+          "source": "backend/app/connectors/hubspot.py:629"
         },
         {
           "reference": "POST /crm/v3/objects/companies/search",
           "source": "backend/app/connectors/hubspot.py:524"
+        }
+      ]
+    },
+    {
+      "action": "hubspot.companies.search",
+      "module": "app.services.tool_service",
+      "chosen": "POST /crm/v3/objects/companies/search",
+      "verdict": "UNREVIEWED",
+      "secondary_role": null,
+      "candidates": [
+        {
+          "reference": "POST /crm/v3/objects/companies/search",
+          "source": "backend/app/connectors/hubspot.py:524"
+        },
+        {
+          "reference": "GET /crm/v3/objects/companies",
+          "source": "backend/app/connectors/hubspot.py:545"
         }
       ]
     },
@@ -16713,6 +16852,23 @@
         {
           "reference": "PUT /crm/v4/objects/{ft}/{from_id}/associations/default/{tt}/{to_id}",
           "source": "backend/app/connectors/hubspot.py:211"
+        }
+      ]
+    },
+    {
+      "action": "hubspot.deals.search",
+      "module": "app.services.tool_service",
+      "chosen": "POST /crm/v3/objects/deals/search",
+      "verdict": "UNREVIEWED",
+      "secondary_role": null,
+      "candidates": [
+        {
+          "reference": "POST /crm/v3/objects/deals/search",
+          "source": "backend/app/connectors/hubspot.py:596"
+        },
+        {
+          "reference": "GET /crm/v3/objects/deals",
+          "source": "backend/app/connectors/hubspot.py:612"
         }
       ]
     },
@@ -16781,6 +16937,23 @@
         {
           "reference": "PUT /crm/v4/objects/{ft}/{from_id}/associations/default/{tt}/{to_id}",
           "source": "backend/app/connectors/hubspot.py:211"
+        }
+      ]
+    },
+    {
+      "action": "hubspot.tickets.search",
+      "module": "app.services.tool_service",
+      "chosen": "POST /crm/v3/objects/tickets/search",
+      "verdict": "UNREVIEWED",
+      "secondary_role": null,
+      "candidates": [
+        {
+          "reference": "POST /crm/v3/objects/tickets/search",
+          "source": "backend/app/connectors/hubspot.py:666"
+        },
+        {
+          "reference": "GET /crm/v3/objects/tickets",
+          "source": "backend/app/connectors/hubspot.py:562"
         }
       ]
     },
