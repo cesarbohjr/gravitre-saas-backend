@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { AutoStatusBadge } from "@/components/gravitre/status-badge"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2, XCircle } from "lucide-react"
 import type { ApprovalBatchItemView, ApprovalBatchView } from "@/types/api"
@@ -100,9 +101,10 @@ function BatchItemRow({
       </div>
       <div className="flex items-center gap-2">
         {item.status !== "pending" ? (
-          <span className="text-xs capitalize text-muted-foreground">{statusLabel}</span>
+          <AutoStatusBadge status={String(statusLabel)} />
         ) : (
           <>
+            {decision ? <AutoStatusBadge status={decision} /> : null}
             <Button
               type="button"
               size="sm"

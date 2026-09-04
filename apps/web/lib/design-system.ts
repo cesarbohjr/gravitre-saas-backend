@@ -134,6 +134,60 @@ export const STATUS = {
   idle: "border border-border bg-muted/50 text-muted-foreground",
 } as const
 
+export type StatusTone = keyof typeof STATUS
+
+/** Dot fill paired with STATUS chip tones. */
+export const STATUS_DOT: Record<StatusTone, string> = {
+  pending: "bg-[color:var(--status-pending)]",
+  approved: "bg-[color:var(--status-approved)]",
+  rejected: "bg-[color:var(--status-rejected)]",
+  running: "bg-[color:var(--status-running)]",
+  failed: "bg-[color:var(--status-failed)]",
+  verified: "bg-[color:var(--status-verified)]",
+  estimate: "bg-[color:var(--status-estimate)]",
+  idle: "bg-muted-foreground",
+}
+
+/**
+ * Map a raw API / UI status string onto a STATUS tone.
+ * Unknown values fall back to `idle` (muted) — never invent "live/trained".
+ */
+export function resolveStatusTone(status: string): StatusTone {
+  const key = status.trim().toLowerCase().replace(/[\s-]+/g, "_")
+  const map: Record<string, StatusTone> = {
+    pending: "pending",
+    awaiting_approval: "pending",
+    awaiting: "pending",
+    queued: "pending",
+    approved: "approved",
+    approve: "approved",
+    success: "approved",
+    completed: "verified",
+    verified: "verified",
+    rejected: "rejected",
+    reject: "rejected",
+    denied: "rejected",
+    failed: "failed",
+    error: "failed",
+    running: "running",
+    in_progress: "running",
+    processing: "running",
+    active: "running",
+    estimate: "estimate",
+    estimated: "estimate",
+    partial_success: "estimate",
+    flagged_for_review: "pending",
+    warning: "pending",
+    idle: "idle",
+    paused: "idle",
+    draft: "idle",
+    cancelled: "idle",
+    canceled: "idle",
+    muted: "idle",
+  }
+  return map[key] ?? "idle"
+}
+
 /**
  * Icon-only button sizing for app chrome (top bar, page toolbars).
  *

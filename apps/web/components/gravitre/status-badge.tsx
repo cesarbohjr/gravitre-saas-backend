@@ -1,10 +1,21 @@
 import { cn } from "@/lib/utils"
 import { Icon, type IconName } from "@/lib/icons"
+import {
+  STATUS,
+  STATUS_DOT,
+  resolveStatusTone,
+  type StatusTone,
+} from "@/lib/design-system"
 
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info" | "muted"
 
 interface StatusBadgeProps {
   variant?: BadgeVariant
+  /**
+   * Prefer this when the chip encodes a governance/runtime state.
+   * Uses Phase 9 `--status-*` tokens via `STATUS` / `STATUS_DOT`.
+   */
+  tone?: StatusTone
   children: React.ReactNode
   className?: string
   dot?: boolean
@@ -22,7 +33,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   muted: "bg-muted text-muted-foreground",
 }
 
-const dotStyles: Record<BadgeVariant, string> = {
+const variantDotStyles: Record<BadgeVariant, string> = {
   default: "bg-secondary-foreground",
   success: "bg-success",
   warning: "bg-warning",
@@ -31,57 +42,51 @@ const dotStyles: Record<BadgeVariant, string> = {
   muted: "bg-muted-foreground",
 }
 
+/** Legacy variant → STATUS tone when callers still pass variant alone. */
+const variantToTone: Partial<Record<BadgeVariant, StatusTone>> = {
+  success: "approved",
+  warning: "pending",
+  error: "failed",
+  info: "running",
+  muted: "idle",
+}
+
 export function StatusBadge({
   variant = "default",
+  tone,
   children,
   className,
   dot = false,
   icon,
   title,
 }: StatusBadgeProps) {
+  const resolvedTone = tone ?? variantToTone[variant]
+  const chipClass = resolvedTone ? STATUS[resolvedTone] : variantStyles[variant]
+  const dotClass = resolvedTone ? STATUS_DOT[resolvedTone] : variantDotStyles[variant]
+
   return (
     <span
       title={title}
       className={cn(
         "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-        variantStyles[variant],
+        chipClass,
         className
       )}
     >
       {icon ? (
         <Icon name={icon} size="xs" />
       ) : dot ? (
-        <span className={cn("h-1.5 w-1.5 rounded-full", dotStyles[variant])} />
+        <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
       ) : null}
       {children}
     </span>
   )
 }
 
-// Convenience component for status-based badges with automatic styling
 interface AutoStatusBadgeProps {
   status: string
   className?: string
   showIcon?: boolean
-}
-
-const STATUS_VARIANTS: Record<string, BadgeVariant> = {
-  success: "success",
-  completed: "success",
-  active: "success",
-  partial_success: "warning",
-  flagged_for_review: "warning",
-  failed: "error",
-  error: "error",
-  cancelled: "muted",
-  canceled: "muted",
-  warning: "warning",
-  running: "info",
-  queued: "info",
-  in_progress: "info",
-  pending: "muted",
-  paused: "muted",
-  draft: "muted",
 }
 
 /**
@@ -96,13 +101,10 @@ export function formatStatusLabel(status: string): string {
 }
 
 export function AutoStatusBadge({ status, className, showIcon = true }: AutoStatusBadgeProps) {
-  // Statuses arrive in mixed casing, so normalize before mapping — otherwise
-  // "COMPLETED" misses the `completed` key and silently renders as neutral.
-  const key = status.trim().toLowerCase().replace(/[\s-]+/g, "_")
-  const variant = STATUS_VARIANTS[key] || "default"
+  const tone = resolveStatusTone(status)
 
   return (
-    <StatusBadge variant={variant} dot={showIcon} className={className}>
+    <StatusBadge tone={tone} dot={showIcon} className={className}>
       {formatStatusLabel(status)}
     </StatusBadge>
   )

@@ -1,6 +1,5 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import {
   confidenceBand,
@@ -9,6 +8,7 @@ import {
   formatScore,
 } from "@/lib/intelligence/helpers"
 import { ESTIMATED_CONFIDENCE_SHORT } from "@/lib/outcome-labels"
+import { STATUS } from "@/lib/design-system"
 
 export function ConfidenceBadge({
   score,
@@ -24,12 +24,19 @@ export function ConfidenceBadge({
 }) {
   const band = confidenceBand(score)
   return (
-    <Badge variant="outline" className={cn("font-normal", confidenceBandClass(band), className)}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-normal",
+        isEstimate ? STATUS.estimate : confidenceBandClass(band),
+        !isEstimate && "border border-border",
+        className,
+      )}
+    >
       {isEstimate ? `${ESTIMATED_CONFIDENCE_SHORT} ` : null}
       {confidenceBandLabel(band)}
       {showScore && score != null && !Number.isNaN(score) ? (
         <span className="ml-1 tabular-nums opacity-80">({formatScore(score)})</span>
       ) : null}
-    </Badge>
+    </span>
   )
 }

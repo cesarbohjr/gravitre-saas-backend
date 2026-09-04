@@ -7,6 +7,7 @@
 
 import { readString } from "@/lib/intelligence/helpers"
 import type { MlAdminOrgModelStatus } from "@/lib/api"
+import type { StatusTone } from "@/lib/design-system"
 
 export type RuntimeHonestyKind =
   | "model_loaded"
@@ -20,7 +21,10 @@ export type RuntimeHonestyPresentation = {
   label: string
   /** Short detail for tooltips. */
   detail: string
+  /** @deprecated Prefer statusTone — kept for older call sites. */
   badgeVariant: "success" | "warning" | "info" | "muted" | "error"
+  /** Phase 9 STATUS tone for honesty chips. */
+  statusTone: StatusTone
 }
 
 export function presentModelRuntime(
@@ -36,6 +40,7 @@ export function presentModelRuntime(
       label: "Insufficient data",
       detail: "Not enough org data for a loaded model path — data gate, not a live TRAINED claim.",
       badgeVariant: "muted",
+      statusTone: "idle",
     }
   }
 
@@ -48,6 +53,7 @@ export function presentModelRuntime(
           ? "Catalog may say trained, but no artifact is loaded — heuristic path only."
           : "Heuristic / estimate path — not a loaded trained artifact.",
       badgeVariant: "warning",
+      statusTone: "estimate",
     }
   }
 
@@ -57,6 +63,7 @@ export function presentModelRuntime(
       label: "Model (artifact loaded)",
       detail: "Trained artifact is loaded at runtime — not a catalog TRAINED badge alone.",
       badgeVariant: "success",
+      statusTone: "verified",
     }
   }
 
@@ -68,6 +75,7 @@ export function presentModelRuntime(
         label: "Catalog only",
         detail: "Catalog status present; runtime path unknown — do not treat as live TRAINED.",
         badgeVariant: "muted",
+        statusTone: "idle",
       }
     }
     return {
@@ -75,6 +83,7 @@ export function presentModelRuntime(
       label: "Unknown",
       detail: "No runtime_status from the API yet.",
       badgeVariant: "muted",
+      statusTone: "idle",
     }
   }
 
@@ -83,6 +92,7 @@ export function presentModelRuntime(
     label: runtime.replace(/_/g, " "),
     detail: `Runtime status: ${runtime}`,
     badgeVariant: "info",
+    statusTone: "running",
   }
 }
 

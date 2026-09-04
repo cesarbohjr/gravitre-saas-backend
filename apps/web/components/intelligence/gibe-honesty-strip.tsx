@@ -26,18 +26,16 @@ const COUNT_LABEL: Record<RuntimeHonestyKind, string> = {
   unknown: "unknown / catalog-only",
 }
 
-function variantFor(
-  kind: RuntimeHonestyKind,
-): "success" | "warning" | "info" | "muted" | "error" {
+function toneFor(kind: RuntimeHonestyKind) {
   switch (kind) {
     case "model_loaded":
-      return "success"
+      return "verified" as const
     case "heuristic":
-      return "warning"
+      return "estimate" as const
     case "data_gate":
-      return "muted"
+      return "idle" as const
     default:
-      return "muted"
+      return "idle" as const
   }
 }
 
@@ -76,7 +74,7 @@ export function GibeHonestyStrip({
           <div className="flex flex-wrap gap-2">
             {(Object.keys(COUNT_LABEL) as RuntimeHonestyKind[]).map((kind) =>
               counts[kind] > 0 ? (
-                <StatusBadge key={kind} variant={variantFor(kind)} dot>
+                <StatusBadge key={kind} tone={toneFor(kind)} dot>
                   {counts[kind]} {COUNT_LABEL[kind]}
                 </StatusBadge>
               ) : null,
@@ -104,7 +102,7 @@ export function GibeHonestyStrip({
           {shown.map(({ name, presentation }) => (
             <li key={name}>
               <StatusBadge
-                variant={presentation.badgeVariant}
+                tone={presentation.statusTone}
                 title={presentation.detail}
               >
                 {formatStatusLabel(name)} · {presentation.label}

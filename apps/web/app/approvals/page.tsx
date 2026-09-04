@@ -7,8 +7,10 @@ import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { AutoStatusBadge } from "@/components/gravitre/status-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { STATUS } from "@/lib/design-system"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi, settingsApi } from "@/lib/api"
@@ -332,10 +334,10 @@ const typeIcons = {
 }
 
 const priorityConfig = {
-  high: { color: "border-l-red-500", bg: "bg-destructive/5", badge: "bg-destructive/10 text-destructive" },
-  medium: { color: "border-l-amber-500", bg: "bg-warning/5", badge: "bg-warning/10 text-warning" },
-  low: { color: "border-l-zinc-500", bg: "bg-transparent", badge: "bg-zinc-500/10 text-zinc-400" },
-}
+  high: { color: "border-l-destructive", bg: "bg-destructive/5", badge: STATUS.rejected },
+  medium: { color: "border-l-[color:var(--status-pending)]", bg: "bg-warning/5", badge: STATUS.pending },
+  low: { color: "border-l-muted-foreground", bg: "bg-transparent", badge: STATUS.idle },
+} as const
 
 // Decision Card Component
 function DecisionCard({ 
@@ -410,6 +412,7 @@ function DecisionCard({
           <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium uppercase", config.badge)}>
             {approval.priority}
           </span>
+          <AutoStatusBadge status={approval.status} />
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
             {approval.type}
           </span>
@@ -462,17 +465,17 @@ function DecisionCard({
             <span>{approval.requestedAt}</span>
           </div>
           {approval.status !== "pending" && (
-            <div>
-              <span className="capitalize">{approval.status}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <AutoStatusBadge status={approval.status} />
               {approval.reviewedBy ? (
                 <>
-                  <span> by </span>
+                  <span>by</span>
                   <span className="text-foreground">{approval.reviewedBy}</span>
                 </>
               ) : null}
               {approval.reviewedAt ? (
                 <>
-                  <span className="mx-1">&middot;</span>
+                  <span className="mx-0.5">&middot;</span>
                   <span>{approval.reviewedAt}</span>
                 </>
               ) : null}
@@ -654,6 +657,10 @@ function DetailPanel({
             Request Details
           </h3>
           <div className="space-y-3">
+            <div className="flex items-center justify-between py-2 border-b border-border/50">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <AutoStatusBadge status={approval.status} />
+            </div>
             <div className="flex items-center justify-between py-2 border-b border-border/50">
               <span className="text-sm text-muted-foreground">Entity</span>
               <span className="text-sm font-medium text-foreground font-mono">{approval.context.entity}</span>
