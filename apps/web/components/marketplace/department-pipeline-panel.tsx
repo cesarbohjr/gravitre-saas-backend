@@ -1,9 +1,13 @@
 "use client"
 
 import useSWR from "swr"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { departmentPipelinesApi } from "@/lib/api"
+import { useOrgAdmin } from "@/lib/use-org-admin"
+import { Switch } from "@/components/ui/switch"
 import { CheckCircle2, Circle, AlertTriangle, Loader2, Clock } from "lucide-react"
+import { toast } from "sonner"
 
 export type DepartmentPipelineStage = {
   stageId: string
@@ -22,19 +26,10 @@ export type DepartmentPipelineView = {
   syncBackPolicy?: {
     syncTiming: "immediate" | "defer_to_milestone"
     deferMilestoneStageId?: string | null
+    defaultDeferMilestoneStageId?: string | null
   }
   stageStatuses?: DepartmentPipelineStage[]
   honestGaps?: string[]
-  signalScoring?: {
-    priorities?: Array<{
-      workObjectId: string
-      title: string
-      priorityScore: number
-      priorityBand: string
-      explanations?: string[]
-    }>
-    gaps?: string[]
-  }
 }
 
 function statusIcon(status: DepartmentPipelineStage["status"]) {
@@ -67,12 +62,77 @@ function statusTone(status: DepartmentPipelineStage["status"]) {
   }
 }
 
+function SyncBackPolicyControl({
+  department,
+  policy,
+  onUpdated,
+}: {
+  department: string
+  policy?: DepartmentPipelineView["syncBackPolicy"]
+  onUpdated?: () => void
+}) {
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const [saving, setSaving] = useState(false)
+  const deferred = policy?.syncTiming === "defer_to_milestone"
+  const milestoneLabel = (
+    policy?.deferMilestoneStageId ??
+    policy?.defaultDeferMilestoneStageId ??
+    "milestone"
+  ).replace(/_/g, " ")
+
+  if (adminLoading || !isAdmin) return null
+
+  const handleToggle = async (checked: boolean) => {
+    setSaving(true)
+    try {
+      await departmentPipelinesApi.updateSyncBackPolicy({
+        department,
+        sync_timing: checked ? "defer_to_milestone" : "immediate",
+        defer_milestone_stage_id: checked
+          ? policy?.defaultDeferMilestoneStageId ?? policy?.deferMilestoneStageId ?? null
+          : null,
+      })
+      toast.success(
+        checked
+          ? `CRM sync deferred until ${milestoneLabel}`
+          : "CRM sync set to immediate (verified)",
+      )
+      onUpdated?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update sync policy")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-foreground">Sync-back timing (admin)</p>
+        <p className="text-[11px] text-muted-foreground">
+          {deferred
+            ? `Writes to the system of record wait until ${milestoneLabel}. F6 verification unchanged.`
+            : "Verified writes sync immediately on approval (default)."}
+        </p>
+      </div>
+      <Switch
+        checked={deferred}
+        disabled={saving}
+        onCheckedChange={handleToggle}
+        aria-label="Defer CRM sync until pipeline milestone"
+      />
+    </div>
+  )
+}
+
 export function DepartmentPipelinePanel({
   pipeline,
   compact = false,
+  onPolicyUpdated,
 }: {
   pipeline: DepartmentPipelineView
   compact?: boolean
+  onPolicyUpdated?: () => void
 }) {
   const stages = pipeline.stageStatuses ?? []
   const syncLabel =
@@ -104,30 +164,11 @@ export function DepartmentPipelinePanel({
 
       <p className="mt-3 text-xs text-muted-foreground">{syncLabel}</p>
 
-      {pipeline.signalScoring?.priorities?.length ? (
-        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-primary">
-            Signal priority
-          </p>
-          {pipeline.signalScoring.priorities.slice(0, 1).map((row) => (
-            <div key={row.workObjectId} className="mt-1">
-              <p className="text-sm font-medium text-foreground">
-                {row.title} - {Math.round(Number(row.priorityScore) || 0)}/100 ({row.priorityBand})
-              </p>
-              {row.explanations?.slice(0, 2).map((reason) => (
-                <p key={reason} className="text-xs text-muted-foreground">
-                  {reason}
-                </p>
-              ))}
-            </div>
-          ))}
-          {pipeline.signalScoring.gaps?.length ? (
-            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-              Gap: {pipeline.signalScoring.gaps[0]}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <SyncBackPolicyControl
+        department={pipeline.department}
+        policy={pipeline.syncBackPolicy}
+        onUpdated={onPolicyUpdated}
+      />
 
       <ol className={cn("mt-4 space-y-2", compact && "mt-3")}>
         {stages.map((stage, index) => {
@@ -179,10 +220,13 @@ export function DepartmentPipelinePanel({
 }
 
 export function DepartmentPipelineByDepartment({ department }: { department: string }) {
-  const key = department ? `dept-pipeline:${department}` : null
-  const { data, error, isLoading } = useSWR(key, () =>
-    departmentPipelinesApi.byDepartment(department),
+  const normalized = department.trim().toLowerCase()
+  const key = normalized && normalized !== "general" ? `dept-pipeline:${normalized}` : null
+  const { data, error, isLoading, mutate } = useSWR(key, () =>
+    departmentPipelinesApi.byDepartment(normalized),
   )
+
+  if (!normalized || normalized === "general") return null
 
   if (isLoading) {
     return (
@@ -197,6 +241,7 @@ export function DepartmentPipelineByDepartment({ department }: { department: str
     <DepartmentPipelinePanel
       pipeline={data.pipeline as unknown as DepartmentPipelineView}
       compact
+      onPolicyUpdated={() => void mutate()}
     />
   )
 }

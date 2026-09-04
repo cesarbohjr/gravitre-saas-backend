@@ -74,6 +74,69 @@ def test_capability_conversational_grace_smoke(mock_client):
 
 
 @patch("app.routers.ops_internal.get_supabase_client")
+def test_department_pipeline_smoke(mock_client):
+    org_settings: dict = {}
+    mock_sb = MagicMock()
+
+    def _table(name: str):
+        t = MagicMock()
+        if name == "organizations":
+            t.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+                data=[{"settings": org_settings}]
+            )
+            t.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+        elif name == "marketplace_installs":
+            t.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+        elif name == "work_objects":
+            t.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+                data=[]
+            )
+        elif name == "workflow_runs":
+            t.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+                count=0
+            )
+        return t
+
+    mock_sb.table.side_effect = _table
+    mock_client.return_value = mock_sb
+    _auth_with_internal_secret()
+
+    deferred = MagicMock(
+        success=False,
+        error_code="sync_back_deferred",
+        body="deferred",
+        integration="hubspot",
+    )
+    unlocked = MagicMock(
+        success=False,
+        error_code="write_approval_required",
+        body="approval",
+        integration="hubspot",
+    )
+
+    with patch(
+        "app.services.tool_registry.ToolRegistry.list_connected_integrations",
+        return_value=["hubspot"],
+    ):
+        with patch(
+            "app.services.chat_connector_execution_service.get_chat_connector_execution_service"
+        ) as mock_get_svc:
+            svc = MagicMock()
+            svc.execute_plan = AsyncMock(side_effect=[deferred, unlocked, deferred, unlocked])
+            mock_get_svc.return_value = svc
+            response = client.post(
+                "/api/internal/ops/department-pipeline-smoke",
+                headers={"X-Internal-Secret": "test-secret"},
+                json={"org_id": "org-1", "actor_id": "user-1", "restore_policy": True},
+            )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pass"] is True
+    assert body["gates"]["sales_seven_stages"] is True
+    assert body["gates"]["marketing_six_stages"] is True
+
+
+@patch("app.routers.ops_internal.get_supabase_client")
 def test_pre_action_card_smoke(mock_client):
     mock_client.return_value = MagicMock()
     _auth_with_internal_secret()

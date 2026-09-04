@@ -21,6 +21,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { marketplaceApi } from "@/lib/api"
+import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
 import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import { cn } from "@/lib/utils"
 import type {
@@ -82,10 +83,12 @@ export function InstallSuccessPanel({
   assetTitle,
   deepLinks,
   entities,
+  department,
 }: {
   assetTitle: string
   deepLinks: MarketplaceInstallDeepLink[]
   entities?: Record<string, unknown> | null
+  department?: string | null
 }) {
   const reduced = useReducedMotion()
   const links: MarketplaceInstallDeepLink[] = []
@@ -169,6 +172,12 @@ export function InstallSuccessPanel({
                 </Button>
               )
             })}
+          </div>
+        ) : null}
+
+        {department ? (
+          <div className="mt-1">
+            <DepartmentPipelineByDepartment department={department} />
           </div>
         ) : null}
 
@@ -330,6 +339,7 @@ export function InstallStepperSheet({
               assetTitle={asset.title}
               deepLinks={installResult?.deepLinks ?? []}
               entities={installResult?.entities}
+              department={asset.department}
             />
           ) : null}
         </div>

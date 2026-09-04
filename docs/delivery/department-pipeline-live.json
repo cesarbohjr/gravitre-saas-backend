@@ -4,7 +4,9 @@
     "catalog_five_departments": "PASS",
     "defer_early_hubspot": "PASS",
     "allow_at_sync_milestone": "PASS",
-    "prod_health": "PASS"
+    "prod_health": "PASS",
+    "phase3_sales_marketing_pipeline": "NOT RUN",
+    "phase4_execute_plan_defer": "NOT RUN"
   },
   "departments": [
     {
@@ -43,5 +45,7 @@
       "honestGapCount": 2
     }
   ],
-  "prod_health_sha": "c5b599643d90862c3b0361fd94acc6b0bd03838c"
+  "prod_health_sha": "4554d352f3c304ba45016a052f052931384f6c8c",
+  "deployed_smoke": null,
+  "deployed_smoke_error": "endpoint_not_deployed"
 }

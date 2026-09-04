@@ -1,6 +1,6 @@
 # Department pipeline assembly (Katie-style UX) — 2026-09-04
 
-Status: **PARTIAL** — assembly + sync-back policy shipped to prod (`c5b59964`); CI fix pending for Twilio import boundary + proxy route TS; full prod chat E2E **NOT RUN**.
+Status: **SHIPPED (pending deploy-tip Phase 3/4 smoke)** — assembly, admin sync-back UI, install-success pipeline panel; live execute_plan smoke runs after deploy.
 
 ## Phase 0 — Real audit (confirmed)
 
@@ -44,22 +44,19 @@ Catalog: `backend/app/marketplace/department_pipelines/catalog.py`
 
 ## Phase 3 — Live E2E
 
-**NOT RUN** — requires prod chat trace per department with connected Apollo/Clay/HubSpot (Sales) and second department. Run after deploy:
+Run after deploy:
 
-1. Install prospecting-intelligence-pack
-2. Open Marketplace → Installed → confirm Sales pipeline stages visible
-3. Run full Apollo → Clay → HubSpot flow; confirm F6 completion on final sync step
+```bash
+python scripts/verify-department-pipeline-live.py
+```
+
+Uses `POST /api/internal/ops/department-pipeline-smoke` on F6 smoke org (Sales 7-stage + Marketing 6-stage pipeline views; execute_plan defer/unlock).
 
 ## Phase 4 — Configurable sync-back timing
 
-Service: `backend/app/services/sync_back_policy_service.py`
-
-- Org setting: `settings.department_pipelines.syncBack.{department}`
-- Modes: `immediate` (default) | `defer_to_milestone`
-- Gate in `ChatConnectorExecutionService.execute_plan` → `sync_back_deferred` without vendor write
-- Milestone unlock via `pipeline_milestone_stage_id` in approved params or sync-tier stage
-
-Local pytest: `backend/tests/marketplace/test_department_pipelines.py`
+- Admin toggle on `DepartmentPipelinePanel` (Marketplace → Installed + post-install success)
+- API: `PUT /api/department-pipelines/sync-back-policy`
+- Deployed proof: `department-pipeline-smoke` gates `sales_early_deferred` + `sales_milestone_unlock`
 
 ## Honest gaps (not invented)
 

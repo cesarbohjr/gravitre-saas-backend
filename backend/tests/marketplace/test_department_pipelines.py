@@ -1,11 +1,19 @@
 """Tests for department pipeline catalog and sync-back policy."""
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
+import pytest
+
 from app.marketplace.department_pipelines.catalog import (
     get_department_pipeline,
     list_department_pipelines,
     pipeline_for_invoke_action,
     serialize_pipeline,
+)
+from app.services.chat_connector_execution_service import (
+    ChatConnectorExecutionService,
+    ConnectorActionPlan,
 )
 from app.services.sync_back_policy_service import (
     evaluate_sync_back_gate,
@@ -104,3 +112,33 @@ def test_serialize_pipeline_includes_honest_gaps():
     assert payload["pipelineId"] == "sales-katie"
     assert isinstance(payload["honestGaps"], list)
     assert len(payload["stages"]) == 7
+
+
+@pytest.mark.asyncio
+async def test_execute_plan_defers_hubspot_when_sync_back_deferred():
+    plan = ConnectorActionPlan(
+        tool_name="hubspot_contacts_create",
+        invoke_action="hubspot.contacts.create",
+        integration="hubspot",
+        kind="write",
+        label="Create contact",
+        args={"properties": {"email": "x@example.com"}},
+    )
+    approved = ChatConnectorExecutionService.plan_to_dict(plan)
+    service = ChatConnectorExecutionService()
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"settings": save_sync_back_policy({}, department="sales", sync_timing="defer_to_milestone")}]
+    )
+    result = await service.execute_plan(
+        org_id="org-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        plan=plan,
+        client=client,
+        classification={"department": "sales"},
+        approved_params=approved,
+        own_terminal_outcome=False,
+    )
+    assert result.error_code == "sync_back_deferred"
+    assert result.success is False

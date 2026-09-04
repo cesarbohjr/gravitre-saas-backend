@@ -333,6 +333,196 @@ async def capability_write_gate_smoke(
     }
 
 
+class DepartmentPipelineSmokeBody(BaseModel):
+    org_id: str
+    actor_id: str
+    environment_name: str = "production"
+    restore_policy: bool = True
+
+
+@router.post("/department-pipeline-smoke")
+async def department_pipeline_smoke(
+    body: DepartmentPipelineSmokeBody,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Deployed-tip proof: Katie-style pipelines + sync-back defer gate on execute_plan."""
+    import os
+    import uuid
+
+    from app.marketplace.department_pipelines.service import DepartmentPipelineService
+    from app.services.chat_connector_execution_service import (
+        ChatConnectorExecutionService,
+        ConnectorActionPlan,
+        get_chat_connector_execution_service,
+    )
+    from app.services.sync_back_policy_service import save_sync_back_policy
+    from app.services.tool_registry import get_tool_registry
+
+    org_id = str(body.org_id or "").strip()
+    actor_id = str(body.actor_id or "").strip()
+    if not org_id or not actor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id and actor_id required")
+
+    client = get_supabase_client(settings)
+    reg = get_tool_registry()
+    env_name = str(body.environment_name or "production").strip() or "production"
+    connected = reg.list_connected_integrations(client, org_id, environment_name=env_name)
+
+    org_row = (
+        client.table("organizations").select("settings").eq("id", org_id).limit(1).execute().data or []
+    )
+    original_settings = (
+        org_row[0].get("settings") if org_row and isinstance(org_row[0].get("settings"), dict) else {}
+    )
+    defer_settings = save_sync_back_policy(
+        dict(original_settings),
+        department="sales",
+        sync_timing="defer_to_milestone",
+    )
+    defer_settings = save_sync_back_policy(
+        defer_settings,
+        department="marketing",
+        sync_timing="defer_to_milestone",
+    )
+    client.table("organizations").update({"settings": defer_settings}).eq("id", org_id).execute()
+
+    pipeline_svc = DepartmentPipelineService()
+    sales_view = pipeline_svc.get_pipeline_view(
+        client, org_id=org_id, department="sales", org_settings=defer_settings
+    )
+    marketing_view = pipeline_svc.get_pipeline_view(
+        client, org_id=org_id, department="marketing", org_settings=defer_settings
+    )
+
+    exec_svc = get_chat_connector_execution_service()
+    conv_id = str(uuid.uuid4())
+
+    def _hubspot_contact_plan() -> tuple[ConnectorActionPlan, dict[str, Any]]:
+        plan = ConnectorActionPlan(
+            tool_name="hubspot_contacts_create",
+            invoke_action="hubspot.contacts.create",
+            integration="hubspot",
+            kind="write",
+            label="Create HubSpot contact",
+            args={
+                "properties": {
+                    "email": f"dept-pipe-{uuid.uuid4().hex[:8]}@gravitre-smoke.invalid",
+                    "firstname": "DeptPipe",
+                }
+            },
+        )
+        approved = ChatConnectorExecutionService.plan_to_dict(plan)
+        return plan, approved
+
+    async def _run_plan(
+        *,
+        plan: ConnectorActionPlan,
+        approved: dict[str, Any],
+        department: str,
+    ) -> dict[str, Any]:
+        result = await exec_svc.execute_plan(
+            org_id=org_id,
+            user_id=actor_id,
+            conversation_id=conv_id,
+            plan=plan,
+            client=client,
+            classification={"department": department},
+            environment_name=env_name,
+            own_terminal_outcome=False,
+            approved_params=approved,
+        )
+        return {
+            "success": result.success,
+            "error_code": result.error_code,
+            "body": (result.body or "")[:240],
+            "integration": result.integration,
+        }
+
+    sales_plan, sales_approved = _hubspot_contact_plan()
+    sales_early = await _run_plan(plan=sales_plan, approved=sales_approved, department="sales")
+    sales_milestone_approved = {
+        **sales_approved,
+        "pipeline_milestone_stage_id": "sync_crm",
+    }
+    sales_late = await _run_plan(
+        plan=sales_plan,
+        approved=sales_milestone_approved,
+        department="sales",
+    )
+
+    mkt_plan = ConnectorActionPlan(
+        tool_name="hubspot_campaigns_update",
+        invoke_action="hubspot.campaigns.update",
+        integration="hubspot",
+        kind="write",
+        label="Update HubSpot campaign",
+        args={"campaign_id": "smoke-probe", "properties": {}},
+    )
+    mkt_approved = ChatConnectorExecutionService.plan_to_dict(mkt_plan)
+    marketing_early = await _run_plan(plan=mkt_plan, approved=mkt_approved, department="marketing")
+    marketing_late = await _run_plan(
+        plan=mkt_plan,
+        approved={**mkt_approved, "pipeline_milestone_stage_id": "sync_ads_hubspot"},
+        department="marketing",
+    )
+
+    if body.restore_policy:
+        client.table("organizations").update({"settings": original_settings}).eq("id", org_id).execute()
+
+    sales_stage_ok = bool(sales_view and len(sales_view.get("stageStatuses") or []) == 7)
+    marketing_stage_ok = bool(marketing_view and len(marketing_view.get("stageStatuses") or []) == 6)
+    defer_early_ok = sales_early.get("error_code") == "sync_back_deferred"
+    defer_marketing_ok = marketing_early.get("error_code") == "sync_back_deferred"
+    milestone_ok = sales_late.get("error_code") != "sync_back_deferred"
+    marketing_milestone_ok = marketing_late.get("error_code") != "sync_back_deferred"
+
+    pass_all = (
+        sales_stage_ok
+        and marketing_stage_ok
+        and defer_early_ok
+        and defer_marketing_ok
+        and milestone_ok
+        and marketing_milestone_ok
+    )
+
+    return {
+        "pass": pass_all,
+        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA"),
+        "org_id": org_id,
+        "connected_integrations": connected,
+        "sales_pipeline": {
+            "pipelineId": (sales_view or {}).get("pipelineId"),
+            "stageCount": len((sales_view or {}).get("stageStatuses") or []),
+            "connectAndGoReady": (sales_view or {}).get("connectAndGoReady"),
+        },
+        "marketing_pipeline": {
+            "pipelineId": (marketing_view or {}).get("pipelineId"),
+            "stageCount": len((marketing_view or {}).get("stageStatuses") or []),
+            "connectAndGoReady": (marketing_view or {}).get("connectAndGoReady"),
+        },
+        "sync_back_defer": {
+            "sales_early": sales_early,
+            "sales_milestone": sales_late,
+            "marketing_early": marketing_early,
+            "marketing_milestone": marketing_late,
+        },
+        "gates": {
+            "sales_seven_stages": sales_stage_ok,
+            "marketing_six_stages": marketing_stage_ok,
+            "sales_early_deferred": defer_early_ok,
+            "marketing_early_deferred": defer_marketing_ok,
+            "sales_milestone_unlock": milestone_ok,
+            "marketing_milestone_unlock": marketing_milestone_ok,
+        },
+        "claim": (
+            "PASS — department pipeline + sync-back defer @ deployed execute_plan"
+            if pass_all
+            else "FAIL — department pipeline smoke did not meet all gates"
+        ),
+    }
+
+
 class Phase2ConnectorSmokeBody(BaseModel):
     org_id: str
     actor_id: str
