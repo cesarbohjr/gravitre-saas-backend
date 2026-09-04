@@ -715,3 +715,36 @@ def get_ticket(
         access_token,
         params={"properties": ",".join(props)},
     )
+
+
+def list_marketing_emails(
+    access_token: str,
+    *,
+    limit: int = 25,
+) -> dict[str, Any]:
+    """List marketing emails (HubSpot Marketing Hub) — used as campaign inventory."""
+    lim = min(max(int(limit), 1), 100)
+    return _request(
+        "GET",
+        "/marketing/v3/emails",
+        access_token,
+        params={"limit": lim},
+    )
+
+
+def update_marketing_email(
+    access_token: str,
+    email_id: str,
+    properties: dict[str, Any],
+) -> dict[str, Any]:
+    """Patch a marketing email/campaign record."""
+    if not email_id:
+        raise HubSpotAPIError("email_id is required")
+    if not isinstance(properties, dict) or not properties:
+        raise HubSpotAPIError("properties object is required")
+    return _request(
+        "PATCH",
+        f"/marketing/v3/emails/{email_id}",
+        access_token,
+        json_body=properties,
+    )

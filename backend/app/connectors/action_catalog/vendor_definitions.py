@@ -75,6 +75,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "owners.list", "List owners", tier="v1", kind="read", scope_suffix="owners:read", idempotent=True),
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
             action("hubspot", "contacts.list", "List recent contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
+            action("hubspot", "campaigns.list", "List marketing emails/campaigns", tier="v1", kind="read", scope_suffix="marketing-email:read", idempotent=True),
         ),
         v2=(
             action(
@@ -88,6 +89,7 @@ VENDOR_DEFINITIONS: tuple = (
                 workflow_schema=HUBSPOT_CONTACTS_CREATE_SCHEMA,
             ),
             action("hubspot", "contacts.update", "Update contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
+            action("hubspot", "campaigns.update", "Update marketing email/campaign", tier="v2", kind="write", scope_suffix="marketing-email:write", destructive=True),
             action("hubspot", "contacts.delete", "Delete contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True, requires_approval=True),
             action("hubspot", "deals.create", "Create deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
             action("hubspot", "deals.update", "Update deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
@@ -1681,6 +1683,21 @@ VENDOR_DEFINITIONS: tuple = (
             action("zendesk", "macros.apply", "Apply macro", tier="v3", kind="advanced", scope_suffix="macros:write"),
             action("zendesk", "side_conversations.create", "Create side conversation", tier="v3", kind="advanced", scope_suffix="tickets:write"),
         ),
+    ),
+    build_vendor(
+        "connectwise",
+        "ConnectWise Manage",
+        "MSP / PSA",
+        "https://developer.connectwise.com/Products/Manage/REST",
+        shipped=True,
+        department="msp",
+        v1=(
+            action("connectwise", "companies.list", "List client companies", tier="v1", kind="read", scope_suffix="company:read", idempotent=True),
+        ),
+        v2=(
+            action("connectwise", "tickets.create", "Create service ticket", tier="v2", kind="write", scope_suffix="service:tickets:write", destructive=True),
+        ),
+        v3=(),
     ),
     build_vendor(
         "intercom",

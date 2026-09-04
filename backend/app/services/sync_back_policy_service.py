@@ -157,6 +157,7 @@ def is_crm_sync_invoke_action(invoke_action: str) -> bool:
         "clay.crm.",
         "marketo.",
         "pipedrive.",
+        "connectwise.",
     )
     if any(key.startswith(p) for p in prefixes):
         return True

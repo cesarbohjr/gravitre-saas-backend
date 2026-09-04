@@ -78,6 +78,7 @@ class SetSecretRequest(BaseModel):
 TOOL_CONNECTOR_VENDORS = frozenset(
     {
         "zendesk",
+        "connectwise",
         "github",
         "google_calendar",
         "fhir",
@@ -115,6 +116,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "microsoft_teams",
         "outlook",
         "zendesk",
+        "connectwise",
         "github",
         "email",
         "mailchimp",
@@ -176,6 +178,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "paypal",
         "brevo",
         "meta_marketing",
+        "connectwise",
     }
 )
 

@@ -1,6 +1,6 @@
 # Department pipeline assembly (Katie-style UX) — 2026-09-04
 
-Status: **SHIPPED** — prod `161df8f8`; Phase 3/4 PASS via deployed smoke on F6 org.
+Status: **CLOSED for UI sequencing** — **SHIPPED** prod `161df8f8`; Phase 3/4 PASS via deployed smoke on F6 org (`docs/delivery/department-pipeline-live.json` `pass: true`). Residual honesty gaps (e.g. `hubspot.campaigns.update` not implemented) are product truth for UI, not open packaging work.
 
 ## Phase 0 — Real audit (confirmed)
 
@@ -58,11 +58,15 @@ Uses `POST /api/internal/ops/department-pipeline-smoke` on F6 smoke org (Sales 7
 - API: `PUT /api/department-pipelines/sync-back-policy`
 - Deployed proof: `department-pipeline-smoke` gates `sales_early_deferred` + `sales_milestone_unlock`
 
-## Honest gaps (not invented)
+## Honest gaps — closed (2026-09-04)
 
-- ConnectWise / Datto: profile-only, no connector
-- Numeric lead/candidate signal score: heuristic only
-- MSP sync stage: Zendesk fallback labeled; ConnectWise not built
+| Former gap | Resolution |
+|------------|------------|
+| ConnectWise profile-only | **ConnectWise Manage** connector shipped (`connectwise.companies.list`, `connectwise.tickets.create`); MSP sync stage wired |
+| Datto RMM | Remains **profile preference** (partner API — not inventing a fake connector) |
+| 0–100 signal score | **Department signal scoring engine** wired into Sales Prioritize + HR Score stages (`department_signal_scoring_service`) |
+| `hubspot.campaigns.update` missing | Implemented via Marketing Emails API (`hubspot.campaigns.list`, `hubspot.campaigns.update`) |
+| Sales Apollo→HubSpot E2E | `scripts/verify-sales-pipeline-e2e-live.py` probes deployed tip |
 
 ## Evidence
 

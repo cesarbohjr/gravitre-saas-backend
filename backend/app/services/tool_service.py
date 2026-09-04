@@ -57,6 +57,7 @@ from app.connectors.hubspot import (
     list_contacts,
     list_deal_pipelines,
     list_deals,
+    list_marketing_emails,
     # Aliased: app.connectors.zendesk exports list_tickets too and is imported
     # later, so the bare name would silently resolve to Zendesk's.
     list_tickets as hubspot_list_tickets,
@@ -68,6 +69,7 @@ from app.connectors.hubspot import (
     update_contact,
     update_deal,
     update_deal_stage,
+    update_marketing_email,
 )
 from app.connectors.salesforce import (
     SalesforceAPIError,
@@ -1159,6 +1161,41 @@ def _exec_hubspot_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> Norma
         action="hubspot.tickets.get",
         connector_id=cid,
         data=ticket_payload,
+    )
+
+
+def _exec_hubspot_campaigns_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_marketing_emails(token, limit=int(params.get("limit") or 25))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    rows = data.get("results") if isinstance(data, dict) else []
+    return NormalizedResult(
+        success=True,
+        action="hubspot.campaigns.list",
+        connector_id=cid,
+        data={"campaigns": rows or [], "count": len(rows or [])},
+    )
+
+
+def _exec_hubspot_campaigns_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    email_id = params.get("campaign_id") or params.get("campaignId") or params.get("email_id") or params.get("emailId")
+    properties = params.get("properties")
+    if not email_id:
+        raise ToolValidationError("hubspot.campaigns.update requires campaign_id (marketing email id)")
+    if not isinstance(properties, dict) or not properties:
+        raise ToolValidationError("hubspot.campaigns.update requires properties object")
+    try:
+        data = update_marketing_email(token, str(email_id), properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.campaigns.update",
+        connector_id=cid,
+        data={"campaign": data},
     )
 
 
@@ -4290,6 +4327,8 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.list": _exec_hubspot_deals_list,
     "hubspot.companies.get": _exec_hubspot_companies_get,
     "hubspot.tickets.search": _exec_hubspot_tickets_search,
+    "hubspot.campaigns.list": _exec_hubspot_campaigns_list,
+    "hubspot.campaigns.update": _exec_hubspot_campaigns_update,
     "salesforce.leads.get": _exec_salesforce_leads_get,
     "salesforce.leads.update": _exec_salesforce_leads_update,
     "salesforce.accounts.get": _exec_salesforce_accounts_get,
@@ -4434,6 +4473,7 @@ from app.services.pdl_tools import PDL_TOOL_EXECUTORS
 from app.services.plaid_tools import PLAID_TOOL_EXECUTORS
 from app.services.gusto_tools import GUSTO_TOOL_EXECUTORS
 from app.services.platform_health_tools import PLATFORM_HEALTH_TOOL_EXECUTORS
+from app.services.connectwise_tools import CONNECTWISE_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -4468,6 +4508,7 @@ _TOOL_REGISTRY.update(PDL_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PLAID_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GUSTO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PLATFORM_HEALTH_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CONNECTWISE_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS

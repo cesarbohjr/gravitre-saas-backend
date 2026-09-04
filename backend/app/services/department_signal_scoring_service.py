@@ -174,8 +174,8 @@ _SOURCE_DEFS: tuple[SourceDefinition, ...] = (
         department="msp",
         label="Client environment inventory",
         connector_vendor="connectwise",
-        connector_actions=(),
-        note="No ConnectWise/Datto/RMM source is currently implemented in this stack.",
+        connector_actions=("connectwise.companies.list",),
+        note="Datto RMM remains a profile preference (partner API); ConnectWise Manage covers PSA inventory.",
         saturation=2.0,
     ),
 )

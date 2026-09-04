@@ -97,6 +97,22 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["contact_id", "properties"],
     },
+    "hubspot.campaigns.list": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer"},
+            "connector_id": _CONNECTOR_ID,
+        },
+    },
+    "hubspot.campaigns.update": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "properties": {"type": "object"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["campaign_id", "properties"],
+    },
     "hubspot.contacts.delete": {
         "type": "object",
         "properties": {

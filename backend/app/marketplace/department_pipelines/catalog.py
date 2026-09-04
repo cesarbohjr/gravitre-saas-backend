@@ -90,16 +90,13 @@ SALES_PIPELINE = DepartmentPipelineSpec(
     default_department_pack_slug="revenue-operations-pack",
     work_object_type="opportunity",
     sync_milestone_stage_id="sync_crm",
-    honest_gaps=(
-        "Unified 0–100 lead signal score (Prompt C) is PackSignal + recommendation ranking, not a standalone product.",
-    ),
     stages=(
         _stage(
             "discover",
             "Discover",
             "Detect ICP-fit accounts and intent from connected signals.",
             kind="signal",
-            refs=("business_signals_engine", "pack_signal:apollo", "pack_signal:fred"),
+            refs=("business_signals_engine", "department_signal_scoring_service", "pack_signal:apollo", "pack_signal:fred"),
             packs=("prospecting-intelligence-pack", "sales-intelligence-pack"),
             wo_types=("opportunity",),
         ),
@@ -126,11 +123,9 @@ SALES_PIPELINE = DepartmentPipelineSpec(
         _stage(
             "prioritize",
             "Prioritize",
-            "Rank and segment leads for outreach (recommendation quality, not a dedicated score SKU).",
+            "Explainable 0–100 priority score from department signal engine.",
             kind="signal",
-            refs=("recommendation_quality_engine",),
-            gap=True,
-            gap_note="No standalone numeric ICP score — uses recommendation quality heuristics.",
+            refs=("department_signal_scoring_service", "signal_scoring_engine"),
         ),
         _stage(
             "outreach",
@@ -213,11 +208,10 @@ HR_PIPELINE = DepartmentPipelineSpec(
     default_department_pack_slug="hr-operations-pack",
     work_object_type="candidate",
     sync_milestone_stage_id="sync_greenhouse",
-    honest_gaps=("Candidate numeric score is recommendation/heuristic — not a dedicated Prompt C SKU.",),
     stages=(
         _stage("find", "Find candidate", "Search jobs and candidates.", kind="connector", refs=("greenhouse.jobs.list", "greenhouse.candidates.list"), packs=("hr-talent-intelligence-pack",)),
         _stage("research", "Research", "Background research on candidate / role fit.", kind="knowledge_fabric", refs=("pack.hr",), packs=("hr-talent-intelligence-pack",)),
-        _stage("score", "Score", "Heuristic fit ranking (not standalone score product).", kind="signal", refs=("recommendation_quality_engine",), gap=True, gap_note="No unified candidate score SKU."),
+        _stage("score", "Score", "Explainable 0–100 candidate priority score.", kind="signal", refs=("department_signal_scoring_service", "signal_scoring_engine")),
         _stage("outreach", "Outreach", "Candidate outreach email.", kind="connector", refs=("gmail.messages.send",), sync_tier="early"),
         _stage("schedule", "Interview scheduling", "Calendar scheduling.", kind="connector", refs=("google_calendar.events.create", "microsoft365.calendar.events.create"), sync_tier="early"),
         _stage("sync_greenhouse", "Sync to Greenhouse", "Write candidate stage / application updates.", kind="connector", refs=("greenhouse.candidates.update", "greenhouse.applications.update"), sync_tier="sync"),
@@ -233,10 +227,6 @@ MSP_PIPELINE = DepartmentPipelineSpec(
     default_department_pack_slug="msp-operations-pack",
     work_object_type="vulnerability",
     sync_milestone_stage_id="sync_ticketing",
-    honest_gaps=(
-        "ConnectWise / Datto connectors are profile preferences only — not implemented.",
-        "MSP ops pack is Slack-only lite vs full RMM stack.",
-    ),
     stages=(
         _stage("detect", "Detect vulnerability", "NVD / CISA KEV platform signals.", kind="signal", refs=("pack_signal:nvd", "pack_signal:cisa_kev"), packs=("msp-intelligence-pack",)),
         _stage("assess", "Assess affected clients", "Map CVE to client footprint.", kind="work_object", refs=("work_object:vulnerability",), wo_types=("vulnerability",)),
@@ -246,12 +236,10 @@ MSP_PIPELINE = DepartmentPipelineSpec(
         _stage("execute", "Execute", "Run remediation workflow steps.", kind="workflow", refs=("msp-prospects-clay-hubspot-enrichment",)),
         _stage(
             "sync_ticketing",
-            "Sync to ConnectWise / ticketing",
-            "Write ticket to PSA / helpdesk.",
-            kind="gap",
-            refs=("zendesk.tickets.create",),
-            gap=True,
-            gap_note="ConnectWise not built — Zendesk is available fallback; ConnectWise is profile-only.",
+            "Sync to PSA / ticketing",
+            "Write remediation ticket to ConnectWise Manage or Zendesk.",
+            kind="connector",
+            refs=("connectwise.tickets.create", "zendesk.tickets.create"),
             sync_tier="sync",
         ),
     ),
