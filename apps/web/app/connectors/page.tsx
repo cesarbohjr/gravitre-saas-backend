@@ -885,6 +885,8 @@ function AddConnectorModal({
   const [odooDatabase, setOdooDatabase] = useState("")
   const [clayWebhookUrl, setClayWebhookUrl] = useState("")
   const [clayTableName, setClayTableName] = useState("")
+  const [twilioAccountSid, setTwilioAccountSid] = useState("")
+  const [twilioAuthToken, setTwilioAuthToken] = useState("")
 
   const catalogConnectors = useMemo<CatalogConnector[]>(() => {
     const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
@@ -1065,6 +1067,9 @@ function AddConnectorModal({
     if (selectedType === "Clay") {
       return Boolean(apiKey && clayWebhookUrl.trim())
     }
+    if (selectedType === "Twilio") {
+      return Boolean(apiKey.trim() && apiSecret.trim())
+    }
     return Boolean(apiKey)
   }
 
@@ -1117,6 +1122,15 @@ function AddConnectorModal({
         payload.webhook_url = clayWebhookUrl.trim()
         payload.api_key = apiKey.trim()
         ;(payload as { apiKey?: string }).apiKey = apiKey.trim()
+      } else if (selectedType === "Twilio") {
+        payload.config = {
+          ...(twilioAccountSid.trim() ? { account_sid: twilioAccountSid.trim() } : {}),
+        }
+        payload.secrets = {
+          api_key_sid: apiKey.trim(),
+          api_key_secret: apiSecret.trim(),
+          ...(twilioAuthToken.trim() ? { auth_token: twilioAuthToken.trim() } : {}),
+        }
       } else if (apiKey) {
         payload.api_key = apiKey
         ;(payload as { apiKey?: string }).apiKey = apiKey
@@ -1167,6 +1181,8 @@ function AddConnectorModal({
     setOdooDatabase("")
     setClayWebhookUrl("")
     setClayTableName("")
+    setTwilioAccountSid("")
+    setTwilioAuthToken("")
     onClose()
   }
 
@@ -1893,6 +1909,46 @@ function AddConnectorModal({
                   </>
                 )}
 
+                {selectedType === "Twilio" && (
+                  <>
+                    <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Twilio powers PSTN voice (outbound/inbound calls) and SMS. Use an API Key (SK…) + secret from
+                        Twilio Console → Account → API keys. Account SID (AC…) is auto-resolved when left blank.
+                        Optional Auth Token enables webhook signature verification.
+                      </p>
+                      <a
+                        href="https://www.twilio.com/docs/iam/api-keys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Twilio API keys guide
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Account SID (optional)</label>
+                      <Input
+                        value={twilioAccountSid}
+                        onChange={(e) => setTwilioAccountSid(e.target.value)}
+                        placeholder="ACxxxxxxxx (auto-resolved from API key if blank)"
+                        className="bg-secondary font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Auth Token (optional, for webhooks)</label>
+                      <Input
+                        type="password"
+                        value={twilioAuthToken}
+                        onChange={(e) => setTwilioAuthToken(e.target.value)}
+                        placeholder="Primary Auth Token from Twilio Console"
+                        className="bg-secondary font-mono text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-warning" />
@@ -1904,7 +1960,9 @@ function AddConnectorModal({
                             ? "API key"
                             : selectedType === "Clay"
                               ? "Clay API key"
-                              : "API Key"}
+                              : selectedType === "Twilio"
+                                ? "API Key SID (SK…)"
+                                : "API Key"}
                     </label>
                     <div className="relative">
                       <Input
@@ -1929,16 +1987,27 @@ function AddConnectorModal({
                   </div>
 
                 {/* Optional API Secret for some services */}
-                {(selectedType === "Stripe" || selectedType === "AWS S3") && (
+                {(selectedType === "Stripe" || selectedType === "AWS S3" || selectedType === "Twilio") && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">
-                      {selectedType === "AWS S3" ? "Secret Access Key" : "API Secret"} (Optional)
+                      {selectedType === "AWS S3"
+                        ? "Secret Access Key"
+                        : selectedType === "Twilio"
+                          ? "API Key Secret"
+                          : "API Secret"}{" "}
+                      {selectedType === "Twilio" ? "" : "(Optional)"}
                     </label>
                     <Input
                       type="password"
                       value={apiSecret}
                       onChange={(e) => setApiSecret(e.target.value)}
-                      placeholder={selectedType === "AWS S3" ? "Enter your secret access key" : "Enter API secret"}
+                      placeholder={
+                        selectedType === "AWS S3"
+                          ? "Enter your secret access key"
+                          : selectedType === "Twilio"
+                            ? "Paste API Key secret from Twilio Console"
+                            : "Enter API secret"
+                      }
                       className="bg-secondary"
                     />
                   </div>

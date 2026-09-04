@@ -550,6 +550,26 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("TWILIO_DEFAULT_ORG_ID", "twilio_default_org_id"),
     )
+    twilio_account_sid: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_ACCOUNT_SID", "twilio_account_sid"),
+    )
+    twilio_api_key_sid: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_API_KEY_SID", "twilio_api_key_sid"),
+    )
+    twilio_api_key_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_API_KEY_SECRET", "twilio_api_key_secret"),
+    )
+    twilio_connect_client_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_ID", "twilio_connect_client_id"),
+    )
+    twilio_connect_client_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_SECRET", "twilio_connect_client_secret"),
+    )
     internet_research_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),

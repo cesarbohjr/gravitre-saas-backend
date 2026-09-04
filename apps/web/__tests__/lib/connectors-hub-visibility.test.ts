@@ -43,6 +43,7 @@ describe("connected connector hub visibility", () => {
       "constant_contact",
       "semrush",
       "ahrefs",
+      "twilio",
     ]) {
       expect(availableKeys.has(vendor)).toBe(true)
     }

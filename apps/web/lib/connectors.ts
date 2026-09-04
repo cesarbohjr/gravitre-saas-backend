@@ -298,7 +298,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Gmail", vendorKey: "gmail", description: "Email integration", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Google Calendar", vendorKey: "google_calendar", description: "Calendar availability and events", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Outlook", vendorKey: "outlook", description: "Microsoft email", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
-  { type: "Twilio", vendorKey: "twilio", description: "SMS and voice API", authType: "apiKey", credentialModel: "api_key", category: "Communication" },
+  { type: "Twilio", vendorKey: "twilio", description: "PSTN voice, SMS, and outbound calling via governed REST", authType: "apiKey", credentialModel: "api_key", category: "Communication", shipped: true },
   { type: "SendGrid", vendorKey: "sendgrid", description: "Transactional email API", authType: "apiKey", credentialModel: "api_key", category: "Communication" },
   { type: "Email", vendorKey: "email", description: "SMTP / send email from workflows", authType: "webhook", credentialModel: "api_key", category: "Communication", shipped: true },
   // DevOps / Incidents

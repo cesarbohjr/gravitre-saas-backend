@@ -1,0 +1,6 @@
+{
+  "generated_at": "2026-09-04T06:05:52.217159+00:00",
+  "verdict": "PASS",
+  "account_sid_redacted": "AC7830ee28…7543",
+  "evidence": "fetch_twilio_account_sid via Accounts.json (2026-09-04T06:05:52Z)"
+}

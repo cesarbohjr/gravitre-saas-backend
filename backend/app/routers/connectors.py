@@ -1163,6 +1163,26 @@ async def create_connector_route(
         for key_name, value in body.secrets.items():
             if value:
                 set_secret(client, org_id, connector_id, key_name, value, settings)
+    if vendor == "twilio":
+        cfg = dict(body.config or {})
+        account_sid = str(cfg.get("account_sid") or "").strip()
+        if not account_sid:
+            from app.connectors.twilio_api import fetch_twilio_account_sid
+
+            api_key_sid = (body.secrets or {}).get("api_key_sid") or ""
+            api_key_secret = (body.secrets or {}).get("api_key_secret") or ""
+            if api_key_sid and api_key_secret:
+                try:
+                    account_sid = fetch_twilio_account_sid(
+                        api_key_sid=str(api_key_sid).strip(),
+                        api_key_secret=str(api_key_secret).strip(),
+                    )
+                    cfg["account_sid"] = account_sid
+                    client.table("connectors").update({"config": cfg}).eq("id", connector_id).eq(
+                        "org_id", org_id
+                    ).execute()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("twilio_account_sid_auto_resolve_failed: %s", exc)
     write_audit_event(
         client,
         org_id=org_id,

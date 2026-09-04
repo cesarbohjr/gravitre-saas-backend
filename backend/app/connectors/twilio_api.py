@@ -46,17 +46,49 @@ def _account_sid(conn: dict[str, Any], ctx: ToolContext, cid: str) -> str:
     return sid
 
 
-def _auth_header(ctx: ToolContext, cid: str, account_sid: str) -> str:
-    token = (
-        get_decrypted_secret(ctx.client, cid, "auth_token", ctx.settings)
+def _auth_header(ctx: ToolContext, cid: str, account_sid: str, conn: dict[str, Any] | None = None) -> str:
+    cfg = (conn or {}).get("config") or {}
+    api_key_sid = (
+        get_decrypted_secret(ctx.client, cid, "api_key_sid", ctx.settings)
+        or str(cfg.get("api_key_sid") or "").strip()
+    )
+    api_key_secret = (
+        get_decrypted_secret(ctx.client, cid, "api_key_secret", ctx.settings)
+        or get_decrypted_secret(ctx.client, cid, "auth_token", ctx.settings)
         or get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
         or get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
         or ""
     ).strip()
+    if api_key_sid and api_key_secret:
+        raw = f"{api_key_sid}:{api_key_secret}".encode()
+        return "Basic " + base64.b64encode(raw).decode()
+    token = api_key_secret
     if not token:
-        raise ToolAuthExpiredError("Twilio auth_token not configured")
+        raise ToolAuthExpiredError("Twilio auth_token or api_key_secret not configured")
     raw = f"{account_sid}:{token}".encode()
     return "Basic " + base64.b64encode(raw).decode()
+
+
+def fetch_twilio_account_sid(*, api_key_sid: str, api_key_secret: str) -> str:
+    """Resolve Account SID (AC…) from API Key credentials via Accounts.json."""
+    sid = (api_key_sid or "").strip()
+    secret = (api_key_secret or "").strip()
+    if not sid or not secret:
+        raise ToolValidationError("Twilio API Key SID and secret are required")
+    auth = "Basic " + base64.b64encode(f"{sid}:{secret}".encode()).decode()
+    url = f"{BASE}/Accounts.json?PageSize=1"
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        resp = client.get(url, headers={"Authorization": auth, "Accept": "application/json"})
+    if resp.status_code >= 400:
+        raise ToolAuthExpiredError(f"Twilio account lookup failed: HTTP {resp.status_code}")
+    data = resp.json() if resp.content else {}
+    accounts = data.get("accounts") if isinstance(data, dict) else None
+    if not isinstance(accounts, list) or not accounts:
+        raise ToolValidationError("Twilio returned no accounts for this API key")
+    account_sid = str(accounts[0].get("sid") or accounts[0].get("Sid") or "").strip()
+    if not account_sid.startswith("AC"):
+        raise ToolValidationError("Twilio account lookup did not return a valid Account SID")
+    return account_sid
 
 
 def _resolve_connector(ctx: ToolContext, params: dict[str, Any]) -> dict[str, Any]:
@@ -98,7 +130,7 @@ def make_twilio_executor(action: str):
 
         url = f"{BASE}{path}"
         headers = {
-            "Authorization": _auth_header(ctx, cid, account_sid),
+            "Authorization": _auth_header(ctx, cid, account_sid, conn),
             "Accept": "application/json",
         }
         # Twilio Create uses form-urlencoded; GETs use query params.
