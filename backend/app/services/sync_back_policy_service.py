@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 from app.marketplace.department_pipelines.catalog import (
     DepartmentPipelineSpec,
     PipelineStageSpec,
@@ -61,8 +63,8 @@ def save_sync_back_policy(
     defer_milestone_stage_id: str | None = None,
 ) -> dict[str, Any]:
     root = dict(org_settings or {})
-    block = dict(root.get(_SETTINGS_KEY) or {}) if isinstance(root.get(_SETTINGS_KEY), dict) else {}
-    sync_back = dict(block.get("syncBack") or {}) if isinstance(block.get("syncBack"), dict) else {}
+    block = safe_normalize_stored_dict(root, key=_SETTINGS_KEY)
+    sync_back = safe_normalize_stored_dict(block, key="syncBack")
     dept = str(department or "").strip().lower()
     pipeline = get_department_pipeline(department=dept)
     milestone = defer_milestone_stage_id
