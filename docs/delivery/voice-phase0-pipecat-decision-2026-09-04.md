@@ -95,3 +95,13 @@ User authorized move to Phase 1 after Phase 0 narrow fixes. Flag-gated; default 
 
 **Not done until live tip evidence:** Railway install of extras-voice, flag-off duplex regression, flag-on WS `session.ready` + audio, write-governance through Pipecat path. FE still uses HTTP duplex by default.
 
+### Live evidence (2026-09-04)
+
+| Probe | Tip | Verdict | Evidence |
+|-------|-----|---------|----------|
+| HTTP duplex regression | `9c0072c4` then `5b578100` | **PASS** | `voice-duplex-one-brain-live.json` — barge-in, continuation, write governance, CognitiveTurnKernel |
+| Pipecat flag-off gate | `9c0072c4` | **PASS** | WS `error_class=not_enabled` |
+| Pipecat flag-on text→audio | `5b578100ffc6a57a77d8cdef0a98a61938a57561` | **PASS** | `voice-pipecat-phase1-live.json` — `session.ready` + PCM audio frames; `VOICE_PIPECAT_ENABLED=true` on Railway |
+
+FE duplex remains `POST /api/voice/session/turn` (`default_orchestration=http_session_turn`). Pipecat WS is available when the flag is on (`pipecat_ws_clients_accepted`).
+

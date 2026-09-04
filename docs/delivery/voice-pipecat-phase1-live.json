@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-04T19:15:37.630258+00:00",
+  "generated_at": "2026-09-04T19:54:26.066323+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "734c22079a397abf526dc3d69b0efa0a37d1c3f4",
+  "git_sha": "5b578100ffc6a57a77d8cdef0a98a61938a57561",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-04T19:14:49.167417+00:00",
+    "timestamp": "2026-09-04T19:54:16.720802+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "734c22079a397abf526dc3d69b0efa0a37d1c3f4",
+    "git_sha": "5b578100ffc6a57a77d8cdef0a98a61938a57561",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -30,7 +30,7 @@
     "pipecat_enabled": true,
     "pipecat_available": true,
     "pipecat_ws_path": "/api/voice/pipecat/ws",
-    "default_orchestration": "pipecat",
+    "default_orchestration": "http_session_turn",
     "architecture": "streaming_voice_session_over_unified_turn"
   },
   "ws_probe": {
@@ -42,19 +42,20 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "c6eb4968-135b-4fb7-9618-76fb9260fdfe"
+        "conversation_id": "94ab218a-a027-4a8d-8f83-c1cbc63ca314"
       },
       {
-        "type": "_timeout"
+        "type": "audio",
+        "sample_rate": 16000
       }
     ],
-    "audio_frames": 0,
+    "audio_frames": 1,
     "session_ready": true,
     "error_event": null,
     "cognitive_path": "CognitiveTurnKernel",
     "architecture": "pipecat_deepgram_cognitive_elevenlabs",
-    "verdict": "FAIL"
+    "verdict": "PASS"
   },
-  "verdict": "PARTIAL",
+  "verdict": "PASS",
   "notes": "Default duplex remains /api/voice/session/turn. Pipecat path is flag-gated. Enable VOICE_PIPECAT_ENABLED on Railway to exercise session.ready + audio."
 }
