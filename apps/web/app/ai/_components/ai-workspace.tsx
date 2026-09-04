@@ -1685,8 +1685,7 @@ export function AiWorkspace({
         role: m.role,
         content: uiMessageText(m),
       })),
-    onUserFinal: (text) => {
-      setInput(text)
+    onUserFinal: (_text) => {
       modalityRef.current = "voice"
       setModality("voice")
       setDuplexVoiceError(undefined)
@@ -2220,7 +2219,7 @@ export function AiWorkspace({
               <AiLanding
                 mode={mode}
                 onModeChange={setMode}
-                input={voiceDuplex.provisionalTranscript || input}
+                input={input}
                 onInputChange={setInput}
                 routing={routing}
                 routedTo={routedTo}
@@ -2445,13 +2444,13 @@ export function AiWorkspace({
                 onModalityChange={handleModalityChange}
                 voiceEntitled={voiceEntitled}
                 unavailableReason={voiceUnavailableReason}
-                input={voiceDuplex.provisionalTranscript || input}
+                input={input}
                 onInputChange={setInput}
                 inputRef={inputRef}
                 onKeyDown={onKeyDown}
                 placeholder={
                   modality === "voice"
-                    ? "Speak or type — replies play aloud…"
+                    ? "Voice mode active — speak to Gravitre…"
                     : "Ask, delegate, or search…"
                 }
                 textareaClassName={CHAT_COMPOSER_CLASS}

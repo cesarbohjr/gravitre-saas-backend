@@ -248,8 +248,7 @@ export default function AgentChatPage({
         role: m.role,
         content: uiMessageText(m),
       })),
-    onUserFinal: (text) => {
-      setInput(text)
+    onUserFinal: (_text) => {
       modalityRef.current = "voice"
       setModality("voice")
       setDuplexVoiceError(undefined)
@@ -615,7 +614,7 @@ export default function AgentChatPage({
               // Real agent name, so the orb / pill read the agent rather than
               // the generic Gravitre default used by main chat.
               agentLabel={agent?.name || "Gravitre"}
-              input={voiceDuplex.provisionalTranscript || input}
+              input={input}
               onInputChange={setInput}
               inputRef={inputRef}
               onKeyDown={handleKeyDown}

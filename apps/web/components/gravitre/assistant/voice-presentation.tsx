@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef } from "react"
-import { X } from "lucide-react"
+import { Mic, MicOff, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
@@ -124,38 +124,35 @@ export function GravitreVoiceWaveform({
 export function VoiceOrbTakeover({
   speaker,
   agentLabel = "Gravitre",
-  onCollapse,
   onExitVoice,
+  onMicToggle,
+  micActive = true,
   amplitude,
 }: {
   speaker: VoiceSpeaker
   agentLabel?: string
-  /** Return to the inline waveform. Stays in voice mode. */
-  onCollapse: () => void
   /** Leave voice mode entirely, back to typed text. */
   onExitVoice: () => void
+  /** Toggle mic/listening while staying in voice mode. */
+  onMicToggle?: () => void
+  micActive?: boolean
   /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
   amplitude?: number | null
 }) {
-  // Escape collapses rather than exits. Escape conventionally dismisses the
-  // overlay, and the overlay here is a *presentation*, so dismissing it must not
-  // silently end a live call — the destructive action stays explicit ("✕").
+  // Escape exits voice mode to avoid trapping users inside full-screen voice UI.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation()
-        onCollapse()
+        onExitVoice()
       }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [onCollapse])
+  }, [onExitVoice])
 
-  // `aria-modal="true"` asserts that everything behind this overlay is
-  // unreachable, so focus has to actually move inside it — otherwise a keyboard or
-  // screen-reader user stays parked on the composer underneath, tabbing through
-  // controls the overlay claims are gone. Focus lands on collapse (the least
-  // destructive control) and is restored to the opener on unmount.
+  // `aria-modal="true"` asserts that everything behind this overlay is unreachable,
+  // so focus must land inside the overlay and restore to the opener on unmount.
   const collapseRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
@@ -164,7 +161,9 @@ export function VoiceOrbTakeover({
   }, [])
 
   const isUser = speaker === "user"
-  const label = isUser ? "You're speaking…" : `${agentLabel} is speaking…`
+  const label = micActive
+    ? `I'm listening… What's on your mind?`
+    : `${agentLabel} voice paused`
 
   return (
     <div
@@ -172,47 +171,20 @@ export function VoiceOrbTakeover({
       aria-modal="true"
       aria-label={`Voice session — ${label}`}
       data-voice-orb=""
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#111110] sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,#1a2a66_0%,#0f1738_58%,#0a1028_100%)] sm:p-6"
     >
-      {/* Desktop caps the surface at the handoff's ~900x560; mobile is full-bleed. */}
+      {/* Desktop caps the surface while mobile remains full-bleed. */}
       <div className="relative flex h-full w-full max-w-full flex-col items-center justify-center overflow-hidden sm:h-[560px] sm:w-[900px] sm:rounded-2xl">
-        {/*
-          Centre tap layer — collapse back to the waveform. Rendered first so the
-          explicit controls below sit above it in paint order, and given a label
-          because a full-surface button is otherwise unannounced.
-        */}
         <button
           ref={collapseRef}
           type="button"
-          onClick={onCollapse}
-          aria-label="Return to text view"
-          className="absolute inset-0 z-0 cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
-        />
-
-        <span className="pointer-events-none absolute left-5 top-5 z-10 flex flex-col gap-1 text-[13px] text-[rgba(255,255,255,0.5)]">
-          {label}
-          {/*
-            The centre-tap gesture is invisible, and the bottom control reads
-            "Tap to switch to text" — so without this hint the most natural
-            reading is that tapping anywhere switches to text, when it actually
-            minimises. Naming the gesture is what separates the two outcomes.
-          */}
-          <span className="text-[11px] text-[rgba(255,255,255,0.35)]">
-            Tap anywhere for text view
-          </span>
-        </span>
-
-        <button
-          type="button"
           onClick={onExitVoice}
-          aria-label="Return to text view"
+          aria-label="Exit voice mode"
           className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
           <X className="h-5 w-5" aria-hidden />
         </button>
 
-        {/* The orb itself is decorative; the state it conveys is announced by the
-            label above, so it carries no semantics of its own. */}
         <div
           aria-hidden
           data-voice-orb-circle=""
@@ -233,18 +205,36 @@ export function VoiceOrbTakeover({
           }}
         />
 
-        {/*
-          Exits voice mode entirely — the same action as "✕", not a second way to
-          collapse. Kept as its own hit area well clear of the centre tap layer so
-          the two outcomes cannot be confused by a near-miss tap.
-        */}
-        <button
-          type="button"
-          onClick={onExitVoice}
-          className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-full px-4 py-2 text-[14px] text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-        >
-          Tap for text view
-        </button>
+        <div className="pointer-events-none mt-8 text-center text-white">
+          <p className="text-4xl font-semibold leading-tight">{label}</p>
+          <p className="mt-2 text-base text-white/70">
+            {isUser ? `${agentLabel} voice channel is live` : `${agentLabel} is replying`}
+          </p>
+        </div>
+
+        <div className="mt-10 flex items-center rounded-full border border-white/15 bg-white/10 p-1.5 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={onExitVoice}
+            aria-label="Exit voice mode"
+            className="flex h-14 w-14 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          >
+            <X className="h-6 w-6" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onMicToggle}
+            aria-label={micActive ? "Pause microphone" : "Resume microphone"}
+            className={cn(
+              "ml-2 flex h-14 w-14 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              micActive
+                ? "bg-white/15 text-white hover:bg-white/20"
+                : "bg-[#16a374] text-white hover:bg-[#128a63]",
+            )}
+          >
+            {micActive ? <Mic className="h-6 w-6" aria-hidden /> : <MicOff className="h-6 w-6" aria-hidden />}
+          </button>
+        </div>
       </div>
     </div>
   )

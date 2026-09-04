@@ -113,7 +113,7 @@ export function AiLanding({
             textareaRows={3}
             placeholder={
               modality === "voice"
-                ? "Speak or type — replies play aloud…"
+                ? "Voice mode active — speak to Gravitre…"
                 : activeMode.id === "find"
                   ? "Find a run, workflow, agent, connector, or document…"
                   : activeMode.id === "execute"

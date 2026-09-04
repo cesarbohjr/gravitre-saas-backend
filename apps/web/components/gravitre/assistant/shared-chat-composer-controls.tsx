@@ -6,11 +6,10 @@
  * Layout (text view):
  *   [ waveform | textarea | Browse | ↑/■ ]   ← everything inside the input pill
  *
- * There is no Text|Voice toggle and no separate Speak mic. The in-input waveform
- * is the voice control: grey/still when idle, emerald + animated when you hold
- * the floor, graphite when the agent is speaking. Clicking it toggles the mic
- * while staying in text view; when the floor is live, the speaker label opens
- * the full-page orb (voice view). Orb returns via "Tap for text view".
+ * Voice can run in two presentations:
+ * - text view (composer + waveform)
+ * - orb view (immersive voice-to-voice)
+ * Both presentations are driven by the same live session state.
  *
  * Submit: green ArrowUp when ready; yellow Square (stop) while streaming,
  * listening, or TTS speaking — one button, no separate Stop row.
@@ -18,7 +17,6 @@
 
 import {
   useEffect,
-  useState,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
@@ -40,7 +38,7 @@ import {
   VoiceOrbTakeover,
   type VoiceSpeaker,
 } from "@/components/gravitre/assistant/voice-presentation"
-import { VoiceModeToggle, type ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
+import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { primeVoicePlaybackUnlock, unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 
 export type SharedChatComposerControlsProps = {
@@ -128,10 +126,6 @@ export function SharedChatComposerControls({
   const actions = trailingExtras ?? leadingExtras
   const useDuplex = Boolean(duplex)
 
-  // Presentation is local: expand/collapse must not interrupt audio or lose the
-  // transcript. Text view vs orb is a view preference, not session state.
-  const [presentation, setPresentation] = useState<"text" | "orb">("text")
-
   const { isListening, isSupported, toggleListening, status } = useSpeechRecognition({
     value: input,
     disabled: disabled || !voiceEntitled || useDuplex,
@@ -168,6 +162,7 @@ export function SharedChatComposerControls({
   const effectivePresence = useDuplex && duplex ? duplex.presence : voicePresence
   const duplexSupported = duplex?.supported !== false
   const canUseVoiceInput = useDuplex ? duplexSupported : isSupported
+  const showVoiceOrb = modality === "voice" && voiceEntitled
 
   // 11a/11b speaker chrome only while Voice owns the floor (mic or TTS / voice stream).
   // Idle Text replies must not paint a graphite agent pill.
@@ -188,18 +183,6 @@ export function SharedChatComposerControls({
       ? "agent"
       : "user"
   const waveActive = isLiveVoice
-  const speakerLabel =
-    effectivePresence === "listening" ||
-    effectivePresence === "understanding" ||
-    effectivePresence === "interrupted" ||
-    effectiveListening
-      ? "You"
-      : effectivePresence === "speaking" ||
-          effectivePresence === "thinking" ||
-          ttsSpeaking ||
-          (modality === "voice" && isStreaming)
-        ? agentLabel
-        : null
 
   const isBusy = isStreaming || ttsSpeaking || effectiveListening
 
@@ -207,19 +190,8 @@ export function SharedChatComposerControls({
     primeVoicePlaybackUnlock()
   }, [])
 
-  // Orb cannot outlive a live floor — collapse when mic/TTS ends.
-  useEffect(() => {
-    if (!isLiveVoice && presentation === "orb") setPresentation("text")
-  }, [isLiveVoice, presentation])
-
   const armVoice = () => {
     onModalityChange?.("voice")
-  }
-
-  const openVoiceView = () => {
-    if (!voiceEntitled) return
-    armVoice()
-    setPresentation("orb")
   }
 
   const stopVoiceCapture = () => {
@@ -249,12 +221,10 @@ export function SharedChatComposerControls({
         onStop?.()
         armVoice()
         if (!duplex.active) duplex.toggle()
-        setPresentation("text")
         return
       }
       armVoice()
       if (!duplex.active) duplex.toggle()
-      setPresentation("text")
       return
     }
     if (!isSupported) {
@@ -266,7 +236,6 @@ export function SharedChatComposerControls({
     }
     armVoice()
     if (!isListening) toggleListening()
-    setPresentation("text")
   }
 
   const handleWaveformClick = () => {
@@ -277,8 +246,11 @@ export function SharedChatComposerControls({
     }
     startVoiceCapture()
   }
-
-  const returnToTextView = () => setPresentation("text")
+  const exitVoiceMode = () => {
+    stopVoiceCapture()
+    onModalityChange?.("text")
+    onClearVoiceError?.()
+  }
 
   const waveformButton = (
     <TooltipProvider>
@@ -339,28 +311,6 @@ export function SharedChatComposerControls({
 
   return (
     <div className={cn("flex flex-col gap-2", className)} data-shared-chat-composer-controls="">
-      <div className="flex items-center justify-between gap-2">
-        <VoiceModeToggle
-          mode={modality}
-          onChange={(next) => {
-            onModalityChange?.(next)
-            if (next === "text") {
-              stopVoiceCapture()
-              setPresentation("text")
-              onClearVoiceError?.()
-              return
-            }
-            startVoiceCapture()
-          }}
-          voiceEntitled={voiceEntitled}
-          unavailableReason={unavailableReason}
-          disabled={disabled}
-        />
-        <p className="text-xs text-muted-foreground">
-          {modality === "voice" ? "Talk or type" : "Type or tap Talk"}
-        </p>
-      </div>
-
       {voicePresence === "error" ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
           <p className={cn("text-xs", voiceBilling ? "text-warning" : "text-muted-foreground")}>
@@ -417,24 +367,6 @@ export function SharedChatComposerControls({
           }}
         />
 
-        {speakerLabel ? (
-          <button
-            type="button"
-            onClick={openVoiceView}
-            className={cn(
-              "mb-1 shrink-0 rounded-full px-2 py-1 text-xs font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a374]/40",
-              voicePresence === "listening"
-                ? "text-[#16a374] hover:bg-[#16a374]/10"
-                : "text-[#3f5b52] hover:bg-muted/60 dark:text-[#e9e9e6]",
-            )}
-            aria-label={`Open voice view — ${speakerLabel}`}
-            title="Open voice view"
-          >
-            {speakerLabel}
-          </button>
-        ) : null}
-
         {actions}
 
         {showSubmit ? (
@@ -474,12 +406,13 @@ export function SharedChatComposerControls({
         ) : null}
       </div>
 
-      {presentation === "orb" && isLiveVoice ? (
+      {showVoiceOrb ? (
         <VoiceOrbTakeover
           speaker={speaker}
           agentLabel={agentLabel}
-          onCollapse={returnToTextView}
-          onExitVoice={returnToTextView}
+          onExitVoice={exitVoiceMode}
+          onMicToggle={handleWaveformClick}
+          micActive={effectiveListening}
           amplitude={duplex?.amplitude}
         />
       ) : null}

@@ -113,7 +113,7 @@ export default function VoiceStatesShot() {
 
         <Panel
           title="Orb — voice view"
-          note="Peer presentation of the same session. Tap for text view returns to the composer without ending audio."
+          note="Immersive voice-to-voice presentation with exit + mic controls."
         >
           <div className="flex flex-wrap gap-3">
             <button
@@ -135,8 +135,9 @@ export default function VoiceStatesShot() {
             <VoiceOrbTakeover
               speaker={orb}
               agentLabel="Gravitre"
-              onCollapse={() => setOrb(null)}
               onExitVoice={() => setOrb(null)}
+              onMicToggle={() => setOrb((current) => (current === "user" ? "agent" : "user"))}
+              micActive
             />
           ) : null}
         </Panel>
