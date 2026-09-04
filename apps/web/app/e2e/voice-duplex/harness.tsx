@@ -193,6 +193,7 @@ export function VoiceDuplexHarness() {
   }, [])
 
   const duplex = useVoiceDuplexSession({
+    forceHttpDuplex: true,
     enabled: true,
     onError: (message) => {
       console.error("[voice-duplex-harness]", message)

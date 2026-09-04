@@ -1,9 +1,13 @@
 "use client"
 
 /**
- * Full-duplex voice session: live Deepgram STT → turn-taking →
- * POST /api/voice/session/turn (CognitiveTurnKernel) → streaming TTS + barge-in.
- * Shares conversation_id with text chat — not a parallel brain.
+ * Full-duplex voice session.
+ *
+ * Default product path (flag off): browser Deepgram STT → turn-taking →
+ * POST /api/voice/session/turn → streaming MPEG TTS.
+ *
+ * When VOICE_PIPECAT_ENABLED (status.pipecat_enabled): browser PCM →
+ * WS /api/voice/pipecat/ws (server Deepgram → CognitiveTurnKernel → ElevenLabs PCM).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -11,7 +15,16 @@ import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analy
 import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
+  buildPipecatVoiceWsUrl,
+  encodePipecatAudioMessage,
+  encodePipecatInterrupt,
+  base64ToPcm16,
+  shouldUsePipecatVoice,
+  type PipecatServerMessage,
+} from "@/lib/pipecat-voice-client"
+import {
   cancelVoiceSessionTurn,
+  getVoiceStatus,
   mintDeepgramLiveTokenDetailed,
   postTurnTakingEvent,
   streamVoiceSessionTurn,
@@ -47,6 +60,8 @@ type Options = {
   conversationId?: string | null
   agentId?: string | null
   sensitivity?: string
+  /** E2E harness / forced legacy path — skip Pipecat even when the flag is on. */
+  forceHttpDuplex?: boolean
   getHistory?: () => Array<{ role: string; content: string }>
   onUserFinal?: (text: string) => void
   onAssistantDelta?: (text: string) => void
@@ -110,6 +125,7 @@ export function useVoiceDuplexSession(options: Options) {
   // to silently discard the blob and suppress its own toast with nothing else
   // surfacing it, so the orb looked normal forever with zero sound.
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
+  const [orchestration, setOrchestration] = useState<"http" | "pipecat">("http")
 
   const optsRef = useRef(options)
   optsRef.current = options
@@ -131,11 +147,28 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
   const activeRef = useRef(false)
+  const orchestrationRef = useRef<"http" | "pipecat">("http")
+  const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
+  const pcmNextTimeRef = useRef(0)
+  const assistantTextRef = useRef("")
+  const lastUserFinalRef = useRef("")
   const speculativeRef = useRef<{
     text: string
     turnId: string
     startedAt: number
   } | null>(null)
+
+  const stopPcmPlayback = useCallback(() => {
+    for (const src of pcmSourcesRef.current) {
+      try {
+        src.stop()
+      } catch {
+        /* ignore */
+      }
+    }
+    pcmSourcesRef.current = []
+    pcmNextTimeRef.current = 0
+  }, [])
 
   const stopPlayback = useCallback(() => {
     playingRef.current = false
@@ -143,6 +176,7 @@ export function useVoiceDuplexSession(options: Options) {
     playbackWiredRef.current = false
     playbackBlockedRef.current = false
     setPlaybackBlocked(false)
+    stopPcmPlayback()
     const el = audioElRef.current
     if (el) {
       try {
@@ -154,7 +188,49 @@ export function useVoiceDuplexSession(options: Options) {
       }
     }
     audioElRef.current = null
-  }, [])
+  }, [stopPcmPlayback])
+
+  const enqueuePcm = useCallback(
+    (pcm: Int16Array, sampleRate: number) => {
+      const ctx = audioCtxRef.current
+      if (!ctx || pcm.length === 0) return
+      if (playbackBlockedRef.current) return
+      const f32 = new Float32Array(pcm.length)
+      for (let i = 0; i < pcm.length; i++) {
+        f32[i] = (pcm[i] ?? 0) / 32768
+      }
+      const buf = ctx.createBuffer(1, f32.length, sampleRate || 16000)
+      buf.copyToChannel(f32, 0)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      try {
+        if (analyserRef.current) {
+          // Analyser expects MediaElement; for PCM, tap destination via gain.
+        }
+      } catch {
+        /* optional */
+      }
+      src.connect(ctx.destination)
+      const startAt = Math.max(ctx.currentTime + 0.01, pcmNextTimeRef.current)
+      try {
+        src.start(startAt)
+      } catch {
+        return
+      }
+      pcmNextTimeRef.current = startAt + buf.duration
+      pcmSourcesRef.current.push(src)
+      agentSpeakingRef.current = true
+      setPresence("speaking")
+      src.onended = () => {
+        pcmSourcesRef.current = pcmSourcesRef.current.filter((s) => s !== src)
+        if (pcmSourcesRef.current.length === 0) {
+          agentSpeakingRef.current = false
+          if (activeRef.current) setPresence("listening")
+        }
+      }
+    },
+    [],
+  )
 
   const playNext = useCallback(async () => {
     if (playingRef.current) return
@@ -292,13 +368,24 @@ export function useVoiceDuplexSession(options: Options) {
     stopPlayback()
     abortRef.current?.abort()
     abortRef.current = null
-    const tid = turnIdRef.current
-    if (tid) {
-      await cancelVoiceSessionTurn({
-        turnId: tid,
-        conversationId: optsRef.current.conversationId,
-        reason: "barge_in",
-      }).catch(() => false)
+    if (orchestrationRef.current === "pipecat") {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(encodePipecatInterrupt())
+        } catch {
+          /* ignore */
+        }
+      }
+    } else {
+      const tid = turnIdRef.current
+      if (tid) {
+        await cancelVoiceSessionTurn({
+          turnId: tid,
+          conversationId: optsRef.current.conversationId,
+          reason: "barge_in",
+        }).catch(() => false)
+      }
     }
     const ms = Math.round(performance.now() - t0)
     setLatency((prev) => ({ ...prev, barge_in_cancel_ms: ms }))
@@ -616,12 +703,175 @@ export function useVoiceDuplexSession(options: Options) {
     [bargeIn, runSessionTurn],
   )
 
+  const startPipecat = useCallback(async () => {
+    const status = await getVoiceStatus(true)
+    const built = await buildPipecatVoiceWsUrl({
+      status,
+      agentId: optsRef.current.agentId,
+      conversationId: optsRef.current.conversationId,
+    })
+    if ("error" in built) {
+      setPresence("error")
+      optsRef.current.onError?.(built.error)
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      })
+      streamRef.current = stream
+      analyserRef.current = createVoiceAnalyser()
+      analyserRef.current.connectStream(stream)
+      startRaf()
+
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AC) throw new Error("AudioContext unavailable")
+      const ctx = new AC()
+      audioCtxRef.current = ctx
+      if (ctx.state === "suspended") await ctx.resume()
+      pcmNextTimeRef.current = 0
+      const source = ctx.createMediaStreamSource(stream)
+      const processor = ctx.createScriptProcessor(4096, 1, 1)
+      processorRef.current = processor
+
+      const ws = new WebSocket(built.url)
+      wsRef.current = ws
+      assistantTextRef.current = ""
+      lastUserFinalRef.current = ""
+
+      ws.onopen = () => {
+        activeRef.current = true
+        setIsActive(true)
+        setPresence("listening")
+      }
+
+      ws.onmessage = (ev) => {
+        let msg: PipecatServerMessage
+        try {
+          msg = JSON.parse(String(ev.data)) as PipecatServerMessage
+        } catch {
+          return
+        }
+        const kind = String(msg.type || "")
+        if (kind === "session.ready") {
+          const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
+          if (cid) optsRef.current.onConversationId?.(cid)
+          return
+        }
+        if (kind === "error") {
+          const err = String(msg.error || "Voice session failed")
+          const billing = String(msg.error_class || "") === "billing"
+          optsRef.current.onError?.(err, billing)
+          setPresence("error")
+          return
+        }
+        if (kind === "transcript") {
+          const text = String(msg.text || "").trim()
+          if (!text) return
+          setProvisionalTranscript(text)
+          if (msg.final) {
+            lastUserFinalRef.current = text
+            optsRef.current.onUserFinal?.(text)
+            setProvisionalTranscript("")
+            setPresence("thinking")
+            assistantTextRef.current = ""
+          } else if (agentSpeakingRef.current) {
+            void bargeIn()
+          }
+          return
+        }
+        if (kind === "assistant_text") {
+          const delta = String(msg.delta || "")
+          if (!delta) return
+          assistantTextRef.current += delta
+          optsRef.current.onAssistantDelta?.(assistantTextRef.current)
+          return
+        }
+        if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
+          const pcm = base64ToPcm16(msg.pcm16_b64)
+          enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
+        }
+      }
+
+      ws.onerror = () => {
+        setPresence("disconnected")
+        optsRef.current.onError?.("Voice connection interrupted")
+      }
+      ws.onclose = () => {
+        if (activeRef.current) setPresence("disconnected")
+        if (lastUserFinalRef.current || assistantTextRef.current) {
+          optsRef.current.onTurnComplete?.({
+            userText: lastUserFinalRef.current,
+            assistantText: assistantTextRef.current.trim(),
+            conversationId: optsRef.current.conversationId || null,
+            turnId: null,
+            cancelled: false,
+            events: [],
+            latency: {},
+          })
+        }
+      }
+
+      let speakingEnergy = 0
+      processor.onaudioprocess = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        const input = e.inputBuffer.getChannelData(0)
+        // Local barge-in while agent audio is playing (server VAD also interrupts).
+        let sum = 0
+        for (let i = 0; i < input.length; i++) sum += Math.abs(input[i] ?? 0)
+        const avg = sum / Math.max(1, input.length)
+        if (agentSpeakingRef.current && avg > 0.04) {
+          speakingEnergy += 1
+          if (speakingEnergy >= 3) {
+            speakingEnergy = 0
+            void bargeIn()
+          }
+        } else {
+          speakingEnergy = 0
+        }
+        const pcm = downsampleTo16k(input, ctx.sampleRate)
+        try {
+          wsRef.current.send(encodePipecatAudioMessage(pcm, 16000, 1))
+        } catch {
+          /* ignore */
+        }
+      }
+      source.connect(processor)
+      processor.connect(ctx.destination)
+    } catch (err) {
+      teardownMic()
+      activeRef.current = false
+      setIsActive(false)
+      setPresence("error")
+      optsRef.current.onError?.(
+        err instanceof Error ? err.message : "Microphone permission denied",
+      )
+    }
+  }, [bargeIn, enqueuePcm, teardownMic])
+
   const start = useCallback(async () => {
     if (activeRef.current) return
     if (options.enabled === false) return
     await unlockVoicePlayback()
     marksRef.current = { mic_open: performance.now() }
     turnStateRef.current = null
+
+    const status = options.forceHttpDuplex ? null : await getVoiceStatus(true)
+    const usePipecat = !options.forceHttpDuplex && shouldUsePipecatVoice(status)
+    orchestrationRef.current = usePipecat ? "pipecat" : "http"
+    setOrchestration(orchestrationRef.current)
+
+    if (usePipecat) {
+      await startPipecat()
+      return
+    }
 
     const tokenResult = await mintDeepgramLiveTokenDetailed()
     if (!tokenResult.ok) {
@@ -695,7 +945,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [handleDeepgramMessage, options.enabled, teardownMic])
+  }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, startPipecat, teardownMic])
 
   const stop = useCallback(() => {
     activeRef.current = false
@@ -729,12 +979,28 @@ export function useVoiceDuplexSession(options: Options) {
     latency,
     isActive,
     playbackBlocked,
+    orchestration,
     start,
     stop,
     toggle,
     bargeIn,
     resumeBlockedPlayback,
-    /** Inject a finalized utterance (tests / recovery) through the same session turn path. */
-    submitFinalTranscript: runSessionTurn,
+    /** Inject a finalized utterance (tests / recovery). */
+    submitFinalTranscript: async (text: string, opts?: { speculative?: boolean }) => {
+      if (orchestrationRef.current === "pipecat") {
+        const ws = wsRef.current
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          const trimmed = text.trim()
+          if (!trimmed) return
+          lastUserFinalRef.current = trimmed
+          optsRef.current.onUserFinal?.(trimmed)
+          setPresence("thinking")
+          assistantTextRef.current = ""
+          ws.send(JSON.stringify({ type: "text", text: trimmed }))
+        }
+        return
+      }
+      await runSessionTurn(text, opts)
+    },
   }
 }

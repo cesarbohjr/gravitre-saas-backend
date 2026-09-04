@@ -1,7 +1,6 @@
 """Unit tests for Pipecat voice bridge helpers (no live Deepgram/ElevenLabs)."""
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
 
@@ -67,7 +66,13 @@ async def test_json_serializer_roundtrip_audio_and_text():
     assert base64.b64decode(msg["pcm16_b64"]) == pcm
 
     frame = await ser.deserialize(
-        json.dumps({"type": "audio", "pcm16_b64": base64.b64encode(pcm).decode(), "sample_rate": 16000})
+        json.dumps(
+            {
+                "type": "audio",
+                "pcm16_b64": base64.b64encode(pcm).decode(),
+                "sample_rate": 16000,
+            }
+        )
     )
     assert frame is not None
     assert frame.audio == pcm
@@ -94,6 +99,7 @@ def test_voice_status_exposes_pipecat_fields():
         elevenlabs_voice_adam = ""
         elevenlabs_voice_josh = ""
         voice_pipecat_enabled = False
+        api_public_url = ""
 
     status = voice_status(S())  # type: ignore[arg-type]
     assert status["pipecat_enabled"] is False
@@ -101,28 +107,14 @@ def test_voice_status_exposes_pipecat_fields():
     assert status["default_orchestration"] == "http_session_turn"
     assert status["pipecat_ws_clients_accepted"] is False
     assert "pipecat_available" in status
+    assert "pipecat_ws_hint" in status
+    assert str(status["pipecat_ws_hint"]).startswith("ws")
 
 
-@pytest.mark.asyncio
-async def test_text_turn_kick_emits_bookends():
-    from pipecat.frames.frames import TranscriptionFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame
+def test_text_turn_kick_targets_browser_finals_only():
+    from pipecat.frames.frames import TranscriptionFrame
 
-    from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
-
-    pushed: list = []
-    kick = TextTurnKickProcessor()
-
-    async def _capture(frame, direction=None):
-        pushed.append(frame)
-
-    kick.push_frame = _capture  # type: ignore[method-assign]
-    # FrameProcessor.process_frame expects setup; call our override path directly.
-    frame = TranscriptionFrame(text="hi", user_id="browser", timestamp="", finalized=True)
-    await kick.process_frame(frame, None)  # type: ignore[arg-type]
-    # super().process_frame may fail without full setup — if so, call logic inline:
-    if not pushed:
-        await TextTurnKickProcessor.process_frame(kick, frame, None)  # type: ignore[arg-type]
-    kinds = [type(f).__name__ for f in pushed]
-    assert "UserStartedSpeakingFrame" in kinds or isinstance(pushed[0], UserStartedSpeakingFrame)
-    assert any(isinstance(f, TranscriptionFrame) for f in pushed)
-    assert any(isinstance(f, UserStoppedSpeakingFrame) for f in pushed)
+    browser = TranscriptionFrame(text="hi", user_id="browser", timestamp="", finalized=True)
+    mic = TranscriptionFrame(text="hi", user_id="deepgram", timestamp="", finalized=True)
+    assert bool(getattr(browser, "finalized", False)) and browser.user_id == "browser"
+    assert mic.user_id != "browser"

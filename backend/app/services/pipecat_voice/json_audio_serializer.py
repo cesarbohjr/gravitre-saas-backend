@@ -18,7 +18,10 @@ from pipecat.frames.frames import (
     InputAudioRawFrame,
     InputTextRawFrame,
     InterruptionFrame,
+    InterimTranscriptionFrame,
     OutputAudioRawFrame,
+    OutputTransportMessageFrame,
+    OutputTransportMessageUrgentFrame,
     StartFrame,
     TranscriptionFrame,
     TTSAudioRawFrame,
@@ -40,6 +43,15 @@ class GravitreJsonAudioSerializer(FrameSerializer):
                     "num_channels": int(getattr(frame, "num_channels", None) or 1),
                 }
             )
+        if isinstance(frame, InterimTranscriptionFrame):
+            return json.dumps(
+                {
+                    "type": "transcript",
+                    "text": frame.text,
+                    "final": False,
+                    "user_id": getattr(frame, "user_id", "") or "",
+                }
+            )
         if isinstance(frame, TranscriptionFrame):
             return json.dumps(
                 {
@@ -49,6 +61,9 @@ class GravitreJsonAudioSerializer(FrameSerializer):
                     "user_id": getattr(frame, "user_id", "") or "",
                 }
             )
+        if isinstance(frame, (OutputTransportMessageFrame, OutputTransportMessageUrgentFrame)):
+            msg = frame.message if isinstance(frame.message, dict) else {"payload": frame.message}
+            return json.dumps(msg)
         return None
 
     async def deserialize(self, data: str | bytes) -> Frame | None:

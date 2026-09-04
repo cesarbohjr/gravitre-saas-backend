@@ -16,10 +16,13 @@ export type VoiceStatus = {
   voices?: Array<{ key: string; id: string; label: string; description: string }>
   write_confirm_policy?: string
   architecture?: string
-  /** Phase 1 Pipecat orchestration (flag-gated; default remains http session/turn). */
+  /** Phase 1 Pipecat orchestration (flag-gated). */
   pipecat_enabled?: boolean
   pipecat_available?: boolean
   pipecat_ws_path?: string
+  /** Absolute wss/ws origin (no path), e.g. wss://api.gravitre.app */
+  pipecat_ws_hint?: string
+  pipecat_ws_clients_accepted?: boolean
   default_orchestration?: "pipecat" | "http_session_turn" | string
 }
 

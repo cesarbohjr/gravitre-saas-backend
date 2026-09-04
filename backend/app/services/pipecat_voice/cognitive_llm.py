@@ -14,6 +14,7 @@ from pipecat.frames.frames import (
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
+    OutputTransportMessageUrgentFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.llm_service import LLMService
@@ -123,3 +124,8 @@ class GravitreCognitiveLLMService(LLMService):
             spoken = normalize_spoken_text(delta)
             if spoken:
                 await self._push_llm_text(spoken)
+                await self.push_frame(
+                    OutputTransportMessageUrgentFrame(
+                        message={"type": "assistant_text", "delta": spoken}
+                    )
+                )

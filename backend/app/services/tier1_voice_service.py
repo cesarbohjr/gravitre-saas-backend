@@ -85,6 +85,20 @@ def _pipecat_import_available() -> bool:
         return False
 
 
+def _pipecat_ws_hint(settings: Settings) -> str:
+    """Absolute wss/ws base for browser clients (no path). Empty when unknown."""
+    raw = (getattr(settings, "api_public_url", None) or "").strip().rstrip("/")
+    if not raw:
+        raw = "https://api.gravitre.app"
+    if raw.startswith("https://"):
+        return "wss://" + raw[len("https://") :]
+    if raw.startswith("http://"):
+        return "ws://" + raw[len("http://") :]
+    if raw.startswith("wss://") or raw.startswith("ws://"):
+        return raw
+    return f"wss://{raw}"
+
+
 def voice_status(settings: Settings) -> dict[str, Any]:
     voices = _resolved_voices(settings)
     return {
@@ -108,6 +122,7 @@ def voice_status(settings: Settings) -> dict[str, Any]:
         "pipecat_enabled": bool(getattr(settings, "voice_pipecat_enabled", False)),
         "pipecat_available": _pipecat_import_available(),
         "pipecat_ws_path": "/api/voice/pipecat/ws",
+        "pipecat_ws_hint": _pipecat_ws_hint(settings),
         "pipecat_architecture": (
             "pipecat_deepgram_cognitive_elevenlabs"
             if bool(getattr(settings, "voice_pipecat_enabled", False))
@@ -277,7 +292,8 @@ def synthesize_speech_stream(
         "voice_settings": {"stability": 0.4, "similarity_boost": 0.75},
         "optimize_streaming_latency": 3,
     }
-    with httpx.Client(timeout=60.0) as client:
+    timeout = httpx.Timeout(connect=5.0, read=20.0, write=20.0, pool=10.0)
+    with httpx.Client(timeout=timeout) as client:
         with client.stream("POST", url, headers=headers, json=body) as resp:
             if resp.status_code >= 400:
                 # Need body for classification
