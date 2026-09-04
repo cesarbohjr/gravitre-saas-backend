@@ -948,6 +948,27 @@ export const workObjectsApi = {
   coverage: () => fetcher<{ coverage: Record<string, unknown> }>(apiUrl("/api/work-objects/coverage")),
 }
 
+export const departmentPipelinesApi = {
+  list: () => fetcher<{ pipelines: Record<string, unknown>[] }>(apiUrl("/api/department-pipelines")),
+  byDepartment: (department: string) =>
+    fetcher<{ pipeline: Record<string, unknown> }>(
+      apiUrl(`/api/department-pipelines/by-department/${encodeURIComponent(department)}`),
+    ),
+  updateSyncBackPolicy: (body: {
+    department: string
+    sync_timing: "immediate" | "defer_to_milestone"
+    defer_milestone_stage_id?: string | null
+  }) =>
+    apiFetch(apiUrl("/api/department-pipelines/sync-back-policy"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(`Sync policy update failed (${res.status})`)
+      return res.json() as Promise<{ policy: Record<string, unknown> }>
+    }),
+}
+
 export const runsApi = {
   list: (filters?: { status?: string; workflow_id?: string; limit?: number; offset?: number }) => {
     const params = new URLSearchParams()

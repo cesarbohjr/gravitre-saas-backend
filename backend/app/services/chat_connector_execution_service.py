@@ -1735,6 +1735,61 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                 ),
             )
+            from app.services.sync_back_policy_service import (
+                evaluate_sync_back_gate,
+                is_crm_sync_invoke_action,
+            )
+
+            if is_crm_sync_invoke_action(plan.invoke_action):
+                org_row = (
+                    client.table("organizations")
+                    .select("settings")
+                    .eq("id", org_id)
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                org_settings = (
+                    org_row[0].get("settings")
+                    if org_row and isinstance(org_row[0].get("settings"), dict)
+                    else {}
+                )
+                dept = str(classification.get("department") or "").strip().lower() or None
+                milestone = str(
+                    (approved_params or {}).get("pipeline_milestone_stage_id")
+                    or (approved_params or {}).get("sync_milestone_stage_id")
+                    or ""
+                ).strip() or None
+                gate = evaluate_sync_back_gate(
+                    org_settings,
+                    invoke_action=plan.invoke_action,
+                    department=dept,
+                    explicit_milestone_stage_id=milestone,
+                )
+                if gate.get("defer"):
+                    deferred = ExecutionResult(
+                        success=False,
+                        entity_type="connector",
+                        entity_id="",
+                        connector_management_url="/connectors",
+                        result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
+                        title=plan.label,
+                        body=str(gate.get("message") or "Sync deferred until pipeline milestone."),
+                        integration=plan.integration,
+                        task_label=plan.label,
+                        error_code="sync_back_deferred",
+                    )
+                    if own_terminal_outcome:
+                        self._finalize_connector_outcome(
+                            client,
+                            org_id=org_id,
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            plan=plan,
+                            result=deferred,
+                        )
+                    return deferred
             observation = await self._registry.execute_invoke_action(
                 ctx=ctx,
                 invoke_action=plan.invoke_action,

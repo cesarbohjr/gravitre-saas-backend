@@ -8,6 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
+import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import {
@@ -149,6 +150,10 @@ function InstalledAssetCard({
           </Link>
         </div>
       )}
+
+      <div className="mt-4">
+        <DepartmentPipelineByDepartment department={department} />
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <span className="text-xs text-muted-foreground">

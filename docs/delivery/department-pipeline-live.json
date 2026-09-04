@@ -1,0 +1,47 @@
+{
+  "pass": true,
+  "gates": {
+    "catalog_five_departments": "PASS",
+    "defer_early_hubspot": "PASS",
+    "allow_at_sync_milestone": "PASS",
+    "prod_health": "PASS"
+  },
+  "departments": [
+    {
+      "department": "sales",
+      "pipelineId": "sales-katie",
+      "stageCount": 7,
+      "syncMilestone": "sync_crm",
+      "honestGapCount": 1
+    },
+    {
+      "department": "marketing",
+      "pipelineId": "marketing-campaign",
+      "stageCount": 6,
+      "syncMilestone": "sync_ads_hubspot",
+      "honestGapCount": 0
+    },
+    {
+      "department": "finance",
+      "pipelineId": "finance-ar",
+      "stageCount": 6,
+      "syncMilestone": "sync_quickbooks",
+      "honestGapCount": 0
+    },
+    {
+      "department": "hr",
+      "pipelineId": "hr-talent",
+      "stageCount": 6,
+      "syncMilestone": "sync_greenhouse",
+      "honestGapCount": 1
+    },
+    {
+      "department": "msp",
+      "pipelineId": "msp-cyber",
+      "stageCount": 7,
+      "syncMilestone": "sync_ticketing",
+      "honestGapCount": 2
+    }
+  ],
+  "prod_health_sha": "55650b860b5b709cc797c9503ead0f3d97d53ebc"
+}
