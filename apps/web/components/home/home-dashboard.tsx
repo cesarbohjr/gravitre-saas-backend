@@ -31,7 +31,7 @@ import {
   Sparkle,
   WarningCircle,
 } from "@phosphor-icons/react"
-import { LayoutDashboard } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import {
   AnimatedCounter,
@@ -42,7 +42,7 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
@@ -149,7 +149,7 @@ export function HomeDashboard({
             eyebrow="Home"
             title={`Welcome back, ${roleLabel}`}
             description="Monitor learning, clear approvals, and open Gravitre AI — status below reflects live API data only."
-            icon={LayoutDashboard}
+            icon={NucleoIntelligence}
             actions={
               <>
                 <Button asChild size="sm">
@@ -578,14 +578,14 @@ function StatusChip({
   href?: string
 }) {
   const tones = {
-    warning: "border-warning/30 bg-warning/10 text-warning",
-    success: "border-success/30 bg-success/10 text-success",
-    info: "border-info/30 bg-info/10 text-info",
-    muted: "border-border bg-muted/40 text-muted-foreground",
-    default: "border-border bg-card text-foreground",
+    warning: STATUS.pending,
+    success: STATUS.approved,
+    info: STATUS.estimate,
+    muted: STATUS.idle,
+    default: STATUS.idle,
   }
   const className = cn(
-    "inline-flex items-center gap-1.5 border px-3 py-1 text-xs font-medium",
+    "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium",
     RADIUS.control,
     tones[tone],
   )

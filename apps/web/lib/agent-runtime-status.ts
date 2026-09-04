@@ -16,6 +16,7 @@
  */
 
 import type { AgentStatus } from "@/types/api"
+import { STATUS } from "@/lib/design-system"
 
 export type AgentRuntimePresentation = {
   /** API status (unchanged). */
@@ -37,9 +38,9 @@ export type AgentRuntimePresentation = {
 const CONFIG: Record<AgentStatus, Omit<AgentRuntimePresentation, "status">> = {
   active: {
     label: "Active",
-    color: "text-success",
-    dotColor: "bg-success",
-    chipClass: "border-success/40 bg-success/10 text-success",
+    color: "text-[color:var(--status-verified)]",
+    dotColor: "bg-[color:var(--status-verified)]",
+    chipClass: STATUS.verified,
     pulse: false,
     beacon: "active",
   },
@@ -47,23 +48,23 @@ const CONFIG: Record<AgentStatus, Omit<AgentRuntimePresentation, "status">> = {
     label: "Idle",
     color: "text-muted-foreground",
     dotColor: "bg-muted-foreground",
-    chipClass: "border-border bg-muted text-muted-foreground",
+    chipClass: STATUS.idle,
     pulse: false,
     beacon: "idle",
   },
   processing: {
     label: "Running",
-    color: "text-info",
-    dotColor: "bg-info",
-    chipClass: "border-info/30 bg-info/10 text-info",
+    color: "text-[color:var(--status-running)]",
+    dotColor: "bg-[color:var(--status-running)]",
+    chipClass: STATUS.running,
     pulse: true,
     beacon: "processing",
   },
   error: {
     label: "Failed",
-    color: "text-destructive",
-    dotColor: "bg-destructive",
-    chipClass: "border-destructive/40 bg-destructive/10 text-destructive",
+    color: "text-[color:var(--status-failed)]",
+    dotColor: "bg-[color:var(--status-failed)]",
+    chipClass: STATUS.failed,
     pulse: false,
     beacon: "error",
   },
@@ -84,23 +85,23 @@ export function taskRuntimeBadgeClass(status: string): string {
   const key = status.trim().toLowerCase()
   switch (key) {
     case "completed":
-      return "bg-success/10 text-success"
+      return STATUS.verified
     case "running":
     case "processing":
     case "queued":
-      return "bg-info/10 text-info"
+      return STATUS.running
     case "failed":
     case "error":
     case "cancelled":
-      return "bg-destructive/10 text-destructive"
+      return STATUS.failed
     case "paused":
     case "needs_input":
     case "needs_human_input":
     case "awaiting_approval":
     case "pending_approval":
-      return "bg-warning/10 text-warning"
+      return STATUS.pending
     default:
-      return "bg-secondary text-muted-foreground"
+      return STATUS.idle
   }
 }
 

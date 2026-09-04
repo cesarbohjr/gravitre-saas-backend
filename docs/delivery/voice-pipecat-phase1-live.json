@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-04T21:16:52.091798+00:00",
+  "generated_at": "2026-09-04T23:01:52.375339+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "8ac01d95e09b9462f1facd856168da07f8e05cde",
+  "git_sha": "afa8020b442f4727db8200c3c7f8b55e96cab542",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-04T21:16:23.785788+00:00",
+    "timestamp": "2026-09-04T23:01:30.922972+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "8ac01d95e09b9462f1facd856168da07f8e05cde",
+    "git_sha": "afa8020b442f4727db8200c3c7f8b55e96cab542",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -32,6 +32,18 @@
     "pipecat_ws_path": "/api/voice/pipecat/ws",
     "default_orchestration": "pipecat",
     "architecture": "streaming_voice_session_over_unified_turn",
+    "pipecat_stt": {
+      "stt_provider": "deepgram_flux",
+      "stt_model": "flux-general-en",
+      "stt_provider_key": "flux",
+      "fallback_enabled": true,
+      "fallback_provider": "deepgram_nova3",
+      "fallback_key": "nova3"
+    },
+    "pipecat_tts": {
+      "model": "eleven_flash_v2_5",
+      "transport": "websocket"
+    },
     "orchestration_honesty": "PASS"
   },
   "ws_probe": {
@@ -43,7 +55,13 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "2b27a166-1eb9-4119-a1d5-881175100532"
+        "conversation_id": "45ecab8d-9da6-43c0-8647-b51a4c38e90e",
+        "tts_model": "eleven_flash_v2_5",
+        "tts_transport": "websocket",
+        "stt_provider": "deepgram_flux",
+        "stt_model": "flux-general-en",
+        "stt_provider_key": "flux",
+        "stt_turn_detection": "flux_native_eot"
       },
       {
         "label": "rtvi-ai",
@@ -51,21 +69,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramSTTService#2",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#2",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramSTTService#2",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#2",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ]
@@ -91,22 +109,10 @@
       },
       {
         "label": "rtvi-ai",
-        "type": "user-started-speaking"
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-interrupted"
-      },
-      {
-        "label": "rtvi-ai",
         "type": "user-llm-text",
         "data": {
           "text": "In one short sentence, what is two plus two?"
         }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "user-stopped-speaking"
       },
       {
         "label": "rtvi-ai",
@@ -167,7 +173,7 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#2",
+              "processor": "ElevenLabsTTSService#1",
               "model": "eleven_flash_v2_5",
               "value": 6
             }
@@ -189,8 +195,14 @@
     "cognitive_path": "CognitiveTurnKernel",
     "architecture": "pipecat_deepgram_cognitive_elevenlabs",
     "write_confirm_policy": "nl_yes_same_path_as_text",
+    "stt_provider": "deepgram_flux",
+    "stt_model": "flux-general-en",
+    "tts_model": "eleven_flash_v2_5",
+    "tts_transport": "websocket",
     "assistant_text": "Four.Four...",
-    "verdict": "PASS"
+    "verdict": "PASS",
+    "stt_honesty": "PASS",
+    "stt_expect": "deepgram_flux"
   },
   "governance_probe": {
     "ok": true,
@@ -201,7 +213,13 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "192706fc-f640-4066-ab43-185f449235f1"
+        "conversation_id": "a894bf4a-ac3a-49b0-8906-6b2f19417844",
+        "tts_model": "eleven_flash_v2_5",
+        "tts_transport": "websocket",
+        "stt_provider": "deepgram_flux",
+        "stt_model": "flux-general-en",
+        "stt_provider_key": "flux",
+        "stt_turn_detection": "flux_native_eot"
       },
       {
         "label": "rtvi-ai",
@@ -209,21 +227,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramSTTService#3",
+              "processor": "DeepgramFluxSTTService#2",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#3",
+              "processor": "ElevenLabsTTSService#2",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramSTTService#3",
+              "processor": "DeepgramFluxSTTService#2",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#3",
+              "processor": "ElevenLabsTTSService#2",
               "value": 0.0
             }
           ]
@@ -249,14 +267,6 @@
       },
       {
         "label": "rtvi-ai",
-        "type": "user-started-speaking"
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-interrupted"
-      },
-      {
-        "label": "rtvi-ai",
         "type": "user-llm-text",
         "data": {
           "text": "Email Sarah that the campaign moved to Monday."
@@ -264,161 +274,187 @@
       },
       {
         "label": "rtvi-ai",
-        "type": "user-stopped-speaking"
-      },
-      {
-        "label": "rtvi-ai",
         "type": "bot-llm-started"
       },
       {
         "type": "assistant_text",
-        "delta": "I don\u2019t have enough info."
+        "delta": "I."
       },
       {
         "type": "assistant_text",
-        "delta": "I don\u2019t have enough info."
+        "delta": "I."
       },
       {
         "type": "assistant_text",
-        "delta": "rmation yet. Tell me the."
+        "delta": "need."
       },
       {
         "type": "assistant_text",
-        "delta": "rmation yet. Tell me the."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "missing detail and I\u2019ll."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "missing detail and I\u2019ll."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "continue. I need:. Sa."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "continue. I need:. Sa."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "rah\u2019s email address, or."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "rah\u2019s email address, or."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "enough context to find."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "enough context to find."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "the correct Sarah in yo."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "the correct Sarah in yo."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "ur connected CRM. If yo."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "ur connected CRM. If yo."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "u want, I can search you."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "u want, I can search you."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "r CRM for Sarah first."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "r CRM for Sarah first."
+        "delta": "need."
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I don\u2019t have enough info."
+          "text": "I."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I don\u2019t have enough info."
+          "text": "I."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "rmation yet. Tell me the."
+          "text": "need."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "rmation yet. Tell me the."
+          "text": "need."
+        }
+      },
+      {
+        "type": "assistant_text",
+        "delta": "the."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "the."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "recipient."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "recipient."
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "the."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "the."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "missing detail and I\u2019ll."
+          "text": "recipient."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "missing detail and I\u2019ll."
+          "text": "recipient."
+        }
+      },
+      {
+        "type": "assistant_text",
+        "delta": "email."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "email."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "address."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "address."
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "email."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "email."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "continue. I need:. Sa."
+          "text": "address."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "continue. I need:. Sa."
+          "text": "address."
+        }
+      },
+      {
+        "type": "assistant_text",
+        "delta": "for."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "for."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "Sarah."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "Sarah."
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "for."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "for."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "rah\u2019s email address, or."
+          "text": "Sarah."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "rah\u2019s email address, or."
+          "text": "Sarah."
         }
+      },
+      {
+        "type": "assistant_text",
+        "delta": "before."
       }
     ],
     "audio_frames": 1,
@@ -427,8 +463,12 @@
     "cognitive_path": "CognitiveTurnKernel",
     "architecture": "pipecat_deepgram_cognitive_elevenlabs",
     "write_confirm_policy": "nl_yes_same_path_as_text",
-    "assistant_text": "I don\u2019t have enough info.I don\u2019t have enough info.rmation yet. Tell me the.rmation yet. Tell me the.missing detail and I\u2019ll.missing detail and I\u2019ll.continue. I need:. Sa.continue. I need:. Sa.rah\u2019s email address, or.rah\u2019s email address, or.enough context to find.enough context to find.the correct Sarah in yo.the correct Sarah in yo.ur connected CRM. If yo.ur connected CRM. If yo.u want, I can search you.u want, I can search you.r CRM for Sarah first.r CRM for Sarah first.",
-    "confirm_language_detected": false,
+    "stt_provider": "deepgram_flux",
+    "stt_model": "flux-general-en",
+    "tts_model": "eleven_flash_v2_5",
+    "tts_transport": "websocket",
+    "assistant_text": "I.I.need.need.the.the.recipient.recipient.email.email.address.address.for.for.Sarah.Sarah.before.before.I.I.can.can.send.send.it.it...I.I.need.need.Sarah.Sarah.\u2019s.\u2019s.email.email.address.address.before.before.I.I.can.can.send.send.it.it.",
+    "confirm_language_detected": true,
     "verdict": "PASS"
   },
   "verdict": "PASS",
