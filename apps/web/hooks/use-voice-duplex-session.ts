@@ -20,7 +20,6 @@ import {
   encodePipecatInterrupt,
   base64ToPcm16,
   shouldUsePipecatVoice,
-  type PipecatServerMessage,
 } from "@/lib/pipecat-voice-client"
 import {
   cancelVoiceSessionTurn,
@@ -753,25 +752,26 @@ export function useVoiceDuplexSession(options: Options) {
       }
 
       ws.onmessage = (ev) => {
-        let msg: PipecatServerMessage
+        let msg: Record<string, unknown>
         try {
-          msg = JSON.parse(String(ev.data)) as PipecatServerMessage
+          msg = JSON.parse(String(ev.data)) as Record<string, unknown>
         } catch {
           return
         }
-        if (msg.type === "session.ready") {
+        const kind = String(msg.type || "")
+        if (kind === "session.ready") {
           const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
           if (cid) optsRef.current.onConversationId?.(cid)
           return
         }
-        if (msg.type === "error") {
+        if (kind === "error") {
           const err = String(msg.error || "Voice session failed")
           const billing = String(msg.error_class || "") === "billing"
           optsRef.current.onError?.(err, billing)
           setPresence("error")
           return
         }
-        if (msg.type === "transcript") {
+        if (kind === "transcript") {
           const text = String(msg.text || "").trim()
           if (!text) return
           setProvisionalTranscript(text)
@@ -786,14 +786,14 @@ export function useVoiceDuplexSession(options: Options) {
           }
           return
         }
-        if (msg.type === "assistant_text") {
+        if (kind === "assistant_text") {
           const delta = String(msg.delta || "")
           if (!delta) return
           assistantTextRef.current += delta
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
           return
         }
-        if (msg.type === "audio" && typeof msg.pcm16_b64 === "string") {
+        if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
           const pcm = base64ToPcm16(msg.pcm16_b64)
           enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
         }
