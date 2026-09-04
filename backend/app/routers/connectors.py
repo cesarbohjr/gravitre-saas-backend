@@ -34,6 +34,7 @@ from app.connectors.platform import (
     store_connector_api_key,
 )
 from app.services.partner_marketplace_service import is_published_partner_vendor
+from app.services.twilio_tools import resolve_twilio_account_sid_from_api_key
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
 from app.workflows.audit import write_audit_event
@@ -1167,13 +1168,11 @@ async def create_connector_route(
         cfg = dict(body.config or {})
         account_sid = str(cfg.get("account_sid") or "").strip()
         if not account_sid:
-            from app.connectors.twilio_api import fetch_twilio_account_sid
-
             api_key_sid = (body.secrets or {}).get("api_key_sid") or ""
             api_key_secret = (body.secrets or {}).get("api_key_secret") or ""
             if api_key_sid and api_key_secret:
                 try:
-                    account_sid = fetch_twilio_account_sid(
+                    account_sid = resolve_twilio_account_sid_from_api_key(
                         api_key_sid=str(api_key_sid).strip(),
                         api_key_secret=str(api_key_secret).strip(),
                     )

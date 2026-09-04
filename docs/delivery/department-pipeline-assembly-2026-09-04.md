@@ -1,6 +1,6 @@
 # Department pipeline assembly (Katie-style UX) — 2026-09-04
 
-Status: **PARTIAL** — assembly layer shipped; live E2E per department **NOT RUN** in prod chat.
+Status: **PARTIAL** — assembly + sync-back policy shipped to prod (`c5b59964`); CI fix pending for Twilio import boundary + proxy route TS; full prod chat E2E **NOT RUN**.
 
 ## Phase 0 — Real audit (confirmed)
 
