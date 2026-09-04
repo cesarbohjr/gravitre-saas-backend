@@ -542,6 +542,14 @@ class Settings(BaseSettings):
         default="nova-2",
         validation_alias=AliasChoices("DEEPGRAM_STT_MODEL", "deepgram_stt_model"),
     )
+    twilio_auth_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_AUTH_TOKEN", "twilio_auth_token"),
+    )
+    twilio_default_org_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("TWILIO_DEFAULT_ORG_ID", "twilio_default_org_id"),
+    )
     internet_research_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),

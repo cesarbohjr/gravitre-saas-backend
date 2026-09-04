@@ -197,8 +197,12 @@ def synthesize_speech_stream(
     text: str,
     voice_key: str | None = None,
     model_id: str | None = None,
+    output_format: str = "mpeg",
 ) -> Iterator[bytes]:
-    """Stream MPEG chunks from ElevenLabs as soon as first byte is available."""
+    """Stream audio chunks from ElevenLabs as soon as first byte is available.
+
+    output_format: ``mpeg`` (browser) or ``ulaw_8000`` (Twilio Media Streams).
+    """
     api_key = (settings.elevenlabs_api_key or "").strip()
     if not api_key:
         raise VoiceProviderError(
@@ -216,10 +220,17 @@ def synthesize_speech_stream(
     model = (model_id or settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip()
     if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
         model = "eleven_flash_v2_5"
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+    fmt = (output_format or "mpeg").strip().lower()
+    if fmt in {"ulaw", "ulaw_8000", "mulaw", "mulaw_8000"}:
+        fmt = "ulaw_8000"
+        accept = "audio/basic"
+    else:
+        fmt = "mpeg"
+        accept = "audio/mpeg"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream?output_format={fmt}"
     headers = {
         "xi-api-key": api_key,
-        "Accept": "audio/mpeg",
+        "Accept": accept,
         "Content-Type": "application/json",
     }
     body = {
@@ -287,12 +298,22 @@ def transcribe_audio(
     return transcript, meta
 
 
-def deepgram_live_ws_url(settings: Settings) -> str:
-    """WebSocket URL for streaming STT with VAD events."""
+def deepgram_live_ws_url(settings: Settings, *, pstn: bool = False) -> str:
+    """WebSocket URL for streaming STT with VAD events.
+
+    Browser/desktop uses linear16 @ 16 kHz. PSTN (Twilio Media Streams) uses
+    mulaw @ 8 kHz — same Deepgram model, no second STT vendor decision.
+    """
     model = (settings.deepgram_stt_model or "nova-2").strip()
+    if pstn:
+        encoding = "mulaw"
+        sample_rate = 8000
+    else:
+        encoding = "linear16"
+        sample_rate = 16000
     return (
         f"wss://api.deepgram.com/v1/listen?model={model}"
-        "&encoding=linear16&sample_rate=16000&channels=1"
+        f"&encoding={encoding}&sample_rate={sample_rate}&channels=1"
         "&interim_results=true&punctuate=true&smart_format=true"
         "&vad_events=true&utterance_end_ms=1000&endpointing=300"
     )
@@ -302,8 +323,9 @@ def mint_deepgram_live_credentials(
     settings: Settings,
     *,
     ttl_seconds: int = 60,
+    pstn: bool = False,
 ) -> dict[str, Any]:
-    """Mint a short-lived Deepgram JWT for browser WebSocket STT (no long-lived key leak)."""
+    """Mint a short-lived Deepgram JWT for WebSocket STT (browser or PSTN bridge)."""
     key = (settings.deepgram_api_key or "").strip()
     if not key:
         raise VoiceProviderError(
@@ -313,7 +335,7 @@ def mint_deepgram_live_credentials(
             provider="deepgram",
         )
     ttl = max(15, min(int(ttl_seconds or 60), 120))
-    url = deepgram_live_ws_url(settings)
+    url = deepgram_live_ws_url(settings, pstn=pstn)
     try:
         with httpx.Client(timeout=12.0) as client:
             resp = client.post(
@@ -349,13 +371,16 @@ def mint_deepgram_live_credentials(
             error_class="not_configured",
             provider="deepgram",
         )
+    encoding = "mulaw" if pstn else "linear16"
+    sample_rate = 8000 if pstn else 16000
     return {
         "ws_url": url,
         "access_token": access_token,
         "authorization": f"Bearer {access_token}",
         "expires_in_seconds": int(data.get("expires_in") or ttl),
-        "encoding": "linear16",
-        "sample_rate": 16000,
+        "encoding": encoding,
+        "sample_rate": sample_rate,
         "provider": "deepgram",
+        "pstn": pstn,
         "pipeline": "live_ws_into_session_turn",
     }

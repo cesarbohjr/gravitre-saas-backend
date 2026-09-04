@@ -113,6 +113,7 @@ from app.routers import (
     salesforce_triggers,
     segment_triggers,
     workday_sync,
+    voice_gateway,
 )
 from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound, segment_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
@@ -599,6 +600,8 @@ app.include_router(intelligence_visibility.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(voice.router)
+app.include_router(voice_gateway.router)
+app.include_router(voice_gateway.twilio_router)
 app.include_router(conversations.router)
 app.include_router(meson.router)
 app.include_router(agent_interrupts.router)

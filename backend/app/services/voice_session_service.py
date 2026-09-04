@@ -135,6 +135,7 @@ async def stream_voice_turn_events(
     tts_model: str | None = None,
     turn_id: str | None = None,
     should_cancel: Callable[[], bool] | None = None,
+    tts_output_format: str = "mpeg",
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     from app.operators.agent_intelligence import get_agent_intelligence
@@ -145,6 +146,9 @@ async def stream_voice_turn_events(
     model = tts_model or profile.get("tts_model") or "eleven_flash_v2_5"
     resolved_turn_id = (turn_id or "").strip() or str(uuid.uuid4())
     resolved_conversation_id = (conversation_id or "").strip() or None
+    audio_content_type = (
+        "audio/basic" if (tts_output_format or "mpeg").lower().startswith("ulaw") else "audio/mpeg"
+    )
 
     def _cancelled() -> bool:
         if should_cancel and should_cancel():
@@ -206,6 +210,7 @@ async def stream_voice_turn_events(
             text=spoken_chunk,
             voice_key=resolved_voice,
             model_id=model,
+            output_format=tts_output_format,
         ):
             if _cancelled():
                 cancelled = True
@@ -215,7 +220,7 @@ async def stream_voice_turn_events(
                 yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
             yield {
                 "type": "voice.audio.delta",
-                "content_type": "audio/mpeg",
+                "content_type": audio_content_type,
                 "audio_base64": base64.b64encode(audio).decode("ascii"),
                 "text_chunk": spoken_chunk,
                 "turn_id": resolved_turn_id,
