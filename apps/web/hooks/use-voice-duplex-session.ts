@@ -20,6 +20,7 @@ import {
   encodePipecatInterrupt,
   base64ToPcm16,
   shouldUsePipecatVoice,
+  type PipecatServerMessage,
 } from "@/lib/pipecat-voice-client"
 import {
   cancelVoiceSessionTurn,
