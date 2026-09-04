@@ -23,14 +23,14 @@ class SpeculativePrefetchProcessor(FrameProcessor):
     def __init__(
         self,
         *,
-        settings: Any,
+        app_settings: Any,
         org_id: str,
         user_id: str,
         min_chars: int = 12,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self._settings = settings
+        self._app_settings = app_settings
         self._org_id = org_id
         self._user_id = user_id
         self._min_chars = min_chars
@@ -55,8 +55,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             from app.services.sentiment_friction_service import get_sentiment_friction_service
             from app.workflows.repository import get_supabase_client
 
-            client = get_supabase_client(self._settings)
-            await load_chat_dialogue_settings(self._org_id, self._settings, client=client)
+            client = get_supabase_client(self._app_settings)
+            await load_chat_dialogue_settings(self._org_id, self._app_settings, client=client)
             get_sentiment_friction_service().analyze(text, None)
             logger.debug(
                 "pipecat_speculative_prefetch org_id=%s chars=%s",

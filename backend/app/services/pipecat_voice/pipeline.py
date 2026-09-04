@@ -82,12 +82,12 @@ def build_pipecat_voice_task(
 
     stt = DeepgramSTTService(api_key=dg_key)
     speculative = SpeculativePrefetchProcessor(
-        settings=settings,
+        app_settings=settings,
         org_id=org_id,
         user_id=user_id,
     )
     llm = GravitreCognitiveLLMService(
-        settings=settings,
+        app_settings=settings,
         org_id=org_id,
         user_id=user_id,
         agent=agent,

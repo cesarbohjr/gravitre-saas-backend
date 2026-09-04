@@ -60,7 +60,7 @@ class GravitreCognitiveLLMService(LLMService):
     def __init__(
         self,
         *,
-        settings: Any,
+        app_settings: Any,
         org_id: str,
         user_id: str,
         agent: dict[str, Any] | None = None,
@@ -68,7 +68,8 @@ class GravitreCognitiveLLMService(LLMService):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self._settings = settings
+        # Never assign to self._settings — AIService owns that for Pipecat ServiceSettings.
+        self._app_settings = app_settings
         self._org_id = org_id
         self._user_id = user_id
         self._agent = agent
@@ -99,7 +100,7 @@ class GravitreCognitiveLLMService(LLMService):
             return
         intelligence = get_agent_intelligence()
         async for event in intelligence.execute_task_streaming(
-            settings=self._settings,
+            settings=self._app_settings,
             org_id=self._org_id,
             user_id=self._user_id,
             query=user_text,
