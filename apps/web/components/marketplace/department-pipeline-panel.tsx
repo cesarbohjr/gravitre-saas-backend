@@ -25,6 +25,16 @@ export type DepartmentPipelineView = {
   }
   stageStatuses?: DepartmentPipelineStage[]
   honestGaps?: string[]
+  signalScoring?: {
+    priorities?: Array<{
+      workObjectId: string
+      title: string
+      priorityScore: number
+      priorityBand: string
+      explanations?: string[]
+    }>
+    gaps?: string[]
+  }
 }
 
 function statusIcon(status: DepartmentPipelineStage["status"]) {
@@ -93,6 +103,31 @@ export function DepartmentPipelinePanel({
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">{syncLabel}</p>
+
+      {pipeline.signalScoring?.priorities?.length ? (
+        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-primary">
+            Signal priority
+          </p>
+          {pipeline.signalScoring.priorities.slice(0, 1).map((row) => (
+            <div key={row.workObjectId} className="mt-1">
+              <p className="text-sm font-medium text-foreground">
+                {row.title} - {Math.round(Number(row.priorityScore) || 0)}/100 ({row.priorityBand})
+              </p>
+              {row.explanations?.slice(0, 2).map((reason) => (
+                <p key={reason} className="text-xs text-muted-foreground">
+                  {reason}
+                </p>
+              ))}
+            </div>
+          ))}
+          {pipeline.signalScoring.gaps?.length ? (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              Gap: {pipeline.signalScoring.gaps[0]}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <ol className={cn("mt-4 space-y-2", compact && "mt-3")}>
         {stages.map((stage, index) => {

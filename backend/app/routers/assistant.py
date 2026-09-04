@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -1303,6 +1303,59 @@ async def assistant_business_signals(
         department=department,
         client=client,
         include_predictive=False,
+    )
+
+
+@router.get("/business-signals/source-audit")
+async def assistant_business_signal_source_audit(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    department: str | None = None,
+) -> dict[str, Any]:
+    _ = current_user
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.department_signal_scoring_service import (
+        get_department_signal_scoring_service,
+    )
+
+    client = get_supabase_client(settings)
+    return get_department_signal_scoring_service(settings).audit_sources(
+        org_id,
+        client=client,
+        department=department,
+    )
+
+
+@router.get("/business-signals/priorities")
+async def assistant_business_signal_priorities(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    department: str | None = None,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> dict[str, Any]:
+    _ = current_user
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.department_signal_scoring_service import (
+        get_department_signal_scoring_service,
+    )
+
+    client = get_supabase_client(settings)
+    scorer = get_department_signal_scoring_service(settings)
+    if department:
+        return scorer.score_department(
+            org_id,
+            client=client,
+            department=department,
+            limit=limit,
+        )
+    return scorer.score_all_departments(
+        org_id,
+        client=client,
+        limit_per_department=min(limit, 5),
     )
 
 

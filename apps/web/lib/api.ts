@@ -1699,6 +1699,21 @@ export const assistantApi = {
     fetcher<{ signals: Array<Record<string, unknown>>; collected_at?: string }>(
       apiUrl(`/api/assistant/business-signals${department ? `?department=${encodeURIComponent(department)}` : ""}`),
     ),
+  businessSignalSourceAudit: (department?: string) =>
+    fetcher<Record<string, unknown>>(
+      apiUrl(
+        `/api/assistant/business-signals/source-audit${department ? `?department=${encodeURIComponent(department)}` : ""}`,
+      ),
+    ),
+  businessSignalPriorities: (params?: { department?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.department) search.set("department", params.department)
+    if (params?.limit != null) search.set("limit", String(params.limit))
+    const qs = search.toString()
+    return fetcher<Record<string, unknown>>(
+      apiUrl(`/api/assistant/business-signals/priorities${qs ? `?${qs}` : ""}`),
+    )
+  },
   advisorBrief: (params?: { department?: string; query?: string }) => {
     const search = new URLSearchParams()
     if (params?.department) search.set("department", params.department)

@@ -265,6 +265,49 @@ class BusinessSignalsEngine:
                     )
                 )
 
+        signal_scoring_payload: dict[str, Any] | None = None
+        source_audit_payload: dict[str, Any] | None = None
+        scored_department = str(department or "").strip().lower()
+        if scored_department in {"sales", "marketing", "finance", "hr", "msp"}:
+            try:
+                from app.services.department_signal_scoring_service import (
+                    get_department_signal_scoring_service,
+                )
+
+                scorer = get_department_signal_scoring_service(self.settings)
+                signal_scoring_payload = await asyncio.to_thread(
+                    scorer.score_department,
+                    org_id,
+                    client=db_client,
+                    department=scored_department,
+                    limit=3,
+                )
+                source_audit_payload = await asyncio.to_thread(
+                    scorer.audit_sources,
+                    org_id,
+                    client=db_client,
+                    department=scored_department,
+                )
+                for row in list(signal_scoring_payload.get("priorities") or [])[:3]:
+                    score = float(row.get("priorityScore") or 0.0)
+                    summary = "; ".join(str(item) for item in (row.get("explanations") or [])[:2])
+                    if not summary:
+                        summary = "Score assembled from currently available connected and knowledge-fabric signals."
+                    signals.append(
+                        self._normalize_signal(
+                            {
+                                "title": f"Priority score — {row.get('title') or scored_department.title()}",
+                                "summary": summary,
+                                "confidence": max(0.0, min(1.0, score / 100.0)),
+                                "estimated_impact": "high" if score >= 70 else "medium" if score >= 45 else "low",
+                            },
+                            source="signal_scoring_engine",
+                            signal_type="opportunity",
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("business_signals_scoring_skipped org_id=%s dept=%s error=%s", org_id, scored_department, exc)
+
         ranked = await self._quality.rank_recommendations(
             signals,
             org_id=org_id,
@@ -273,6 +316,8 @@ class BusinessSignalsEngine:
         payload = {
             "signals": ranked[:10],
             "graph": graph_payload,
+            "signal_scoring": signal_scoring_payload,
+            "signal_source_audit": source_audit_payload,
             "collected_at": datetime.now(timezone.utc).isoformat(),
         }
         if use_cache:

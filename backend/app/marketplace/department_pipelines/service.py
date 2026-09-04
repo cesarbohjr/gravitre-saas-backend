@@ -10,6 +10,9 @@ from app.marketplace.department_pipelines.catalog import (
     list_department_pipelines,
     serialize_pipeline,
 )
+from app.services.department_signal_scoring_service import (
+    get_department_signal_scoring_service,
+)
 from app.services.sync_back_policy_service import get_sync_back_policy
 
 StageStatusLiteral = Literal["not_started", "in_progress", "completed", "blocked", "skipped"]
@@ -40,12 +43,25 @@ class DepartmentPipelineService:
             spec.default_department_pack_slug
             and any(spec.default_department_pack_slug in str(x) for x in installed_packs)
         )
+        signal_scoring = get_department_signal_scoring_service().score_department(
+            org_id,
+            client=client,
+            department=spec.department,
+            limit=3,
+        )
+        source_audit = get_department_signal_scoring_service().audit_sources(
+            org_id,
+            client=client,
+            department=spec.department,
+        )
         return {
             **serialize_pipeline(spec),
             "syncBackPolicy": sync_policy,
             "connectAndGoReady": pack_ready,
             "installedPackHints": sorted(installed_packs)[:12],
             "stageStatuses": stages,
+            "signalScoring": signal_scoring,
+            "signalSourceAudit": source_audit,
         }
 
     def _installed_pack_ids(self, client: Any, *, org_id: str) -> set[str]:

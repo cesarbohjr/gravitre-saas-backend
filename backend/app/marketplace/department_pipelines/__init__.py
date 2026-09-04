@@ -5,7 +5,14 @@ from app.marketplace.department_pipelines.catalog import (
     get_department_pipeline,
     list_department_pipelines,
 )
-from app.marketplace.department_pipelines.service import DepartmentPipelineService
+
+
+def __getattr__(name: str):
+    if name == "DepartmentPipelineService":
+        from app.marketplace.department_pipelines.service import DepartmentPipelineService
+
+        return DepartmentPipelineService
+    raise AttributeError(name)
 
 __all__ = [
     "DEPARTMENT_PIPELINE_IDS",

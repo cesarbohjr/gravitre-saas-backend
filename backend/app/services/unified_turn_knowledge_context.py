@@ -38,6 +38,10 @@ _GREETING_HINT = re.compile(
     r"^(?:hi|hello|hey|thanks|thank you|good morning|good afternoon|good evening)\b",
     re.I,
 )
+_PRIORITIZATION_HINT = re.compile(
+    r"\b(priorit(?:ize|isation|ization|y)|who should i (?:focus|prioritize)|focus this week|top prospects?)\b",
+    re.I,
+)
 
 # Escalation order. Follows the Router's own hierarchy: the org's own corpus and
 # curated packs first, then the open web, then the org business graph. Nothing
@@ -99,6 +103,19 @@ def should_augment_unified_turn_with_knowledge(
         return True
     dept = str((classification or {}).get("department") or "").strip().lower()
     return dept not in {"", "all", "general"}
+
+
+def should_include_signal_priorities(
+    message: str,
+    *,
+    classification: dict[str, Any] | None = None,
+) -> bool:
+    text = str(message or "").strip()
+    if not text:
+        return False
+    if _PRIORITIZATION_HINT.search(text):
+        return True
+    return str((classification or {}).get("intent") or "").lower() in {"crm_lookup", "data_analysis"}
 
 
 async def _run_internet_prefetch(
@@ -906,6 +923,44 @@ async def build_unified_turn_knowledge_context(
     outcome_bias_section = str(
         supplemental.get("outcome_bias_section") or ""
     ).strip()
+    if should_include_signal_priorities(query, classification=classification) and client is not None:
+        try:
+            from app.services.department_signal_scoring_service import (
+                get_department_signal_scoring_service,
+            )
+
+            scorer = get_department_signal_scoring_service(settings)
+            if dept and dept in {"sales", "marketing", "finance", "hr", "msp"}:
+                score_payload = await asyncio.to_thread(
+                    scorer.score_department,
+                    org_id,
+                    client=client,
+                    department=dept,
+                    limit=3,
+                )
+                rendered = scorer.render_priority_context(score_payload)
+                if rendered:
+                    advisory_sections.append(rendered)
+                meta["signalScoring"] = score_payload
+            else:
+                scored_all = await asyncio.to_thread(
+                    scorer.score_all_departments,
+                    org_id,
+                    client=client,
+                    limit_per_department=2,
+                )
+                lines: list[str] = ["SIGNAL PRIORITIZATION SNAPSHOT (multi-department):"]
+                for row in list(scored_all.get("departments") or [])[:5]:
+                    one = scorer.render_priority_context(row)
+                    if one:
+                        lines.append(one)
+                if len(lines) > 1:
+                    advisory_sections.append("\n".join(lines))
+                meta["signalScoring"] = scored_all
+        except Exception as exc:  # noqa: BLE001
+            meta["signalScoringError"] = str(exc)[:160]
+
+    sections = evidence_sections + advisory_sections
     if not sections and not any(
         (memory_section, kernel_knowledge_section, outcome_bias_section)
     ):

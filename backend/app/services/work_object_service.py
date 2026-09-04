@@ -157,6 +157,22 @@ def _normalize_priority(value: Any) -> WorkObjectPriority:
     return text if text in WORK_OBJECT_PRIORITY else "medium"
 
 
+def _priority_from_signal_score(score_0_100: float | None, fallback: WorkObjectPriority) -> WorkObjectPriority:
+    if score_0_100 is None:
+        return fallback
+    try:
+        score = float(score_0_100)
+    except (TypeError, ValueError):
+        return fallback
+    if score >= 85:
+        return "critical"
+    if score >= 70:
+        return "high"
+    if score >= 45:
+        return "medium"
+    return "low"
+
+
 def _infer_type_from_entity(entity_type: str) -> WorkObjectType:
     normalized = entity_type.lower().replace("-", "_").replace(".", "_")
     if normalized in _ENTITY_TYPE_MAP:
@@ -324,6 +340,7 @@ def _resolve_existing_work_object(
 
 
 def _serialize_work_object(row: dict[str, Any]) -> dict[str, Any]:
+    signal_priority = safe_normalize_stored_dict(safe_normalize_stored_dict(row.get("metadata")), key="signalPriority")
     return {
         "id": _as_str(row.get("id")),
         "orgId": _as_str(row.get("org_id")),
@@ -345,6 +362,7 @@ def _serialize_work_object(row: dict[str, Any]) -> dict[str, Any]:
         "outcome": safe_normalize_stored_dict(row.get("outcome")),
         "roi": safe_normalize_stored_dict(row.get("roi")),
         "metadata": safe_normalize_stored_dict(row.get("metadata")),
+        "signalPriority": signal_priority or None,
         "createdAt": _as_str(row.get("created_at")) or None,
         "updatedAt": _as_str(row.get("updated_at")) or None,
         "lastActivityAt": _as_str(row.get("last_activity_at")) or None,
@@ -613,6 +631,61 @@ def record_execution_work_object(
             or []
         )
         event_id = _as_str((event_row[0] if event_row else {}).get("id")) or None
+
+    # Attach explainable department signal score so WorkObjects carry
+    # score + rationale in list/detail views.
+    try:
+        from app.services.department_signal_scoring_service import (
+            get_department_signal_scoring_service,
+        )
+
+        scorer = get_department_signal_scoring_service()
+        scored = scorer.score_department(
+            org_id,
+            client=client,
+            department=department,
+            limit=1,
+            work_object_ids=[_as_str(existing.get("id"))],
+        )
+        scored_rows = list(scored.get("priorities") or [])
+        if scored_rows:
+            top = scored_rows[0]
+            existing_metadata = safe_normalize_stored_dict(existing.get("metadata"))
+            existing_metadata["signalPriority"] = {
+                "department": department,
+                "score": top.get("priorityScore"),
+                "band": top.get("priorityBand"),
+                "explanations": list(top.get("explanations") or [])[:4],
+                "contributions": list(top.get("signalContributions") or [])[:6],
+                "gaps": list(top.get("gaps") or [])[:6],
+                "capturedAt": scored.get("capturedAt"),
+            }
+            updated_priority = _priority_from_signal_score(
+                top.get("priorityScore"), _normalize_priority(existing.get("priority"))
+            )
+            existing = (
+                client.table("work_objects")
+                .update(
+                    {
+                        "priority": updated_priority,
+                        "metadata": existing_metadata,
+                        "updated_at": _now_iso(),
+                    }
+                )
+                .eq("id", existing.get("id"))
+                .eq("org_id", org_id)
+                .execute()
+                .data
+                or [existing]
+            )[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "work_object_signal_priority_skipped org_id=%s work_object_id=%s error=%s",
+            org_id,
+            existing.get("id"),
+            exc,
+        )
+
     return {
         "work_object_id": _as_str(existing.get("id")),
         "work_object": _serialize_work_object(existing),
