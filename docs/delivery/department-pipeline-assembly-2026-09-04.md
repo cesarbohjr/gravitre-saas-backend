@@ -1,6 +1,6 @@
 # Department pipeline assembly (Katie-style UX) — 2026-09-04
 
-Status: **SHIPPED (pending deploy-tip Phase 3/4 smoke)** — assembly, admin sync-back UI, install-success pipeline panel; live execute_plan smoke runs after deploy.
+Status: **SHIPPED** — prod `161df8f8`; Phase 3/4 PASS via deployed smoke on F6 org.
 
 ## Phase 0 — Real audit (confirmed)
 
