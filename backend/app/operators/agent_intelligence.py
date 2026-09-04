@@ -1843,6 +1843,9 @@ class AgentIntelligence:
         # Spoken conversational fast path: skip expensive understand / cluster-embed
         # enrich / router enrichments when this is not a connector write. Depth is
         # otherwise only set *after* those stages, so TTFT paid ~5–7s of dead work.
+        from app.services.chat_intelligence_facade import get_chat_intelligence_facade
+
+        chat_facade = get_chat_intelligence_facade(active_settings)
         spoken_lite_path = bool(
             spoken_mode
             and routing_control.tier == "simple"
@@ -1925,9 +1928,6 @@ class AgentIntelligence:
                 conversation_history,
                 understanding=understanding,
             )
-            from app.services.chat_intelligence_facade import get_chat_intelligence_facade
-
-            chat_facade = get_chat_intelligence_facade(active_settings)
             pipeline_classification = await chat_facade.enrich_classification(
                 pipeline_classification,
                 org_id,
