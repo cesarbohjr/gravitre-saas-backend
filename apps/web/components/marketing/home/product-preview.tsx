@@ -1,6 +1,12 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+/**
+ * Dominant hero visual — real Gravitre product captures + truthful STATUS rhythm.
+ * Perspective + fade-into-system (Agenforce craft, Gravitre product truth).
+ */
+
+import Image from "next/image"
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 import { buildOperationalSuccessClaim, EMPTY_LIVE_INTEL } from "@/lib/marketing-intelligence-truth"
 import { useMotionPrefs } from "@/lib/animations"
@@ -17,13 +23,13 @@ type DemoBeat =
   | "calm"
 
 const BEAT_MS: Record<DemoBeat, number> = {
-  intent: 1100,
-  agent: 1400,
-  context: 1300,
-  tool: 1400,
-  approval: 1600,
-  verified: 1500,
-  calm: 2200,
+  intent: 1200,
+  agent: 1500,
+  context: 1400,
+  tool: 1500,
+  approval: 1700,
+  verified: 1600,
+  calm: 2400,
 }
 
 const SEQUENCE: DemoBeat[] = [
@@ -36,7 +42,17 @@ const SEQUENCE: DemoBeat[] = [
   "calm",
 ]
 
-/** Dominant hero visual — truthful status rhythm (no fabricated %). */
+/** Map beats to real product captures (fixture screenshots, not live metrics). */
+const BEAT_SHOT: Record<DemoBeat, { src: string; chrome: string }> = {
+  intent: { src: "/product/app-ai.png", chrome: "gravitre.app/ai" },
+  agent: { src: "/product/app-agents.png", chrome: "gravitre.app/agents" },
+  context: { src: "/product/app-ai.png", chrome: "gravitre.app/ai" },
+  tool: { src: "/product/app-connectors.png", chrome: "gravitre.app/connectors" },
+  approval: { src: "/product/app-approvals.png", chrome: "gravitre.app/approvals" },
+  verified: { src: "/product/app-activity.png", chrome: "gravitre.app/activity" },
+  calm: { src: "/product/app-workflows.png", chrome: "gravitre.app/workflows" },
+}
+
 export function ProductPreview() {
   const ref = useRef(null)
   const { reduced } = useMotionPrefs()
@@ -44,14 +60,24 @@ export function ProductPreview() {
     target: ref,
     offset: ["start end", "end start"],
   })
-  const y = useTransform(scrollYProgress, [0, 1], [reduced ? 0 : 100, reduced ? 0 : -100])
+  const y = useTransform(scrollYProgress, [0, 1], [reduced ? 0 : 80, reduced ? 0 : -60])
   const opacity = useTransform(
     scrollYProgress,
-    [0, 0.3, 0.7, 1],
-    reduced ? [1, 1, 1, 1] : [0, 1, 1, 0],
+    [0, 0.2, 0.75, 1],
+    reduced ? [1, 1, 1, 1] : [0.2, 1, 1, 0.35],
   )
+  const rotateX = useTransform(scrollYProgress, [0, 0.5], [reduced ? 0 : 8, reduced ? 0 : 2])
 
   const [beat, setBeat] = useState<DemoBeat>(reduced ? "calm" : "intent")
+  const [mobile, setMobile] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)")
+    const apply = () => setMobile(mq.matches)
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [])
 
   useEffect(() => {
     if (reduced) return
@@ -70,6 +96,7 @@ export function ProductPreview() {
   }, [reduced])
 
   const success = buildOperationalSuccessClaim(EMPTY_LIVE_INTEL)
+  const shot = BEAT_SHOT[beat]
   const statusLabel =
     beat === "intent"
       ? "Intent received"
@@ -94,185 +121,128 @@ export function ProductPreview() {
           ? STATUS.idle
           : STATUS.running
 
-  const intelligenceActive =
-    beat === "agent" || beat === "context" || beat === "tool"
+  const intelligenceActive = beat === "agent" || beat === "context" || beat === "tool"
   const operationalActive = beat === "verified"
 
   return (
-    <motion.div ref={ref} style={{ y, opacity }} className="relative">
+    <motion.div
+      ref={ref}
+      style={{ y, opacity, rotateX: mobile || reduced ? 0 : rotateX }}
+      className="relative mx-auto max-w-5xl"
+    >
       <div
         className={cn(
-          "absolute -inset-4 rounded-3xl blur-2xl transition-opacity duration-700",
+          "absolute -inset-8 rounded-[2rem] blur-3xl transition-opacity duration-700",
           operationalActive
-            ? "bg-[color:var(--g-emerald)]/25 opacity-100"
+            ? "bg-[color:var(--g-emerald)]/22 opacity-100"
             : intelligenceActive
-              ? "bg-[color:var(--g-intelligence)]/20 opacity-90"
-              : "bg-primary/15 opacity-70",
+              ? "bg-[color:var(--g-intelligence)]/22 opacity-95"
+              : beat === "approval"
+                ? "bg-[color:var(--g-warning)]/12 opacity-80"
+                : "bg-[color:var(--g-intelligence)]/14 opacity-70",
         )}
       />
-      {/* Agenforce-style product shell: light UI on dark field, soft bottom fade */}
+
       <div
-        className="relative rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-2 shadow-[var(--g-shadow-elevated)]"
-        style={{
-          boxShadow: operationalActive
-            ? "var(--g-glow-operational)"
-            : "var(--highlight-edge), var(--g-shadow-elevated)",
-          maskImage:
-            "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)",
-        }}
+        className={cn(
+          "relative",
+          !mobile &&
+            !reduced &&
+            "[transform:perspective(1600px)_rotateX(6deg)_rotateY(-3deg)] origin-top",
+        )}
       >
-        <div className="overflow-hidden rounded-xl border border-[color:var(--g-border-subtle)] bg-muted/40">
-          <div className="flex items-center gap-2 border-b border-border bg-[color:var(--g-surface-1)] px-4 py-3">
-            <div className="flex gap-1.5">
-              <div className="h-3 w-3 rounded-full bg-muted-foreground/35" />
-              <div className="h-3 w-3 rounded-full bg-muted-foreground/25" />
-              <div className="h-3 w-3 rounded-full bg-primary/55" />
-            </div>
-            <div className="flex-1 text-center">
-              <span className="font-mono text-xs text-muted-foreground">gravitre.app/ai</span>
-            </div>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide",
-                statusClass,
-              )}
-            >
-              {statusLabel}
-            </span>
-          </div>
-          <div className="aspect-[16/9] bg-gradient-to-br from-muted/50 to-[color:var(--g-surface-1)] p-6 sm:p-8">
-            <div className="grid h-full grid-cols-12 gap-4">
-              <div
-                className="col-span-3 rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] p-4 shadow-[var(--g-shadow-surface)]"
-                style={{ boxShadow: "var(--highlight-edge), var(--g-shadow-surface)" }}
-              >
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "h-2 w-2 rounded-full transition-colors duration-500",
-                          i === 2 && intelligenceActive
-                            ? "bg-[color:var(--g-intelligence)]"
-                            : i === 2
-                              ? "bg-primary"
-                              : "bg-muted-foreground/30",
-                        )}
-                      />
-                      <div
-                        className={cn(
-                          "h-2 rounded transition-all duration-500",
-                          i === 2
-                            ? "w-16 bg-muted-foreground/50"
-                            : "w-12 bg-muted-foreground/25",
-                        )}
-                      />
-                    </div>
-                  ))}
-                </div>
+        <div
+          className="relative overflow-hidden rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-1.5 shadow-[var(--g-shadow-elevated)] sm:p-2"
+          style={{
+            boxShadow: operationalActive
+              ? "var(--g-glow-operational), var(--g-shadow-elevated)"
+              : intelligenceActive
+                ? "var(--g-glow-intelligence), var(--g-shadow-elevated)"
+                : "var(--highlight-edge), var(--g-shadow-elevated)",
+            maskImage:
+              "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+          }}
+        >
+          <div className="overflow-hidden rounded-xl border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)]">
+            <div className="flex items-center gap-2 border-b border-border bg-[color:var(--g-surface-1)] px-4 py-3">
+              <div className="flex gap-1.5">
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/35" />
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                <div className="h-2.5 w-2.5 rounded-full bg-[color:var(--g-emerald)]/55" />
               </div>
-              <div className="col-span-6 space-y-4">
-                <div
-                  className={cn(
-                    "rounded-lg border p-4 shadow-[var(--g-shadow-surface)] transition-colors duration-500",
-                    intelligenceActive
-                      ? "border-[color:var(--g-intelligence)]/30 bg-[color:var(--g-surface-active)]"
-                      : "border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]",
-                  )}
-                  style={{
-                    boxShadow: intelligenceActive
-                      ? "var(--g-highlight-intelligence), var(--g-shadow-surface)"
-                      : "var(--highlight-edge), var(--g-shadow-surface)",
-                  }}
+              <div className="flex-1 text-center">
+                <span className="font-mono text-[10px] text-muted-foreground sm:text-xs">
+                  {shot.chrome}
+                </span>
+              </div>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide",
+                  statusClass,
+                )}
+              >
+                {statusLabel}
+              </span>
+            </div>
+
+            <div className="relative aspect-[16/10] bg-[color:var(--g-void)] sm:aspect-[16/9]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={shot.src + beat}
+                  initial={reduced ? false : { opacity: 0.35, scale: 1.01 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={reduced ? undefined : { opacity: 0.2 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-colors duration-500",
-                        intelligenceActive
-                          ? "bg-[color:var(--g-intelligence)] text-white"
-                          : operationalActive
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      <span className="text-xs font-semibold tracking-wide">
-                        {beat === "approval" ? "GOV" : beat === "verified" ? "OK" : "AI"}
-                      </span>
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-2 w-32 rounded bg-muted-foreground/40" />
-                      <div className="h-2 w-24 rounded bg-muted-foreground/25" />
-                    </div>
-                  </div>
-                </div>
+                  <Image
+                    src={shot.src}
+                    alt={`Gravitre product surface — ${statusLabel}`}
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 960px, 100vw"
+                    className="object-cover object-top"
+                  />
+                </motion.div>
+              </AnimatePresence>
+
+              {/* State ribbon — truthful beat, not fake metrics */}
+              <div className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-5 sm:bottom-5">
                 <div
                   className={cn(
-                    "rounded-lg border p-4 transition-colors duration-500",
+                    "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 backdrop-blur-md sm:px-4",
                     beat === "approval"
-                      ? "border-[color:var(--g-warning)]/35 bg-[color:var(--g-warning)]/10"
+                      ? "border-[color:var(--g-warning)]/30 bg-[color:var(--g-void)]/75"
                       : operationalActive
-                        ? "border-primary/30 bg-primary/10"
-                        : "border-[color:var(--g-intelligence)]/20 bg-[color:var(--g-intelligence)]/8",
+                        ? "border-[color:var(--g-emerald)]/30 bg-[color:var(--g-void)]/75"
+                        : "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-void)]/75",
                   )}
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                       {beat === "tool"
                         ? "Tool invoke"
                         : beat === "approval"
                           ? "Human gate"
                           : beat === "verified"
                             ? "Outcome"
-                            : "Turn"}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">{statusLabel}</span>
+                            : intelligenceActive
+                              ? "Intelligence"
+                              : "System"}
+                    </p>
+                    <p className="truncate text-sm font-medium text-foreground">{statusLabel}</p>
                   </div>
-                  <motion.div
-                    className={cn(
-                      "h-2 rounded",
-                      beat === "approval"
-                        ? "bg-[color:var(--g-warning)]/60"
-                        : operationalActive
-                          ? "bg-primary/60"
-                          : "bg-[color:var(--g-intelligence)]/50",
-                    )}
-                    animate={
-                      reduced || beat === "calm"
-                        ? { width: "100%" }
-                        : { width: ["12%", "100%"] }
-                    }
-                    transition={
-                      reduced
-                        ? { duration: 0 }
-                        : { duration: (BEAT_MS[beat] ?? 1200) / 1000, ease: "easeInOut" }
-                    }
-                    key={beat}
-                  />
-                </div>
-              </div>
-              <div
-                className="col-span-3 rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] p-4 shadow-[var(--g-shadow-surface)]"
-                style={{ boxShadow: "var(--highlight-edge), var(--g-shadow-surface)" }}
-              >
-                <div className="mb-3 text-xs font-medium text-muted-foreground">Metrics</div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="mb-1 text-xs leading-snug text-muted-foreground">
-                      {success.eyebrow}
-                    </div>
-                    <div
+                  <div className="max-w-[14rem] text-right">
+                    <p className="text-[10px] text-muted-foreground">{success.eyebrow}</p>
+                    <p
                       className={cn(
-                        "text-sm font-medium leading-snug transition-colors duration-500",
-                        operationalActive ? "text-primary" : "text-foreground",
+                        "text-xs font-medium",
+                        operationalActive ? "text-[color:var(--g-emerald)]" : "text-foreground",
                       )}
                     >
                       {success.primary}
-                    </div>
-                    <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-                      Live run telemetry in your workspace — never a fabricated public %
                     </p>
                   </div>
                 </div>

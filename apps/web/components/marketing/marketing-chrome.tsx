@@ -79,9 +79,9 @@ export function MarketingChrome({
             {/* Logo */}
             <Link href="/" className="flex items-center group">
               <img
-                src="/images/gravitre-logo-black.png"
+                src="/images/gravitre-logo-white.png"
                 alt="Gravitre"
-                className="h-10 w-auto"
+                className="h-10 w-auto opacity-95 transition-opacity group-hover:opacity-100"
               />
             </Link>
             <div className="hidden md:flex items-center gap-1">
@@ -174,10 +174,11 @@ export function MarketingChrome({
             </Link>
             <Link
               href="/get-started"
-              className="hidden sm:inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 group shadow-sm"
+              className="group relative hidden sm:inline-flex items-center gap-2 overflow-hidden rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[var(--g-shadow-surface)] transition-all duration-[var(--g-duration-micro)] hover:opacity-95 hover:shadow-[var(--g-glow-operational)] active:scale-[0.98]"
             >
-              Get Started
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <span className="absolute inset-0 bg-gradient-to-b from-white/12 to-transparent opacity-50" />
+              <span className="relative">Get Started</span>
+              <ArrowRight className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <button
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -286,9 +287,9 @@ export function MarketingChrome({
               {/* Footer Logo */}
               <Link href="/" className="flex items-center">
                 <img
-                  src="/images/gravitre-logo-black.png"
+                  src="/images/gravitre-logo-white.png"
                   alt="Gravitre"
-                  className="h-8 w-auto"
+                  className="h-8 w-auto opacity-90"
                 />
               </Link>
               <p className="mt-4 text-sm text-muted-foreground leading-relaxed">

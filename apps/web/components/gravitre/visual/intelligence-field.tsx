@@ -1,9 +1,9 @@
 "use client"
 
 /**
- * Gravitre Intelligence Field — Design Pass 2 primary visual system.
- * Layers: Atmosphere (FAR) · Organization graph (MID) · Live signal (NEAR).
- * Marketing homepage pilot only. No WebGL. Caps: ≤20 paths, ≤1 concurrent signal.
+ * Gravitre Intelligence Field — Design Pass 2 Agenforce-caliber environment.
+ * Layers: Atmosphere · Structure · Signal · Local light · Depth (pointer).
+ * Marketing homepage. No WebGL. Caps: ≤20 paths, ≤1 concurrent signal.
  */
 
 import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion"
@@ -15,7 +15,6 @@ import { GravitreSignal, type GravitreSignalTone } from "./gravitre-signal"
 const VIEW_W = 800
 const VIEW_H = 560
 
-/** Sparse topology — connectors → intelligence hub → agent → outcome. */
 const FULL_NODES = [
   { id: "c1", x: 90, y: 180 },
   { id: "c2", x: 120, y: 320 },
@@ -47,19 +46,94 @@ const FULL_PATHS: { id: string; d: string; signal?: boolean }[] = [
 const SIGNAL_STORY: { tone: GravitreSignalTone; delayMs: number }[] = [
   { tone: "signal", delayMs: 600 },
   { tone: "intelligence", delayMs: 0 },
-  { tone: "pending", delayMs: 0 },
   { tone: "operational", delayMs: 0 },
 ]
 
+/** Section atmospheric narrative — violet → cyan → violet+signal → amber → emerald → balanced */
+export type FieldAtmosphere =
+  | "intelligence"
+  | "systems"
+  | "agents"
+  | "approval"
+  | "outcome"
+  | "balanced"
+
 type IntelligenceFieldProps = {
   className?: string
-  /** hero = full field; section = quieter continuity wash */
   variant?: "hero" | "section"
+  atmosphere?: FieldAtmosphere
+}
+
+function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
+  switch (atmosphere) {
+    case "systems":
+      return {
+        primary: isDark
+          ? ("radial-gradient(circle at center, var(--g-signal) 0%, transparent 70%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-signal) 22%, transparent) 0%, transparent 72%)" as const),
+        secondary: isDark
+          ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 16%, transparent) 0%, transparent 72%)" as const),
+        primaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.08, 0.14, 0.08] as const),
+        secondaryOpacity: isDark ? ([0.02, 0.04, 0.02] as const) : ([0.06, 0.1, 0.06] as const),
+      }
+    case "approval":
+      return {
+        primary: isDark
+          ? ("radial-gradient(circle at center, var(--g-warning) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-warning) 18%, transparent) 0%, transparent 72%)" as const),
+        secondary: isDark
+          ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 72%)" as const),
+        primaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.07, 0.12, 0.07] as const),
+        secondaryOpacity: isDark ? ([0.03, 0.05, 0.03] as const) : ([0.08, 0.12, 0.08] as const),
+      }
+    case "outcome":
+      return {
+        primary: isDark
+          ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 24%, transparent) 0%, transparent 72%)" as const),
+        secondary: isDark
+          ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 72%)" as const),
+        primaryOpacity: isDark ? ([0.04, 0.075, 0.04] as const) : ([0.1, 0.16, 0.1] as const),
+        secondaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.06, 0.1, 0.06] as const),
+      }
+    case "balanced":
+      return {
+        primary: isDark
+          ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 22%, transparent) 0%, transparent 72%)" as const),
+        secondary: isDark
+          ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 22%, transparent) 0%, transparent 72%)" as const),
+        primaryOpacity: isDark ? ([0.04, 0.07, 0.04] as const) : ([0.1, 0.16, 0.1] as const),
+        secondaryOpacity: isDark ? ([0.035, 0.065, 0.035] as const) : ([0.09, 0.14, 0.09] as const),
+      }
+    case "agents":
+    case "intelligence":
+    default:
+      return {
+        primary: isDark
+          ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 28%, transparent) 0%, transparent 72%)" as const),
+        secondary: isDark
+          ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 24%, transparent) 0%, transparent 72%)" as const),
+        primaryOpacity: isDark
+          ? atmosphere === "agents"
+            ? ([0.05, 0.09, 0.05] as const)
+            : ([0.055, 0.1, 0.055] as const)
+          : ([0.12, 0.2, 0.12] as const),
+        secondaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.08, 0.13, 0.08] as const),
+      }
+  }
 }
 
 export function IntelligenceField({
   className,
   variant = "hero",
+  atmosphere = "intelligence",
 }: IntelligenceFieldProps) {
   const { reduced } = useMotionPrefs()
   const [mobile, setMobile] = useState(false)
@@ -83,9 +157,7 @@ export function IntelligenceField({
 
   const nodes = useMemo(
     () =>
-      mobile
-        ? FULL_NODES.filter((n) => MOBILE_NODE_IDS.has(n.id))
-        : [...FULL_NODES],
+      mobile ? FULL_NODES.filter((n) => MOBILE_NODE_IDS.has(n.id)) : [...FULL_NODES],
     [mobile],
   )
 
@@ -109,8 +181,8 @@ export function IntelligenceField({
     const onMove = (e: PointerEvent) => {
       const nx = (e.clientX / window.innerWidth - 0.5) * 2
       const ny = (e.clientY / window.innerHeight - 0.5) * 2
-      mx.set(nx * 4)
-      my.set(ny * 3)
+      mx.set(nx * 5)
+      my.set(ny * 4)
     }
     window.addEventListener("pointermove", onMove, { passive: true })
     return () => window.removeEventListener("pointermove", onMove)
@@ -119,7 +191,11 @@ export function IntelligenceField({
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
     const root = document.documentElement
-    const apply = () => setIsDark(root.classList.contains("dark"))
+    const apply = () =>
+      setIsDark(
+        root.classList.contains("dark") ||
+          Boolean(document.querySelector('[data-marketing-canvas="graphite"]')),
+      )
     apply()
     const obs = new MutationObserver(apply)
     obs.observe(root, { attributes: true, attributeFilter: ["class"] })
@@ -127,50 +203,37 @@ export function IntelligenceField({
   }, [])
 
   const isHero = variant === "hero"
-  const atmosphereOpacity = isHero ? 1 : 0.55
-  const graphOpacity = isHero ? 1 : 0.45
-  // Light marketing canvas needs stronger FAR washes; blur dissolves them on mint void.
-  const intelWash = isDark
-    ? ([0.045, 0.08, 0.045] as const)
-    : ([0.12, 0.2, 0.12] as const)
-  const emeraldWash = isDark
-    ? ([0.035, 0.07, 0.035] as const)
-    : ([0.1, 0.16, 0.1] as const)
-  const pathStrokeOpacity = isDark ? 0.22 : 0.38
-  const gridOpacity = isDark ? 0.03 : 0.05
+  const atmosphereOpacity = isHero ? 1 : 0.6
+  const graphOpacity = isHero ? 1 : atmosphere === "agents" ? 0.55 : 0.4
+  const wash = atmosphereWash(atmosphere, isDark)
+  const pathStrokeOpacity = isDark ? 0.24 : 0.38
+  const gridOpacity = isDark ? 0.035 : 0.05
   const useBlurAtmosphere = isDark
-  const intelGradient = isDark
-    ? "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)"
-    : "radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 28%, transparent) 0%, transparent 72%)"
-  const emeraldGradient = isDark
-    ? "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)"
-    : "radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 24%, transparent) 0%, transparent 72%)"
+  const showSignal = isHero || atmosphere === "agents" || atmosphere === "outcome"
 
   return (
     <div
       aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-0 overflow-hidden",
-        className,
-      )}
+      data-field-atmosphere={atmosphere}
+      className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
     >
-      {/* Layer 1 — Atmosphere (no opaque void — preserves section surfaces) */}
+      {/* Layer 1 — Atmosphere */}
       <div className="absolute inset-0" style={{ opacity: atmosphereOpacity }}>
         {reduced ? (
           <>
             <div
               className="absolute -left-1/4 top-0 h-[75%] w-[75%] rounded-full"
               style={{
-                opacity: intelWash[1],
-                background: intelGradient,
+                opacity: wash.primaryOpacity[1],
+                background: wash.primary,
                 filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
             />
             <div
               className="absolute -right-1/5 bottom-0 h-[70%] w-[70%] rounded-full"
               style={{
-                opacity: emeraldWash[1],
-                background: emeraldGradient,
+                opacity: wash.secondaryOpacity[1],
+                background: wash.secondary,
                 filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
             />
@@ -180,10 +243,10 @@ export function IntelligenceField({
             <motion.div
               className="absolute -left-1/4 top-0 h-[75%] w-[75%] rounded-full"
               style={{
-                background: intelGradient,
+                background: wash.primary,
                 filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
-              animate={{ opacity: [...intelWash] }}
+              animate={{ opacity: [...wash.primaryOpacity] }}
               transition={{
                 duration: 16,
                 repeat: Infinity,
@@ -193,10 +256,10 @@ export function IntelligenceField({
             <motion.div
               className="absolute -right-1/5 bottom-[-10%] h-[70%] w-[70%] rounded-full"
               style={{
-                background: emeraldGradient,
+                background: wash.secondary,
                 filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
-              animate={{ opacity: [...emeraldWash] }}
+              animate={{ opacity: [...wash.secondaryOpacity] }}
               transition={{
                 duration: 18,
                 repeat: Infinity,
@@ -204,17 +267,6 @@ export function IntelligenceField({
                 delay: 2.5,
               }}
             />
-            {!isDark ? (
-              <motion.div
-                className="absolute left-1/2 top-[18%] h-[42%] w-[55%] -translate-x-1/2 rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 70%)",
-                }}
-                animate={{ opacity: [0.35, 0.55, 0.35] }}
-                transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-              />
-            ) : null}
           </>
         )}
         <div
@@ -228,7 +280,28 @@ export function IntelligenceField({
             backgroundSize: "72px 72px",
           }}
         />
+        {/* Fine topology noise — craft texture, not busy */}
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--foreground) 40%, transparent) 1px, transparent 0)",
+            backgroundSize: "28px 28px",
+          }}
+        />
       </div>
+
+      {/* Layer 4 — Local spotlight behind product focus (hero) */}
+      {isHero ? (
+        <div
+          className="absolute left-1/2 top-[42%] h-[55%] w-[70%] -translate-x-1/2 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, color-mix(in oklch, var(--g-intelligence) 16%, transparent) 0%, transparent 70%)",
+            opacity: isDark ? 0.85 : 0.55,
+          }}
+        />
+      ) : null}
 
       {/* Layer 2 + 3 — Org graph + live signal */}
       <motion.div
@@ -271,15 +344,23 @@ export function IntelligenceField({
                       ? "var(--g-emerald)"
                       : "var(--g-signal)"
                 }
-                fillOpacity={isDark ? (isHub ? 0.45 : 0.28) : isHub ? 0.55 : 0.38}
+                fillOpacity={isDark ? (isHub ? 0.5 : 0.3) : isHub ? 0.55 : 0.38}
               />
             )
           })}
-          {isHero ? (
+          {showSignal ? (
             <GravitreSignal
-              key={`${story.tone}-${storyIndex}`}
+              key={`${story.tone}-${storyIndex}-${atmosphere}`}
               path={signalPath}
-              tone={story.tone}
+              tone={
+                atmosphere === "approval"
+                  ? "pending"
+                  : atmosphere === "outcome"
+                    ? "operational"
+                    : atmosphere === "systems"
+                      ? "signal"
+                      : story.tone
+              }
               reduced={reduced}
               cycleMs={10000}
               delayMs={story.delayMs}

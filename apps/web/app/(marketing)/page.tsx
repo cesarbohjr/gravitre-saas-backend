@@ -11,47 +11,43 @@ import {
   ConnectorsStepVisual,
   GibeHonestyStepVisual,
 } from "@/components/marketing/home/how-it-works-step-visuals"
-// Client-only boundary — ssr:false is not allowed on a next/dynamic call made
-// directly from this Server Component, so the ssr:false opt-out lives inside
-// this "use client" wrapper instead (see its file docstring).
 import { MarketingBackgroundLines } from "@/components/marketing/home/marketing-background-lines-client"
 import { IntelligenceField } from "@/components/gravitre/visual"
+import { ProductFrame } from "@/components/marketing/product-frame"
 
-// Below-fold client islands — keep HeroParallax eager for LCP; split the rest.
 const AnimatedStat = dynamic(
   () => import("@/components/marketing/home/animated-stat").then((m) => m.AnimatedStat),
-  { ssr: true }
+  { ssr: true },
 )
 const FeatureCard = dynamic(
   () => import("@/components/marketing/home/feature-card").then((m) => m.FeatureCard),
-  { ssr: true }
+  { ssr: true },
 )
 const FloatingOrb = dynamic(
   () => import("@/components/marketing/home/floating-orb").then((m) => m.FloatingOrb),
-  { ssr: true }
+  { ssr: true },
 )
 const ProductShowcase = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.ProductShowcase),
-  { ssr: true }
+  { ssr: true },
 )
 const HowItWorks = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.HowItWorks),
-  { ssr: true }
+  { ssr: true },
 )
 const TestimonialsCarousel = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.TestimonialsCarousel),
-  { ssr: true }
+  { ssr: true },
 )
 const DesktopDownloadSection = dynamic(
   () =>
     import("@/components/marketing/desktop-download-section").then((m) => m.DesktopDownloadSection),
-  { ssr: true }
+  { ssr: true },
 )
 
 /**
  * Home stays a short pitch + proof + CTA.
- * Deep Features / Technology / Marketplace content lives only on those nav pages
- * (see FeaturesLegacyContent exclude on /features) — do not re-embed it here.
+ * Design Pass 2 Agenforce-caliber: atmosphere narrative + real product frames.
  */
 export default function HomePage() {
   return (
@@ -60,7 +56,7 @@ export default function HomePage() {
 
       <IntegrationStrip />
 
-      <section className="relative py-32 bg-background">
+      <section className="relative py-28 sm:py-32 bg-background">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {MARKETING_COPY.stats.map((stat) => (
@@ -75,9 +71,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative py-32 bg-muted/50">
-        <IntelligenceField variant="section" className="opacity-70" />
-        <MarketingBackgroundLines className="opacity-60" />
+      <section
+        className="relative py-28 sm:py-36 bg-muted/40"
+        data-field-atmosphere="agents"
+      >
+        <IntelligenceField variant="section" atmosphere="agents" className="opacity-75" />
+        <MarketingBackgroundLines className="opacity-50" />
         <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/12 top-1/4 -left-64" delay={1} />
         <FloatingOrb className="w-[420px] h-[420px] bg-primary/10 bottom-1/4 -right-48" delay={2.2} />
 
@@ -104,63 +103,119 @@ export default function HomePage() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <Link
-              href="/features"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
-            >
-              Platform features
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/features/technology"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
-            >
-              Technology
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/features/marketplace"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
-            >
-              Marketplace
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/features/extension"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
-            >
-              Browser extension
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/download"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50"
-            >
-              Desktop download
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            {[
+              { href: "/features", label: "Platform features" },
+              { href: "/features/technology", label: "Technology" },
+              { href: "/features/marketplace", label: "Marketplace" },
+              { href: "/features/extension", label: "Browser extension" },
+              { href: "/download", label: "Desktop download" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/80 px-4 py-2 font-medium text-foreground shadow-[var(--g-shadow-surface)] backdrop-blur-sm transition-all duration-[var(--g-duration-micro)] hover:border-[color:var(--g-border-active)] hover:bg-[color:var(--g-surface-2)]"
+              >
+                {item.label}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ))}
           </div>
         </div>
       </section>
 
       <DesktopDownloadSection />
 
-      <section className="relative py-32 border-t border-border bg-background">
-        <div className="mx-auto max-w-7xl px-6">
+      <section
+        className="relative py-28 sm:py-32 border-t border-border bg-background"
+        data-field-atmosphere="systems"
+      >
+        <IntelligenceField variant="section" atmosphere="systems" className="opacity-40" />
+        <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight text-foreground">Connects to your entire stack</h2>
+            <h2 className="text-4xl font-bold tracking-tight text-foreground">
+              Connects to your entire stack
+            </h2>
             <p className="mt-4 text-muted-foreground">
               50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </div>
-
           <IntegrationsGrid theme="dark" />
         </div>
       </section>
 
-      <section className="relative py-32 border-t border-border overflow-hidden bg-muted/50">
+      {/* Real product surfaces — art-directed frames */}
+      <section
+        className="relative overflow-hidden border-t border-border bg-muted/30 py-28 sm:py-36"
+        data-field-atmosphere="intelligence"
+      >
+        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-55" />
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <span className="text-sm font-semibold uppercase tracking-wide text-[color:var(--g-intelligence-bright)]">
+              Product truth
+            </span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
+              The operating surfaces teams actually use
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Real Gravitre UI captures — chat, agents, approvals, connectors — framed for clarity,
+              not invented dashboards.
+            </p>
+          </div>
+
+          <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
+            <ProductFrame
+              src="/product/app-ai.png"
+              alt="Gravitre AI chat with connector-aware routing"
+              chromeLabel="gravitre.app/ai"
+              treatment="perspective"
+              glowTone="intelligence"
+              caption="Fixture demo surface — not live customer metrics"
+            />
+            <ProductFrame
+              src="/product/app-approvals.png"
+              alt="Gravitre approval gate with human review"
+              chromeLabel="gravitre.app/approvals"
+              treatment="fade-system"
+              glowTone="operational"
+              caption="Human gate before execution"
+            />
+          </div>
+
+          <div className="mt-12 grid gap-8 md:grid-cols-3">
+            <ProductFrame
+              src="/product/app-agents.png"
+              alt="Gravitre agents directory"
+              chromeLabel="gravitre.app/agents"
+              treatment="detail"
+              glowTone="intelligence"
+            />
+            <ProductFrame
+              src="/product/app-workflows.png"
+              alt="Gravitre workflow builder"
+              chromeLabel="gravitre.app/workflows"
+              treatment="full"
+              glowTone="none"
+            />
+            <ProductFrame
+              src="/product/app-connectors.png"
+              alt="Gravitre connectors health"
+              chromeLabel="gravitre.app/connectors"
+              treatment="stacked"
+              glowTone="operational"
+              secondarySrc="/product/app-activity.png"
+              secondaryAlt="Activity runs"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="relative py-28 sm:py-36 border-t border-border overflow-hidden bg-muted/40"
+        data-field-atmosphere="agents"
+      >
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-[color:var(--g-intelligence)]/5" />
-        <IntelligenceField variant="section" className="opacity-40" />
+        <IntelligenceField variant="section" atmosphere="agents" className="opacity-45" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-16">
@@ -180,9 +235,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative border-t border-border bg-background py-32">
-        <IntelligenceField variant="section" className="opacity-50" />
-        <MarketingBackgroundLines className="opacity-70" />
+      <section
+        className="relative border-t border-border bg-background py-28 sm:py-36"
+        data-field-atmosphere="approval"
+      >
+        <IntelligenceField variant="section" atmosphere="approval" className="opacity-45" />
+        <MarketingBackgroundLines className="opacity-55" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-20 max-w-2xl text-center">
             <span className="text-sm font-semibold uppercase tracking-wide text-primary">
@@ -223,8 +281,12 @@ export default function HomePage() {
         <section className="relative py-32 border-t border-border bg-muted/50">
           <div className="mx-auto max-w-7xl px-6">
             <div className="mx-auto max-w-2xl text-center mb-16">
-              <span className="text-sm font-semibold text-primary tracking-wide uppercase">Testimonials</span>
-              <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground">What people say</h2>
+              <span className="text-sm font-semibold text-primary tracking-wide uppercase">
+                Testimonials
+              </span>
+              <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground">
+                What people say
+              </h2>
               <p className="mt-4 text-muted-foreground">
                 With over 10,000 clients served, here&apos;s what they have to say
               </p>
@@ -261,27 +323,35 @@ export default function HomePage() {
         </section>
       ) : null}
 
-      <section className="relative py-32 bg-muted/50">
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent" />
+      <section
+        className="relative py-28 sm:py-36 bg-muted/40"
+        data-field-atmosphere="balanced"
+      >
+        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/8 via-transparent to-[color:var(--g-intelligence)]/6" />
         <FloatingOrb className="w-[600px] h-[600px] bg-primary/10 -bottom-48 left-1/2 -translate-x-1/2" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-[-0.03em] text-foreground">
               {MARKETING_COPY.cta.title}
             </h2>
             <p className="mt-6 text-lg text-muted-foreground">{MARKETING_COPY.cta.subtitle}</p>
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-all hover:opacity-90"
+                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[var(--g-shadow-elevated)] transition-all duration-[var(--g-duration-micro)] hover:opacity-95 hover:shadow-[var(--g-glow-operational)] active:scale-[0.98]"
               >
-                <span>Start Free Trial</span>
-                <ArrowRight strokeWidth={1.5} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <span className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent opacity-60" />
+                <span className="relative">Start Free Trial</span>
+                <ArrowRight
+                  strokeWidth={1.5}
+                  className="relative h-5 w-5 transition-transform group-hover:translate-x-1"
+                />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-8 py-4 text-base font-semibold text-foreground shadow-sm transition-all hover:bg-muted/50"
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/80 px-8 py-4 text-base font-semibold text-foreground shadow-[var(--g-shadow-surface)] backdrop-blur-sm transition-all hover:border-[color:var(--g-intelligence)]/30 hover:bg-[color:var(--g-surface-2)]"
               >
                 Contact Sales
               </Link>

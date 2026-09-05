@@ -65,9 +65,9 @@ export function ProductScreenshot({
           <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
             <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
               <div className="flex gap-1.5">
-                <span className="h-3 w-3 rounded-full bg-red-400" />
-                <span className="h-3 w-3 rounded-full bg-amber-400" />
-                <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                <span className="h-3 w-3 rounded-full bg-muted-foreground/35" />
+                <span className="h-3 w-3 rounded-full bg-muted-foreground/25" />
+                <span className="h-3 w-3 rounded-full bg-[color:var(--g-emerald)]/55" />
               </div>
               <div className="flex flex-1 justify-center">
                 <div className="rounded-md bg-muted px-3 py-1 text-[10px] text-muted-foreground">
@@ -84,7 +84,7 @@ export function ProductScreenshot({
         )}
       </div>
       {caption ? (
-        <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
+        <figcaption className="text-[10px] uppercase tracking-wide text-muted-foreground">
           {caption}
         </figcaption>
       ) : null}

@@ -76,7 +76,7 @@ function OperatorScreen() {
             animate={{ scale: [1, 1.3, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           />
-          <span className="text-xs text-emerald-400">Online</span>
+          <span className="text-xs text-[color:var(--g-emerald)]">Online</span>
         </div>
       </div>
 
