@@ -116,9 +116,28 @@ export function IntelligenceField({
     return () => window.removeEventListener("pointermove", onMove)
   }, [reduced, mobile, variant, mx, my])
 
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const root = document.documentElement
+    const apply = () => setIsDark(root.classList.contains("dark"))
+    apply()
+    const obs = new MutationObserver(apply)
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] })
+    return () => obs.disconnect()
+  }, [])
+
   const isHero = variant === "hero"
   const atmosphereOpacity = isHero ? 1 : 0.55
   const graphOpacity = isHero ? 1 : 0.45
+  // Light marketing canvas needs stronger FAR washes; dark stays restrained.
+  const intelWash = isDark
+    ? ([0.045, 0.08, 0.045] as const)
+    : ([0.08, 0.14, 0.08] as const)
+  const emeraldWash = isDark
+    ? ([0.035, 0.07, 0.035] as const)
+    : ([0.06, 0.11, 0.06] as const)
+  const pathStrokeOpacity = isDark ? 0.22 : 0.34
+  const gridOpacity = isDark ? 0.03 : 0.045
 
   return (
     <div
@@ -128,22 +147,23 @@ export function IntelligenceField({
         className,
       )}
     >
-      {/* Layer 1 — Atmosphere */}
+      {/* Layer 1 — Atmosphere (no opaque void — preserves section surfaces) */}
       <div className="absolute inset-0" style={{ opacity: atmosphereOpacity }}>
-        <div className="absolute inset-0 bg-[var(--g-void)]" />
         {reduced ? (
           <>
             <div
-              className="absolute -left-1/4 top-0 h-[70%] w-[70%] rounded-full opacity-[0.07]"
+              className="absolute -left-1/4 top-0 h-[70%] w-[70%] rounded-full"
               style={{
+                opacity: intelWash[1],
                 background:
                   "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)",
                 filter: "blur(var(--g-blur-atmosphere))",
               }}
             />
             <div
-              className="absolute -right-1/5 bottom-0 h-[65%] w-[65%] rounded-full opacity-[0.06]"
+              className="absolute -right-1/5 bottom-0 h-[65%] w-[65%] rounded-full"
               style={{
+                opacity: emeraldWash[1],
                 background:
                   "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)",
                 filter: "blur(var(--g-blur-atmosphere))",
@@ -159,7 +179,7 @@ export function IntelligenceField({
                   "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)",
                 filter: "blur(var(--g-blur-atmosphere))",
               }}
-              animate={{ opacity: [0.045, 0.08, 0.045] }}
+              animate={{ opacity: [...intelWash] }}
               transition={{
                 duration: 16,
                 repeat: Infinity,
@@ -173,7 +193,7 @@ export function IntelligenceField({
                   "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)",
                 filter: "blur(var(--g-blur-atmosphere))",
               }}
-              animate={{ opacity: [0.035, 0.07, 0.035] }}
+              animate={{ opacity: [...emeraldWash] }}
               transition={{
                 duration: 18,
                 repeat: Infinity,
@@ -184,8 +204,9 @@ export function IntelligenceField({
           </>
         )}
         <div
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute inset-0"
           style={{
+            opacity: gridOpacity,
             backgroundImage: `
               linear-gradient(var(--foreground) 1px, transparent 1px),
               linear-gradient(90deg, var(--foreground) 1px, transparent 1px)
@@ -216,7 +237,7 @@ export function IntelligenceField({
               key={p.id}
               d={p.d}
               stroke="var(--g-border-default)"
-              strokeOpacity={0.22}
+              strokeOpacity={pathStrokeOpacity}
               strokeWidth={0.9}
             />
           ))}
@@ -236,7 +257,7 @@ export function IntelligenceField({
                       ? "var(--g-emerald)"
                       : "var(--g-signal)"
                 }
-                fillOpacity={isHub ? 0.45 : 0.28}
+                fillOpacity={isDark ? (isHub ? 0.45 : 0.28) : isHub ? 0.55 : 0.38}
               />
             )
           })}
