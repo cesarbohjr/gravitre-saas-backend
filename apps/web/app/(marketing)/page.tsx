@@ -11,6 +11,10 @@ import {
   ConnectorsStepVisual,
   GibeHonestyStepVisual,
 } from "@/components/marketing/home/how-it-works-step-visuals"
+// Client-only boundary — ssr:false is not allowed on a next/dynamic call made
+// directly from this Server Component, so the ssr:false opt-out lives inside
+// this "use client" wrapper instead (see its file docstring).
+import { MarketingBackgroundLines } from "@/components/marketing/home/marketing-background-lines-client"
 
 // Below-fold client islands — keep HeroParallax eager for LCP; split the rest.
 const AnimatedStat = dynamic(
@@ -41,13 +45,6 @@ const DesktopDownloadSection = dynamic(
   () =>
     import("@/components/marketing/desktop-download-section").then((m) => m.DesktopDownloadSection),
   { ssr: true }
-)
-const MarketingBackgroundLines = dynamic(
-  () =>
-    import("@/components/marketing/home/marketing-background-lines").then(
-      (m) => m.MarketingBackgroundLines,
-    ),
-  { ssr: false },
 )
 
 /**
