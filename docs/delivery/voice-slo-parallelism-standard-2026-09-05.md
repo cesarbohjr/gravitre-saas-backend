@@ -160,6 +160,22 @@ The specific bug this prompt asked to find (a distinct outlier cause, not just "
 
 This pass shipped two real, tested, deployed fixes for genuine sequential-processing bugs (pre-kernel calls, RECALL's five memory stores) and closed one investigation (unified-turn-LIVE narration gap — found to be a non-issue by design, not fixed by adding code). Measured, live improvement is real (~3x on simple/knowledge turns) but **all three new SLOs remain unmet, most severely on write-shaped turns**. The single highest-value remaining lever — genuine speculative LLM generation on probable-EOT with cancel/continue (Phase 1, items 2–3) — was not attempted this pass; it is a new mechanism, not a fix, and is the honest next step for materially closing the P50<500ms gap. No human verification has occurred; per standing program rule, voice is not to be called "fixed" without it.
 
+## Addendum (same day) — corroboration + one more real fix shipped
+
+Four parallel investigations run after the above was written corroborated the
+findings above with more precise file:line evidence, and surfaced one more
+genuine, previously-undocumented "warm connection" gap that has now been
+fixed:
+
+1. **[Locate unified-turn LIVE write execution path](f0fd3874-540c-43b9-a87d-84d4bf922fd9)** and **[Fix unified-turn LIVE write narration gap](2bd73da9-ba71-4d2e-be8a-d3cc014cc7b0)** — both independently traced `apply_unified_turn_live()` and reached the identical conclusion already documented above and in `unified-turn-live-write-narration-gap-closed-2026-09-05.md`: no execution path exists there, no new hook was warranted. No further action.
+
+2. **[Run live voice probe + correlate Railway logs for exact bottleneck](438109c5-1c62-47b3-aaf2-bf34b22a3a58)** — live Railway log correlation (same `org_id`, timestamps inside the probe window) confirmed the pre-kernel parallelization fix's expected signature: `connected_integrations` (+1126ms), `mcp_tools` (+99ms), `engine_settings` (+18ms) — one large delta followed by two tiny ones is exactly what three genuinely-concurrent operations look like once `asyncio.gather` returns and checkpoints are logged back-to-back, versus three roughly-equal sequential deltas before the fix. Checked `connector_snapshot_cache.py`: this org's `connected_integrations` cost is a **45-second-TTL cold-cache** cost (`_DEFAULT_TTL_SECONDS = 45`), not a per-turn recurring one — a real multi-turn conversation only pays this once per 45s window, not every turn. No further fix made; documented rather than chased, since the cache already exists and is correctly sized.
+   - Also surfaced a real, currently-unattributed ~2.7s gap between `pre_kernel_entry` and the model call firing, beyond what RECALL's own ~311ms accounts for — flagged as a genuine, not-yet-investigated remaining latency contributor for a future pass.
+
+3. **[Audit Phase 4/6/7/8 for voice pipeline](294e9aa6-b204-438c-9426-3406e48d5ab9)** — corroborated Phases 4/7/8 above with precise citations, and sharpened Phase 6: `CognitiveTurnKernel` is a fresh instance per turn (cheap, not a network connection, not a concern); Supabase client is turn-scoped (already conditionally reused when passed in — left as-is); **`AnthropicAdapter` constructed a brand-new `AsyncAnthropic()` client (and its underlying `httpx.AsyncClient`) on every single `complete()`/`stream()` call — no TCP/TLS connection reuse across turns**, unlike the OpenAI adapter's process-singleton pattern in `model_router.py`. This is a real, fixable "not persistent" connection gap, exactly Phase 6's subject.
+
+   **Fixed this addendum:** `anthropic_adapter.py`'s `AnthropicAdapter` now lazily constructs and caches one `AsyncAnthropic` client per `(api_key, timeout)` key (`ANTHROPIC_API_KEY` is a single process-wide setting, so this is safe — and still correctly rebuilds if the key ever rotates mid-process). Same fix applied to the module-level `_complete_anthropic_with_tools()` in `provider_tool_router.py` via a module-level cache dict. New tests: `tests/services/providers/test_anthropic_adapter_client_reuse.py` (4 tests, mutation-proof: asserts exactly one construction across 3 `complete()` calls, same cached object reused, key rotation still invalidates, `stream()` shares the same cache as `complete()`). All existing provider/model-router tests (39 total across the touched files) still pass.
+
 ## Scaffold/authorization note
 
-Documentation-only. No customer-facing price, claim, badge, or entitlement toggle touched.
+Documentation-only + one internal engineering perf fix (Anthropic client reuse). No customer-facing price, claim, badge, or entitlement toggle touched.

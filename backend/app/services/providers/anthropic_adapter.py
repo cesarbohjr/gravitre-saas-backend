@@ -49,9 +49,29 @@ class AnthropicAdapter(ProviderAdapter):
         self._api_key_getter = api_key_getter
         self._voyage_key_getter = voyage_key_getter
         self._timeout_s = timeout_s
+        # Voice-latency follow-up (2026-09-05): a fresh AsyncAnthropic() (and the
+        # httpx.AsyncClient it wraps) was constructed on every single complete()/
+        # stream() call — no TCP/TLS connection reuse across turns, unlike the
+        # OpenAI adapter (model_router.py builds one AsyncOpenAI() per process and
+        # reuses it via a client_getter). anthropic_api_key is a single,
+        # process-wide setting (not per-org), so a lazy, key-keyed singleton here
+        # is safe — cached by (api_key, timeout) so a settings change (e.g. a
+        # rotated key mid-process, or a differently-configured adapter instance)
+        # still gets a fresh client instead of a stale cached one.
+        self._client: Any | None = None
+        self._client_key: tuple[str, float] | None = None
 
     def is_available(self) -> bool:
         return bool(self._api_key_getter()) and _try_import("anthropic") is not None
+
+    def _get_client(self, anthropic: Any, api_key: str) -> Any:
+        key = (api_key, self._timeout_s)
+        if self._client is None or self._client_key != key:
+            self._client = anthropic.AsyncAnthropic(
+                api_key=api_key, timeout=self._timeout_s, max_retries=0
+            )
+            self._client_key = key
+        return self._client
 
     async def complete(
         self,
@@ -85,7 +105,7 @@ class AnthropicAdapter(ProviderAdapter):
         async def _attempt() -> ProviderResponse:
             start = time.perf_counter()
             try:
-                client = anthropic.AsyncAnthropic(api_key=api_key, timeout=self._timeout_s, max_retries=0)
+                client = self._get_client(anthropic, api_key)
                 resp = await client.messages.create(**kwargs)
             except Exception as exc:  # noqa: BLE001
                 raise self._map_error(anthropic, exc) from exc
@@ -139,7 +159,7 @@ class AnthropicAdapter(ProviderAdapter):
         start = time.perf_counter()
         parts: list[str] = []
         try:
-            client = anthropic.AsyncAnthropic(api_key=api_key, timeout=self._timeout_s, max_retries=0)
+            client = self._get_client(anthropic, api_key)
             async with client.messages.stream(**kwargs) as stream:
                 async for text in stream.text_stream:
                     if text:

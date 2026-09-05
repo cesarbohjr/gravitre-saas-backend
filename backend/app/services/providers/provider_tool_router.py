@@ -34,6 +34,24 @@ def _try_import(name: str) -> Any | None:
         return None
 
 
+# Voice-latency follow-up (2026-09-05): _complete_anthropic_with_tools() built a
+# fresh AsyncAnthropic() (and its underlying httpx.AsyncClient) on every single
+# tool-calling completion — no TCP/TLS connection reuse across calls in this
+# module, the same class of gap fixed in anthropic_adapter.py's AnthropicAdapter.
+# ANTHROPIC_API_KEY is a single, process-wide setting, so a module-level
+# key-keyed cache (not per-org) is safe here too.
+_anthropic_tool_client_cache: dict[tuple[str, float], Any] = {}
+
+
+def _get_anthropic_tool_client(anthropic: Any, api_key: str, timeout_s: float) -> Any:
+    key = (api_key, timeout_s)
+    client = _anthropic_tool_client_cache.get(key)
+    if client is None:
+        client = anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout_s, max_retries=0)
+        _anthropic_tool_client_cache[key] = client
+    return client
+
+
 def resolve_provider_for_model(model_id: str) -> ProviderName:
     from app.services.assistant_mode import AVAILABLE_MODELS
 
@@ -194,7 +212,7 @@ async def _complete_anthropic_with_tools(
             kwargs["tool_choice"] = {"type": "auto"}
     if temperature is not None:
         kwargs["temperature"] = temperature
-    client = anthropic.AsyncAnthropic(api_key=api_key, timeout=60.0, max_retries=0)
+    client = _get_anthropic_tool_client(anthropic, api_key, 60.0)
     resp = await client.messages.create(**kwargs)
     return _parse_anthropic_response(resp)
 
