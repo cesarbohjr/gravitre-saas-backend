@@ -1,6 +1,8 @@
 """Unit tests for CognitiveTurnKernel pre-ACT sequence."""
 from __future__ import annotations
 
+import asyncio
+import time
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -281,4 +283,206 @@ async def test_plan_reuses_connected_integrations_without_relist(monkeypatch):
 
     assert calls == []
     assert ctx.plan is not None
+
+
+class TestRecallRunsFiveStoresConcurrently:
+    """Speed/latency-standard follow-up (2026-09-05): RECALL's five stores must
+    run concurrently, not sequentially — this is the real, live-confirmed
+    root cause dig for why a bare, tool-free voice turn still cost 2.5-5.8s.
+    Four of the five stores are synchronous, blocking calls
+    (search_agent_memories, search_department_memories, lookup_resolutions,
+    recall_workspace); wrapping them in asyncio.to_thread and awaiting them
+    together via asyncio.gather is what makes genuine overlap possible.
+    """
+
+    @pytest.mark.asyncio
+    async def test_five_slow_stores_take_roughly_one_stores_latency_not_the_sum(self):
+        """MUTATION PROOF: revert asyncio.gather back to five sequential awaits
+        and this test fails — 5 * 0.25s = 1.25s+ wall time, not ~0.25-0.6s.
+        """
+        kernel = CognitiveTurnKernel(_settings(enabled=True))
+        client = MagicMock()
+        client.table.return_value = _chainable([])
+        delay = 0.25
+
+        async def _slow_hybrid(*_a, **_k):
+            await asyncio.sleep(delay)
+            return {"episodic_memories": [], "graph_context": []}
+
+        def _slow_sync(*_a, **_k):
+            time.sleep(delay)
+            return []
+
+        def _slow_dept_id(*_a, **_k):
+            time.sleep(delay)
+            return None, None
+
+        with (
+            patch(
+                "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+                new=_slow_hybrid,
+            ),
+            patch("app.services.agent_memory_service.search_agent_memories", side_effect=_slow_sync),
+            patch("app.rag.department.resolve_department_id_for_agent", side_effect=_slow_dept_id),
+            patch(
+                "app.services.cross_conversation_ledger_memory.feature_enabled",
+                return_value=True,
+            ),
+            patch(
+                "app.services.parameter_ledger.get_ledger",
+                return_value={"to": "a@example.com"},
+            ),
+            patch("app.services.entity_resolution_store.lookup_resolutions", side_effect=_slow_sync),
+            patch("app.services.workspace_memory_service.recall_workspace", side_effect=_slow_sync),
+        ):
+            t0 = time.perf_counter()
+            pack = await kernel._recall(
+                CognitiveTurnRequest(
+                    org_id="org-1",
+                    message="hi",
+                    agent_id="agent-1",
+                    client=client,
+                ),
+                client,
+            )
+            elapsed = time.perf_counter() - t0
+
+        # Sequential would be >= 5 * delay = 1.25s. Real overlap should land
+        # well under 2 * delay even with scheduling slack.
+        assert elapsed < delay * 2, f"RECALL took {elapsed:.3f}s — stores are not running concurrently"
+        assert isinstance(pack, dict)
+
+    @pytest.mark.asyncio
+    async def test_department_dedup_against_hybrid_and_agent_still_applies(self):
+        """MUTATION PROOF: merging concurrently-fetched results must still
+        reproduce the exact original dedup — a department row sharing an id
+        with an already-recalled hybrid/agent row must not be double-counted.
+        """
+        kernel = CognitiveTurnKernel(_settings(enabled=True))
+        client = MagicMock()
+        client.table.return_value = _chainable([])
+        dup_row = {
+            "id": "shared-1",
+            "org_id": "org-1",
+            "category": "fact",
+            "content": "same memory via two stores",
+        }
+        unique_row = {
+            "id": "dept-only-1",
+            "org_id": "org-1",
+            "category": "fact",
+            "content": "department-only memory",
+        }
+
+        with (
+            patch(
+                "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+                new_callable=AsyncMock,
+                return_value={"episodic_memories": [], "graph_context": []},
+            ),
+            patch(
+                "app.services.agent_memory_service.search_agent_memories",
+                return_value=[dup_row],
+            ),
+            patch(
+                "app.rag.department.resolve_department_id_for_agent",
+                return_value=("dept-1", None),
+            ),
+            patch(
+                "app.services.agent_memory_service.search_department_memories",
+                return_value=[dup_row, unique_row],
+            ),
+            patch(
+                "app.services.cross_conversation_ledger_memory.feature_enabled",
+                return_value=False,
+            ),
+        ):
+            pack = await kernel._recall(
+                CognitiveTurnRequest(
+                    org_id="org-1",
+                    message="remember?",
+                    agent_id="agent-1",
+                    client=client,
+                ),
+                client,
+            )
+
+        episodic = pack.get("episodic") or []
+        ids = [row.get("id") for row in episodic if isinstance(row, dict)]
+        assert ids.count("shared-1") == 1, "department store re-added a row already recalled by agent"
+        assert "dept-only-1" in ids
+
+    @pytest.mark.asyncio
+    async def test_ledger_store_not_marked_attempted_when_feature_disabled(self):
+        """MUTATION PROOF: when the ledger-memory feature flag is off, the
+        original code never called _note_recall for "ledger" at all — stats
+        must reflect that exact un-attempted state, not a false "ran, found 0".
+        """
+        kernel = CognitiveTurnKernel(_settings(enabled=True))
+        client = MagicMock()
+        client.table.return_value = _chainable([])
+
+        with (
+            patch(
+                "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+                new_callable=AsyncMock,
+                return_value={"episodic_memories": [], "graph_context": []},
+            ),
+            patch(
+                "app.services.cross_conversation_ledger_memory.feature_enabled",
+                return_value=False,
+            ),
+        ):
+            pack = await kernel._recall(
+                CognitiveTurnRequest(org_id="org-1", message="hi", client=client),
+                client,
+            )
+
+        stats = pack["recall_stats"]
+        assert stats["sources"]["ledger"]["attempted"] is False
+
+    @pytest.mark.asyncio
+    async def test_one_store_raising_does_not_block_or_drop_the_others(self):
+        """MUTATION PROOF: asyncio.gather without return_exceptions handling
+        (or a bug that lets one task's exception propagate) would either
+        crash RECALL entirely or silently drop every other store's rows.
+        """
+        kernel = CognitiveTurnKernel(_settings(enabled=True))
+        client = MagicMock()
+        client.table.return_value = _chainable([])
+        good_row = {"id": "agent-row-1", "org_id": "org-1", "category": "fact", "content": "ok"}
+
+        with (
+            patch(
+                "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("hybrid store is down"),
+            ),
+            patch(
+                "app.services.agent_memory_service.search_agent_memories",
+                return_value=[good_row],
+            ),
+            patch(
+                "app.rag.department.resolve_department_id_for_agent",
+                return_value=(None, None),
+            ),
+            patch(
+                "app.services.cross_conversation_ledger_memory.feature_enabled",
+                return_value=False,
+            ),
+        ):
+            pack = await kernel._recall(
+                CognitiveTurnRequest(
+                    org_id="org-1",
+                    message="hi",
+                    agent_id="agent-1",
+                    client=client,
+                ),
+                client,
+            )
+
+        stats = pack["recall_stats"]
+        assert stats["sources"]["hybrid"]["error"] == "RuntimeError"
+        ids = [row.get("id") for row in (pack.get("episodic") or [])]
+        assert "agent-row-1" in ids, "a failing store must not drop a healthy store's rows"
 

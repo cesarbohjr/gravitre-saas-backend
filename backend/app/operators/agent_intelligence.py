@@ -1534,17 +1534,32 @@ class AgentIntelligence:
         _connectors_force_live = not (
             bool(spoken_mode) and not is_direct_connector_write_intent(task_text)
         )
-        connected_early = self.tool_registry.list_connected_integrations(
-            client,
-            org_id,
-            environment_name=environment_name,
-            force_live=_connectors_force_live,
-        )
-        _mark("connected_integrations")
+        # Speed/latency-standard follow-up (2026-09-05): these three calls were
+        # three sequential awaits (list_connected_integrations is itself a
+        # synchronous, blocking call — moved to a thread here so it can
+        # genuinely overlap instead of blocking the event loop). None of the
+        # three depends on either of the others' output, and
+        # load_intelligence_engine_settings only needs org_id/settings/client
+        # — it was simply positioned later in the file, not later in its real
+        # dependency chain. Real, live-confirmed contributor to the pre-kernel
+        # sequential-overhead root cause (see cognitive_turn_kernel._recall's
+        # own parallelization for the larger sibling fix).
         from app.services.mcp_client_service import get_mcp_client_service
 
-        mcp_tools_early = await get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id)
+        connected_early, mcp_tools_early, engine_settings = await asyncio.gather(
+            asyncio.to_thread(
+                self.tool_registry.list_connected_integrations,
+                client,
+                org_id,
+                environment_name=environment_name,
+                force_live=_connectors_force_live,
+            ),
+            get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id),
+            load_intelligence_engine_settings(org_id, active_settings, client=client),
+        )
+        _mark("connected_integrations")
         _mark("mcp_tools")
+        _mark("engine_settings")
         # Voice: default to the same fast tier used for simple text turns unless caller
         # pinned another mode. Consequential writes escalate after classification.
         if spoken_mode and mode is None:
@@ -1582,8 +1597,8 @@ class AgentIntelligence:
         permitted_registry = resolve_registry_permitted_tools(tool_names)
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
         message_id = str(uuid.uuid4())
-        engine_settings = await load_intelligence_engine_settings(org_id, active_settings, client=client)
-        _mark("engine_settings")
+        # engine_settings already fetched concurrently above (with connected_early /
+        # mcp_tools_early) — no dependency on mode_key/tool_names, just needed here.
         pipeline_tier = mode_to_tier(mode_key)
 
         from app.services.assistant_routing_tier import (
@@ -2037,12 +2052,10 @@ class AgentIntelligence:
                 ledger_patch,
             )
 
-            if conversation_id:
-                task_state = await get_conversation_state_service(active_settings).get_task_state(
-                    conversation_id,
-                    org_id,
-                    client=client,
-                )
+            # task_state was already freshly loaded just above (task_state_initial
+            # checkpoint) and nothing between there and here mutates it —
+            # bind_voice_expression_state only reads it into a contextvar. This
+            # re-fetch was a pure duplicate DB round trip on every single turn.
             _ledger = ingest_message_slots(
                 task_text,
                 turn_index=len(list((task_state or {}).get("recent_user_messages") or [])) + 1,

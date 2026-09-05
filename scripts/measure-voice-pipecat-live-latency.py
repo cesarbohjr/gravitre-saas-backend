@@ -295,7 +295,8 @@ def main() -> int:
     health = _health()
 
     scenarios = [
-        ("simple_conversational", "What is two plus two?", 5),
+        ("simple_conversational", "What is two plus two?", 8),
+        ("knowledge_lookup", "What integrations do I have connected right now?", 5),
         ("consequential_write_shaped", "Email Sarah that the campaign moved to Monday.", 3),
     ]
 

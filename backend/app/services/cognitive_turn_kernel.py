@@ -506,6 +506,26 @@ class CognitiveTurnKernel:
         return context
 
     async def _recall(self, request: CognitiveTurnRequest, client: Any) -> dict[str, Any]:
+        """RECALL — five independent memory stores.
+
+        Speed/latency-standard follow-up (2026-09-05): this used to run five
+        stores strictly SEQUENTIALLY, and four of the five
+        (search_agent_memories, search_department_memories, lookup_resolutions,
+        recall_workspace) are plain `def`, not `async def` — synchronous,
+        blocking DB calls. Stacked one after another they didn't just add up
+        in wall-clock time on THIS turn, each one blocked the whole event
+        loop, which is a real, live-confirmed contributor to why a bare "what
+        is two plus two" voice turn (no RAG, no tools, tier=simple) still
+        measured 2.5-5.8s end-to-end — and a plausible source of the reported
+        16s-outlier turns whenever one of these blocking calls is itself slow.
+
+        Fetches all five concurrently (asyncio.to_thread for the sync ones)
+        and merges the results afterward in the ORIGINAL sequential order —
+        merge order, not fetch order, is what the department-store dedup
+        (which checks IDs already added by hybrid+agent) depends on, so this
+        produces byte-identical pack contents to the old sequential version,
+        just without paying for five round-trips back to back.
+        """
         pack = _empty_memory_pack()
         stats = pack[RECALL_STATS_KEY]
         org_id = request.org_id
@@ -513,42 +533,36 @@ class CognitiveTurnKernel:
             # ran stays False: this is "did not execute", not "found nothing".
             return pack
 
-        # Hybrid memory (org-scoped)
-        got = 0
-        try:
-            from app.services.hybrid_memory_service import HybridMemoryService
+        async def _hybrid() -> tuple[list[dict], list[dict], BaseException | None]:
+            try:
+                from app.services.hybrid_memory_service import HybridMemoryService
 
-            hybrid = HybridMemoryService(self.settings)
-            bundle = await hybrid.query_all_memory(
-                org_id,
-                request.agent_id,
-                request.message or "",
-                top_k=8,
-            )
-            for row in bundle.get("episodic_memories") or []:
-                if isinstance(row, dict):
-                    bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
-                    pack[bucket].append(row)
-                    got += 1
-            for row in bundle.get("graph_context") or []:
-                if isinstance(row, dict):
-                    pack["relationship"].append(row)
-                    got += 1
-            _note_recall(stats, "hybrid", count=got)
-        except Exception as exc:  # noqa: BLE001
-            # WARNING, not debug. All five of these stores logged at debug, which
-            # is off in production, so a store that failed on every turn was
-            # invisible and looked exactly like a store that found nothing.
-            logger.warning("cognitive_hybrid_memory_failed error=%s", exc)
-            _note_recall(stats, "hybrid", count=got, error=exc)
+                hybrid = HybridMemoryService(self.settings)
+                bundle = await hybrid.query_all_memory(
+                    org_id,
+                    request.agent_id,
+                    request.message or "",
+                    top_k=8,
+                )
+                episodic = [r for r in (bundle.get("episodic_memories") or []) if isinstance(r, dict)]
+                graph = [r for r in (bundle.get("graph_context") or []) if isinstance(r, dict)]
+                return episodic, graph, None
+            except Exception as exc:  # noqa: BLE001
+                # WARNING, not debug. All five of these stores logged at debug,
+                # which is off in production, so a store that failed on every
+                # turn was invisible and looked exactly like a store that
+                # found nothing.
+                logger.warning("cognitive_hybrid_memory_failed error=%s", exc)
+                return [], [], exc
 
-        # Agent memory search (org-scoped)
-        if client is not None and request.agent_id:
-            got = 0
+        async def _agent() -> tuple[list[dict], BaseException | None, bool]:
+            if not (client is not None and request.agent_id):
+                return [], None, False
             try:
                 from app.services.agent_memory_service import search_agent_memories
 
-                memories = search_agent_memories(
+                memories = await asyncio.to_thread(
+                    search_agent_memories,
                     self.settings,
                     client,
                     org_id,
@@ -556,66 +570,40 @@ class CognitiveTurnKernel:
                     query=request.message or "",
                     top_k=8,
                 )
-                for row in memories or []:
-                    if not isinstance(row, dict):
-                        continue
-                    # Hard isolation: never accept a row from a foreign org.
-                    row_org = str(row.get("org_id") or org_id)
-                    if row_org != org_id:
-                        continue
-                    bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
-                    pack[bucket].append(row)
-                    got += 1
-                _note_recall(stats, "agent", count=got)
+                return [r for r in (memories or []) if isinstance(r, dict)], None, True
             except Exception as exc:  # noqa: BLE001
                 logger.warning("cognitive_agent_memory_search_failed error=%s", exc)
-                _note_recall(stats, "agent", count=got, error=exc)
+                return [], exc, True
 
-            # Shared department memory: agents in the same department RECALL dept-scoped rows.
-            got = 0
+        async def _department() -> tuple[list[dict], BaseException | None, bool]:
+            if not (client is not None and request.agent_id):
+                return [], None, False
             try:
                 from app.rag.department import resolve_department_id_for_agent
                 from app.services.agent_memory_service import search_department_memories
 
-                dept_id, _ = resolve_department_id_for_agent(client, org_id, request.agent_id)
-                if dept_id:
-                    dept_memories = search_department_memories(
-                        self.settings,
-                        client,
-                        org_id,
-                        dept_id,
-                        query=request.message or "",
-                        top_k=8,
-                    )
-                    seen_ids = {
-                        str(r.get("id"))
-                        for key in _MEMORY_KEYS
-                        for r in (pack.get(key) or [])
-                        if isinstance(r, dict) and r.get("id")
-                    }
-                    for row in dept_memories or []:
-                        if not isinstance(row, dict):
-                            continue
-                        row_org = str(row.get("org_id") or org_id)
-                        if row_org != org_id:
-                            continue
-                        mid = str(row.get("id") or "")
-                        if mid and mid in seen_ids:
-                            continue
-                        if mid:
-                            seen_ids.add(mid)
-                        bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
-                        pack[bucket].append({**row, "source": "department_shared_memory", "org_id": org_id})
-                        got += 1
-                _note_recall(stats, "department", count=got)
+                dept_id, _ = await asyncio.to_thread(
+                    resolve_department_id_for_agent, client, org_id, request.agent_id
+                )
+                if not dept_id:
+                    return [], None, True
+                dept_memories = await asyncio.to_thread(
+                    search_department_memories,
+                    self.settings,
+                    client,
+                    org_id,
+                    dept_id,
+                    query=request.message or "",
+                    top_k=8,
+                )
+                return [r for r in (dept_memories or []) if isinstance(r, dict)], None, True
             except Exception as exc:  # noqa: BLE001
                 logger.warning("cognitive_department_memory_failed error=%s", exc)
-                _note_recall(stats, "department", count=got, error=exc)
+                return [], exc, True
 
-        # Org-scoped cross-conversation promotions (ledger/entity resolutions).
-        # Never fuzzy person-name Option C — explicit promotions + typed memories only.
-        if client is not None:
-            got = 0
+        async def _ledger() -> tuple[list[dict], BaseException | None, bool]:
+            if client is None:
+                return [], None, False
             try:
                 from app.services.cross_conversation_ledger_memory import (
                     feature_enabled as ledger_mem_enabled,
@@ -623,38 +611,40 @@ class CognitiveTurnKernel:
                 from app.services.entity_resolution_store import lookup_resolutions
                 from app.services.parameter_ledger import get_ledger
 
-                if ledger_mem_enabled(self.settings):
-                    ledger = get_ledger(request.task_state)
-                    aliases = [
-                        a
-                        for a in [
-                            ledger.get("to"),
-                            ledger.get("email"),
-                            ledger.get("channel"),
-                            *(str(t) for t in (request.message or "").split() if "@" in t),
-                        ]
-                        if a
+                if not ledger_mem_enabled(self.settings):
+                    return [], None, False
+                ledger = get_ledger(request.task_state)
+                aliases = [
+                    a
+                    for a in [
+                        ledger.get("to"),
+                        ledger.get("email"),
+                        ledger.get("channel"),
+                        *(str(t) for t in (request.message or "").split() if "@" in t),
                     ]
-                    if aliases:
-                        hits = lookup_resolutions(client, org_id, aliases, limit=20)
-                        for hit in hits or []:
-                            pack["relationship"].append(
-                                {
-                                    "category": "relationship",
-                                    "content": f"{hit.entity_type}:{hit.entity_id}",
-                                    "alias": hit.alias_normalized,
-                                    "source": "cross_conversation_entity_memory",
-                                    "org_id": org_id,
-                                }
-                            )
-                            got += 1
-                    _note_recall(stats, "ledger", count=got)
+                    if a
+                ]
+                if not aliases:
+                    return [], None, True
+                hits = await asyncio.to_thread(lookup_resolutions, client, org_id, aliases, limit=20)
+                rows = [
+                    {
+                        "category": "relationship",
+                        "content": f"{hit.entity_type}:{hit.entity_id}",
+                        "alias": hit.alias_normalized,
+                        "source": "cross_conversation_entity_memory",
+                        "org_id": org_id,
+                    }
+                    for hit in (hits or [])
+                ]
+                return rows, None, True
             except Exception as exc:  # noqa: BLE001
                 logger.warning("cognitive_cross_conversation_recall_failed error=%s", exc)
-                _note_recall(stats, "ledger", count=got, error=exc)
+                return [], exc, True
 
-            # Workspace recall: category + hybrid content match (org only; no Option C).
-            got = 0
+        async def _workspace() -> tuple[list[dict], BaseException | None, bool]:
+            if client is None:
+                return [], None, False
             try:
                 from app.services.workspace_memory_service import (
                     TYPED_CATEGORIES,
@@ -663,12 +653,9 @@ class CognitiveTurnKernel:
 
                 # Prefer cognitive taxonomy categories when the query hints at them;
                 # otherwise pull recent typed + legacy rows via hybrid scoring.
-                hinted = [
-                    c
-                    for c in TYPED_CATEGORIES
-                    if c in (request.message or "").lower()
-                ]
-                recalled = recall_workspace(
+                hinted = [c for c in TYPED_CATEGORIES if c in (request.message or "").lower()]
+                recalled = await asyncio.to_thread(
+                    recall_workspace,
                     client,
                     org_id=org_id,
                     query=request.message or "",
@@ -677,20 +664,82 @@ class CognitiveTurnKernel:
                     agent_id=request.agent_id,
                     settings=self.settings,
                 )
-                for row in recalled:
-                    if not isinstance(row, dict):
-                        continue
-                    if str(row.get("org_id") or "") != org_id:
-                        continue
-                    bucket = _CATEGORY_MAP.get(
-                        str(row.get("category") or "fact").lower(), "episodic"
-                    )
-                    pack[bucket].append({**row, "source": row.get("source") or "workspace_memory_recall"})
-                    got += 1
-                _note_recall(stats, "workspace", count=got)
+                return [r for r in (recalled or []) if isinstance(r, dict)], None, True
             except Exception as exc:  # noqa: BLE001
                 logger.warning("cognitive_workspace_memory_recall_failed error=%s", exc)
-                _note_recall(stats, "workspace", count=got, error=exc)
+                return [], exc, True
+
+        (
+            (hybrid_episodic, hybrid_graph, hybrid_err),
+            (agent_rows, agent_err, agent_attempted),
+            (dept_rows, dept_err, dept_attempted),
+            (ledger_rows, ledger_err, ledger_attempted),
+            (workspace_rows, workspace_err, workspace_attempted),
+        ) = await asyncio.gather(_hybrid(), _agent(), _department(), _ledger(), _workspace())
+
+        # hybrid has no "attempted" gate in the original (it always ran when
+        # org_id was present, which is already guaranteed by the early return
+        # above) — merge first so department's dedup below sees its rows.
+        got = 0
+        for row in hybrid_episodic:
+            bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
+            pack[bucket].append(row)
+            got += 1
+        for row in hybrid_graph:
+            pack["relationship"].append(row)
+            got += 1
+        _note_recall(stats, "hybrid", count=got, error=hybrid_err)
+
+        if agent_attempted:
+            got = 0
+            for row in agent_rows:
+                # Hard isolation: never accept a row from a foreign org.
+                row_org = str(row.get("org_id") or org_id)
+                if row_org != org_id:
+                    continue
+                bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
+                pack[bucket].append(row)
+                got += 1
+            _note_recall(stats, "agent", count=got, error=agent_err)
+
+        if dept_attempted:
+            got = 0
+            if dept_rows:
+                seen_ids = {
+                    str(r.get("id"))
+                    for key in _MEMORY_KEYS
+                    for r in (pack.get(key) or [])
+                    if isinstance(r, dict) and r.get("id")
+                }
+                for row in dept_rows:
+                    row_org = str(row.get("org_id") or org_id)
+                    if row_org != org_id:
+                        continue
+                    mid = str(row.get("id") or "")
+                    if mid and mid in seen_ids:
+                        continue
+                    if mid:
+                        seen_ids.add(mid)
+                    bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
+                    pack[bucket].append({**row, "source": "department_shared_memory", "org_id": org_id})
+                    got += 1
+            _note_recall(stats, "department", count=got, error=dept_err)
+
+        if ledger_attempted:
+            got = len(ledger_rows)
+            for row in ledger_rows:
+                pack["relationship"].append(row)
+            _note_recall(stats, "ledger", count=got, error=ledger_err)
+
+        if workspace_attempted:
+            got = 0
+            for row in workspace_rows:
+                if str(row.get("org_id") or "") != org_id:
+                    continue
+                bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
+                pack[bucket].append({**row, "source": row.get("source") or "workspace_memory_recall"})
+                got += 1
+            _note_recall(stats, "workspace", count=got, error=workspace_err)
 
         pack["prompt_section"] = _memory_prompt_section(pack)
         return pack

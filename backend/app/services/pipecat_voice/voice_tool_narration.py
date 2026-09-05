@@ -210,10 +210,20 @@ def will_execute_staged_connector_write(task_state: dict[str, Any] | None, messa
 
     Deliberately does NOT cover: first-time writes that auto-run without a prior
     confirm turn (``requires_approval=False`` — no ``awaiting_confirm`` status exists
-    yet to detect), ``awaiting_admin_approval`` turns (the user cannot approve these
-    themselves), unified-turn LIVE turns that resolve before this call site is ever
-    reached, or multi-step orchestration confirms (a different pending-task shape).
-    All are accepted, honest silences, not gaps to work around here.
+    yet to detect), or ``awaiting_admin_approval`` turns (the user cannot approve
+    these themselves). Both are accepted, honest silences, not gaps to work around
+    here.
+
+    Investigated-and-closed (2026-09-05, not a remaining gap): "unified-turn LIVE
+    turns that resolve a write before ever reaching this call site" — traced every
+    branch of ``apply_unified_turn_live()`` and confirmed it never itself executes a
+    real connector write; it only ever stages an ``awaiting_confirm``/
+    ``awaiting_plan_confirm`` approval ask or returns ``None`` to defer to the
+    classical path — both of which already resolve real execution through
+    ``run_connector_turn`` (this function) or classical ReAct tool events
+    (``narrate_tool_started``/``narrate_tool_completed``). See
+    ``docs/delivery/unified-turn-live-write-narration-gap-closed-2026-09-05.md`` and
+    ``tests/services/test_unified_turn_live_write_execution_narration_gap.py``.
     """
     if not isinstance(task_state, dict):
         return False

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -576,6 +578,102 @@ async def test_spoken_mode_skips_tier0_cache(intelligence: AgentIntelligence):
     complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
     assert complete.model != "cache"
     assert complete.full_content == "spoken-path-ok"
+
+
+@pytest.mark.asyncio
+async def test_connected_integrations_mcp_tools_and_engine_settings_run_concurrently(
+    intelligence: AgentIntelligence,
+):
+    """Speed/latency-standard follow-up (2026-09-05): these three pre-kernel
+    calls used to be three sequential awaits (list_connected_integrations is
+    itself synchronous/blocking) with no data dependency on each other.
+
+    Records each call's own start timestamp rather than total pipeline wall
+    time, since the rest of the (real, only lightly-mocked) pipeline has its
+    own real latency unrelated to this specific fix — asserting on their
+    start times isolates exactly the thing this change claims: all three
+    begin within a few ms of each other, not one-after-another.
+
+    MUTATION PROOF: revert the asyncio.gather back to three sequential
+    awaits and this test fails — sequential starts would be delay-apart
+    (~200ms), not ~0ms apart.
+    """
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = (
+        MagicMock(data=[])
+    )
+    delay = 0.2
+    starts: dict[str, float] = {}
+
+    def _slow_connected(*_a, **_k):
+        starts["connected_integrations"] = time.perf_counter()
+        time.sleep(delay)
+        return ["hubspot"]
+
+    intelligence.tool_registry.list_connected_integrations.side_effect = _slow_connected
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer="ok"),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    orchestrator = MagicMock()
+    orchestrator.get_context_for_prompt = AsyncMock(return_value="")
+
+    async def _slow_mcp_tools(*_a, **_k):
+        starts["mcp_tools"] = time.perf_counter()
+        await asyncio.sleep(delay)
+        return []
+
+    from app.services.intelligence_engine_settings import DEFAULTS as _default_engine_settings
+
+    async def _slow_engine_settings(*_a, **_k):
+        starts["engine_settings"] = time.perf_counter()
+        await asyncio.sleep(delay)
+        return _default_engine_settings
+
+    events: list[object] = []
+    with (
+        patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc,
+        patch(
+            "app.operators.agent_intelligence.load_intelligence_engine_settings",
+            side_effect=_slow_engine_settings,
+        ),
+        patch(
+            "app.operators.agent_intelligence.get_company_intelligence_orchestrator",
+            return_value=orchestrator,
+        ),
+        patch("app.operators.agent_intelligence.build_entity_context_section", AsyncMock(return_value="")),
+        patch("app.operators.agent_intelligence.get_org_context_service") as org_service,
+        patch(
+            "app.operators.agent_intelligence.maybe_summarize_history",
+            AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
+        ),
+        patch_agent_streaming_dialogue_pipeline(),
+    ):
+        mcp_svc.return_value.get_enabled_tools_for_org = _slow_mcp_tools
+        org_service.return_value.get_context_bundle.return_value = (
+            {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
+            "Org block",
+        )
+        async for event in intelligence.execute_task_streaming(
+            org_id="org-1",
+            user_id="user-1",
+            query="Say ok in one word.",
+            mode="fast",
+            requested_tools=["agent_status"],
+            client=client,
+            spoken_mode=True,
+        ):
+            events.append(event)
+
+    assert set(starts) == {"connected_integrations", "mcp_tools", "engine_settings"}
+    spread = max(starts.values()) - min(starts.values())
+    # Sequential would space these delay apart (~200ms between each start).
+    # Real concurrency starts all three within one scheduler tick.
+    assert spread < delay / 2, f"pre-kernel calls started {spread:.3f}s apart — not running concurrently"
 
 
 @pytest.mark.asyncio
