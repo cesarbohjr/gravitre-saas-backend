@@ -179,3 +179,104 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
         if isinstance(val, int):
             return f"Found {val}." if val else None
     return None
+
+
+def will_execute_staged_connector_write(task_state: dict[str, Any] | None, message: str) -> bool:
+    """Phase 3 follow-up: voice-only pre-narration gate for the governed connector
+    write path.
+
+    Context: ``ChatConnectorExecutionService.process_turn()`` handles real connector
+    writes ("send that email", "create that list") via a shortcut
+    (``connector_turn.get("stop_pipeline")`` in ``agent_intelligence.py``) that never
+    goes through the ReAct ``tool_start``/``tool_complete`` events this module's other
+    functions listen for — so ``narrate_tool_started``/``narrate_tool_completed`` never
+    fire for it. This is the only safe way to add EXECUTING-phase narration ("I'm
+    doing that now") to that path: predict, from data already available *before*
+    calling ``run_connector_turn()``, whether this exact turn is very likely to reach
+    real execution — not just stage an approval ask or ask a clarifying question.
+
+    HARD, NON-NEGOTIABLE CONSTRAINT: false negatives (silently missing a narration
+    opportunity) are always acceptable. A false positive is not — narrating "I'm doing
+    that now" on a turn that is actually only about to request approval, ask for
+    clarification, or decline would be exactly the invented-action-state claim Phase 3
+    exists to prevent. Every check below only relaxes towards True; any ambiguity
+    returns False.
+
+    Mirrors ``ChatConnectorExecutionService.process_turn()``'s own
+    confirmed-and-can-approve execute fork (``chat_connector_execution_service.py``,
+    around its ``pending_task.status == "awaiting_confirm"`` + ``CONFIRM_PATTERN``
+    check), using the same synchronous ``task_state``/message data the real connector
+    turn controller is about to see — no new state, no LLM call, no speculation.
+
+    Deliberately does NOT cover: first-time writes that auto-run without a prior
+    confirm turn (``requires_approval=False`` — no ``awaiting_confirm`` status exists
+    yet to detect), ``awaiting_admin_approval`` turns (the user cannot approve these
+    themselves), unified-turn LIVE turns that resolve before this call site is ever
+    reached, or multi-step orchestration confirms (a different pending-task shape).
+    All are accepted, honest silences, not gaps to work around here.
+    """
+    if not isinstance(task_state, dict):
+        return False
+    pending = task_state.get("pending_task")
+    if not isinstance(pending, dict):
+        return False
+    if str(pending.get("type") or "") != "connector_action":
+        return False
+    if str(pending.get("status") or "") != "awaiting_confirm":
+        return False
+
+    text = (message or "").strip()
+    if not text:
+        return False
+
+    from app.services.conversational_execution_service import CONFIRM_PATTERN
+    from app.services.pending_reply_classifier import (
+        build_pending_snapshot,
+        classify_pending_reply_fast,
+    )
+
+    snap = build_pending_snapshot(task_state)
+    if snap.hold_prompt_active:
+        return False
+
+    # Mirrors process_turn's own confirmed gate exactly — same pattern, same bare
+    # keyword set, while pending is awaiting_confirm.
+    process_turn_confirmed = bool(CONFIRM_PATTERN.match(text)) or text.lower() in {
+        "confirm",
+        "run",
+        "execute",
+    }
+    if not process_turn_confirmed:
+        return False
+
+    # Deterministic fast-path intent must agree (or be unable to decide) — never
+    # narrate execution when it explicitly says reject/modify/clarify/unrelated/
+    # ambiguous/slot_answer, even though the raw regex above matched.
+    fast_intent = classify_pending_reply_fast(text, snap)
+    if fast_intent is not None and fast_intent != "confirm":
+        return False
+
+    return True
+
+
+def narrate_connector_write_executing(label: str | None) -> str:
+    """Phase 3 follow-up: honest EXECUTING narration for an already-staged connector
+    write, spoken the moment its confirmation turn is about to run — before the real,
+    possibly slow, vendor call resolves. Only ever call this when
+    ``will_execute_staged_connector_write`` returned True for this exact turn.
+
+    ``label`` should be the real staged action's own label (e.g.
+    ``PendingSnapshot.action_label`` — "Create contact list Q3 Leads"), never a
+    guessed/invented description. Falls back to a generic, still-honest phrase when
+    no label is available.
+    """
+    text = (label or "").strip()
+    # _gerund_phrase() falls back to a bare "that" when no verb prefix matches
+    # (fine at its original call site, which only ever calls it after
+    # is_write_shaped_tool_name() already confirmed a match) — check the same
+    # condition here first so an unmatched label (e.g. "Zendesk Ticket
+    # Escalation") falls back to the generic phrase instead of the broken
+    # "I'm that now."
+    if text and is_write_shaped_tool_name(text):
+        return f"One moment, I'm {_gerund_phrase(text)} now."
+    return "One moment, I'm doing that now."

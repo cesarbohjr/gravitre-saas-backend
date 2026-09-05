@@ -2776,6 +2776,37 @@ class AgentIntelligence:
             # Module B Phase 3 — governed chat enters the shared turn controller.
             from app.services.conversation_turn_controller import run_connector_turn
 
+            # Conversational-realism Phase 3 follow-up (voice only): this
+            # stop_pipeline shortcut never emits tool_start/tool_complete, so
+            # narrate_tool_started/narrate_tool_completed never fire for it —
+            # confirmed live via a real probe + code audit. Speak a real EXECUTING
+            # narration here instead, but ONLY when the conservative, false-
+            # positive-proof check below is confident this exact turn is about to
+            # run execute_plan() on an already-staged write, not just ask for
+            # approval or clarification (see will_execute_staged_connector_write's
+            # own docstring for the full false-positive-proof reasoning). Text
+            # chat is untouched — this block only runs in spoken_mode.
+            if spoken_mode:
+                from app.services.pipecat_voice.voice_tool_narration import (
+                    narrate_connector_write_executing,
+                    will_execute_staged_connector_write,
+                )
+
+                if will_execute_staged_connector_write(task_state, task_text):
+                    _pending_task = (task_state or {}).get("pending_task")
+                    _pending_params = (
+                        _pending_task.get("params")
+                        if isinstance(_pending_task, dict) and isinstance(_pending_task.get("params"), dict)
+                        else {}
+                    )
+                    pending_label = str(_pending_params.get("label") or "")
+                    exec_text_id, exec_start_event = sse_text_start()
+                    yield exec_start_event
+                    yield sse_text_delta(
+                        exec_text_id, narrate_connector_write_executing(pending_label)
+                    )
+                    yield sse_text_end(exec_text_id)
+
             connector_turn = await run_connector_turn(
                 settings=active_settings,
                 org_id=org_id,
