@@ -38,7 +38,9 @@ import {
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
-import { ToolChip, type ToolInvocation, isInternalToolGateResult } from "@/components/gravitre/assistant/tool-chip"
+import { type ToolInvocation, isInternalToolGateResult } from "@/components/gravitre/assistant/tool-chip"
+import { ToolExecutionGroup } from "@/components/gravitre/agent-ui/tool-execution-group"
+import { ThinkingRow } from "@/components/gravitre/agent-ui/thinking-row"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
@@ -322,14 +324,10 @@ export function ChatTranscript({
                   ) : (
                     <div className={CHAT_PROSE_CLASS}>
                       {toolInvocations.length > 0 ? (
-                        <div className="not-prose mb-2 space-y-1">
-                          {toolInvocations.map((invocation) => (
-                            <ToolChip key={invocation.toolCallId} invocation={invocation} />
-                          ))}
-                        </div>
+                        <ToolExecutionGroup invocations={toolInvocations} />
                       ) : null}
                       {showInlineStatus ? (
-                        <p className={cn("not-prose", CHAT_WAITING_CLASS)}>{resolvedWaiting}</p>
+                        <ThinkingRow label={resolvedWaiting} active className="mb-2" />
                       ) : null}
                       {displayText.trim() ? (
                         <ReactMarkdown

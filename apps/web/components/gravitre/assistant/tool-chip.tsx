@@ -20,6 +20,7 @@ import {
   Play,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { STATUS } from "@/lib/design-system"
 import {
   FileReferenceChipRow,
   hostedFilesFromUnknown,
@@ -188,20 +189,20 @@ function getToolLabel(name: string, result: unknown, outcome: ToolOutcome) {
 
 function outcomeStyles(outcome: ToolOutcome, isComplete: boolean) {
   if (!isComplete) {
-    return "bg-zinc-800 text-zinc-400 border border-zinc-700"
+    return STATUS.running
   }
   if (outcome === "error") {
-    return "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 cursor-pointer"
+    return cn(STATUS.failed, "hover:opacity-90 cursor-pointer")
   }
   if (outcome === "warning") {
-    return "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
+    return cn(STATUS.pending, "hover:opacity-90 cursor-pointer")
   }
-  return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
+  return cn(STATUS.verified, "hover:opacity-90 cursor-pointer")
 }
 
 function renderToolDetails(toolName: string, result: unknown) {
   const data = asRecord(result)
-  if (!data) return <p className="text-zinc-500">No results</p>
+  if (!data) return <p className="text-muted-foreground">No results</p>
 
   const error = typeof data.error === "string" ? data.error.trim() : ""
   const errorCode = typeof data.errorCode === "string" ? data.errorCode.trim() : ""
@@ -210,7 +211,7 @@ function renderToolDetails(toolName: string, result: unknown) {
       return <p className="text-muted-foreground">Waiting for your approval before running this.</p>
     }
     return (
-      <div className="space-y-1 text-red-300">
+      <div className="space-y-1 text-destructive">
         {error ? <p>{error}</p> : null}
       </div>
     )
@@ -219,9 +220,9 @@ function renderToolDetails(toolName: string, result: unknown) {
   if (toolName === "searchKnowledgeBase" && Array.isArray(data.results)) {
     if (data.results.length === 0) {
       return (
-        <div className="space-y-2 text-amber-300">
+        <div className="space-y-2 text-[color:var(--status-pending)]">
           <p>No matching documents in your knowledge base.</p>
-          <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
+          <Link href="/connectors" className="text-primary hover:underline text-[11px]">
             Connect sources and enable knowledge sync →
           </Link>
         </div>
@@ -230,7 +231,7 @@ function renderToolDetails(toolName: string, result: unknown) {
     return (
       <ul className="space-y-1.5">
         {(data.results as { title?: string; relevance?: number }[]).slice(0, 5).map((item, i) => (
-          <li key={i} className="text-zinc-300">
+          <li key={i} className="text-foreground/90">
             • {item.title || "Document"} — {Math.round((item.relevance || 0) * 100)}% match
           </li>
         ))}
@@ -242,9 +243,9 @@ function renderToolDetails(toolName: string, result: unknown) {
     const connectors = connectorStatusRows(result)
     if (connectors.length === 0) {
       return (
-        <div className="space-y-2 text-amber-300">
+        <div className="space-y-2 text-[color:var(--status-pending)]">
           <p>No integrations connected yet.</p>
-          <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
+          <Link href="/connectors" className="text-primary hover:underline text-[11px]">
             Connect CRM, docs, and analytics →
           </Link>
         </div>
@@ -261,13 +262,13 @@ function renderToolDetails(toolName: string, result: unknown) {
       <div className="space-y-2">
         <ul className="space-y-1">
           {connectors.map((c, i) => (
-            <li key={i} className="text-zinc-300">
+            <li key={i} className="text-foreground/90">
               • {connectorStatusLine(c)}
             </li>
           ))}
         </ul>
         {needsAuth && (
-          <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
+          <Link href="/connectors" className="text-primary hover:underline text-[11px]">
             Fix authentication on Connectors →
           </Link>
         )}
@@ -280,12 +281,12 @@ function renderToolDetails(toolName: string, result: unknown) {
       <div className="space-y-2">
         <ul className="space-y-1">
           {(data.runs as { workflowName?: string; name?: string; status?: string }[]).slice(0, 5).map((run, i) => (
-            <li key={i} className="text-zinc-300">
+            <li key={i} className="text-foreground/90">
               • {run.workflowName || run.name || "Run"} — {run.status === "failed" ? "✗ Failed" : "✓ Success"}
             </li>
           ))}
         </ul>
-        <Link href="/workflows" className="text-emerald-400 hover:underline text-[11px]">
+        <Link href="/workflows" className="text-primary hover:underline text-[11px]">
           View all runs →
         </Link>
       </div>
@@ -294,7 +295,7 @@ function renderToolDetails(toolName: string, result: unknown) {
 
   if (toolName === "searchWeb") {
     if (error) {
-      return <p className="text-red-300">{error}</p>
+      return <p className="text-destructive">{error}</p>
     }
     if (data.query) {
       const results = Array.isArray(data.results) ? data.results : []
@@ -302,14 +303,14 @@ function renderToolDetails(toolName: string, result: unknown) {
       const count = typeof data.totalResults === "number" ? data.totalResults : results.length || sources.length
       if (count === 0) {
         return (
-          <div className="space-y-1 text-amber-300">
+          <div className="space-y-1 text-[color:var(--status-pending)]">
             <p>Query: {String(data.query)}</p>
             <p>No web results returned.</p>
           </div>
         )
       }
       return (
-        <div className="space-y-1 text-zinc-300">
+        <div className="space-y-1 text-foreground/90">
           <p>Query: {String(data.query)}</p>
           <p>Sources: {count} results</p>
         </div>
@@ -319,14 +320,14 @@ function renderToolDetails(toolName: string, result: unknown) {
 
   if (toolName === "generateDocument" && data.title) {
     return (
-      <div className="space-y-1 text-zinc-300">
+      <div className="space-y-1 text-foreground/90">
         <p>Generated: {String(data.title)}</p>
         {data.wordCount != null && <p>Format: Markdown, {String(data.wordCount)} words</p>}
         <FileReferenceChipRow files={hostedFilesFromUnknown(data)} className="mt-2" />
         <PreviewCodePane
           {...(previewPropsFromToolResult(data) || {})}
           title={String(data.title)}
-          className="mt-2 border-zinc-700 bg-zinc-950/40"
+          className="mt-2 border-border bg-muted/50"
         />
       </div>
     )
@@ -337,7 +338,7 @@ function renderToolDetails(toolName: string, result: unknown) {
     const files = hostedFilesFromUnknown(data)
     if (preview || files.length) {
       return (
-        <div className="space-y-1 text-zinc-300">
+        <div className="space-y-1 text-foreground/90">
           {toolName === "getAnalytics" ? (
             <p>
               Runs (7d):{" "}
@@ -353,7 +354,7 @@ function renderToolDetails(toolName: string, result: unknown) {
           {preview ? (
             <PreviewCodePane
               {...preview}
-              className="mt-2 border-zinc-700 bg-zinc-950/40"
+              className="mt-2 border-border bg-muted/50"
             />
           ) : null}
         </div>
@@ -362,7 +363,7 @@ function renderToolDetails(toolName: string, result: unknown) {
   }
 
   return (
-    <pre className="text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono">
+    <pre className="text-foreground/90 overflow-x-auto whitespace-pre-wrap font-mono">
       {JSON.stringify(data, null, 2)}
     </pre>
   )
@@ -409,7 +410,7 @@ export function ToolChip({
       <AnimatePresence>
         {expanded && invocation.result != null && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-2 p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+            <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
               {renderToolDetails(invocation.toolName, invocation.result)}
             </div>
           </motion.div>

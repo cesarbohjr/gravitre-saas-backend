@@ -42,6 +42,13 @@ const DesktopDownloadSection = dynamic(
     import("@/components/marketing/desktop-download-section").then((m) => m.DesktopDownloadSection),
   { ssr: true }
 )
+const MarketingBackgroundLines = dynamic(
+  () =>
+    import("@/components/marketing/home/marketing-background-lines").then(
+      (m) => m.MarketingBackgroundLines,
+    ),
+  { ssr: false },
+)
 
 /**
  * Home stays a short pitch + proof + CTA.
@@ -71,6 +78,7 @@ export default function HomePage() {
       </section>
 
       <section className="relative py-32 bg-muted/50">
+        <MarketingBackgroundLines />
         <FloatingOrb className="w-[500px] h-[500px] bg-primary/10 top-1/4 -left-64" delay={1} />
 
         <div className="relative mx-auto max-w-7xl px-6">

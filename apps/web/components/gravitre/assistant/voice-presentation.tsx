@@ -28,7 +28,7 @@
  * Duplex presence states are **client UX** — not PSTN VoiceSessionStatus parity.
  */
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Mic, MicOff, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
@@ -69,9 +69,9 @@ export function resolveVoiceVisualizer(
 /** Per-speaker motion and color, verbatim from the handoff. */
 const WAVE_DURATION: Record<VoiceSpeaker, string> = {
   // The user's own voice reads as immediate; the agent's is calmer and slower so
-  // the two are distinguishable without reading the label.
-  user: "0.6s",
-  agent: "1.1s",
+  // the two are distinguishable without reading the label. Advanced Design: breathe.
+  user: "0.75s",
+  agent: "1.35s",
 }
 
 /**
@@ -140,7 +140,15 @@ export function GravitreVoiceWaveform({
           <span
             key={i}
             className="gv-wave-bar"
-            style={height ? { height, animation: "none" } : undefined}
+            style={
+              height
+                ? {
+                    height,
+                    animation: "none",
+                    transition: "height 160ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  }
+                : undefined
+            }
           />
         )
       })}
@@ -202,6 +210,22 @@ export function GravitreOrb({
   className?: string
 }) {
   const isUser = speaker === "user"
+  // EMA dampening so amplitude breathes instead of twitching (Advanced Design §9).
+  const smoothedRef = useRef(0)
+  const [smoothed, setSmoothed] = useState(0)
+
+  useEffect(() => {
+    if (amplitude == null || Number.isNaN(amplitude)) {
+      smoothedRef.current = 0
+      setSmoothed(0)
+      return
+    }
+    const target = Math.min(1, Math.max(0, amplitude))
+    const next = smoothedRef.current * 0.82 + target * 0.18
+    smoothedRef.current = next
+    setSmoothed(next)
+  }, [amplitude])
+
   return (
     <div
       aria-hidden
@@ -219,9 +243,12 @@ export function GravitreOrb({
           : "radial-gradient(circle at 35% 30%, var(--gv-voice-agent-light), var(--gv-voice-agent-mid) 55%, var(--gv-voice-idle-dark) 100%)",
         transform:
           amplitude != null
-            ? `scale(${(1 + Math.min(1, Math.max(0, amplitude)) * 0.12).toFixed(3)})`
+            ? `scale(${(1 + smoothed * 0.1).toFixed(3)})`
             : undefined,
-        transition: amplitude != null ? "transform 80ms linear" : undefined,
+        transition:
+          amplitude != null
+            ? "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+            : undefined,
       }}
     />
   )

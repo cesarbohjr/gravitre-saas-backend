@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { PlanApprovalChrome } from "@/components/gravitre/agent-ui/plan-approval-chrome"
 import {
   BusinessOutcomeView,
   type BusinessOutcomeDto,
@@ -723,7 +724,6 @@ export function ChatExecutionPanel({
   ) {
     const isConnector = pendingTask.type === "connector_action"
     const isOrchestration = pendingTask.type === "connector_orchestration"
-    const needsApproval = isConnector || isOrchestration
     // Trust server dialogue_mode: "confirm" means this user may approve (HITL roles/users).
     // "awaiting_approval" means the request was queued for configured approvers.
     const queuedForApprover =
@@ -766,72 +766,57 @@ export function ChatExecutionPanel({
     }
 
     return (
-      <div
-        className={cn(
-          "mt-3 rounded-xl border px-4 py-3 text-sm",
-          needsApproval ? "border-amber-500/25 bg-amber-500/5" : "border-info/20 bg-info/5",
-          className,
-        )}
-      >
-        <div className="flex items-start gap-2">
-          {needsApproval ? (
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+      <div className={cn("mt-3", className)}>
+        <PlanApprovalChrome
+          title={
+            queuedForApprover
+              ? "Pending approval"
+              : isOrchestration
+                ? pendingTask.status === "awaiting_step_confirm"
+                  ? "Step approval required"
+                  : "Orchestration plan"
+                : isConnector
+                  ? "Approval required"
+                  : "Ready to execute"
+          }
+        >
+          {(isConnector || pendingTask.status === "awaiting_step_confirm") && (
+            <p className="text-sm font-medium text-foreground">{pendingLabel(pendingTask)}</p>
+          )}
+          {isConnector && pendingTask.params?.kind ? (
+            <div className="mt-1">
+              <StepBadge
+                label={pendingTask.params.kind === "read" ? "read auto" : "needs approval"}
+                tone={pendingTask.params.kind === "read" ? "read" : "write"}
+              />
+            </div>
           ) : null}
-          <div className="min-w-0 flex-1">
-            <p
-              className={cn(
-                "text-xs font-medium uppercase tracking-wide",
-                needsApproval ? "text-amber-700 dark:text-amber-400" : "text-info",
-              )}
-            >
-              {queuedForApprover
-                ? "Pending approval"
-                : isOrchestration
-                  ? pendingTask.status === "awaiting_step_confirm"
-                    ? "Step approval required"
-                    : "Orchestration plan"
-                  : isConnector
-                    ? "Approval required"
-                    : "Ready to execute"}
+          <p className="mt-1 text-xs text-muted-foreground">{pendingDescription(pendingTask)}</p>
+          {isOrchestration && pendingTask.status === "awaiting_plan_confirm" ? (
+            <OrchestrationStepList steps={pendingTask.params?.steps ?? []} />
+          ) : null}
+          {queuedForApprover ? (
+            <p className="mt-3 text-sm text-foreground">
+              Your request will be sent for approval.
             </p>
-            {(isConnector || pendingTask.status === "awaiting_step_confirm") && (
-              <p className="mt-1 text-sm font-medium text-foreground">{pendingLabel(pendingTask)}</p>
-            )}
-            {isConnector && pendingTask.params?.kind ? (
-              <div className="mt-1">
-                <StepBadge
-                  label={pendingTask.params.kind === "read" ? "read auto" : "needs approval"}
-                  tone={pendingTask.params.kind === "read" ? "read" : "write"}
-                />
-              </div>
-            ) : null}
-            <p className="mt-1 text-xs text-muted-foreground">{pendingDescription(pendingTask)}</p>
-            {isOrchestration && pendingTask.status === "awaiting_plan_confirm" ? (
-              <OrchestrationStepList steps={pendingTask.params?.steps ?? []} />
-            ) : null}
-            {queuedForApprover ? (
-              <p className="mt-3 text-sm text-foreground">
-                Your request will be sent for approval.
-              </p>
-            ) : onConfirm ? (
-              <Button
-                size="sm"
-                className="mt-3 h-8"
-                disabled={confirming}
-                onClick={onConfirm}
-              >
-                {confirming ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    {confirmButtonLabel(pendingTask, true)}
-                  </>
-                ) : (
-                  confirmButtonLabel(pendingTask, false)
-                )}
-              </Button>
-            ) : null}
-          </div>
-        </div>
+          ) : onConfirm ? (
+            <Button
+              size="sm"
+              className="mt-3 h-8"
+              disabled={confirming}
+              onClick={onConfirm}
+            >
+              {confirming ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  {confirmButtonLabel(pendingTask, true)}
+                </>
+              ) : (
+                confirmButtonLabel(pendingTask, false)
+              )}
+            </Button>
+          ) : null}
+        </PlanApprovalChrome>
       </div>
     )
   }

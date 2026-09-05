@@ -497,15 +497,15 @@
   }
 
   @keyframes gv-orb-pulse-user {
-    0%, 100% { transform: scale(1);    box-shadow: 0 0 70px rgba(22, 163, 116, 0.5); }
-    50%      { transform: scale(1.1);  box-shadow: 0 0 100px rgba(22, 163, 116, 0.7); }
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 56px rgba(22, 163, 116, 0.35); }
+    50%      { transform: scale(1.045); box-shadow: 0 0 78px rgba(22, 163, 116, 0.5); }
   }
   @keyframes gv-orb-pulse-agent {
-    0%, 100% { transform: scale(1);    box-shadow: 0 0 60px rgba(255, 255, 255, 0.25); }
-    50%      { transform: scale(1.04); box-shadow: 0 0 90px rgba(255, 255, 255, 0.4); }
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 48px rgba(255, 255, 255, 0.18); }
+    50%      { transform: scale(1.03); box-shadow: 0 0 68px rgba(255, 255, 255, 0.28); }
   }
-  .gv-orb-user  { animation: gv-orb-pulse-user 1s ease-in-out infinite; }
-  .gv-orb-agent { animation: gv-orb-pulse-agent 2s ease-in-out infinite; }
+  .gv-orb-user  { animation: gv-orb-pulse-user 1.65s ease-in-out infinite; }
+  .gv-orb-agent { animation: gv-orb-pulse-agent 2.45s ease-in-out infinite; }
 
   @media (prefers-reduced-motion: reduce) {
     .hover-lift:hover { transform: none; }
