@@ -29,6 +29,7 @@ import {
   PreviewCodePane,
   previewPropsFromToolResult,
 } from "@/components/gravitre/assistant/preview-code-pane"
+import { GenericToolChrome } from "@/components/gravitre/agent-ui/generic-tool-chrome"
 
 const toolIcons: Record<string, typeof Database> = {
   searchKnowledgeBase: Search,
@@ -410,9 +411,9 @@ export function ToolChip({
       <AnimatePresence>
         {expanded && invocation.result != null && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
+            <GenericToolChrome toolName={invocation.toolName}>
               {renderToolDetails(invocation.toolName, invocation.result)}
-            </div>
+            </GenericToolChrome>
           </motion.div>
         )}
       </AnimatePresence>

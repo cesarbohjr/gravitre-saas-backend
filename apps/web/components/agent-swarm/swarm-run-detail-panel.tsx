@@ -32,7 +32,9 @@ import {
   SwarmVerificationLabel,
 } from "@/components/agent-swarm/swarm-verification-label"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
+import { SubagentToolGroup } from "@/components/gravitre/agent-ui/subagent-tool-group"
 import { cn } from "@/lib/utils"
+import { RADIUS, STATUS } from "@/lib/design-system"
 
 const TERMINAL_SUBTASK = new Set(["completed", "failed", "cancelled"])
 const ACTIVE_RUN = new Set(["pending", "running", "aggregating"])
@@ -200,14 +202,14 @@ export function SwarmRunDetailPanel({
             </dl>
 
             {run.status === "aggregating" ? (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              <div className={cn("border px-3 py-2 text-xs", RADIUS.card, STATUS.pending)}>
                 Council is merging agent outputs into a final recommendation…
               </div>
             ) : null}
 
             {executiveSummary ? (
-              <section className="rounded-xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-card to-card p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              <section className={cn("space-y-2 border p-4", RADIUS.card, STATUS.verified)}>
+                <div className="flex items-center gap-2 text-sm font-semibold">
                   <CheckCircle2 className="h-4 w-4" />
                   Council recommendation
                 </div>
@@ -241,7 +243,7 @@ export function SwarmRunDetailPanel({
             {councilRounds.length > 0 ? (
               <section className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  <Lightbulb className="h-4 w-4 text-[color:var(--status-pending)]" />
                   How the council decided
                 </div>
                 <ul className="space-y-2">
@@ -257,7 +259,7 @@ export function SwarmRunDetailPanel({
                         </ul>
                       ) : null}
                       {round.concerns.length > 0 ? (
-                        <div className="text-xs text-amber-800 dark:text-amber-200">
+                        <div className="text-xs text-[color:var(--status-pending)]">
                           Open concerns: {round.concerns.join(" · ")}
                         </div>
                       ) : null}
@@ -278,14 +280,13 @@ export function SwarmRunDetailPanel({
               </section>
             ) : null}
 
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Agent contributions</h4>
+            <SubagentToolGroup count={(run.subtasks ?? []).length}>
               <ul className="space-y-2">
                 {(run.subtasks ?? []).map((subtask) => (
                   <SubtaskCard key={subtask.id} subtask={subtask} />
                 ))}
               </ul>
-            </div>
+            </SubagentToolGroup>
           </>
         ) : null}
       </CardContent>
