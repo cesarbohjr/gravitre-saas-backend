@@ -35,6 +35,57 @@ from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
+
+def _log_unified_turn_breakdown(
+    org_id: str,
+    breakdown: dict[str, Any],
+    *,
+    outcome: str,
+    model: str | None = None,
+) -> None:
+    """Voice latency Phase-6 root-cause evidence (2026-09-04): breakdown was already
+    computed here on every turn but never logged, leaving the 8-13s pre-first-token
+    gap unattributed. Log-only — never sent to the client, zero behavior change.
+    """
+    try:
+        logger.info(
+            "unified_turn_shadow_breakdown org_id=%s outcome=%s model=%s "
+            "registry_tools_ms=%s narrow_tools_ms=%s context_prompt_ms=%s "
+            "pre_model_ms=%s openai_create_schedule_ms=%s model_ttft_ms=%s "
+            "wall_to_first_token_ms=%s pre_first_token_overhead_ms=%s "
+            "progressive_round_ms=%s embed_query_ms=%s embed_tool_docs_ms=%s "
+            "cached_prompt_tokens=%s prompt_tokens=%s completion_tokens=%s "
+            "system_prompt_chars=%s messages_chars=%s total_tools=%s visible_tools=%s "
+            "retrieval_method=%s stream_timeout_s=%s error=%s",
+            org_id,
+            outcome,
+            model,
+            breakdown.get("registry_tools_ms"),
+            breakdown.get("narrow_tools_ms"),
+            breakdown.get("context_prompt_ms"),
+            breakdown.get("pre_model_ms"),
+            breakdown.get("openai_create_schedule_ms"),
+            breakdown.get("model_ttft_ms"),
+            breakdown.get("wall_to_first_token_ms"),
+            breakdown.get("pre_first_token_overhead_ms"),
+            breakdown.get("progressive_round_ms"),
+            breakdown.get("embed_query_ms"),
+            breakdown.get("embed_tool_docs_ms"),
+            breakdown.get("cached_prompt_tokens"),
+            breakdown.get("prompt_tokens"),
+            breakdown.get("completion_tokens"),
+            breakdown.get("system_prompt_chars"),
+            breakdown.get("messages_chars"),
+            breakdown.get("total_tools"),
+            breakdown.get("visible_tools"),
+            breakdown.get("retrieval_method"),
+            breakdown.get("stream_timeout_s"),
+            breakdown.get("error"),
+        )
+    except Exception:  # noqa: BLE001 — logging must never break the turn.
+        pass
+
+
 # Keep strong refs so fire-and-forget shadow tasks are not GC'd when the chat
 # request ends quickly (conversational early-exit).
 _SHADOW_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
@@ -1022,6 +1073,7 @@ async def run_unified_turn_shadow(
         breakdown["error"] = str(exc)[:200]
         if "unified_turn_stream_timeout" in str(exc):
             breakdown["stream_timed_out"] = True
+        _log_unified_turn_breakdown(org_id, breakdown, outcome="error_model_call")
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error=str(exc)[:500],
@@ -1032,6 +1084,7 @@ async def run_unified_turn_shadow(
         )
 
     if completion is None:
+        _log_unified_turn_breakdown(org_id, breakdown, outcome="error_no_completion")
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error="no_model_completion",
@@ -1058,6 +1111,7 @@ async def run_unified_turn_shadow(
         breakdown["pre_first_token_overhead_ms"] = max(
             0, int(completion.first_token_ms) - int(completion.model_ttft_ms)
         )
+    _log_unified_turn_breakdown(org_id, breakdown, outcome="ok", model=model)
 
     result = UnifiedTurnShadowResult(
         latency_ms=latency_ms,
@@ -1535,6 +1589,7 @@ async def apply_unified_turn_live(
         unified_live_message_violates_no_pending_hold,
     )
 
+    _guard_t0 = time.perf_counter()
     channel_result = await resolve_unified_live_channel_override_reply(
         message=message,
         task_state=task_state,
@@ -1543,6 +1598,7 @@ async def apply_unified_turn_live(
         conversation_id=conversation_id,
         settings=active,
     )
+    _guard_t1 = time.perf_counter()
     if channel_result and (channel_result.user_message or "").strip():
         channel_result.live_served = True
         emit_unified_turn_shadow_audit(
@@ -1572,6 +1628,7 @@ async def apply_unified_turn_live(
         client=client,
         settings=active,
     )
+    _guard_t2 = time.perf_counter()
     if meta_result and (meta_result.user_message or "").strip():
         meta_result.live_served = True
         emit_unified_turn_shadow_audit(
@@ -1591,6 +1648,16 @@ async def apply_unified_turn_live(
         conversation_id=conversation_id,
         client=client,
         settings=active,
+    )
+    _guard_t3 = time.perf_counter()
+    logger.info(
+        "apply_unified_turn_live_guards_ms org_id=%s channel_ms=%s meta_ms=%s pending_ms=%s "
+        "total_guard_ms=%s",
+        org_id,
+        int((_guard_t1 - _guard_t0) * 1000),
+        int((_guard_t2 - _guard_t1) * 1000),
+        int((_guard_t3 - _guard_t2) * 1000),
+        int((_guard_t3 - _guard_t0) * 1000),
     )
     if pending_result and (pending_result.user_message or "").strip():
         pending_result.live_served = True
