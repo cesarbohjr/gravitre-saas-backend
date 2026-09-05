@@ -1506,18 +1506,33 @@ class AgentIntelligence:
         final AssistantStreamComplete for persistence and billing.
         """
         active_settings = settings or self.settings
+        # Voice latency root-cause dig (2026-09-04/05, part 2): fix (a) removed the
+        # two sequential LLM calls inside understand()/domain classify() for spoken
+        # turns, but a real gap remains between STT-final and CognitiveTurnKernel for
+        # turns that miss spoken_lite_path. Checkpoint every pre-kernel step below so
+        # the next probe run names the exact stage instead of another growing,
+        # unattributed "pre_llm_ms" number. Log-only, zero behavior change.
+        _pre_kernel_t0 = time.perf_counter()
+        _pre_kernel_checkpoints: dict[str, int] = {}
+
+        def _mark(name: str) -> None:
+            _pre_kernel_checkpoints[name] = int((time.perf_counter() - _pre_kernel_t0) * 1000)
+
         if client is None:
             from app.workflows.repository import get_supabase_client
 
             client = get_supabase_client(active_settings)
+        _mark("client_ready")
 
         task_text = query.strip()
         connected_early = self.tool_registry.list_connected_integrations(
             client, org_id, environment_name=environment_name
         )
+        _mark("connected_integrations")
         from app.services.mcp_client_service import get_mcp_client_service
 
         mcp_tools_early = await get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id)
+        _mark("mcp_tools")
         # Voice: default to the same fast tier used for simple text turns unless caller
         # pinned another mode. Consequential writes escalate after classification.
         if spoken_mode and mode is None:
@@ -1556,6 +1571,7 @@ class AgentIntelligence:
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
         message_id = str(uuid.uuid4())
         engine_settings = await load_intelligence_engine_settings(org_id, active_settings, client=client)
+        _mark("engine_settings")
         pipeline_tier = mode_to_tier(mode_key)
 
         from app.services.assistant_routing_tier import (
@@ -1582,6 +1598,7 @@ class AgentIntelligence:
             model_resolver=default_model_for_tier,
         )
         escalate_for_user_deepen(routing_control, task_text)
+        _mark("routing_classified")
         max_iterations = routing_control.max_iterations
         routing_sse = {
             **routing_decision.to_sse(),
@@ -1851,9 +1868,11 @@ class AgentIntelligence:
             and routing_control.tier == "simple"
             and not is_direct_connector_write_intent(task_text)
         )
+        _mark("spoken_lite_decided")
 
         if spoken_lite_path:
             dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+            _mark("dialogue_settings_lite")
             sentiment = {"recommended_adaptation": "none"}
             understanding = {
                 "goal": None,
@@ -1882,17 +1901,20 @@ class AgentIntelligence:
             classification_confidence = 0.7
         else:
             dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+            _mark("dialogue_settings_full")
             sentiment = (
                 get_sentiment_friction_service().analyze(task_text, conversation_history)
                 if dialogue_settings.get("sentiment_detection_enabled", True)
                 else {"recommended_adaptation": "none"}
             )
+            _mark("sentiment")
             understanding = await get_contextual_understanding_service(active_settings).understand(
                 task_text,
                 conversation_history,
                 org_id,
                 spoken_mode=bool(spoken_mode),
             )
+            _mark("understanding")
             # Sites 9/10 were dormant with no production signal at all: an empty goal
             # and a low-confidence domain look identical whether the model ran or
             # threw. modelRan and domainSource are what separate those.
@@ -1923,17 +1945,20 @@ class AgentIntelligence:
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("understanding_audit_failed error=%s", exc)
+            _mark("understanding_audit")
             pipeline_classification = await get_task_classifier(active_settings).classify(
                 org_id,
                 task_text,
                 conversation_history,
                 understanding=understanding,
             )
+            _mark("task_classifier")
             pipeline_classification = await chat_facade.enrich_classification(
                 pipeline_classification,
                 org_id,
                 task_text,
             )
+            _mark("enrich_classification")
             # Phase 1: UI department desk scope must reach persona + classification,
             # not only the prepare_stream system prompt in assistant.py.
             department_scope = (department or "").strip() or None
@@ -1948,6 +1973,7 @@ class AgentIntelligence:
                 task_text,
                 pipeline_classification,
             )
+            _mark("router_enrichments")
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
                 float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
@@ -1977,6 +2003,7 @@ class AgentIntelligence:
             org_id,
             client=client,
         )
+        _mark("task_state_initial")
         # Module D expression range — bind conversation-scoped phrase rotation for
         # the whole stream (connector + ReAct tool_error + house phrases).
         from app.services.gravitre_voice import bind_voice_expression_state
@@ -1988,6 +2015,7 @@ class AgentIntelligence:
             client=client,
             settings=active_settings,
         )
+        _mark("voice_expression_bound")
         # Module B — refresh ledger (assistant router pre-stream ingest is primary;
         # this backfills and keeps in-memory task_state aligned).
         try:
@@ -2032,6 +2060,7 @@ class AgentIntelligence:
                 conversation_id,
                 exc,
             )
+        _mark("parameter_ledger")
         persona = await get_persona_service(active_settings).get_persona_for_request(
             org_id,
             user_id,
@@ -2039,6 +2068,7 @@ class AgentIntelligence:
             conversation_id,
             explicit_persona=explicit_persona,
         )
+        _mark("persona_resolved")
 
         # Phase 1: resolve custom/department agent before unified LIVE so tool
         # catalog uses the same resolve_permitted_tools path as classical ReAct.
@@ -2087,6 +2117,18 @@ class AgentIntelligence:
                 if spoken_mode
                 else ("agent_chat" if agent_id else "ai_chat")
             )
+            _mark("pre_kernel_entry")
+            if spoken_mode:
+                try:
+                    logger.info(
+                        "agent_intelligence_pre_kernel_breakdown_ms org_id=%s spoken_lite_path=%s "
+                        "checkpoints=%s",
+                        org_id,
+                        spoken_lite_path,
+                        _pre_kernel_checkpoints,
+                    )
+                except Exception:  # noqa: BLE001 — logging must never break the turn.
+                    pass
             cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
                 CognitiveTurnRequest(
                     org_id=org_id,
