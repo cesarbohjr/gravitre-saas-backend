@@ -27,6 +27,7 @@ from app.services.pipecat_voice.backchannel_turn_strategy import (
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
 from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
+from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
@@ -107,12 +108,25 @@ def build_pipecat_voice_task(
     )
     if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
         raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
+    use_flux = stt_info.get("stt_provider_key") == STT_FLUX
 
+    # Voice-SLO follow-up (2026-09-05): shared LLMContext (so the speculative
+    # path can read the same prior-turn history GravitreCognitiveLLMService
+    # will eventually use) + one coordinator per session shared between the
+    # two processors below. ProposedUserStoppedSpeakingFrame (the trigger for
+    # speculative generation) is Flux-specific — no coordinator is wired for
+    # non-Flux STT, so this is a genuine no-op there, not a silently-broken
+    # feature.
+    context = LLMContext()
+    speculative_coordinator = SpeculativeGenerationCoordinator() if use_flux else None
     speculative = SpeculativePrefetchProcessor(
         app_settings=settings,
         org_id=org_id,
         user_id=user_id,
         agent=agent if isinstance(agent, dict) else None,
+        conversation_id=conversation_id,
+        llm_context=context,
+        speculative_coordinator=speculative_coordinator,
     )
     llm = GravitreCognitiveLLMService(
         app_settings=settings,
@@ -120,6 +134,7 @@ def build_pipecat_voice_task(
         user_id=user_id,
         agent=agent,
         conversation_id=conversation_id,
+        speculative_coordinator=speculative_coordinator,
     )
     tts = ElevenLabsTTSService(
         api_key=el_key,
@@ -130,10 +145,8 @@ def build_pipecat_voice_task(
     )
     interrupt_reporter = ElevenLabsInterruptReporter()
 
-    use_flux = stt_info.get("stt_provider_key") == STT_FLUX
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()
-    context = LLMContext()
     user_params_kwargs: dict[str, Any] = {"vad_analyzer": vad}
     if use_flux:
         # Conversational-realism Phase 1 (backchannel vs. interruption):
@@ -229,6 +242,7 @@ def build_pipecat_voice_task(
         "speak_v2": False,
         "speak_v2_note": "N/A — live TTS is ElevenLabs Flash, not Deepgram Speak v2",
         "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
+        "speculative_generation": "probable_eot_cancelable_adopt_on_match" if use_flux else "disabled_non_flux_stt",
         **stt_info,
     }
 

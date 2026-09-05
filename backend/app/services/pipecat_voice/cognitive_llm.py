@@ -22,6 +22,8 @@ from pipecat.services.llm_service import LLMService
 
 from app.core.logging import get_logger
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
+from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_stage_sample
 from app.services.pipecat_voice.voice_tool_narration import (
@@ -31,35 +33,6 @@ from app.services.pipecat_voice.voice_tool_narration import (
 from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
 
 logger = get_logger(__name__)
-
-
-def _messages_from_context(context: Any) -> tuple[str, list[dict[str, Any]]]:
-    """Extract latest user text + prior history from LLMContext."""
-    messages: list[dict[str, Any]] = []
-    get_messages = getattr(context, "get_messages", None)
-    raw = get_messages() if callable(get_messages) else getattr(context, "messages", None) or []
-    for m in raw or []:
-        if not isinstance(m, dict):
-            continue
-        role = str(m.get("role") or "").strip().lower()
-        content = m.get("content")
-        if isinstance(content, list):
-            text_parts = [
-                str(p.get("text") or "")
-                for p in content
-                if isinstance(p, dict) and p.get("type") in {None, "text", "input_text"}
-            ]
-            content = " ".join(t for t in text_parts if t).strip()
-        text = str(content or "").strip()
-        if role in {"user", "assistant"} and text:
-            messages.append({"role": role, "content": text})
-    user_text = ""
-    for m in reversed(messages):
-        if m["role"] == "user":
-            user_text = m["content"]
-            break
-    history = messages[:-1] if messages and messages[-1]["role"] == "user" else messages
-    return user_text, history
 
 
 class GravitreCognitiveLLMService(LLMService):
@@ -73,6 +46,7 @@ class GravitreCognitiveLLMService(LLMService):
         user_id: str,
         agent: dict[str, Any] | None = None,
         conversation_id: str | None = None,
+        speculative_coordinator: SpeculativeGenerationCoordinator | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -82,6 +56,10 @@ class GravitreCognitiveLLMService(LLMService):
         self._user_id = user_id
         self._agent = agent
         self._conversation_id = conversation_id
+        # Voice-SLO follow-up (2026-09-05): shared with SpeculativePrefetchProcessor
+        # via pipeline.py so a speculative run started on probable-EOT can be
+        # adopted here at confirmed end-of-turn instead of re-running the call.
+        self._speculative_coordinator = speculative_coordinator
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -140,17 +118,38 @@ class GravitreCognitiveLLMService(LLMService):
         # GravitreVoiceLatencyObserver (pipeline.py) actually receives a real
         # sample for this processor instead of silence.
         await self.start_ttfb_metrics()
-        async for event in intelligence.execute_task_streaming(
-            settings=self._app_settings,
-            org_id=self._org_id,
-            user_id=self._user_id,
-            query=user_text,
-            agent_id=str((self._agent or {}).get("id") or "") or None,
-            conversation_history=history or None,
-            conversation_id=self._conversation_id,
-            spoken_mode=True,
-            mode="fast",
-        ):
+        # Voice-SLO follow-up (2026-09-05): if a speculative run was started on
+        # Deepgram Flux's probable-EOT signal (speculative_prefetch.py) and its
+        # text matches this now-confirmed user_text exactly, adopt its
+        # buffered/live output instead of calling execute_task_streaming()
+        # again — any tokens it already produced before confirmation land
+        # here instantly, which is the entire latency win this closes. A
+        # mismatch (or no coordinator/run at all) falls back to the exact
+        # same fresh call as before — zero regression risk on the default
+        # path.
+        speculative_run = (
+            self._speculative_coordinator.adopt(user_text) if self._speculative_coordinator else None
+        )
+        if speculative_run is not None:
+            logger.info(
+                "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s",
+                self._org_id,
+                len(user_text),
+            )
+            events_source = speculative_run.events()
+        else:
+            events_source = intelligence.execute_task_streaming(
+                settings=self._app_settings,
+                org_id=self._org_id,
+                user_id=self._user_id,
+                query=user_text,
+                agent_id=str((self._agent or {}).get("id") or "") or None,
+                conversation_history=history or None,
+                conversation_id=self._conversation_id,
+                spoken_mode=True,
+                mode="fast",
+            )
+        async for event in events_source:
             if isinstance(event, AssistantStreamComplete):
                 continue
             if not isinstance(event, AssistantStreamEvent):
