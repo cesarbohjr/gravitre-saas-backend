@@ -56,7 +56,8 @@ def _log_unified_turn_breakdown(
             "progressive_round_ms=%s embed_query_ms=%s embed_tool_docs_ms=%s "
             "cached_prompt_tokens=%s prompt_tokens=%s completion_tokens=%s "
             "system_prompt_chars=%s messages_chars=%s total_tools=%s visible_tools=%s "
-            "retrieval_method=%s stream_timeout_s=%s error=%s",
+            "retrieval_method=%s stream_timeout_s=%s error=%s "
+            "inference_provider=%s context_real_tokens_total=%s context_size_breakdown=%s",
             org_id,
             outcome,
             model,
@@ -81,6 +82,9 @@ def _log_unified_turn_breakdown(
             breakdown.get("retrieval_method"),
             breakdown.get("stream_timeout_s"),
             breakdown.get("error"),
+            breakdown.get("inference_provider"),
+            breakdown.get("context_real_tokens_total"),
+            json.dumps(breakdown.get("context_size_breakdown") or {}, separators=(",", ":")),
         )
     except Exception:  # noqa: BLE001 — logging must never break the turn.
         pass
@@ -700,22 +704,34 @@ async def run_unified_turn_shadow(
         )
     )
     user_parts = []
+    # Phase 0 (voice-latency, 2026-09-05): labeled mirror of user_parts so the
+    # real, per-source context size (chars + real tiktoken tokens) can be
+    # reported honestly instead of only a single prompt-wide total. Every
+    # `user_parts.append(...)` below has a matching `_add_part(label, ...)`.
+    context_parts: list[tuple[str, str]] = []
+
+    def _add_part(label: str, text: str) -> None:
+        user_parts.append(text)
+        context_parts.append((label, text))
+
     if pending_block:
-        user_parts.append(pending_block)
+        _add_part("pending_state", pending_block)
     else:
-        user_parts.append(
-            "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item."
+        _add_part(
+            "pending_state",
+            "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item.",
         )
-    user_parts.append(
+    _add_part(
+        "connected_integrations",
         "CONNECTED INTEGRATIONS THIS ORG (authoritative for this turn — do not claim "
         "a listed vendor is disconnected without calling assistant_connector_status):\n"
-        + capability_block
+        + capability_block,
     )
     from app.services.chat_write_intent import build_gmail_write_intent_prompt_section
 
     intent_hint = build_gmail_write_intent_prompt_section(message or "")
     if intent_hint:
-        user_parts.append(intent_hint)
+        _add_part("write_intent_hint", intent_hint)
     # Explicit tool inventory note for knowledge-boundary honesty.
     if attach_tools:
         names = sorted(
@@ -738,29 +754,32 @@ async def run_unified_turn_shadow(
                     f" Stubs are name + description only; call {SEARCH_CATALOG_TOOLS_NAME} "
                     "to load full parameters before invoking a connector tool."
                 )
-            user_parts.append(
+            _add_part(
+                "tools_list_note",
                 "AVAILABLE TOOLS THIS TURN "
                 f"({loaded_note.strip()} You have NO other live data sources):\n- "
-                + "\n- ".join(names)
+                + "\n- ".join(names),
             )
         else:
-            user_parts.append(
+            _add_part(
+                "tools_list_note",
                 "AVAILABLE TOOLS THIS TURN (schemas attached as functions; "
                 "you have NO other live data sources):\n- "
-                + "\n- ".join(names)
+                + "\n- ".join(names),
             )
     else:
-        user_parts.append(
+        _add_part(
+            "tools_list_note",
             "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
-            "or connector results."
+            "or connector results.",
         )
     remind_me = _is_remind_me_turn(message)
     standing = _standing_user_corrections_block(conversation_history)
     if standing:
-        user_parts.append(standing)
+        _add_part("standing_corrections", standing)
     prior_recs = _prior_recommendations_block(conversation_history) if remind_me else ""
     if prior_recs:
-        user_parts.append(prior_recs)
+        _add_part("prior_recommendations", prior_recs)
 
     cognitive_prompt_sections: dict[str, str] = {}
     if cognitive_context is not None and not remind_me:
@@ -810,7 +829,7 @@ async def run_unified_turn_shadow(
             conversation_id=conversation_id,
         )
         if knowledge_block:
-            user_parts.append(knowledge_block)
+            _add_part("knowledge_fabric", knowledge_block)
         unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
     else:
         unified_turn_knowledge_meta = (
@@ -838,11 +857,11 @@ async def run_unified_turn_shadow(
             )
             if not managed_supplemental:
                 if mem:
-                    user_parts.append(mem)
+                    _add_part("memory_recall", mem)
                 if know:
-                    user_parts.append(know)
+                    _add_part("kernel_knowledge_section", know)
                 if bias:
-                    user_parts.append(bias)
+                    _add_part("outcome_bias", bias)
             kernel_meta = {
                 "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
                 "outcomeBiasInjected": bool(bias),
@@ -861,11 +880,12 @@ async def run_unified_turn_shadow(
                 unified_turn_knowledge_meta = kernel_meta
         except Exception as exc:  # noqa: BLE001
             logger.warning("unified_turn_kernel_section_merge_failed error=%s", exc)
-    user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
+    _add_part("user_message", f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 
+    history_messages = _history_to_messages(conversation_history)
     messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
-    messages.extend(_history_to_messages(conversation_history))
+    messages.extend(history_messages)
     messages.append({"role": "user", "content": user_content})
     t_after_prompt = time.perf_counter()
 
@@ -876,6 +896,43 @@ async def run_unified_turn_shadow(
     full_catalog_bytes = len(json.dumps(all_tools, separators=(",", ":")).encode("utf-8"))
 
     model = _resolve_unified_turn_model(active, agent=agent, task_shaped=use_embed)
+
+    # Phase 0 (voice-latency, 2026-09-05): real, per-source context-size
+    # breakdown — chars AND real tiktoken tokens (not the len//4 heuristic
+    # used elsewhere in this codebase for cost estimation). Cross-checked
+    # against the real, provider-reported prompt_tokens once the completion
+    # returns (see `breakdown["context_real_tokens_total"]` vs
+    # `breakdown["prompt_tokens"]` below) so any drift between "sum of our
+    # labeled sections" and "what the provider actually charged for" is
+    # visible rather than assumed to match.
+    from app.services.real_token_counter import count_real_tokens
+
+    history_text = "\n".join(str(m.get("content") or "") for m in history_messages)
+    tool_schemas_text = json.dumps(list(attach_tools or []), separators=(",", ":"))
+    context_size_breakdown: dict[str, dict[str, int]] = {
+        "system_prompt": {
+            "chars": len(system or ""),
+            "tokens": count_real_tokens(system or "", model=model),
+        },
+        "conversation_history": {
+            "chars": len(history_text),
+            "tokens": count_real_tokens(history_text, model=model),
+            "turn_count": len(history_messages),
+        },
+        "tool_schemas": {
+            "chars": 0,
+            "tokens": count_real_tokens(tool_schemas_text, model=model),
+            "tool_count": len(attach_tools or []),
+        },
+    }
+    for label, text in context_parts:
+        slot = context_size_breakdown.setdefault(label, {"chars": 0, "tokens": 0})
+        slot["chars"] += len(text)
+        slot["tokens"] += count_real_tokens(text, model=model)
+    context_real_tokens_total = sum(
+        int(v.get("tokens") or 0) for v in context_size_breakdown.values()
+    )
+
     router = get_model_router()
     from app.services.providers.provider_tool_router import resolve_provider_for_model
 
@@ -918,6 +975,9 @@ async def run_unified_turn_shadow(
         "turn_shape_hint": shape_label,
         "retrieval_query": (retrieval_query or "")[:240],
         "task_model_tier": str(getattr(active, "unified_turn_task_model_tier", "") or "") or None,
+        "inference_provider": inference_provider,
+        "context_size_breakdown": context_size_breakdown,
+        "context_real_tokens_total": context_real_tokens_total,
     }
     if unified_turn_knowledge_meta:
         breakdown["unifiedTurnKnowledge"] = unified_turn_knowledge_meta
