@@ -56,6 +56,22 @@ type GoldenSignalsResponse = {
     ready?: boolean
     current_fallthrough_pct?: number
   }
+  voice_turn_latency?: {
+    llm_first_token?: LatencyStageStats
+    llm_first_speakable_chunk?: LatencyStageStats
+    tts_requested?: LatencyStageStats
+    end_to_end?: LatencyStageStats
+    user_turn_finalization?: LatencyStageStats
+    alerts?: string[]
+  }
+}
+
+type LatencyStageStats = {
+  sample_count?: number
+  p50_ms?: number | null
+  p95_ms?: number | null
+  p99_ms?: number | null
+  max_ms?: number | null
 }
 
 function passFail(pass: boolean | undefined, empty = "—"): string {
@@ -78,6 +94,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   const ttft = signals?.ttft
   const mount = signals?.mount_tti
   const research = signals?.research_lookups
+  const voiceLatency = signals?.voice_turn_latency
 
   return (
     <section
@@ -161,6 +178,40 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           variant={research?.alerts?.length ? "warning" : "default"}
         />
       </StatsGrid>
+      {voiceLatency && (voiceLatency.end_to_end?.sample_count ?? 0) > 0 ? (
+        <div className="mt-4 border-t border-border/60 pt-4">
+          <h4 className="text-xs font-medium tracking-tight text-muted-foreground">
+            Voice turn latency (real, per-stage — Flux path)
+          </h4>
+          <StatsGrid columns={3} className="mt-2">
+            <StatCard
+              label="Voice reply speed (typical / worst)"
+              value={
+                voiceLatency.end_to_end?.p50_ms != null
+                  ? `${voiceLatency.end_to_end.p50_ms} / ${voiceLatency.end_to_end.p99_ms ?? "—"} ms`
+                  : "—"
+              }
+              variant={voiceLatency.alerts?.length ? "warning" : "default"}
+            />
+            <StatCard
+              label="Voice LLM first token (typical)"
+              value={
+                voiceLatency.llm_first_token?.p50_ms != null
+                  ? `${voiceLatency.llm_first_token.p50_ms} ms`
+                  : "—"
+              }
+            />
+            <StatCard
+              label="Voice first speech chunk sent to TTS"
+              value={
+                voiceLatency.tts_requested?.p50_ms != null
+                  ? `${voiceLatency.tts_requested.p50_ms} ms`
+                  : "—"
+              }
+            />
+          </StatsGrid>
+        </div>
+      ) : null}
     </section>
   )
 }

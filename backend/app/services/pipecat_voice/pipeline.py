@@ -15,8 +15,15 @@ from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketParams,
     FastAPIWebsocketTransport,
 )
+from pipecat.turns.user_stop.external_user_turn_stop_strategy import (
+    ExternalUserTurnStopStrategy,
+)
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from app.core.logging import get_logger
+from app.services.pipecat_voice.backchannel_turn_strategy import (
+    BackchannelAwareUserTurnStartStrategy,
+)
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
 from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
@@ -24,6 +31,8 @@ from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchP
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
+from app.services.pipecat_voice.voice_latency_metrics import record_voice_e2e_latency_sample
+from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
 from app.services.tier1_voice_service import resolve_voice_id
 
 logger = get_logger(__name__)
@@ -125,11 +134,24 @@ def build_pipecat_voice_task(
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()
     context = LLMContext()
+    user_params_kwargs: dict[str, Any] = {"vad_analyzer": vad}
+    if use_flux:
+        # Conversational-realism Phase 1 (backchannel vs. interruption):
+        # Flux's own turn detection drives this via Proposed*SpeakingFrame,
+        # normally resolved instantly by ExternalUserTurnStartStrategy
+        # (Pipecat's stock behavior — confirmed live root cause of "agent
+        # stops on every uh-huh"). Swap in the classifying strategy so a
+        # short backchannel utterance overlapping agent speech never
+        # triggers the barge-in; a real interruption/correction/question/
+        # stop-command still does, matching Flux's own recommended
+        # should_interrupt=True default (ExternalUserTurnStrategies).
+        user_params_kwargs["user_turn_strategies"] = UserTurnStrategies(
+            start=[BackchannelAwareUserTurnStartStrategy(enable_interruptions=True)],
+            stop=[ExternalUserTurnStopStrategy()],
+        )
     user_agg, assistant_agg = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(
-            vad_analyzer=vad,
-        ),
+        user_params=LLMUserAggregatorParams(**user_params_kwargs),
     )
 
     pipeline = Pipeline(
@@ -147,13 +169,51 @@ def build_pipecat_voice_task(
         ]
     )
 
+    latency_observer = GravitreVoiceLatencyObserver()
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
             enable_usage_metrics=True,
         ),
+        observers=[latency_observer],
     )
+
+    # on_latency_measured always fires (same synchronous handler call) just
+    # before on_latency_breakdown for the same cycle — see
+    # UserBotLatencyObserver._handle_bot_started_speaking. Stash it here so
+    # one turn produces exactly one audit_events row, not two.
+    _pending_e2e_ms: dict[str, int] = {}
+
+    @latency_observer.event_handler("on_latency_measured")
+    async def _on_voice_latency_measured(_observer, latency_seconds: float) -> None:
+        _pending_e2e_ms["value"] = round(latency_seconds * 1000)
+
+    @latency_observer.event_handler("on_latency_breakdown")
+    async def _on_voice_latency_breakdown(_observer, breakdown) -> None:
+        # Phase 6 (conversational-realism): real per-stage latency, one
+        # sample per completed user->bot cycle. Fire-and-forget — must never
+        # slow down or break the live voice turn it is reporting on.
+        try:
+            ttfb_by_processor_ms: dict[str, int] = {}
+            for entry in breakdown.ttfb:
+                key = str(entry.processor).split("#", 1)[0]
+                ttfb_by_processor_ms[key] = round(entry.duration_secs * 1000)
+            user_turn_finalization_ms = (
+                round(breakdown.user_turn_secs * 1000)
+                if breakdown.user_turn_secs is not None
+                else None
+            )
+            record_voice_e2e_latency_sample(
+                settings,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                end_to_end_ms=_pending_e2e_ms.pop("value", None),
+                user_turn_finalization_ms=user_turn_finalization_ms,
+                ttfb_by_processor_ms=ttfb_by_processor_ms,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("pipecat_voice_latency_breakdown_sample_failed error=%s", exc)
 
     session_meta = {
         "architecture": "pipecat_deepgram_cognitive_elevenlabs",

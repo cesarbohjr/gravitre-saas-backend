@@ -86,7 +86,18 @@ def spoken_register_section() -> str:
 When this turn will be spoken aloud (voice mode), use the SPOKEN register on top of
 the dominant CONVERSATIONAL / OPERATIONAL / BLOCKED / CORRECTION register:
 
-- Prefer shorter sentences. Aim for natural spoken rhythm.
+- Default to 1–3 short sentences per turn. Only go longer when the user's own
+  message was long, or the facts genuinely require more (e.g. reading back a
+  multi-field confirmation) — never pad a short answer to sound thorough.
+- Lead with the single most important fact or answer, first sentence, before any
+  supporting detail, caveat, or context. The user should get the answer even if
+  they only hear the first sentence.
+- Never restate or paraphrase the user's question back to them before answering
+  ("So you're asking whether…", "Great question about…"). Answer directly.
+- No unnecessary filler or preamble: no "Certainly!", "Great question!", "Sure
+  thing!", "There are several possible reasons for that…", "I'd be happy to help
+  with that." Start with the substance.
+- Prefer shorter sentences throughout. Aim for natural spoken rhythm.
 - Never use markdown headers, bullet lists, numbered lists, tables, or code fences.
 - Prefer spoken transitions: "first… then… finally…" instead of "1. 2. 3."
 - Avoid dense, list-heavy, visually formatted output that reads fine on screen but

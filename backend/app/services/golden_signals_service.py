@@ -184,6 +184,8 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             }},
         }
 
+    voice_latency = _voice_turn_latency_signals(client, since_iso=since_iso, hours=hours)
+
     deploy_smoke = _latest_platform_signal(client, "platform.deploy_smoke")
     hardening = _latest_platform_signal(client, "platform.hardening_smoke")
     billing_drift = _billing_plan_price_drift(client, settings)
@@ -212,6 +214,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
     if mount_p50 is not None and mount_p50 > MOUNT_TTI_ALERT_MS:
         mount_alerts.append(f"mount_ai_nav_p50>{MOUNT_TTI_ALERT_MS}ms")
     alerts.extend(mount_alerts)
+    alerts.extend(voice_latency.get("alerts") or [])
 
     r2_ready = (
         fallthrough_pct <= 1.0
@@ -255,6 +258,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             "alert_threshold_ms": MOUNT_TTI_ALERT_MS,
             "alerts": mount_alerts,
         },
+        "voice_turn_latency": voice_latency,
         "prefix_cache": {
             "avg_cached_prompt_ratio": round(sum(cache_ratios) / len(cache_ratios), 4)
             if cache_ratios
@@ -365,6 +369,87 @@ def _research_lookup_provider_signals(
         "note": (
             "Tracks usage_records.metadata.provider for research_lookups. "
             "When WEB_RESEARCH_PROVIDER=serper, serper_pct≈0 with volume means silent primary failure."
+        ),
+    }
+
+
+VOICE_LATENCY_E2E_ALERT_P50_MS = int(os.environ.get("VOICE_TURN_LATENCY_ALERT_P50_MS", "3000"))
+VOICE_LATENCY_E2E_ALERT_P99_MS = int(os.environ.get("VOICE_TURN_LATENCY_ALERT_P99_MS", "10000"))
+
+
+def _voice_turn_latency_signals(client: Any, *, since_iso: str, hours: int) -> dict[str, Any]:
+    """Phase 6 (conversational-realism): real per-stage voice latency, P50/P95/P99.
+
+    Reads the two actions ``voice_latency_metrics.py`` writes per live voice
+    turn (``voice.turn_latency.llm_stage`` from the Cognitive LLM bridge,
+    ``voice.turn_latency.e2e`` from ``GravitreVoiceLatencyObserver`` in
+    ``pipeline.py``) and reduces each numeric field independently — rows are
+    two different samples of the *same* turn, not correlated 1:1, so each
+    field's own percentiles are computed from every non-null value seen for
+    that field, exactly like the existing ``ttft`` block above.
+    """
+    llm_rows = _fetch_rows(client, action="voice.turn_latency.llm_stage", since_iso=since_iso)
+    e2e_rows = _fetch_rows(client, action="voice.turn_latency.e2e", since_iso=since_iso)
+
+    def _field(rows: list[dict], key: str) -> list[int]:
+        out: list[int] = []
+        for row in rows:
+            val = _meta(row).get(key)
+            if isinstance(val, (int, float)):
+                out.append(int(val))
+        return out
+
+    def _stats(values: list[int]) -> dict[str, Any]:
+        s = sorted(values)
+        return {
+            "sample_count": len(s),
+            "p50_ms": _percentile(s, 0.50),
+            "p95_ms": _percentile(s, 0.95),
+            "p99_ms": _percentile(s, 0.99),
+            "max_ms": s[-1] if s else None,
+        }
+
+    llm_first_token = _stats(_field(llm_rows, "llm_first_token_ms"))
+    llm_first_speakable_chunk = _stats(_field(llm_rows, "llm_first_speakable_chunk_ms"))
+    tts_requested = _stats(_field(llm_rows, "tts_requested_ms"))
+    end_to_end = _stats(_field(e2e_rows, "end_to_end_ms"))
+    user_turn_finalization = _stats(_field(e2e_rows, "user_turn_finalization_ms"))
+
+    ttfb_by_processor: dict[str, list[int]] = {}
+    for row in e2e_rows:
+        by_proc = _meta(row).get("ttfb_by_processor_ms")
+        if isinstance(by_proc, dict):
+            for proc, ms in by_proc.items():
+                if isinstance(ms, (int, float)):
+                    ttfb_by_processor.setdefault(str(proc), []).append(int(ms))
+    ttfb_stats = {proc: _stats(vals) for proc, vals in ttfb_by_processor.items()}
+
+    alerts: list[str] = []
+    if (end_to_end["p50_ms"] or 0) > VOICE_LATENCY_E2E_ALERT_P50_MS:
+        alerts.append(f"voice_e2e_p50>{VOICE_LATENCY_E2E_ALERT_P50_MS}ms")
+    if (end_to_end["p99_ms"] or 0) > VOICE_LATENCY_E2E_ALERT_P99_MS:
+        alerts.append(f"voice_e2e_p99>{VOICE_LATENCY_E2E_ALERT_P99_MS}ms")
+
+    return {
+        "window_hours": hours,
+        "llm_first_token": llm_first_token,
+        "llm_first_speakable_chunk": llm_first_speakable_chunk,
+        "tts_requested": tts_requested,
+        "end_to_end": end_to_end,
+        "user_turn_finalization": user_turn_finalization,
+        "ttfb_by_processor": ttfb_stats,
+        "alert_thresholds_ms": {
+            "e2e_p50": VOICE_LATENCY_E2E_ALERT_P50_MS,
+            "e2e_p99": VOICE_LATENCY_E2E_ALERT_P99_MS,
+        },
+        "alerts": alerts,
+        "note": (
+            "Real, measured per-stage voice-turn latency (not estimated). "
+            "llm_first_token = Cognitive LLM TTFT; llm_first_speakable_chunk = "
+            "first sentence-chunk ready for TTS; tts_requested = first chunk "
+            "actually pushed downstream to TTS; end_to_end = "
+            "GravitreVoiceLatencyObserver's real user-audio-stopped to "
+            "bot-audio-started measurement on the live Flux path."
         ),
     }
 
