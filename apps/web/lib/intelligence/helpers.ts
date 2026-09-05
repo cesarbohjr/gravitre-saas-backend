@@ -1,6 +1,7 @@
 /** Shared formatters for Intelligence Visibility Layer — no secrets, no chain-of-thought. */
 
 import { humanizePlainEnglish } from "@/lib/plain-english"
+import { STATUS } from "@/lib/design-system"
 
 export type ConfidenceBand = "high" | "medium" | "low" | "insufficient"
 
@@ -27,13 +28,13 @@ export function confidenceBandLabel(band: ConfidenceBand): string {
 export function confidenceBandClass(band: ConfidenceBand): string {
   switch (band) {
     case "high":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+      return STATUS.verified
     case "medium":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+      return STATUS.pending
     case "low":
-      return "border-rose-500/40 bg-rose-500/10 text-rose-900 dark:text-rose-200"
+      return STATUS.failed
     default:
-      return "border-border bg-muted/50 text-muted-foreground"
+      return STATUS.idle
   }
 }
 

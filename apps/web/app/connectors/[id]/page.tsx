@@ -56,10 +56,10 @@ import {
 } from "@/components/ui/dialog"
 
 const statusConfig = {
-  connected: { color: "text-success", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
-  disconnected: { color: "text-zinc-500", bg: "bg-zinc-500", icon: WifiOff, label: "Disconnected" },
-  error: { color: "text-destructive", bg: "bg-red-500", icon: XCircle, label: "Error" },
-  syncing: { color: "text-blue-500", bg: "bg-blue-500", icon: Loader2, label: "Syncing" },
+  connected: { color: "text-[color:var(--status-verified)]", bg: "bg-[color:var(--status-verified)]", icon: CheckCircle2, label: "Connected" },
+  disconnected: { color: "text-muted-foreground", bg: "bg-muted-foreground", icon: WifiOff, label: "Disconnected" },
+  error: { color: "text-[color:var(--status-failed)]", bg: "bg-[color:var(--status-failed)]", icon: XCircle, label: "Error" },
+  syncing: { color: "text-[color:var(--status-running)]", bg: "bg-[color:var(--status-running)]", icon: Loader2, label: "Syncing" },
 }
 
 function formatConfigValue(config: Record<string, unknown> | undefined, key: string): string {

@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { STATUS } from "@/lib/design-system"
 
 export type AvailableConnectorEntry = {
   vendorKey: string
@@ -108,7 +109,7 @@ export function AvailableConnectorsStrip({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="truncate text-sm font-medium capitalize text-foreground">{entry.type}</span>
-                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-500">
+                <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", STATUS.verified)}>
                   Available
                 </span>
               </div>

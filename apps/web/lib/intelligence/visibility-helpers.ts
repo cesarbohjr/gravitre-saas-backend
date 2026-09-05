@@ -1,4 +1,5 @@
 import { formatPercent, readString } from "@/lib/intelligence/helpers"
+import { STATUS } from "@/lib/design-system"
 import type { DomainHealthEntry } from "@/lib/intelligence/visibility-types"
 
 export function healthLabelText(label: string | undefined): string {
@@ -22,27 +23,27 @@ export function healthLabelClass(label: string | undefined): string {
   switch (readString(label).toLowerCase()) {
     case "healthy":
     case "strong":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+      return STATUS.verified
     case "developing":
     case "improving":
-      return "border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-200"
+      return STATUS.running
     case "needs_attention":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+      return STATUS.pending
     default:
-      return "border-border bg-muted/50 text-muted-foreground"
+      return STATUS.idle
   }
 }
 
 export function learningLevelClass(level: string | undefined): string {
   switch (readString(level).toLowerCase()) {
     case "high":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+      return STATUS.verified
     case "medium":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+      return STATUS.pending
     case "low":
-      return "border-rose-500/40 bg-rose-500/10 text-rose-900 dark:text-rose-200"
+      return STATUS.failed
     default:
-      return "border-border bg-muted/50 text-muted-foreground"
+      return STATUS.idle
   }
 }
 

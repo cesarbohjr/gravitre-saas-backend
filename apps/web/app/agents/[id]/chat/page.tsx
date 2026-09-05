@@ -479,7 +479,9 @@ export default function AgentChatPage({
                 <span
                   className={cn(
                     "ml-1 hidden h-1.5 w-1.5 shrink-0 rounded-full sm:inline-block",
-                    agent.status === "active" ? "bg-emerald-500" : "bg-amber-500",
+                    agent.status === "active"
+                      ? "bg-[color:var(--status-verified)]"
+                      : "bg-[color:var(--status-pending)]",
                   )}
                   title={agent.status}
                 />

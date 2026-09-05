@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { STATUS } from "@/lib/design-system"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi, trainingApi } from "@/lib/api"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
@@ -34,15 +35,15 @@ import {
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
-    return "bg-success/10 text-success border-success/20"
+    return STATUS.verified
   }
   if (status === "training" || status === "processing" || status === "queued") {
-    return "bg-info/10 text-info border-info/20"
+    return STATUS.running
   }
   if (status === "failed") {
-    return "bg-destructive/10 text-destructive border-destructive/20"
+    return STATUS.failed
   }
-  return "bg-secondary text-muted-foreground border-border"
+  return STATUS.idle
 }
 
 function formatDate(value?: string): string {

@@ -242,9 +242,9 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
 // System Connection
 function SystemBadge({ system, index }: { system: Agent["systems"][0]; index: number }) {
   const statusColors = {
-    connected: "bg-emerald-500",
-    warning: "bg-amber-500",
-    error: "bg-red-500",
+    connected: "bg-[color:var(--status-verified)]",
+    warning: "bg-[color:var(--status-pending)]",
+    error: "bg-[color:var(--status-failed)]",
   }
 
   return (

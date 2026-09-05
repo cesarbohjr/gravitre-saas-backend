@@ -647,12 +647,12 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               <div
                 className={
                   run.status === "failed"
-                    ? "h-full rounded-full bg-destructive transition-all"
+                    ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all"
                     : run.status === "cancelled"
-                      ? "h-full rounded-full bg-zinc-400 transition-all"
+                      ? "h-full rounded-full bg-muted-foreground transition-all"
                       : run.status === "running"
-                        ? "h-full rounded-full bg-blue-500 transition-all"
-                        : "h-full rounded-full bg-emerald-500 transition-all"
+                        ? "h-full rounded-full bg-[color:var(--status-running)] transition-all"
+                        : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
                 }
                 style={{
                   width: `${Math.min(

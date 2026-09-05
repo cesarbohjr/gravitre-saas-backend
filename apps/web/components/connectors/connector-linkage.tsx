@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { STATUS, STATUS_DOT } from "@/lib/design-system"
 import {
   Workflow as WorkflowIcon,
   Plus,
@@ -83,8 +84,8 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
     <div className="space-y-6">
       {/* Disconnected-but-referenced warning */}
       {referencedWhileDisconnected ? (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+        <div className={cn("flex items-start gap-3 rounded-lg border p-4", STATUS.pending)}>
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
               This connector is {connectorStatus} but used by {linkedWorkflows.length}{" "}
@@ -149,10 +150,10 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                         className={cn(
                           "rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
                           action.chatExecutable
-                            ? "bg-emerald-500/10 text-emerald-600"
+                            ? STATUS.verified
                             : action.implemented
-                              ? "bg-sky-500/10 text-sky-500"
-                              : "bg-muted text-muted-foreground",
+                              ? STATUS.running
+                              : STATUS.idle,
                         )}
                       >
                         {action.chatExecutable
@@ -225,7 +226,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                       <div
                         className={cn(
                           "h-2 w-2 shrink-0 rounded-full",
-                          workflow.status === "active" ? "bg-emerald-500" : "bg-amber-500",
+                          workflow.status === "active" ? STATUS_DOT.verified : STATUS_DOT.pending,
                         )}
                       />
                       <span className="truncate text-sm font-medium text-foreground">{workflow.name}</span>
@@ -264,10 +265,10 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                       className={cn(
                         "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase",
                         demo.riskLevel === "high"
-                          ? "bg-red-500/10 text-red-500"
+                          ? STATUS.rejected
                           : demo.riskLevel === "medium"
-                            ? "bg-amber-500/10 text-amber-500"
-                            : "bg-emerald-500/10 text-emerald-500",
+                            ? STATUS.pending
+                            : STATUS.verified,
                       )}
                     >
                       {demo.riskLevel} risk

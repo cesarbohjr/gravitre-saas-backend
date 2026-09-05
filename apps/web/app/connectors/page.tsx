@@ -368,34 +368,34 @@ function connectorErrorMessage(err: unknown): string {
 
 const statusConfig = {
   connected: { 
-    color: "text-success", 
-    bg: "bg-emerald-500", 
-    ring: "ring-success/30",
-    glow: "shadow-success/20",
+    color: "text-[color:var(--status-verified)]", 
+    bg: "bg-[color:var(--status-verified)]", 
+    ring: "ring-[color:var(--status-verified)]/30",
+    glow: "shadow-[color:var(--status-verified)]/20",
     icon: CheckCircle2,
     label: "Connected" 
   },
   disconnected: { 
-    color: "text-zinc-500", 
-    bg: "bg-zinc-500", 
-    ring: "ring-zinc-500/30",
-    glow: "shadow-zinc-500/10",
+    color: "text-muted-foreground", 
+    bg: "bg-muted-foreground", 
+    ring: "ring-muted-foreground/30",
+    glow: "shadow-muted-foreground/10",
     icon: WifiOff,
     label: "Disconnected" 
   },
   error: { 
-    color: "text-destructive", 
-    bg: "bg-red-500", 
-    ring: "ring-destructive/30",
-    glow: "shadow-destructive/20",
+    color: "text-[color:var(--status-failed)]", 
+    bg: "bg-[color:var(--status-failed)]", 
+    ring: "ring-[color:var(--status-failed)]/30",
+    glow: "shadow-[color:var(--status-failed)]/20",
     icon: XCircle,
     label: "Error" 
   },
   syncing: { 
-    color: "text-blue-500", 
-    bg: "bg-blue-500", 
-    ring: "ring-blue-500/30",
-    glow: "shadow-blue-500/20",
+    color: "text-[color:var(--status-running)]", 
+    bg: "bg-[color:var(--status-running)]", 
+    ring: "ring-[color:var(--status-running)]/30",
+    glow: "shadow-[color:var(--status-running)]/20",
     icon: Loader2,
     label: "Syncing" 
   },
