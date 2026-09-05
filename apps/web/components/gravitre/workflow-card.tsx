@@ -71,10 +71,10 @@ const nodeColors: Record<string, string> = {
 }
 
 const statusConfig = {
-  active: { color: "bg-emerald-500", label: "Active", ring: "ring-emerald-500/30" },
-  paused: { color: "bg-amber-500", label: "Paused", ring: "ring-amber-500/30" },
-  draft: { color: "bg-zinc-500", label: "Draft", ring: "ring-zinc-500/30" },
-  error: { color: "bg-red-500", label: "Error", ring: "ring-red-500/30" },
+  active: { color: "bg-[color:var(--status-verified)]", label: "Active", ring: "ring-[color:var(--status-verified)]/30" },
+  paused: { color: "bg-[color:var(--status-pending)]", label: "Paused", ring: "ring-[color:var(--status-pending)]/30" },
+  draft: { color: "bg-muted-foreground", label: "Draft", ring: "ring-muted-foreground/30" },
+  error: { color: "bg-[color:var(--status-failed)]", label: "Error", ring: "ring-[color:var(--status-failed)]/30" },
 }
 
 // Mini workflow diagram showing node connections
@@ -110,10 +110,10 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
                     {node.status && (
                       <div className={`
                         absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card
-                        ${node.status === "success" ? "bg-emerald-500" : ""}
-                        ${node.status === "running" ? "bg-blue-500 animate-pulse" : ""}
-                        ${node.status === "failed" ? "bg-red-500" : ""}
-                        ${node.status === "pending" ? "bg-zinc-500" : ""}
+                        ${node.status === "success" ? "bg-[color:var(--status-verified)]" : ""}
+                        ${node.status === "running" ? "bg-[color:var(--status-running)] animate-pulse" : ""}
+                        ${node.status === "failed" ? "bg-[color:var(--status-failed)]" : ""}
+                        ${node.status === "pending" ? "bg-muted-foreground" : ""}
                       `} />
                     )}
                   </motion.div>

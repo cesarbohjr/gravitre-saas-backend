@@ -23,6 +23,7 @@ import {
 import { Books, CaretDown, CaretUp, Plugs, WarningCircle } from "@phosphor-icons/react"
 import { SectionCard } from "./shared"
 import { cn } from "@/lib/utils"
+import { RADIUS, STATUS } from "@/lib/design-system"
 
 type HealthTone = "ready" | "watch" | "thin"
 
@@ -65,15 +66,15 @@ function packHealth(pack: KnowledgeFabricPackQuality): {
 }
 
 const TONE_STYLES: Record<HealthTone, string> = {
-  ready: "border-emerald-500/25 bg-emerald-500/5",
-  watch: "border-amber-500/25 bg-amber-500/5",
-  thin: "border-rose-500/25 bg-rose-500/5",
+  ready: STATUS.verified,
+  watch: STATUS.pending,
+  thin: STATUS.failed,
 }
 
 const TONE_BADGE: Record<HealthTone, string> = {
-  ready: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
-  watch: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
-  thin: "bg-rose-500/15 text-rose-800 dark:text-rose-200",
+  ready: STATUS.verified,
+  watch: STATUS.pending,
+  thin: STATUS.failed,
 }
 
 function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
@@ -85,7 +86,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
   const department = knowledgePackDepartment(pack.pack_id)
 
   return (
-    <article className={cn("rounded-2xl border p-4 shadow-sm", TONE_STYLES[health.tone])}>
+    <article className={cn("border p-4 shadow-sm", RADIUS.panel, TONE_STYLES[health.tone])}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

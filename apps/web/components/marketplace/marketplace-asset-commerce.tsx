@@ -126,7 +126,7 @@ export function ConnectorChecklist({
             ) : null}
             {item.discoveryLimitation || item.warning ? (
               <p
-                className="pl-6 text-[11px] text-amber-700 dark:text-amber-400 text-pretty"
+                className="pl-6 text-[11px] text-pretty text-[color:var(--status-pending)]"
                 data-testid="apollo-discovery-limitation"
               >
                 {item.discoveryLimitation || item.warning}

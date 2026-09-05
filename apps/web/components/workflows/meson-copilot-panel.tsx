@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { STATUS, STATUS_DOT } from "@/lib/design-system"
 import { GlowOrb, StatusBeacon, ShimmerText } from "@/components/gravitre/premium-effects"
 import { useMotionPrefs } from "@/lib/animations"
 import {
@@ -54,8 +55,8 @@ function saveDismissed(workflowId: string | undefined, ids: string[]) {
 
 function confidenceClass(confidence?: number) {
   if (confidence == null) return "border-border"
-  if (confidence >= 0.75) return "border-emerald-500/40 bg-emerald-500/5"
-  return "border-amber-500/40 bg-amber-500/5"
+  if (confidence >= 0.75) return STATUS.verified
+  return STATUS.pending
 }
 
 function severityIcon(severity: string) {
@@ -649,7 +650,7 @@ export function MesonCopilotPanel({
                             <motion.div
                               className={cn(
                                 "h-full rounded-full",
-                                strong ? "bg-emerald-500" : "bg-amber-500",
+                                strong ? STATUS_DOT.verified : STATUS_DOT.pending,
                               )}
                               initial={{ width: reduced ? `${conf * 100}%` : 0 }}
                               animate={{ width: `${conf * 100}%` }}

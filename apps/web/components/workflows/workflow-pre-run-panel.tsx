@@ -18,16 +18,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { workflowsApi } from "@/lib/api"
+import { STATUS } from "@/lib/design-system"
 import type { WorkflowDigitalTwinResponse, WorkflowFailureAlert } from "@/types/api"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 
 type PanelTab = "timing" | "risk"
 
 const SEVERITY_STYLES: Record<string, { badge: string; label: string }> = {
-  critical: { badge: "border-destructive/40 text-destructive bg-destructive/10", label: "Critical" },
-  high: { badge: "border-orange-500/40 text-orange-500 bg-orange-500/10", label: "High" },
-  medium: { badge: "border-amber-500/40 text-amber-600 bg-amber-500/10", label: "Medium" },
-  low: { badge: "border-border text-muted-foreground", label: "Low" },
+  critical: { badge: STATUS.failed, label: "Critical" },
+  high: { badge: STATUS.rejected, label: "High" },
+  medium: { badge: STATUS.pending, label: "Medium" },
+  low: { badge: STATUS.idle, label: "Low" },
 }
 
 const TYPE_PROFILE: Record<string, { ms: number; source: "fixture" | "llm"; note: string }> = {

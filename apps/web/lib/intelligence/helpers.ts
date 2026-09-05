@@ -74,29 +74,26 @@ export function plainDecisionReasoning(value: unknown): string {
 export function modelStatusChipClass(status: string): string {
   const normalized = status.toUpperCase()
   if (normalized === "TRAINED" || normalized === "READY") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+    return STATUS.verified
   }
-  if (normalized === "HEURISTIC" || normalized === "DATA_GATE") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+  if (normalized === "HEURISTIC" || normalized === "DATA_GATE" || normalized === "PLANNED") {
+    return STATUS.pending
   }
-  if (normalized === "PLANNED") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
-  }
-  return "border-border bg-muted/60 text-muted-foreground"
+  return STATUS.idle
 }
 
 export function agentStatusBadgeClass(status: string): string {
   switch (status) {
     case "active":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+      return STATUS.verified
     case "degraded":
     case "error":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+      return STATUS.failed
     case "inactive":
     case "limited":
-      return "border-border bg-muted/50 text-muted-foreground"
+      return STATUS.idle
     default:
-      return "border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-200"
+      return STATUS.running
   }
 }
 

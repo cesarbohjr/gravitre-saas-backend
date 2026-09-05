@@ -42,6 +42,7 @@ import { type ToolInvocation, isInternalToolGateResult } from "@/components/grav
 import { ToolExecutionGroup } from "@/components/gravitre/agent-ui/tool-execution-group"
 import { ThinkingRow } from "@/components/gravitre/agent-ui/thinking-row"
 import { ClarificationMessage } from "@/components/gravitre/assistant/clarification-message"
+import { DialogueModeChip } from "@/components/gravitre/assistant/dialogue-mode-chip"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
@@ -360,6 +361,12 @@ export function ChatTranscript({
                       ) : null}
                       {showInlineStatus ? (
                         <ThinkingRow label={resolvedWaiting} active className="mb-2" />
+                      ) : null}
+                      {isLastAssistant &&
+                      dialogueMode &&
+                      dialogueMode !== "clarify" &&
+                      !showInlineStatus ? (
+                        <DialogueModeChip mode={dialogueMode} className="mb-2" />
                       ) : null}
                       {displayText.trim() ? (
                         dialogueMode === "clarify" && isLastAssistant ? (

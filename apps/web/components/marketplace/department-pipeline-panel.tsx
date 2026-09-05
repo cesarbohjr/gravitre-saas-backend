@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { RADIUS, STATUS } from "@/lib/design-system"
 import { departmentPipelinesApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { Switch } from "@/components/ui/switch"
@@ -195,7 +196,7 @@ export function DepartmentPipelinePanel({
                   <p className="text-xs text-muted-foreground">{stage.detail}</p>
                 ) : null}
                 {stage.requiresNewCapability ? (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                  <p className="text-xs text-[color:var(--status-pending)]">
                     Partial — see honest gaps below
                   </p>
                 ) : null}
@@ -206,7 +207,7 @@ export function DepartmentPipelinePanel({
       </ol>
 
       {pipeline.honestGaps?.length ? (
-        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+        <div className={cn("mt-4 border p-3 text-xs text-muted-foreground", RADIUS.card, STATUS.pending)}>
           <p className="font-medium text-foreground">Honest gaps</p>
           <ul className="mt-1 list-disc pl-4">
             {pipeline.honestGaps.map((gap) => (

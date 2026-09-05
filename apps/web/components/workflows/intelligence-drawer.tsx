@@ -79,17 +79,17 @@ const SEVERITY_STYLES: Record<
     label: "Critical",
   },
   high: {
-    dot: "bg-orange-500",
-    text: "text-orange-500",
-    border: "border-orange-500/40",
-    bg: "bg-orange-500/10",
+    dot: "bg-[color:var(--status-rejected)]",
+    text: "text-[color:var(--status-rejected)]",
+    border: "border-[color:var(--status-rejected)]/40",
+    bg: "bg-[color:var(--status-rejected)]/10",
     label: "High",
   },
   medium: {
-    dot: "bg-amber-500",
-    text: "text-amber-500",
-    border: "border-amber-500/40",
-    bg: "bg-amber-500/10",
+    dot: "bg-[color:var(--status-pending)]",
+    text: "text-[color:var(--status-pending)]",
+    border: "border-[color:var(--status-pending)]/40",
+    bg: "bg-[color:var(--status-pending)]/10",
     label: "Medium",
   },
   low: {
@@ -364,7 +364,7 @@ export function WorkflowIntelligenceDrawer({
             {/* Body */}
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {!isPersisted && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400">
+                <div className="mb-4 flex items-start gap-2 rounded-lg border border-[color:var(--status-pending)]/30 bg-[color:var(--status-pending)]/10 p-3 text-xs text-[color:var(--status-pending)]">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
                     This is an unsaved draft. Save the workflow to run a live risk scan and dry run

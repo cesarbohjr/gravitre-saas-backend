@@ -26,9 +26,9 @@ export const FAILURE_SEVERITY_META: Record<
   },
   high: {
     label: "High",
-    dot: "bg-amber-500",
-    text: "text-amber-500",
-    ring: "border-amber-500/30 bg-amber-500/5",
+    dot: "bg-[color:var(--status-pending)]",
+    text: "text-[color:var(--status-pending)]",
+    ring: "border-[color:var(--status-pending)]/30 bg-[color:var(--status-pending)]/5",
   },
   medium: {
     label: "Medium",
