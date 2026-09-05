@@ -53,6 +53,10 @@ BASE = os.environ.get(
     "https://gravitre-saas-backend-production.up.railway.app",
 ).rstrip("/")
 OUT = REPO / "docs" / "delivery" / "voice-pipecat-live-latency-2026-09-04.json"
+# Voice-SLO follow-up (2026-09-05): separate, dated output for the
+# post-speculative-generation re-measurement so the pre-fix baseline above
+# is never silently overwritten.
+OUT_SPECULATIVE = REPO / "docs" / "delivery" / "voice-pipecat-live-latency-2026-09-05-speculative.json"
 ISOLATED_ORG = "f07e57c0-1501-4000-8000-c04e57a00001"
 DEFAULT_ACTOR = "a9f1240f-910a-42ca-aebf-38caeac288c3"
 
@@ -338,32 +342,50 @@ def main() -> int:
             "end_to_end_ttfa_ms": {
                 "p50": _percentile(e2e, 50),
                 "p95": _percentile(e2e, 95),
+                "p99": _percentile(e2e, 99),
                 "raw": e2e,
             },
             "stt_and_turn_detection_ms": {
                 "p50": _percentile(stt, 50),
+                "p95": _percentile(stt, 95),
+                "p99": _percentile(stt, 99),
                 "raw": stt,
             },
-            "llm_ttft_ms": {"p50": _percentile(llm, 50), "raw": llm},
-            "tts_ttfa_ms": {"p50": _percentile(tts, 50), "raw": tts},
+            "llm_ttft_ms": {
+                "p50": _percentile(llm, 50),
+                "p95": _percentile(llm, 95),
+                "p99": _percentile(llm, 99),
+                "raw": llm,
+            },
+            "tts_ttfa_ms": {
+                "p50": _percentile(tts, 50),
+                "p95": _percentile(tts, 95),
+                "p99": _percentile(tts, 99),
+                "raw": tts,
+            },
             "sub_500ms_p95_met": (
                 (_percentile(e2e, 95) or 999999) < 500 if e2e else None
             ),
             "runs": runs_out,
         }
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    out_path = OUT_SPECULATIVE if os.environ.get("VOICE_PROBE_SPECULATIVE_OUT") else OUT
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     summary = {
         label: {
             "p50_ms": data.get("end_to_end_ttfa_ms", {}).get("p50"),
             "p95_ms": data.get("end_to_end_ttfa_ms", {}).get("p95"),
+            "p99_ms": data.get("end_to_end_ttfa_ms", {}).get("p99"),
+            "llm_ttft_p50_ms": data.get("llm_ttft_ms", {}).get("p50"),
+            "llm_ttft_p95_ms": data.get("llm_ttft_ms", {}).get("p95"),
+            "llm_ttft_p99_ms": data.get("llm_ttft_ms", {}).get("p99"),
             "sub_500ms_p95_met": data.get("sub_500ms_p95_met"),
             "n_ok": data.get("n_ok"),
         }
         for label, data in report["scenarios"].items()
     }
-    print(json.dumps({"git_sha": health.get("git_sha"), "summary": summary, "out": str(OUT)}, indent=2))
+    print(json.dumps({"git_sha": health.get("git_sha"), "summary": summary, "out": str(out_path)}, indent=2))
     return 0
 
 
