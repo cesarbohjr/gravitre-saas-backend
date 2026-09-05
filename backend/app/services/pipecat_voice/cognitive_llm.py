@@ -6,6 +6,7 @@ Knowledge Fabric depth tiering, Module C honesty, and spoken register stay intac
 """
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from pipecat.frames.frames import (
@@ -113,6 +114,8 @@ class GravitreCognitiveLLMService(LLMService):
         # sentence-chunked text via `split_speakable_chunks` + normalize —
         # exactly the pattern `stream_voice_turn_events` already uses.
         text_buffer = ""
+        turn_start = time.perf_counter()
+        first_delta_at: float | None = None
         async for event in intelligence.execute_task_streaming(
             settings=self._app_settings,
             org_id=self._org_id,
@@ -128,8 +131,41 @@ class GravitreCognitiveLLMService(LLMService):
                 continue
             if not isinstance(event, AssistantStreamEvent):
                 continue
+            if event.sse_type == "data-intelligence":
+                # Voice latency instrumentation (2026-09-04): the Pipecat bridge
+                # previously discarded this event entirely, so the routing/
+                # reasoning latency breakdown that unified-turn already
+                # computes was never visible for voice turns. Log-only —
+                # never sent to the client, zero behavior change.
+                payload = event.payload if isinstance(event.payload, dict) else {}
+                data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+                if isinstance(data, dict):
+                    routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
+                    logger.info(
+                        "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s reasoning_depth=%s "
+                        "routing_tier=%s effective_mode=%s model_ttft_ms=%s pre_model_ms=%s "
+                        "wall_to_first_token_ms=%s cached_prompt_tokens=%s cognitive_stage_ms=%s",
+                        self._org_id,
+                        int((time.perf_counter() - turn_start) * 1000),
+                        routing.get("reasoningDepth"),
+                        data.get("routingTier"),
+                        data.get("effectiveMode"),
+                        routing.get("modelTtftMs"),
+                        routing.get("preModelMs"),
+                        routing.get("wallToFirstTokenMs"),
+                        routing.get("cachedPromptTokens"),
+                        routing.get("cognitiveStageMs"),
+                    )
+                continue
             if event.sse_type != "text-delta":
                 continue
+            if first_delta_at is None:
+                first_delta_at = time.perf_counter()
+                logger.info(
+                    "pipecat_voice_turn_latency org_id=%s first_text_delta_ms=%s",
+                    self._org_id,
+                    int((first_delta_at - turn_start) * 1000),
+                )
             payload = event.payload if isinstance(event.payload, dict) else {}
             delta = str(payload.get("delta") or payload.get("textDelta") or "")
             if not delta:
