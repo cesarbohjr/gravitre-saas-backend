@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-05T03:06:22.893855+00:00",
+  "generated_at": "2026-09-05T04:08:18.204852+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
+  "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-05T03:05:55.731996+00:00",
+    "timestamp": "2026-09-05T04:07:50.685377+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
+    "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -55,13 +55,23 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "8be5bb32-abdd-4e57-abbe-826bc4564426",
+        "conversation_id": "3d338228-5808-4c63-9cc8-5ca1fb4e917d",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
+        "tts_warmup": "elevenlabs_ws_preconnect",
+        "barge_in": "elevenlabs_interrupt_report",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
         "stt_provider": "deepgram_flux",
         "stt_model": "flux-general-en",
         "stt_provider_key": "flux",
         "stt_turn_detection": "flux_native_eot"
+      },
+      {
+        "type": "tts.warmed",
+        "method": "elevenlabs_ws_preconnect",
+        "ok": true
       },
       {
         "label": "rtvi-ai",
@@ -69,21 +79,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#0",
+              "processor": "DeepgramFluxSTTService#4",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#0",
+              "processor": "ElevenLabsTTSService#4",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#0",
+              "processor": "DeepgramFluxSTTService#4",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#0",
+              "processor": "ElevenLabsTTSService#4",
               "value": 0.0
             }
           ]
@@ -163,7 +173,7 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#0",
+              "processor": "ElevenLabsTTSService#4",
               "model": "eleven_flash_v2_5",
               "value": 5
             }
@@ -203,13 +213,23 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "95c03b72-537f-4417-a78e-9d6631464b41",
+        "conversation_id": "36a6193e-79f0-454f-bdfd-abb2d5f56158",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
+        "tts_warmup": "elevenlabs_ws_preconnect",
+        "barge_in": "elevenlabs_interrupt_report",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
         "stt_provider": "deepgram_flux",
         "stt_model": "flux-general-en",
         "stt_provider_key": "flux",
         "stt_turn_detection": "flux_native_eot"
+      },
+      {
+        "type": "tts.warmed",
+        "method": "elevenlabs_ws_preconnect",
+        "ok": true
       },
       {
         "label": "rtvi-ai",
@@ -217,21 +237,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#1",
+              "processor": "DeepgramFluxSTTService#6",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#1",
+              "processor": "ElevenLabsTTSService#6",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#1",
+              "processor": "DeepgramFluxSTTService#6",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#1",
+              "processor": "ElevenLabsTTSService#6",
               "value": 0.0
             }
           ]
@@ -268,156 +288,123 @@
       },
       {
         "type": "assistant_text",
-        "delta": "I can\u2019t send the email f"
+        "delta": "I don\u2019t have enough info"
       },
       {
         "type": "assistant_text",
-        "delta": "I can\u2019t send the email f"
+        "delta": "I don\u2019t have enough info"
       },
       {
         "type": "assistant_text",
-        "delta": "rom the information prov"
+        "delta": "rmation yet. Tell me Sar"
       },
       {
         "type": "assistant_text",
-        "delta": "rom the information prov"
+        "delta": "rmation yet. Tell me Sar"
       },
       {
         "type": "assistant_text",
-        "delta": "ided.\n\n- I don\u2019t have Sa"
+        "delta": "ah\u2019s email address or th"
       },
       {
         "type": "assistant_text",
-        "delta": "ided.\n\n- I don\u2019t have Sa"
+        "delta": "ah\u2019s email address or th"
       },
       {
         "type": "assistant_text",
-        "delta": "rah\u2019s email address or a"
+        "delta": "e connected CRM record t"
       },
       {
         "type": "assistant_text",
-        "delta": "rah\u2019s email address or a"
+        "delta": "e connected CRM record t"
       },
       {
         "type": "assistant_text",
-        "delta": " connected email-sending"
+        "delta": "o use, and I\u2019ll continue"
       },
       {
         "type": "assistant_text",
-        "delta": " connected email-sending"
+        "delta": "o use, and I\u2019ll continue"
       },
       {
         "type": "assistant_text",
-        "delta": " tool in this request.\n-"
+        "delta": "."
       },
       {
         "type": "assistant_text",
-        "delta": " tool in this request.\n-"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " If you want, give me Sa"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " If you want, give me Sa"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "rah\u2019s email and I\u2019ll dra"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "rah\u2019s email and I\u2019ll dra"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "ft the message.\n- If you"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "ft the message.\n- If you"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "r workflow has an email "
-      },
-      {
-        "type": "assistant_text",
-        "delta": "r workflow has an email "
-      },
-      {
-        "type": "assistant_text",
-        "delta": "connector, tell me which"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "connector, tell me which"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " one to use and I\u2019ll hel"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " one to use and I\u2019ll hel"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "p route it."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "p route it."
+        "delta": "."
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I can\u2019t send the email from the information provided."
+          "text": "I don\u2019t have enough information yet."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I can\u2019t send the email from the information provided."
+          "text": "I don\u2019t have enough information yet."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I don\u2019t have Sarah\u2019s email address or a connected email-sending tool in this request."
+          "text": "Tell me Sarah\u2019s email address or the connected CRM record to use."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I don\u2019t have Sarah\u2019s email address or a connected email-sending tool in this request."
+          "text": "Tell me Sarah\u2019s email address or the connected CRM record to use."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "If you want, give me Sarah\u2019s email and I\u2019ll draft the message."
+          "text": ", and I\u2019ll continue."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "If you want, give me Sarah\u2019s email and I\u2019ll draft the message."
+          "text": ", and I\u2019ll continue."
         }
       },
       {
         "label": "rtvi-ai",
-        "type": "bot-llm-text",
+        "type": "bot-llm-stopped"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
         "data": {
-          "text": "If your workflow has an email connector."
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "value": 121
+            }
+          ]
         }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-started"
+      },
+      {
+        "type": "audio",
+        "sample_rate": 16000
       }
     ],
     "audio_frames": 1,
@@ -430,8 +417,8 @@
     "stt_model": "flux-general-en",
     "tts_model": "eleven_flash_v2_5",
     "tts_transport": "websocket",
-    "assistant_text": "I can\u2019t send the email fI can\u2019t send the email from the information provrom the information provided.\n\n- I don\u2019t have Saided.\n\n- I don\u2019t have Sarah\u2019s email address or arah\u2019s email address or a connected email-sending connected email-sending tool in this request.\n- tool in this request.\n- If you want, give me Sa If you want, give me Sarah\u2019s email and I\u2019ll drarah\u2019s email and I\u2019ll draft the message.\n- If youft the message.\n- If your workflow has an email r workflow has an email connector, tell me whichconnector, tell me which one to use and I\u2019ll hel one to use and I\u2019ll help route it.p route it.",
-    "confirm_language_detected": true,
+    "assistant_text": "I don\u2019t have enough infoI don\u2019t have enough information yet. Tell me Sarrmation yet. Tell me Sarah\u2019s email address or thah\u2019s email address or the connected CRM record te connected CRM record to use, and I\u2019ll continueo use, and I\u2019ll continue..",
+    "confirm_language_detected": false,
     "verdict": "PASS"
   },
   "verdict": "PASS",
