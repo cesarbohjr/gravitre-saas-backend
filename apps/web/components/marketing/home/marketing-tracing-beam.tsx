@@ -35,7 +35,7 @@ export function MarketingTracingBeam({
         />
       ) : (
         <motion.div
-          className="absolute left-0 top-0 w-full origin-top rounded-full bg-gradient-to-b from-primary via-primary to-info"
+          className="absolute left-0 top-0 w-full origin-top rounded-full bg-gradient-to-b from-[color:var(--g-signal)] via-[color:var(--g-intelligence)] to-[color:var(--g-emerald)]"
           initial={false}
           animate={{ height: `${progress}%` }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}

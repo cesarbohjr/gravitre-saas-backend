@@ -6,13 +6,13 @@ import { useRef } from "react"
 import { ArrowRight, Play } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { useMotionPrefs, timing } from "@/lib/animations"
-import { HeroBrandBeams } from "./hero-brand-beams"
+import { IntelligenceField } from "@/components/gravitre/visual"
 import { ProductPreview } from "./product-preview"
 
 /**
- * Marketing home first viewport (UI 2.0 Pilot A).
+ * Marketing home first viewport (UI 2.0 Pilot A + Design Pass 2 material).
  * Budget: brand · one headline · one support · one CTA group · one dominant visual.
- * No hero pill clusters / badge strips. Tokens: semantic brand (light-first).
+ * Layout locked — Intelligence Field upgrades atmosphere behind existing content.
  */
 export function HeroParallax() {
   const heroRef = useRef(null)
@@ -31,21 +31,20 @@ export function HeroParallax() {
       className="relative flex min-h-[100svh] items-center justify-center bg-background text-foreground"
       data-marketing-hero=""
     >
-      <HeroBrandBeams />
+      <IntelligenceField variant="hero" />
 
       <motion.div
         style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
         className="relative mx-auto max-w-7xl px-6 py-28 sm:py-36"
       >
         <div className="mx-auto max-w-4xl text-center">
-          {/* Brand is a hero-level signal, not only nav chrome. */}
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
             Gravitre
           </p>
 
           <h1 className="mt-5 text-5xl font-bold tracking-tight sm:text-7xl lg:text-8xl">
             <span className="block text-foreground">{MARKETING_COPY.hero.headline[0]}</span>
-            <span className="mt-1 block bg-gradient-to-r from-primary via-primary/50 to-info bg-clip-text text-transparent">
+            <span className="mt-1 block bg-gradient-to-r from-primary via-[color:var(--g-intelligence)]/70 to-[color:var(--g-intelligence)] bg-clip-text text-transparent">
               {MARKETING_COPY.hero.headline[1]}
             </span>
           </h1>
@@ -57,17 +56,17 @@ export function HeroParallax() {
           <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/get-started"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-all duration-[var(--g-duration-micro)] hover:opacity-95 hover:shadow-[var(--g-glow-operational)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <span>{MARKETING_COPY.hero.ctaPrimary}</span>
               <ArrowRight
                 strokeWidth={1.5}
-                className="h-5 w-5 transition-transform group-hover:translate-x-1"
+                className="h-5 w-5 transition-transform duration-[var(--g-duration-micro)] group-hover:translate-x-1"
               />
             </Link>
             <Link
               href="/features"
-              className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-8 py-4 text-base font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all hover:bg-card hover:border-primary/30 active:scale-[0.98]"
+              className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/80 px-8 py-4 text-base font-semibold text-foreground shadow-[var(--g-shadow-surface)] backdrop-blur-sm transition-all duration-[var(--g-duration-micro)] hover:border-[color:var(--g-border-active)] hover:bg-[color:var(--g-surface-2)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Play strokeWidth={1.5} className="h-5 w-5 fill-foreground" />
               <span>{MARKETING_COPY.hero.ctaSecondary}</span>

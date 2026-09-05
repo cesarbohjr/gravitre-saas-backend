@@ -19,9 +19,9 @@ export function MarketingBackgroundLines({ className }: { className?: string }) 
       <svg className="absolute inset-0 h-full w-full opacity-[0.09]" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="gv-mkt-line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0" />
-            <stop offset="45%" stopColor="var(--primary)" stopOpacity="1" />
-            <stop offset="100%" stopColor="var(--info)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--g-emerald)" stopOpacity="0" />
+            <stop offset="40%" stopColor="var(--g-intelligence)" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="var(--g-signal)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {Array.from({ length: LINES }).map((_, i) => {
@@ -35,8 +35,8 @@ export function MarketingBackgroundLines({ className }: { className?: string }) 
                 y1="0%"
                 x2={x2}
                 y2="100%"
-                stroke="var(--primary)"
-                strokeOpacity={0.2}
+                stroke="var(--g-intelligence)"
+                strokeOpacity={0.22}
                 strokeWidth="1"
               />
             )

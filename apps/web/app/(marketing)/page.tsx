@@ -15,6 +15,7 @@ import {
 // directly from this Server Component, so the ssr:false opt-out lives inside
 // this "use client" wrapper instead (see its file docstring).
 import { MarketingBackgroundLines } from "@/components/marketing/home/marketing-background-lines-client"
+import { IntelligenceField } from "@/components/gravitre/visual"
 
 // Below-fold client islands — keep HeroParallax eager for LCP; split the rest.
 const AnimatedStat = dynamic(
@@ -75,8 +76,9 @@ export default function HomePage() {
       </section>
 
       <section className="relative py-32 bg-muted/50">
-        <MarketingBackgroundLines />
-        <FloatingOrb className="w-[500px] h-[500px] bg-primary/10 top-1/4 -left-64" delay={1} />
+        <IntelligenceField variant="section" className="opacity-70" />
+        <MarketingBackgroundLines className="opacity-60" />
+        <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/8 top-1/4 -left-64" delay={1} />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-20">
@@ -156,7 +158,8 @@ export default function HomePage() {
       </section>
 
       <section className="relative py-32 border-t border-border overflow-hidden bg-muted/50">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-[color:var(--g-intelligence)]/5" />
+        <IntelligenceField variant="section" className="opacity-40" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-16">
@@ -177,7 +180,8 @@ export default function HomePage() {
       </section>
 
       <section className="relative border-t border-border bg-background py-32">
-        <MarketingBackgroundLines className="opacity-80" />
+        <IntelligenceField variant="section" className="opacity-50" />
+        <MarketingBackgroundLines className="opacity-70" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-20 max-w-2xl text-center">
             <span className="text-sm font-semibold uppercase tracking-wide text-primary">

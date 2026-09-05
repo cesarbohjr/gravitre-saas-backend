@@ -108,6 +108,53 @@
   --status-verified: var(--success);
   --status-estimate: var(--warning);
   --status-idle: var(--muted-foreground);
+
+  /* ------------------------------------------------------------------
+     Design Pass 2 — Gravitre semantic + energy aliases (marketing→shared).
+     Prefer these over inventing a parallel palette. Graphite = system,
+     violet = intelligence, emerald = action/truth, signal = connectivity.
+     ------------------------------------------------------------------ */
+  --g-void: var(--background);
+  --g-background: var(--background);
+  --g-surface-1: var(--card);
+  --g-surface-2: color-mix(in oklch, var(--card) 88%, var(--muted) 12%);
+  --g-surface-3: var(--accent);
+  --g-surface-active: color-mix(in oklch, oklch(0.52 0.14 305) 8%, var(--card));
+  --g-text-primary: var(--foreground);
+  --g-text-secondary: var(--muted-foreground);
+  --g-text-muted: var(--muted-foreground);
+  --g-text-disabled: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  --g-border-subtle: color-mix(in oklch, var(--border) 70%, transparent);
+  --g-border-default: var(--border);
+  --g-border-active: color-mix(in oklch, var(--primary) 35%, var(--border));
+  --g-intelligence: oklch(0.52 0.14 305);
+  --g-intelligence-bright: oklch(0.58 0.16 305);
+  --g-intelligence-soft: color-mix(in oklch, oklch(0.52 0.14 305) 10%, transparent);
+  --g-intelligence-glow: 0 0 48px color-mix(in oklch, oklch(0.52 0.14 305) 20%, transparent);
+  --g-emerald: var(--primary);
+  --g-emerald-bright: oklch(0.62 0.16 162);
+  --g-emerald-soft: color-mix(in oklch, var(--primary) 10%, transparent);
+  --g-emerald-glow: 0 0 40px color-mix(in oklch, var(--primary) 25%, transparent);
+  --g-signal: var(--info);
+  --g-warning: var(--warning);
+  --g-danger: var(--destructive);
+  --g-success: var(--success);
+  --g-glow-intelligence: var(--g-intelligence-glow);
+  --g-glow-operational: var(--g-emerald-glow);
+  --g-glow-signal: 0 0 32px color-mix(in oklch, var(--info) 22%, transparent);
+  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.52 0.14 305) 18%, transparent);
+  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 22%, transparent);
+  --g-shadow-surface: var(--elevation-1);
+  --g-shadow-elevated: var(--elevation-2);
+  --g-blur-atmosphere: 48px;
+  --g-duration-micro: 150ms;
+  --g-duration-state: 320ms;
+  --g-duration-flow: 800ms;
+  --g-duration-ambient: 14s;
+  --g-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --g-ease-intelligence: cubic-bezier(0.22, 1, 0.36, 1);
+  --g-ease-signal: cubic-bezier(0.45, 0, 0.55, 1);
+  --g-ease-resolve: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
@@ -191,6 +238,49 @@
   --status-verified: var(--success);
   --status-estimate: var(--warning);
   --status-idle: var(--muted-foreground);
+
+  /* Design Pass 2 aliases — dark values where intelligence/emerald diverge */
+  --g-void: var(--background);
+  --g-background: var(--background);
+  --g-surface-1: var(--card);
+  --g-surface-2: color-mix(in oklch, var(--card) 86%, var(--muted) 14%);
+  --g-surface-3: var(--accent);
+  --g-surface-active: color-mix(in oklch, oklch(0.70 0.14 305) 8%, var(--card));
+  --g-text-primary: var(--foreground);
+  --g-text-secondary: var(--muted-foreground);
+  --g-text-muted: var(--muted-foreground);
+  --g-text-disabled: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
+  --g-border-subtle: color-mix(in oklch, var(--border) 75%, transparent);
+  --g-border-default: var(--border);
+  --g-border-active: color-mix(in oklch, var(--primary) 40%, var(--border));
+  --g-intelligence: oklch(0.70 0.14 305);
+  --g-intelligence-bright: oklch(0.76 0.15 305);
+  --g-intelligence-soft: color-mix(in oklch, oklch(0.70 0.14 305) 10%, transparent);
+  --g-intelligence-glow: 0 0 48px color-mix(in oklch, oklch(0.70 0.14 305) 20%, transparent);
+  --g-emerald: var(--primary);
+  --g-emerald-bright: oklch(0.78 0.14 162);
+  --g-emerald-soft: color-mix(in oklch, var(--primary) 10%, transparent);
+  --g-emerald-glow: 0 0 40px color-mix(in oklch, var(--primary) 28%, transparent);
+  --g-signal: var(--info);
+  --g-warning: var(--warning);
+  --g-danger: var(--destructive);
+  --g-success: var(--success);
+  --g-glow-intelligence: var(--g-intelligence-glow);
+  --g-glow-operational: var(--g-emerald-glow);
+  --g-glow-signal: 0 0 32px color-mix(in oklch, var(--info) 24%, transparent);
+  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.70 0.14 305) 16%, transparent);
+  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 20%, transparent);
+  --g-shadow-surface: var(--elevation-1);
+  --g-shadow-elevated: var(--elevation-2);
+  --g-blur-atmosphere: 56px;
+  --g-duration-micro: 150ms;
+  --g-duration-state: 320ms;
+  --g-duration-flow: 800ms;
+  --g-duration-ambient: 16s;
+  --g-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --g-ease-intelligence: cubic-bezier(0.22, 1, 0.36, 1);
+  --g-ease-signal: cubic-bezier(0.45, 0, 0.55, 1);
+  --g-ease-resolve: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
@@ -261,6 +351,12 @@
   /* Exposes bg-assistant-avatar / text-assistant-avatar-foreground. */
   --color-assistant-avatar: var(--assistant-avatar);
   --color-assistant-avatar-foreground: var(--assistant-avatar-foreground);
+  /* Design Pass 2 semantic brand axes (Tailwind color utilities). */
+  --color-g-intelligence: var(--g-intelligence);
+  --color-g-intelligence-bright: var(--g-intelligence-bright);
+  --color-g-emerald: var(--g-emerald);
+  --color-g-emerald-bright: var(--g-emerald-bright);
+  --color-g-signal: var(--g-signal);
 }
 
 @layer base {

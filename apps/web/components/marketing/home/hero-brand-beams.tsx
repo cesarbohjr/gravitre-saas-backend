@@ -1,6 +1,9 @@
 "use client"
 
 /**
+ * @deprecated Design Pass 2 — superseded by IntelligenceField on the marketing hero.
+ * Kept for reference / potential non-hero reuse. Prefer `@/components/gravitre/visual`.
+ *
  * Aceternity-inspired beam atmosphere for the marketing hero.
  * Pattern only — retokened to Gravitre emerald / semantic surfaces.
  * Do not import Aceternity purple gradients or ship foreign brand chrome.

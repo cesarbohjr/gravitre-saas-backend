@@ -117,6 +117,8 @@ export const MOTION_CONCEPT = {
   ORBIT: "orbit",
   TRACE: "trace",
   RESOLVE: "resolve",
+  /** Shared packet motif (Design Pass 2) — marketing Intelligence Field first. */
+  SIGNAL: "signal",
 } as const
 
 /**
