@@ -1,54 +1,33 @@
 # Design Pass 2 — Reference + Implementation Audit (revised)
 
 **Date:** 2026-09-05  
-**Status:** Production live · craft polish tranche in flight  
+**Status:** Craft remediation after Cesar visual feedback (Agenforce live preview)  
 **Live:** https://gravitre.app/  
 **Scope:** Marketing homepage pilot — visual material only
 
-## Deploy evidence
+## Cesar feedback (screenshots)
 
-| Commit | What | Evidence |
-|--------|------|----------|
-| `38060781` | Pass 2 material | Vercel success · Production @ `2026-09-05T08:37:07Z` |
-| `4981adf5` | Light Field contrast v1 | Vercel **success** · live hero Field + STATUS chips + emerald→violet headline |
-| *(next)* | Light atmosphere without blur dissolve + stronger Signal | Pending push |
+| Issue | Root cause | Fix |
+|-------|------------|-----|
+| Black text on black | How-it-works / showcase / GIBE cards used `bg-foreground` + `text-foreground` | Surfaces → `bg-card` / `--g-surface-*` |
+| Green CTAs become black | Desktop Download used `bg-foreground text-white` | → `bg-primary text-primary-foreground` |
+| Old light SaaS canvas | MarketingChrome forced light feel (`data-theme="light"`) vs Agenforce dark craft | Force `dark` graphite marketing shell |
+| Yellow theme | Unsigned build amber pills/boxes + yellow traffic lights + amber accents | Graphite note surfaces; muted chrome dots; semantic emerald/violet/signal |
+| Partial desktop windows | Flat cut-off mocks | Soft bottom mask fade (Agenforce principle) on ProductPreview + DesktopCompanion |
 
-## Live visual QA (4981adf5)
+## Access honesty
 
-**Confirmed on gravitre.app:**
-- Intelligence Field topology behind hero  
-- ProductPreview STATUS (`Intent received` / beat progression)  
-- Headline emerald → violet  
-- Feature cards: violet on AI/Agents, emerald on Browser Extension (semantic split)  
-- Section grid continuity into features  
+Agenforce craft check via **PUBLIC PREVIEW** (`ui.aceternity.com/template-preview/agenforce-marketing-template` + live template). Not licensed source.
 
-**Still under-realized on light canvas:** FAR radial washes (blur dissolved tint) · Signal packet too faint · atmosphere depth vs Agenforce craft bar.
+## Deploy chain
 
-## Craft scores
-
-| Axis | Pre-Pass2 | After 4981adf5 | Target |
-|------|----------:|---------------:|-------:|
-| Background | 5 | 7 | ≥8 |
-| Atmosphere | 4 | 6–7 | ≥8 |
-| Depth | 5 | 7 | ≥8 |
-| Motion | 5 | 7 | ≥8 |
-| Micro-interaction | 6 | 7 | ≥8 |
-| Focal composition | 7 | 8 | ≥8 |
-| Surface quality | 5 | 7 | ≥8 |
-| Product presentation | 5 | 8 | ≥8 |
-| Brand distinctiveness | 6 | 7–8 | ≥8 |
-| AI presence | 4 | 7 | ≥8 |
-| Operational presence | 5 | 7–8 | ≥8 |
-| Calmness | 8 | 8 | ≥8 |
-
-## Next polish (this tranche)
-
-1. Light-mode atmosphere: **color-mix radials without blur** (blur was washing out tint)  
-2. Stronger `GravitreSignal` stroke/packet on light  
-3. Dual quiet feature-section orbs (intelligence + emerald) for continuity  
-
-Human confirm still required before closing Pass 2 as all-axes ≥8.
+| Commit | Note |
+|--------|------|
+| `38060781` | Pass 2 material |
+| `4981adf5` | Light wash v1 |
+| `dbaca24b` | Light wash without blur |
+| *(next)* | Dark canvas + contrast/yellow/button remediation |
 
 ## Explicit non-claims
 
-No layout/copy/IA change. No invented prices/TRAINED/fake metrics. Ops Aceternity rejected by default.
+No layout/copy/IA change. No invented prices/TRAINED/fake metrics. Emerald remains execute CTA (not Agenforce white transplant).

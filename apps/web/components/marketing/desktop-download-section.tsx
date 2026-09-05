@@ -167,7 +167,7 @@ export function DesktopDownloadSection({
 
           <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             Gravitre,{" "}
-            <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-primary/80 to-[color:var(--g-intelligence)] bg-clip-text text-transparent">
               one shortcut away.
             </span>
           </h1>
@@ -187,7 +187,7 @@ export function DesktopDownloadSection({
               </span>
             ) : null}
             {isUnsigned ? (
-              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-sm font-semibold text-amber-900">
+              <span className="inline-flex items-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
                 Unsigned early build
               </span>
             ) : null}
@@ -231,7 +231,7 @@ export function DesktopDownloadSection({
                       {platform.index}
                     </span>
                     {highlighted ? (
-                      <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
                         Your OS
                       </span>
                     ) : null}
@@ -245,7 +245,7 @@ export function DesktopDownloadSection({
 
                 <a
                   href={platform.href}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--g-shadow-surface)] transition-all hover:opacity-95 hover:shadow-[var(--g-glow-operational)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <Download className="h-4 w-4" />
                   Download
@@ -276,17 +276,17 @@ export function DesktopDownloadSection({
             transition={{ duration: 0.45, delay: 0.1 }}
             role="note"
             aria-label="Unsigned build security warnings"
-            className="mt-10 rounded-[1.35rem] border border-amber-200/90 bg-amber-50/90 p-6 sm:p-8"
+            className="mt-10 rounded-[1.35rem] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 sm:p-8 shadow-[var(--g-shadow-elevated)]"
           >
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] text-muted-foreground">
                 <AlertTriangle className="h-4 w-4" aria-hidden />
               </span>
               <div>
-                <p className="text-base font-semibold text-amber-950">
+                <p className="text-base font-semibold text-foreground">
                   These are early, unsigned builds
                 </p>
-                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-amber-950/85">
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
                   We have not yet provisioned Apple or Windows code-signing certificates. On first
                   launch, Windows and macOS will show a real security warning. That is expected for
                   this release — not malware, and not something we are hiding. Signed installers are
@@ -296,7 +296,7 @@ export function DesktopDownloadSection({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-amber-100 bg-card p-5 shadow-sm shadow-amber-900/5">
+              <div className="rounded-2xl border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-5 shadow-[var(--g-shadow-surface)]">
                 <p className="text-sm font-semibold text-foreground">
                   Windows — “Windows protected your PC”
                 </p>
@@ -307,7 +307,7 @@ export function DesktopDownloadSection({
                   downloaded from this page or the official GitHub release.
                 </p>
               </div>
-              <div className="rounded-2xl border border-amber-100 bg-card p-5 shadow-sm shadow-amber-900/5">
+              <div className="rounded-2xl border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-5 shadow-[var(--g-shadow-surface)]">
                 <p className="text-sm font-semibold text-foreground">
                   macOS — “Apple could not verify…” / cannot be opened
                 </p>
@@ -320,11 +320,11 @@ export function DesktopDownloadSection({
               </div>
             </div>
 
-            <p className="mt-5 text-xs text-amber-900/75">
+            <p className="mt-5 text-xs text-muted-foreground">
               Release assets:{" "}
               <a
                 href={releaseUrl}
-                className="font-semibold underline underline-offset-2 hover:text-amber-950"
+                className="font-semibold text-primary underline underline-offset-2 hover:opacity-90"
                 target="_blank"
                 rel="noopener noreferrer"
               >

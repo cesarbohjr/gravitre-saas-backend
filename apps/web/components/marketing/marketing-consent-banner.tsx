@@ -134,7 +134,7 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={acceptAll}
-                className="inline-flex h-10 items-center justify-center rounded-full bg-foreground px-4 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-95"
               >
                 Accept all
               </button>
@@ -208,7 +208,7 @@ export function MarketingConsentBanner({ country }: Props) {
               <button
                 type="button"
                 onClick={acceptAll}
-                className="inline-flex h-10 items-center justify-center rounded-full bg-foreground px-4 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-95"
               >
                 Accept all
               </button>
@@ -244,7 +244,7 @@ function PreferenceRow({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-foreground" : "bg-muted",
+          checked ? "bg-primary" : "bg-muted",
         )}
       >
         <span

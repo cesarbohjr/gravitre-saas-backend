@@ -6,7 +6,7 @@ import { GibeHonestyCards } from "@/components/marketing/gibe-honesty-cards"
 
 export function ConnectorsStepVisual() {
   return (
-    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-border">
+    <div className="rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 shadow-[var(--g-shadow-elevated)]">
       <div className="space-y-3">
         {[
           { label: "HubSpot", status: "Executable", ok: true },
@@ -18,12 +18,14 @@ export function ConnectorsStepVisual() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="flex items-center justify-between p-4 rounded-lg border border-border bg-foreground/90/50"
+            className="flex items-center justify-between rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-4"
           >
             <span className="text-sm text-foreground">{row.label}</span>
             <span
-              className={`text-xs px-2 py-1 rounded-full ${
-                row.ok ? "bg-primary/100/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+              className={`rounded-full px-2 py-1 text-xs ${
+                row.ok
+                  ? "bg-primary/15 text-primary"
+                  : "border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] text-muted-foreground"
               }`}
             >
               {row.status}
@@ -37,7 +39,7 @@ export function ConnectorsStepVisual() {
 
 export function GibeHonestyStepVisual() {
   return (
-    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-border">
+    <div className="rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 shadow-[var(--g-shadow-elevated)]">
       <GibeHonestyCards />
     </div>
   )
@@ -45,13 +47,13 @@ export function GibeHonestyStepVisual() {
 
 export function AgentsStepVisual() {
   return (
-    <div className="bg-foreground rounded-xl p-6 shadow-2xl border border-border">
+    <div className="rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 shadow-[var(--g-shadow-elevated)]">
       <div className="flex items-center justify-center gap-2">
         {[
-          { icon: Zap, color: "emerald" },
-          { icon: Bot, color: "blue" },
-          { icon: Users, color: "purple" },
-          { icon: Shield, color: "amber" },
+          { icon: Zap, tone: "emerald" as const },
+          { icon: Bot, tone: "signal" as const },
+          { icon: Users, tone: "intelligence" as const },
+          { icon: Shield, tone: "emerald" as const },
         ].map((node, i) => (
           <motion.div
             key={i}
@@ -61,29 +63,25 @@ export function AgentsStepVisual() {
             className="flex items-center"
           >
             <div
-              className={`h-12 w-12 rounded-xl flex items-center justify-center border ${
-                node.color === "emerald"
-                  ? "border-primary/30 bg-primary/100/10"
-                  : node.color === "blue"
-                    ? "border-blue-500/30 bg-blue-500/10"
-                    : node.color === "purple"
-                      ? "border-purple-500/30 bg-purple-500/10"
-                      : "border-amber-500/30 bg-amber-500/10"
+              className={`flex h-12 w-12 items-center justify-center rounded-xl border ${
+                node.tone === "emerald"
+                  ? "border-primary/30 bg-primary/10"
+                  : node.tone === "signal"
+                    ? "border-[color:var(--g-signal)]/30 bg-[color:var(--g-signal)]/10"
+                    : "border-[color:var(--g-intelligence)]/30 bg-[color:var(--g-intelligence)]/10"
               }`}
             >
               <node.icon
                 className={`h-5 w-5 ${
-                  node.color === "emerald"
-                    ? "text-emerald-400"
-                    : node.color === "blue"
-                      ? "text-blue-400"
-                      : node.color === "purple"
-                        ? "text-purple-400"
-                        : "text-amber-400"
+                  node.tone === "emerald"
+                    ? "text-primary"
+                    : node.tone === "signal"
+                      ? "text-[color:var(--g-signal)]"
+                      : "text-[color:var(--g-intelligence)]"
                 }`}
               />
             </div>
-            {i < 3 && <div className="w-6 h-0.5 bg-muted" />}
+            {i < 3 ? <div className="h-0.5 w-6 bg-muted" /> : null}
           </motion.div>
         ))}
       </div>

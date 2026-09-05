@@ -24,11 +24,11 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<Hone
 
 function ClaimCard({ claim, className }: { claim: MarketingIntelClaim; className?: string }) {
   return (
-    <div className={cn("rounded-lg border border-border bg-foreground/90/50 p-3", className)}>
+    <div className={cn("rounded-lg border border-border bg-card/70 p-3", className)}>
       <p className="text-muted-foreground text-xs">{claim.eyebrow}</p>
       <p className="text-foreground mt-1 text-sm leading-snug">{claim.primary}</p>
       {claim.provenance !== "computed" && claim.provenance !== "operational" ? (
-        <p className="mt-1.5 text-[10px] uppercase tracking-wide text-amber-500/90">
+        <p className="mt-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
           {claim.provenance === "data_gate" ? "Data gate" : "Honest status"}
         </p>
       ) : null}

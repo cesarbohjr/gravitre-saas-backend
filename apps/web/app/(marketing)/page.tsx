@@ -154,7 +154,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <IntegrationsGrid theme="light" />
+          <IntegrationsGrid theme="dark" />
         </div>
       </section>
 

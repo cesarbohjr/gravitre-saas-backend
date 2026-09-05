@@ -104,22 +104,31 @@ export function ProductPreview() {
         className={cn(
           "absolute -inset-4 rounded-3xl blur-2xl transition-opacity duration-700",
           operationalActive
-            ? "bg-[color:var(--g-emerald)]/20 opacity-100"
+            ? "bg-[color:var(--g-emerald)]/25 opacity-100"
             : intelligenceActive
-              ? "bg-[color:var(--g-intelligence)]/15 opacity-90"
-              : "bg-primary/10 opacity-70",
+              ? "bg-[color:var(--g-intelligence)]/20 opacity-90"
+              : "bg-primary/15 opacity-70",
         )}
       />
+      {/* Agenforce-style product shell: light UI on dark field, soft bottom fade */}
       <div
         className="relative rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-2 shadow-[var(--g-shadow-elevated)]"
-        style={{ boxShadow: operationalActive ? "var(--g-glow-operational)" : undefined }}
+        style={{
+          boxShadow: operationalActive
+            ? "var(--g-glow-operational)"
+            : "var(--highlight-edge), var(--g-shadow-elevated)",
+          maskImage:
+            "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)",
+        }}
       >
         <div className="overflow-hidden rounded-xl border border-[color:var(--g-border-subtle)] bg-muted/40">
           <div className="flex items-center gap-2 border-b border-border bg-[color:var(--g-surface-1)] px-4 py-3">
             <div className="flex gap-1.5">
-              <div className="h-3 w-3 rounded-full bg-red-400/80" />
-              <div className="h-3 w-3 rounded-full bg-yellow-400/80" />
-              <div className="h-3 w-3 rounded-full bg-green-400/80" />
+              <div className="h-3 w-3 rounded-full bg-muted-foreground/35" />
+              <div className="h-3 w-3 rounded-full bg-muted-foreground/25" />
+              <div className="h-3 w-3 rounded-full bg-primary/55" />
             </div>
             <div className="flex-1 text-center">
               <span className="font-mono text-xs text-muted-foreground">gravitre.app/ai</span>
