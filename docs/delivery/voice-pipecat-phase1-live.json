@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-05T04:33:14.683535+00:00",
+  "generated_at": "2026-09-05T05:52:18.219942+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
+  "git_sha": "f29481ffc6848ae0545657c9eba071e22135b746",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-05T04:32:46.270503+00:00",
+    "timestamp": "2026-09-05T05:51:54.577488+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
+    "git_sha": "f29481ffc6848ae0545657c9eba071e22135b746",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -55,7 +55,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "7c94f3da-a6f5-4504-ac17-7dd7012929bd",
+        "conversation_id": "5239e761-038b-4262-b8a6-46d1b66fb254",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
@@ -79,21 +79,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#10",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#10",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#10",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#10",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ]
@@ -173,7 +173,7 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#10",
+              "processor": "ElevenLabsTTSService#0",
               "model": "eleven_flash_v2_5",
               "value": 5
             }
@@ -213,7 +213,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "fe44ec1e-3f73-4e27-95c2-ae0ae578764c",
+        "conversation_id": "a3429c72-d2ca-4b14-a852-ff01037e9dad",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
@@ -237,21 +237,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#11",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#11",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#11",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#11",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ]
@@ -288,142 +288,154 @@
       },
       {
         "type": "assistant_text",
-        "delta": "I can help draft the ema"
+        "delta": "I can\u2019t send the email f"
       },
       {
         "type": "assistant_text",
-        "delta": "I can help draft the ema"
+        "delta": "I can\u2019t send the email f"
       },
       {
         "type": "assistant_text",
-        "delta": "il, but I can\u2019t send mes"
+        "delta": "rom this prompt alone.\n\n"
       },
       {
         "type": "assistant_text",
-        "delta": "il, but I can\u2019t send mes"
+        "delta": "rom this prompt alone.\n\n"
       },
       {
         "type": "assistant_text",
-        "delta": "sages from here without "
+        "delta": "- I don\u2019t have Sarah\u2019s e"
       },
       {
         "type": "assistant_text",
-        "delta": "sages from here without "
+        "delta": "- I don\u2019t have Sarah\u2019s e"
       },
       {
         "type": "assistant_text",
-        "delta": "a connected email tool o"
+        "delta": "mail address or a mail c"
       },
       {
         "type": "assistant_text",
-        "delta": "a connected email tool o"
+        "delta": "mail address or a mail c"
       },
       {
         "type": "assistant_text",
-        "delta": "r the recipient details."
+        "delta": "onnector/action availabl"
       },
       {
         "type": "assistant_text",
-        "delta": "r the recipient details."
+        "delta": "onnector/action availabl"
       },
       {
         "type": "assistant_text",
-        "delta": "\n\n- Suggested email: \u201cHi"
+        "delta": "e here.\n- If you want me"
       },
       {
         "type": "assistant_text",
-        "delta": "\n\n- Suggested email: \u201cHi"
+        "delta": "e here.\n- If you want me"
       },
       {
         "type": "assistant_text",
-        "delta": " Sarah \u2014 the campaign ha"
+        "delta": " to continue, give me Sa"
       },
       {
         "type": "assistant_text",
-        "delta": " Sarah \u2014 the campaign ha"
+        "delta": " to continue, give me Sa"
       },
       {
         "type": "assistant_text",
-        "delta": "s been moved to Monday. "
+        "delta": "rah\u2019s email address and "
       },
       {
         "type": "assistant_text",
-        "delta": "s been moved to Monday. "
+        "delta": "rah\u2019s email address and "
       },
       {
         "type": "assistant_text",
-        "delta": "Let me know if you need "
+        "delta": "the system you want me t"
       },
       {
         "type": "assistant_text",
-        "delta": "Let me know if you need "
+        "delta": "the system you want me t"
       },
       {
         "type": "assistant_text",
-        "delta": "anything else.\u201d\n- If you"
+        "delta": "o use, or tell me where "
       },
       {
         "type": "assistant_text",
-        "delta": "anything else.\u201d\n- If you"
+        "delta": "o use, or tell me where "
       },
       {
         "type": "assistant_text",
-        "delta": " want me to proceed, pro"
+        "delta": "to find her in HubSpot a"
       },
       {
         "type": "assistant_text",
-        "delta": " want me to proceed, pro"
+        "delta": "to find her in HubSpot a"
       },
       {
         "type": "assistant_text",
-        "delta": "vide the email connector"
+        "delta": "nd I\u2019ll look her up."
       },
       {
         "type": "assistant_text",
-        "delta": "vide the email connector"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " or the exact send actio"
-      },
-      {
-        "type": "assistant_text",
-        "delta": " or the exact send actio"
-      },
-      {
-        "type": "assistant_text",
-        "delta": "n you want me to use."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "n you want me to use."
+        "delta": "nd I\u2019ll look her up."
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I can help draft the email."
+          "text": "I can\u2019t send the email from this prompt alone."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I can help draft the email."
+          "text": "I can\u2019t send the email from this prompt alone."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": ", but I can\u2019t send messages from here without a connected email tool or the recipient details."
+          "text": "I don\u2019t have Sarah\u2019s email address or a mail connector/action available here."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": ", but I can\u2019t send messages from here without a connected email tool or the recipient details."
+          "text": "I don\u2019t have Sarah\u2019s email address or a mail connector/action available here."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "If you want me to continue."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "If you want me to continue."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": ", give me Sarah\u2019s email address and the system you want me to use."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": ", give me Sarah\u2019s email address and the system you want me to use."
         }
       }
     ],
@@ -437,7 +449,7 @@
     "stt_model": "flux-general-en",
     "tts_model": "eleven_flash_v2_5",
     "tts_transport": "websocket",
-    "assistant_text": "I can help draft the emaI can help draft the email, but I can\u2019t send mesil, but I can\u2019t send messages from here without sages from here without a connected email tool oa connected email tool or the recipient details.r the recipient details.\n\n- Suggested email: \u201cHi\n\n- Suggested email: \u201cHi Sarah \u2014 the campaign ha Sarah \u2014 the campaign has been moved to Monday. s been moved to Monday. Let me know if you need Let me know if you need anything else.\u201d\n- If youanything else.\u201d\n- If you want me to proceed, pro want me to proceed, provide the email connectorvide the email connector or the exact send actio or the exact send action you want me to use.n you want me to use.",
+    "assistant_text": "I can\u2019t send the email fI can\u2019t send the email from this prompt alone.\n\nrom this prompt alone.\n\n- I don\u2019t have Sarah\u2019s e- I don\u2019t have Sarah\u2019s email address or a mail cmail address or a mail connector/action availablonnector/action available here.\n- If you want mee here.\n- If you want me to continue, give me Sa to continue, give me Sarah\u2019s email address and rah\u2019s email address and the system you want me tthe system you want me to use, or tell me where o use, or tell me where to find her in HubSpot ato find her in HubSpot and I\u2019ll look her up.nd I\u2019ll look her up.",
     "confirm_language_detected": true,
     "verdict": "PASS"
   },

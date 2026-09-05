@@ -45,10 +45,13 @@ Cesar authorized Part 2 apply (`I confirm proceed to Part 2`). Follow-ups (inter
 | Scenario | TTFT ms | TTFA ms | vs baseline 4632/4813 | vs 700–900 target |
 |----------|--------:|--------:|----------------------:|-------------------|
 | User-stated pre-opt baseline | 4632 | 4813 | — | miss |
-| **This tip `warm`** | 3174 | 3362 | improved | miss |
-| **This tip `simple_conversational`** | 2203 | 2457 | TTFT −2429 / TTFA −2356; gate `ttft_improved_vs_4632=PASS` | miss |
-| **This tip `simple_conversational_turn2`** | 7063 | 9147 | worse | miss |
-| **This tip `consequential_write_shaped`** | 4627 | 4843 | ~flat | miss |
+| Tip `6d6d6d56` `simple_conversational` | 2203 | 2457 | improved | miss |
+| **Tip `f29481ff` `warm`** | 1701 | 1900 | improved | miss |
+| **Tip `f29481ff` `simple_conversational`** | 1682 | 1881 | TTFT −2950 / TTFA −2932; PLAN≈0.1ms; classify_setup≈194ms | **still miss** |
+| **Tip `f29481ff` `simple_conversational_turn2`** | 1938 | 2196 | improved | miss |
+| **Tip `f29481ff` `consequential_write_shaped`** | 2446 | 2636 | improved | miss |
+
+**700–900ms feel:** **NOT MET** on tip `f29481ff`. Connector snapshot reuse cut ~0.5s+ (classify_setup 619→194; PLAN re-list eliminated). Residual floor ≈ model TTFT (~580–640ms) + TTS (~200ms) + RECALL/pre_act (~0.7–1.0s). Further cuts needed for the feel bar; do not claim voice feels 700–900ms.
 
 #### B. Pipecat WS infra floor (synth speech → production `/api/voice/pipecat/ws`)
 
