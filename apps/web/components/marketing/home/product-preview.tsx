@@ -134,12 +134,12 @@ export function ProductPreview() {
         className={cn(
           "absolute -inset-8 rounded-[2rem] blur-3xl transition-opacity duration-700",
           operationalActive
-            ? "bg-[color:var(--g-emerald)]/22 opacity-100"
+            ? "bg-[color:var(--g-emerald)]/12 opacity-90"
             : intelligenceActive
-              ? "bg-[color:var(--g-intelligence)]/22 opacity-95"
+              ? "bg-[color:var(--g-intelligence)]/10 opacity-85"
               : beat === "approval"
-                ? "bg-[color:var(--g-warning)]/12 opacity-80"
-                : "bg-[color:var(--g-intelligence)]/14 opacity-70",
+                ? "bg-[color:var(--g-warning)]/8 opacity-70"
+                : "bg-[color:var(--g-intelligence)]/7 opacity-60",
         )}
       />
 
@@ -152,13 +152,13 @@ export function ProductPreview() {
         )}
       >
         <div
-          className="relative overflow-hidden rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-1.5 shadow-[var(--g-shadow-elevated)] sm:p-2"
+          className="relative overflow-hidden rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-1.5 shadow-[var(--g-shadow-product)] sm:p-2"
           style={{
             boxShadow: operationalActive
-              ? "var(--g-glow-operational), var(--g-shadow-elevated)"
+              ? "var(--g-highlight-top), var(--g-glow-operational), var(--g-shadow-product)"
               : intelligenceActive
-                ? "var(--g-glow-intelligence), var(--g-shadow-elevated)"
-                : "var(--highlight-edge), var(--g-shadow-elevated)",
+                ? "var(--g-highlight-top), var(--g-glow-intelligence), var(--g-shadow-product)"
+                : "var(--g-highlight-top), var(--g-shadow-product)",
             maskImage:
               "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
             WebkitMaskImage:
@@ -214,10 +214,10 @@ export function ProductPreview() {
                   className={cn(
                     "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 backdrop-blur-md sm:px-4",
                     beat === "approval"
-                      ? "border-[color:var(--g-warning)]/30 bg-[color:var(--g-void)]/75"
+                      ? "border-[color:var(--g-warning)]/30 bg-[color:var(--g-surface-1)]/90"
                       : operationalActive
-                        ? "border-[color:var(--g-emerald)]/30 bg-[color:var(--g-void)]/75"
-                        : "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-void)]/75",
+                        ? "border-[color:var(--g-emerald)]/30 bg-[color:var(--g-surface-1)]/90"
+                        : "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-surface-1)]/90",
                   )}
                 >
                   <div className="min-w-0">

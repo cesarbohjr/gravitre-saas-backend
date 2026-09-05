@@ -77,8 +77,8 @@ export default function HomePage() {
       >
         <IntelligenceField variant="section" atmosphere="agents" className="opacity-75" />
         <MarketingBackgroundLines className="opacity-50" />
-        <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/12 top-1/4 -left-64" delay={1} />
-        <FloatingOrb className="w-[420px] h-[420px] bg-primary/10 bottom-1/4 -right-48" delay={2.2} />
+        <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/8 top-1/4 -left-64" delay={1} />
+        <FloatingOrb className="w-[420px] h-[420px] bg-primary/7 bottom-1/4 -right-48" delay={2.2} />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-20">
@@ -139,7 +139,7 @@ export default function HomePage() {
               50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </div>
-          <IntegrationsGrid theme="dark" />
+          <IntegrationsGrid theme="light" />
         </div>
       </section>
 
@@ -327,9 +327,9 @@ export default function HomePage() {
         className="relative py-28 sm:py-36 bg-muted/40"
         data-field-atmosphere="balanced"
       >
-        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-70" />
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/8 via-transparent to-[color:var(--g-intelligence)]/6" />
-        <FloatingOrb className="w-[600px] h-[600px] bg-primary/10 -bottom-48 left-1/2 -translate-x-1/2" />
+        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-[color:var(--g-intelligence)]/4" />
+        <FloatingOrb className="w-[600px] h-[600px] bg-primary/7 -bottom-48 left-1/2 -translate-x-1/2" />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">

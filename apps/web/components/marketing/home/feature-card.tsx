@@ -72,26 +72,25 @@ export function FeatureCard({
         className={cn(
           "absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100",
           intel
-            ? "bg-gradient-to-b from-[color:var(--g-intelligence)]/25 to-transparent"
+            ? "bg-gradient-to-b from-[color:var(--g-intelligence)]/12 to-transparent"
             : operational
-              ? "bg-gradient-to-b from-[color:var(--g-emerald)]/20 to-transparent"
-              : "bg-gradient-to-b from-primary/15 to-transparent",
+              ? "bg-gradient-to-b from-[color:var(--g-emerald)]/10 to-transparent"
+              : "bg-gradient-to-b from-primary/8 to-transparent",
         )}
       />
       <div
-        className="g-material-panel relative h-full rounded-2xl border border-[color:var(--g-border-subtle)] p-6 transition-all duration-[var(--g-duration-state)] group-hover:border-[color:var(--g-border-active)]"
+        className="g-material-panel relative h-full rounded-2xl border border-[color:var(--g-border-subtle)] p-6 transition-all duration-[var(--g-duration-state)] group-hover:border-[color:var(--g-border-active)] group-hover:shadow-[var(--g-shadow-elevated)]"
         style={{
-          backgroundImage: "var(--g-material-panel)",
-          boxShadow: "var(--highlight-edge), var(--g-shadow-surface)",
+          boxShadow: "var(--g-highlight-top), var(--g-shadow-surface)",
         }}
       >
         <div
           className={cn(
             "mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl ring-1 transition-all duration-[var(--g-duration-state)]",
             intel
-              ? "bg-[color:var(--g-intelligence)]/12 ring-[color:var(--g-intelligence)]/30 group-hover:shadow-[var(--g-glow-intelligence)]"
+              ? "bg-[color:var(--g-intelligence-soft)] ring-[color:var(--g-intelligence)]/25"
               : operational
-                ? "bg-[color:var(--g-emerald)]/12 ring-[color:var(--g-emerald)]/28 group-hover:shadow-[var(--g-glow-operational)]"
+                ? "bg-[color:var(--g-emerald-soft)] ring-[color:var(--g-emerald)]/25"
                 : "bg-primary/10 ring-primary/20",
           )}
         >
@@ -117,10 +116,10 @@ export function FeatureCard({
                 className={cn(
                   "rounded-md border px-2 py-1 font-mono text-[10px] tracking-wide",
                   strip.tone === "intelligence" || (strip.tone === "mixed" && i === 0)
-                    ? "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-intelligence)]/10 text-[color:var(--g-intelligence-bright)]"
+                    ? "border-[color:var(--g-intelligence)]/20 bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
                     : strip.tone === "operational" || i === strip.labels.length - 1
-                      ? "border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)]"
-                      : "border-[color:var(--g-border-subtle)] bg-muted/40 text-muted-foreground",
+                      ? "border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald-bright)]"
+                      : "border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]",
                 )}
               >
                 {label}

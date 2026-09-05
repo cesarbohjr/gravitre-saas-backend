@@ -45,15 +45,14 @@ export function MarketingChrome({
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Keep <html> in dark so CSS variables / void stay graphite even if a parent
-  // theme provider toggles light on the document root.
+  // Marketing is light-theme only: clear any dark class left by app chrome.
   useEffect(() => {
     const root = document.documentElement
     const hadDark = root.classList.contains("dark")
-    root.classList.add("dark")
-    root.dataset.marketingCanvas = "graphite"
+    root.classList.remove("dark")
+    root.dataset.marketingCanvas = "daylight"
     return () => {
-      if (!hadDark) root.classList.remove("dark")
+      if (hadDark) root.classList.add("dark")
       delete root.dataset.marketingCanvas
     }
   }, [])
@@ -77,13 +76,13 @@ export function MarketingChrome({
   }, [mobileMenuOpen])
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground" data-marketing-canvas="graphite">
+    <div className="min-h-screen bg-background text-foreground" data-marketing-canvas="daylight">
       {/* Navigation */}
       <header 
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
           scrolled 
-            ? "border-b border-border bg-background/95 backdrop-blur-xl shadow-sm" 
-            : "bg-background/95 backdrop-blur-sm"
+            ? "border-b border-border bg-background/90 backdrop-blur-xl shadow-[var(--g-shadow-surface)]" 
+            : "bg-background/80 backdrop-blur-sm"
         }`}
         style={{ position: 'fixed' }}
       >
@@ -92,7 +91,7 @@ export function MarketingChrome({
             {/* Logo */}
             <Link href="/" className="flex items-center group">
               <img
-                src="/images/gravitre-logo-white.png"
+                src="/images/gravitre-logo-black.png"
                 alt="Gravitre"
                 className="h-10 w-auto opacity-95 transition-opacity group-hover:opacity-100"
               />
@@ -300,7 +299,7 @@ export function MarketingChrome({
               {/* Footer Logo */}
               <Link href="/" className="flex items-center">
                 <img
-                  src="/images/gravitre-logo-white.png"
+                  src="/images/gravitre-logo-black.png"
                   alt="Gravitre"
                   className="h-8 w-auto opacity-90"
                 />

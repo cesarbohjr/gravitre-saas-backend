@@ -7,9 +7,9 @@
 :root {
   /* Gravitre Brand - Light theme */
   /* Primary: Emerald green | Accent: Electric blue */
-  /* Background: clean near-white with a subtle cool (green) tint */
-  --background: oklch(0.99 0.004 160);
-  --foreground: oklch(0.18 0.02 160);
+  /* Background: warm mineral canvas (Design Pass 2 light) */
+  --background: oklch(0.985 0.006 110);
+  --foreground: oklch(0.22 0.018 165);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
@@ -110,51 +110,101 @@
   --status-idle: var(--muted-foreground);
 
   /* ------------------------------------------------------------------
-     Design Pass 2 — Gravitre semantic + energy aliases (marketing→shared).
-     Prefer these over inventing a parallel palette. Graphite = system,
-     violet = intelligence, emerald = action/truth, signal = connectivity.
+     Design Pass 2 — Light theme semantic + energy aliases (marketing→shared).
+     Warm white canvas · graphite system · violet intelligence · emerald action.
+     Depth via shadow / tint / translucency — not neon glow.
      ------------------------------------------------------------------ */
-  --g-void: var(--background);
-  --g-background: var(--background);
-  --g-surface-1: var(--card);
-  --g-surface-2: color-mix(in oklch, var(--card) 88%, var(--muted) 12%);
-  --g-surface-3: var(--accent);
-  --g-surface-active: color-mix(in oklch, oklch(0.52 0.14 305) 8%, var(--card));
-  --g-text-primary: var(--foreground);
-  --g-text-secondary: var(--muted-foreground);
-  --g-text-muted: var(--muted-foreground);
-  --g-text-disabled: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
-  --g-border-subtle: color-mix(in oklch, var(--border) 70%, transparent);
-  --g-border-default: var(--border);
-  --g-border-active: color-mix(in oklch, var(--primary) 35%, var(--border));
-  --g-intelligence: oklch(0.52 0.14 305);
-  --g-intelligence-bright: oklch(0.58 0.16 305);
-  --g-intelligence-soft: color-mix(in oklch, oklch(0.52 0.14 305) 10%, transparent);
-  --g-intelligence-glow: 0 0 48px color-mix(in oklch, oklch(0.52 0.14 305) 20%, transparent);
+  --g-canvas: oklch(0.985 0.006 110);
+  --g-void: var(--g-canvas);
+  --g-background: oklch(0.97 0.007 110);
+  --g-background-muted: oklch(0.95 0.009 110);
+  --g-surface-1: oklch(0.995 0.003 110);
+  --g-surface-2: oklch(0.975 0.006 110);
+  --g-surface-3: oklch(0.955 0.01 110);
+  --g-surface-elevated: oklch(0.998 0.002 110);
+  --g-surface-active: color-mix(in oklch, oklch(0.55 0.16 290) 6%, var(--g-surface-1));
+  --g-text-primary: oklch(0.22 0.018 165);
+  --g-text-secondary: oklch(0.42 0.02 165);
+  --g-text-muted: oklch(0.56 0.018 165);
+  --g-text-disabled: color-mix(in oklch, var(--g-text-muted) 55%, transparent);
+  --g-border-subtle: oklch(0.82 0.012 160 / 0.45);
+  --g-border-default: oklch(0.78 0.014 160 / 0.55);
+  --g-border-strong: oklch(0.7 0.016 160 / 0.65);
+  --g-border-active: color-mix(in oklch, var(--primary) 28%, var(--g-border-default));
+  --g-intelligence: oklch(0.52 0.16 290);
+  --g-intelligence-bright: oklch(0.46 0.18 290);
+  --g-intelligence-soft: oklch(0.94 0.035 290);
+  --g-intelligence-surface: color-mix(in oklch, oklch(0.55 0.16 290) 8%, var(--g-surface-1));
+  --g-intelligence-glow: 0 8px 32px -12px color-mix(in oklch, oklch(0.55 0.16 290) 28%, transparent);
   --g-emerald: var(--primary);
-  --g-emerald-bright: oklch(0.62 0.16 162);
-  --g-emerald-soft: color-mix(in oklch, var(--primary) 10%, transparent);
-  --g-emerald-glow: 0 0 40px color-mix(in oklch, var(--primary) 25%, transparent);
-  --g-signal: var(--info);
+  --g-emerald-bright: oklch(0.48 0.14 162);
+  --g-emerald-soft: oklch(0.94 0.035 160);
+  --g-emerald-surface: color-mix(in oklch, var(--primary) 8%, var(--g-surface-1));
+  --g-emerald-glow: 0 8px 28px -10px color-mix(in oklch, var(--primary) 30%, transparent);
+  --g-signal: oklch(0.55 0.11 220);
   --g-warning: var(--warning);
   --g-danger: var(--destructive);
   --g-success: var(--success);
   --g-glow-intelligence: var(--g-intelligence-glow);
   --g-glow-operational: var(--g-emerald-glow);
-  --g-glow-signal: 0 0 32px color-mix(in oklch, var(--info) 22%, transparent);
-  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.52 0.14 305) 18%, transparent);
-  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 22%, transparent);
-  --g-shadow-surface: var(--elevation-1);
-  --g-shadow-elevated: var(--elevation-2);
-  --g-blur-atmosphere: 48px;
+  --g-glow-signal: 0 6px 24px -8px color-mix(in oklch, var(--g-signal) 28%, transparent);
+  --g-light-intelligence: radial-gradient(
+    ellipse at center,
+    color-mix(in oklch, var(--g-intelligence) 12%, transparent) 0%,
+    transparent 70%
+  );
+  --g-light-operational: radial-gradient(
+    ellipse at center,
+    color-mix(in oklch, var(--g-emerald) 12%, transparent) 0%,
+    transparent 70%
+  );
+  --g-light-neutral: radial-gradient(
+    ellipse at center,
+    color-mix(in oklch, var(--foreground) 4%, transparent) 0%,
+    transparent 72%
+  );
+  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.55 0.16 290) 14%, transparent);
+  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 16%, transparent);
+  --g-highlight-top: inset 0 1px 0 0 oklch(1 0 0 / 0.85);
+  --g-shadow-subtle: 0 1px 2px oklch(0.22 0.02 165 / 0.04);
+  --g-shadow-surface: 0 1px 2px -1px oklch(0.22 0.02 165 / 0.06), 0 2px 8px -2px oklch(0.22 0.02 165 / 0.06);
+  --g-shadow-elevated: 0 4px 16px -4px oklch(0.22 0.02 165 / 0.1), 0 2px 6px -2px oklch(0.22 0.02 165 / 0.06);
+  --g-shadow-product: 0 20px 48px -16px oklch(0.22 0.02 165 / 0.18), 0 8px 20px -8px oklch(0.22 0.02 165 / 0.08);
+  --g-material-panel: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--g-surface-1) 92%, oklch(1 0 0) 8%) 0%,
+    var(--g-surface-1) 52%,
+    var(--g-surface-2) 100%
+  );
+  --g-blur-atmosphere: 64px;
   --g-duration-micro: 150ms;
   --g-duration-state: 320ms;
   --g-duration-flow: 800ms;
-  --g-duration-ambient: 14s;
+  --g-duration-ambient: 16s;
   --g-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --g-ease-intelligence: cubic-bezier(0.22, 1, 0.36, 1);
   --g-ease-signal: cubic-bezier(0.45, 0, 0.55, 1);
   --g-ease-resolve: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Marketing daylight canvas — warm mineral light (not sterile #FFF) */
+[data-marketing-canvas="daylight"] {
+  --background: var(--g-canvas);
+  --g-void: var(--g-canvas);
+  --g-background: var(--g-background);
+  color: var(--g-text-primary);
+}
+
+[data-marketing-canvas="daylight"] .g-material-panel {
+  background-color: var(--g-surface-1);
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--g-surface-1) 92%, oklch(1 0 0) 8%) 0%,
+    var(--g-surface-1) 52%,
+    var(--g-surface-2) 100%
+  );
+  box-shadow: var(--g-highlight-top), var(--g-shadow-surface);
+  border-color: var(--g-border-subtle);
 }
 
 .dark {
@@ -281,28 +331,6 @@
   --g-ease-intelligence: cubic-bezier(0.22, 1, 0.36, 1);
   --g-ease-signal: cubic-bezier(0.45, 0, 0.55, 1);
   --g-ease-resolve: cubic-bezier(0.16, 1, 0.3, 1);
-  /* Marketing graphite void — deeper system canvas for Agenforce-caliber depth */
-  --g-void-marketing: oklch(0.045 0.01 250);
-  --g-surface-marketing: color-mix(in oklch, var(--card) 92%, oklch(1 0 0) 8%);
-  --g-material-panel: linear-gradient(
-    165deg,
-    color-mix(in oklch, var(--card) 88%, oklch(1 0 0) 12%) 0%,
-    var(--card) 48%,
-    color-mix(in oklch, var(--card) 94%, var(--muted) 6%) 100%
-  );
-}
-
-/* Marketing canvas: force dark graphite system when chrome opts in */
-[data-marketing-canvas="graphite"] {
-  --background: var(--g-void-marketing, oklch(0.065 0.012 250));
-  --g-void: var(--background);
-  --g-background: var(--background);
-}
-
-[data-marketing-canvas="graphite"] .g-material-panel {
-  background-image: var(--g-material-panel);
-  box-shadow: var(--highlight-edge), var(--g-shadow-surface);
-  border-color: var(--g-border-subtle);
 }
 
 @theme inline {

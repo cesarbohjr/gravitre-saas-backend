@@ -36,7 +36,7 @@ export function HeroParallax() {
       data-field-atmosphere="intelligence"
     >
       <IntelligenceField variant="hero" atmosphere="intelligence" />
-      <MarketingSpotlight tone="intelligence" interactive className="opacity-90" />
+      <MarketingSpotlight tone="intelligence" interactive className="opacity-55" />
 
       <motion.div
         style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
@@ -47,19 +47,19 @@ export function HeroParallax() {
             initial={reduced ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease }}
-            className="text-sm font-semibold uppercase tracking-[0.28em] text-[color:var(--g-intelligence-bright)]"
+            className="text-sm font-semibold uppercase tracking-[0.28em] text-[color:var(--g-text-primary)]"
           >
-            Gravitre
+            <span className="text-[color:var(--g-intelligence)]">Gravitre</span>
           </motion.p>
 
           <motion.h1
             initial={reduced ? false : { opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: reduced ? 0 : 0.08, ease }}
-            className="mt-6 text-[2.75rem] font-bold leading-[1.05] tracking-[-0.04em] sm:text-7xl lg:text-[5.25rem]"
+            className="mt-6 text-[2.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-[color:var(--g-text-primary)] sm:text-7xl lg:text-[5.25rem]"
           >
-            <span className="block text-foreground">{MARKETING_COPY.hero.headline[0]}</span>
-            <span className="mt-1 block bg-gradient-to-r from-[color:var(--g-emerald)] via-[color:var(--g-intelligence-bright)] to-[color:var(--g-intelligence)] bg-clip-text text-transparent">
+            <span className="block">{MARKETING_COPY.hero.headline[0]}</span>
+            <span className="mt-1 block bg-gradient-to-r from-[color:var(--g-emerald-bright)] via-[color:var(--g-intelligence)] to-[color:var(--g-intelligence-bright)] bg-clip-text text-transparent">
               {MARKETING_COPY.hero.headline[1]}
             </span>
           </motion.h1>
@@ -68,7 +68,7 @@ export function HeroParallax() {
             initial={reduced ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: reduced ? 0 : 0.16, ease }}
-            className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl sm:leading-relaxed"
+            className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-[color:var(--g-text-secondary)] sm:text-xl sm:leading-relaxed"
           >
             {MARKETING_COPY.hero.subhead}
           </motion.p>

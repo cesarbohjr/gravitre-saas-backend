@@ -74,8 +74,8 @@ function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
         secondary: isDark
           ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
           : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 16%, transparent) 0%, transparent 72%)" as const),
-        primaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.08, 0.14, 0.08] as const),
-        secondaryOpacity: isDark ? ([0.02, 0.04, 0.02] as const) : ([0.06, 0.1, 0.06] as const),
+        primaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.03, 0.05, 0.03] as const),
+        secondaryOpacity: isDark ? ([0.02, 0.04, 0.02] as const) : ([0.025, 0.04, 0.025] as const),
       }
     case "approval":
       return {
@@ -85,8 +85,8 @@ function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
         secondary: isDark
           ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
           : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 72%)" as const),
-        primaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.07, 0.12, 0.07] as const),
-        secondaryOpacity: isDark ? ([0.03, 0.05, 0.03] as const) : ([0.08, 0.12, 0.08] as const),
+        primaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.025, 0.045, 0.025] as const),
+        secondaryOpacity: isDark ? ([0.03, 0.05, 0.03] as const) : ([0.03, 0.05, 0.03] as const),
       }
     case "outcome":
       return {
@@ -96,8 +96,8 @@ function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
         secondary: isDark
           ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
           : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 72%)" as const),
-        primaryOpacity: isDark ? ([0.04, 0.075, 0.04] as const) : ([0.1, 0.16, 0.1] as const),
-        secondaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.06, 0.1, 0.06] as const),
+        primaryOpacity: isDark ? ([0.04, 0.075, 0.04] as const) : ([0.035, 0.06, 0.035] as const),
+        secondaryOpacity: isDark ? ([0.025, 0.045, 0.025] as const) : ([0.025, 0.04, 0.025] as const),
       }
     case "balanced":
       return {
@@ -107,8 +107,8 @@ function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
         secondary: isDark
           ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
           : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 22%, transparent) 0%, transparent 72%)" as const),
-        primaryOpacity: isDark ? ([0.04, 0.07, 0.04] as const) : ([0.1, 0.16, 0.1] as const),
-        secondaryOpacity: isDark ? ([0.035, 0.065, 0.035] as const) : ([0.09, 0.14, 0.09] as const),
+        primaryOpacity: isDark ? ([0.04, 0.07, 0.04] as const) : ([0.035, 0.06, 0.035] as const),
+        secondaryOpacity: isDark ? ([0.035, 0.065, 0.035] as const) : ([0.03, 0.055, 0.03] as const),
       }
     case "agents":
     case "intelligence":
@@ -116,16 +116,16 @@ function atmosphereWash(atmosphere: FieldAtmosphere, isDark: boolean) {
       return {
         primary: isDark
           ? ("radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)" as const)
-          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 28%, transparent) 0%, transparent 72%)" as const),
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 16%, transparent) 0%, transparent 72%)" as const),
         secondary: isDark
           ? ("radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)" as const)
-          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 24%, transparent) 0%, transparent 72%)" as const),
+          : ("radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 14%, transparent) 0%, transparent 72%)" as const),
         primaryOpacity: isDark
           ? atmosphere === "agents"
             ? ([0.05, 0.09, 0.05] as const)
             : ([0.055, 0.1, 0.055] as const)
-          : ([0.12, 0.2, 0.12] as const),
-        secondaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.08, 0.13, 0.08] as const),
+          : ([0.03, 0.055, 0.03] as const),
+        secondaryOpacity: isDark ? ([0.03, 0.055, 0.03] as const) : ([0.025, 0.045, 0.025] as const),
       }
   }
 }
@@ -191,11 +191,7 @@ export function IntelligenceField({
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
     const root = document.documentElement
-    const apply = () =>
-      setIsDark(
-        root.classList.contains("dark") ||
-          Boolean(document.querySelector('[data-marketing-canvas="graphite"]')),
-      )
+    const apply = () => setIsDark(root.classList.contains("dark"))
     apply()
     const obs = new MutationObserver(apply)
     obs.observe(root, { attributes: true, attributeFilter: ["class"] })
@@ -203,12 +199,13 @@ export function IntelligenceField({
   }, [])
 
   const isHero = variant === "hero"
-  const atmosphereOpacity = isHero ? 1 : 0.6
-  const graphOpacity = isHero ? 1 : atmosphere === "agents" ? 0.55 : 0.4
+  const atmosphereOpacity = isHero ? 1 : 0.55
+  const graphOpacity = isHero ? 0.85 : atmosphere === "agents" ? 0.5 : 0.35
   const wash = atmosphereWash(atmosphere, isDark)
-  const pathStrokeOpacity = isDark ? 0.24 : 0.38
-  const gridOpacity = isDark ? 0.035 : 0.05
-  const useBlurAtmosphere = isDark
+  // Light canvas: restrained topology; avoid heavy blur (washes look muddy).
+  const pathStrokeOpacity = isDark ? 0.24 : 0.22
+  const gridOpacity = isDark ? 0.035 : 0.028
+  const useBlurAtmosphere = false
   const showSignal = isHero || atmosphere === "agents" || atmosphere === "outcome"
 
   return (

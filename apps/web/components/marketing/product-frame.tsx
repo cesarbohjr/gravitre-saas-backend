@@ -51,19 +51,19 @@ export function ProductFrame({
 
   const glowClass =
     glowTone === "operational"
-      ? "bg-[color:var(--g-emerald)]/20"
+      ? "bg-[color:var(--g-emerald)]/10"
       : glowTone === "intelligence"
-        ? "bg-[color:var(--g-intelligence)]/18"
+        ? "bg-[color:var(--g-intelligence)]/8"
         : ""
 
   const frame = (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-elevated)]",
+        "relative overflow-hidden rounded-2xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-product)]",
         isDetail && "rounded-xl",
       )}
       style={{
-        boxShadow: "var(--highlight-edge), var(--g-shadow-elevated)",
+        boxShadow: "var(--g-highlight-top), var(--g-shadow-product)",
         ...(isFade
           ? {
               maskImage:
@@ -103,7 +103,7 @@ export function ProductFrame({
       {glowTone !== "none" ? (
         <div
           aria-hidden
-          className={cn("absolute -inset-6 rounded-[2rem] blur-3xl opacity-80", glowClass)}
+          className={cn("absolute -inset-6 rounded-[2rem] blur-3xl opacity-55", glowClass)}
         />
       ) : null}
 

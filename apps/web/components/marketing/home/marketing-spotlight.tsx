@@ -40,10 +40,10 @@ export function MarketingSpotlight({
 
   const spotA =
     tone === "operational"
-      ? "color-mix(in oklch, var(--g-emerald) 18%, transparent)"
+      ? "color-mix(in oklch, var(--g-emerald) 10%, transparent)"
       : tone === "balanced"
-        ? "color-mix(in oklch, var(--g-intelligence) 14%, transparent)"
-        : "color-mix(in oklch, var(--g-intelligence) 20%, transparent)"
+        ? "color-mix(in oklch, var(--g-intelligence) 8%, transparent)"
+        : "color-mix(in oklch, var(--g-intelligence) 10%, transparent)"
 
   return (
     <div
@@ -70,7 +70,7 @@ export function MarketingSpotlight({
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(420px circle at 72% 68%, color-mix(in oklch, var(--g-emerald) 14%, transparent) 0%, transparent 60%)",
+              "radial-gradient(420px circle at 72% 68%, color-mix(in oklch, var(--g-emerald) 8%, transparent) 0%, transparent 60%)",
           }}
         />
       ) : null}
