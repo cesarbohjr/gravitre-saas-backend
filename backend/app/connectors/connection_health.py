@@ -1,6 +1,7 @@
 """Connector connection health (OAuth token validity)."""
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from app.config import Settings
@@ -46,6 +47,23 @@ from app.connectors.oauth_provider_registry import (
 )
 
 
+# Voice latency (2026-09-05): each connector vendor check below is a blocking,
+# synchronous network round-trip (e.g. slack_connection_auth_status opens its
+# own httpx.Client per call). resolve_connector_auth_status has multiple,
+# uncoordinated callers within a single turn (org_context_service,
+# assistant_tools.tool_connector_status, connector_snapshot_cache, ...), none
+# of which share a cache with each other. Live evidence: one consequential
+# voice turn re-checked the SAME Slack connector 5 times in ~10s (each a real
+# network call, "slack_auth_test_failed" x5), which alone accounted for most
+# of a ~14s response. OAuth token validity does not flip within seconds, so a
+# short shared TTL here is safe for every caller (voice AND text) and kills
+# the redundant re-checks without reducing real staleness detection below
+# ~20s. Any caller can still bypass with force_refresh=True if it genuinely
+# needs a fresh check (e.g. right after a reconnect flow).
+_AUTH_STATUS_CACHE_TTL_SECONDS = 20.0
+_auth_status_cache: dict[str, tuple[float, str | None]] = {}
+
+
 def resolve_connector_auth_status(
     client: Any,
     org_id: str,
@@ -55,8 +73,37 @@ def resolve_connector_auth_status(
     *,
     environment_name: str | None = None,
     validate_remote: bool = False,
+    force_refresh: bool = False,
 ) -> str | None:
     """Return auth status for OAuth connectors, or None if not applicable."""
+    cache_key = f"{org_id}:{connector_id}:{vendor}:{environment_name or ''}:{validate_remote}"
+    if not force_refresh:
+        cached = _auth_status_cache.get(cache_key)
+        if cached is not None and (time.monotonic() - cached[0]) < _AUTH_STATUS_CACHE_TTL_SECONDS:
+            return cached[1]
+    result = _resolve_connector_auth_status_uncached(
+        client,
+        org_id,
+        connector_id,
+        vendor,
+        settings,
+        environment_name=environment_name,
+        validate_remote=validate_remote,
+    )
+    _auth_status_cache[cache_key] = (time.monotonic(), result)
+    return result
+
+
+def _resolve_connector_auth_status_uncached(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    vendor: str,
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+    validate_remote: bool = False,
+) -> str | None:
     if vendor == "odoo":
         return odoo_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
