@@ -282,7 +282,7 @@
   --g-ease-signal: cubic-bezier(0.45, 0, 0.55, 1);
   --g-ease-resolve: cubic-bezier(0.16, 1, 0.3, 1);
   /* Marketing graphite void — deeper system canvas for Agenforce-caliber depth */
-  --g-void-marketing: oklch(0.065 0.012 250);
+  --g-void-marketing: oklch(0.045 0.01 250);
   --g-surface-marketing: color-mix(in oklch, var(--card) 92%, oklch(1 0 0) 8%);
   --g-material-panel: linear-gradient(
     165deg,

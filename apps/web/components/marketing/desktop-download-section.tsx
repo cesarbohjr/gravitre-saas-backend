@@ -23,6 +23,7 @@ import {
 } from "@/components/marketing/os-vendor-icons"
 import { GridBackground } from "@/components/marketing/home/grid-background"
 import { DesktopCompanionPreview } from "@/components/marketing/desktop-companion-preview"
+import { IntelligenceField } from "@/components/gravitre/visual"
 
 const RELEASE_PAGE =
   "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0"
@@ -131,9 +132,11 @@ export function DesktopDownloadSection({
   return (
     <section
       className={
-        className ?? "relative overflow-hidden border-t border-border bg-card"
+        className ?? "relative overflow-hidden border-t border-border bg-background"
       }
+      data-field-atmosphere="systems"
     >
+      <IntelligenceField variant="section" atmosphere="systems" className="opacity-45" />
       {/* Same atmosphere language as home / extension — not the darker cream+green wash */}
       <GridBackground />
 

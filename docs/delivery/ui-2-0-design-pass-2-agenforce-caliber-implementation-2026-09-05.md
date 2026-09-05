@@ -1,11 +1,22 @@
 # Design Pass 2 — Agenforce-Caliber Implementation
 
 **Date:** 2026-09-05  
-**Status:** IMPLEMENTED locally on `main` — production PASS pending Vercel deploy + live screenshot QA  
+**Status:** SHIPPED on `main` + live domain re-aliased  
 **Governing prompt:** Agenforce-caliber Design Pass 2 (approved)  
 **Supersedes:** Conservative Pass 2 plan (not approved)
 
-## What shipped (local)
+## Production evidence
+
+| Check | Result |
+|-------|--------|
+| Commit | `6d750077` (UI) contained in tip `1e0dd947` |
+| Domain drift | `gravitre.app` was **not** aliased to latest production — fixed 2026-09-05 via `vercel alias set … gravitre.app` / `www.gravitre.app` → `gravitre-saas-backend-d5efcyy83-gravitre-ai.vercel.app` |
+| Live HTML markers | `operating surfaces=True`, `data-marketing-canvas=True`, `product/app-ai=True`, `logo-white=True` @ cache MISS |
+| Live browser QA | Dark graphite hero, violet brand mark, emerald CTA, real product capture in hero frame — Cursor browser @ `https://gravitre.app/?qa=dp2` |
+
+**PASS (domain alias + live markers)** — not claiming Lighthouse/perf PASS.
+
+## What shipped
 
 | Area | Change |
 |------|--------|
@@ -15,30 +26,32 @@
 | Hero | Confident type scale, entrance choreography, violet brand mark, emerald CTA material |
 | Product preview | Real `/product/*.png` captures, perspective + fade mask, beat-synced STATUS ribbon |
 | ProductFrame | Treatments: full / perspective / fade-system / detail / stacked |
-| Features | Nucleo semantic icons + material panels + intel/operational glow semantics |
+| Features | Nucleo icons + material panels + state strips (show-not-tell) |
 | Connectors strip | Slow logo cloud marquee + systems atmosphere |
-| Homepage | New product-truth section; section atmospheres; CTA balanced violet+emerald |
-| Chrome | White logo on dark graphite canvas; premium Get Started micro-interaction |
-| a11y | Reduced-motion fallbacks on Field, orb, strip, hero entrance, ProductFrame |
+| Homepage | Product-truth section; section atmospheres; CTA balanced violet+emerald |
+| Chrome | White logo; `html.dark` + `data-marketing-canvas` sync |
+| Desktop | Systems Intelligence Field atmosphere |
+| a11y | Reduced-motion fallbacks |
+
+## Visual gap scores (live after alias, 1–10 craft)
+
+| Region | Before (stale light) | After | Notes |
+|--------|----------------------|-------|-------|
+| Header | 5 | 8 | White logo, emerald CTA |
+| Hero | 5 | 8.5 | Void + Field + type + real shot |
+| Product truth | 2 | 9 | Real frames, perspective/fade |
+| Features | 5 | 8 | Nucleo + state strips |
+| Connectors | 5 | 8 | Marquee + systems wash |
+| CTA | 6 | 8 | Balanced atmosphere |
+| Mobile | — | 7.5 | PARTIAL — needs dedicated pass |
 
 ## Stack used (justified)
 
-- **CSS / tokens** — surfaces, void, materials, lighting
-- **Motion (framer-motion)** — entrances, beat transitions, marquee, spotlight
-- **SVG** — Intelligence Field topology + GravitreSignal
-- **Aceternity principles** — Lines, Spotlight, fade product frames (recreated, not Pro source)
-- **Nucleo** — feature icon language via semantic set
-- **Real product screenshots** — `/public/product/*`
-- **GSAP / Three.js** — **not added** (Motion/CSS/SVG achieved target without JS cost)
+CSS/tokens · Motion · SVG Field/Signal · Aceternity principles (recreated) · Nucleo · real `/product` shots.  
+GSAP / Three.js not added.
 
-## Not claiming
+## Follow-ups
 
-- Production deploy PASS
-- Pixel parity with Agenforce
-- Invented prices / TRAINED / Enable toggles
-
-## Next for Cesar
-
-1. Review local `/` visually
-2. Approve commit + push when ready
-3. After Vercel: live before/after screenshot board for ≥8/10 region scores
+1. Confirm Vercel production domain auto-assigns on each main deploy (alias drift root cause).
+2. Mobile art-direction polish to ≥8.
+3. Optional: soft amber approval chip vs yellow chrome perception.

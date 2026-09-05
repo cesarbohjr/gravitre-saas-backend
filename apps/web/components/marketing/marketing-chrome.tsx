@@ -45,6 +45,19 @@ export function MarketingChrome({
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  // Keep <html> in dark so CSS variables / void stay graphite even if a parent
+  // theme provider toggles light on the document root.
+  useEffect(() => {
+    const root = document.documentElement
+    const hadDark = root.classList.contains("dark")
+    root.classList.add("dark")
+    root.dataset.marketingCanvas = "graphite"
+    return () => {
+      if (!hadDark) root.classList.remove("dark")
+      delete root.dataset.marketingCanvas
+    }
+  }, [])
+
   // Auto-close menus whenever the route changes (covers both link taps and
   // programmatic navigation), so the overlay never lingers over the page.
   useEffect(() => {

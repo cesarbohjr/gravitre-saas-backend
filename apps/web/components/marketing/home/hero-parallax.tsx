@@ -40,7 +40,7 @@ export function HeroParallax() {
 
       <motion.div
         style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
-        className="relative mx-auto max-w-7xl px-6 py-28 sm:py-32 lg:py-36"
+        className="relative mx-auto max-w-7xl px-6 py-24 sm:py-28 lg:py-32"
       >
         <div className="mx-auto max-w-4xl text-center">
           <motion.p

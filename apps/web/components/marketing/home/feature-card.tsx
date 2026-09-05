@@ -26,7 +26,20 @@ const FEATURE_ICONS: IconComp[] = [
   NucleoIntelligence,
 ]
 
-/** Intelligence-leaning card indices */
+/** Mini product-state strips — show Gravitre, not just describe it. */
+const FEATURE_STRIPS: {
+  labels: string[]
+  tone: "intelligence" | "operational" | "mixed"
+}[] = [
+  { labels: ["Intent", "Route", "Execute"], tone: "intelligence" },
+  { labels: ["Enrich", "Approve", "Outcome"], tone: "mixed" },
+  { labels: ["Profile", "Health", "Run"], tone: "operational" },
+  { labels: ["Signal", "Simulate", "Gate"], tone: "intelligence" },
+  { labels: ["Pending", "Review", "Allow"], tone: "mixed" },
+  { labels: ["Running", "Paused", "Done"], tone: "operational" },
+  { labels: ["Observe", "Learn", "Rank"], tone: "intelligence" },
+]
+
 const INTELLIGENCE_INDICES = new Set([0, 2, 6])
 const OPERATIONAL_INDICES = new Set([3, 4, 5])
 
@@ -44,6 +57,7 @@ export function FeatureCard({
   const Icon = FEATURE_ICONS[iconIndex] ?? NucleoAgent
   const intel = INTELLIGENCE_INDICES.has(iconIndex)
   const operational = OPERATIONAL_INDICES.has(iconIndex)
+  const strip = FEATURE_STRIPS[iconIndex] ?? FEATURE_STRIPS[0]
 
   return (
     <motion.div
@@ -95,10 +109,33 @@ export function FeatureCard({
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+
+        <div className="mt-5 flex items-center gap-1.5">
+          {strip.labels.map((label, i) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded-md border px-2 py-1 font-mono text-[10px] tracking-wide",
+                  strip.tone === "intelligence" || (strip.tone === "mixed" && i === 0)
+                    ? "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-intelligence)]/10 text-[color:var(--g-intelligence-bright)]"
+                    : strip.tone === "operational" || i === strip.labels.length - 1
+                      ? "border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)]"
+                      : "border-[color:var(--g-border-subtle)] bg-muted/40 text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+              {i < strip.labels.length - 1 ? (
+                <span className="text-[10px] text-muted-foreground/50">→</span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
         <Link
           href="/features"
           className={cn(
-            "mt-5 inline-flex items-center text-sm font-medium opacity-0 transition-all duration-[var(--g-duration-state)] group-hover:opacity-100",
+            "mt-5 inline-flex items-center text-sm font-medium opacity-70 transition-all duration-[var(--g-duration-state)] group-hover:opacity-100",
             intel ? "text-[color:var(--g-intelligence)]" : "text-primary",
           )}
         >

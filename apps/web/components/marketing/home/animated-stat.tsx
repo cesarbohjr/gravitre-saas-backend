@@ -12,9 +12,9 @@ export function AnimatedStat({
   // Static markup (no framer-motion) — homepage Lighthouse SI/TBT wins over entrance polish.
   return (
     <div className="relative group">
-      <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-[color:var(--g-intelligence)]/12 via-transparent to-[color:var(--g-emerald)]/8 opacity-0 transition-opacity duration-[var(--g-duration-state)] group-hover:opacity-100" />
       <div className="relative text-center">
-        <div className="text-5xl sm:text-6xl font-bold text-foreground">
+        <div className="bg-gradient-to-b from-foreground to-foreground/80 bg-clip-text text-5xl font-bold tracking-tight text-transparent sm:text-6xl">
           {value}
           {suffix}
         </div>
