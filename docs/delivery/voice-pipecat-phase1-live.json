@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-05T04:08:18.204852+00:00",
+  "generated_at": "2026-09-05T04:33:14.683535+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
   "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-05T04:07:50.685377+00:00",
+    "timestamp": "2026-09-05T04:32:46.270503+00:00",
     "version": "0.1.0",
     "environment": "prod",
     "git_sha": "54df0d6cb178a4785057fcc1a91ca5ae2ccab7cb",
@@ -55,7 +55,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "3d338228-5808-4c63-9cc8-5ca1fb4e917d",
+        "conversation_id": "7c94f3da-a6f5-4504-ac17-7dd7012929bd",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
@@ -79,21 +79,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#4",
+              "processor": "DeepgramFluxSTTService#10",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#4",
+              "processor": "ElevenLabsTTSService#10",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#4",
+              "processor": "DeepgramFluxSTTService#10",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#4",
+              "processor": "ElevenLabsTTSService#10",
               "value": 0.0
             }
           ]
@@ -173,7 +173,7 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#4",
+              "processor": "ElevenLabsTTSService#10",
               "model": "eleven_flash_v2_5",
               "value": 5
             }
@@ -213,7 +213,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "36a6193e-79f0-454f-bdfd-abb2d5f56158",
+        "conversation_id": "fe44ec1e-3f73-4e27-95c2-ae0ae578764c",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
@@ -237,21 +237,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#6",
+              "processor": "DeepgramFluxSTTService#11",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#11",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#6",
+              "processor": "DeepgramFluxSTTService#11",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#11",
               "value": 0.0
             }
           ]
@@ -288,123 +288,143 @@
       },
       {
         "type": "assistant_text",
-        "delta": "I don\u2019t have enough info"
+        "delta": "I can help draft the ema"
       },
       {
         "type": "assistant_text",
-        "delta": "I don\u2019t have enough info"
+        "delta": "I can help draft the ema"
       },
       {
         "type": "assistant_text",
-        "delta": "rmation yet. Tell me Sar"
+        "delta": "il, but I can\u2019t send mes"
       },
       {
         "type": "assistant_text",
-        "delta": "rmation yet. Tell me Sar"
+        "delta": "il, but I can\u2019t send mes"
       },
       {
         "type": "assistant_text",
-        "delta": "ah\u2019s email address or th"
+        "delta": "sages from here without "
       },
       {
         "type": "assistant_text",
-        "delta": "ah\u2019s email address or th"
+        "delta": "sages from here without "
       },
       {
         "type": "assistant_text",
-        "delta": "e connected CRM record t"
+        "delta": "a connected email tool o"
       },
       {
         "type": "assistant_text",
-        "delta": "e connected CRM record t"
+        "delta": "a connected email tool o"
       },
       {
         "type": "assistant_text",
-        "delta": "o use, and I\u2019ll continue"
+        "delta": "r the recipient details."
       },
       {
         "type": "assistant_text",
-        "delta": "o use, and I\u2019ll continue"
+        "delta": "r the recipient details."
       },
       {
         "type": "assistant_text",
-        "delta": "."
+        "delta": "\n\n- Suggested email: \u201cHi"
       },
       {
         "type": "assistant_text",
-        "delta": "."
+        "delta": "\n\n- Suggested email: \u201cHi"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " Sarah \u2014 the campaign ha"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " Sarah \u2014 the campaign ha"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "s been moved to Monday. "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "s been moved to Monday. "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "Let me know if you need "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "Let me know if you need "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "anything else.\u201d\n- If you"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "anything else.\u201d\n- If you"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " want me to proceed, pro"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " want me to proceed, pro"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "vide the email connector"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "vide the email connector"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " or the exact send actio"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " or the exact send actio"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "n you want me to use."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "n you want me to use."
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I don\u2019t have enough information yet."
+          "text": "I can help draft the email."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I don\u2019t have enough information yet."
+          "text": "I can help draft the email."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "Tell me Sarah\u2019s email address or the connected CRM record to use."
+          "text": ", but I can\u2019t send messages from here without a connected email tool or the recipient details."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "Tell me Sarah\u2019s email address or the connected CRM record to use."
+          "text": ", but I can\u2019t send messages from here without a connected email tool or the recipient details."
         }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": ", and I\u2019ll continue."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": ", and I\u2019ll continue."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-stopped"
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {}
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {
-          "characters": [
-            {
-              "processor": "ElevenLabsTTSService#6",
-              "model": "eleven_flash_v2_5",
-              "value": 121
-            }
-          ]
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-tts-started"
-      },
-      {
-        "type": "audio",
-        "sample_rate": 16000
       }
     ],
     "audio_frames": 1,
@@ -417,8 +437,8 @@
     "stt_model": "flux-general-en",
     "tts_model": "eleven_flash_v2_5",
     "tts_transport": "websocket",
-    "assistant_text": "I don\u2019t have enough infoI don\u2019t have enough information yet. Tell me Sarrmation yet. Tell me Sarah\u2019s email address or thah\u2019s email address or the connected CRM record te connected CRM record to use, and I\u2019ll continueo use, and I\u2019ll continue..",
-    "confirm_language_detected": false,
+    "assistant_text": "I can help draft the emaI can help draft the email, but I can\u2019t send mesil, but I can\u2019t send messages from here without sages from here without a connected email tool oa connected email tool or the recipient details.r the recipient details.\n\n- Suggested email: \u201cHi\n\n- Suggested email: \u201cHi Sarah \u2014 the campaign ha Sarah \u2014 the campaign has been moved to Monday. s been moved to Monday. Let me know if you need Let me know if you need anything else.\u201d\n- If youanything else.\u201d\n- If you want me to proceed, pro want me to proceed, provide the email connectorvide the email connector or the exact send actio or the exact send action you want me to use.n you want me to use.",
+    "confirm_language_detected": true,
     "verdict": "PASS"
   },
   "verdict": "PASS",

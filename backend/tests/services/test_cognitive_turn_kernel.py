@@ -1,6 +1,8 @@
 """Unit tests for CognitiveTurnKernel pre-ACT sequence."""
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -232,4 +234,51 @@ async def test_conversational_depth_skips_knowledge_merge():
     knowledge = next(s for s in ctx.stages if s.stage == "KNOWLEDGE")
     assert knowledge.meta.get("skipped") == "conversational_depth"
     assert ctx.knowledge_pack.get("skipped") == "conversational_depth"
+
+
+@pytest.mark.asyncio
+async def test_plan_reuses_connected_integrations_without_relist(monkeypatch):
+    """PLAN must not re-call live connector listing when the caller already passed a snapshot."""
+    from app.services.tool_registry import ToolRegistry
+
+    calls: list[dict[str, Any]] = []
+
+    def _fake_list(self, client, org_id, environment_name="production", *, force_live=True, action_key=None):
+        calls.append({"org_id": org_id, "force_live": force_live})
+        return ["slack"]
+
+    monkeypatch.setattr(ToolRegistry, "list_connected_integrations", _fake_list)
+
+    kernel = CognitiveTurnKernel(settings=SimpleNamespace(cognitive_turn_kernel_enabled=True))
+    client = SimpleNamespace()
+
+    with (
+        patch(
+            "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+            new_callable=AsyncMock,
+            return_value={"episodic_memories": [], "graph_context": []},
+        ),
+        patch(
+            "app.services.cognitive_knowledge_layer.merge",
+            new=AsyncMock(return_value={"fabric_chunks": [], "prompt_section": ""}),
+        ),
+        patch(
+            "app.services.cognitive_outcome_loop.bias_from_outcomes",
+            return_value={"bias_notes": [], "weight_delta": 0.0},
+        ),
+        patch.object(CognitiveTurnKernel, "_persist_trace", new_callable=AsyncMock),
+    ):
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id="org-1",
+                message="what is two plus two",
+                spoken_mode=True,
+                reasoning_depth="conversational",
+                client=client,
+                connected_integrations=["gmail", "slack"],
+            )
+        )
+
+    assert calls == []
+    assert ctx.plan is not None
 

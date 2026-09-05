@@ -101,9 +101,11 @@ See `docs/delivery/ui-2-0-final-closure-2026-09-04.md`.
 
 ---
 
-## PART 2 — Technique inventory (NOT APPLIED — blocked on Part 1)
+## PART 2 — Technique inventory (APPLIED — see closure doc)
 
-Honest status vs live tip `8ac01d95` / FE `6b98dbe6`. Apply only after human confirm.
+**Superseded by:** `docs/delivery/voice-pipecat-part2-flux-opts-2026-09-04.md` + `docs/delivery/voice-pipecat-interrupt-warmup-mutation-2026-09-05.md`.
+
+Cesar authorized apply (`I confirm proceed to Part 2`). Historical inventory below is the pre-apply snapshot at tip `8ac01d95` / FE `6b98dbe6` — do not treat as current live status.
 
 ### 2.1 Deepgram Flux + Speak v2 barge-in
 
@@ -147,34 +149,15 @@ Honest status vs live tip `8ac01d95` / FE `6b98dbe6`. Apply only after human con
 
 ### 2.5 Live latency re-measure
 
-**BLOCKED on Part 1 human confirm.**
+**RUN on tip `6d6d6d56`** — numbers and honesty caveats in `voice-pipecat-part2-flux-opts-2026-09-04.md` §2.5 (HTTP instrument + Pipecat synth-PCM infra floor). Still miss 700–900ms feel; organic Cesar stopwatch still OPEN.
 
-Prior benchmarks (do **not** average; do **not** treat as Pipecat FE organic):
-
-| Scenario / source | TTFT ms | TTFA ms | Tip / note |
-|-------------------|--------:|--------:|------------|
-| User-stated pre-opt baseline | 4632 | 4813 | Documented in latency artifacts |
-| Half-duplex feel target | 700–900 | — | Honest product bar (not a claim of current achievement) |
-| Post narrow-fix conversational (HTTP path) | 3330 | 3514 | Phase 0 decision doc, tip `0205c202` |
-| Latency JSON `simple_conversational` (HTTP session/turn probe) | 4480 | 6559 | `voice-latency-phases-live.json` @ `c6418a50` — **probe-derived** |
-| Latency JSON `warm` | 7447 | 9298 | Same artifact — cold/warm probe, not FE mic |
-| Cache-hit 1385 / 1564 | — | — | Cited in program history for **text/cache** work; **not re-validated** here for Pipecat FE |
-
-**Mutation proof for any new Part 2 mechanism:** deliberately disable → confirm fail → restore → pass. **NOT RUN** (nothing new applied).
+Mutation flux↔nova3: **LIVE PASS** then restored (`voice-pipecat-interrupt-warmup-mutation-2026-09-05.md`).
 
 ---
 
-## What ships in this commit
+## What shipped historically in the inventory commit
 
-- This gate + inventory doc
-- Smoke gate: `orchestration_honesty` when flag on (`scripts/verify-voice-pipecat-phase1-live.py`)
-- Doc updates on FE switch / Phase 0 status honesty
+- This gate + inventory doc (pre-apply snapshot)
+- Smoke gate: `orchestration_honesty` when flag on
 
-**Does not ship:** Flux migration, STT fallback, TTS warm-up, speculative tool prefetch, or latency re-measure.
-
----
-
-## Next action
-
-1. Cesar runs Part 1 checklist → posts `HUMAN_VOICE_CONFIRM` block.  
-2. Only then: apply chosen Part 2 items → commit → push → Railway/Vercel tip → mutation + per-scenario latency → update this doc.
+**Current live Part 2 status:** see Part 2 closure + interrupt/warmup docs (not this snapshot).

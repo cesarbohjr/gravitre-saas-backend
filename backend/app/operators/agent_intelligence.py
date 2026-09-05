@@ -1525,8 +1525,20 @@ class AgentIntelligence:
         _mark("client_ready")
 
         task_text = query.strip()
+        # Spoken non-write: use connector snapshot cache (force_live=False) to avoid
+        # ~0.6–1.2s live auth round-trips on every simple Talk turn. Write-shaped
+        # intents still force live so ACT sees current auth. Clarify/tool paths that
+        # need freshness already call find_integration_availability(force_live=True).
+        from app.services.conversational_planning_engine import is_direct_connector_write_intent
+
+        _connectors_force_live = not (
+            bool(spoken_mode) and not is_direct_connector_write_intent(task_text)
+        )
         connected_early = self.tool_registry.list_connected_integrations(
-            client, org_id, environment_name=environment_name
+            client,
+            org_id,
+            environment_name=environment_name,
+            force_live=_connectors_force_live,
         )
         _mark("connected_integrations")
         from app.services.mcp_client_service import get_mcp_client_service
@@ -2146,6 +2158,7 @@ class AgentIntelligence:
                     client=client,
                     agent=early_agent,
                     reasoning_depth=reasoning_depth,
+                    connected_integrations=list(connected_early or []),
                 )
             )
             if isinstance(task_state, dict):

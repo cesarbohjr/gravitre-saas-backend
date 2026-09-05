@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-05T03:08:24.283783+00:00",
+  "generated_at": "2026-09-05T04:33:16.136628+00:00",
   "base": "https://gravitre-saas-backend-production.up.railway.app",
-  "health_git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
+  "health_git_sha": "6d6d6d5672dc81ceec7798a1d3fd2625b2821e48",
   "unified_turn_live_enabled": true,
   "user_stated_baseline": {
     "ttft_ms": 4632,
@@ -14,51 +14,51 @@
   "phase0_pre_opt_artifact": null,
   "probes": {
     "warm": {
-      "turn_id": "3126dc40-fc78-48e2-bc58-ca85664b62a9",
+      "turn_id": "1e6e2c22-6ab8-4da0-9619-328a94200731",
       "http": 200,
       "ok": true,
-      "ttft_ms": 7805,
-      "ttfa_ms": 7985,
-      "total_ms": 8413,
-      "wall_ms": 9188,
+      "ttft_ms": 3174,
+      "ttfa_ms": 3362,
+      "total_ms": 4499,
+      "wall_ms": 6244,
       "model": "gpt-4o-mini",
-      "text_preview": "Good, thanks. Just checking in \u2014 anything specific on your mind?",
+      "text_preview": "Good, thanks. Just let me know if there's anything specific on your mind!",
       "spoken_style_flags": {
         "visual_markdown": false,
         "written_list_phrase": false
       },
       "latency_ms": {
-        "total": 8413,
-        "ttft_ms": 7805,
-        "ttfa_ms": 7985,
+        "total": 4499,
+        "ttft_ms": 3174,
+        "ttfa_ms": 3362,
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 274.3,
+          "RECALL": 180.2,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1260.5,
+          "PLAN": 490.4,
           "VERIFY": 0.0,
-          "GOVERN": 0.0
+          "GOVERN": 1.2
         },
         "reasoning_depth": "conversational",
         "routing_tier": "simple",
         "effective_mode": "fast",
         "cached_prompt_tokens": 0,
         "cached_prompt_ratio": 0.0,
-        "classify_setup_ms": 1382,
-        "pre_act_done_ms": 3538,
-        "pre_act_to_ttft_ms": 4267,
-        "ttft_to_ttfa_ms": 180,
-        "model_ttft_ms": 1821,
-        "pre_model_ms": 7,
-        "wall_to_first_token_ms": 1830,
+        "classify_setup_ms": 1256,
+        "pre_act_done_ms": 2398,
+        "pre_act_to_ttft_ms": 776,
+        "ttft_to_ttfa_ms": 188,
+        "model_ttft_ms": 645,
+        "pre_model_ms": 17,
+        "wall_to_first_token_ms": 663,
         "spoken_streamed": true,
         "unified_breakdown": {
-          "model_ttft_ms": 1821,
-          "pre_model_ms": 7,
-          "wall_to_first_token_ms": 1830,
-          "context_prompt_ms": 1,
-          "registry_tools_ms": 1,
-          "narrow_tools_ms": 5,
+          "model_ttft_ms": 645,
+          "pre_model_ms": 17,
+          "wall_to_first_token_ms": 663,
+          "context_prompt_ms": 12,
+          "registry_tools_ms": 0,
+          "narrow_tools_ms": 4,
           "cached_prompt_tokens": 0,
           "cached_prompt_ratio": 0.0,
           "conversational_no_tools": true
@@ -69,14 +69,14 @@
         "effective_mode": "fast",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 274.3,
+          "RECALL": 180.2,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1260.5,
+          "PLAN": 490.4,
           "VERIFY": 0.0,
-          "GOVERN": 0.0
+          "GOVERN": 1.2
         },
         "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1534.8,
+        "cognitive_total_stage_ms": 671.8,
         "unified_turn_live": true
       },
       "event_types": [
@@ -103,6 +103,8 @@
         "voice.text.delta",
         "voice.text.delta",
         "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
         "voice.audio.delta",
         "voice.intelligence",
         "voice.sse.text-end",
@@ -112,13 +114,13 @@
       "has_ttfa_event": true
     },
     "simple_conversational": {
-      "turn_id": "b01e339a-c82b-4f4b-8805-b5471b2b8e73",
+      "turn_id": "aa17cb98-6a62-4dc3-a50a-de261e340677",
       "http": 200,
       "ok": true,
-      "ttft_ms": 4109,
-      "ttfa_ms": 4291,
-      "total_ms": 4352,
-      "wall_ms": 4968,
+      "ttft_ms": 2203,
+      "ttfa_ms": 2457,
+      "total_ms": 2534,
+      "wall_ms": 3054,
       "model": "gpt-5.4-mini",
       "text_preview": "Four.",
       "spoken_style_flags": {
@@ -126,14 +128,14 @@
         "written_list_phrase": false
       },
       "latency_ms": {
-        "total": 4352,
-        "ttft_ms": 4109,
-        "ttfa_ms": 4291,
+        "total": 2534,
+        "ttft_ms": 2203,
+        "ttfa_ms": 2457,
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 180.2,
+          "RECALL": 153.6,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1081.3,
+          "PLAN": 553.0,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
@@ -142,21 +144,21 @@
         "effective_mode": "fast",
         "cached_prompt_tokens": 4736,
         "cached_prompt_ratio": 0.7789,
-        "classify_setup_ms": 1418,
-        "pre_act_done_ms": 3187,
-        "pre_act_to_ttft_ms": 922,
-        "ttft_to_ttfa_ms": 182,
-        "model_ttft_ms": 400,
-        "pre_model_ms": 81,
-        "wall_to_first_token_ms": 483,
+        "classify_setup_ms": 619,
+        "pre_act_done_ms": 1730,
+        "pre_act_to_ttft_ms": 473,
+        "ttft_to_ttfa_ms": 254,
+        "model_ttft_ms": 377,
+        "pre_model_ms": 47,
+        "wall_to_first_token_ms": 425,
         "spoken_streamed": true,
         "unified_breakdown": {
-          "model_ttft_ms": 400,
-          "pre_model_ms": 81,
-          "wall_to_first_token_ms": 483,
-          "context_prompt_ms": 1,
-          "registry_tools_ms": 1,
-          "narrow_tools_ms": 78,
+          "model_ttft_ms": 377,
+          "pre_model_ms": 47,
+          "wall_to_first_token_ms": 425,
+          "context_prompt_ms": 0,
+          "registry_tools_ms": 0,
+          "narrow_tools_ms": 46,
           "cached_prompt_tokens": 4736,
           "cached_prompt_ratio": 0.7789
         }
@@ -166,14 +168,14 @@
         "effective_mode": "fast",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 180.2,
+          "RECALL": 153.6,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1081.3,
+          "PLAN": 553.0,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
         "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1261.5,
+        "cognitive_total_stage_ms": 706.6,
         "unified_turn_live": true
       },
       "event_types": [
@@ -196,29 +198,29 @@
       "has_ttfa_event": true
     },
     "simple_conversational_turn2": {
-      "turn_id": "5e4a5916-1ae3-4d55-b653-d602eb6e8fe3",
+      "turn_id": "5aa7a74e-16d1-4c41-9905-20504f66764e",
       "http": 200,
       "ok": true,
-      "ttft_ms": 3856,
-      "ttfa_ms": 4197,
-      "total_ms": 23164,
-      "wall_ms": 24871,
+      "ttft_ms": 7063,
+      "ttfa_ms": 9147,
+      "total_ms": 20262,
+      "wall_ms": 20918,
       "model": "gpt-5.4-mini",
-      "text_preview": "Gravitre helps teams automate connected work across their business tools.Gravitre helps teams manage agents, workflows, connectors, and data sources for their organization.",
+      "text_preview": "Gravitre helps teams run connected ops across CRM, workflows, and automation.Gravitre helps teams manage agents, workflows, connectors, and data sources for their organization.",
       "spoken_style_flags": {
         "visual_markdown": false,
         "written_list_phrase": false
       },
       "latency_ms": {
-        "total": 23164,
-        "ttft_ms": 3856,
-        "ttfa_ms": 4197,
+        "total": 20262,
+        "ttft_ms": 7063,
+        "ttfa_ms": 9147,
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 196.9,
+          "RECALL": 169.0,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1115.8,
-          "VERIFY": 0.0,
+          "PLAN": 1449.1,
+          "VERIFY": 0.1,
           "GOVERN": 0.0
         },
         "reasoning_depth": "conversational",
@@ -226,10 +228,10 @@
         "effective_mode": "fast",
         "cached_prompt_tokens": null,
         "cached_prompt_ratio": null,
-        "classify_setup_ms": 1430,
-        "pre_act_done_ms": 3313,
-        "pre_act_to_ttft_ms": 543,
-        "ttft_to_ttfa_ms": 341,
+        "classify_setup_ms": 538,
+        "pre_act_done_ms": 2656,
+        "pre_act_to_ttft_ms": 4407,
+        "ttft_to_ttfa_ms": 2084,
         "model_ttft_ms": null,
         "pre_model_ms": null,
         "wall_to_first_token_ms": null,
@@ -241,14 +243,14 @@
         "effective_mode": "fast",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 196.9,
+          "RECALL": 169.0,
           "KNOWLEDGE": 0.0,
-          "PLAN": 1115.8,
-          "VERIFY": 0.0,
+          "PLAN": 1449.1,
+          "VERIFY": 0.1,
           "GOVERN": 0.0
         },
         "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1312.7
+        "cognitive_total_stage_ms": 1618.2
       },
       "event_types": [
         "voice.session.accepted",
@@ -258,6 +260,9 @@
         "voice.sse.text-start",
         "voice.text.delta",
         "voice.ttft",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
         "voice.text.delta",
         "voice.text.delta",
         "voice.text.delta",
@@ -294,13 +299,13 @@
       "has_ttfa_event": true
     },
     "consequential_write_shaped": {
-      "turn_id": "4c1c222f-8fc4-43ca-9e82-6adb1fcdcd9d",
+      "turn_id": "8d6c96f3-013e-4ce0-83c3-43bfc233d508",
       "http": 200,
       "ok": true,
-      "ttft_ms": 9039,
-      "ttfa_ms": 9238,
-      "total_ms": 11630,
-      "wall_ms": 14029,
+      "ttft_ms": 4627,
+      "ttfa_ms": 4843,
+      "total_ms": 5013,
+      "wall_ms": 6292,
       "model": "retrieve_plan_gate",
       "text_preview": "I can create a contact list named gravitre-voice-latency-governance-probe in Apollo. Reply yes to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "spoken_style_flags": {
@@ -308,14 +313,14 @@
         "written_list_phrase": false
       },
       "latency_ms": {
-        "total": 11630,
-        "ttft_ms": 9039,
-        "ttfa_ms": 9238,
+        "total": 5013,
+        "ttft_ms": 4627,
+        "ttfa_ms": 4843,
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 219.0,
-          "KNOWLEDGE": 600.5,
-          "PLAN": 1317.1,
+          "RECALL": 187.9,
+          "KNOWLEDGE": 1418.6,
+          "PLAN": 431.5,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
@@ -324,10 +329,10 @@
         "effective_mode": "standard",
         "cached_prompt_tokens": null,
         "cached_prompt_ratio": null,
-        "classify_setup_ms": 1685,
-        "pre_act_done_ms": 8838,
-        "pre_act_to_ttft_ms": 201,
-        "ttft_to_ttfa_ms": 199,
+        "classify_setup_ms": 845,
+        "pre_act_done_ms": 3970,
+        "pre_act_to_ttft_ms": 657,
+        "ttft_to_ttfa_ms": 216,
         "model_ttft_ms": null,
         "pre_model_ms": null,
         "wall_to_first_token_ms": null,
@@ -339,14 +344,14 @@
         "effective_mode": "standard",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 219.0,
-          "KNOWLEDGE": 600.5,
-          "PLAN": 1317.1,
+          "RECALL": 187.9,
+          "KNOWLEDGE": 1418.6,
+          "PLAN": 431.5,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
         "reasoning_depth": "full",
-        "cognitive_total_stage_ms": 2136.6,
+        "cognitive_total_stage_ms": 2038.0,
         "spoken_consequential_escalation": true,
         "unified_turn_live": true
       },
@@ -371,40 +376,40 @@
   },
   "deltas_vs_user_baseline": {
     "simple_conversational": {
-      "ttft_delta_vs_4632": -523,
-      "ttfa_delta_vs_4813": -522,
+      "ttft_delta_vs_4632": -2429,
+      "ttfa_delta_vs_4813": -2356,
       "reasoning_depth": "conversational",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 180.2,
+        "RECALL": 153.6,
         "KNOWLEDGE": 0.0,
-        "PLAN": 1081.3,
+        "PLAN": 553.0,
         "VERIFY": 0.0,
         "GOVERN": 0.0
       }
     },
     "simple_conversational_turn2": {
-      "ttft_delta_vs_4632": -776,
-      "ttfa_delta_vs_4813": -616,
+      "ttft_delta_vs_4632": 2431,
+      "ttfa_delta_vs_4813": 4334,
       "reasoning_depth": "conversational",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 196.9,
+        "RECALL": 169.0,
         "KNOWLEDGE": 0.0,
-        "PLAN": 1115.8,
-        "VERIFY": 0.0,
+        "PLAN": 1449.1,
+        "VERIFY": 0.1,
         "GOVERN": 0.0
       }
     },
     "consequential_write_shaped": {
-      "ttft_delta_vs_4632": 4407,
-      "ttfa_delta_vs_4813": 4425,
+      "ttft_delta_vs_4632": -5,
+      "ttfa_delta_vs_4813": 30,
       "reasoning_depth": "full",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 219.0,
-        "KNOWLEDGE": 600.5,
-        "PLAN": 1317.1,
+        "RECALL": 187.9,
+        "KNOWLEDGE": 1418.6,
+        "PLAN": 431.5,
         "VERIFY": 0.0,
         "GOVERN": 0.0
       }
@@ -421,5 +426,5 @@
     "ttft_improved_vs_4632": "PASS",
     "governance_not_skipped_on_write": "PASS"
   },
-  "claim": "PASS \u2014 voice latency phases @ tip 23a3773877917315b1ba06f86d85aff7255c8f0b; simple ttft=4109 ttfa=4291 depth=conversational; write depth=full"
+  "claim": "PASS \u2014 voice latency phases @ tip 6d6d6d5672dc81ceec7798a1d3fd2625b2821e48; simple ttft=2203 ttfa=2457 depth=conversational; write depth=full"
 }

@@ -78,6 +78,9 @@ class CognitiveTurnRequest:
     # full = every stage; conversational = spoken/simple — keep RECALL+GOVERN,
     # skip heavy Knowledge Fabric merge (not a second brain; write turns stay full).
     reasoning_depth: str = "full"
+    # When the caller already listed connectors (e.g. agent_intelligence pre-kernel),
+    # reuse that snapshot in PLAN — do not pay a second live list_connected_integrations.
+    connected_integrations: list[str] | None = None
 
 
 @dataclass
@@ -276,20 +279,27 @@ class CognitiveTurnKernel:
         try:
             from app.services.cognitive_planner import CognitivePlanner
 
-            connected_integrations: list[str] = []
+            connected_integrations: list[str] = list(request.connected_integrations or [])
             department: str | None = None
             if client is not None:
-                try:
-                    from app.services.tool_registry import get_tool_registry
+                if not connected_integrations:
+                    try:
+                        from app.services.tool_registry import get_tool_registry
 
-                    reg = get_tool_registry()
-                    connected_integrations = reg.list_connected_integrations(
-                        client,
-                        request.org_id,
-                        environment_name=request.environment_name,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("cognitive_plan_connected_integrations_skipped error=%s", exc)
+                        reg = get_tool_registry()
+                        # Spoken conversational: trust snapshot cache (force_live=False).
+                        # Write/full depth still force live when the caller did not pass a list.
+                        force_live = not (
+                            request.spoken_mode and str(request.reasoning_depth or "") == "conversational"
+                        )
+                        connected_integrations = reg.list_connected_integrations(
+                            client,
+                            request.org_id,
+                            environment_name=request.environment_name,
+                            force_live=force_live,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("cognitive_plan_connected_integrations_skipped error=%s", exc)
                 agent_row = request.agent if isinstance(request.agent, dict) else {}
                 dept_name = str(agent_row.get("department") or "").strip().lower()
                 if dept_name:
@@ -411,7 +421,11 @@ class CognitiveTurnKernel:
                 StageRecord(stage="GOVERN", ok=False, ms=_elapsed_ms(t0), meta={"error": str(exc)[:200]})
             )
 
-        await self._persist_trace(request, ctx)
+        # Spoken conversational: do not block first-token/TTS on audit persist.
+        if request.spoken_mode and str(request.reasoning_depth or "") == "conversational":
+            asyncio.create_task(self._persist_trace(request, ctx))
+        else:
+            await self._persist_trace(request, ctx)
         return ctx
 
     async def run_learn(
