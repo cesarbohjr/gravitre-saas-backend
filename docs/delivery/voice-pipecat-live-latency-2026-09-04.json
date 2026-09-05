@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-04T23:59:56.213799+00:00",
+  "generated_at": "2026-09-05T04:35:13.357265+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "44f596842a1a00579952af6226481fc56a66302a",
+  "git_sha": "6d6d6d5672dc81ceec7798a1d3fd2625b2821e48",
   "methodology": "Real synthesized-speech PCM16 fed into the live production Pipecat WS as simulated mic input; real Deepgram STT, real CognitiveTurnKernel, real ElevenLabs TTS WS. NOT a human speaking through a real browser mic -> excludes browser capture/encode overhead. This is an infra-latency floor, not a substitute for Cesar's own perceptual (naturalness/barge-in) verification.",
   "scenarios": {
     "simple_conversational": {
@@ -9,14 +9,14 @@
       "n_runs": 5,
       "n_ok": 5,
       "end_to_end_ttfa_ms": {
-        "p50": 8167.0,
-        "p95": 10778.4,
+        "p50": 5844.0,
+        "p95": 7951.2,
         "raw": [
-          11121,
-          9408,
-          7376,
-          8167,
-          6820
+          4485,
+          5844,
+          6460,
+          5768,
+          8324
         ]
       },
       "stt_and_turn_detection_ms": {
@@ -28,13 +28,13 @@
         "raw": []
       },
       "tts_ttfa_ms": {
-        "p50": 176.0,
+        "p50": 172.0,
         "raw": [
-          245,
-          171,
-          170,
-          176,
-          226
+          165,
+          172,
+          210,
+          203,
+          167
         ]
       },
       "sub_500ms_p95_met": false,
@@ -51,8 +51,8 @@
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
           "assistant_text": "4",
-          "tts_ttfa_ms": 245,
-          "end_to_end_ttfa_ms": 11121
+          "tts_ttfa_ms": 165,
+          "end_to_end_ttfa_ms": 4485
         },
         {
           "label": "simple_conversational",
@@ -66,38 +66,8 @@
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
           "assistant_text": "4",
-          "tts_ttfa_ms": 171,
-          "end_to_end_ttfa_ms": 9408
-        },
-        {
-          "label": "simple_conversational",
-          "ok": true,
-          "session_ready": true,
-          "stt_provider": "deepgram_flux",
-          "stt_model": "flux-general-en",
-          "stt_turn_detection": "flux_native_eot",
-          "tts_model": "eleven_flash_v2_5",
-          "tts_transport": "websocket",
-          "cognitive_path": "CognitiveTurnKernel",
-          "write_confirm_policy": "nl_yes_same_path_as_text",
-          "assistant_text": "4",
-          "tts_ttfa_ms": 170,
-          "end_to_end_ttfa_ms": 7376
-        },
-        {
-          "label": "simple_conversational",
-          "ok": true,
-          "session_ready": true,
-          "stt_provider": "deepgram_flux",
-          "stt_model": "flux-general-en",
-          "stt_turn_detection": "flux_native_eot",
-          "tts_model": "eleven_flash_v2_5",
-          "tts_transport": "websocket",
-          "cognitive_path": "CognitiveTurnKernel",
-          "write_confirm_policy": "nl_yes_same_path_as_text",
-          "assistant_text": "4",
-          "tts_ttfa_ms": 176,
-          "end_to_end_ttfa_ms": 8167
+          "tts_ttfa_ms": 172,
+          "end_to_end_ttfa_ms": 5844
         },
         {
           "label": "simple_conversational",
@@ -111,8 +81,38 @@
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
           "assistant_text": "Four.",
-          "tts_ttfa_ms": 226,
-          "end_to_end_ttfa_ms": 6820
+          "tts_ttfa_ms": 210,
+          "end_to_end_ttfa_ms": 6460
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Four.",
+          "tts_ttfa_ms": 203,
+          "end_to_end_ttfa_ms": 5768
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "4",
+          "tts_ttfa_ms": 167,
+          "end_to_end_ttfa_ms": 8324
         }
       ]
     },
@@ -121,12 +121,12 @@
       "n_runs": 3,
       "n_ok": 3,
       "end_to_end_ttfa_ms": {
-        "p50": 16152.0,
-        "p95": 16351.8,
+        "p50": 12498.0,
+        "p95": 13804.8,
         "raw": [
-          16152,
-          15546,
-          16374
+          13950,
+          12498,
+          12126
         ]
       },
       "stt_and_turn_detection_ms": {
@@ -138,11 +138,11 @@
         "raw": []
       },
       "tts_ttfa_ms": {
-        "p50": 127.0,
+        "p50": 139.0,
         "raw": [
-          127,
-          136,
-          124
+          140,
+          139,
+          134
         ]
       },
       "sub_500ms_p95_met": false,
@@ -158,9 +158,9 @@
           "tts_transport": "websocket",
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
-          "assistant_text": "I can\u2019t send an email from this request because I don\u2019t have the recipient address or an email-sending tool available here.\n\nIf you want, send me Sarah\u2019s email address and I can help draft the message:\n- Subject: Campaign moved to Monday\n- Body: Hi Sarah, the campaign has moved to Monday. Let me know if you need anything else.",
-          "tts_ttfa_ms": 127,
-          "end_to_end_ttfa_ms": 16152
+          "assistant_text": "I don\u2019t have enough information yet. Tell me Sarah\u2019s email address, and I\u2019ll draft the message or help you send it.",
+          "tts_ttfa_ms": 140,
+          "end_to_end_ttfa_ms": 13950
         },
         {
           "label": "consequential_write_shaped",
@@ -173,9 +173,9 @@
           "tts_transport": "websocket",
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
-          "assistant_text": "I don\u2019t have enough information yet. Tell me Sarah\u2019s email address and I\u2019ll continue.",
-          "tts_ttfa_ms": 136,
-          "end_to_end_ttfa_ms": 15546
+          "assistant_text": "I can\u2019t send that email from here because there\u2019s no connected email tool available in this session.\n\nIf you want, I can help you draft the message:\n- Subject: Campaign moved to Monday\n- Body: Hi Sarah, the campaign has moved to Monday. Let me know if you need anything else.",
+          "tts_ttfa_ms": 139,
+          "end_to_end_ttfa_ms": 12498
         },
         {
           "label": "consequential_write_shaped",
@@ -188,9 +188,9 @@
           "tts_transport": "websocket",
           "cognitive_path": "CognitiveTurnKernel",
           "write_confirm_policy": "nl_yes_same_path_as_text",
-          "assistant_text": "I can\u2019t send an email from here without the necessary contact details and an email-capable action.\n\n- I don\u2019t have enough information yet. Tell me Sarah\u2019s email address or the CRM record to use, and I\u2019ll continue.\n- If you want, I can also help draft the message now: \u201cThe campaign has moved to Monday.\u201d",
-          "tts_ttfa_ms": 124,
-          "end_to_end_ttfa_ms": 16374
+          "assistant_text": "I don\u2019t have enough information yet. Tell me Sarah\u2019s email address or the CRM record to use, and I\u2019ll continue.",
+          "tts_ttfa_ms": 134,
+          "end_to_end_ttfa_ms": 12126
         }
       ]
     }

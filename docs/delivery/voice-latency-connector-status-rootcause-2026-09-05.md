@@ -105,16 +105,42 @@ Mutation-tested (`backend/tests/connectors/test_connection_health_cache.py`,
 of them mock `resolve_connector_auth_status` at the import site, so none
 depended on it calling through to the network on every invocation.
 
-### Expected impact (not yet re-measured post-deploy)
+### Measured impact — PASS
 
-Removing 4 of the 5 redundant live Slack checks (~2–3s network RTT each)
-should remove roughly 8–12 seconds from the `consequential_write_shaped`
-scenario. The Errno 11 (`Resource temporarily unavailable`) errors seen for
+Re-ran the live probe against deployed sha `6d6d6d5672dc81ceec7798a1d3fd2625b2821e48`:
+
+| scenario | before (sha 54df0d6c) | after (sha 6d6d6d56) | change |
+|---|---|---|---|
+| `consequential_write_shaped` P50 | 14,696 ms | 9,326 ms | **-37%** |
+| `consequential_write_shaped` P95 | 15,741 ms | 10,459 ms | **-33%** |
+| `simple_conversational` P50 | 5,627 ms | 5,798 ms | ~flat (expected — no connector check on this path) |
+
+Confirmed via Railway logs: `slack_auth_test_failed` for the same
+`connector_id=98d82730-...` now fires roughly once per turn (spaced
+~11–21s apart across separate probe runs), not 5 times in 10 seconds
+within one turn. The remaining ~9.3s for `consequential_write_shaped` is
+consistent with: the `simple_conversational` baseline (~5.8s) plus one
+still-live, first-call, uncached Slack auth check (~2–3s network RTT) that
+this fix does not and should not eliminate (it is a legitimate live check,
+just no longer a redundant *5x* one).
+
+The Errno 11 (`Resource temporarily unavailable`) errors seen for
 `google_search_console` are consistent with socket/connection-pool pressure
-from firing many blocking `httpx.Client()` calls in quick succession —
-removing the redundant calls should also reduce that failure mode, though it
-is not itself fixed by this change and may need its own follow-up
-(async/parallel connector checks, or a connection pool) if it recurs.
+from firing many blocking `httpx.Client()` calls in quick succession; not
+independently re-tested this run, but the underlying redundant-call volume
+that caused it is now gone. Flag for follow-up if it recurs.
+
+### Honest scope of what this does NOT claim
+
+- Both scenarios still report `sub_500ms_p95_met: false`. 5.8s and 9.3s are
+  real reductions from where this started (8.6s / 15.1s a few commits ago),
+  but neither is close to natural, low-latency conversational turn-taking
+  (typically sub-1-2s). This is progress on an infra latency floor, not "voice
+  is now fast."
+- Part 1 human voice verification (`HUMAN_VOICE_CONFIRM`) is still NOT RUN.
+  All measurements above are probe/log evidence against synthesized speech
+  over a live WebSocket — not a human listening on `/ai`, Agent 1, or
+  Agent 2. That gate stays open until a human does that test.
 
 ## What is still open
 
