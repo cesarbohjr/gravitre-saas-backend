@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-04T08:43:36.095995+00:00",
+  "generated_at": "2026-09-05T03:08:24.283783+00:00",
   "base": "https://gravitre-saas-backend-production.up.railway.app",
-  "health_git_sha": "4554d352f3c304ba45016a052f052931384f6c8c",
+  "health_git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
   "unified_turn_live_enabled": true,
   "user_stated_baseline": {
     "ttft_ms": 4632,
@@ -14,16 +14,70 @@
   "phase0_pre_opt_artifact": null,
   "probes": {
     "warm": {
-      "turn_id": "18e53261-77fc-4274-8332-633d16bd8581",
+      "turn_id": "3126dc40-fc78-48e2-bc58-ca85664b62a9",
       "http": 200,
-      "ok": false,
-      "error": {
-        "type": "voice.error",
-        "detail": "ElevenLabs failed: 403 \u2014 {\"detail\":{\"type\":\"validation_error\",\"code\":\"invalid_output_format\",\"message\":\"Invalid output format 'mpeg'. Must be one of: ['alaw_8000', 'm4a_aac_44100_128', 'mp3_22050_32', 'mp3_24000_48', 'mp3_44100_128', 'mp3_44100_192', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 'opus_48000_128', 'opus_48000_192', 'opus_48000_32', 'opus_48000_64', 'opus_48000_96', 'pcm_16000', 'pcm_22050', 'pcm_24000', ",
-        "error_class": "service_failure",
-        "provider": "ElevenLabs",
-        "upstream_status": 403,
-        "billing_issue": false
+      "ok": true,
+      "ttft_ms": 7805,
+      "ttfa_ms": 7985,
+      "total_ms": 8413,
+      "wall_ms": 9188,
+      "model": "gpt-4o-mini",
+      "text_preview": "Good, thanks. Just checking in \u2014 anything specific on your mind?",
+      "spoken_style_flags": {
+        "visual_markdown": false,
+        "written_list_phrase": false
+      },
+      "latency_ms": {
+        "total": 8413,
+        "ttft_ms": 7805,
+        "ttfa_ms": 7985,
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 274.3,
+          "KNOWLEDGE": 0.0,
+          "PLAN": 1260.5,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "conversational",
+        "routing_tier": "simple",
+        "effective_mode": "fast",
+        "cached_prompt_tokens": 0,
+        "cached_prompt_ratio": 0.0,
+        "classify_setup_ms": 1382,
+        "pre_act_done_ms": 3538,
+        "pre_act_to_ttft_ms": 4267,
+        "ttft_to_ttfa_ms": 180,
+        "model_ttft_ms": 1821,
+        "pre_model_ms": 7,
+        "wall_to_first_token_ms": 1830,
+        "spoken_streamed": true,
+        "unified_breakdown": {
+          "model_ttft_ms": 1821,
+          "pre_model_ms": 7,
+          "wall_to_first_token_ms": 1830,
+          "context_prompt_ms": 1,
+          "registry_tools_ms": 1,
+          "narrow_tools_ms": 5,
+          "cached_prompt_tokens": 0,
+          "cached_prompt_ratio": 0.0,
+          "conversational_no_tools": true
+        }
+      },
+      "routing": {
+        "routing_tier": "simple",
+        "effective_mode": "fast",
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 274.3,
+          "KNOWLEDGE": 0.0,
+          "PLAN": 1260.5,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "conversational",
+        "cognitive_total_stage_ms": 1534.8,
+        "unified_turn_live": true
       },
       "event_types": [
         "voice.session.accepted",
@@ -31,36 +85,96 @@
         "voice.intelligence",
         "voice.intelligence",
         "voice.sse.text-start",
+        "voice.text.delta",
         "voice.ttft",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.ttfa",
         "voice.agent_speech.start",
-        "voice.error"
+        "voice.audio.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.audio.delta",
+        "voice.intelligence",
+        "voice.sse.text-end",
+        "voice.turn.complete"
       ],
-      "routing": {
-        "routing_tier": "simple",
-        "effective_mode": "fast",
-        "cognitive_stage_ms": {
-          "RETRIEVE": 0.0,
-          "RECALL": 221.8,
-          "KNOWLEDGE": 0.0,
-          "PLAN": 948.6,
-          "VERIFY": 0.0,
-          "GOVERN": 0.0
-        },
-        "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1170.4
-      }
+      "audio_deltas": 2,
+      "has_ttfa_event": true
     },
     "simple_conversational": {
-      "turn_id": "bb226d99-2fa7-4f7d-ab53-a7d8dacb4419",
+      "turn_id": "b01e339a-c82b-4f4b-8805-b5471b2b8e73",
       "http": 200,
-      "ok": false,
-      "error": {
-        "type": "voice.error",
-        "detail": "ElevenLabs failed: 403 \u2014 {\"detail\":{\"type\":\"validation_error\",\"code\":\"invalid_output_format\",\"message\":\"Invalid output format 'mpeg'. Must be one of: ['alaw_8000', 'm4a_aac_44100_128', 'mp3_22050_32', 'mp3_24000_48', 'mp3_44100_128', 'mp3_44100_192', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 'opus_48000_128', 'opus_48000_192', 'opus_48000_32', 'opus_48000_64', 'opus_48000_96', 'pcm_16000', 'pcm_22050', 'pcm_24000', ",
-        "error_class": "service_failure",
-        "provider": "ElevenLabs",
-        "upstream_status": 403,
-        "billing_issue": false
+      "ok": true,
+      "ttft_ms": 4109,
+      "ttfa_ms": 4291,
+      "total_ms": 4352,
+      "wall_ms": 4968,
+      "model": "gpt-5.4-mini",
+      "text_preview": "Four.",
+      "spoken_style_flags": {
+        "visual_markdown": false,
+        "written_list_phrase": false
+      },
+      "latency_ms": {
+        "total": 4352,
+        "ttft_ms": 4109,
+        "ttfa_ms": 4291,
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 180.2,
+          "KNOWLEDGE": 0.0,
+          "PLAN": 1081.3,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "conversational",
+        "routing_tier": "simple",
+        "effective_mode": "fast",
+        "cached_prompt_tokens": 4736,
+        "cached_prompt_ratio": 0.7789,
+        "classify_setup_ms": 1418,
+        "pre_act_done_ms": 3187,
+        "pre_act_to_ttft_ms": 922,
+        "ttft_to_ttfa_ms": 182,
+        "model_ttft_ms": 400,
+        "pre_model_ms": 81,
+        "wall_to_first_token_ms": 483,
+        "spoken_streamed": true,
+        "unified_breakdown": {
+          "model_ttft_ms": 400,
+          "pre_model_ms": 81,
+          "wall_to_first_token_ms": 483,
+          "context_prompt_ms": 1,
+          "registry_tools_ms": 1,
+          "narrow_tools_ms": 78,
+          "cached_prompt_tokens": 4736,
+          "cached_prompt_ratio": 0.7789
+        }
+      },
+      "routing": {
+        "routing_tier": "simple",
+        "effective_mode": "fast",
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 180.2,
+          "KNOWLEDGE": 0.0,
+          "PLAN": 1081.3,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "conversational",
+        "cognitive_total_stage_ms": 1261.5,
+        "unified_turn_live": true
       },
       "event_types": [
         "voice.session.accepted",
@@ -68,154 +182,244 @@
         "voice.intelligence",
         "voice.intelligence",
         "voice.sse.text-start",
+        "voice.text.delta",
         "voice.ttft",
+        "voice.text.delta",
+        "voice.ttfa",
         "voice.agent_speech.start",
-        "voice.error"
+        "voice.audio.delta",
+        "voice.intelligence",
+        "voice.sse.text-end",
+        "voice.turn.complete"
       ],
-      "routing": {
-        "routing_tier": "simple",
-        "effective_mode": "fast",
-        "cognitive_stage_ms": {
-          "RETRIEVE": 0.0,
-          "RECALL": 156.0,
-          "KNOWLEDGE": 0.0,
-          "PLAN": 867.0,
-          "VERIFY": 0.0,
-          "GOVERN": 0.0
-        },
-        "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1023.0
-      }
+      "audio_deltas": 1,
+      "has_ttfa_event": true
     },
     "simple_conversational_turn2": {
-      "turn_id": "a7b955e1-4f02-4945-9131-af4400bf801c",
+      "turn_id": "5e4a5916-1ae3-4d55-b653-d602eb6e8fe3",
       "http": 200,
-      "ok": false,
-      "error": {
-        "type": "voice.error",
-        "detail": "ElevenLabs failed: 403 \u2014 {\"detail\":{\"type\":\"validation_error\",\"code\":\"invalid_output_format\",\"message\":\"Invalid output format 'mpeg'. Must be one of: ['alaw_8000', 'm4a_aac_44100_128', 'mp3_22050_32', 'mp3_24000_48', 'mp3_44100_128', 'mp3_44100_192', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 'opus_48000_128', 'opus_48000_192', 'opus_48000_32', 'opus_48000_64', 'opus_48000_96', 'pcm_16000', 'pcm_22050', 'pcm_24000', ",
-        "error_class": "service_failure",
-        "provider": "ElevenLabs",
-        "upstream_status": 403,
-        "billing_issue": false
+      "ok": true,
+      "ttft_ms": 3856,
+      "ttfa_ms": 4197,
+      "total_ms": 23164,
+      "wall_ms": 24871,
+      "model": "gpt-5.4-mini",
+      "text_preview": "Gravitre helps teams automate connected work across their business tools.Gravitre helps teams manage agents, workflows, connectors, and data sources for their organization.",
+      "spoken_style_flags": {
+        "visual_markdown": false,
+        "written_list_phrase": false
       },
-      "event_types": [
-        "voice.session.accepted",
-        "voice.session.started",
-        "voice.intelligence",
-        "voice.intelligence",
-        "voice.sse.text-start",
-        "voice.ttft",
-        "voice.agent_speech.start",
-        "voice.error"
-      ],
+      "latency_ms": {
+        "total": 23164,
+        "ttft_ms": 3856,
+        "ttfa_ms": 4197,
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 196.9,
+          "KNOWLEDGE": 0.0,
+          "PLAN": 1115.8,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "conversational",
+        "routing_tier": "simple",
+        "effective_mode": "fast",
+        "cached_prompt_tokens": null,
+        "cached_prompt_ratio": null,
+        "classify_setup_ms": 1430,
+        "pre_act_done_ms": 3313,
+        "pre_act_to_ttft_ms": 543,
+        "ttft_to_ttfa_ms": 341,
+        "model_ttft_ms": null,
+        "pre_model_ms": null,
+        "wall_to_first_token_ms": null,
+        "spoken_streamed": null,
+        "unified_breakdown": null
+      },
       "routing": {
         "routing_tier": "simple",
         "effective_mode": "fast",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 134.5,
+          "RECALL": 196.9,
           "KNOWLEDGE": 0.0,
-          "PLAN": 869.4,
+          "PLAN": 1115.8,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
         "reasoning_depth": "conversational",
-        "cognitive_total_stage_ms": 1003.9
-      }
-    },
-    "consequential_write_shaped": {
-      "turn_id": "38e226ea-9293-4a27-a986-3ecf30faf4f9",
-      "http": 200,
-      "ok": false,
-      "error": {
-        "type": "voice.error",
-        "detail": "ElevenLabs failed: 403 \u2014 {\"detail\":{\"type\":\"validation_error\",\"code\":\"invalid_output_format\",\"message\":\"Invalid output format 'mpeg'. Must be one of: ['alaw_8000', 'm4a_aac_44100_128', 'mp3_22050_32', 'mp3_24000_48', 'mp3_44100_128', 'mp3_44100_192', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 'opus_48000_128', 'opus_48000_192', 'opus_48000_32', 'opus_48000_64', 'opus_48000_96', 'pcm_16000', 'pcm_22050', 'pcm_24000', ",
-        "error_class": "service_failure",
-        "provider": "ElevenLabs",
-        "upstream_status": 403,
-        "billing_issue": false
+        "cognitive_total_stage_ms": 1312.7
       },
       "event_types": [
         "voice.session.accepted",
         "voice.session.started",
         "voice.intelligence",
         "voice.intelligence",
-        "voice.intelligence",
         "voice.sse.text-start",
+        "voice.text.delta",
         "voice.ttft",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.ttfa",
         "voice.agent_speech.start",
-        "voice.error"
+        "voice.audio.delta",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.tool-input-available",
+        "voice.sse.tool-output-available",
+        "voice.sse.text-start",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.text.delta",
+        "voice.audio.delta",
+        "voice.text.delta",
+        "voice.audio.delta",
+        "voice.sse.text-end",
+        "voice.intelligence",
+        "voice.turn.complete"
       ],
+      "audio_deltas": 3,
+      "has_ttfa_event": true
+    },
+    "consequential_write_shaped": {
+      "turn_id": "4c1c222f-8fc4-43ca-9e82-6adb1fcdcd9d",
+      "http": 200,
+      "ok": true,
+      "ttft_ms": 9039,
+      "ttfa_ms": 9238,
+      "total_ms": 11630,
+      "wall_ms": 14029,
+      "model": "retrieve_plan_gate",
+      "text_preview": "I can create a contact list named gravitre-voice-latency-governance-probe in Apollo. Reply yes to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+      "spoken_style_flags": {
+        "visual_markdown": false,
+        "written_list_phrase": false
+      },
+      "latency_ms": {
+        "total": 11630,
+        "ttft_ms": 9039,
+        "ttfa_ms": 9238,
+        "cognitive_stage_ms": {
+          "RETRIEVE": 0.0,
+          "RECALL": 219.0,
+          "KNOWLEDGE": 600.5,
+          "PLAN": 1317.1,
+          "VERIFY": 0.0,
+          "GOVERN": 0.0
+        },
+        "reasoning_depth": "full",
+        "routing_tier": "simple",
+        "effective_mode": "standard",
+        "cached_prompt_tokens": null,
+        "cached_prompt_ratio": null,
+        "classify_setup_ms": 1685,
+        "pre_act_done_ms": 8838,
+        "pre_act_to_ttft_ms": 201,
+        "ttft_to_ttfa_ms": 199,
+        "model_ttft_ms": null,
+        "pre_model_ms": null,
+        "wall_to_first_token_ms": null,
+        "spoken_streamed": false,
+        "unified_breakdown": null
+      },
       "routing": {
         "routing_tier": "simple",
         "effective_mode": "standard",
         "cognitive_stage_ms": {
           "RETRIEVE": 0.0,
-          "RECALL": 167.5,
-          "KNOWLEDGE": 660.5,
-          "PLAN": 830.3,
+          "RECALL": 219.0,
+          "KNOWLEDGE": 600.5,
+          "PLAN": 1317.1,
           "VERIFY": 0.0,
           "GOVERN": 0.0
         },
         "reasoning_depth": "full",
-        "cognitive_total_stage_ms": 1658.3,
+        "cognitive_total_stage_ms": 2136.6,
         "spoken_consequential_escalation": true,
         "unified_turn_live": true
-      }
+      },
+      "event_types": [
+        "voice.session.accepted",
+        "voice.session.started",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.text-start",
+        "voice.text.delta",
+        "voice.ttft",
+        "voice.ttfa",
+        "voice.agent_speech.start",
+        "voice.audio.delta",
+        "voice.sse.text-end",
+        "voice.turn.complete"
+      ],
+      "audio_deltas": 1,
+      "has_ttfa_event": true
     }
   },
   "deltas_vs_user_baseline": {
     "simple_conversational": {
-      "ttft_delta_vs_4632": null,
-      "ttfa_delta_vs_4813": null,
+      "ttft_delta_vs_4632": -523,
+      "ttfa_delta_vs_4813": -522,
       "reasoning_depth": "conversational",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 156.0,
+        "RECALL": 180.2,
         "KNOWLEDGE": 0.0,
-        "PLAN": 867.0,
+        "PLAN": 1081.3,
         "VERIFY": 0.0,
         "GOVERN": 0.0
       }
     },
     "simple_conversational_turn2": {
-      "ttft_delta_vs_4632": null,
-      "ttfa_delta_vs_4813": null,
+      "ttft_delta_vs_4632": -776,
+      "ttfa_delta_vs_4813": -616,
       "reasoning_depth": "conversational",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 134.5,
+        "RECALL": 196.9,
         "KNOWLEDGE": 0.0,
-        "PLAN": 869.4,
+        "PLAN": 1115.8,
         "VERIFY": 0.0,
         "GOVERN": 0.0
       }
     },
     "consequential_write_shaped": {
-      "ttft_delta_vs_4632": null,
-      "ttfa_delta_vs_4813": null,
+      "ttft_delta_vs_4632": 4407,
+      "ttfa_delta_vs_4813": 4425,
       "reasoning_depth": "full",
       "cognitive_stage_ms": {
         "RETRIEVE": 0.0,
-        "RECALL": 167.5,
-        "KNOWLEDGE": 660.5,
-        "PLAN": 830.3,
+        "RECALL": 219.0,
+        "KNOWLEDGE": 600.5,
+        "PLAN": 1317.1,
         "VERIFY": 0.0,
         "GOVERN": 0.0
       }
     }
   },
-  "verdict": "FAIL",
+  "verdict": "PASS",
   "gate_statuses": {
-    "simple_turn_completed": "FAIL",
-    "write_turn_completed": "FAIL",
+    "simple_turn_completed": "PASS",
+    "write_turn_completed": "PASS",
     "simple_depth_conversational": "PASS",
     "simple_turn_not_cache_fallback": "PASS",
     "simple_spoken_style_no_markdown_or_list_framing": "PASS",
     "write_depth_full": "PASS",
-    "ttft_improved_vs_4632": "FAIL",
-    "governance_not_skipped_on_write": "FAIL"
+    "ttft_improved_vs_4632": "PASS",
+    "governance_not_skipped_on_write": "PASS"
   },
-  "claim": "FAIL \u2014 voice latency phases @ tip 4554d352f3c304ba45016a052f052931384f6c8c; simple ttft=None ttfa=None depth=conversational; write depth=full"
+  "claim": "PASS \u2014 voice latency phases @ tip 23a3773877917315b1ba06f86d85aff7255c8f0b; simple ttft=4109 ttfa=4291 depth=conversational; write depth=full"
 }

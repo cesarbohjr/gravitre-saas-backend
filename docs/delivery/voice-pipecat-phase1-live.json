@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-04T23:01:52.375339+00:00",
+  "generated_at": "2026-09-05T03:06:22.893855+00:00",
   "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "git_sha": "afa8020b442f4727db8200c3c7f8b55e96cab542",
+  "git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-04T23:01:30.922972+00:00",
+    "timestamp": "2026-09-05T03:05:55.731996+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "afa8020b442f4727db8200c3c7f8b55e96cab542",
+    "git_sha": "23a3773877917315b1ba06f86d85aff7255c8f0b",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -55,7 +55,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "45ecab8d-9da6-43c0-8647-b51a4c38e90e",
+        "conversation_id": "8be5bb32-abdd-4e57-abbe-826bc4564426",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "stt_provider": "deepgram_flux",
@@ -69,21 +69,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#1",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#1",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#1",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#1",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ]
@@ -120,11 +120,11 @@
       },
       {
         "type": "assistant_text",
-        "delta": "Four."
+        "delta": "Four"
       },
       {
         "type": "assistant_text",
-        "delta": "Four."
+        "delta": "Four"
       },
       {
         "type": "assistant_text",
@@ -150,17 +150,7 @@
       },
       {
         "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "."
-        }
+        "type": "bot-llm-stopped"
       },
       {
         "label": "rtvi-ai",
@@ -173,9 +163,9 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#1",
+              "processor": "ElevenLabsTTSService#0",
               "model": "eleven_flash_v2_5",
-              "value": 6
+              "value": 5
             }
           ]
         }
@@ -199,7 +189,7 @@
     "stt_model": "flux-general-en",
     "tts_model": "eleven_flash_v2_5",
     "tts_transport": "websocket",
-    "assistant_text": "Four.Four...",
+    "assistant_text": "FourFour..",
     "verdict": "PASS",
     "stt_honesty": "PASS",
     "stt_expect": "deepgram_flux"
@@ -213,7 +203,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "a894bf4a-ac3a-49b0-8906-6b2f19417844",
+        "conversation_id": "95c03b72-537f-4417-a78e-9d6631464b41",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "stt_provider": "deepgram_flux",
@@ -227,21 +217,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#2",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#2",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#2",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#2",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ]
@@ -278,183 +268,156 @@
       },
       {
         "type": "assistant_text",
-        "delta": "I."
+        "delta": "I can\u2019t send the email f"
       },
       {
         "type": "assistant_text",
-        "delta": "I."
+        "delta": "I can\u2019t send the email f"
       },
       {
         "type": "assistant_text",
-        "delta": "need."
+        "delta": "rom the information prov"
       },
       {
         "type": "assistant_text",
-        "delta": "need."
+        "delta": "rom the information prov"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "ided.\n\n- I don\u2019t have Sa"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "ided.\n\n- I don\u2019t have Sa"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "rah\u2019s email address or a"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "rah\u2019s email address or a"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " connected email-sending"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " connected email-sending"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " tool in this request.\n-"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " tool in this request.\n-"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " If you want, give me Sa"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " If you want, give me Sa"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "rah\u2019s email and I\u2019ll dra"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "rah\u2019s email and I\u2019ll dra"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "ft the message.\n- If you"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "ft the message.\n- If you"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "r workflow has an email "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "r workflow has an email "
+      },
+      {
+        "type": "assistant_text",
+        "delta": "connector, tell me which"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "connector, tell me which"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " one to use and I\u2019ll hel"
+      },
+      {
+        "type": "assistant_text",
+        "delta": " one to use and I\u2019ll hel"
+      },
+      {
+        "type": "assistant_text",
+        "delta": "p route it."
+      },
+      {
+        "type": "assistant_text",
+        "delta": "p route it."
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "I."
+          "text": "I can\u2019t send the email from the information provided."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "I."
+          "text": "I can\u2019t send the email from the information provided."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "need."
+          "text": "I don\u2019t have Sarah\u2019s email address or a connected email-sending tool in this request."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "need."
-        }
-      },
-      {
-        "type": "assistant_text",
-        "delta": "the."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "the."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "recipient."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "recipient."
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "the."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "the."
+          "text": "I don\u2019t have Sarah\u2019s email address or a connected email-sending tool in this request."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "recipient."
+          "text": "If you want, give me Sarah\u2019s email and I\u2019ll draft the message."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-transcription",
         "data": {
-          "text": "recipient."
-        }
-      },
-      {
-        "type": "assistant_text",
-        "delta": "email."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "email."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "address."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "address."
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "email."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "email."
+          "text": "If you want, give me Sarah\u2019s email and I\u2019ll draft the message."
         }
       },
       {
         "label": "rtvi-ai",
         "type": "bot-llm-text",
         "data": {
-          "text": "address."
+          "text": "If your workflow has an email connector."
         }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "address."
-        }
-      },
-      {
-        "type": "assistant_text",
-        "delta": "for."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "for."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "Sarah."
-      },
-      {
-        "type": "assistant_text",
-        "delta": "Sarah."
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "for."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "for."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "Sarah."
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "Sarah."
-        }
-      },
-      {
-        "type": "assistant_text",
-        "delta": "before."
       }
     ],
     "audio_frames": 1,
@@ -467,7 +430,7 @@
     "stt_model": "flux-general-en",
     "tts_model": "eleven_flash_v2_5",
     "tts_transport": "websocket",
-    "assistant_text": "I.I.need.need.the.the.recipient.recipient.email.email.address.address.for.for.Sarah.Sarah.before.before.I.I.can.can.send.send.it.it...I.I.need.need.Sarah.Sarah.\u2019s.\u2019s.email.email.address.address.before.before.I.I.can.can.send.send.it.it.",
+    "assistant_text": "I can\u2019t send the email fI can\u2019t send the email from the information provrom the information provided.\n\n- I don\u2019t have Saided.\n\n- I don\u2019t have Sarah\u2019s email address or arah\u2019s email address or a connected email-sending connected email-sending tool in this request.\n- tool in this request.\n- If you want, give me Sa If you want, give me Sarah\u2019s email and I\u2019ll drarah\u2019s email and I\u2019ll draft the message.\n- If youft the message.\n- If your workflow has an email r workflow has an email connector, tell me whichconnector, tell me which one to use and I\u2019ll hel one to use and I\u2019ll help route it.p route it.",
     "confirm_language_detected": true,
     "verdict": "PASS"
   },
