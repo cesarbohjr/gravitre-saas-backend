@@ -3,8 +3,11 @@
 Confirms record_voice_llm_stage_sample / record_voice_e2e_latency_sample write
 through the exact same write_audit_event helper the rest of the platform's
 live signals use (unified_turn.live.completed, platform.deploy_smoke, ...),
-and that a write failure never raises out into the live voice turn it is
-reporting on (fire-and-forget contract).
+that they pass a real user_id as actor_id (audit_events.actor_id FKs
+auth.users(id) — org_id is never a valid stand-in and every write silently
+23503'd until this was fixed; see the live-verified root cause note in
+voice_latency_metrics.py), and that a write failure never raises out into the
+live voice turn it is reporting on (fire-and-forget contract).
 """
 from __future__ import annotations
 
@@ -25,6 +28,7 @@ def test_llm_stage_sample_writes_via_write_audit_event_with_expected_shape():
         mod.record_voice_llm_stage_sample(
             object(),
             org_id="11111111-1111-1111-1111-111111111111",
+            user_id="33333333-3333-3333-3333-333333333333",
             conversation_id="22222222-2222-2222-2222-222222222222",
             llm_first_token_ms=650,
             llm_first_speakable_chunk_ms=900,
@@ -35,6 +39,9 @@ def test_llm_stage_sample_writes_via_write_audit_event_with_expected_shape():
     args = write.call_args.args
     assert args[0] is client
     assert args[1] == "11111111-1111-1111-1111-111111111111"
+    # MUTATION PROOF: actor_id (args[2]) must be the real user_id, never the
+    # org_id — audit_events.actor_id FKs auth.users(id), not orgs.
+    assert args[2] == "33333333-3333-3333-3333-333333333333"
     assert args[3] == mod.LLM_STAGE_ACTION == "voice.turn_latency.llm_stage"
     assert args[4] == "conversation"
     assert args[5] == "22222222-2222-2222-2222-222222222222"
@@ -55,6 +62,7 @@ def test_e2e_sample_writes_via_write_audit_event_with_expected_shape():
         mod.record_voice_e2e_latency_sample(
             object(),
             org_id="11111111-1111-1111-1111-111111111111",
+            user_id="33333333-3333-3333-3333-333333333333",
             conversation_id=None,
             end_to_end_ms=4200,
             user_turn_finalization_ms=1100,
@@ -63,6 +71,7 @@ def test_e2e_sample_writes_via_write_audit_event_with_expected_shape():
 
     assert write.call_count == 1
     args = write.call_args.args
+    assert args[2] == "33333333-3333-3333-3333-333333333333"
     assert args[3] == mod.E2E_ACTION == "voice.turn_latency.e2e"
     # conversation_id falls back to org_id (same UUID-fallback convention as
     # unified_turn_reasoning_service.emit_unified_turn_shadow_audit) so the
@@ -82,10 +91,29 @@ def test_no_org_id_skips_write_entirely():
         mod.record_voice_e2e_latency_sample(
             object(),
             org_id="",
+            user_id="33333333-3333-3333-3333-333333333333",
             conversation_id=None,
             end_to_end_ms=1000,
             user_turn_finalization_ms=None,
             ttfb_by_processor_ms={},
+        )
+    write.assert_not_called()
+
+
+def test_no_user_id_skips_write_entirely():
+    """MUTATION PROOF (live root cause): a missing/blank user_id must skip
+    the write, not silently fall back to org_id as actor_id — that fallback
+    is exactly what caused every Phase 6 sample to 23503 in production.
+    """
+    with patch("app.workflows.audit.write_audit_event") as write:
+        mod.record_voice_llm_stage_sample(
+            object(),
+            org_id="11111111-1111-1111-1111-111111111111",
+            user_id=None,
+            conversation_id=None,
+            llm_first_token_ms=1,
+            llm_first_speakable_chunk_ms=1,
+            tts_requested_ms=1,
         )
     write.assert_not_called()
 
@@ -103,6 +131,7 @@ def test_write_failure_is_swallowed_never_raises():
         mod.record_voice_llm_stage_sample(
             object(),
             org_id="11111111-1111-1111-1111-111111111111",
+            user_id="33333333-3333-3333-3333-333333333333",
             conversation_id=None,
             llm_first_token_ms=1,
             llm_first_speakable_chunk_ms=1,

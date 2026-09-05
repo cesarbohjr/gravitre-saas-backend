@@ -207,6 +207,7 @@ def build_pipecat_voice_task(
             record_voice_e2e_latency_sample(
                 settings,
                 org_id=org_id,
+                user_id=user_id,
                 conversation_id=conversation_id,
                 end_to_end_ms=_pending_e2e_ms.pop("value", None),
                 user_turn_finalization_ms=user_turn_finalization_ms,

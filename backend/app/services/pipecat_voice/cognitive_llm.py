@@ -245,6 +245,7 @@ class GravitreCognitiveLLMService(LLMService):
         record_voice_llm_stage_sample(
             self._app_settings,
             org_id=self._org_id,
+            user_id=self._user_id,
             conversation_id=self._conversation_id,
             llm_first_token_ms=_ms(first_delta_at),
             llm_first_speakable_chunk_ms=_ms(first_speakable_chunk_at),
