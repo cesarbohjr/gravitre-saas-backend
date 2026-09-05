@@ -154,6 +154,57 @@ async def test_short_question_does_not_call_model(strict):
 
 
 # --------------------------------------------------------------------------
+# Voice latency (2026-09-04 fix a) — spoken_mode must skip the sequential
+# _model_extract round-trip that stacks before CognitiveTurnKernel even
+# starts. Text chat (spoken_mode default False) must be completely unaffected.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_understand_spoken_mode_skips_model_extract(strict, monkeypatch):
+    """MUTATION PROOF: revert spoken_mode plumbing and this call count flips to 1."""
+    router = strict(json.dumps({"goal": "should not be used for voice"}))
+    svc = cus.ContextualUnderstandingService(_settings())
+
+    class FakeDomain:
+        async def classify(self, *a, **k):
+            return {}
+
+    monkeypatch.setattr(
+        dis, "get_domain_intelligence_service", lambda *a, **k: FakeDomain()
+    )
+
+    out = await svc.understand(LONG_STATEMENT, [], "org-1", spoken_mode=True)
+
+    assert router.completions == 0, "spoken_mode must not pay the model_extract round-trip"
+    assert out.get("model_attempted") is False
+    assert out.get("model_ran") is False
+    # Rule-based fallback must still cover the field — spoken turns are not
+    # left with no goal at all, just without the LLM refinement.
+    assert out.get("goal") == svc._infer_goal_from_rules(LONG_STATEMENT)
+
+
+@pytest.mark.asyncio
+async def test_understand_text_mode_still_calls_model_extract(strict, monkeypatch):
+    """Text chat (spoken_mode default False) keeps the pre-existing behavior."""
+    router = strict(json.dumps({"goal": "model goal for text", "constraints": []}))
+    svc = cus.ContextualUnderstandingService(_settings())
+
+    class FakeDomain:
+        async def classify(self, *a, **k):
+            return {}
+
+    monkeypatch.setattr(
+        dis, "get_domain_intelligence_service", lambda *a, **k: FakeDomain()
+    )
+
+    out = await svc.understand(LONG_STATEMENT, [], "org-1")
+
+    assert router.completions == 1, "text mode must be unaffected by the voice fix"
+    assert out.get("goal") == "model goal for text"
+
+
+# --------------------------------------------------------------------------
 # Site 10 — domain_intelligence_service._classify_by_llm
 # --------------------------------------------------------------------------
 
@@ -264,3 +315,22 @@ async def test_low_confidence_rules_do_reach_the_model(strict, monkeypatch):
     await svc.classify("org-1", LONG_STATEMENT)
 
     assert router.completions == 1, "low-confidence rules must consult the model"
+
+
+@pytest.mark.asyncio
+async def test_spoken_mode_low_confidence_skips_the_model(strict, monkeypatch):
+    """Voice latency (2026-09-04 fix a). MUTATION PROOF: revert spoken_mode
+    plumbing in classify() and this call count flips to 1."""
+    router = strict(json.dumps({"department": "customer_success", "confidence": 0.8}))
+    svc = dis.DomainIntelligenceService(_settings())
+
+    async def hints(_org):
+        return {}
+
+    monkeypatch.setattr(svc, "_load_org_domain_hints", hints)
+    monkeypatch.setattr(svc, "_classify_by_rules", lambda *a, **k: dict(LOW_CONF_RULES))
+
+    out = await svc.classify("org-1", LONG_STATEMENT, spoken_mode=True)
+
+    assert router.completions == 0, "spoken_mode must not pay the domain LLM refinement"
+    assert out.get("confidence") == pytest.approx(0.1)

@@ -41,6 +41,7 @@ class DomainIntelligenceService:
         conversation_history: list[dict] | None = None,
         *,
         understanding: dict[str, Any] | None = None,
+        spoken_mode: bool = False,
     ) -> dict[str, Any]:
         _ = conversation_history
         org_hints = await self._load_org_domain_hints(org_id)
@@ -51,6 +52,15 @@ class DomainIntelligenceService:
             return self._finalize(org_boosted)
 
         if float(org_boosted.get("confidence") or 0) >= DOMAIN_CONFIDENCE_THRESHOLD:
+            return self._finalize(org_boosted)
+
+        # Voice latency (2026-09-04 fix a): the LLM refinement below is a second
+        # sequential model round-trip stacked inside contextual_understanding's
+        # own call, before CognitiveTurnKernel or the answer call even start.
+        # Rule/org-boosted confidence is real signal even below threshold — for
+        # spoken_mode, accept it rather than pay the extra round-trip. Text chat
+        # keeps the higher-confidence refinement unchanged.
+        if spoken_mode:
             return self._finalize(org_boosted)
 
         llm_result = await self._classify_by_llm(message, org_hints, org_boosted)

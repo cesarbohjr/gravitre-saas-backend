@@ -86,6 +86,12 @@ async def test_json_serializer_roundtrip_audio_and_text():
     assert interrupt is not None
     assert interrupt.__class__.__name__ == "InterruptionFrame"
 
+    interrupt_offset = await ser.deserialize(
+        json.dumps({"type": "interrupt", "playback_offset_ms": 123.5})
+    )
+    assert interrupt_offset is not None
+    assert float(getattr(interrupt_offset, "gravitre_playback_offset_ms")) == 123.5
+
 
 def test_voice_status_exposes_pipecat_fields():
     from app.services.tier1_voice_service import voice_status

@@ -108,6 +108,11 @@ export function encodePipecatAudioMessage(
   } satisfies PipecatOutboundAudio)
 }
 
-export function encodePipecatInterrupt(): string {
-  return JSON.stringify({ type: "interrupt" })
+export function encodePipecatInterrupt(options?: { playbackOffsetMs?: number | null }): string {
+  const payload: { type: "interrupt"; playback_offset_ms?: number } = { type: "interrupt" }
+  const offset = options?.playbackOffsetMs
+  if (typeof offset === "number" && Number.isFinite(offset) && offset >= 0) {
+    payload.playback_offset_ms = offset
+  }
+  return JSON.stringify(payload)
 }

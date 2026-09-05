@@ -149,6 +149,7 @@ export function useVoiceDuplexSession(options: Options) {
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmNextTimeRef = useRef(0)
+  const pcmPlayOriginRef = useRef<number | null>(null)
   const assistantTextRef = useRef("")
   const lastUserFinalRef = useRef("")
   const speculativeRef = useRef<{
@@ -167,6 +168,7 @@ export function useVoiceDuplexSession(options: Options) {
     }
     pcmSourcesRef.current = []
     pcmNextTimeRef.current = 0
+    pcmPlayOriginRef.current = null
   }, [])
 
   const stopPlayback = useCallback(() => {
@@ -215,6 +217,9 @@ export function useVoiceDuplexSession(options: Options) {
         src.start(startAt)
       } catch {
         return
+      }
+      if (pcmPlayOriginRef.current == null) {
+        pcmPlayOriginRef.current = startAt
       }
       pcmNextTimeRef.current = startAt + buf.duration
       pcmSourcesRef.current.push(src)
@@ -371,7 +376,13 @@ export function useVoiceDuplexSession(options: Options) {
       const ws = wsRef.current
       if (ws && ws.readyState === WebSocket.OPEN) {
         try {
-          ws.send(encodePipecatInterrupt())
+          const ctx = audioCtxRef.current
+          const origin = pcmPlayOriginRef.current
+          const offsetMs =
+            ctx && origin != null
+              ? Math.max(0, Math.round((ctx.currentTime - origin) * 1000))
+              : undefined
+          ws.send(encodePipecatInterrupt({ playbackOffsetMs: offsetMs }))
         } catch {
           /* ignore */
         }

@@ -1891,6 +1891,7 @@ class AgentIntelligence:
                 task_text,
                 conversation_history,
                 org_id,
+                spoken_mode=bool(spoken_mode),
             )
             # Sites 9/10 were dormant with no production signal at all: an empty goal
             # and a low-confidence domain look identical whether the model ran or

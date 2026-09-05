@@ -57,6 +57,8 @@ class ContextualUnderstandingService:
         message: str,
         conversation_history: list[dict] | None,
         org_id: str,
+        *,
+        spoken_mode: bool = False,
     ) -> dict[str, Any]:
         entities = self._extract_entities_rule_based(message)
         temporal = self._extract_temporal(message)
@@ -69,7 +71,12 @@ class ContextualUnderstandingService:
         conversational_create = self._is_conversational_create(message)
         model_ran = False
         model_attempted = False
-        if not goal and len(message.split()) > 8:
+        # Voice latency (2026-09-04 fix a): this LLM round-trip stacked sequentially
+        # before CognitiveTurnKernel/the final answer call, adding real seconds to
+        # every spoken turn long enough to trigger it (>8 words). Rule-based goal
+        # inference already runs above; for spoken_mode, accept that fallback
+        # instead of paying a second model call. Text chat is unaffected.
+        if not goal and len(message.split()) > 8 and not spoken_mode:
             model_attempted = True
             extracted = await self._model_extract(message, entities, temporal)
             goal = extracted.get("goal")
@@ -95,6 +102,7 @@ class ContextualUnderstandingService:
             message,
             conversation_history,
             understanding=partial,
+            spoken_mode=spoken_mode,
         )
         if domain.get("department_key") and not department_inference:
             department_inference = domain.get("department_key")

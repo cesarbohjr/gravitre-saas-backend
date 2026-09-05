@@ -18,10 +18,12 @@ from pipecat.transports.websocket.fastapi import (
 
 from app.core.logging import get_logger
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
 from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
+from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
 from app.services.tier1_voice_service import resolve_voice_id
 
 logger = get_logger(__name__)
@@ -101,6 +103,7 @@ def build_pipecat_voice_task(
         app_settings=settings,
         org_id=org_id,
         user_id=user_id,
+        agent=agent if isinstance(agent, dict) else None,
     )
     llm = GravitreCognitiveLLMService(
         app_settings=settings,
@@ -116,6 +119,7 @@ def build_pipecat_voice_task(
         sample_rate=16000,
         auto_mode=True,
     )
+    interrupt_reporter = ElevenLabsInterruptReporter()
 
     use_flux = stt_info.get("stt_provider_key") == STT_FLUX
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
@@ -136,6 +140,7 @@ def build_pipecat_voice_task(
             speculative,
             user_agg,
             llm,
+            interrupt_reporter,
             tts,
             transport.output(),
             assistant_agg,
@@ -158,6 +163,11 @@ def build_pipecat_voice_task(
         "conversation_id": conversation_id,
         "tts_model": str(model),
         "tts_transport": "websocket",
+        "tts_warmup": "elevenlabs_ws_preconnect",
+        "barge_in": "elevenlabs_interrupt_report",
+        "speak_v2": False,
+        "speak_v2_note": "N/A — live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
         **stt_info,
     }
 
@@ -168,5 +178,18 @@ def build_pipecat_voice_task(
             await websocket.send_json({"type": "session.ready", **session_meta})
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_session_ready_send_failed error=%s", exc)
+        # Silent TTS warm-up — preconnect WS, no audible opener text.
+        try:
+            warm = await warm_elevenlabs_tts_connection(tts)
+            session_meta["tts_warmed"] = bool(warm.get("ok"))
+            if warm.get("ok"):
+                try:
+                    await websocket.send_json(
+                        {"type": "tts.warmed", "method": warm.get("method"), "ok": True}
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_tts_warmup_hook_failed error=%s", exc)
 
     return task, session_meta

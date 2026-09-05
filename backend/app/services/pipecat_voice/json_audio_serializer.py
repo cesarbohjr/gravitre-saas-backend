@@ -88,7 +88,15 @@ class GravitreJsonAudioSerializer(FrameSerializer):
                 num_channels=int(msg.get("num_channels") or 1),
             )
         if kind == "interrupt":
-            return InterruptionFrame()
+            frame = InterruptionFrame()
+            # Optional FE playback cursor — Speak-v2-style offset for ElevenLabs path.
+            offset = msg.get("playback_offset_ms")
+            if offset is not None:
+                try:
+                    setattr(frame, "gravitre_playback_offset_ms", float(offset))
+                except (TypeError, ValueError):
+                    pass
+            return frame
         if kind == "text":
             text = str(msg.get("text") or "").strip()
             if not text:
