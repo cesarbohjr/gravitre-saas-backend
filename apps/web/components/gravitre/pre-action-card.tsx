@@ -1,9 +1,16 @@
 "use client"
 
+/**
+ * EditTool-inspired write-authority chrome (ADAPT).
+ * Same PreActionCard payload + handlers — retokened header only; no layout/IA change.
+ */
+
 import Link from "next/link"
 import { CheckCircle2, Loader2, Pencil, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { NucleoApproval } from "@/components/icons/nucleo/semantic"
 import type { PreActionCardPayload, PreActionRiskLevel } from "@/lib/pre-action-card"
 
 type PreActionCardProps = {
@@ -21,17 +28,17 @@ type PreActionCardProps = {
 }
 
 function riskTone(level?: PreActionRiskLevel): string {
-  if (level === "high") return "border-destructive/30 bg-destructive/10 text-destructive"
-  if (level === "medium") return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-  if (level === "low") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-  return "border-border bg-muted/40 text-muted-foreground"
+  if (level === "high") return STATUS.rejected
+  if (level === "medium") return STATUS.pending
+  if (level === "low") return STATUS.verified
+  return STATUS.idle
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 py-1.5 border-b border-border/40 last:border-0">
-      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-      <span className="text-xs font-medium text-foreground text-right capitalize">{value}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-border/40 py-1.5 last:border-0">
+      <span className={TYPE.meta}>{label}</span>
+      <span className="shrink-0 text-right text-xs font-medium capitalize text-foreground">{value}</span>
     </div>
   )
 }
@@ -58,13 +65,21 @@ export function PreActionCard({
       ? `/ai?conversation=${encodeURIComponent(payload.conversationId)}`
       : null
 
+  const title =
+    variant === "chat"
+      ? payload.requiresApproval
+        ? "Approval required"
+        : "Ready to execute"
+      : "Pre-action review"
+
   return (
     <div
       className={cn(
-        "rounded-xl border px-4 py-3 text-sm",
+        "overflow-hidden border bg-card text-sm",
+        RADIUS.card,
         variant === "chat"
-          ? "border-amber-500/25 bg-amber-500/5"
-          : "border-border bg-card",
+          ? "border-[color:var(--status-pending)]/30"
+          : "border-border",
         className,
       )}
       data-testid="pre-action-card"
@@ -72,23 +87,25 @@ export function PreActionCard({
       data-risk={payload.riskLevel || ""}
       data-impact={payload.estimatedImpact || ""}
     >
-      <div className="min-w-0">
-        {variant === "chat" ? (
-          <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
-            {payload.requiresApproval ? "Approval required" : "Ready to execute"}
-          </p>
-        ) : (
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-            Pre-action review
-          </p>
+      <div
+        className={cn(
+          "flex h-8 items-center gap-1.5 border-b border-border px-3",
+          variant === "chat" ? STATUS.pending : "bg-muted/40 text-muted-foreground",
+          "rounded-none border-x-0 border-t-0",
         )}
-        <p className="mt-1 text-sm font-medium text-foreground">{payload.title}</p>
+      >
+        <NucleoApproval className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className={cn(TYPE.meta, "truncate font-medium")}>{title}</span>
+      </div>
+
+      <div className="min-w-0 space-y-1 bg-background px-3 py-2.5">
+        <p className="text-sm font-medium text-foreground">{payload.title}</p>
         {payload.description ? (
-          <p className="mt-1 text-xs text-muted-foreground">{payload.description}</p>
+          <p className="text-xs text-muted-foreground">{payload.description}</p>
         ) : null}
 
         {showExplain ? (
-          <div className="mt-3 space-y-0.5" data-testid="pre-action-explain">
+          <div className="mt-2 space-y-0.5" data-testid="pre-action-explain">
             {payload.entity ? <DetailRow label="Entity" value={payload.entity} /> : null}
             {payload.action && payload.action !== payload.title ? (
               <DetailRow label="Action" value={payload.action} />
@@ -97,11 +114,11 @@ export function PreActionCard({
               <DetailRow label="Impact" value={payload.estimatedImpact} />
             ) : null}
             {payload.riskLevel ? (
-              <div className="flex items-center justify-between gap-3 py-1.5 border-b border-border/40 last:border-0">
-                <span className="text-xs text-muted-foreground">Risk</span>
+              <div className="flex items-center justify-between gap-3 border-b border-border/40 py-1.5 last:border-0">
+                <span className={TYPE.meta}>Risk</span>
                 <span
                   className={cn(
-                    "inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide border",
+                    "inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
                     riskTone(payload.riskLevel),
                   )}
                 >

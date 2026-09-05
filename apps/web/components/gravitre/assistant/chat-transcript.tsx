@@ -41,6 +41,7 @@ import {
 import { type ToolInvocation, isInternalToolGateResult } from "@/components/gravitre/assistant/tool-chip"
 import { ToolExecutionGroup } from "@/components/gravitre/agent-ui/tool-execution-group"
 import { ThinkingRow } from "@/components/gravitre/agent-ui/thinking-row"
+import { ClarificationMessage } from "@/components/gravitre/assistant/clarification-message"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
@@ -77,6 +78,37 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
     })
   }
   return invocations
+}
+
+const markdownLinkComponents = {
+  a: ({ href, children, ...props }: { href?: string; children?: React.ReactNode }) => {
+    const raw = (href || "").trim()
+    // Legacy CTAs used ?conversation=; AI page hydrates via ?c=.
+    const normalized = raw.startsWith("/ai?conversation=")
+      ? raw.replace("/ai?conversation=", "/ai?c=")
+      : raw
+    if (normalized.startsWith("/")) {
+      return (
+        <Link href={normalized} className="underline underline-offset-2">
+          {children}
+        </Link>
+      )
+    }
+    if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+      return (
+        <a
+          href={normalized}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2"
+          {...props}
+        >
+          {children}
+        </a>
+      )
+    }
+    return <span>{children}</span>
+  },
 }
 
 /**
@@ -330,41 +362,23 @@ export function ChatTranscript({
                         <ThinkingRow label={resolvedWaiting} active className="mb-2" />
                       ) : null}
                       {displayText.trim() ? (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            a: ({ href, children, ...props }) => {
-                              const raw = (href || "").trim()
-                              // Legacy CTAs used ?conversation=; AI page hydrates via ?c=.
-                              const normalized = raw.startsWith("/ai?conversation=")
-                                ? raw.replace("/ai?conversation=", "/ai?c=")
-                                : raw
-                              if (normalized.startsWith("/")) {
-                                return (
-                                  <Link href={normalized} className="underline underline-offset-2">
-                                    {children}
-                                  </Link>
-                                )
-                              }
-                              if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-                                return (
-                                  <a
-                                    href={normalized}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline underline-offset-2"
-                                    {...props}
-                                  >
-                                    {children}
-                                  </a>
-                                )
-                              }
-                              return <span>{children}</span>
-                            },
-                          }}
-                        >
-                          {displayText}
-                        </ReactMarkdown>
+                        dialogueMode === "clarify" && isLastAssistant ? (
+                          <ClarificationMessage>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownLinkComponents}
+                            >
+                              {displayText}
+                            </ReactMarkdown>
+                          </ClarificationMessage>
+                        ) : (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownLinkComponents}
+                          >
+                            {displayText}
+                          </ReactMarkdown>
+                        )
                       ) : null}
                       <AssistantSourceLinks invocations={toolInvocations} />
                       {isLastAssistant ? (

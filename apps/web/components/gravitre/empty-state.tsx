@@ -3,6 +3,7 @@
 import { type ComponentType, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { RADIUS } from "@/lib/design-system"
 import { type LucideIcon, Inbox, Search, AlertCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -123,7 +124,8 @@ export function EmptyState({
         animate={{ scale: 1 }}
         transition={{ delay: 0.1 }}
         className={cn(
-          "flex items-center justify-center rounded-xl mb-4",
+          "mb-4 flex items-center justify-center",
+          RADIUS.tile,
           sizes.iconContainer,
           iconSlot ? "bg-primary/10" : styles.iconBg
         )}

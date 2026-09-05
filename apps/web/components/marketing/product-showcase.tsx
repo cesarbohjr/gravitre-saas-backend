@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { MarketingTracingBeam } from "@/components/marketing/home/marketing-tracing-beam"
 import { 
   Bot, 
   Users, 
@@ -484,14 +485,15 @@ export function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
   }, [steps.length])
 
   return (
-    <div className="grid lg:grid-cols-2 gap-12 items-center">
+    <div className="grid items-center gap-12 lg:grid-cols-2">
       {/* Steps List */}
-      <div className="space-y-4">
+      <div className="relative space-y-4">
+        <MarketingTracingBeam activeIndex={activeStep} total={steps.length} className="-left-3 sm:-left-4" />
         {steps.map((step, i) => (
           <motion.button
             key={i}
             onClick={() => setActiveStep(i)}
-            className={`w-full text-left p-6 rounded-2xl border transition-all ${
+            className={`w-full rounded-2xl border p-6 text-left transition-all ${
               activeStep === i
                 ? "border-primary/30 bg-primary/10"
                 : "border-border bg-card hover:border-border"
@@ -500,7 +502,7 @@ export function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
             transition={{ duration: 0.15 }}
           >
             <div className="flex items-start gap-4">
-              <div className={`flex items-center justify-center h-10 w-10 rounded-full text-sm font-bold shrink-0 ${
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                 activeStep === i
                   ? "bg-primary text-white"
                   : "bg-muted text-muted-foreground"
@@ -508,7 +510,7 @@ export function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
                 {step.number}
               </div>
               <div>
-                <h4 className={`text-lg font-semibold mb-1 ${
+                <h4 className={`mb-1 text-lg font-semibold ${
                   activeStep === i ? "text-primary" : "text-foreground"
                 }`}>
                   {step.title}
@@ -523,7 +525,7 @@ export function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
             
             {/* Progress bar */}
             {activeStep === i && (
-              <div className="mt-4 ml-14 h-1 rounded-full bg-emerald-200 overflow-hidden">
+              <div className="ml-14 mt-4 h-1 overflow-hidden rounded-full bg-muted">
                 <motion.div
                   className="h-full bg-primary"
                   initial={{ width: 0 }}

@@ -1,28 +1,49 @@
 "use client"
 
+/**
+ * Agent Elements–inspired QuestionTool chrome (ADAPT).
+ * Wraps existing clarify copy — no new dialogue capability; suggestions only when provided.
+ */
+
 import { HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
 import { Button } from "@/components/ui/button"
 
 export function ClarificationMessage({
   text,
+  children,
   suggestions,
   onSelectSuggestion,
+  className,
 }: {
-  text: string
+  text?: string
+  children?: React.ReactNode
   suggestions?: string[]
   onSelectSuggestion?: (value: string) => void
+  className?: string
 }) {
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", className)}>
       <div
         className={cn(
-          "rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5",
+          "overflow-hidden border bg-card",
+          RADIUS.card,
+          "border-[color:var(--status-pending)]/30",
         )}
       >
-        <div className="flex items-start gap-2">
-          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="text-sm leading-relaxed text-foreground">{text}</p>
+        <div
+          className={cn(
+            "flex h-8 items-center gap-1.5 border-b border-border px-3",
+            STATUS.pending,
+            "rounded-none border-x-0 border-t-0",
+          )}
+        >
+          <HelpCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className={cn(TYPE.meta, "font-medium")}>Clarifying</span>
+        </div>
+        <div className="space-y-2 bg-background px-3 py-2.5">
+          {children ? children : text ? <p className="text-sm leading-relaxed text-foreground">{text}</p> : null}
         </div>
       </div>
       {suggestions && suggestions.length > 0 && onSelectSuggestion ? (
@@ -33,7 +54,11 @@ export function ClarificationMessage({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 rounded-full border-amber-500/30 bg-background text-xs hover:bg-amber-500/10"
+              className={cn(
+                "h-8 text-xs",
+                RADIUS.control,
+                "border-[color:var(--status-pending)]/30 hover:bg-[color:var(--status-pending)]/10",
+              )}
               onClick={() => onSelectSuggestion(suggestion)}
             >
               {suggestion}

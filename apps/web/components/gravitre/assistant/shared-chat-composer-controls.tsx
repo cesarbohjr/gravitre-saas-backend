@@ -385,7 +385,7 @@ export function SharedChatComposerControls({
             <Button
               type="button"
               size="icon"
-              className="mb-0.5 h-8 w-8 shrink-0 rounded-full bg-amber-400 text-amber-950 hover:bg-amber-300"
+              className="mb-0.5 h-8 w-8 shrink-0 rounded-full bg-[color:var(--status-pending)] text-background hover:opacity-90"
               aria-label="Stop"
               onClick={() => {
                 if (isListening) toggleListening()

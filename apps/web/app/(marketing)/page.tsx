@@ -179,10 +179,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative py-32 border-t border-border bg-background">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-2xl text-center mb-20">
-            <span className="text-sm font-semibold text-primary tracking-wide uppercase">
+      <section className="relative border-t border-border bg-background py-32">
+        <MarketingBackgroundLines className="opacity-80" />
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="mx-auto mb-20 max-w-2xl text-center">
+            <span className="text-sm font-semibold uppercase tracking-wide text-primary">
               {MARKETING_COPY.howItWorks.eyebrow}
             </span>
             <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
