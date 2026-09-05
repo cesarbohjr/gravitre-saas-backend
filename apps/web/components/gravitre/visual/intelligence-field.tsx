@@ -129,15 +129,22 @@ export function IntelligenceField({
   const isHero = variant === "hero"
   const atmosphereOpacity = isHero ? 1 : 0.55
   const graphOpacity = isHero ? 1 : 0.45
-  // Light marketing canvas needs stronger FAR washes; dark stays restrained.
+  // Light marketing canvas needs stronger FAR washes; blur dissolves them on mint void.
   const intelWash = isDark
     ? ([0.045, 0.08, 0.045] as const)
-    : ([0.08, 0.14, 0.08] as const)
+    : ([0.12, 0.2, 0.12] as const)
   const emeraldWash = isDark
     ? ([0.035, 0.07, 0.035] as const)
-    : ([0.06, 0.11, 0.06] as const)
-  const pathStrokeOpacity = isDark ? 0.22 : 0.34
-  const gridOpacity = isDark ? 0.03 : 0.045
+    : ([0.1, 0.16, 0.1] as const)
+  const pathStrokeOpacity = isDark ? 0.22 : 0.38
+  const gridOpacity = isDark ? 0.03 : 0.05
+  const useBlurAtmosphere = isDark
+  const intelGradient = isDark
+    ? "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)"
+    : "radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-intelligence) 28%, transparent) 0%, transparent 72%)"
+  const emeraldGradient = isDark
+    ? "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)"
+    : "radial-gradient(ellipse 70% 55% at 50% 50%, color-mix(in oklch, var(--g-emerald) 24%, transparent) 0%, transparent 72%)"
 
   return (
     <div
@@ -152,32 +159,29 @@ export function IntelligenceField({
         {reduced ? (
           <>
             <div
-              className="absolute -left-1/4 top-0 h-[70%] w-[70%] rounded-full"
+              className="absolute -left-1/4 top-0 h-[75%] w-[75%] rounded-full"
               style={{
                 opacity: intelWash[1],
-                background:
-                  "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)",
-                filter: "blur(var(--g-blur-atmosphere))",
+                background: intelGradient,
+                filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
             />
             <div
-              className="absolute -right-1/5 bottom-0 h-[65%] w-[65%] rounded-full"
+              className="absolute -right-1/5 bottom-0 h-[70%] w-[70%] rounded-full"
               style={{
                 opacity: emeraldWash[1],
-                background:
-                  "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)",
-                filter: "blur(var(--g-blur-atmosphere))",
+                background: emeraldGradient,
+                filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
             />
           </>
         ) : (
           <>
             <motion.div
-              className="absolute -left-1/4 top-0 h-[70%] w-[70%] rounded-full"
+              className="absolute -left-1/4 top-0 h-[75%] w-[75%] rounded-full"
               style={{
-                background:
-                  "radial-gradient(circle at center, var(--g-intelligence) 0%, transparent 68%)",
-                filter: "blur(var(--g-blur-atmosphere))",
+                background: intelGradient,
+                filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
               animate={{ opacity: [...intelWash] }}
               transition={{
@@ -187,11 +191,10 @@ export function IntelligenceField({
               }}
             />
             <motion.div
-              className="absolute -right-1/5 bottom-[-10%] h-[65%] w-[65%] rounded-full"
+              className="absolute -right-1/5 bottom-[-10%] h-[70%] w-[70%] rounded-full"
               style={{
-                background:
-                  "radial-gradient(circle at center, var(--g-emerald) 0%, transparent 68%)",
-                filter: "blur(var(--g-blur-atmosphere))",
+                background: emeraldGradient,
+                filter: useBlurAtmosphere ? "blur(var(--g-blur-atmosphere))" : undefined,
               }}
               animate={{ opacity: [...emeraldWash] }}
               transition={{
@@ -201,6 +204,17 @@ export function IntelligenceField({
                 delay: 2.5,
               }}
             />
+            {!isDark ? (
+              <motion.div
+                className="absolute left-1/2 top-[18%] h-[42%] w-[55%] -translate-x-1/2 rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at center, color-mix(in oklch, var(--g-intelligence) 14%, transparent) 0%, transparent 70%)",
+                }}
+                animate={{ opacity: [0.35, 0.55, 0.35] }}
+                transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+              />
+            ) : null}
           </>
         )}
         <div

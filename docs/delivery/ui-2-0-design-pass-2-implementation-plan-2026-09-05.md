@@ -1,53 +1,54 @@
 # Design Pass 2 — Reference + Implementation Audit (revised)
 
 **Date:** 2026-09-05  
-**Status:** Shipped to production (`38060781`) · live visual QA in progress · light-atmosphere polish follow-up  
-**Canvas:** `gravitre-design-pass-2-implementation-plan.canvas.tsx`  
+**Status:** Production live · craft polish tranche in flight  
 **Live:** https://gravitre.app/  
-**Scope:** Marketing homepage pilot — visual material only (no layout/copy/IA/behavior)
+**Scope:** Marketing homepage pilot — visual material only
 
-## Shipped (2026-09-05)
+## Deploy evidence
 
-| Item | Evidence |
-|------|----------|
-| Commit | `38060781` on `main` |
-| Push | `origin/main` `d42013b6..38060781` |
-| Vercel | commit status **success** · Production deployment sha `38060781` @ `2026-09-05T08:37:07Z` |
-| Live DOM | ProductPreview STATUS beats (`Intent received`, `Context retrieval`) · honesty metrics copy |
-| Live visual | Intelligence Field topology behind hero · headline emerald→violet · STATUS chip on product chrome |
+| Commit | What | Evidence |
+|--------|------|----------|
+| `38060781` | Pass 2 material | Vercel success · Production @ `2026-09-05T08:37:07Z` |
+| `4981adf5` | Light Field contrast v1 | Vercel **success** · live hero Field + STATUS chips + emerald→violet headline |
+| *(next)* | Light atmosphere without blur dissolve + stronger Signal | Pending push |
 
-## Live craft scores (post-deploy, light marketing canvas)
+## Live visual QA (4981adf5)
 
-Scored vs Agenforce / Nodus / Simplistic **craft**, not likeness. Target ≥8.
+**Confirmed on gravitre.app:**
+- Intelligence Field topology behind hero  
+- ProductPreview STATUS (`Intent received` / beat progression)  
+- Headline emerald → violet  
+- Feature cards: violet on AI/Agents, emerald on Browser Extension (semantic split)  
+- Section grid continuity into features  
 
-| Axis | Score | Note |
-|------|------:|------|
-| Background | 7 | Topology present; FAR wash still light-weak |
-| Atmosphere | 6 | Light mode under-reads violet/emerald radials |
-| Depth | 7 | Mid graph helps; FAR depth thin on mint void |
-| Motion | 7 | Signal + demo rhythm live; stillness OK |
-| Micro-interaction | 7 | CTA glow / cards improved |
-| Focal composition | 8 | Layout lock held |
-| Surface quality | 7 | Preview chrome + highlight-edge better |
-| Product presentation | 8 | Truthful STATUS sequence live |
-| Brand distinctiveness | 7 | Violet intelligence appearing in headline |
-| AI presence | 7 | Field + intel accents |
-| Operational presence | 7 | STATUS / verified beats |
-| Calmness | 8 | Still calm — preserve |
+**Still under-realized on light canvas:** FAR radial washes (blur dissolved tint) · Signal packet too faint · atmosphere depth vs Agenforce craft bar.
 
-**Anything &lt;8 → refinement:** boost light-mode atmosphere + path contrast; remove opaque void fill so section surfaces remain continuous (follow-up commit).
+## Craft scores
+
+| Axis | Pre-Pass2 | After 4981adf5 | Target |
+|------|----------:|---------------:|-------:|
+| Background | 5 | 7 | ≥8 |
+| Atmosphere | 4 | 6–7 | ≥8 |
+| Depth | 5 | 7 | ≥8 |
+| Motion | 5 | 7 | ≥8 |
+| Micro-interaction | 6 | 7 | ≥8 |
+| Focal composition | 7 | 8 | ≥8 |
+| Surface quality | 5 | 7 | ≥8 |
+| Product presentation | 5 | 8 | ≥8 |
+| Brand distinctiveness | 6 | 7–8 | ≥8 |
+| AI presence | 4 | 7 | ≥8 |
+| Operational presence | 5 | 7–8 | ≥8 |
+| Calmness | 8 | 8 | ≥8 |
+
+## Next polish (this tranche)
+
+1. Light-mode atmosphere: **color-mix radials without blur** (blur was washing out tint)  
+2. Stronger `GravitreSignal` stroke/packet on light  
+3. Dual quiet feature-section orbs (intelligence + emerald) for continuity  
+
+Human confirm still required before closing Pass 2 as all-axes ≥8.
 
 ## Explicit non-claims
 
-No layout/copy/IA change. No invented prices/TRAINED/fake metrics. Ops Aceternity still rejected by default. Not claiming all axes ≥8 until light polish redeploys + Cesar human confirm.
-
----
-
-## Source-access honesty (audit preserved)
-
-| Reference | Access used |
-|-----------|-------------|
-| **Agenforce** | PUBLIC LIVE PREVIEW |
-| **Simplistic SaaS** | PUBLIC LIVE PREVIEW |
-| **Nodus Agent** | PUBLIC TEMPLATE PAGE + docs only |
-| **Licensed Pro source** | Not inspected |
+No layout/copy/IA change. No invented prices/TRAINED/fake metrics. Ops Aceternity rejected by default.

@@ -78,7 +78,8 @@ export default function HomePage() {
       <section className="relative py-32 bg-muted/50">
         <IntelligenceField variant="section" className="opacity-70" />
         <MarketingBackgroundLines className="opacity-60" />
-        <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/8 top-1/4 -left-64" delay={1} />
+        <FloatingOrb className="w-[500px] h-[500px] bg-[color:var(--g-intelligence)]/12 top-1/4 -left-64" delay={1} />
+        <FloatingOrb className="w-[420px] h-[420px] bg-primary/10 bottom-1/4 -right-48" delay={2.2} />
 
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-20">

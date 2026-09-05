@@ -145,10 +145,10 @@ export function GravitreSignal({
           d={path}
           fill="none"
           stroke={color}
-          strokeOpacity={0.16}
-          strokeWidth={1}
+          strokeOpacity={0.28}
+          strokeWidth={1.25}
         />
-        <circle cx={endPt.x || 560} cy={endPt.y || 200} r={3} fill={color} fillOpacity={0.4} />
+        <circle cx={endPt.x || 560} cy={endPt.y || 200} r={4} fill={color} fillOpacity={0.5} />
       </g>
     )
   }
@@ -161,20 +161,20 @@ export function GravitreSignal({
         d={path}
         fill="none"
         stroke={color}
-        strokeOpacity={0.14}
-        strokeWidth={1}
+        strokeOpacity={0.32}
+        strokeWidth={1.35}
       />
-      <motion.circle r={3.5} fill={color} style={{ cx, cy, opacity }} />
+      <motion.circle r={4.5} fill={color} style={{ cx, cy, opacity }} />
       {flash ? (
         <motion.circle
           cx={endPt.x}
           cy={endPt.y}
-          r={10}
+          r={12}
           fill={
             tone === "operational" || tone === "intelligence" ? color : "var(--g-emerald)"
           }
-          initial={{ opacity: 0.4, scale: 0.5 }}
-          animate={{ opacity: 0, scale: 1.8 }}
+          initial={{ opacity: 0.45, scale: 0.5 }}
+          animate={{ opacity: 0, scale: 1.9 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
         />
       ) : null}
