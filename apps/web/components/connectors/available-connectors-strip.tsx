@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { ArrowRight } from "lucide-react"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
@@ -115,7 +115,7 @@ export function AvailableConnectorsStrip({
               </div>
               <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
             </div>
-            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            <NucleoArrowRight size={16} className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </button>
         ))}
       </div>

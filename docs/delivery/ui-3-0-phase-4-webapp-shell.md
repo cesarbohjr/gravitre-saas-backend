@@ -1,7 +1,7 @@
 # GRAVITRE UI 3.0 — PHASE 4 WEB APP SHELL
 
 **Date:** 2026-09-06  
-**Status:** **ACCEPTED** (Cesar · 2026-09-06)  
+**Status:** **ACCEPTED** (Cesar · 2026-09-06; reconfirmed 2026-09-06 with Phase 5)  
 **Prior:** Phase 3 ACCEPTED · Phase 4 shell `f88f793e` · Nucleo/motion polish `a9f5913c` / `8051ac64`
 
 ---
@@ -40,11 +40,14 @@ Cesar accepted Phase 4. Live domain was corrected off Pass 3 void onto daylight 
 - Alias: `gravitre.app` → `gravitre-saas-backend-9r9iu93qn-gravitre-ai.vercel.app` (`8051ac64`)
 - Live daylight marketing + Hybrid product stage verified in Cursor browser @ `https://gravitre.app/?qa=nucleo`
 
+### Reconfirm (2026-09-06)
+
+Cesar reconfirmed Phase 4 accept while accepting Phase 5 and authorizing Phase 6.
+
 ---
 
-## Explicit non-goals (carried)
+## Explicit non-goals (carried → Phase 6+)
 
-- Dashboard composition redesign (Phase 5)  
 - Full Nucleo migration of every Lucide import  
 - Playwright goldens  
 
@@ -52,4 +55,4 @@ Cesar accepted Phase 4. Live domain was corrected off Pass 3 void onto daylight 
 
 ## Next
 
-**Phase 5** — core product surfaces (Agents / Workflows / GIBE / Approvals).
+**Phase 6** — Home + Connectors + Activity density (see `ui-3-0-phase-6-*.md`).

@@ -407,7 +407,7 @@ function DataFlowLine({ active, direction = "right" }: { active: boolean; direct
     <div className="relative h-0.5 flex-1 bg-border/30 overflow-hidden">
       {active && (
         <motion.div
-          className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+          className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-[color:var(--g-signal)] to-transparent"
           animate={{ x: direction === "right" ? ["-100%", "400%"] : ["400%", "-100%"] }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         />
@@ -420,14 +420,10 @@ function DataFlowLine({ active, direction = "right" }: { active: boolean; direct
 function CentralHub({ connectedCount, totalCount }: { connectedCount: number; totalCount: number }) {
   return (
     <div className="relative">
-      {/* Outer glow rings */}
-      <div className="absolute inset-0 rounded-full bg-blue-500/10 animate-ping" style={{ animationDuration: "3s" }} />
-      <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 blur-xl" />
-      
       {/* Main hub */}
-      <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-card to-secondary border-2 border-blue-500/30 shadow-2xl shadow-blue-500/10">
+      <div className="relative flex h-32 w-32 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-elevated)]">
         <div className="text-center">
-          <Cable className="h-8 w-8 text-blue-400 mx-auto mb-1" />
+          <Cable className="h-8 w-8 text-[color:var(--g-signal)] mx-auto mb-1" />
           <div className="text-2xl font-bold text-foreground">{connectedCount}</div>
           <div className="text-[10px] text-muted-foreground uppercase tracking-wider">of {totalCount} Active</div>
         </div>
@@ -1295,7 +1291,7 @@ function AddConnectorModal({
                   const colorMap: Record<string, { active: string, inactive: string }> = {
                     emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-400" },
                     blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-400" },
-                    violet: { active: "bg-violet-500 text-white", inactive: "hover:bg-violet-500/10 hover:text-violet-400" },
+                    violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
                     amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-400" },
                     pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
                     cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-400" },
@@ -1376,7 +1372,7 @@ function AddConnectorModal({
                                   : connector.authType === "oauth"
                                     ? "bg-blue-500/10 text-blue-400"
                                     : connector.authType === "webhook"
-                                      ? "bg-violet-500/10 text-violet-400"
+                                      ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
                                       : "bg-warning/10 text-warning"
                               )}>
                                 {isPartnerGatedConnector(connector)
@@ -1645,7 +1641,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 uppercase font-medium">Webhook</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)] uppercase font-medium">Webhook</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -2843,7 +2839,7 @@ function ConnectorsPageContent() {
                     const colorMap: Record<string, string> = {
                       emerald: "text-success",
                       blue: "text-blue-400",
-                      violet: "text-violet-400",
+                      violet: "text-[color:var(--g-signal)]",
                       amber: "text-warning",
                       pink: "text-pink-400",
                       cyan: "text-cyan-400",
@@ -3072,10 +3068,9 @@ function ConnectorsPageContent() {
             {/* Mobile Hub Summary */}
             <div className="flex items-center justify-center py-4">
               <div className="relative">
-                <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 blur-lg" />
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-card to-secondary border-2 border-blue-500/30 shadow-xl">
+                <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-elevated)]">
                   <div className="text-center">
-                    <Cable className="h-5 w-5 text-blue-400 mx-auto mb-0.5" />
+                    <Cable className="h-5 w-5 text-[color:var(--g-signal)] mx-auto mb-0.5" />
                     <div className="text-lg font-bold text-foreground">{hubConnectedCount}</div>
                     <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
                       of {hubTotalCount}

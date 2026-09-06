@@ -2,8 +2,13 @@
 
 import useSWR from "swr"
 import { motion } from "framer-motion"
-import { Sparkles, ArrowRight, X, Plug, Loader2 } from "lucide-react"
+import { Plug, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  NucleoArrowRight,
+  NucleoClose,
+  NucleoIntelligence,
+} from "@/components/icons/nucleo/semantic"
 import { enterpriseApi } from "@/lib/api"
 import { ESTIMATED_CONFIDENCE_SHORT } from "@/lib/outcome-labels"
 import { cn } from "@/lib/utils"
@@ -70,7 +75,7 @@ export function ConnectorRecommendations({ onConnect }: ConnectorRecommendations
     >
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/25">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <NucleoIntelligence size={14} className="text-primary" />
         </div>
         <h2 className="text-sm font-semibold text-foreground">Recommended for you</h2>
         <span className="text-xs text-muted-foreground">Based on how your team works</span>
@@ -117,7 +122,7 @@ function RecommendationCard({
         aria-label={`Dismiss ${suggestion.title}`}
         className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
       >
-        <X className="h-3.5 w-3.5" />
+        <NucleoClose size={14} />
       </button>
 
       <div className="mb-2 flex items-center gap-2">
@@ -148,7 +153,7 @@ function RecommendationCard({
         onClick={onConnect}
       >
         Connect
-        <ArrowRight className="h-3.5 w-3.5" />
+        <NucleoArrowRight size={14} />
       </Button>
     </motion.div>
   )

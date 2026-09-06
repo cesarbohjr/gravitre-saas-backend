@@ -35,7 +35,6 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import {
   AnimatedCounter,
-  StatusBeacon,
 } from "@/components/gravitre/premium-effects"
 import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -44,7 +43,7 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 import { RADIUS, TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { StatusChip } from "@/components/gravitre/visual"
+import { PulseDot, StatusChip } from "@/components/gravitre/visual"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -189,13 +188,11 @@ export function HomeDashboard({
             {/* Phase 4–aligned chips: only when backend-backed values exist */}
             <div className="flex flex-wrap items-center gap-2">
               {pendingApprovals > 0 ? (
-                <StatusChip tone="pending" href={APP_ROUTES.approvals} dot={false}>
-                  <StatusBeacon status="processing" size="sm" />
+                <StatusChip tone="pending" href={APP_ROUTES.approvals} pulse>
                   Pending approval · {pendingApprovals}
                 </StatusChip>
               ) : (
-                <StatusChip tone="approved" href={APP_ROUTES.approvals} dot={false}>
-                  <StatusBeacon status="active" size="sm" />
+                <StatusChip tone="approved" href={APP_ROUTES.approvals}>
                   Approvals clear
                 </StatusChip>
               )}
@@ -249,7 +246,19 @@ export function HomeDashboard({
                 </span>
                 <span className="flex items-center gap-2 text-sm font-semibold tabular-nums text-foreground">
                   {stat.value}
-                  {stat.known ? <StatusBeacon status={stat.status} size="sm" /> : null}
+                  {stat.known ? (
+                    <PulseDot
+                      tone={
+                        stat.status === "error" || stat.status === "failed"
+                          ? "approval"
+                          : stat.status === "processing" || stat.status === "running"
+                            ? "intelligence"
+                            : "emerald"
+                      }
+                      size="sm"
+                      label={stat.status}
+                    />
+                  ) : null}
                 </span>
               </div>
             ))}

@@ -22,7 +22,8 @@ import {
 } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
 import { HubTabs, type HubTabItem } from "@/components/gravitre/hub-tabs"
-import { AutoStatusBadge } from "@/components/gravitre/status-badge"
+import { formatStatusLabel } from "@/components/gravitre/status-badge"
+import { StatusChip } from "@/components/gravitre/visual"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
@@ -665,7 +666,9 @@ function ActivityPageInner() {
                                     <span className="line-clamp-2 text-sm font-medium text-foreground">
                                       {workObject.title || "Untitled WorkObject"}
                                     </span>
-                                    <AutoStatusBadge status={String(workObject.status || "identified")} className="shrink-0" />
+                                    <StatusChip status={String(workObject.status || "identified")} className="shrink-0">
+                                      {formatStatusLabel(String(workObject.status || "identified"))}
+                                    </StatusChip>
                                   </div>
                                   <p className="line-clamp-2 text-xs text-muted-foreground">
                                     {workObject.objective || "No objective yet"}
@@ -748,10 +751,12 @@ function ActivityPageInner() {
                                       {outcome.title || "Untitled outcome"}
                                     </span>
                                     {outcome.status || outcome.lifecycleState ? (
-                                      <AutoStatusBadge
+                                      <StatusChip
                                         status={String(outcome.status || outcome.lifecycleState)}
                                         className="shrink-0"
-                                      />
+                                      >
+                                        {formatStatusLabel(String(outcome.status || outcome.lifecycleState))}
+                                      </StatusChip>
                                     ) : null}
                                   </div>
                                   <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -850,7 +855,9 @@ function ActivityPageInner() {
                       >
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <AutoStatusBadge status={String(selectedWorkObject.status || "identified")} />
+                            <StatusChip status={String(selectedWorkObject.status || "identified")}>
+                              {formatStatusLabel(String(selectedWorkObject.status || "identified"))}
+                            </StatusChip>
                             {selectedWorkObject.priority ? (
                               <span className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                                 priority {selectedWorkObject.priority}
@@ -898,7 +905,9 @@ function ActivityPageInner() {
                                     <span className="font-medium text-foreground">
                                       {event.actionName || event.eventType || "action"}
                                     </span>
-                                    <AutoStatusBadge status={String(event.actionStatus || "completed")} />
+                                    <StatusChip status={String(event.actionStatus || "completed")}>
+                                      {formatStatusLabel(String(event.actionStatus || "completed"))}
+                                    </StatusChip>
                                   </div>
                                   <p className="mt-1 text-xs text-muted-foreground">
                                     {event.systemName ? `${event.systemName} · ` : ""}
