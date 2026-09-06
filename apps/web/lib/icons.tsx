@@ -595,7 +595,7 @@ const nucleoByName: Partial<
   remove: NucleoClose,
   caretDown: NucleoChevronDown,
   chevronDown: NucleoChevronDown,
-  arrowRight: NucleoArrowRight,
+  forward: NucleoArrowRight,
   agents: NucleoAgent,
   ai: NucleoIntelligence,
   brain: NucleoIntelligence,
