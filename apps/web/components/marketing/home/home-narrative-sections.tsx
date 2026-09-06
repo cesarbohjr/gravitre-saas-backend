@@ -23,7 +23,7 @@ export function HomeNarrativeSections() {
     <>
       {/* Problem */}
       <section className="relative border-t border-border py-28 sm:py-36" data-field-atmosphere="systems">
-        <IntelligenceField variant="section" atmosphere="systems" className="opacity-40" />
+        <IntelligenceField variant="section" atmosphere="systems" className="opacity-18" />
         <div className="relative mx-auto max-w-3xl px-6 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary">{n.problem.eyebrow}</p>
           <h2 className="mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
@@ -40,7 +40,7 @@ export function HomeNarrativeSections() {
         className="relative border-t border-border bg-card/30 py-28 sm:py-36"
         data-field-atmosphere="intelligence"
       >
-        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-50" />
+        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-22" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary">
@@ -57,7 +57,7 @@ export function HomeNarrativeSections() {
 
       {/* Pillars */}
       <section className="relative border-t border-border py-28 sm:py-36" data-field-atmosphere="agents">
-        <IntelligenceField variant="section" atmosphere="agents" className="opacity-35" />
+        <IntelligenceField variant="section" atmosphere="agents" className="opacity-16" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-16 max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary">
@@ -96,7 +96,7 @@ export function HomeNarrativeSections() {
         className="relative border-t border-border bg-card/30 py-28 sm:py-36"
         data-field-atmosphere="outcome"
       >
-        <IntelligenceField variant="section" atmosphere="outcome" className="opacity-40" />
+        <IntelligenceField variant="section" atmosphere="outcome" className="opacity-18" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.22em] text-amber-400">
@@ -116,7 +116,7 @@ export function HomeNarrativeSections() {
 
       {/* Accountability */}
       <section className="relative border-t border-border py-28 sm:py-36" data-field-atmosphere="approval">
-        <IntelligenceField variant="section" atmosphere="approval" className="opacity-35" />
+        <IntelligenceField variant="section" atmosphere="approval" className="opacity-16" />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary">
             {n.accountability.eyebrow}
@@ -148,7 +148,7 @@ export function HomeNarrativeSections() {
         className="relative border-t border-border bg-card/30 py-28 sm:py-36"
         data-field-atmosphere="balanced"
       >
-        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-40" />
+        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-18" />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary">
             {n.simplification.eyebrow}

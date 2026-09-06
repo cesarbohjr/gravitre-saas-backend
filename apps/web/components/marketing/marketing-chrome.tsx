@@ -49,14 +49,14 @@ export function MarketingChrome({
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // B2 marketing void: force dark shell while mounted.
+  // UI 3.0 Phase 3: light-first marketing daylight canvas.
   // Restore the user's ThemeProvider preference on leave so the product app
   // keeps working light / dark / system.
   useEffect(() => {
     const root = document.documentElement
     savedThemeRef.current = localStorage.getItem("theme")
-    root.dataset.marketingCanvas = "void"
-    setTheme("dark")
+    root.dataset.marketingCanvas = "daylight"
+    setTheme("light")
     return () => {
       delete root.dataset.marketingCanvas
       setTheme(savedThemeRef.current || "system")
@@ -79,7 +79,7 @@ export function MarketingChrome({
   }, [mobileMenuOpen])
 
   return (
-    <div className="min-h-screen bg-background text-foreground" data-marketing-canvas="void">
+    <div className="min-h-screen bg-background text-foreground" data-marketing-canvas="daylight">
       <header
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
           scrolled
@@ -92,7 +92,7 @@ export function MarketingChrome({
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center group">
               <img
-                src="/images/gravitre-logo-white.png"
+                src="/images/gravitre-logo-black.png"
                 alt="Gravitre"
                 className="h-10 w-auto opacity-95 transition-opacity group-hover:opacity-100"
               />
@@ -258,7 +258,7 @@ export function MarketingChrome({
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center">
                 <img
-                  src="/images/gravitre-logo-white.png"
+                  src="/images/gravitre-logo-black.png"
                   alt="Gravitre"
                   className="h-8 w-auto opacity-90"
                 />

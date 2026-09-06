@@ -42,8 +42,9 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { RADIUS, TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { StatusChip } from "@/components/gravitre/visual"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -188,29 +189,29 @@ export function HomeDashboard({
             {/* Phase 4–aligned chips: only when backend-backed values exist */}
             <div className="flex flex-wrap items-center gap-2">
               {pendingApprovals > 0 ? (
-                <StatusChip tone="warning" href={APP_ROUTES.approvals}>
+                <StatusChip tone="pending" href={APP_ROUTES.approvals} dot={false}>
                   <StatusBeacon status="processing" size="sm" />
                   Pending approval · {pendingApprovals}
                 </StatusChip>
               ) : (
-                <StatusChip tone="success" href={APP_ROUTES.approvals}>
+                <StatusChip tone="approved" href={APP_ROUTES.approvals} dot={false}>
                   <StatusBeacon status="active" size="sm" />
                   Approvals clear
                 </StatusChip>
               )}
               {avgConfidence != null ? (
-                <StatusChip tone="info" href={APP_ROUTES.intelligence}>
+                <StatusChip tone="estimate" href={APP_ROUTES.intelligence}>
                   Avg confidence · 7d · {avgConfidence}%
                 </StatusChip>
               ) : (
-                <StatusChip tone="muted">Confidence · not yet available</StatusChip>
+                <StatusChip tone="idle">Confidence · not yet available</StatusChip>
               )}
               {hasLearningSnapshot ? (
-                <StatusChip tone="default" href={APP_ROUTES.learning}>
+                <StatusChip tone="idle" href={APP_ROUTES.learning}>
                   Learning snapshot present
                 </StatusChip>
               ) : (
-                <StatusChip tone="muted">Learning · warming up</StatusChip>
+                <StatusChip tone="idle">Learning · warming up</StatusChip>
               )}
             </div>
           </PageHeader>
@@ -566,37 +567,6 @@ export function HomeDashboard({
       </motion.div>
     </div>
   )
-}
-
-function StatusChip({
-  children,
-  tone,
-  href,
-}: {
-  children: React.ReactNode
-  tone: "warning" | "success" | "info" | "muted" | "default"
-  href?: string
-}) {
-  const tones = {
-    warning: STATUS.pending,
-    success: STATUS.approved,
-    info: STATUS.estimate,
-    muted: STATUS.idle,
-    default: STATUS.idle,
-  }
-  const className = cn(
-    "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium",
-    RADIUS.control,
-    tones[tone],
-  )
-  if (href) {
-    return (
-      <Link href={href} className={cn(className, "transition-opacity hover:opacity-90")}>
-        {children}
-      </Link>
-    )
-  }
-  return <span className={className}>{children}</span>
 }
 
 function ProgressFooter({

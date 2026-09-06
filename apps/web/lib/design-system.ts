@@ -1,5 +1,9 @@
 /**
- * Canonical type / radius / motion scale for the core app surfaces.
+ * Canonical type / radius / motion / semantic scale for Gravitre surfaces.
+ *
+ * UI 3.0 (2026-09-05): light-first Design System 3.0 · Hybrid A+B marketing
+ * direction (A product stage + B living execution; C = GIBE sections).
+ * SOT: docs/delivery/gravitre-design-system-3.0.md
  *
  * Why this file exists: an audit of the five main hub pages found the same role
  * expressed a different way on nearly every page — page titles as `text-xl`
@@ -15,7 +19,7 @@
  * The marketplace/assets treatment is the agreed baseline.
  */
 
-/** Text roles, largest to smallest. */
+/** Text roles, largest to smallest (app / hub density). */
 export const TYPE = {
   /** The single <h1> on a page. */
   pageTitle: "text-2xl font-semibold tracking-tight text-foreground md:text-3xl",
@@ -40,6 +44,47 @@ export const TYPE = {
   bodyMuted: "text-sm leading-relaxed text-muted-foreground",
   /** Row meta, timestamps, counts. */
   meta: "text-xs text-muted-foreground",
+} as const
+
+/**
+ * Marketing / editorial type roles (UI 3.0 Phase 3+). Geist sans only —
+ * Phase 0.5 mock serif is not production. Unused by live pages until Phase 3.
+ */
+export const TYPE_MARKETING = {
+  display:
+    "font-sans text-[length:var(--g-type-display)] font-semibold leading-[1.05] tracking-[var(--g-type-display-tracking)] text-[color:var(--g-text-primary)]",
+  h1: "font-sans text-[length:var(--g-type-h1)] font-semibold leading-tight tracking-tight text-[color:var(--g-text-primary)]",
+  h2: "font-sans text-[length:var(--g-type-h2)] font-semibold leading-snug tracking-tight text-[color:var(--g-text-primary)]",
+  h3: "font-sans text-[length:var(--g-type-h3)] font-semibold tracking-tight text-[color:var(--g-text-primary)]",
+  lead: "font-sans text-lg leading-relaxed text-[color:var(--g-text-secondary)] md:text-xl",
+  body: "font-sans text-[length:var(--g-type-body)] leading-relaxed text-[color:var(--g-text-secondary)]",
+  label:
+    "font-sans text-[length:var(--g-type-label)] font-semibold uppercase tracking-[var(--g-type-label-tracking)] text-[color:var(--g-text-muted)]",
+  caption: "font-sans text-[length:var(--g-type-caption)] text-[color:var(--g-text-muted)]",
+} as const
+
+/**
+ * Semantic color roles → CSS custom properties (UI 3.0).
+ * Prefer these over raw hex / Tailwind palette for brand-adjacent UI.
+ */
+export const SEMANTIC = {
+  canvas: "var(--g-canvas)",
+  graphite: "var(--g-text-primary)",
+  intelligence: "var(--g-intelligence)",
+  intelligenceSoft: "var(--g-intelligence-soft)",
+  intelligenceSurface: "var(--g-intelligence-surface)",
+  emerald: "var(--g-emerald)",
+  emeraldSoft: "var(--g-emerald-soft)",
+  emeraldSurface: "var(--g-emerald-surface)",
+  signal: "var(--g-signal)",
+  signalSoft: "var(--g-signal-soft)",
+  signalSurface: "var(--g-signal-surface)",
+  approval: "var(--g-approval)",
+  approvalSoft: "var(--g-approval-soft)",
+  approvalSurface: "var(--g-approval-surface)",
+  danger: "var(--g-danger)",
+  success: "var(--g-success)",
+  warning: "var(--g-warning)",
 } as const
 
 /**
@@ -107,16 +152,22 @@ export const MOTION = {
 } as const
 
 /**
- * Motion concepts (Phase 6). Labels only — intensity and reduced-motion
- * behaviour live in `animations.ts` / voice presentation, not here.
+ * Motion concepts (UI 3.0 grammar). Labels only — intensity and reduced-motion
+ * behaviour live in `animations.ts` / voice presentation / CSS `--g-motion-*`.
+ *
+ * Canonical: FLOW · PULSE · WAVE · TRACE · RESOLVE · TRANSFER · FOCUS.
+ * `ORBIT` is legacy compat — do not use in new UI 3.0 work.
  */
 export const MOTION_CONCEPT = {
   FLOW: "flow",
   PULSE: "pulse",
   WAVE: "wave",
+  /** @deprecated UI 3.0 — prefer FLOW / TRACE / TRANSFER. Kept for existing callers. */
   ORBIT: "orbit",
   TRACE: "trace",
   RESOLVE: "resolve",
+  TRANSFER: "transfer",
+  FOCUS: "focus",
   /** Shared packet motif (Design Pass 2) — marketing Intelligence Field first. */
   SIGNAL: "signal",
 } as const

@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils"
 
 type MarketingSpotlightProps = {
   className?: string
-  /** intelligence = violet · operational = emerald · balanced = both */
-  tone?: "intelligence" | "operational" | "balanced"
+  /** intelligence = violet · operational = emerald · balanced = both · neutral = soft graphite light */
+  tone?: "intelligence" | "operational" | "balanced" | "neutral"
   /** Follow pointer on desktop when true */
   interactive?: boolean
 }
@@ -43,7 +43,9 @@ export function MarketingSpotlight({
       ? "color-mix(in oklch, var(--g-emerald) 22%, transparent)"
       : tone === "balanced"
         ? "color-mix(in oklch, var(--g-intelligence) 18%, transparent)"
-        : "color-mix(in oklch, var(--g-intelligence) 24%, transparent)"
+        : tone === "neutral"
+          ? "color-mix(in oklch, var(--g-text-primary) 6%, transparent)"
+          : "color-mix(in oklch, var(--g-intelligence) 24%, transparent)"
 
   return (
     <div

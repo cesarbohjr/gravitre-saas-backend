@@ -20,13 +20,14 @@ const DesktopDownloadSection = dynamic(
 )
 
 /**
- * Home — Design Pass 3 B2: Agenforce layout craft, bold Gravitre, one-brain progressive story.
+ * Home — UI 3.0 Phase 3: Hybrid A+B light-first marketing.
+ * Product stage hero · mineral canvas · real product captures.
  */
 export default function HomePage() {
   const n = MARKETING_COPY.homeNarrative
 
   return (
-    <div className="relative overflow-hidden bg-background">
+    <div className="relative overflow-hidden bg-[color:var(--g-canvas)]">
       <HeroParallax />
 
       <IntegrationStrip />
@@ -36,37 +37,36 @@ export default function HomePage() {
       <DesktopDownloadSection />
 
       <section
-        className="relative border-t border-border bg-background py-28 sm:py-32"
+        className="relative border-t border-border bg-[color:var(--g-background)] py-28 sm:py-32"
         data-field-atmosphere="systems"
       >
-        <IntelligenceField variant="section" atmosphere="systems" className="opacity-35" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-16 max-w-2xl text-center">
-            <h2 className="text-4xl font-bold tracking-tight text-foreground">
+            <h2 className="text-4xl font-bold tracking-tight text-[color:var(--g-text-primary)]">
               Connects to your entire stack
             </h2>
-            <p className="mt-4 text-muted-foreground">
+            <p className="mt-4 text-[color:var(--g-text-secondary)]">
               50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </div>
-          <IntegrationsGrid theme="dark" />
+          <IntegrationsGrid theme="light" />
         </div>
       </section>
 
       <section
-        className="relative overflow-hidden border-t border-border bg-card/30 py-28 sm:py-36"
+        className="relative overflow-hidden border-t border-border bg-[color:var(--g-surface-2)]/60 py-28 sm:py-36"
         data-field-atmosphere="intelligence"
       >
-        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-45" />
+        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-20" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-16 max-w-2xl text-center">
-            <span className="text-sm font-bold uppercase tracking-wide text-primary">
+            <span className="text-sm font-bold uppercase tracking-wide text-[color:var(--g-intelligence)]">
               Product truth
             </span>
-            <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+            <h2 className="mt-4 text-4xl font-bold tracking-tight text-[color:var(--g-text-primary)] sm:text-5xl">
               The operating surfaces teams actually use
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
+            <p className="mt-4 text-lg text-[color:var(--g-text-secondary)]">
               Real Gravitre UI captures — framed for clarity, not invented dashboards.
             </p>
           </div>
@@ -119,17 +119,15 @@ export default function HomePage() {
       </section>
 
       <section
-        className="relative overflow-hidden border-t border-border bg-background py-28 sm:py-36"
+        className="relative overflow-hidden border-t border-border bg-[color:var(--g-canvas)] py-28 sm:py-36"
         data-field-atmosphere="agents"
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
-        <IntelligenceField variant="section" atmosphere="agents" className="opacity-40" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-16 max-w-2xl text-center">
-            <h2 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+            <h2 className="text-4xl font-bold tracking-tight text-[color:var(--g-text-primary)] sm:text-5xl">
               See the platform in motion
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
+            <p className="mt-4 text-lg text-[color:var(--g-text-secondary)]">
               Agents, workflows, runs, and learning surfaces — proof after the promise.
             </p>
           </div>
@@ -138,24 +136,22 @@ export default function HomePage() {
       </section>
 
       <section
-        className="relative border-t border-border bg-card/40 py-28 sm:py-36"
+        className="relative border-t border-border bg-[color:var(--g-surface-2)]/50 py-28 sm:py-36"
         data-field-atmosphere="balanced"
       >
-        <IntelligenceField variant="section" atmosphere="balanced" className="opacity-50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-4xl font-bold tracking-[-0.03em] text-foreground sm:text-5xl lg:text-6xl">
+            <h2 className="text-4xl font-bold tracking-[-0.03em] text-[color:var(--g-text-primary)] sm:text-5xl lg:text-6xl">
               {MARKETING_COPY.cta.title}
             </h2>
-            <p className="mt-6 text-lg text-muted-foreground">{MARKETING_COPY.cta.subtitle}</p>
-            <p className="mt-4 text-base font-medium text-foreground">{n.differentiation}</p>
+            <p className="mt-6 text-lg text-[color:var(--g-text-secondary)]">{MARKETING_COPY.cta.subtitle}</p>
+            <p className="mt-4 text-base font-medium text-[color:var(--g-text-primary)]">{n.differentiation}</p>
             <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="/get-started"
-                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[var(--g-glow-operational)] transition-all duration-[var(--g-duration-micro)] hover:opacity-95 active:scale-[0.98]"
+                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[var(--g-shadow-elevated)] transition-all duration-[var(--g-duration-micro)] hover:opacity-95 active:scale-[0.98]"
               >
-                <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60" />
+                <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50" />
                 <span className="relative">{MARKETING_COPY.hero.ctaPrimary}</span>
                 <ArrowRight
                   strokeWidth={2}
@@ -164,7 +160,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-8 py-4 text-base font-semibold text-foreground shadow-[var(--g-shadow-surface)] transition-all hover:border-primary/40 hover:bg-card"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-[color:var(--g-surface-1)] px-8 py-4 text-base font-semibold text-foreground shadow-[var(--g-shadow-surface)] transition-all hover:border-primary/40"
               >
                 Contact Sales
               </Link>
