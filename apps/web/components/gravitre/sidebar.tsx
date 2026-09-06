@@ -130,7 +130,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] transition-all duration-300 ease-in-out",
           // Mobile: slide-out drawer
           "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full",
@@ -140,7 +140,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-3 md:px-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-border-subtle)] px-3 md:px-2">
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>
@@ -376,7 +376,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         </nav>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-sidebar-border bg-sidebar px-2 py-2.5 md:px-2">
+        <div className="shrink-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-2 py-2.5 md:px-2">
           <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary shadow-sm">

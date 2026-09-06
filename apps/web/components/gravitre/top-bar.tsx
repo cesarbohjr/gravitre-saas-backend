@@ -167,8 +167,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
         className={cn(
           // Phones get a taller bar with larger tap targets — the 48px bar with
           // 32px icon buttons tested below the 44px minimum on touch.
-          "flex items-center justify-between border-b border-border bg-background px-3 sm:px-4",
-          compact ? "h-12 sm:h-10" : "h-16 sm:h-14",
+          "flex items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 sm:px-4",
+          compact ? "h-11 sm:h-10" : "h-12 sm:h-12",
         )}
       >
         {/* Left side - Menu + Org + Environment + Page title */}
@@ -354,7 +354,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-72 max-w-72 p-0 overflow-hidden">
               {/* Profile header with gradient */}
-              <div className="relative overflow-hidden border-b border-border bg-muted/40 px-4 py-5">
+              <div className="relative overflow-hidden border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-4 py-4">
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
                     <UserAccountAvatar useCurrentUser size="xl" />

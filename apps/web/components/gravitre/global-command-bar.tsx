@@ -4,15 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Icon, type IconName } from "@/lib/icons"
-import {
-  GlowOrb,
-  NeuralNetwork,
-  StatusBeacon,
-  DataStream
-} from "@/components/gravitre/premium-effects"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import { useViewModeSafe } from "@/lib/view-mode-context"
+import { PulseDot } from "@/components/gravitre/visual"
 
 interface CommandItem {
   id: string
@@ -184,91 +179,43 @@ export function GlobalCommandBar() {
   return (
     <>
       {/* Trigger Button - Premium */}
-      <motion.button
+      <button
+        type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Search or run a command"
-        // rounded-full (RADIUS.control): this is a compact click target sitting in
-        // the same top-bar row as the Admin/Lite pill toggle, so rounded-xl made it
-        // read as a different control family inches away.
-        className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-border/60 bg-secondary/50 px-3 text-sm text-muted-foreground backdrop-blur-sm transition-all hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground hover:shadow-lg hover:shadow-primary/5 sm:h-8 sm:px-3.5"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        className="group flex h-11 items-center justify-center gap-2 rounded-full border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-3 text-sm text-[color:var(--g-text-muted)] transition-colors hover:border-[color:var(--g-border-active)] hover:bg-[color:var(--g-surface-3)] hover:text-[color:var(--g-text-primary)] sm:h-8 sm:px-3.5"
       >
-        {/* Hover glow effect */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5" />
-        <motion.div
-          className="relative z-10 flex items-center gap-2"
-        >
-          <div className="relative">
-            <Icon
-              name="search"
-              size="lg"
-              className="transition-colors group-hover:text-primary sm:hidden"
-            />
-            <Icon
-              name="search"
-              size="sm"
-              className="hidden transition-colors group-hover:text-primary sm:block"
-            />
-            <div className="absolute inset-0 blur-sm group-hover:bg-primary/30 transition-all opacity-0 group-hover:opacity-100" />
-          </div>
-          <span className="hidden lg:inline font-medium">Search or command...</span>
-          <kbd className="ml-1 hidden rounded-md bg-background/80 border border-border/50 px-2 py-0.5 font-mono text-[10px] text-muted-foreground lg:inline-flex items-center gap-0.5 group-hover:border-primary/30 transition-colors">
-            <Icon name="command" size="xs" />K
-          </kbd>
-        </motion.div>
-      </motion.button>
+        <Icon name="search" size="sm" className="shrink-0" />
+        <span className="hidden lg:inline font-medium">Search or command...</span>
+        <kbd className="ml-1 hidden items-center gap-0.5 rounded-md border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--g-text-muted)] lg:inline-flex">
+          <Icon name="command" size="xs" />K
+        </kbd>
+      </button>
 
-      {/* Modal - Premium */}
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop with premium effects */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md"
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-50 bg-[color:var(--g-text-primary)]/35 backdrop-blur-sm"
               onClick={() => setIsOpen(false)}
-            >
-              {/* Ambient orbs in backdrop */}
-              <div className="absolute top-1/4 left-1/4 pointer-events-none">
-                <GlowOrb size={300} color="violet" intensity={0.15} />
-              </div>
-              <div className="absolute bottom-1/4 right-1/4 pointer-events-none">
-                <GlowOrb size={250} color="blue" intensity={0.1} />
-              </div>
-            </motion.div>
+            />
 
-            {/* Command Panel - Premium */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: -30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
               className="fixed left-1/2 top-[18%] z-50 w-full max-w-2xl -translate-x-1/2 px-4"
             >
-              <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/50">
-                {/* Top gradient accent */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-violet-500" />
-                
-                {/* Corner glow */}
-                <div className="absolute -top-20 -right-20 w-40 h-40 pointer-events-none">
-                  <GlowOrb size={160} color="blue" intensity={0.2} />
-                </div>
-                {/* Input - Premium */}
-                <div className="relative flex items-center gap-4 border-b border-border/30 px-5 py-4 bg-gradient-to-r from-transparent via-card/50 to-transparent">
-                  {/* AI icon with glow */}
-                  <motion.div 
-                    className="relative shrink-0"
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Icon name="ai" size="lg" className="text-info relative z-10" emphasis />
-                    <div className="absolute inset-0 blur-md bg-info/40" />
-                  </motion.div>
-                  
+              <div
+                className="g-material-panel relative overflow-hidden rounded-[var(--g-radius-panel)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-elevated)] shadow-[var(--g-shadow-elevated)]"
+              >
+                <div className="relative flex items-center gap-3 border-b border-[color:var(--g-border-subtle)] px-4 py-3">
+                  <Icon name="search" size="md" className="shrink-0 text-[color:var(--g-text-muted)]" />
                   <input
                     type="text"
                     value={query}
@@ -278,163 +225,82 @@ export function GlobalCommandBar() {
                     }}
                     placeholder="Search commands, navigate, or ask AI..."
                     autoFocus
-                    className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-medium"
+                    className="flex-1 bg-transparent text-sm text-[color:var(--g-text-primary)] placeholder:text-[color:var(--g-text-muted)] focus:outline-none"
                   />
-                  
-                  {/* Live typing indicator */}
-                  {query && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="shrink-0"
-                    >
-                      <StatusBeacon status="processing" size="sm" pulse />
-                    </motion.div>
-                  )}
-                  
-                  <kbd className="shrink-0 rounded-lg bg-secondary/80 border border-border/50 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
+                  {query ? <PulseDot tone="intelligence" size="sm" label="Filtering" /> : null}
+                  <kbd className="shrink-0 rounded-md border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--g-text-muted)]">
                     ESC
                   </kbd>
                 </div>
 
-                {/* Results - Premium */}
-                <div className="relative max-h-[420px] overflow-y-auto p-3 scrollbar-on-hover">
+                <div className="relative max-h-[420px] overflow-y-auto p-2 scrollbar-on-hover">
                   {groups.length === 0 ? (
-                    <motion.div 
-                      className="px-4 py-12 text-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <Icon name="search" size="xl" className="text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground">
+                    <div className="px-4 py-10 text-center">
+                      <Icon name="search" size="xl" className="mx-auto mb-3 text-[color:var(--g-text-muted)] opacity-40" />
+                      <p className="text-sm text-[color:var(--g-text-secondary)]">
                         No results found for &ldquo;{query}&rdquo;
                       </p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        Try different keywords or ask AI for help
+                      <p className="mt-1 text-xs text-[color:var(--g-text-muted)]">
+                        Try different keywords
                       </p>
-                    </motion.div>
+                    </div>
                   ) : (
-                    <AnimatePresence mode="popLayout">
-                      {groups.map((group, groupIndex) => (
-                        <motion.div 
-                          key={group.group} 
-                          className="mb-3"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: groupIndex * 0.05 }}
-                        >
-                          <div className="flex items-center gap-2 px-3 py-2">
-                            <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                    <div>
+                      {groups.map((group) => (
+                        <div key={group.group} className="mb-2">
+                          <div className="flex items-center gap-2 px-3 py-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]">
                               {group.group}
                             </span>
-                            <div className="h-px flex-1 bg-gradient-to-l from-border to-transparent" />
                           </div>
-                          <div className="space-y-1">
-                            {group.items.map((item, itemIndex) => {
+                          <div className="space-y-0.5">
+                            {group.items.map((item) => {
                               const index = getItemIndex(item)
                               const isSelected = index === selectedIndex
                               return (
-                                <motion.button
+                                <button
+                                  type="button"
                                   key={item.id}
                                   onClick={() => handleSelect(item)}
                                   onMouseEnter={() => setSelectedIndex(index)}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: (groupIndex * 0.05) + (itemIndex * 0.02) }}
                                   className={cn(
-                                    "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all relative overflow-hidden",
-                                    isSelected 
-                                      ? "bg-gradient-to-r from-info/15 to-info/5 ring-1 ring-info/30 shadow-lg shadow-info/5" 
-                                      : "hover:bg-secondary/60"
+                                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
+                                    isSelected
+                                      ? "bg-[color:var(--g-surface-active)] text-[color:var(--g-text-primary)]"
+                                      : "text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-2)]",
                                   )}
                                 >
-                                  {/* Selected highlight */}
-                                  {isSelected && (
-                                    <motion.div 
-                                      className="absolute left-0 top-0 bottom-0 w-0.5 bg-info"
-                                      layoutId="selectedIndicator"
-                                    />
-                                  )}
-                                  
-                                  <motion.div 
+                                  <Icon
+                                    name={item.icon}
+                                    size="md"
                                     className={cn(
-                                      "rounded-xl p-2.5 transition-all relative",
-                                      isSelected ? "bg-info/20 shadow-md shadow-info/10" : "bg-secondary/80",
-                                      item.type === "ai" ? "text-info" : "text-muted-foreground"
+                                      "shrink-0",
+                                      isSelected
+                                        ? "text-[color:var(--g-intelligence)]"
+                                        : "text-[color:var(--g-text-muted)]",
                                     )}
-                                    animate={isSelected && item.type === "ai" ? { scale: [1, 1.05, 1] } : {}}
-                                    transition={{ duration: 1.5, repeat: Infinity }}
-                                  >
-                                    <Icon name={item.icon} size="sm" />
-                                    {item.type === "ai" && isSelected && (
-                                      <div className="absolute inset-0 rounded-xl blur-sm bg-info/30" />
-                                    )}
-                                  </motion.div>
-                                  
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className={cn(
-                                        "text-sm font-semibold transition-colors",
-                                        isSelected ? "text-foreground" : "text-foreground/90"
-                                      )}>{item.title}</span>
-                                      {item.type === "ai" && (
-                                        <span className="flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-[9px] font-bold text-info ring-1 ring-info/20">
-                                          <StatusBeacon status="active" size="sm" pulse />
-                                          AI
-                                        </span>
-                                      )}
-                                    </div>
-                                    {item.subtitle && (
-                                      <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{item.subtitle}</p>
-                                    )}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm font-medium">{item.title}</div>
+                                    {item.subtitle ? (
+                                      <div className="truncate text-xs text-[color:var(--g-text-muted)]">
+                                        {item.subtitle}
+                                      </div>
+                                    ) : null}
                                   </div>
-                                  
-                                  <motion.div
-                                    animate={isSelected ? { x: [0, 3, 0] } : {}}
-                                    transition={{ duration: 1, repeat: Infinity }}
-                                  >
-                                    <Icon name="forward" size="sm" className={cn(
-                                      "transition-colors",
-                                      isSelected ? "text-info" : "text-muted-foreground/20"
-                                    )} />
-                                  </motion.div>
-                                </motion.button>
+                                </button>
                               )
                             })}
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
-                    </AnimatePresence>
+                    </div>
                   )}
                 </div>
 
-                {/* Footer - Premium */}
-                <div className="relative flex items-center justify-between border-t border-border/30 px-5 py-3 bg-gradient-to-r from-secondary/20 via-transparent to-secondary/20">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
-                      <kbd className="rounded-md bg-secondary/80 border border-border/50 px-1.5 py-0.5 font-mono">↑</kbd>
-                      <kbd className="rounded-md bg-secondary/80 border border-border/50 px-1.5 py-0.5 font-mono">↓</kbd>
-                      <span className="ml-0.5">navigate</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
-                      <kbd className="rounded-md bg-secondary/80 border border-border/50 px-1.5 py-0.5 font-mono">↵</kbd>
-                      <span className="ml-0.5">select</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
-                      <kbd className="rounded-md bg-secondary/80 border border-border/50 px-1.5 py-0.5 font-mono">Tab</kbd>
-                      <span className="ml-0.5">autocomplete</span>
-                    </span>
-                  </div>
-                  <motion.span 
-                    className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70"
-                    animate={{ opacity: [0.6, 1, 0.6] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Icon name="chat" size="xs" className="text-info" emphasis />
-                    <span className="font-semibold text-info/80">Chat</span>
-                    <span>ready</span>
-                  </motion.span>
+                <div className="flex items-center justify-between border-t border-[color:var(--g-border-subtle)] px-4 py-2 text-[10px] text-[color:var(--g-text-muted)]">
+                  <span>Navigate</span>
+                  <span>Enter to select · Esc to close</span>
                 </div>
               </div>
             </motion.div>
