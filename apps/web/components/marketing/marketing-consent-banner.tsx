@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Cookie, Settings2, X } from "lucide-react"
+import { Cookie, Settings2 } from "lucide-react"
+import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import {
   DENIED_CONSENT,
   GRANTED_CONSENT,
@@ -158,7 +159,7 @@ export function MarketingConsentBanner({ country }: Props) {
                 className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Close cookie preferences"
               >
-                <X className="h-4 w-4" aria-hidden />
+                <NucleoClose size={16} aria-hidden />
               </button>
             </div>
 

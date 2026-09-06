@@ -1,7 +1,12 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Bot, Shield, Users, Zap } from "lucide-react"
+import {
+  NucleoAgent,
+  NucleoApproval,
+  NucleoIntelligence,
+  NucleoWorkflow,
+} from "@/components/icons/nucleo/semantic"
 import { GibeHonestyCards } from "@/components/marketing/gibe-honesty-cards"
 
 export function ConnectorsStepVisual() {
@@ -50,10 +55,10 @@ export function AgentsStepVisual() {
     <div className="rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 shadow-[var(--g-shadow-elevated)]">
       <div className="flex items-center justify-center gap-2">
         {[
-          { icon: Zap, tone: "emerald" as const },
-          { icon: Bot, tone: "signal" as const },
-          { icon: Users, tone: "intelligence" as const },
-          { icon: Shield, tone: "emerald" as const },
+          { icon: NucleoWorkflow, tone: "emerald" as const },
+          { icon: NucleoAgent, tone: "signal" as const },
+          { icon: NucleoIntelligence, tone: "intelligence" as const },
+          { icon: NucleoApproval, tone: "emerald" as const },
         ].map((node, i) => (
           <motion.div
             key={i}
@@ -72,13 +77,14 @@ export function AgentsStepVisual() {
               }`}
             >
               <node.icon
-                className={`h-5 w-5 ${
+                size={20}
+                className={
                   node.tone === "emerald"
                     ? "text-primary"
                     : node.tone === "signal"
                       ? "text-[color:var(--g-signal)]"
                       : "text-[color:var(--g-intelligence)]"
-                }`}
+                }
               />
             </div>
             {i < 3 ? <div className="h-0.5 w-6 bg-muted" /> : null}

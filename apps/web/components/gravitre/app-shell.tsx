@@ -15,7 +15,7 @@ import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre-loader"
-import { X } from "lucide-react"
+import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -395,7 +395,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                 aria-label="Dismiss trial banner"
                 className="p-1 hover:bg-black/5 rounded transition-colors"
               >
-                <X className="h-4 w-4" />
+                <NucleoClose size={16} />
               </button>
             </div>
             )
@@ -433,7 +433,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                     aria-label="Dismiss welcome banner"
                     className="p-1 hover:bg-success/20 rounded transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <NucleoClose size={16} />
                   </button>
                 </div>
               </div>

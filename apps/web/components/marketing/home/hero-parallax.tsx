@@ -3,12 +3,13 @@
 import Link from "next/link"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { ArrowRight } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { TYPE_MARKETING } from "@/lib/design-system"
 import { useMotionPrefs, timing } from "@/lib/animations"
 import { MarketingSpotlight } from "./marketing-spotlight"
 import { HybridHeroStage } from "./hybrid-hero-stage"
+import { LivingMineralField } from "@/components/gravitre/visual"
+import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 
 /**
@@ -36,8 +37,8 @@ export function HeroParallax() {
       data-marketing-hero=""
       data-ui30-hero="hybrid-ab"
     >
-      {/* Soft directional light only — no grid / heavy field */}
-      <MarketingSpotlight tone="neutral" interactive className="opacity-50" />
+      <LivingMineralField intensity="hero" className="opacity-90" />
+      <MarketingSpotlight tone="neutral" interactive className="opacity-40" />
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "var(--g-light-neutral)" }}
@@ -92,9 +93,10 @@ export function HeroParallax() {
               >
                 <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50" />
                 <span className="relative">{MARKETING_COPY.hero.ctaPrimary}</span>
-                <ArrowRight
+                <NucleoArrowRight
+                  size={16}
                   strokeWidth={2}
-                  className="relative h-4 w-4 transition-transform duration-[var(--g-duration-micro)] group-hover:translate-x-1"
+                  className="relative transition-transform duration-[var(--g-duration-micro)] group-hover:translate-x-1"
                 />
               </Link>
               <Link

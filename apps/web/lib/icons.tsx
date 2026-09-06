@@ -227,6 +227,21 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  NucleoAgent,
+  NucleoApproval,
+  NucleoArrowRight,
+  NucleoBell,
+  NucleoChevronDown,
+  NucleoClose,
+  NucleoCommand,
+  NucleoConnector,
+  NucleoIntelligence,
+  NucleoMenu,
+  NucleoSearch,
+  NucleoWorkflow,
+} from "@/components/icons/nucleo/semantic"
+import type { ComponentType, SVGProps } from "react"
 
 // Icon size scale (strict)
 export const iconSizes = {
@@ -568,6 +583,30 @@ export const iconMap = {
 
 export type IconName = keyof typeof iconMap
 
+/** Prefer licensed Nucleo glyphs when a semantic match exists (UI 3.0). */
+const nucleoByName: Partial<
+  Record<IconName, ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>>
+> = {
+  search: NucleoSearch,
+  menu: NucleoMenu,
+  command: NucleoCommand,
+  notifications: NucleoBell,
+  close: NucleoClose,
+  remove: NucleoClose,
+  caretDown: NucleoChevronDown,
+  chevronDown: NucleoChevronDown,
+  arrowRight: NucleoArrowRight,
+  agents: NucleoAgent,
+  ai: NucleoIntelligence,
+  brain: NucleoIntelligence,
+  workflows: NucleoWorkflow,
+  automations: NucleoWorkflow,
+  workflow: NucleoWorkflow,
+  connectors: NucleoConnector,
+  apps: NucleoConnector,
+  approvals: NucleoApproval,
+}
+
 // Icon component props
 interface IconProps {
   name: IconName
@@ -578,22 +617,31 @@ interface IconProps {
 
 // Main Icon component
 export function Icon({ name, size = "md", className, emphasis = false }: IconProps) {
-  const IconComponent = iconMap[name]
   const sizeValue = iconSizes[size]
-  
+  const Nucleo = nucleoByName[name]
+
+  if (Nucleo) {
+    return (
+      <Nucleo
+        size={sizeValue}
+        strokeWidth={emphasis ? 2.5 : ICON_STROKE_WIDTH}
+        className={cn("shrink-0", className)}
+      />
+    )
+  }
+
+  const IconComponent = iconMap[name]
+
   if (!IconComponent) {
     console.warn(`[v0] Icon "${name}" not found in icon map`)
     return null
   }
-  
+
   return (
-    <IconComponent 
+    <IconComponent
       size={sizeValue}
       strokeWidth={emphasis ? 2.5 : ICON_STROKE_WIDTH}
-      className={cn(
-        "shrink-0",
-        className
-      )}
+      className={cn("shrink-0", className)}
     />
   )
 }

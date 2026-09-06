@@ -5,7 +5,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, Menu, X, ChevronDown } from "lucide-react"
+import {
+  NucleoArrowRight,
+  NucleoChevronDown,
+  NucleoClose,
+  NucleoMenu,
+} from "@/components/icons/nucleo/semantic"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
@@ -109,7 +114,7 @@ export function MarketingChrome({
                       className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                     >
                       {link.label}
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <NucleoChevronDown size={14} className="opacity-80" />
                     </button>
                     <AnimatePresence>
                       {companyDropdownOpen ? (
@@ -162,7 +167,7 @@ export function MarketingChrome({
             >
               <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60" />
               <span className="relative">Put Gravitre to work</span>
-              <ArrowRight className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <NucleoArrowRight size={16} className="relative transition-transform group-hover:translate-x-0.5" />
             </Link>
             <button
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -170,7 +175,7 @@ export function MarketingChrome({
               aria-expanded={mobileMenuOpen}
               className="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? <NucleoClose size={20} /> : <NucleoMenu size={20} />}
             </button>
           </div>
         </nav>
@@ -230,7 +235,7 @@ export function MarketingChrome({
                     className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground"
                   >
                     {MARKETING_COPY.hero.ctaPrimary}
-                    <ArrowRight className="h-4 w-4" />
+                    <NucleoArrowRight size={16} />
                   </Link>
                 </div>
               </div>

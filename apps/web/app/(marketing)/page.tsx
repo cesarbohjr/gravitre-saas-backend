@@ -1,13 +1,13 @@
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { ArrowRight } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { IntegrationStrip } from "@/components/marketing/integration-strip"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { HeroParallax } from "@/components/marketing/home/hero-parallax"
 import { HomeNarrativeSections } from "@/components/marketing/home/home-narrative-sections"
-import { IntelligenceField } from "@/components/gravitre/visual"
+import { LivingMineralField } from "@/components/gravitre/visual"
 import { ProductFrame } from "@/components/marketing/product-frame"
+import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
 
 const ProductShowcase = dynamic(
   () => import("@/components/marketing/product-showcase").then((m) => m.ProductShowcase),
@@ -57,7 +57,7 @@ export default function HomePage() {
         className="relative overflow-hidden border-t border-border bg-[color:var(--g-surface-2)]/60 py-28 sm:py-36"
         data-field-atmosphere="intelligence"
       >
-        <IntelligenceField variant="section" atmosphere="intelligence" className="opacity-20" />
+        <LivingMineralField intensity="section" className="opacity-70" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-16 max-w-2xl text-center">
             <span className="text-sm font-bold uppercase tracking-wide text-[color:var(--g-intelligence)]">
@@ -153,9 +153,10 @@ export default function HomePage() {
               >
                 <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50" />
                 <span className="relative">{MARKETING_COPY.hero.ctaPrimary}</span>
-                <ArrowRight
+                <NucleoArrowRight
+                  size={20}
                   strokeWidth={2}
-                  className="relative h-5 w-5 transition-transform group-hover:translate-x-1"
+                  className="relative transition-transform group-hover:translate-x-1"
                 />
               </Link>
               <Link
