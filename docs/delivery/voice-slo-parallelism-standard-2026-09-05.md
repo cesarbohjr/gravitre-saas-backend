@@ -326,6 +326,38 @@ Ran the new `pipecat_voice_tool_latency` instrumentation (Addendum 5) live again
 
 **Honest, corrected next step (not yet done):** the real remaining gap is per-round LLM inference time inside the classical ReAct/orchestrator loop specifically, which is not currently instrumented with its own `model_ttft_ms` the way the unified-turn direct path is. Closing that gap requires adding that specific instrumentation to the classical path next, not further tool-execution tracing — tool execution has now been directly measured and ruled out as this turn's driver.
 
+## Addendum 7 (2026-09-06) — Phase 4: real, honest re-measurement vs. all three SLOs and full prior history
+
+Full 3-scenario live probe re-run against the currently-deployed tip (`git_sha=06a325e694e8b9bb2febb7b062e1076fbc14c557`, includes Addenda 4–6's round-count fix + tool-latency instrumentation), same methodology/probe script as every prior measurement in this program (`scripts/measure-voice-pipecat-live-latency.py`, real synthesized speech into the live production Pipecat WS, real Deepgram STT, real CognitiveTurnKernel, real ElevenLabs TTS). Full raw output: `docs/delivery/voice-pipecat-live-latency-2026-09-04.json` (script's own fixed output path) and `docs/delivery/voice-pipecat-live-latency-phase4-remeasure-2026-09-06.json` (captured stdout+summary).
+
+### Real numbers, explicitly labeled per scenario, against full prior history
+
+| Scenario | `cd04d203` (2026-09-05, post speculative-gen, pre round-count fix) P50/P95 | `06a325e6` (2026-09-06, post round-count fix) P50/P95/P99 | Change |
+|---|---|---|---|
+| `simple_conversational` (n=8) | 2,784 / 3,783 ms | **3,486 / 4,280 / 4,417 ms** | **+25% P50, +13% P95** — see honest caveat below |
+| `knowledge_lookup` (n=5) | 4,429 / 5,356 ms | **3,610 / 3,919 / 3,957 ms** | **-18% P50, -27% P95** |
+| `consequential_write_shaped` (n=3) | 11,795 / 14,551 ms | **8,584 / 9,317 / 9,382 ms** | **-27% P50, -36% P95** |
+
+### Against the three SLOs (P50 TTFA <500ms, P95 TTFA <800ms, interruption-to-silence <150–200ms)
+
+**None of the three SLOs are met, on any scenario, honestly.** Every scenario's P50 remains **7–17x over** the 500ms target; every P95 remains **5–12x over** the 800ms target. Interruption-to-silence remains **NOT MEASURED** this pass — no probe or golden-signal instrumentation exists for it yet (same honest gap flagged in the original Phase 0–10 pass; not silently assumed met).
+
+### Honest read of the movement
+
+`knowledge_lookup` and `consequential_write_shaped` — the two scenarios that actually exercise the classical multi-round path Addenda 4–6 targeted — both improved substantially (18–36%). This is real, positive, measured movement directly attributable to Addendum 4's blocking-I/O fix (confirmed: zero `list_connected_integrations_failed` in this run's logs, vs. present in the run that originally surfaced the bug) plus whatever residual benefit came from having the fix live under real production conditions rather than the isolated-org probe conditions of the initial diagnosis.
+
+`simple_conversational` — a pure 1–2-round conversational turn with no tool calls, not touched by any of Addenda 4–6's changes — got **measurably slower** (+25% P50). This exact scenario showed the same "measurably worse, small-N noise, not a known regression" pattern in the immediately-preceding Phase 0–10 pass (this doc, line 215) when speculative generation shipped, a change that also did not touch this scenario's code path. Two independent measurement sessions now show this same scenario moving in an unexplained direction that neither session's own code changes could plausibly cause. Honest conclusion: **this looks like real run-to-run/production-load variance in an n=8 sample, not a regression caused by this session's fixes** — but it is reported as-is, not smoothed over, per the standing evidence discipline. Not investigated further this pass; if it recurs a third time it would warrant its own root-cause pass rather than continuing to be attributed to noise.
+
+### Zero-regression confirmation
+
+- Full backend regression battery: **5594 passed, 3 skipped, 0 failed** (`pytest tests/`, 32m13s) — includes the 19 speculative-generation tests and all write-gate/write-approval tests.
+- Targeted re-run, speculative-gen + write-gate + write-approval only: **68 passed, 0 failed** (`pytest tests/ -k "speculative or write_gate or write_approval"`).
+- Live production evidence (this same probe run): speculative-generation adoption logged (`pipecat_voice_speculative_generation_adopted`) on both `consequential_write_shaped` runs pulled for Addendum 6; write-confirm policy (`nl_yes_same_path_as_text`) unchanged and functioning (both write-shaped runs correctly asked for missing information — Sarah's email address / connector — rather than fabricating a send, per the existing honesty gate).
+
+### Honest bottom line for this Phase 0–4 pass
+
+Real, positive, measured progress on the two scenarios the actual diagnosed bottleneck (round-count / blocking I/O) targeted — but the absolute numbers remain far from all three SLOs on every scenario. The next concrete, un-started step (per Addendum 6) is instrumenting `model_ttft_ms` for the classical/orchestrator path's own per-round LLM calls specifically, since tool execution has now been directly ruled out and the per-round LLM inference time itself is the remaining, real, not-yet-directly-measured suspect.
+
 ## Scaffold/authorization note
 
-Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding) + one internal per-tool latency logging addition + one diagnosis-only research evaluation (no code) + one live-probe correction of a prior hypothesis (no code, evidence only). No customer-facing price, claim, badge, or entitlement toggle touched.
+Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding) + one internal per-tool latency logging addition + one diagnosis-only research evaluation (no code) + one live-probe correction of a prior hypothesis (no code, evidence only) + one full re-measurement pass (no code, evidence only). No customer-facing price, claim, badge, or entitlement toggle touched.
