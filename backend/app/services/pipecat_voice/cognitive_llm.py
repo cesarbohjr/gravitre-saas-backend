@@ -108,6 +108,15 @@ class GravitreCognitiveLLMService(LLMService):
         # once, not a chatty loop.
         tool_names_by_call_id: dict[str, str] = {}
         narrated_tool_starts: set[str] = set()
+        # Round-count audit (2026-09-06): Addendum 3 found consequential_write_
+        # shaped turns spend 3.2-3.7s per round in "tool-execution latency
+        # between LLM calls" but could only attribute that to "some round", not
+        # a specific tool — pipecat_voice_turn_latency only logs at LLM-call
+        # boundaries (data-intelligence events), never at tool-call boundaries.
+        # This closes that gap: real wall-clock elapsed between this specific
+        # tool's tool-input-available and tool-output-available, logged per
+        # call so the next probe can name the slow tool instead of the round.
+        tool_call_started_at: dict[str, float] = {}
         first_delta_at: float | None = None
         first_speakable_chunk_at: float | None = None
         tts_requested_at: float | None = None
@@ -186,6 +195,7 @@ class GravitreCognitiveLLMService(LLMService):
                 tool_name = str(payload.get("toolName") or "")
                 if call_id and tool_name:
                     tool_names_by_call_id[call_id] = tool_name
+                    tool_call_started_at[call_id] = time.perf_counter()
                 if tool_name and tool_name not in narrated_tool_starts:
                     narrated_tool_starts.add(tool_name)
                     await self._speak_narration(narrate_tool_started(tool_name))
@@ -194,6 +204,15 @@ class GravitreCognitiveLLMService(LLMService):
                 payload = event.payload if isinstance(event.payload, dict) else {}
                 call_id = str(payload.get("toolCallId") or "")
                 tool_name = tool_names_by_call_id.get(call_id, "")
+                started_at = tool_call_started_at.pop(call_id, None)
+                if tool_name and started_at is not None:
+                    logger.info(
+                        "pipecat_voice_tool_latency org_id=%s tool=%s elapsed_ms=%s since_turn_start_ms=%s",
+                        self._org_id,
+                        tool_name,
+                        int((time.perf_counter() - started_at) * 1000),
+                        int((time.perf_counter() - turn_start) * 1000),
+                    )
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
                 if narration:
                     await self._speak_narration(narration)
