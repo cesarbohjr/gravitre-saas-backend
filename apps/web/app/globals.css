@@ -207,6 +207,43 @@
   border-color: var(--g-border-subtle);
 }
 
+/* Design Pass 3 B2 — bold void marketing shell (Agenforce layout craft) */
+[data-marketing-canvas="void"] {
+  --background: oklch(0.07 0.01 250);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0.012 250);
+  --muted: oklch(0.14 0.012 250);
+  --muted-foreground: oklch(0.68 0.01 250);
+  --border: oklch(0.22 0.012 250);
+  /* Bold logo emerald — punchy, not washed */
+  --primary: oklch(0.7 0.17 155);
+  --primary-foreground: oklch(0.12 0.03 155);
+  --ring: oklch(0.7 0.17 155);
+  --g-void: var(--background);
+  --g-canvas: var(--background);
+  --g-emerald: var(--primary);
+  --g-emerald-bright: oklch(0.78 0.16 155);
+  --g-emerald-glow: 0 0 48px color-mix(in oklch, var(--primary) 40%, transparent);
+  --g-intelligence: oklch(0.72 0.14 300);
+  --g-intelligence-bright: oklch(0.78 0.14 300);
+  --g-signal: oklch(0.7 0.14 230);
+  --g-shadow-product: 0 28px 64px -20px oklch(0 0 0 / 0.75), 0 0 0 1px oklch(1 0 0 / 0.06);
+  --g-glow-operational: var(--g-emerald-glow);
+  color: var(--foreground);
+}
+
+[data-marketing-canvas="void"] .g-material-panel {
+  background-color: var(--card);
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--card) 88%, oklch(1 0 0) 12%) 0%,
+    var(--card) 55%,
+    color-mix(in oklch, var(--card) 90%, var(--muted) 10%) 100%
+  );
+  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.08), var(--elevation-2);
+  border-color: var(--border);
+}
+
 .dark {
   /* Gravitre Brand: Deep navy/black background (#0B0F14) */
   --background: oklch(0.08 0.01 250);

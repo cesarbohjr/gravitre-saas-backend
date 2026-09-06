@@ -202,10 +202,10 @@ export function IntelligenceField({
   const atmosphereOpacity = isHero ? 1 : 0.55
   const graphOpacity = isHero ? 0.85 : atmosphere === "agents" ? 0.5 : 0.35
   const wash = atmosphereWash(atmosphere, isDark)
-  // Light canvas: restrained topology; avoid heavy blur (washes look muddy).
-  const pathStrokeOpacity = isDark ? 0.24 : 0.22
-  const gridOpacity = isDark ? 0.035 : 0.028
-  const useBlurAtmosphere = false
+  // Light canvas: restrained topology; dark B2: stronger path weight for boldness.
+  const pathStrokeOpacity = isDark ? 0.38 : 0.22
+  const gridOpacity = isDark ? 0.055 : 0.028
+  const useBlurAtmosphere = isDark
   const showSignal = isHero || atmosphere === "agents" || atmosphere === "outcome"
 
   return (

@@ -40,10 +40,10 @@ export function MarketingSpotlight({
 
   const spotA =
     tone === "operational"
-      ? "color-mix(in oklch, var(--g-emerald) 10%, transparent)"
+      ? "color-mix(in oklch, var(--g-emerald) 22%, transparent)"
       : tone === "balanced"
-        ? "color-mix(in oklch, var(--g-intelligence) 8%, transparent)"
-        : "color-mix(in oklch, var(--g-intelligence) 10%, transparent)"
+        ? "color-mix(in oklch, var(--g-intelligence) 18%, transparent)"
+        : "color-mix(in oklch, var(--g-intelligence) 24%, transparent)"
 
   return (
     <div

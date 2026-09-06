@@ -4,12 +4,113 @@
  */
 export const MARKETING_COPY = {
   hero: {
-    badge: "GIBE + operations platform",
-    headline: ["Operators with", "org memory"],
+    badge: "Gravitre",
+    headline: ["One AI brain for", "your entire business."],
     subhead:
-      "Gravitre connects your stack, runs workflows, and learns through GIBE — the Gravitre Intelligent Business Engine — with confidence scores, not guesswork.",
-    ctaPrimary: "Get Started Free",
-    ctaSecondary: "See How It Works",
+      "Connect your tools, teams, data and processes. Gravitre works across your business to automate work, coordinate teams, measure results and continuously improve how your company operates.",
+    ctaPrimary: "Put Gravitre to work",
+    ctaSecondary: "See how it works",
+    benefitLine: "Your tools. Your teams. Your data. Working as one.",
+  },
+  homeNarrative: {
+    problem: {
+      eyebrow: "The problem",
+      title: "Your business doesn't need more AI tools.",
+      subtitle: "It needs them to work together.",
+      body:
+        "Your sales AI doesn't know what finance knows. Your marketing automation doesn't understand what's happening in support. Your workflows execute tasks, but they don't understand whether the business is actually getting better.",
+      closer: "Gravitre connects it all through one shared intelligence.",
+    },
+    oneBrain: {
+      eyebrow: "Shared intelligence",
+      title: "Every team gets AI. They all share the same brain.",
+      body:
+        "Deploy specialized AI agents across your business without creating disconnected AI silos. Every Gravitre agent works from shared business intelligence while respecting its own permissions, tools, knowledge and responsibilities.",
+    },
+    pillars: {
+      eyebrow: "How Gravitre works",
+      title: "Collaborate. Account. Improve.",
+      items: [
+        {
+          title: "Work as one",
+          description:
+            "Gravitre coordinates agents, people, workflows and systems across departments instead of automating each function in isolation.",
+        },
+        {
+          title: "Know what's working",
+          description:
+            "Every action connects to an objective and outcome, giving you visibility into what AI is doing, what it's costing and whether it's improving the business.",
+        },
+        {
+          title: "Get smarter over time",
+          description:
+            "Gravitre learns from your business, decisions, processes and outcomes to identify opportunities, recommend improvements and make future execution better.",
+        },
+      ],
+      governed:
+        "Governed by design. Permissions, approvals, audit trails, security policies and human oversight remain part of every action.",
+    },
+    demo: {
+      eyebrow: "Example scenario",
+      title: "Tell Gravitre what you want to accomplish.",
+      subtitle: "Not which application to open.",
+      prompt: "Find out why pipeline dropped this quarter and fix what we can.",
+      steps: [
+        "Analyzing CRM",
+        "Analyzing campaign performance",
+        "Reviewing conversion funnel",
+        "Checking sales activity",
+        "Comparing historical performance",
+      ],
+      findingsTitle: "Issues identified",
+      findings: [
+        "Paid search CPL increased",
+        "SDR response time increased",
+        "Demo → opportunity conversion declined",
+      ],
+      actionsTitle: "Recommended actions",
+      actions: [
+        "Reallocate campaign budget",
+        "Prioritize high-intent accounts",
+        "Create SDR follow-up workflow",
+        "Alert Sales leadership",
+      ],
+      footnote:
+        "Illustrative walkthrough — not live customer metrics or guaranteed outcomes.",
+    },
+    accountability: {
+      eyebrow: "Accountability",
+      title: "AI that answers for its work.",
+      subtitle: "Most AI platforms tell you what they did. Gravitre tells you whether it worked.",
+      stages: [
+        "Objective",
+        "Plan",
+        "AI + human actions",
+        "Results",
+        "Business outcome",
+        "ROI",
+        "Learning",
+      ],
+      closer:
+        "Every action is connected to the objective, execution, cost, result and outcome.",
+    },
+    simplification: {
+      eyebrow: "Your stack",
+      title: "Replace AI sprawl with one intelligent layer.",
+      subtitle:
+        "Not rip-and-replace Salesforce, HubSpot, Microsoft, QuickBooks, Slack. Connect them.",
+      layers: [
+        "One intelligence",
+        "One agent ecosystem",
+        "One governance layer",
+        "One automation layer",
+        "One measurement system",
+        "One business context",
+      ],
+    },
+    differentiation:
+      "It doesn't just automate the work. It understands whether the work is working.",
+    categoryLine: "Gravitre is the AI operating system for business.",
   },
   stats: [
     { value: "4-layer", label: "Intelligence stack" },
@@ -331,7 +432,7 @@ export const MARKETING_COPY = {
     ],
   },
   integrationStrip: {
-    label: "Connector catalog includes",
+    label: "Connects to the tools you already use",
     note: "Live Configured → Executable checks on every integration you connect.",
   },
   differentiators: [
@@ -353,8 +454,9 @@ export const MARKETING_COPY = {
     },
   ],
   cta: {
-    title: "Ready to run AI like an operator?",
-    subtitle: "Connect your stack. Watch Gravitre learn. Approve what executes.",
+    title: "One business. One brain.",
+    subtitle:
+      "Connect everything you already use. Gravitre coordinates the work, measures the results and learns how to make your business better.",
   },
   about: {
     principles: [
