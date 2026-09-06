@@ -174,7 +174,11 @@ class TestToolCompletedNarration:
         """
         events = [_tool_output("unknown-call", {"results": [1]})]
         display, tts = _drive(events)  # must not raise
-        assert tts == ["Found 1."]
+        # Word-boundary regression fix (2026-09-06): every independently-
+        # pushed spoken segment now carries a trailing space so consecutive
+        # TTS frames are never glued together with no separator (see
+        # `_push_spoken_text`) — assert the exact fixed value, not a substring.
+        assert tts == ["Found 1. "]
 
 
 class TestPhase3HonestWriteStateSpeechEndToEnd:
@@ -185,7 +189,9 @@ class TestPhase3HonestWriteStateSpeechEndToEnd:
         ]
         _, tts = _drive(events)
 
-        assert tts == ["I'm moving that now.", "Done — I moved it to Negotiation."]
+        # Trailing space per segment is the word-boundary regression fix
+        # (2026-09-06) — see `_push_spoken_text`.
+        assert tts == ["I'm moving that now. ", "Done — I moved it to Negotiation. "]
 
     def test_write_call_confirmed_never_precedes_the_real_output_event(self) -> None:
         """MUTATION PROOF (HARD CONSTRAINT): reordering these two events must
@@ -195,7 +201,7 @@ class TestPhase3HonestWriteStateSpeechEndToEnd:
         """
         started_only = [_tool_start("c1", "moveDealStage")]
         _, tts_started_only = _drive(started_only)
-        assert tts_started_only == ["I'm moving that now."]
+        assert tts_started_only == ["I'm moving that now. "]
         assert not any("done" in c.lower() for c in tts_started_only)
 
     def test_write_call_failure_speaks_the_real_rejection_reason(self) -> None:
@@ -209,8 +215,8 @@ class TestPhase3HonestWriteStateSpeechEndToEnd:
         _, tts = _drive(events)
 
         assert tts == [
-            "I'm updating that now.",
-            "That didn't go through — Salesforce rejected: stage is locked.",
+            "I'm updating that now. ",
+            "That didn't go through — Salesforce rejected: stage is locked. ",
         ]
         assert not any("done" in c.lower() for c in tts)
 

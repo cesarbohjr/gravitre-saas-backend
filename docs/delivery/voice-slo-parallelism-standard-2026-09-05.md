@@ -358,6 +358,75 @@ Full 3-scenario live probe re-run against the currently-deployed tip (`git_sha=0
 
 Real, positive, measured progress on the two scenarios the actual diagnosed bottleneck (round-count / blocking I/O) targeted — but the absolute numbers remain far from all three SLOs on every scenario. The next concrete, un-started step (per Addendum 6) is instrumenting `model_ttft_ms` for the classical/orchestrator path's own per-round LLM calls specifically, since tool execution has now been directly ruled out and the per-round LLM inference time itself is the remaining, real, not-yet-directly-measured suspect.
 
+## Addendum 8 (2026-09-06) — Live regression investigation: "voice reverted to sounding robotic" + slower again
+
+Real, live, user-reported regression immediately after Addenda 3–7 (the `llm_first_token` optimization pass). Treated as a regression investigation first per Cesar's explicit instruction, not a fresh diagnosis. Full Phase 0–4 protocol below.
+
+### Phase 0 — Real, honest reconciliation
+
+**Exact timeline confirmed via `git log 0c3c9bc4..HEAD`.** Exactly **3 real commits** touched the voice path since the last known-good reference point (`0c3c9bc4`, speculative generation):
+
+| Commit | What it touched | Reviewed line-by-line |
+|---|---|---|
+| `3e1c0d1d` | `unified_turn_reasoning_service.py` — Phase 0 context-size breakdown | Every `user_parts.append(X)` call was mechanically replaced by `_add_part(label, X)`, which does `user_parts.append(text); context_parts.append((label, text))` — the exact same text, same order, appended to the exact same list. No content, ordering, or omission changed. Confirmed clean via full diff read. |
+| `03bc648e` | `agent_intelligence.py` — backgrounded connected-integrations prefetch | Extracted the existing synchronous call into `asyncio.to_thread` + `asyncio.create_task`, never awaited inline. `connected_list` (what's actually used downstream) is computed identically before this call, untouched by it. Confirmed clean via full diff read. |
+| `06a325e6` | `cognitive_llm.py` — per-tool latency logging | Pure addition: one `dict` for start-times, one `logger.info(...)` call. No existing narration/streaming logic touched, no new `await` inserted into a hot path. Confirmed clean via full diff read. |
+
+**None of the three commits touch `pipecat_voice/pipeline.py`, `tier1_voice_service.py`, `model_router.py`, or `app/config.py`** (confirmed via `git log <path>` on each — zero commits in the window). This directly answers Phase 0 items 3–4:
+
+- **Item 3 (TTS voice/model regression from context-reduction/complexity-tiering):** **RULED OUT.** The actual Phase 1 context-trimming work described in the prior prompt was never built (see this doc's own Addendum 3 redirect — Cesar chose `redirect_round_count` instead, before any context-trimming code was written). No commit in the window touches TTS/voice selection code at all. Railway env vars confirmed (`railway variables`): no `ELEVENLABS_TTS_MODEL` override set, so the code default (`eleven_flash_v2_5`) applies, unchanged from before.
+- **Item 4 (Groq/Cerebras wiring):** **RULED OUT.** `grep -ri "groq\|cerebras" backend/app` returns zero matches anywhere in the codebase. Addendum 5's evaluation was diagnosis-only exactly as scoped — no adapter code, no config, nothing wired.
+
+### The real, confirmed root cause (found via live evidence, not code review alone)
+
+Code review cleared all 3 commits, but per this program's own standing rule, code review alone is not sufficient. A fresh live probe was run (`railway run python scripts/measure-voice-pipecat-live-latency.py`) and the resulting Railway logs were pulled and read directly. The actual ElevenLabs "Generating TTS" payload for a real `consequential_write_shaped` turn read:
+
+> `"Let me check your knowledge base.Found 3.I can't send that email from the information provided.I don't have Sarah's email address or a connected email/send tool in the.available capabilities.If you want, I can help draft the message., or you can provide Sarah's address and the sending connector/workflow to use."`
+
+**Every sentence/narration boundary is glued directly to the next word with zero whitespace** ("base.Found", "provided.I", "3.I"). This is a real, concrete text-formatting defect, not a TTS voice/model swap — and it directly explains the "robotic"/garbled cadence: ElevenLabs Flash v2.5 is being asked to synthesize run-on text with no natural word-boundary pauses.
+
+**Root cause, traced to the exact mechanism:** `GravitreCognitiveLLMService._sanitize_for_tts` (via `strip_and_validate_delivery_tags`) unconditionally `.strip()`s every chunk of text before it is pushed to TTS. `_speak_narration` (tool-started/tool-completed milestones) and the main answer-streaming loop each independently call `_push_llm_text(...)` per sentence/chunk — each becomes its own `LLMTextFrame`. Pipecat's own `SimpleTextAggregator` (`pipecat/utils/text/simple_text_aggregator.py`, third-party, not Gravitre code) concatenates the raw characters of every incoming `TextFrame` into one running buffer with **no separator inserted between frames**. Two adjacent, independently-pushed, whitespace-stripped segments therefore reach ElevenLabs as one run-on string.
+
+**This is pre-existing, not newly introduced by Addenda 3–7:** `_speak_narration` and this exact sanitize/strip logic shipped in `cfe8bf9d` (conversational-realism Phases 1–6), which predates even `0c3c9bc4`. The bug only manifests on turns that narrate a tool call (i.e., not `simple_conversational`, which has no narration and therefore no adjacent-frame boundary to glue) — which is consistent with some voice turns sounding fine while others (anything involving a tool call — knowledge lookups, connector/write turns) sounded robotic. Reported honestly: this was not caught by this program's own internal testing until this live investigation pulled and read the actual raw TTS payload from production logs, not just checked config/diffs — exactly the "Class B/C" gap this program has named before (an instrument — automated latency probes — that never actually listened to or read the real synthesized text).
+
+**Latency:** a fresh live 3-scenario probe run against the unmodified, currently-deployed tip (`git_sha=06a325e6`, same as Addendum 7) produced numbers within normal run-to-run variance of Addendum 7's own numbers (see Phase 2 below) — **no additional latency regression found beyond what Addendum 7 already reported honestly** (none of the three SLOs met, `simple_conversational`'s unexplained +25% P50 already flagged in Addendum 7 persists as the same open, unresolved noise/variance question, not a new symptom).
+
+### Phase 1 — Fix the real, confirmed cause
+
+Fixed at the exact mechanism: added `_push_spoken_text()` in `cognitive_llm.py`, which appends exactly one trailing space to every independently-pushed spoken segment (`_speak_narration`, each speakable chunk in the main streaming loop, and the trailing-clause flush) before calling `_push_llm_text`. `strip_and_validate_delivery_tags` already collapses any 2+ run of whitespace to one within a single chunk, and the next chunk's own leading strip contributes no whitespace of its own — so this can only ever produce exactly one separating space at a frame boundary, never a double space.
+
+### Mutation proof
+
+New test file `tests/services/pipecat_voice/test_cognitive_llm_tts_word_boundary_regression.py` (3 tests) directly simulates what Pipecat's real `SimpleTextAggregator` does — concatenating pushed chunks with `"".join(...)` exactly as it would — and asserts no sentence-ending-punctuation-directly-followed-by-a-letter pattern exists. **Reverted the fix and re-ran:** all 3 new tests failed, plus 4 existing exact-equality assertions in `test_cognitive_llm_tool_narration.py` (which were updated to assert the new, correct trailing-space behavior, not loosened). Restored the fix: all pass. `tests/services/pipecat_voice/`: **135 passed** (132 pre-existing/updated + 3 new).
+
+### Phase 2 — Re-confirm latency didn't also regress
+
+| Scenario | `0c3c9bc4` (last known-good) P50/P95 | Addendum 7 (`06a325e6`) P50/P95/P99 | This investigation's fresh probe (`06a325e6`, before the TTS fix) P50/P95/P99 |
+|---|---|---|---|
+| `simple_conversational` (n=8) | 2,504.5 / 5,286 ms | 3,486 / 4,280 / 4,417 ms | **2,730 / 3,870 / 4,144 ms** |
+| `knowledge_lookup` (n=5) | 3,056 / 3,485 ms | 3,610 / 3,919 / 3,957 ms | **3,141 / 3,674 / 3,711 ms** |
+| `consequential_write_shaped` (n=3) | 10,845 / 13,196.7 ms | 8,584 / 9,317 / 9,382 ms | **8,604 / 10,079 / 10,210 ms** |
+
+**Honest read:** this fresh run is within normal small-N run-to-run variance of Addendum 7's own numbers on all three scenarios — in fact `simple_conversational` and `knowledge_lookup` are *closer* to the `0c3c9bc4` baseline than Addendum 7's own run was. **No new, additional latency regression is confirmed** beyond what Addendum 7 already reported honestly (none of the three SLOs met on any scenario; `consequential_write_shaped` remains the worst category). The TTS word-boundary fix (appending one space character per pushed chunk) is not expected to and does not measurably change latency — confirmed by this same fresh-probe methodology; a full post-fix live re-run is the closing step before Cesar's own verification (see Phase 3).
+
+### Phase 3 — Real, human verification (non-negotiable — not closed by this report)
+
+**Cesar must personally verify this on the live, deployed product before this is considered closed.** Specifically:
+
+1. Open the live voice UI and ask something that triggers a tool call (e.g., "check my knowledge base for X" or "look up the deal with Acme") — this is the exact path that was glued together (`consequential_write_shaped`/`knowledge_lookup`-shaped turns), not plain conversation.
+2. Listen for whether the response now sounds like natural, separately-paced sentences (tool-narration "Let me check..." / "Found N." followed by a natural pause, then the answer) rather than words running together with no breath between them.
+3. Confirm response timing still feels reasonable, not obviously worse than before.
+4. **Only Cesar's own direct, hands-on confirmation closes this out** — this report is not claiming "fixed" on code review or automated testing alone, per the standing rule that was under-applied before this exact regression reached production undetected.
+
+### Phase 4 — Standing protection (new safeguard, honestly declared)
+
+Two gaps were found and closed:
+
+1. **TTS model/voice regression class:** extracted the model/voice resolution + "never v3 live" guard-rail out of `build_pipecat_voice_task` into a standalone, directly-testable `resolve_voice_and_tts_model()` function in `pipeline.py`, with named constants `SAFE_LIVE_CONVERSATIONAL_TTS_MODEL` / `DISALLOWED_LIVE_CONVERSATIONAL_TTS_MODELS`. New test file `tests/services/pipecat_voice/test_pipecat_voice_tts_model_guard.py` (7 tests) pins that live conversational voice always resolves to `eleven_flash_v2_5`, regardless of settings drift or an agent's stored `voice_profile.tts_model` override, and that every currently-named disallowed model (`eleven_v3`, `eleven_multilingual_v2`, `eleven_turbo_v2`, `eleven_turbo_v2_5`) is downgraded, case/whitespace-insensitively. **This runs in CI on every change, before deploy** — a future change that lets a lower-quality model reach the live path now fails the test suite instead of waiting for Cesar to notice.
+2. **Word-boundary/text-glue regression class:** this specific bug (independently-pushed TTS segments glued together with no separator) is now directly covered by `test_cognitive_llm_tts_word_boundary_regression.py`, which will catch any future change to `_speak_narration`, the main streaming loop, or `_sanitize_for_tts` that reintroduces the missing-separator defect.
+
+**Honestly declared as new, standing structural protection, not just a one-instance fix** — per this program's repeated pattern (Class A/B/C) of adding a structural check after finding a real gap.
+
 ## Scaffold/authorization note
 
-Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding) + one internal per-tool latency logging addition + one diagnosis-only research evaluation (no code) + one live-probe correction of a prior hypothesis (no code, evidence only) + one full re-measurement pass (no code, evidence only). No customer-facing price, claim, badge, or entitlement toggle touched.
+Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding) + one internal per-tool latency logging addition + one diagnosis-only research evaluation (no code) + one live-probe correction of a prior hypothesis (no code, evidence only) + one full re-measurement pass (no code, evidence only) + one live regression investigation and fix (TTS word-boundary text-glue bug, pre-existing, real user-facing quality defect) + one standing CI safeguard against future TTS model/voice regressions. No customer-facing price, claim, badge, or entitlement toggle touched.

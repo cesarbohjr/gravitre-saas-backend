@@ -243,7 +243,7 @@ class GravitreCognitiveLLMService(LLMService):
                 if spoken:
                     if first_speakable_chunk_at is None:
                         first_speakable_chunk_at = time.perf_counter()
-                    await self._push_llm_text(spoken)
+                    await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
         # Flush any trailing clause that never hit a sentence boundary (e.g.
@@ -253,7 +253,7 @@ class GravitreCognitiveLLMService(LLMService):
         if tail:
             if first_speakable_chunk_at is None:
                 first_speakable_chunk_at = time.perf_counter()
-            await self._push_llm_text(tail)
+            await self._push_spoken_text(tail)
             if tts_requested_at is None:
                 tts_requested_at = time.perf_counter()
 
@@ -287,7 +287,40 @@ class GravitreCognitiveLLMService(LLMService):
         )
         spoken = self._sanitize_for_tts(text)
         if spoken:
-            await self._push_llm_text(spoken)
+            await self._push_spoken_text(spoken)
+
+    async def _push_spoken_text(self, spoken: str) -> None:
+        """Push one already-sanitized, already-stripped clause of spoken text.
+
+        Regression fix (2026-09-06, live user report: "voice reverted to
+        sounding robotic"): `_sanitize_for_tts` (via `strip_and_validate_delivery_tags`,
+        which unconditionally `.strip()`s) always returns text with NO leading
+        or trailing whitespace. Every call site here (narration sentences,
+        main-answer speakable chunks, the trailing-clause flush) calls
+        `_push_llm_text` independently, each producing its own `LLMTextFrame`.
+        Pipecat's `SimpleTextAggregator` (the TTS service's own text
+        aggregator) concatenates the raw characters of every incoming
+        `TextFrame` into one running buffer with **no separator inserted
+        between frames** — confirmed live via Railway logs: a
+        `consequential_write_shaped` turn's actual ElevenLabs "Generating TTS"
+        payload read
+        "...knowledge base.Found 3.I can't send that email from the
+        information provided.I don't have Sarah's email address..." — every
+        sentence/narration boundary glued to the next with zero whitespace.
+        This reads as garbled/run-on text to ElevenLabs Flash v2.5, producing
+        exactly the "robotic"/unnatural cadence reported live, on any turn
+        that narrates a tool call (this bug does not reach `simple_conversational`
+        turns with no tool narration, which is why some voice turns still
+        sounded fine while others did not).
+
+        Fix: append exactly one trailing space to every independently-pushed
+        spoken segment, so two adjacent frames are never glued together at a
+        sentence/clause boundary. `strip_and_validate_delivery_tags` already
+        collapses any 2+ run of whitespace to one within a single chunk, so
+        this can never produce a double space; the next chunk's own leading
+        strip means no chunk ever contributes a space of its own.
+        """
+        await self._push_llm_text(spoken + " ")
 
     def _sanitize_for_tts(self, chunk: str) -> str:
         """Security gate + spoken-format normalization before text reaches TTS.

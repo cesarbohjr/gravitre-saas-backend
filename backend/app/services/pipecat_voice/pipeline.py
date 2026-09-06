@@ -39,6 +39,50 @@ from app.services.tier1_voice_service import resolve_voice_id
 logger = get_logger(__name__)
 
 
+# Voice-quality standing safeguard (2026-09-06, live regression investigation):
+# every model that is a genuine per-turn conversational speech risk if it were
+# ever accidentally routed to. This is the guard-rail Flash v2.5 must never
+# be silently swapped for on the live conversational path. Kept as a
+# named, testable constant (not just inline logic) so a future change to
+# this set is itself a reviewable diff, and `test_pipecat_voice_tts_model_guard.py`
+# pins the resolution behavior around it in CI, before any deploy.
+DISALLOWED_LIVE_CONVERSATIONAL_TTS_MODELS: frozenset[str] = frozenset(
+    {"eleven_multilingual_v2", "eleven_turbo_v2", "eleven_turbo_v2_5"}
+)
+SAFE_LIVE_CONVERSATIONAL_TTS_MODEL = "eleven_flash_v2_5"
+
+
+def resolve_voice_and_tts_model(
+    settings: Any, *, agent: dict[str, Any] | None, voice_key: str | None
+) -> tuple[str, str]:
+    """Resolve (voice_id, tts_model) for one Pipecat voice session.
+
+    Pulled out of `build_pipecat_voice_task` (2026-09-06 regression
+    investigation) so the model/voice resolution — including the "never v3
+    live" guard-rail — is directly unit-testable without constructing a full
+    pipeline/transport/websocket. This is the exact logic a future
+    context-reduction, complexity-tiering, or provider-swap change would have
+    to touch to accidentally route live conversational voice through a
+    lower-quality synthesis path; pinning it here is this program's standing
+    safeguard against that regression class recurring silently (Phase 4 of
+    the 2026-09-06 investigation).
+    """
+    _key, voice_id = resolve_voice_id(settings, voice_key)
+    profile = (agent or {}).get("voice_profile") if isinstance(agent, dict) else None
+    if isinstance(profile, dict) and profile.get("voice_id"):
+        voice_id = str(profile.get("voice_id"))
+    model = (
+        (profile.get("tts_model") if isinstance(profile, dict) else None)
+        or settings.elevenlabs_tts_model
+        or SAFE_LIVE_CONVERSATIONAL_TTS_MODEL
+    )
+    # Live conversational path must stay on Flash v2.5 — never v3.
+    model_l = str(model).strip().lower()
+    if "eleven_v3" in model_l or model_l in DISALLOWED_LIVE_CONVERSATIONAL_TTS_MODELS:
+        model = SAFE_LIVE_CONVERSATIONAL_TTS_MODEL
+    return voice_id, str(model)
+
+
 def _optional_silero_vad():
     """Silero for non-Flux STT; Flux owns native end-of-turn (omit VAD)."""
     try:
@@ -73,19 +117,7 @@ def build_pipecat_voice_task(
     if not el_key:
         raise RuntimeError("ELEVENLABS_API_KEY required for Pipecat voice")
 
-    _key, voice_id = resolve_voice_id(settings, voice_key)
-    profile = (agent or {}).get("voice_profile") if isinstance(agent, dict) else None
-    if isinstance(profile, dict) and profile.get("voice_id"):
-        voice_id = str(profile.get("voice_id"))
-    model = (
-        (profile.get("tts_model") if isinstance(profile, dict) else None)
-        or settings.elevenlabs_tts_model
-        or "eleven_flash_v2_5"
-    )
-    # Live conversational path must stay on Flash v2.5 — never v3.
-    model_l = str(model).strip().lower()
-    if "eleven_v3" in model_l or model_l in {"eleven_multilingual_v2", "eleven_turbo_v2", "eleven_turbo_v2_5"}:
-        model = "eleven_flash_v2_5"
+    voice_id, model = resolve_voice_and_tts_model(settings, agent=agent, voice_key=voice_key)
 
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
