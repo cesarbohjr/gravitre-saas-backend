@@ -6,9 +6,9 @@
  */
 
 import Link from "next/link"
-import { Brain } from "@phosphor-icons/react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
-import { StatusBadge, formatStatusLabel } from "@/components/gravitre/status-badge"
+import { StatusChip } from "@/components/gravitre/visual"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE, RADIUS } from "@/lib/design-system"
 import { CONFIDENCE_ESTIMATE_METHODOLOGY } from "@/lib/outcome-labels"
@@ -18,6 +18,7 @@ import {
 } from "@/lib/intelligence/model-runtime-honesty"
 import type { MlAdminOrgModelStatus } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { formatStatusLabel } from "@/components/gravitre/status-badge"
 
 const COUNT_LABEL: Record<RuntimeHonestyKind, string> = {
   model_loaded: "artifact-loaded",
@@ -53,7 +54,11 @@ export function GibeHonestyStrip({
 
   return (
     <section
-      className={cn("border border-border bg-card p-5 shadow-sm", RADIUS.panel, className)}
+      className={cn(
+        "border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5 shadow-[var(--g-shadow-surface)]",
+        RADIUS.panel,
+        className,
+      )}
       data-gibe-honesty-strip=""
       aria-labelledby="gibe-honesty-heading"
     >
@@ -74,9 +79,9 @@ export function GibeHonestyStrip({
           <div className="flex flex-wrap gap-2">
             {(Object.keys(COUNT_LABEL) as RuntimeHonestyKind[]).map((kind) =>
               counts[kind] > 0 ? (
-                <StatusBadge key={kind} tone={toneFor(kind)} dot>
+                <StatusChip key={kind} tone={toneFor(kind)} dot>
                   {counts[kind]} {COUNT_LABEL[kind]}
-                </StatusBadge>
+                </StatusChip>
               ) : null,
             )}
           </div>
@@ -86,11 +91,11 @@ export function GibeHonestyStrip({
       {shown.length === 0 ? (
         <div
           className={cn(
-            "mt-4 border border-dashed border-border bg-muted/30 px-4 py-8 text-center",
+            "mt-4 border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)]/50 px-4 py-8 text-center",
             RADIUS.card,
           )}
         >
-          <Brain className="mx-auto h-8 w-8 text-muted-foreground" weight="duotone" aria-hidden />
+          <NucleoIntelligence className="mx-auto text-muted-foreground" size={32} aria-hidden />
           <p className={cn(TYPE.cardTitle, "mt-2")}>No runtime model status yet</p>
           <p className={cn(TYPE.meta, "mt-1 mx-auto max-w-md")}>
             When org training status is available, each model shows Estimate (heuristic), Model
@@ -101,12 +106,12 @@ export function GibeHonestyStrip({
         <ul className="mt-4 flex flex-wrap gap-2">
           {shown.map(({ name, presentation }) => (
             <li key={name}>
-              <StatusBadge
+              <StatusChip
                 tone={presentation.statusTone}
                 title={presentation.detail}
               >
                 {formatStatusLabel(name)} · {presentation.label}
-              </StatusBadge>
+              </StatusChip>
             </li>
           ))}
         </ul>

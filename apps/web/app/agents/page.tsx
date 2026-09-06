@@ -7,10 +7,8 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
-import { 
-  StatusBeacon,
-  AnimatedCounter
-} from "@/components/gravitre/premium-effects"
+import { AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -31,7 +29,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useMotionPrefs } from "@/lib/animations"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
-import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { NucleoAgent, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { 
   Plus, 
   Search,
@@ -463,19 +461,9 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         </p>
 
         {/* Status pill — API AgentStatus only (Active / Idle / Running / Failed) */}
-        <div
-          className={cn(
-            "relative mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1",
-            status.chipClass,
-          )}
-        >
-          <StatusBeacon
-            status={status.beacon}
-            size="sm"
-            pulse={isRunning && !reduced}
-          />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{status.label}</span>
-        </div>
+        <StatusChip status={agent.status} pulse={isRunning && !reduced}>
+          {status.label}
+        </StatusChip>
 
         {(agent.knowledgeDocCount ?? 0) > 0 ? (
           <a
@@ -534,19 +522,9 @@ function AgentDetailPanel({
                 <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
                   {agent.department}
                 </span>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
-                    status.chipClass,
-                  )}
-                >
-                  <StatusBeacon
-                    status={status.beacon}
-                    size="sm"
-                    pulse={status.pulse}
-                  />
+                <StatusChip status={agent.status} pulse={status.pulse}>
                   {status.label}
-                </span>
+                </StatusChip>
               </div>
               <p className="text-sm text-muted-foreground">{agent.role}</p>
             </div>
@@ -566,7 +544,7 @@ function AgentDetailPanel({
             ) : agent.status !== "error" ? (
               <Button
                 size="sm"
-                className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white"
+                className="gap-2"
                 onClick={() => void onStart(agent)}
                 disabled={isMutating}
               >
@@ -810,15 +788,9 @@ function AgentPreviewSheet({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
-                status.chipClass,
-              )}
-            >
-              <StatusBeacon status={status.beacon} size="sm" pulse={status.pulse} />
+            <StatusChip status={agent.status} pulse={status.pulse}>
               {status.label}
-            </span>
+            </StatusChip>
             {agent.model ? (
               <AgentModelBadge
                 model={agent.model}
@@ -905,66 +877,45 @@ function MesonBuildButton({
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="group relative">
-            <div
-              aria-hidden
+          <motion.div
+            whileHover={reduced ? undefined : { scale: 1.02 }}
+            whileTap={reduced ? undefined : { scale: 0.98 }}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClick}
+              aria-expanded={isOpen}
+              aria-haspopup="dialog"
+              aria-label="Build with Meson"
               className={cn(
-                "pointer-events-none absolute -inset-px rounded-full bg-gradient-to-r from-violet-500/60 via-fuchsia-500/40 to-indigo-500/60 opacity-60 blur-[2px] transition-opacity duration-300",
-                "group-hover:opacity-100 group-focus-within:opacity-100",
-                isOpen && "opacity-100",
-              )}
-            />
-            <motion.div
-              whileHover={reduced ? undefined : { scale: 1.02 }}
-              whileTap={reduced ? undefined : { scale: 0.98 }}
-              className={cn(
-                "relative rounded-full bg-gradient-to-r from-violet-500/50 via-fuchsia-500/30 to-indigo-500/50 p-px shadow-lg shadow-violet-500/15",
-                isOpen && "shadow-violet-500/25",
+                "gap-2 border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3 hover:bg-[color:var(--g-surface-active)]",
+                isOpen && "bg-[color:var(--g-surface-active)]",
               )}
             >
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClick}
-                aria-expanded={isOpen}
-                aria-haspopup="dialog"
-                aria-label="Build with Meson"
-                className={cn(
-                  // No radius here: the Button base owns the pill shape, and the
-                  // gradient border + glow wrappers above are rounded-full to
-                  // match. The old rounded-[7px] was hand-tuned to sit inside a
-                  // rounded-lg wrapper and left this control square-ish.
-                  "relative gap-2 border-0 bg-card/95 px-3 hover:bg-violet-500/10",
-                  isOpen && "bg-violet-500/15",
-                )}
+              <motion.span
+                animate={
+                  reduced
+                    ? undefined
+                    : { rotate: [0, 10, -10, 0], scale: [1, 1.08, 1] }
+                }
+                transition={
+                  reduced
+                    ? undefined
+                    : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+                }
+                className="inline-flex"
               >
-                <motion.span
-                  animate={
-                    reduced
-                      ? undefined
-                      : { rotate: [0, 10, -10, 0], scale: [1, 1.08, 1] }
-                  }
-                  transition={
-                    reduced
-                      ? undefined
-                      : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
-                  }
-                  className="inline-flex"
-                >
-                  <Sparkles className="h-4 w-4 text-violet-400" />
-                </motion.span>
-                {/* The 300-weight tints only have contrast on a dark surface. On
-                    bg-card/95 in light mode the label was effectively invisible, so
-                    the ramp darkens to 600 there and keeps the 300s under `dark:`. */}
-                <span className="hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:inline">
-                  Build with Meson
-                </span>
-                <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-sm font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:hidden">
-                  Meson
-                </span>
-              </Button>
-            </motion.div>
-          </div>
+                <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-intelligence)]" />
+              </motion.span>
+              <span className="hidden font-medium text-[color:var(--g-text-primary)] sm:inline">
+                Build with Meson
+              </span>
+              <span className="text-sm font-medium text-[color:var(--g-text-primary)] sm:hidden">
+                Meson
+              </span>
+            </Button>
+          </motion.div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           AI-powered builder — describe intent, deploy agents and workflows
@@ -1113,7 +1064,7 @@ export default function AgentsPage() {
         <Users className="h-4 w-4" />
         <span className="hidden sm:inline">Multi-Agent Run</span>
       </Button>
-      <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
+      <Button onClick={() => router.push("/agents/new")} className="gap-2">
         <Plus className="h-4 w-4" />
         <span className="hidden sm:inline">New Agent</span>
       </Button>

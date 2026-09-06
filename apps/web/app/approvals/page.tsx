@@ -7,9 +7,10 @@ import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
-import { AutoStatusBadge } from "@/components/gravitre/status-badge"
+import { formatStatusLabel } from "@/components/gravitre/status-badge"
+import { StatusChip } from "@/components/gravitre/visual"
 import { PageHeader } from "@/components/gravitre/page-header"
-import { NucleoApproval } from "@/components/icons/nucleo/semantic"
+import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
@@ -41,7 +42,6 @@ import {
   User, 
   Workflow, 
   AlertCircle,
-  Sparkles,
   ChevronRight,
   Eye,
   Zap,
@@ -336,9 +336,9 @@ const typeIcons = {
 }
 
 const priorityConfig = {
-  high: { color: "border-l-destructive", bg: "bg-destructive/5", badge: STATUS.rejected },
+  high: { color: "border-l-[color:var(--status-rejected)]", bg: "bg-destructive/5", badge: STATUS.rejected },
   medium: { color: "border-l-[color:var(--status-pending)]", bg: "bg-warning/5", badge: STATUS.pending },
-  low: { color: "border-l-muted-foreground", bg: "bg-transparent", badge: STATUS.idle },
+  low: { color: "border-l-[color:var(--status-idle)]", bg: "bg-transparent", badge: STATUS.idle },
 } as const
 
 // Decision Card Component
@@ -414,7 +414,9 @@ function DecisionCard({
           <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium uppercase", config.badge)}>
             {approval.priority}
           </span>
-          <AutoStatusBadge status={approval.status} />
+          <StatusChip status={approval.status}>
+            {formatStatusLabel(approval.status)}
+          </StatusChip>
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
             {approval.type}
           </span>
@@ -434,7 +436,7 @@ function DecisionCard({
             approval.aiRecommendation.action === "review" && "bg-warning/5 border-warning/20"
           )}>
             <div className="flex items-center gap-2 mb-1">
-              <Sparkles className={cn(
+              <NucleoIntelligence className={cn(
                 "h-3.5 w-3.5",
                 approval.aiRecommendation.action === "approve" && "text-success",
                 approval.aiRecommendation.action === "reject" && "text-destructive",
@@ -468,7 +470,9 @@ function DecisionCard({
           </div>
           {approval.status !== "pending" && (
             <div className="flex flex-wrap items-center gap-2">
-              <AutoStatusBadge status={approval.status} />
+              <StatusChip status={approval.status}>
+                {formatStatusLabel(approval.status)}
+              </StatusChip>
               {approval.reviewedBy ? (
                 <>
                   <span>by</span>
@@ -661,7 +665,9 @@ function DetailPanel({
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-border/50">
               <span className="text-sm text-muted-foreground">Status</span>
-              <AutoStatusBadge status={approval.status} />
+              <StatusChip status={approval.status}>
+                {formatStatusLabel(approval.status)}
+              </StatusChip>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-border/50">
               <span className="text-sm text-muted-foreground">Entity</span>
@@ -970,7 +976,7 @@ function ApprovalsContent() {
               )}
               {queueTab === "pending" && aiRecommendedCount > 0 && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 border border-success/20">
-                  <Sparkles className="h-3 w-3 text-success" />
+                  <NucleoIntelligence className="h-3 w-3 text-success" />
                   <span className="text-xs font-medium text-success">{aiRecommendedCount} AI-approved</span>
                 </div>
               )}

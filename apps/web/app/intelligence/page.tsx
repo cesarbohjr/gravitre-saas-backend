@@ -19,7 +19,7 @@ import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-su
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
-import { IntelligenceNetworkWebGL } from "@/components/intelligence/intelligence-network-webgl"
+import { LivingMineralField } from "@/components/gravitre/visual"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
@@ -154,13 +154,13 @@ function IntelligenceCenterInner() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="relative space-y-6 p-4 md:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 overflow-hidden rounded-b-2xl">
-          <IntelligenceNetworkWebGL className="opacity-30" />
+      <div className="relative space-y-6 bg-[color:var(--g-canvas)] p-4 md:p-6">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 overflow-hidden">
+          <LivingMineralField intensity="section" className="opacity-80" />
         </div>
         <IntelligenceSectionRedirect />
         <PageHeader
-          className="relative border-border/60 bg-background/70 backdrop-blur-sm"
+          className="relative border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/80 backdrop-blur-sm"
           eyebrow="GIBE"
           title={copy.title}
           description={copy.description}

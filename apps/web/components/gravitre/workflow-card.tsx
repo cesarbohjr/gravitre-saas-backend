@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import Link from "next/link"
 import { Icon, StatusIcon, type IconName } from "@/lib/icons"
+import { StatusChip } from "@/components/gravitre/visual"
 import { AlertTriangle } from "lucide-react"
 
 interface WorkflowNode {
@@ -63,11 +64,11 @@ const nodeIconMap: Record<string, IconName> = {
 }
 
 const nodeColors: Record<string, string> = {
-  source: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-  agent: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  task: "bg-amber-500/15 text-amber-400 border-amber-500/25",
-  connector: "bg-violet-500/15 text-violet-400 border-violet-500/25",
-  approval: "bg-rose-500/15 text-rose-400 border-rose-500/25",
+  source: "border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)]",
+  agent: "border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-intelligence)]/10 text-[color:var(--g-intelligence)]",
+  task: "border-[color:var(--g-approval)]/25 bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)]",
+  connector: "border-[color:var(--g-signal)]/25 bg-[color:var(--g-signal)]/10 text-[color:var(--g-signal)]",
+  approval: "border-[color:var(--g-approval)]/30 bg-[color:var(--g-approval)]/12 text-[color:var(--g-approval)]",
 }
 
 const statusConfig = {
@@ -132,9 +133,9 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
                   transition={{ delay: index * 0.05 + 0.1 }}
-                  className="relative h-[2px] w-4 bg-border origin-left"
+                  className="relative h-[2px] w-4 origin-left bg-[color:var(--g-border-subtle)]"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/50 to-blue-500/0 animate-shimmer" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[color:var(--g-signal)]/40 to-transparent" />
                 </motion.div>
               )}
             </div>
@@ -210,31 +211,26 @@ export function WorkflowCard({
     >
       <Link href={`/workflows/${id}`}>
         <div className={`
-          relative rounded-xl border bg-card p-4 transition-all duration-200 cursor-pointer
-          hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/10
-          ${isRunning ? "border-blue-500/30 shadow-[0_0_25px_rgba(59,130,246,0.15)]" : "border-border hover:shadow-lg hover:shadow-black/5"}
+          relative cursor-pointer rounded-xl border bg-[color:var(--g-surface-1)] p-4 shadow-[var(--g-shadow-surface)] transition-all duration-200
+          hover:border-[color:var(--g-border-active)] hover:shadow-[var(--g-shadow-elevated)]
+          ${isRunning ? "border-[color:var(--g-signal)]/35" : "border-[color:var(--g-border-default)]"}
         `}>
-          {/* Ambient glow for running workflows */}
-          {isRunning && (
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/[0.03] to-transparent pointer-events-none" />
-          )}
+          {isRunning ? (
+            <div className="pointer-events-none absolute inset-0 rounded-xl bg-[color:var(--g-signal)]/[0.04]" />
+          ) : null}
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              {/* Status indicator */}
-              <div className="relative flex h-3 w-3 items-center justify-center">
-                <div className={`h-2 w-2 rounded-full ${statusConf.color}`} />
-                {status === "active" && (
-                  <div className={`absolute inset-0 rounded-full ${statusConf.color} animate-ping opacity-75`} />
-                )}
-              </div>
+          <div className="mb-3 flex items-start justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <StatusChip status={status} pulse={isRunning || status === "active"} className="shrink-0">
+                {statusConf.label}
+              </StatusChip>
               
-              <div>
-                <h3 className="text-sm font-medium text-foreground group-hover:text-blue-400 transition-colors">
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-medium text-[color:var(--g-text-primary)] transition-colors group-hover:text-[color:var(--g-emerald)]">
                   {name}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                <p className="mt-0.5 line-clamp-1 text-xs text-[color:var(--g-text-muted)]">
                   {description}
                 </p>
               </div>
@@ -248,10 +244,10 @@ export function WorkflowCard({
               ) : null}
               {/* Environment badge */}
               <div className={`
-                flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide
+                flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide
                 ${environment === "production" 
-                  ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" 
-                  : "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20"
+                  ? "bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)] ring-1 ring-[color:var(--g-emerald)]/20" 
+                  : "bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)] ring-1 ring-[color:var(--g-approval)]/20"
                 }
               `}>
                 <Icon 

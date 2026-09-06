@@ -13,17 +13,13 @@ import { DataTable } from "@/components/gravitre/data-table"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { 
-  DataStream, 
-  MorphingBackground, 
-  GlowOrb, 
   AnimatedCounter,
-  StatusBeacon,
-  GridPattern
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, Activity, Zap, Clock, TrendingUp, LayoutGrid, Rows3 } from "lucide-react"
+import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import { StatusChip } from "@/components/gravitre/visual"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +36,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
-import { Target } from "lucide-react"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
@@ -320,27 +315,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.workflows.title}>
-      <div className="relative flex flex-col h-full overflow-hidden">
-        {/* Premium ambient background */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <MorphingBackground colors={["blue", "cyan", "emerald"]} />
-          <div className="absolute inset-0 bg-background/90 backdrop-blur-3xl" />
-        </div>
-        
-        {/* Animated flow lines */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <DataStream direction="horizontal" color="blue" speed={0.3} className="opacity-20" />
-          <GridPattern size={60} color="blue" animated className="opacity-30" />
-        </div>
-        
-        {/* Ambient orbs */}
-        <div className="absolute top-1/4 right-10 pointer-events-none z-0">
-          <GlowOrb size={250} color="violet" intensity={0.2} />
-        </div>
-        <div className="absolute bottom-1/4 left-10 pointer-events-none z-0">
-          <GlowOrb size={200} color="blue" intensity={0.15} />
-        </div>
-
+      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]">
         {/* Header */}
         <div className="relative z-10">
           <PageHeader
@@ -492,35 +467,16 @@ export default function WorkflowsPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <StatusBeacon status="processing" size="md" />
-                </div>
+                <StatusChip status="running" pulse>
+                  Running
+                </StatusChip>
                 <div>
                   <div className="text-sm font-medium text-foreground">
                     <AnimatedCounter value={runningCount} duration={0.5} /> workflow{runningCount > 1 ? 's' : ''} running
                   </div>
-                  <div className="text-xs text-muted-foreground">Processing data in real-time</div>
+                  <div className="text-xs text-muted-foreground">Live count from your workspace</div>
                 </div>
               </div>
-              <div className="hidden sm:flex items-center gap-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Activity className="h-3.5 w-3.5 text-info" />
-                  <span><AnimatedCounter value={3247} duration={1.5} /> records/min</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 text-info" />
-                  <span>Avg 1.2s latency</span>
-                </div>
-              </div>
-            </div>
-            {/* Progress bar */}
-            <div className="mt-3 h-1 overflow-hidden rounded-full bg-info/10">
-              <motion.div 
-                className="h-full rounded-full bg-info"
-                initial={{ width: "0%" }}
-                animate={{ width: ["0%", "100%", "0%"] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              />
             </div>
           </motion.div>
         )}
