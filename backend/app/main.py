@@ -126,6 +126,58 @@ print("Gravitre backend booting...")
 logger = get_logger(__name__)
 
 
+def _import_pipecat_stack() -> bool:
+    """Synchronous pipecat import warmup — module-level so it is directly
+    unit-testable (see test_main_pipecat_warmup.py) without needing a running
+    event loop or the full FastAPI lifespan. Returns True iff pipecat (and this
+    app's own pipeline module) imported cleanly; never raises.
+
+    No-reply/no-audio regression fix (2026-09-06). Root cause, confirmed live:
+    `pipecat`'s own import (triggered lazily by `_pipecat_import_available()`
+    inside `GET /api/voice/status`, or by the WS handler's own
+    `from pipecat.pipeline.runner import PipelineRunner`) is expensive on a
+    cold worker — a real production trace showed a user's first
+    `GET /api/voice/status` after a fresh deploy took **12,880ms** (warm
+    calls: ~300ms). The browser's `getVoiceStatus()` has an 8s client timeout
+    (`apiFetch(..., { timeoutMs: 8_000 })`); a timeout there makes
+    `shouldUsePipecatVoice()` receive a null status and silently fall back,
+    for the rest of that session, to the legacy HTTP `<audio>`-element duplex
+    path — which is exactly the path that then surfaced as "no reply / audio"
+    plus repeated "Audio playback failed during voice reply" toasts in the
+    live trace correlated to this report.
+
+    Fix: eagerly import pipecat, and `app.services.pipecat_voice.pipeline`
+    (which transitively imports the actual Pipeline/ElevenLabsTTSService/
+    WebSocket-transport submodules the live WS handler needs), once, in a
+    background thread, at process startup — never inline in a request. A
+    failed/slow import here only delays this worker's readiness by a few
+    seconds at deploy time; it can never again cost a live user's voice
+    session its Pipecat routing decision.
+    """
+    try:
+        import pipecat  # noqa: F401
+    except ImportError:
+        logger.info("pipecat_warmup_skipped reason=not_installed")
+        return False
+    try:
+        from app.services.pipecat_voice import pipeline  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 — warmup best-effort, never fatal
+        logger.warning("pipecat_warmup_pipeline_import_failed error=%s", exc)
+        return False
+    return True
+
+
+async def _warm_pipecat_imports() -> None:
+    """Async lifespan wrapper: gate on the feature flag, run the (blocking)
+    import off the event loop thread, never raise into startup.
+    """
+    from app.config import get_settings
+
+    if not bool(getattr(get_settings(), "voice_pipecat_enabled", False)):
+        return
+    await asyncio.to_thread(_import_pipecat_stack)
+
+
 def _log_billing_startup_config() -> None:
     """Log billing configuration warnings at startup (observability only)."""
     try:
@@ -303,6 +355,7 @@ async def lifespan(app: FastAPI):
 
     if not _get_settings_lifespan().disable_ai:
         await _warm_unified_tool_embeds()
+    await _warm_pipecat_imports()
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()

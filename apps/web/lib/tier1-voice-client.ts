@@ -66,7 +66,14 @@ export async function getVoiceStatusDetailed(force = false): Promise<VoiceStatus
     return { status: cachedStatus, blocked: false }
   }
   try {
-    const res = await apiFetch("/api/voice/status", { timeoutMs: 8_000 })
+    // No-reply/no-audio regression (2026-09-06): a cold backend worker's first
+    // pipecat import can take ~10s (now fixed server-side via app-startup
+    // warmup — see backend `_import_pipecat_stack`), and this was previously a
+    // hard 8s client timeout. This is deliberately generous headroom on top of
+    // that server-side fix, not a substitute for it: a slow status check should
+    // delay voice start, never silently mis-route the whole session onto the
+    // less-robust legacy HTTP duplex path.
+    const res = await apiFetch("/api/voice/status", { timeoutMs: 15_000 })
     if (!res.ok) {
       if (res.status === 403) {
         cachedStatus = null
@@ -85,6 +92,17 @@ export async function getVoiceStatusDetailed(force = false): Promise<VoiceStatus
     cachedAt = now
     return { status: data, httpStatus: 200, blocked: false }
   } catch {
+    // Timeout/network failure on a *forced* refresh must not discard a
+    // recently-known-good status just because this one call failed — that is
+    // exactly the path that turned one slow `/api/voice/status` call into an
+    // entire voice session silently downgraded to the legacy duplex fallback
+    // (confirmed live root cause of "no reply / audio" + repeated "Audio
+    // playback failed during voice reply"). Pipecat availability does not
+    // flip from enabled to disabled moment-to-moment, so a still-fresh cached
+    // value is strictly safer here than null.
+    if (cachedStatus && now - cachedAt < 5 * 60_000) {
+      return { status: cachedStatus, blocked: false }
+    }
     return { status: force ? null : cachedStatus, blocked: false }
   }
 }
