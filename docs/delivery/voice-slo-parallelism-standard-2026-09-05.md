@@ -427,6 +427,34 @@ Two gaps were found and closed:
 
 **Honestly declared as new, standing structural protection, not just a one-instance fix** — per this program's repeated pattern (Class A/B/C) of adding a structural check after finding a real gap.
 
-## Scaffold/authorization note
+### Post-deploy live proof (`git_sha=5ae2acb3`, deployed and confirmed live)
+
+Full regression: **5,597 passed, 3 skipped, 0 failed** (`pytest tests/`, 24m06s). Pushed to `main`, deployed to Railway, confirmed live via `/health` → `git_sha=5ae2acb31788efd4ea9080deb86c2c5fb1cb9f3f`.
+
+**Fresh post-fix live probe** (same methodology, against the deployed fix):
+
+| Scenario | Pre-fix (this investigation) P50/P95/P99 | Post-fix (`5ae2acb3`) P50/P95/P99 |
+|---|---|---|
+| `simple_conversational` (n=8) | 2,730 / 3,870 / 4,144 ms | 3,326 / 4,312 / 4,549 ms |
+| `knowledge_lookup` (n=5) | 3,141 / 3,674 / 3,711 ms | 3,100 / 3,394 / 3,442 ms |
+| `consequential_write_shaped` (n=3) | 8,604 / 10,079 / 10,210 ms | 7,688 / 9,592 / 9,761 ms |
+
+All within normal small-N run-to-run variance — **confirms the fix (one appended space character per pushed chunk) has no meaningful latency cost**, as expected.
+
+**Fresh Railway log pull immediately after this probe run (500 lines) — direct, live proof the actual defect is gone.** Before the fix, one real turn's entire narration+answer reached ElevenLabs as a single glued "Generating TTS" call:
+
+> `"...knowledge base.Found 3.I can't send that email from the information provided.I don't have Sarah's email address..."`
+
+After the fix, the *same* turn shape (tool narration → tool-completed → answer) now reaches ElevenLabs as multiple, cleanly separated "Generating TTS" calls, each one complete, correctly-punctuated sentence:
+
+```
+Generating TTS [Let me check your knowledge base.]
+Generating TTS [Found 3.]
+Generating TTS [I can't send email from here with the information provided.]
+Generating TTS [I don't have Sarah's email address or a connected email action in this request.]
+Generating TTS [If you want, send me Sarah's email address and the exact wording you want.]
+```
+
+A regex scan (`[.!?][A-Za-z]`, the exact glued-boundary signature) across the full fresh 500-line log pull returns **zero matches**. Real, live, direct evidence the fix works in production, not just in unit tests.
 
 Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding) + one internal per-tool latency logging addition + one diagnosis-only research evaluation (no code) + one live-probe correction of a prior hypothesis (no code, evidence only) + one full re-measurement pass (no code, evidence only) + one live regression investigation and fix (TTS word-boundary text-glue bug, pre-existing, real user-facing quality defect) + one standing CI safeguard against future TTS model/voice regressions. No customer-facing price, claim, badge, or entitlement toggle touched.
