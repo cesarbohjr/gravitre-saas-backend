@@ -218,6 +218,45 @@ The 100% adoption rate proves the mechanism is real and functioning correctly en
 
 **This is real, incremental, verified progress — reported now rather than held back for a perfect SLO result, per this pass's own instruction.** No human verification has occurred; per standing program rule, voice is not to be called "fixed" without it. This is the right moment for that verification: the pipeline is measurably, honestly improved over the prior baseline, not just re-confirmed unchanged.
 
+## Addendum 3 (same day) — `llm_first_token` Phase 0 audit: real numbers overturn the single-call-latency premise
+
+**MANDATORY PRE-FLIGHT for this pass:** full regression battery re-run before any change — 245 passed (`pipecat_voice`, `providers`, `unified_turn_*`), zero failures. Carries forward the 19 speculative-generation tests and the provider client-reuse tests confirmed above.
+
+### What shipped
+
+Real (not `len//4`-estimated) per-source token counting on the unified-turn LIVE path voice actually serves (`apply_unified_turn_live` → `run_unified_turn_shadow`'s single-call completion): `app/services/real_token_counter.py` (offline `tiktoken`, new dependency in `requirements-core.txt`), instrumented into `unified_turn_reasoning_service.py` as `context_size_breakdown` (per source: `system_prompt`, `conversation_history`, `tool_schemas`, `connected_integrations`, `knowledge_fabric`, `memory_recall`, `kernel_knowledge_section`, `outcome_bias`, `pending_state`, `tools_list_note`, `standing_corrections`, `user_message`) and `context_real_tokens_total`, logged in `unified_turn_shadow_breakdown` alongside the real, provider-reported `prompt_tokens`/`cached_prompt_tokens` already present. 4 new mutation-proof tests (`test_unified_turn_context_size_breakdown.py`): asserts real tiktoken counts differ from the naive chars-as-tokens mutation, asserts every real source is present/non-trivial, asserts `conversation_history`/`tool_schemas` actually reflect what was passed in. Deployed and confirmed live at `git_sha=3e1c0d1d`.
+
+### Phase 0 item 3 (prompt-caching behavior): confirmed real and already near-100% — no gap to fix
+
+Real production evidence (16 live turns, fresh probe run, isolated org, post-deploy at `3e1c0d1d`): **`cached_prompt_tokens == prompt_tokens` on 16 of 16 warm turns** (the one cold turn immediately after deploy, 7s post-health-check, was the sole `0/0` — a real, expected one-time cold-start artifact, not a steady-state miss). Real token counts observed: `prompt_tokens` 3,712–6,272 across turns, **100% of that returned as cache hit** every single time. This is OpenAI's automatic native prompt caching (kicks in for stable prefixes ≥1024 tokens, no `cache_control` markers needed — that requirement is Anthropic-specific) already working exactly as it should on the real, live-served model (`gpt-5.4-mini`, confirmed via `inference_provider=openai` on every sampled turn — the default `_resolve_model()` path always resolves an OpenAI model for voice unless an agent has an explicit non-OpenAI override, so the earlier finding "no `cache_control` used anywhere" was real but not the operative gap: Anthropic isn't the model actually serving voice by default).
+
+**Conclusion: Phase 2 (fix prompt-caching gaps) has no real gap to close on the path voice actually uses today.** Not built — building a fix for an already-~100%-hit-rate mechanism would be scaffolding without a diagnosed need.
+
+### Phase 0 items 1–2 (context size vs. the p99 tail): real correlation — and it overturns the "single-call context bloat" hypothesis
+
+Real per-source breakdown from the same 16-turn run (`context_size_breakdown`, `context_real_tokens_total`):
+
+| Scenario | `messages_chars` | `context_real_tokens_total` | single-call `model_ttft_ms` (this call only) |
+|---|---|---|---|
+| `simple_conversational` (n=8) | 25,370 | 6,579–6,787 | 442–792 ms |
+| `knowledge_lookup` (n=5) | 25,431 | 6,704 | 417–663 ms |
+| `consequential_write_shaped` (n=3) | 25,649 | 6,623–6,704 | 440–549 ms |
+
+Context size across all three scenarios is **within ~1% of each other**, and the single-call `model_ttft_ms` is **actually lowest for `consequential_write_shaped`**, not highest. Per-call context bloat does **not** explain the p99 tail — the hypothesis in Phase 0 item 2 is real, honestly tested, and **not confirmed**.
+
+**What actually explains the tail (real, correlated, from `pipecat_voice_turn_latency` logs grouped per voice turn by `turn_start`):**
+
+| Scenario | n | LLM round-trips per turn (`data-intelligence` events before spoken text) | `first_text_delta_ms` (real, matches the golden-signal `llm_first_token` metric) |
+|---|---|---|---|
+| `simple_conversational` + `knowledge_lookup` | 13 | **2–3** | 1,011–1,848 ms |
+| `consequential_write_shaped` | 3 | **6** | **8,223–9,634 ms** |
+
+This lines up almost exactly with the golden-signal numbers already reported in Addendum 2 (`llm_first_token` P50 1,316ms / P99 8,735ms) — the fast-tier turns cluster near the P50, the write-shaped turns cluster near the P99. **The tail is real and it is `llm_first_token` as measured — but it is the sum of 6 chained LLM round-trips (tool-call → tool-execute → tool-call → ... → final spoken answer), not one slow call with a bloated prompt.** Individual round latencies for the write-shaped turns ranged ~330ms–3.9s each; two of the six rounds in each write-shaped turn were themselves ~3.2–3.7s (real tool-execution/round latency, not raw single-call LLM inference — each round's own `model_ttft_ms` stayed under ~550ms per the table above).
+
+### Honest re-scoping recommendation (Cesar's decision, not built unilaterally)
+
+Given real evidence: **Phase 1 (voice-specific context trimming) and Phase 2 (prompt-caching fixes) as originally scoped would not move the p99 tail** — the per-call context is already small and ~100%-cached; the tail is round-count and tool-execution latency in the classical multi-step path that `consequential_write_shaped` turns fall into, not the single-call LLM completion Phase 0–2 targeted. Recommend redirecting effort toward: (a) reducing round-count for write-shaped voice turns (e.g., can knowledge-lookup + connector-status checks be parallelized/pre-fetched into one round instead of sequential tool calls — the existing speculative-prefetch read-only cache-warming mechanism already touches this), and (b) attributing the ~3.2–3.7s individual slow rounds to a specific tool/operation rather than assuming they are LLM-side. **Not built without sign-off** — this changes the shape of the remaining work from "shrink the prompt" to "shrink the round-count," a different, real problem. Phase 3 (Groq/Cerebras evaluation) is unaffected by this finding and remains a live option regardless of which problem Phase 1 targets, since faster per-round inference still helps a multi-round chain — but it would not fix the round-count itself.
+
 ## Scaffold/authorization note
 
-Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT). No customer-facing price, claim, badge, or entitlement toggle touched.
+Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency). No customer-facing price, claim, badge, or entitlement toggle touched.
