@@ -1,8 +1,8 @@
 # GRAVITRE UI 3.0 — PHASE 6 HOME · CONNECTORS · ACTIVITY
 
 **Date:** 2026-09-06  
-**Status:** **AWAITING CESAR ACCEPT**  
-**Prior:** Phase 4 + 5 ACCEPTED (reconfirmed same turn)
+**Status:** **ACCEPTED** (Cesar · 2026-09-06)  
+**Prior:** Phase 4 + 5 ACCEPTED · Phase 6 ship `4ad00a1f`
 
 ---
 
@@ -19,7 +19,15 @@ Mineral density on the next authenticated hubs after Phase 5:
 
 ---
 
-## Explicit non-goals
+## Accept (2026-09-06)
+
+Cesar accepted Phase 6.
+
+**Ship pointer:** `4ad00a1f` on `main` — `feat(ui): accept Phase 4–5; ship UI 3.0 Phase 6 hubs`
+
+---
+
+## Explicit non-goals (carried)
 
 - Connector detail / OAuth rewrite  
 - Run detail  
@@ -29,8 +37,8 @@ Mineral density on the next authenticated hubs after Phase 5:
 
 ---
 
-## Accept → next
+## Next
 
-Approve Phase 6 → Phase 7+ (builder/detail density, goldens, remaining Nucleo) as prioritized.
+**Phase 7+** — builder/detail density, goldens, remaining Nucleo as prioritized.
 
 **Scaffold honesty:** No new customer prices, badges, or Enable toggles.
