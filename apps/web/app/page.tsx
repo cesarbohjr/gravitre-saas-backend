@@ -8,22 +8,22 @@ import MarketingLayout from "./(marketing)/layout"
 import MarketingHomePage from "./(marketing)/page"
 
 export const metadata: Metadata = {
-  title: "Gravitre — Your AI Team, Managed Simply",
+  title: "Gravitre — One AI brain for your entire business",
   description:
-    "Gravitre is the AI operations platform for managing agents, workflows, runs, and approvals — with enterprise-grade governance, federation, and a marketplace of role-ready agents.",
+    "Connect your tools, teams, and data. Run Gravitre AI, agents, and workflows with live connector checks, human approvals, and learning from verified outcomes.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: "Gravitre",
-    title: "Gravitre — Your AI Team, Managed Simply",
+    title: "Gravitre — One AI brain for your entire business",
     description:
-      "Manage AI agents, workflows, runs, and approvals with enterprise-grade governance and a marketplace of role-ready agents.",
-    images: [{ url: "/og-get-started.png", width: 1200, height: 630, alt: "Gravitre — AI Operations Platform" }],
+      "One shared intelligence across agents, workflows, connectors, and approvals — governed execution, not another AI silo.",
+    images: [{ url: "/og-get-started.png", width: 1200, height: 630, alt: "Gravitre — One AI brain for your business" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gravitre — Your AI Team, Managed Simply",
-    description: "The AI operations platform for the enterprise.",
+    title: "Gravitre — One AI brain for your entire business",
+    description: "Connect your stack. Coordinate the work. Measure whether it worked.",
     images: ["/og-get-started.png"],
   },
 }

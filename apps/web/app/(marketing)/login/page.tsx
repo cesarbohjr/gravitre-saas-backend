@@ -15,9 +15,9 @@ import { GravitreMarketingLogo } from "@/components/marketing/gravitre-marketing
 import { GoogleOAuthIcon, MicrosoftOAuthIcon } from "@/components/marketing/oauth-provider-icons"
 
 const features = [
-  "Deploy AI agents in minutes",
-  "Automate complex workflows",
-  "Scale with enterprise security",
+  "One brain across tools and teams",
+  "Agents, workflows, and approvals",
+  "Live connector checks before writes",
 ]
 
 function LoginPageContent() {
@@ -283,9 +283,9 @@ function LoginPageContent() {
             className="relative z-10 flex flex-col items-center text-center"
           >
             <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-[1.15] tracking-tight">
-              Your AI team,
+              One AI brain for
               <br />
-              <span className="text-primary">managed simply.</span>
+              <span className="text-primary">your entire business.</span>
             </h1>
             
             {/* Animated feature text */}

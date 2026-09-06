@@ -1128,13 +1128,13 @@ export function FeaturesLegacyContent({
                   <Bot className="h-3.5 w-3.5 text-blue-600" />
                   <span className="text-xs font-medium text-blue-700">Smart Agents</span>
                 </div>
-                <h3 className="text-3xl font-bold text-foreground mb-4">Your AI team, configured your way</h3>
+                <h3 className="text-3xl font-bold text-foreground mb-4">Specialized agents. Shared intelligence.</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
-                  Deploy specialized AI agents for different roles - data analysis, content writing, 
-                  research, and more. Each agent learns your business context and improves over time.
+                  Deploy role agents for analysis, writing, research, and ops — each with its own tools and
+                  permissions, all working from the same org brain. Profiles, health, and outcomes live in Agents.
                 </p>
                 <ul className="space-y-3">
-                  {['Pre-built agent templates', 'Custom capability configuration', 'Continuous learning', 'Role-based permissions'].map((item) => (
+                  {['Department and role agents', 'Capability and knowledge packs', 'Org-scoped learning when data gates pass', 'Role-based permissions'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
                       <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-blue-600" />

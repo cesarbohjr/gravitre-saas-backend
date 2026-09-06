@@ -95,14 +95,15 @@ export function TechnologyPage() {
               <span className="text-sm font-medium text-primary">Platform technology</span>
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
-              The engine behind every{" "}
+              The engine inside the{" "}
               <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                decision and write
+                one brain
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
               GIBE — the Gravitre Intelligent Business Engine — learns from your connected stack and routes
-              every action through governed, human-approved execution. Intelligence and control, one system.
+              actions through governed, human-approved execution. Memory, models, and judgment for the same
+              brain that powers Gravitre AI, agents, and workflows.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">

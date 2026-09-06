@@ -25,7 +25,7 @@ export default function CareersPage() {
               We&apos;re hiring
             </span>
             <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
-              Build the future of AI operations with us
+              Build one AI brain for business with us
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
               Join a world-class team working on challenging problems at the intersection of AI, automation, and enterprise software.

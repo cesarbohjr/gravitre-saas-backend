@@ -88,7 +88,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
           >
             <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">Blog</h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-              Product updates, engineering deep dives, and insights on building the future of AI operations.
+              Product updates, engineering deep dives, and how one AI brain coordinates real work.
             </p>
           </motion.div>
         </div>

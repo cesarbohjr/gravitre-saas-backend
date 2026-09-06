@@ -199,10 +199,10 @@ export default function GetStartedPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Build your AI team in minutes
+              Put one AI brain to work
             </h1>
             <p className="mt-3 text-muted-foreground">
-              Agents that work like employees, integrations they use as tools.
+              Connect your stack, run agents and workflows, approve what matters.
               <br className="hidden sm:block" />
               No credit card required.
             </p>

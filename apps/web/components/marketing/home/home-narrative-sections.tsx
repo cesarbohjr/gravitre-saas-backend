@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Progressive homepage narrative — Design Pass 3 one-brain story.
+ * Progressive homepage narrative — UI 3.0 one-brain story.
  * Illustrative demo only — no invented live ROI dollars.
  */
 

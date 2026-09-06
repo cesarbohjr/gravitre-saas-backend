@@ -67,7 +67,7 @@ const popularArticles = SUPPORT_POPULAR_ARTICLES
 const faqs = [
   {
     question: "What is Gravitre?",
-    answer: "Gravitre is an AI operations platform with a built-in intelligence engine — agents, workflows, org learning, and MCP-native execution with approval gates.",
+    answer: "Gravitre is one AI brain for your business — Gravitre AI, agents, workflows, connectors, approvals, and GIBE learning with human gates on writes.",
   },
   {
     question: "How do I get started?",

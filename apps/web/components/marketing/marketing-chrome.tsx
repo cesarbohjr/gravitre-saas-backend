@@ -166,7 +166,7 @@ export function MarketingChrome({
               className="group relative hidden sm:inline-flex items-center gap-2 overflow-hidden rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--g-glow-operational)] transition-all duration-[var(--g-duration-micro)] hover:opacity-95 active:scale-[0.98]"
             >
               <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-60" />
-              <span className="relative">Put Gravitre to work</span>
+              <span className="relative">{MARKETING_COPY.hero.ctaPrimary}</span>
               <NucleoArrowRight size={16} className="relative transition-transform group-hover:translate-x-0.5" />
             </Link>
             <button

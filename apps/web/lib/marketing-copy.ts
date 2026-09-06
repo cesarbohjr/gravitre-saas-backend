@@ -1,13 +1,14 @@
 /**
- * Marketing site copy — smart, technical, helpful, confident.
- * Facts first. Evidence shown. Action-oriented.
+ * Marketing site copy — UI 3.0 one-brain positioning.
+ * Radical simplicity on the surface. Functional honesty underneath.
+ * No invented ROI, fake customer counts, or “AI employees” theater.
  */
 export const MARKETING_COPY = {
   hero: {
     badge: "Gravitre",
     headline: ["One AI brain for", "your entire business."],
     subhead:
-      "Connect your tools, teams, data and processes. Gravitre works across your business to automate work, coordinate teams, measure results and continuously improve how your company operates.",
+      "Connect your tools, teams, data, and processes. Gravitre automates work, coordinates people and agents, measures what happened, and improves how the business runs — with human approval where it matters.",
     ctaPrimary: "Put Gravitre to work",
     ctaSecondary: "See how it works",
     benefitLine: "Your tools. Your teams. Your data. Working as one.",
@@ -109,8 +110,8 @@ export const MARKETING_COPY = {
       ],
     },
     differentiation:
-      "It doesn't just automate the work. It understands whether the work is working.",
-    categoryLine: "Gravitre is the AI operating system for business.",
+      "It doesn't just automate the work. It shows whether the work is working.",
+    categoryLine: "One shared intelligence across agents, workflows, connectors, and approvals.",
   },
   stats: [
     { value: "4-layer", label: "Intelligence stack" },
@@ -247,11 +248,11 @@ export const MARKETING_COPY = {
     ],
   },
   featuresHero: {
-    badge: "Platform capabilities",
-    headline: ["Everything to run", "AI operations"],
+    badge: "What you can run today",
+    headline: ["One brain.", "Real product surfaces."],
     subtitle:
-      "Agents, workflows, connectors, learning, and models — one stack with governance built in.",
-    pills: ["GIBE", "Gravitre AI", "Agents", "Workflows", "Learning", "Models"],
+      "Gravitre AI, agents, workflows, connectors, approvals, GIBE learning, and Marketplace — governed execution, not another chat silo.",
+    pills: ["Gravitre AI", "Agents", "Workflows", "Connectors", "Approvals", "GIBE"],
   },
   meson: {
     title: "Meson builds systems, not slide decks",
@@ -328,9 +329,9 @@ export const MARKETING_COPY = {
   },
   marketplace: {
     badge: "Gravitre Marketplace",
-    title: "60+ installable assets — not blank canvases",
+    title: "Installable work for the same brain",
     subtitle:
-      "Workflow templates, department packs, agents, and knowledge — connector checks before install, human approval on writes.",
+      "Workflow templates, department packs, agents, and knowledge — readiness checks before install, the same approval gates as chat and custom workflows.",
     stats: [
       { value: "60+", label: "Catalog assets" },
       { value: "19", label: "Workflow templates" },
@@ -456,7 +457,7 @@ export const MARKETING_COPY = {
   cta: {
     title: "One business. One brain.",
     subtitle:
-      "Connect everything you already use. Gravitre coordinates the work, measures the results and learns how to make your business better.",
+      "Connect what you already use. Gravitre coordinates agents and workflows, measures results, and learns — with approvals and audit trails built in.",
   },
   about: {
     principles: [
@@ -475,29 +476,28 @@ export const MARKETING_COPY = {
     ],
   },
   meta: {
-    title: "Gravitre — AI operations with GIBE",
+    title: "Gravitre — One AI brain for your entire business",
     description:
-      "Connect your stack, run agents and workflows, and learn from verified outcomes. GIBE (Gravitre Intelligent Business Engine): memory, ML catalog, predictive ops, and MCP-native execution with approval gates.",
+      "Connect tools, teams, and data. Run Gravitre AI, agents, and workflows with live connector checks, human approvals, and GIBE learning from verified outcomes.",
     keywords: [
-      "AI operations platform",
+      "AI brain for business",
       "GIBE",
       "Gravitre Intelligent Business Engine",
       "AI agents",
       "workflow automation",
-      "MCP server",
-      "org learning",
-      "predictive operations",
       "connector health",
+      "human approval",
+      "org learning",
     ],
   },
   pricing: {
     badge: "Plans for operators",
-    headline: ["Intelligence included.", "Scale when ready."],
+    headline: ["One brain included.", "Scale when ready."],
     subhead:
       "Every plan includes Gravitre AI, connector health checks, and governed execution. Higher tiers add Meson, cross-team agents, and GIBE admin surfaces.",
-    subheadNote: "Pay for outputs and team seats — not buzzword tiers.",
+    subheadNote: "Pay for seats and usage — not buzzword tiers or invented ROI.",
     comparisonIntro:
-      "See what each plan includes. GIBE features (Insights, Learning, failure predictions, built-in ML) are available on all paid plans; depth scales with usage.",
+      "See what each plan includes. GIBE features (Insights, Learning, failure predictions, built-in ML) are available on paid plans; depth scales with usage.",
     intelligenceRows: [
       { feature: "Insights & confidence scores", node: true, control: true, command: true },
       { feature: "Connector executability checks", node: true, control: true, command: true },
@@ -511,7 +511,7 @@ export const MARKETING_COPY = {
       "Meson builds agents, datasets, and workflow drafts from one prompt — configured for your review before production. Available on Control and Command.",
     cta: {
       title: "Start with verified execution.",
-      subtitle: "7-day trial. Connect a connector. See what's executable before anything runs.",
+      subtitle: "7-day trial. Connect a tool. See what's executable before anything runs.",
     },
   },
   changelog: {

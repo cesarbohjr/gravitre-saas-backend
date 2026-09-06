@@ -204,13 +204,11 @@ export default function AboutPage() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
             <h1 className="text-[clamp(2.5rem,8vw,6rem)] font-bold tracking-tight leading-[0.95] text-foreground">
-              Humans should
+              One AI brain.
               <br />
               <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-                think
+                Shared by every team.
               </span>
-              <br />
-              not click
             </h1>
           </motion.div>
           
@@ -220,8 +218,8 @@ export default function AboutPage() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="mt-8 text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto font-light"
           >
-            We build an intelligence engine that connects your stack, learns from verified outcomes,
-            and executes through agents — with approval gates where it matters.
+            We build the intelligence layer that connects your stack, coordinates agents and workflows,
+            and learns from verified outcomes — with human approval where it matters.
           </motion.p>
           
           <motion.div

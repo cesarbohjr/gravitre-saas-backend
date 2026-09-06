@@ -3,8 +3,8 @@ import { marketingMetadata } from "@/lib/seo"
 export const metadata = marketingMetadata({
   title: "About",
   description:
-    "Gravitre's mission is to make AI teams as manageable as human ones. Learn about the company building the AI operations platform for the enterprise.",
-  ogDescription: "The company building the AI operations platform for the enterprise.",
+    "Gravitre builds one AI brain for your entire business — shared intelligence across agents, workflows, connectors, and approvals.",
+  ogDescription: "One AI brain for business. Shared intelligence. Governed execution.",
 })
 
 export default function AboutLayout({ children }: { children: React.ReactNode }) {

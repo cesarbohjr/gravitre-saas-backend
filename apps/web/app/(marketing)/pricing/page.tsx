@@ -296,7 +296,7 @@ export default function PricingPage() {
             <div className="mx-auto max-w-3xl">
               <div className="text-center mb-12">
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-                  Not another AI tool. This is execution.
+                  Not another AI silo. One shared brain.
                 </h2>
               </div>
 
@@ -305,20 +305,22 @@ export default function PricingPage() {
                   {
                     title: "Complete work, not suggestions",
                     description:
-                      "Gravitre doesn't generate ideas—it completes work. Full campaigns, sequences, and reports, delivered.",
+                      "Gravitre AI and workflows execute through connected tools — with live Configured → Executable checks before writes.",
                   },
                   {
-                    title: "Hours replaced, not added",
-                    description: "Each output replaces hours of manual effort. Work that took a day now takes minutes.",
-                  },
-                  {
-                    title: "Direct delivery",
-                    description: "Outputs delivered directly to your tools—email, CRM, Slack. No copy-paste required.",
-                  },
-                  {
-                    title: "Learns your business",
+                    title: "Measured outcomes, not theater",
                     description:
-                      "Agents are trained on your brand voice, ICP, and messaging. They get better with every use.",
+                      "Runs, approvals, and connector actions leave audit trails. Dollar ROI stays blank until your org measures it.",
+                  },
+                  {
+                    title: "Delivered into your stack",
+                    description:
+                      "Outputs land in the systems you connect — CRM, email, Slack, and more — when those connectors are healthy and executable.",
+                  },
+                  {
+                    title: "Learns from verified signals",
+                    description:
+                      "GIBE promotes memories and trains rankers only when data gates pass — honest TRAINED / not-ready status, not fake green checks.",
                   },
                 ].map((item, i) => (
                   <div

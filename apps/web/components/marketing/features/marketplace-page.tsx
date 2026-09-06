@@ -19,11 +19,12 @@ import {
   Download,
   CheckCircle2,
 } from "lucide-react"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 const WHY_STATS = [
   { value: "60+", label: "Installable templates" },
   { value: "6", label: "Department packs" },
-  { value: "Minutes", label: "Time to first run" },
+  { value: "Same gates", label: "As chat & workflows" },
 ]
 
 const WHY_GUARANTEES = [
@@ -203,13 +204,14 @@ export function MarketplacePage() {
               <span className="text-sm font-medium text-primary">Gravitre Marketplace</span>
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
-              60+ templates &{" "}
+              {MARKETING_COPY.marketplace.title.split(" for the same brain")[0]}
+              {" for the "}
               <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                department packs
+                same brain
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground text-pretty">
-              Workflows, agents, and knowledge — installable in minutes, not weeks.
+              {MARKETING_COPY.marketplace.subtitle}
             </p>
           </motion.div>
 
