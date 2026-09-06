@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -674,6 +675,75 @@ async def test_connected_integrations_mcp_tools_and_engine_settings_run_concurre
     # Sequential would space these delay apart (~200ms between each start).
     # Real concurrency starts all three within one scheduler tick.
     assert spread < delay / 2, f"pre-kernel calls started {spread:.3f}s apart — not running concurrently"
+
+
+@pytest.mark.asyncio
+async def test_schedule_connected_integrations_prefetch_does_not_block():
+    """Voice-latency round-count audit (2026-09-06): prefetch_connected_integrations
+    is a *synchronous*, blocking, live-network call (list_executable_integrations
+    does one HTTP round-trip per connected connector when force_live=True). Calling
+    a sync function from an async function does not make it background work — it
+    blocks the caller's coroutine, and the whole event loop, for as long as the
+    live checks take. A live production probe caught this stalling a
+    consequential_write_shaped voice turn by several seconds
+    (`list_connected_integrations_failed force_live=True error=[Errno 11]
+    Resource temporarily unavailable`) firing at the exact point this call ran
+    inline inside execute_task_streaming.
+
+    Fix: `_schedule_connected_integrations_prefetch` genuinely backgrounds it
+    via asyncio.to_thread + asyncio.create_task, never awaited inline, with a
+    strong ref kept in _PREFETCH_BACKGROUND_TASKS so it is not garbage
+    collected before it finishes its (already best-effort, write-through-cache)
+    work.
+
+    MUTATION PROOF: revert `_schedule_connected_integrations_prefetch` to call
+    `prefetch_connected_integrations(...)` directly (synchronously) instead of
+    via asyncio.to_thread/create_task, and this test fails — the call would
+    block the awaiting caller for the full `delay` instead of returning
+    almost immediately.
+    """
+    from app.operators.agent_intelligence import (
+        _PREFETCH_BACKGROUND_TASKS,
+        _schedule_connected_integrations_prefetch,
+    )
+
+    client = MagicMock()
+    delay = 0.3
+    prefetch_started = threading.Event()
+    prefetch_finished = threading.Event()
+    calls: list[tuple[Any, str]] = []
+
+    def _slow_prefetch(passed_client, passed_org_id, *, environment_name=None):
+        prefetch_started.set()
+        calls.append((passed_client, passed_org_id))
+        time.sleep(delay)
+        prefetch_finished.set()
+        return None
+
+    with patch(
+        "app.services.connector_snapshot_cache.prefetch_connected_integrations",
+        side_effect=_slow_prefetch,
+    ):
+        start = time.perf_counter()
+        task = _schedule_connected_integrations_prefetch(client, "org-1", environment_name="production")
+        schedule_elapsed = time.perf_counter() - start
+
+        assert schedule_elapsed < delay / 2, (
+            f"scheduling took {schedule_elapsed:.3f}s but must return almost "
+            "immediately — it must not synchronously run the slow prefetch"
+        )
+        assert task in _PREFETCH_BACKGROUND_TASKS, "task must be strong-ref'd until it completes"
+
+        # Give the backgrounded thread time to actually run, proving this is a
+        # real asyncio.to_thread task that executes and completes — not
+        # something dropped or never scheduled at all.
+        await asyncio.wait_for(task, timeout=delay * 3)
+
+    assert prefetch_started.is_set(), "prefetch_connected_integrations was never invoked"
+    assert prefetch_finished.is_set(), "backgrounded prefetch task never ran to completion"
+    assert calls == [(client, "org-1")]
+    # The done-callback must remove it once finished, or the set leaks forever.
+    assert task not in _PREFETCH_BACKGROUND_TASKS, "completed task must be discarded from the strong-ref set"
 
 
 @pytest.mark.asyncio

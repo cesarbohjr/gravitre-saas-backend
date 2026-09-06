@@ -257,6 +257,30 @@ This lines up almost exactly with the golden-signal numbers already reported in 
 
 Given real evidence: **Phase 1 (voice-specific context trimming) and Phase 2 (prompt-caching fixes) as originally scoped would not move the p99 tail** — the per-call context is already small and ~100%-cached; the tail is round-count and tool-execution latency in the classical multi-step path that `consequential_write_shaped` turns fall into, not the single-call LLM completion Phase 0–2 targeted. Recommend redirecting effort toward: (a) reducing round-count for write-shaped voice turns (e.g., can knowledge-lookup + connector-status checks be parallelized/pre-fetched into one round instead of sequential tool calls — the existing speculative-prefetch read-only cache-warming mechanism already touches this), and (b) attributing the ~3.2–3.7s individual slow rounds to a specific tool/operation rather than assuming they are LLM-side. **Not built without sign-off** — this changes the shape of the remaining work from "shrink the prompt" to "shrink the round-count," a different, real problem. Phase 3 (Groq/Cerebras evaluation) is unaffected by this finding and remains a live option regardless of which problem Phase 1 targets, since faster per-round inference still helps a multi-round chain — but it would not fix the round-count itself.
 
+## Addendum 4 (2026-09-06) — round-count redirect: first blocking-I/O fix on the write-shaped classical path
+
+Per Cesar's decision on the Addendum 3 recommendation (`redirect_round_count`): investigating which of the 6 chained LLM/tool round-trips in `consequential_write_shaped` turns are actually slow, starting with the pre-kernel connector-availability check.
+
+### What was found
+
+`execute_task_streaming` in `agent_intelligence.py` called `prefetch_connected_integrations(client, org_id, environment_name=...)` as a **plain synchronous function call from inside an async function**. That does not make it background work — it blocks the coroutine (and, since there is no `await`, the whole event loop) for however long `list_executable_integrations()`'s live, per-connector, sequential network checks take when `force_live=True`. A live probe caught this directly: one `consequential_write_shaped` turn logged `list_connected_integrations_failed org_id=<id> force_live=True error=[Errno 11] Resource temporarily unavailable` at the exact moment `classical.answer_path.reached` fired — a resource-exhaustion error from a blocking call stacking up against other in-flight work, immediately preceding one of the multi-second gaps between rounds already identified in Addendum 3.
+
+### Fix shipped
+
+Extracted the call into `_schedule_connected_integrations_prefetch()`, which genuinely backgrounds it: `asyncio.to_thread(prefetch_connected_integrations, ...)` (it does blocking I/O, not just something that needs an event-loop yield) wrapped in `asyncio.create_task(...)`, never awaited inline. The task's own strong ref is kept in a module-level `_PREFETCH_BACKGROUND_TASKS` set with a `add_done_callback` to discard it on completion, so it cannot be garbage-collected mid-flight when the enclosing turn's generator returns quickly, and cannot leak. The call's return value was never consumed by the caller either before or after this fix — it is, and always was, a best-effort cache-warm for `connector_snapshot_cache` (its own docstring already promised "safe to call fire-and-forget"); this fix is what actually makes that true.
+
+### Mutation proof
+
+New test `test_schedule_connected_integrations_prefetch_does_not_block` in `tests/operators/test_agent_intelligence.py`: patches `prefetch_connected_integrations` to sleep 0.3s, asserts `_schedule_connected_integrations_prefetch()` itself returns in <0.15s, asserts the task is strong-ref'd in `_PREFETCH_BACKGROUND_TASKS` while in flight and discarded once complete, then `await`s the task directly to confirm it actually ran to completion (not dropped/never scheduled). **Confirmed by reverting the fix to a direct synchronous call and re-running**: test fails with `scheduling took 0.301s but must return almost immediately` — proving the test would have caught the original bug.
+
+### Regression battery
+
+Full backend suite re-run after the fix: **5590 passed, 3 skipped, 0 failed** (30m45s, `pytest tests/`). `tests/operators/test_agent_intelligence.py` alone: 24 passed (23 pre-existing + 1 new).
+
+### Honest scope of this fix
+
+This addresses one of the 6 rounds' pre-kernel setup, not the round-count itself — `consequential_write_shaped` turns still make 6 sequential LLM/tool round-trips; this only removes a blocking-I/O tax that could stack onto any one of those rounds' wall-clock time (and, per the caught `Errno 11`, could make things worse than a normal live check under contention). It has **not yet been re-measured against the live SLOs** — Phase 4 re-measurement (this doc's own outstanding item) is still required, and other candidate slow-round contributors (e.g., the ~3.2–3.7s per-round tool-execution gaps identified in Addendum 3) have not yet been individually traced. Not claiming this closes the round-count gap; it removes one confirmed, real blocking-I/O source found while tracing it.
+
 ## Scaffold/authorization note
 
-Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency). No customer-facing price, claim, badge, or entitlement toggle touched.
+Documentation-only + two internal engineering perf/latency fixes (Anthropic client reuse; genuine speculative LLM generation on probable-EOT) + one internal audit instrumentation addition (real per-source context-size/token counting, `tiktoken` dependency) + one internal blocking-I/O fix on the classical write-shaped path (connected-integrations prefetch backgrounding). No customer-facing price, claim, badge, or entitlement toggle touched.

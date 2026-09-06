@@ -95,6 +95,49 @@ from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
+# Voice-latency round-count audit (2026-09-06): keep strong refs so the
+# genuinely-backgrounded connected-integrations prefetch below is not GC'd
+# mid-flight when the enclosing turn's generator finishes/returns quickly.
+_PREFETCH_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
+
+
+def _schedule_connected_integrations_prefetch(
+    client: Any, org_id: str, *, environment_name: str | None
+) -> asyncio.Task[Any]:
+    """Genuinely background the best-effort connected-integrations prefetch.
+
+    Voice-latency round-count audit (2026-09-06): `prefetch_connected_integrations`
+    is a *synchronous*, blocking, live-network call — `list_executable_integrations`
+    does one HTTP round-trip per connected connector when `force_live=True`.
+    Calling a sync function from an async function does not make it background
+    work; it blocks this coroutine, and the whole event loop, for as long as
+    the live checks take. A live production probe caught this stalling a
+    `consequential_write_shaped` voice turn by several seconds
+    (`list_connected_integrations_failed force_live=True error=[Errno 11]
+    Resource temporarily unavailable`) firing right at this call site.
+
+    This wraps it in `asyncio.to_thread` (it does blocking I/O, not just
+    needing an event loop yield) and schedules it via `asyncio.create_task`,
+    never awaited inline, so a failure or slow live-check here can no longer
+    add to this turn's response latency. The task's own strong ref is kept in
+    `_PREFETCH_BACKGROUND_TASKS` until it completes so it is not garbage
+    collected mid-flight; it already writes through connector_snapshot_cache
+    for the next call to benefit from either way.
+    """
+    from app.services.connector_snapshot_cache import prefetch_connected_integrations
+
+    task = asyncio.create_task(
+        asyncio.to_thread(
+            prefetch_connected_integrations,
+            client,
+            org_id,
+            environment_name=environment_name,
+        )
+    )
+    _PREFETCH_BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_PREFETCH_BACKGROUND_TASKS.discard)
+    return task
+
 RESEARCH_POLICY = """
 ## Research Policy
 You have two sources of knowledge available:
@@ -2993,9 +3036,7 @@ class AgentIntelligence:
         org_context = retrieval.org_context
         connected_list = list(turn_ctx.connected_integrations)
         connected_list = await self.tool_registry.enrich_connected_integrations(client, org_id, connected_list)
-        from app.services.connector_snapshot_cache import prefetch_connected_integrations
-
-        prefetch_connected_integrations(client, org_id, environment_name=environment_name)
+        _schedule_connected_integrations_prefetch(client, org_id, environment_name=environment_name)
         registry_meta = turn_ctx.context_registry if isinstance(turn_ctx.context_registry, dict) else {}
         connector_focus = tuple(registry_meta.get("connectorNames") or [])
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
