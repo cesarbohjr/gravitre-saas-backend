@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { STATUS, STATUS_DOT } from "@/lib/design-system"
-import { GlowOrb, StatusBeacon, ShimmerText } from "@/components/gravitre/premium-effects"
+import { PulseDot } from "@/components/gravitre/visual"
+import { NucleoClose, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { useMotionPrefs } from "@/lib/animations"
 import {
   mesonApi,
@@ -65,10 +66,10 @@ function severityIcon(severity: string) {
   return CheckCircle
 }
 
-function severityBeacon(severity: string): "warning" | "error" | "idle" {
-  if (severity === "critical") return "error"
-  if (severity === "warning") return "warning"
-  return "idle"
+function severityPulse(severity: string): "approval" | "signal" | null {
+  if (severity === "critical") return "approval"
+  if (severity === "warning") return "signal"
+  return null
 }
 
 export function MesonCopilotPanel({
@@ -119,7 +120,6 @@ export function MesonCopilotPanel({
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [fixingAlertId, setFixingAlertId] = useState<string | null>(null)
   const [fixedAlertId, setFixedAlertId] = useState<string | null>(null)
-  const [appliedInsightId, setAppliedInsightId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(workflowId))
   const [editInstruction, setEditInstruction] = useState("")
   const [editLoading, setEditLoading] = useState(false)
@@ -348,7 +348,6 @@ export function MesonCopilotPanel({
   const handleApplyInsight = useCallback(
     (insight: MesonInsight) => {
       if (!onApplyInsight) return
-      setAppliedInsightId(insight.id)
       onApplyInsight(insight)
       const next = [...dismissed, insight.id]
       setDismissed(next)
@@ -356,7 +355,6 @@ export function MesonCopilotPanel({
       window.setTimeout(() => {
         setTips((prev) => prev.filter((item) => item.id !== insight.id))
         setInsights((prev) => prev.filter((item) => item.id !== insight.id))
-        setAppliedInsightId(null)
       }, 600)
     },
     [dismissed, onApplyInsight, workflowId],
@@ -452,23 +450,13 @@ export function MesonCopilotPanel({
       )}
       aria-label="Meson AI Copilot"
     >
-      {/* soft attention glow behind the header */}
-      {!reduced ? (
-        <GlowOrb
-          size={160}
-          color="violet"
-          animate
-          className="pointer-events-none absolute -right-10 -top-10 opacity-40"
-        />
-      ) : null}
-
       <div className="relative flex items-center justify-between border-b border-border px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
+          <NucleoIntelligence className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">Meson</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close Meson panel">
-          <X className="h-3.5 w-3.5" />
+          <NucleoClose className="h-3.5 w-3.5" />
         </Button>
       </div>
 
@@ -720,7 +708,7 @@ export function MesonCopilotPanel({
               <AnimatePresence initial={false}>
                 {visibleAlerts.map((alert) => {
                   const Icon = severityIcon(alert.severity)
-                  const beacon = severityBeacon(alert.severity)
+                  const pulse = severityPulse(alert.severity)
                   const isFixed = fixedAlertId === alert.id
                   return (
                     <motion.div
@@ -731,9 +719,9 @@ export function MesonCopilotPanel({
                       className="overflow-hidden rounded-lg border border-border bg-secondary/30 p-2.5"
                     >
                       <div className="flex items-start gap-2">
-                        {beacon !== "idle" ? (
+                        {pulse ? (
                           <span className="mt-0.5">
-                            <StatusBeacon status={beacon} size="sm" />
+                            <PulseDot tone={pulse} size="sm" label={alert.severity} />
                           </span>
                         ) : (
                           <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -790,7 +778,6 @@ export function MesonCopilotPanel({
             ) : (
               <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
                 {tips.map((tip) => {
-                  const applied = appliedInsightId === tip.id
                   return (
                     <motion.div
                       key={tip.id}
@@ -800,13 +787,7 @@ export function MesonCopilotPanel({
                       <div className="flex items-start gap-2">
                         <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
                         <div className="min-w-0 flex-1">
-                          {applied && !reduced ? (
-                            <ShimmerText className="text-xs font-medium text-foreground">
-                              {tip.title}
-                            </ShimmerText>
-                          ) : (
-                            <p className="text-xs font-medium text-foreground">{tip.title}</p>
-                          )}
+                          <p className="text-xs font-medium text-foreground">{tip.title}</p>
                           <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">
                             {tip.summary}
                           </p>
@@ -840,7 +821,6 @@ export function MesonCopilotPanel({
             ) : (
               <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
                 {insights.map((insight) => {
-                  const applied = appliedInsightId === insight.id
                   return (
                     <motion.div
                       key={insight.id}
@@ -850,13 +830,7 @@ export function MesonCopilotPanel({
                       <div className="flex items-start gap-2">
                         <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" />
                         <div className="min-w-0 flex-1">
-                          {applied && !reduced ? (
-                            <ShimmerText className="text-xs font-medium text-foreground">
-                              {insight.title}
-                            </ShimmerText>
-                          ) : (
-                            <p className="text-xs font-medium text-foreground">{insight.title}</p>
-                          )}
+                          <p className="text-xs font-medium text-foreground">{insight.title}</p>
                           <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">
                             {insight.summary}
                           </p>

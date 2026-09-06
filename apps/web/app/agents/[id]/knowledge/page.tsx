@@ -292,7 +292,7 @@ export default function AgentKnowledgePage({
                 { label: "Datasets", value: stats.totalDatasets, sub: `${stats.readyDatasets} ready`, icon: "database", color: "emerald" },
                 { label: "Instructions", value: stats.totalInstructions, sub: `${stats.activeInstructions} active`, icon: "file", color: "blue" },
                 { label: "Training Status", value: stats.readyDatasets > 0 ? "Ready" : "Empty", sub: "Knowledge available", icon: "check", color: stats.readyDatasets > 0 ? "emerald" : "amber" },
-                { label: "Last Updated", value: datasets[0]?.updated_at ? formatDate(datasets[0].updated_at) : "Never", sub: "Most recent change", icon: "clock", color: "violet" },
+                { label: "Last Updated", value: datasets[0]?.updated_at ? formatDate(datasets[0].updated_at) : "Never", sub: "Most recent change", icon: "clock", color: "signal" },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -306,7 +306,7 @@ export default function AgentKnowledgePage({
                       "h-10 w-10 rounded-lg flex items-center justify-center",
                       stat.color === "emerald" && "bg-success/10",
                       stat.color === "blue" && "bg-blue-500/10",
-                      stat.color === "violet" && "bg-violet-500/10",
+                      stat.color === "signal" && "bg-[color:var(--g-signal-surface)]",
                       stat.color === "amber" && "bg-warning/10",
                     )}>
                       <Icon 
@@ -315,7 +315,7 @@ export default function AgentKnowledgePage({
                         className={cn(
                           stat.color === "emerald" && "text-success",
                           stat.color === "blue" && "text-blue-400",
-                          stat.color === "violet" && "text-violet-400",
+                          stat.color === "signal" && "text-[color:var(--g-signal)]",
                           stat.color === "amber" && "text-warning",
                         )} 
                       />

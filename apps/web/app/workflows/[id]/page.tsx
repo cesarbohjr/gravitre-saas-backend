@@ -6,7 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
-import { AutoStatusBadge } from "@/components/gravitre/status-badge"
+import { formatStatusLabel } from "@/components/gravitre/status-badge"
+import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -143,7 +144,11 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                 <div className="flex flex-wrap items-center gap-2">
                   <Workflow className="h-5 w-5 text-muted-foreground" />
                   <h1 className="text-xl font-semibold tracking-tight">{workflow?.name ?? "Workflow"}</h1>
-                  {workflow?.status ? <AutoStatusBadge status={workflow.status} /> : null}
+                  {workflow?.status ? (
+                    <StatusChip status={String(workflow.status)}>
+                      {formatStatusLabel(String(workflow.status))}
+                    </StatusChip>
+                  ) : null}
                   {workflow?.environment ? (
                     <EnvironmentBadge
                       environment={workflow.environment === "production" ? "production" : "staging"}
@@ -298,7 +303,11 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                 ) : (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      {latestRun.status ? <AutoStatusBadge status={latestRun.status} /> : null}
+                      {latestRun.status ? (
+                        <StatusChip status={String(latestRun.status)}>
+                          {formatStatusLabel(String(latestRun.status))}
+                        </StatusChip>
+                      ) : null}
                       {latestRun.id ? (
                         <Button variant="link" className="h-auto p-0" asChild>
                           <Link href={`/runs/${latestRun.id}`}>View run {String(latestRun.id).slice(0, 8)}…</Link>

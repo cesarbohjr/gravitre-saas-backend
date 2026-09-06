@@ -46,7 +46,7 @@ interface DisplayMemory {
 const categoryConfig = {
   fact: { label: "Fact", icon: "database", color: "blue", glow: "shadow-blue-500/20" },
   preference: { label: "Preference", icon: "heart", color: "rose", glow: "shadow-destructive/20" },
-  pattern: { label: "Pattern", icon: "sparkles", color: "violet", glow: "shadow-violet-500/20" },
+  pattern: { label: "Pattern", icon: "sparkles", color: "signal", glow: "shadow-[var(--g-glow-signal)]" },
   rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-warning/20" },
 }
 
@@ -123,7 +123,7 @@ function BrainVisualization() {
       {[
         { x: -80, y: -40, delay: 0, color: "blue" },
         { x: 80, y: -30, delay: 0.2, color: "rose" },
-        { x: -70, y: 50, delay: 0.4, color: "violet" },
+        { x: -70, y: 50, delay: 0.4, color: "signal" },
         { x: 90, y: 40, delay: 0.6, color: "amber" },
       ].map((node, i) => (
         <motion.div
@@ -132,7 +132,7 @@ function BrainVisualization() {
             "absolute h-4 w-4 rounded-full",
             node.color === "blue" && "bg-blue-500",
             node.color === "rose" && "bg-rose-500",
-            node.color === "violet" && "bg-violet-500",
+            node.color === "signal" && "bg-[color:var(--g-signal)]",
             node.color === "amber" && "bg-amber-500",
           )}
           style={{ x: node.x, y: node.y }}
@@ -160,7 +160,7 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
       <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-20" style={{
         background: color === "emerald" ? "radial-gradient(circle, #10b981 0%, transparent 70%)" :
                    color === "blue" ? "radial-gradient(circle, #3b82f6 0%, transparent 70%)" :
-                   color === "violet" ? "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" :
+                   color === "signal" ? "radial-gradient(circle, color-mix(in oklch, var(--g-signal) 55%, transparent) 0%, transparent 70%)" :
                    "radial-gradient(circle, #f59e0b 0%, transparent 70%)"
       }} />
 
@@ -168,7 +168,7 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
         "h-10 w-10 rounded-xl flex items-center justify-center mb-3",
         color === "emerald" && "bg-success/10",
         color === "blue" && "bg-blue-500/10",
-        color === "violet" && "bg-violet-500/10",
+        color === "signal" && "bg-[color:var(--g-signal-surface)]",
         color === "amber" && "bg-warning/10",
       )}>
         <Icon
@@ -177,7 +177,7 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
           className={cn(
             color === "emerald" && "text-success",
             color === "blue" && "text-blue-400",
-            color === "violet" && "text-violet-400",
+            color === "signal" && "text-[color:var(--g-signal)]",
             color === "amber" && "text-warning",
           )}
         />
@@ -203,7 +203,7 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
   const colorClasses: Record<string, { bg: string; border: string; text: string; ring: string }> = {
     blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", ring: "ring-blue-500/20" },
     rose: { bg: "bg-destructive/10", border: "border-destructive/30", text: "text-destructive", ring: "ring-destructive/20" },
-    violet: { bg: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-400", ring: "ring-violet-500/20" },
+    signal: { bg: "bg-[color:var(--g-signal-surface)]", border: "border-[color:var(--g-signal)]/30", text: "text-[color:var(--g-signal)]", ring: "ring-[color:var(--g-signal)]/20" },
     amber: { bg: "bg-warning/10", border: "border-warning/30", text: "text-warning", ring: "ring-warning/20" },
   }
 
@@ -545,7 +545,7 @@ export default function AgentMemoryPage({
               <div className="lg:col-span-8 grid grid-cols-2 gap-4 content-center sm:grid-cols-4">
                 <StatCard label="Total Memories" value={stats.total} icon="brain" color="emerald" />
                 <StatCard label="Avg Confidence" value={stats.avgConfidence} icon="target" color="blue" suffix="%" />
-                <StatCard label="Total Usage" value={stats.totalUsage} icon="activity" color="violet" />
+                <StatCard label="Total Usage" value={stats.totalUsage} icon="activity" color="signal" />
                 <StatCard label="Protected Rules" value={stats.protected} icon="shield" color="amber" />
               </div>
             </div>
@@ -559,7 +559,7 @@ export default function AgentMemoryPage({
                 { id: "all", label: "All", icon: null },
                 { id: "fact", label: "Facts", icon: "database", color: "blue" },
                 { id: "preference", label: "Preferences", icon: "heart", color: "rose" },
-                { id: "pattern", label: "Patterns", icon: "sparkles", color: "violet" },
+                { id: "pattern", label: "Patterns", icon: "sparkles", color: "signal" },
                 { id: "rule", label: "Rules", icon: "shield", color: "amber" },
               ].map((cat) => (
                 <button

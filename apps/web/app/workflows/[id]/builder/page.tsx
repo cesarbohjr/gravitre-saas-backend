@@ -488,7 +488,7 @@ const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label:
   tool: { icon: Zap, color: "bg-chart-4/20 border-chart-4/40 text-chart-4", label: "Tool" },
   source: { icon: Database, color: "bg-muted border-border text-muted-foreground", label: "Source" },
   approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
-  decision: { icon: GitBranch, color: "bg-violet-500/20 border-violet-500/40 text-violet-400", label: "Decision" },
+  decision: { icon: GitBranch, color: "bg-[color:var(--g-signal-surface)] border-[color:var(--g-signal)]/40 text-[color:var(--g-signal)]", label: "Decision" },
   council: { icon: Users, color: "bg-warning/20 border-warning/40 text-warning", label: "Agent Council" },
   if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-400", label: "IF" },
   switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
@@ -507,7 +507,7 @@ const nodeStateConfig: Record<NodeState, { border: string; bg: string; animation
   success: { border: "border-success shadow-[0_0_10px_rgba(16,185,129,0.3)]", bg: "bg-success/5", animation: "" },
   error: { border: "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.4)]", bg: "bg-destructive/5", animation: "animate-shake" },
 waiting: { border: "border-warning/50", bg: "bg-warning/5", animation: "opacity-60" },
-  evaluating: { border: "border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.5)]", bg: "bg-violet-500/10", animation: "animate-pulse" },
+  evaluating: { border: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", animation: "animate-pulse" },
   debating: { border: "border-warning shadow-[0_0_20px_rgba(245,158,11,0.5)]", bg: "bg-warning/10", animation: "animate-pulse" },
   consensus: { border: "border-success shadow-[0_0_15px_rgba(16,185,129,0.4)]", bg: "bg-success/10", animation: "" },
   escalated: { border: "border-destructive shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-destructive/10", animation: "" },
@@ -1029,9 +1029,9 @@ function DecisionNode({
       <div className="relative w-48 flex flex-col items-center">
         {/* Evaluating/Running indicator */}
         {isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-violet-500/20 border border-violet-500/40">
-            <Loader2 className="h-3 w-3 text-violet-400 animate-spin" />
-            <span className="text-[10px] font-medium text-violet-400">Evaluating...</span>
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-[color:var(--g-signal-surface)] border border-[color:var(--g-signal)]/40">
+            <Loader2 className="h-3 w-3 text-[color:var(--g-signal)] animate-spin" />
+            <span className="text-[10px] font-medium text-[color:var(--g-signal)]">Evaluating...</span>
           </div>
         )}
 
@@ -1049,32 +1049,23 @@ function DecisionNode({
         <div
           className={cn(
             "relative w-32 h-32 transform rotate-45 rounded-lg border-2 transition-all duration-300",
-            isSelected 
-              ? "border-violet-500 shadow-[0_0_25px_rgba(139,92,246,0.4)]" 
-              : "border-violet-500/40 hover:border-violet-500/60",
+            isSelected
+              ? "border-[color:var(--g-signal)]"
+              : "border-[color:var(--g-signal)]/40 hover:border-[color:var(--g-signal)]/60",
             stateConfig.border || "",
             stateConfig.bg || "bg-card",
-            isEvaluating && "shadow-[0_0_30px_rgba(139,92,246,0.6)]",
-            isHovered && !isDragging && "shadow-[0_0_20px_rgba(139,92,246,0.3)] scale-105"
+            isHovered && !isDragging && "scale-105",
           )}
         >
-          {/* Animated glow ring when evaluating */}
-          {isEvaluating && (
-            <div className="absolute inset-0 rounded-lg animate-ping bg-violet-500/20" />
-          )}
-          
           {/* Inner content - counter-rotate to be upright */}
           <div className="absolute inset-0 flex flex-col items-center justify-center -rotate-45">
-            <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg transition-all",
-              isEvaluating 
-                ? "bg-violet-500/30 text-violet-300" 
-                : "bg-violet-500/20 text-violet-400"
-            )}>
-              <GitBranch className={cn(
-                "h-5 w-5",
-                isEvaluating && "animate-pulse"
-              )} />
+            <div
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-lg transition-all",
+                "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]",
+              )}
+            >
+              <GitBranch className={cn("h-5 w-5", isEvaluating && "animate-pulse")} />
             </div>
           </div>
 
@@ -1099,8 +1090,8 @@ function DecisionNode({
   isDraggingConnection
   ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
-  ? "border-violet-400 bg-violet-400/60 hover:scale-125"
-  : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
+  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
+  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -1113,8 +1104,8 @@ function DecisionNode({
   isDraggingConnection
   ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
-  ? "border-violet-400 bg-violet-400/60 hover:scale-125"
-  : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
+  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
+  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -1127,8 +1118,8 @@ function DecisionNode({
   isDraggingConnection
   ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
-  ? "border-violet-400 bg-violet-400/60 hover:scale-125"
-  : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
+  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
+  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -1141,8 +1132,8 @@ function DecisionNode({
   isDraggingConnection
   ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
-  ? "border-violet-400 bg-violet-400/60 hover:scale-125"
-  : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
+  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
+  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -1151,7 +1142,7 @@ function DecisionNode({
         {/* Node label below diamond */}
         <div className="mt-4 text-center max-w-[180px]">
           <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
-          <p className="text-[10px] text-violet-400 flex items-center justify-center gap-1">
+          <p className="text-[10px] text-[color:var(--g-signal)] flex items-center justify-center gap-1">
             <GitBranch className="h-3 w-3" />
             Decision Node
           </p>
@@ -1253,7 +1244,7 @@ function AIReasoningPanel({
   return (
     <div className={cn(
       "rounded-lg border transition-all duration-300",
-      "bg-gradient-to-br from-emerald-500/5 to-violet-500/5",
+      "bg-gradient-to-br from-emerald-500/5 to-[color:var(--g-signal-surface)]",
       "border-success/20"
     )}>
       {/* Header - always visible */}
@@ -1523,7 +1514,7 @@ function AgentCouncilNode({
     success: { ring: "border-success", bg: "bg-success/10", glow: "" },
     error: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
     waiting: { ring: "border-warning/50", bg: "bg-warning/5", glow: "" },
-    evaluating: { ring: "border-violet-500", bg: "bg-violet-500/10", glow: "" },
+    evaluating: { ring: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", glow: "" },
   }
   const stateConfig = stateColors[node.state || "idle"]
   
@@ -1583,7 +1574,7 @@ function AgentCouncilNode({
   // Agent avatar colors based on role
   const getAgentColor = (index: number) => {
     const colors = [
-      "bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500",
+      "bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500",
       "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-pink-500"
     ]
     return colors[index % colors.length]
@@ -1822,7 +1813,7 @@ function DebateViewDialog({
 
   const getAgentById = (id: string) => agents.find(a => a.id === id)
   const getAgentColor = (index: number) => {
-    const colors = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500"]
+    const colors = ["bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500", "bg-rose-500", "bg-cyan-500"]
     return colors[index % colors.length]
   }
 
@@ -2079,7 +2070,7 @@ function FieldLabel({
         className={cn(
           "normal-case tracking-normal font-medium text-[10px] px-1.5 py-0.5 rounded",
           required
-            ? "bg-violet-500/15 text-violet-400"
+            ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
             : "bg-muted text-muted-foreground",
         )}
       >
@@ -2291,10 +2282,10 @@ function ConfigPanel({
               node.type === "source" && "bg-muted-foreground",
               node.type === "agent" && "bg-blue-500",
               node.type === "connector" && "bg-amber-500",
-              node.type === "tool" && "bg-violet-500",
+              node.type === "tool" && "bg-[color:var(--g-signal)]",
 node.type === "approval" && "bg-red-500",
   node.type === "task" && "bg-emerald-500",
-  node.type === "decision" && "bg-violet-500"
+  node.type === "decision" && "bg-[color:var(--g-signal)]"
             )} />
             <span className="text-sm font-medium">{config.label}</span>
             {boundVendor && (
@@ -2720,11 +2711,11 @@ node.type === "approval" && "bg-red-500",
 
   {/* Decision Node Configuration */}
   {node.type === "decision" && (
-  <div className="space-y-5 pt-4 border-t border-violet-500/20">
+  <div className="space-y-5 pt-4 border-t border-[color:var(--g-signal)]/20">
     {/* Header */}
     <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
-        <GitBranch className="h-4 w-4 text-violet-400" />
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--g-signal-surface)]">
+        <GitBranch className="h-4 w-4 text-[color:var(--g-signal)]" />
       </div>
       <div>
         <h4 className="text-sm font-medium text-foreground">Decision Configuration</h4>
@@ -2789,7 +2780,7 @@ node.type === "approval" && "bg-red-500",
             className={cn(
               "p-2.5 rounded-lg border text-center transition-all",
               decisionStrategy === strategy
-                ? "border-violet-500 bg-violet-500/10 text-violet-400"
+                ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
                 : "border-border bg-secondary/50 text-muted-foreground hover:border-muted-foreground"
             )}
           >
@@ -2881,7 +2872,7 @@ node.type === "approval" && "bg-red-500",
             }
             onUpdate({ outputPaths: [...paths, newPath] })
           }}
-          className="flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300"
+          className="flex items-center gap-1 text-[10px] text-[color:var(--g-signal)] hover:text-[color:var(--g-signal)]"
         >
           <Plus className="h-3 w-3" />
           Add path
@@ -5245,7 +5236,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   
                   {/* Custom decision node */}
                   <button
-                    className="w-full flex items-center gap-2 p-2 mt-2 rounded-md border border-dashed border-violet-500/30 hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors"
+                    className="w-full flex items-center gap-2 p-2 mt-2 rounded-md border border-dashed border-[color:var(--g-signal)]/30 hover:border-[color:var(--g-signal)]/50 hover:bg-[color:var(--g-signal-surface)] transition-colors"
                     onClick={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -5267,8 +5258,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       setSelectedNodeId(newNode.id)
                     }}
                   >
-                    <GitBranch className="h-3.5 w-3.5 text-violet-400" />
-                    <span className="text-xs text-violet-400">Create custom decision</span>
+                    <GitBranch className="h-3.5 w-3.5 text-[color:var(--g-signal)]" />
+                    <span className="text-xs text-[color:var(--g-signal)]">Create custom decision</span>
                   </button>
 
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide pt-3 pb-1">
@@ -5388,10 +5379,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   setNodes((prev) => [...prev, newNode])
   setSelectedNodeId(newNode.id)
   }}
-  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-violet-500/10 transition-colors"
+  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-[color:var(--g-signal-surface)] transition-colors"
   >
-  <GitBranch className="h-4 w-4 text-violet-400" />
-  <span className="text-[10px] text-violet-400">Decision</span>
+  <GitBranch className="h-4 w-4 text-[color:var(--g-signal)]" />
+  <span className="text-[10px] text-[color:var(--g-signal)]">Decision</span>
   </button>
 <button
   onClick={() => {
@@ -5546,7 +5537,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
                   <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
                 </linearGradient>
-                {/* Decision node gradients - violet themed */}
+                {/* Decision node gradients — signal tokens */}
                 <linearGradient id="decisionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
                   <stop offset="50%" stopColor="var(--workflow-decision-mid)" stopOpacity="1" />

@@ -163,7 +163,7 @@ function SkillBar({ skill, index }: { skill: { name: string; level: number; colo
   const colorClasses: Record<string, string> = {
     emerald: "bg-emerald-500",
     blue: "bg-blue-500",
-    violet: "bg-violet-500",
+    signal: "bg-[color:var(--g-signal)]",
     amber: "bg-amber-500",
     rose: "bg-rose-500",
   }
@@ -401,7 +401,7 @@ export default function AgentProfilePage({
                   {[
                     { label: "Tasks completed (operational)", value: agent.stats.tasksCompleted.toLocaleString(), icon: "check", color: "emerald" },
                     { label: "Success rate (operational)", value: agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—", icon: "target", color: "blue" },
-                    { label: "Avg Response", value: agent.stats.avgResponseTime, icon: "clock", color: "violet" },
+                    { label: "Avg Response", value: agent.stats.avgResponseTime, icon: "clock", color: "signal" },
                     { label: "Workflows using", value: agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—", icon: "activity", color: "amber" },
                     { label: "Decisions Today", value: agent.stats.decisionsToday.toString(), icon: "sparkles", color: "rose" },
                     { label: "Needs Approval", value: agent.stats.approvalsNeeded.toString(), icon: "shield", color: agent.stats.approvalsNeeded > 0 ? "amber" : "emerald" },
@@ -418,7 +418,7 @@ export default function AgentProfilePage({
                           "h-10 w-10 rounded-lg flex items-center justify-center",
                           stat.color === "emerald" && "bg-success/10",
                           stat.color === "blue" && "bg-blue-500/10",
-                          stat.color === "violet" && "bg-violet-500/10",
+                          stat.color === "signal" && "bg-[color:var(--g-signal-surface)]",
                           stat.color === "amber" && "bg-warning/10",
                           stat.color === "rose" && "bg-destructive/10",
                         )}>
@@ -428,7 +428,7 @@ export default function AgentProfilePage({
                             className={cn(
                               stat.color === "emerald" && "text-success",
                               stat.color === "blue" && "text-blue-400",
-                              stat.color === "violet" && "text-violet-400",
+                              stat.color === "signal" && "text-[color:var(--g-signal)]",
                               stat.color === "amber" && "text-warning",
                               stat.color === "rose" && "text-destructive",
                             )} 

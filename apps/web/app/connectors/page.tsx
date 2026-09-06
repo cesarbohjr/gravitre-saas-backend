@@ -593,7 +593,7 @@ function ConnectorNode({
               )}
               {connector.triggeredByAgents && connector.triggeredByAgents > 0 && (
                 <div className="flex items-center gap-1">
-                  <Bot className="h-3 w-3 text-violet-400" />
+                  <Bot className="h-3 w-3 text-[color:var(--g-signal)]" />
                   <span>{connector.triggeredByAgents} agents</span>
                 </div>
               )}
@@ -1236,8 +1236,8 @@ function AddConnectorModal({
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 ring-1 ring-blue-500/20">
-              <Plus className="h-5 w-5 text-blue-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--g-signal-surface)] ring-1 ring-[color:var(--g-signal)]/20">
+              <Plus className="h-5 w-5 text-[color:var(--g-signal)]" />
             </div>
             <div>
               <DialogTitle>
@@ -1660,7 +1660,7 @@ function AddConnectorModal({
               {/* Webhook URL */}
               <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Link2 className="h-4 w-4 text-violet-400" />
+                  <Link2 className="h-4 w-4 text-[color:var(--g-signal)]" />
                   Webhook Endpoint
                 </div>
                 <div className="space-y-2">

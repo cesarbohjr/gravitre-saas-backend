@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { PulseDot } from "@/components/gravitre/visual"
 import type { WorkflowFailureAlert } from "@/types/api"
 
 export const FAILURE_SEVERITY_ORDER: WorkflowFailureAlert["severity"][] = [
@@ -70,9 +71,12 @@ export function FailureAlertRow({
       transition={{ duration: 0.25 }}
       className={cn("flex gap-3 rounded-lg border p-3", meta.ring)}
     >
-      <span className="relative mt-1 flex h-2.5 w-2.5 shrink-0">
-        <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", meta.dot)} />
-        <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", meta.dot)} />
+      <span className="mt-1 flex shrink-0">
+        <PulseDot
+          tone={alert.severity === "critical" || alert.severity === "high" ? "approval" : "signal"}
+          size="sm"
+          label={meta.label}
+        />
       </span>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">

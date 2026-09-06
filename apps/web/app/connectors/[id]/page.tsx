@@ -343,8 +343,8 @@ export default function ConnectorDetailPage() {
                     <p className="text-xs text-muted-foreground">Sync Interval</p>
                     <p className="text-sm font-semibold text-foreground">{connector.config.syncInterval}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-violet-500/10">
-                    <RefreshCw className="h-5 w-5 text-violet-500" />
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-[color:var(--g-signal-surface)]">
+                    <RefreshCw className="h-5 w-5 text-[color:var(--g-signal)]" />
                   </div>
                 </div>
               </CardContent>

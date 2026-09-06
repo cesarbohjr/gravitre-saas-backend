@@ -248,13 +248,7 @@ export function HomeDashboard({
                   {stat.value}
                   {stat.known ? (
                     <PulseDot
-                      tone={
-                        stat.status === "error" || stat.status === "failed"
-                          ? "approval"
-                          : stat.status === "processing" || stat.status === "running"
-                            ? "intelligence"
-                            : "emerald"
-                      }
+                      tone={stat.status === "processing" ? "intelligence" : "emerald"}
                       size="sm"
                       label={stat.status}
                     />

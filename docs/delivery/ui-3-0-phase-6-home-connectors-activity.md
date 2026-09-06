@@ -39,6 +39,6 @@ Cesar accepted Phase 6.
 
 ## Next
 
-**Phase 7+** — builder/detail density, goldens, remaining Nucleo as prioritized.
+**Phase 7** — builder/detail density, goldens scaffold, remaining Nucleo as prioritized. See `ui-3-0-phase-7-builder-detail-goldens.md`.
 
 **Scaffold honesty:** No new customer prices, badges, or Enable toggles.

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
+import { PulseDot } from "@/components/gravitre/visual"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -850,10 +851,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         {(canResolveGraphApproval || canResolveExecuteApproval) && (
           <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <span className="relative flex h-4 w-4 items-center justify-center" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-warning/40 motion-safe:animate-ping" />
-                <AlertTriangle className="relative h-4 w-4 text-warning" />
-              </span>
+              <PulseDot tone="approval" size="md" label="Approval required" />
               <h2 className="text-sm font-semibold text-foreground">
                 {canResolveGraphApproval ? "In-graph approval required" : "Execute approval required"}
               </h2>
