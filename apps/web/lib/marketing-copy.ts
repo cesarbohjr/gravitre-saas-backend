@@ -491,8 +491,8 @@ export const MARKETING_COPY = {
     ],
   },
   pricing: {
-    badge: "Plans for operators",
-    headline: ["One brain included.", "Scale when ready."],
+    badge: "Pricing",
+    headline: ["Simple, honest pricing.", "Scale when ready."],
     subhead:
       "Every plan includes Gravitre AI, connector health checks, and governed execution. Higher tiers add Meson, cross-team agents, and GIBE admin surfaces.",
     subheadNote: "Pay for seats and usage — not buzzword tiers or invented ROI.",
