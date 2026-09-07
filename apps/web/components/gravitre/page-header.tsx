@@ -44,13 +44,13 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "min-w-0 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5",
+        "min-w-0 px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5",
         !className?.includes("border") && "border-b border-divide",
         className,
       )}
     >
-      <div className="mb-4 flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="mb-3 flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-2.5">
           {Icon && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -61,17 +61,17 @@ export function PageHeader({
                   ? "bg-[color:var(--g-brand-soft)] ring-[color:var(--g-brand-border)]"
                   : cn("bg-gradient-to-br ring-border/60", tint),
               )}
-              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
+              style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}
             >
               <Icon
                 className={cn(
-                  "h-5 w-5 shrink-0",
+                  "h-4 w-4 shrink-0",
                   usesBrandTint ? "text-[color:var(--g-brand)]" : "text-foreground",
                 )}
               />
             </motion.div>
           )}
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 space-y-0.5">
             {eyebrow || eyebrowAccessory ? (
               <div className="flex flex-wrap items-center gap-2">
                 {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
@@ -153,13 +153,13 @@ export function StatCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border p-3 text-center shadow-[var(--np-shadow)] sm:p-4",
+        "border p-2.5 text-center shadow-[var(--np-shadow)] sm:p-3",
         "rounded-[var(--np-radius-lg)]",
         variantStyles[variant],
         className
       )}
     >
-      <div className={cn("text-lg font-semibold tabular-nums sm:text-xl", valueColors[variant])}>
+      <div className={cn("text-base font-semibold tabular-nums sm:text-lg", valueColors[variant])}>
         {value}
       </div>
       <div className={cn(TYPE.metricLabel, "mt-0.5 text-[color:var(--g-text-muted)]")}>{label}</div>

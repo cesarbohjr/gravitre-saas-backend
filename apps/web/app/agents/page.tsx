@@ -1202,12 +1202,12 @@ export default function AgentsPage() {
           </div>
 
           {/* Agent Orb Grid - Premium with particle field */}
-          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-5">
             {/* Center stage area. On mobile it keeps a fixed-height band for the
                horizontal carousel; on desktop it grows with content (min-h-0) so
                a tall, wrapped constellation flows from the top and scrolls in the
                parent instead of being vertically centered and clipped. */}
-            <div className="relative flex flex-1 flex-col min-h-[420px] sm:min-h-0">
+            <div className="relative flex flex-1 flex-col min-h-[360px] sm:min-h-0">
               {/* Circular platform effect (clipped so the large rings never force
                  horizontal overflow on narrow/mobile viewports). */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
@@ -1236,13 +1236,12 @@ export default function AgentsPage() {
                  centering, so tall multi-row layouts are never clipped. */}
               <TooltipProvider delayDuration={200}>
               <div className={cn(
-                "relative z-10 flex w-full gap-6 sm:gap-10 lg:gap-12",
+                "relative z-10 flex w-full gap-4 sm:gap-6 lg:gap-8",
                 // Mobile carousel. overflow-x-auto forces overflow-y to clip, so
                 // full-height orbs are centered within the tall band.
-                "my-auto flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 py-6",
-                // sm+: wrapping constellation, top-aligned, generous padding so
-                // orb badges/labels are never clipped by the scroll container.
-                "sm:my-0 sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:py-10",
+                "my-auto flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 py-4",
+                // sm+: wrapping constellation, top-aligned — denser than marketing stage.
+                "sm:my-0 sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:py-6",
               )}>
                 {error ? (
                   <WorkSectionErrorCard
@@ -1252,7 +1251,7 @@ export default function AgentsPage() {
                     className="mx-auto max-w-sm"
                   />
                 ) : isLoading && agents.length === 0 ? (
-                  <div className="mx-auto flex flex-wrap justify-center gap-8 sm:gap-10 lg:gap-12 pt-8 sm:pt-10 pb-28">
+                  <div className="mx-auto flex flex-wrap justify-center gap-6 sm:gap-8 pt-4 sm:pt-6 pb-20">
                     {Array.from({ length: 6 }).map((_, index) => (
                       <div key={index} className="flex flex-col items-center gap-3">
                         <Skeleton className="h-24 w-24 rounded-full" />

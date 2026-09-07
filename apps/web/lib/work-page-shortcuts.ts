@@ -1,4 +1,5 @@
 export const WORK_SHORTCUT_EVENT = "gravitre:work-shortcut"
+export const TOGGLE_NAV_EVENT = "gravitre:toggle-nav"
 export const FOCUS_SEARCH_AFTER_NAV_KEY = "gravitre:focus-search-on-load"
 
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -18,6 +19,11 @@ export function dispatchWorkShortcut(action: WorkShortcutAction) {
   window.dispatchEvent(
     new CustomEvent(WORK_SHORTCUT_EVENT, { detail: { action } }),
   )
+}
+
+export function dispatchToggleNav() {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent(TOGGLE_NAV_EVENT))
 }
 
 export function markFocusSearchAfterNav() {

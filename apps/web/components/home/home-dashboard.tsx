@@ -364,7 +364,7 @@ export function HomeDashboard({
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-6xl space-y-5 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)] sm:pb-10"
+        className="relative z-10 mx-auto max-w-[1400px] space-y-4 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:pb-6"
       >
         {/* Header */}
         <motion.header variants={item} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -817,7 +817,7 @@ function Panel({ children, reduced }: { children: React.ReactNode; reduced: bool
     <motion.section
       variants={cardVariants}
       whileHover={reduced ? undefined : { y: -2 }}
-      className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-shadow sm:p-6"
+      className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-shadow sm:p-4"
     >
       {children}
     </motion.section>

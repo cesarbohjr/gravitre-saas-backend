@@ -52,6 +52,13 @@ import {
   Bot,
   ArrowLeft,
 } from "lucide-react"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 interface Approval {
   id: string
@@ -369,6 +376,8 @@ function DecisionCard({
   const requester = resolveRequesterIdentity(approval, teamMembers)
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
     <motion.div
       layout
       initial={{ opacity: 0, x: -20 }}
@@ -382,15 +391,15 @@ function DecisionCard({
       )}
       onClick={onSelect}
     >
-      <div className="p-4">
+      <div className="p-3">
         {/* Header */}
-        <div className="flex items-start gap-3 mb-3">
+        <div className="mb-2 flex items-start gap-2.5">
           <div className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
             approval.priority === "high" ? "bg-destructive/10" : "bg-secondary"
           )}>
             <TypeIcon className={cn(
-              "h-5 w-5",
+              "h-4 w-4",
               approval.priority === "high" ? "text-destructive" : "text-muted-foreground"
             )} />
           </div>
@@ -534,6 +543,30 @@ function DecisionCard({
         ) : null}
       </div>
     </motion.div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onSelect={onSelect}>Open detail</ContextMenuItem>
+        {!readOnly && approval.status === "pending" ? (
+          <>
+            <ContextMenuItem onSelect={() => onApprove(approval.id)}>
+              Approve
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => onReject(approval.id)}
+            >
+              Reject
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        ) : null}
+        {approval.context.runId ? (
+          <ContextMenuItem asChild>
+            <Link href={`/runs/${approval.context.runId}`}>View run</Link>
+          </ContextMenuItem>
+        ) : null}
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -909,11 +942,11 @@ function ApprovalsContent() {
       <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0">
         {/* Left: Queue */}
         <div className={cn(
-          "w-full lg:w-[420px] flex-shrink-0 lg:border-r border-border flex flex-col",
+          "w-full lg:w-[360px] flex-shrink-0 lg:border-r border-divide flex flex-col",
           selectedApproval ? "hidden lg:flex" : "flex",
         )}>
           {/* Header */}
-          <div className="flex-shrink-0 border-b border-border">
+          <div className="flex-shrink-0 border-b border-divide">
             <PageHeader
               className="border-0"
               eyebrow="Governance"
@@ -993,7 +1026,7 @@ function ApprovalsContent() {
           )}
 
           {/* Queue list */}
-          <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3">
+          <div className="flex-1 overflow-auto space-y-2 p-2.5 sm:p-3">
             <AnimatePresence>
               {visibleApprovals.map((approval) => (
                 <DecisionCard

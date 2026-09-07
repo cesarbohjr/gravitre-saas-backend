@@ -83,7 +83,7 @@ export function DataTable<T extends { id: string | number }>({
               <th
                 key={column.key}
                 className={cn(
-                  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground",
+                  "h-[var(--np-header-h)] px-3 py-0 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground",
                   column.className,
                 )}
               >
@@ -98,14 +98,14 @@ export function DataTable<T extends { id: string | number }>({
               key={item.id}
               onClick={() => onRowClick?.(item)}
               className={cn(
-                "bg-[color:var(--g-surface-1)] transition-colors",
+                "h-[var(--np-row-h)] bg-[color:var(--g-surface-1)] transition-colors",
                 onRowClick && "cursor-pointer hover:bg-[color:var(--g-surface-2)]",
               )}
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={cn("px-4 py-3 text-sm text-foreground", column.className)}
+                  className={cn("px-3 py-0 text-sm text-foreground align-middle", column.className)}
                 >
                   {column.render
                     ? column.render(item)

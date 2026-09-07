@@ -493,3 +493,17 @@ Cesar authorized “approved. move to p11”. See `docs/delivery/nodus-product-u
 | Workflows + Activity + Approvals | Grid lock; list/detail swap; CTA above bottom nav |
 
 **Not claimed:** authenticated mobile visual fidelity PASS. P12+ (Desktop densify) still open.
+
+---
+
+## Shipped — P12 (2026-09-07)
+
+Cesar authorized “approved p11, now start p12”. See `docs/delivery/nodus-product-ui-p12-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Density tokens + hubs | Tighter `--np-*`; home/agents/approvals/activity panes |
+| Shortcuts | ⌘B sidebar rail; ⌘N workflows builder |
+| Context menus | Workflows / Activity / Approvals — existing actions only |
+
+**Not claimed:** authenticated desktop visual fidelity PASS. P13+ (Extension) still open.

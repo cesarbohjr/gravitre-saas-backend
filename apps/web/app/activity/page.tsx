@@ -43,6 +43,12 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import { INTERACTION, MOTION, RADIUS, TYPE } from "@/lib/design-system"
 import { ArrowLeft, ExternalLink, RefreshCw, X } from "lucide-react"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 type ActivityTab = "all" | "objects" | "failures"
 
@@ -561,7 +567,7 @@ function ActivityPageInner() {
             <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
               <section
                 className={cn(
-                  "flex min-h-0 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:w-[380px] lg:shrink-0",
+                  "flex min-h-0 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:w-[340px] lg:shrink-0",
                   "rounded-[var(--np-radius-lg)]",
                   mobileDetailOpen ? "hidden lg:flex" : "flex",
                 )}
@@ -642,6 +648,8 @@ function ActivityPageInner() {
                             const active = selectedWorkObject?.id === id
                             return (
                               <li key={id} role="presentation">
+                                <ContextMenu>
+                                  <ContextMenuTrigger asChild>
                                 <motion.button
                                   type="button"
                                   id={`activity-row-${id}`}
@@ -659,7 +667,7 @@ function ActivityPageInner() {
                                     delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
                                   }}
                                   className={cn(
-                                    "group relative flex w-full flex-col gap-1 py-3 pl-4 pr-3 text-left transition-colors duration-150",
+                                    "group relative flex w-full flex-col gap-0.5 py-2 pl-3.5 pr-3 text-left transition-colors duration-150",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                     active
                                       ? "bg-gradient-to-r from-primary/[0.07] to-transparent"
@@ -702,6 +710,13 @@ function ActivityPageInner() {
                                     ) : null}
                                   </div>
                                 </motion.button>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="w-44">
+                                    <ContextMenuItem onSelect={() => setSelectedWorkObjectId(id)}>
+                                      Open detail
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
                               </li>
                             )
                           })
@@ -718,6 +733,8 @@ function ActivityPageInner() {
                                   : null
                             return (
                               <li key={id} role="presentation">
+                                <ContextMenu>
+                                  <ContextMenuTrigger asChild>
                                 <motion.button
                                   type="button"
                                   id={`activity-row-${id}`}
@@ -735,7 +752,7 @@ function ActivityPageInner() {
                                     delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
                                   }}
                                   className={cn(
-                                    "group relative flex w-full flex-col gap-1 py-3 pl-4 pr-3 text-left transition-colors duration-150",
+                                    "group relative flex w-full flex-col gap-0.5 py-2 pl-3.5 pr-3 text-left transition-colors duration-150",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                     String(outcome.status || "").toLowerCase() === "flagged_for_review" &&
                                       "bg-warning/[0.05]",
@@ -814,6 +831,22 @@ function ActivityPageInner() {
                                     ) : null}
                                   </div>
                                 </motion.button>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="w-44">
+                                    <ContextMenuItem onSelect={() => setSelectedOutcomeId(id)}>
+                                      Open detail
+                                    </ContextMenuItem>
+                                    {outcome.runId ? (
+                                      <ContextMenuItem
+                                        onSelect={() => {
+                                          router.push(`/runs/${outcome.runId}`)
+                                        }}
+                                      >
+                                        Open run
+                                      </ContextMenuItem>
+                                    ) : null}
+                                  </ContextMenuContent>
+                                </ContextMenu>
                               </li>
                             )
                           })}

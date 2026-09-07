@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
+import { TOGGLE_NAV_EVENT } from "@/lib/work-page-shortcuts"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre-loader"
@@ -133,6 +134,22 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
 
   useEffect(() => {
     setNavExpanded(readNavExpandedPreference())
+  }, [])
+
+  useEffect(() => {
+    const onToggleNav = () => {
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+        setSidebarOpen((open) => !open)
+        return
+      }
+      setNavExpanded((prev) => {
+        const next = !prev
+        localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
+        return next
+      })
+    }
+    window.addEventListener(TOGGLE_NAV_EVENT, onToggleNav)
+    return () => window.removeEventListener(TOGGLE_NAV_EVENT, onToggleNav)
   }, [])
 
   const handleMenuClick = () => {

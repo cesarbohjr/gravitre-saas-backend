@@ -10,6 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -197,6 +204,8 @@ export function WorkflowCard({
   const actionCount = nodes.filter(n => n.type === "connector" || n.type === "source").length
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -211,7 +220,7 @@ export function WorkflowCard({
     >
       <Link href={`/workflows/${id}`}>
         <div className={`
-          relative cursor-pointer rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-all duration-200
+          relative cursor-pointer rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-all duration-200
           hover:border-[color:var(--g-border-active)] hover:shadow-[var(--g-shadow-elevated)]
           ${isRunning ? "border-[color:var(--g-signal)]/35" : "border-divide"}
         `}>
@@ -394,13 +403,53 @@ export function WorkflowCard({
         </DropdownMenu>
       </div>
     </motion.div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem
+          className="gap-2"
+          onSelect={() => onEdit?.()}
+        >
+          <Icon name="edit" size="sm" />
+          Edit
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="gap-2"
+          onSelect={() => onViewRuns?.()}
+        >
+          <Icon name="view" size="sm" />
+          View runs
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="gap-2"
+          onSelect={() => onDuplicate?.()}
+        >
+          <Icon name="duplicate" size="sm" />
+          Duplicate
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="gap-2"
+          onSelect={() => onToggleStatus?.()}
+        >
+          <Icon name={status === "active" ? "pause" : "run"} size="sm" />
+          {status === "active" ? "Pause" : "Resume"}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          className="gap-2 text-destructive focus:text-destructive"
+          onSelect={() => onDelete?.()}
+        >
+          <Icon name="delete" size="sm" />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
 // Grid container for workflow cards
 export function WorkflowGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {children}
     </div>
   )

@@ -41,7 +41,7 @@ export function GravitreMetric({
         <p className="text-[11px] font-medium tracking-wide text-[color:var(--g-text-muted)]">
           {label}
         </p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-[color:var(--g-text-primary)]">
+        <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight text-[color:var(--g-text-primary)]">
           {value}
         </p>
         {hint ? (
@@ -54,7 +54,7 @@ export function GravitreMetric({
   )
 
   const classes = cn(
-    "group flex items-start gap-3 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors",
+    "group flex items-start gap-3 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-colors",
     warning ? "border-amber-300/70" : "border-divide",
     href && "hover:bg-[color:var(--g-surface-2)]",
     className,

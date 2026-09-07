@@ -70,14 +70,15 @@
   /* Nodus Product Image layout tokens (measured from dashboard@3x.png) */
   --np-sidebar: 220px;
   --np-sidebar-rail: 64px;
-  --np-page-pad: 24px;
-  --np-page-pad-sm: 16px;
-  --np-kpi-gap: 16px;
+  /* P12 desktop densify — ops panes, not marketing canvas */
+  --np-page-pad: 16px;
+  --np-page-pad-sm: 12px;
+  --np-kpi-gap: 12px;
   --np-radius-sm: 6px;
   --np-radius-md: 8px;
   --np-radius-lg: 12px;
-  --np-row-h: 48px;
-  --np-header-h: 40px;
+  --np-row-h: 36px;
+  --np-header-h: 36px;
   --np-nav-icon: 16px;
   --np-shadow: var(--shadow-aceternity);
   --background: #ffffff;
