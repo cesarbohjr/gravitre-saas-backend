@@ -115,9 +115,9 @@ export const tiers = [
     cta: "Start 7-day free trial",
     highlighted: true,
     badge: "Most Popular",
-    color: "amber",
-    gradient: "from-amber-500 to-orange-500",
-    glow: "amber-500/30",
+    color: "emerald",
+    gradient: "from-[var(--brand)] to-emerald-600",
+    glow: "brand/30",
     icon: Building2,
   },
   {

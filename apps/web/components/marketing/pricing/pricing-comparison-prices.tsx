@@ -21,11 +21,11 @@ export function PricingComparisonPrices() {
         return (
           <div
             key={tier.name}
-            className={`p-6 text-center ${planMeta.highlighted ? "bg-gradient-to-b from-amber-50 to-amber-50/30 relative pt-10" : "bg-card"}`}
+            className={`p-6 text-center ${planMeta.highlighted ? "bg-gradient-to-b from-[color:var(--brand-soft)] to-transparent relative pt-10" : "bg-card"}`}
           >
             {planMeta.highlighted && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--brand)] to-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
                   <Star className="h-3 w-3 fill-white text-white" />
                   Popular
                 </span>

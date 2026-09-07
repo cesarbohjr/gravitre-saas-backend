@@ -30,7 +30,7 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
       <div
         className={`relative h-full rounded-2xl sm:rounded-3xl border p-5 sm:p-8 transition-all ${
           tier.highlighted
-            ? "border-amber-300 bg-amber-50/50 shadow-lg"
+            ? "border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]/50 shadow-lg"
             : "border-border bg-card hover:border-border hover:shadow-md"
         }`}
       >
@@ -100,7 +100,7 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
         <div
           className="mb-4 p-4 rounded-2xl"
           style={{
-            background: `linear-gradient(to right, rgb(${tier.color === "emerald" ? "16 185 129" : tier.color === "amber" ? "245 158 11" : "59 130 246"} / 0.1), transparent)`,
+            background: `linear-gradient(to right, rgb(${tier.color === "emerald" ? "22 163 116" : tier.color === "amber" ? "245 158 11" : "59 130 246"} / 0.1), transparent)`,
           }}
         >
           <div className="flex items-center gap-2">
@@ -155,10 +155,10 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
             <li key={feature} className="flex items-start gap-3">
               <div
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                  tier.highlighted ? "bg-amber-100" : "bg-muted"
+                  tier.highlighted ? "bg-[color:var(--brand-soft)]" : "bg-muted"
                 }`}
               >
-                <Check className={`h-3 w-3 ${tier.highlighted ? "text-amber-600" : "text-muted-foreground"}`} />
+                <Check className={`h-3 w-3 ${tier.highlighted ? "text-[color:var(--brand)]" : "text-muted-foreground"}`} />
               </div>
               <span className="text-sm text-muted-foreground">{feature}</span>
             </li>

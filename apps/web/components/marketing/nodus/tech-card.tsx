@@ -99,7 +99,7 @@ export const Card = ({
             tone === "default" &&
               "border-blue-500 bg-blue-50 text-blue-500 dark:bg-blue-50/10 dark:text-blue-500",
             tone === "danger" &&
-              "border-orange-500 bg-red-50 text-orange-500 dark:bg-red-50/10 dark:text-red-500",
+              "border-rose-500 bg-rose-50 text-rose-600",
             tone === "success" &&
               "border-neutral-500 bg-neutral-50 text-neutral-500 dark:bg-neutral-50/10 dark:text-neutral-500",
           )}
