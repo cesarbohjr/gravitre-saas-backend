@@ -33,9 +33,9 @@ export const Logo = () => {
       <Image
         src="/images/gravitre-logo-black.png"
         alt="Gravitre"
-        width={160}
-        height={48}
-        className="h-9 w-auto sm:h-10"
+        width={140}
+        height={40}
+        className="h-8 w-auto"
         priority
       />
     </Link>

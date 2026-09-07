@@ -158,7 +158,7 @@ export const ConnectYourTooklsSkeleton = () => {
       >
         <div className="absolute -top-4 -left-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white shadow-xl dark:bg-neutral-800">
           <Scale />
-          <LogoSVG className="relative z-20 h-11 w-11 text-black dark:text-white" />
+          <LogoSVG className="relative z-20 size-6 text-black dark:text-white" />
         </div>
         <div className="mt-12 flex items-center gap-2">
           <IntegrationsLogo className="dark:text-neutral-200" />

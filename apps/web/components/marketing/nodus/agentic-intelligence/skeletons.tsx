@@ -396,8 +396,8 @@ const AssistantMessage = ({
 
   return (
     <div className="flex gap-3 px-1">
-      <div className="shadow-aceternity flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white p-1 text-black dark:bg-neutral-900 dark:text-white">
-        <LogoSVG className="size-7" />
+      <div className="shadow-aceternity flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1.5 text-black dark:bg-neutral-900 dark:text-white">
+        <LogoSVG className="size-4" />
       </div>
       <div className="flex max-w-xs flex-col gap-1">
         <div className="text-charcoal-700 rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2 text-sm">
@@ -437,8 +437,8 @@ export const NativeToolsIntegrationSkeleton = () => {
           <div className="relative h-16 w-16 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700">
             <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)] [animation-duration:2s]"></div>
             <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)] [animation-delay:1s] [animation-duration:2s]"></div>
-            <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-1 text-black dark:bg-neutral-900 dark:text-white">
-              <LogoSVG className="size-[52px]" />
+            <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-3.5 text-black dark:bg-neutral-900 dark:text-white">
+              <LogoSVG className="size-6" />
             </div>
           </div>
         </div>

@@ -50,7 +50,7 @@ export function GravitreChatAvatar({
   return (
     <div
       className={cn(
-        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
         isSpeaking ? "bg-primary text-white" : "border border-border bg-white text-foreground shadow-sm dark:bg-neutral-900 dark:text-white",
         "transition-colors duration-300",
         className,
@@ -124,10 +124,9 @@ export function GravitreChatAvatar({
               ? { duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
               : { duration: 0 }
           }
-          className="flex h-full w-full items-center justify-center p-1"
+          className="flex h-full w-full items-center justify-center p-1.5"
         >
-          {/* LogoSVG denser mark — same optical weight as Nodus chat avatar */}
-          <LogoSVG className="size-[28px]" data-gravitre-mark="svg" />
+          <LogoSVG className="size-[18px]" data-gravitre-mark="svg" />
         </motion.div>
       )}
     </div>

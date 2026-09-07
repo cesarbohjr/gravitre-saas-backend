@@ -1,9 +1,8 @@
 "use client"
 
 /**
- * Authenticated home command surface (UI 2.0 Pilot B).
- * PageHeader + TYPE · real status chips only · elevation surfaces.
- * No fabricated weekly confidence series, fake predictive bars, or invented "Live" claims.
+ * Authenticated home command surface — Nodus-inspired light SaaS layout.
+ * Real metrics and props only; no fabricated sparklines, agent names, or badges.
  */
 
 import type React from "react"
@@ -31,19 +30,17 @@ import {
   Sparkle,
   WarningCircle,
 } from "@phosphor-icons/react"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import {
   AnimatedCounter,
 } from "@/components/gravitre/premium-effects"
-import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { PulseDot, StatusChip } from "@/components/gravitre/visual"
+import { StatusChip } from "@/components/gravitre/visual"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -74,6 +71,9 @@ function pct(current: number, needed: number) {
   if (!needed || needed <= 0) return current > 0 ? 100 : 0
   return Math.max(0, Math.min(100, Math.round((current / needed) * 100)))
 }
+
+const BRAND = "#16a374"
+const BRAND_SOFT = "#5ec49a"
 
 export function HomeDashboard({
   roleId,
@@ -108,355 +108,489 @@ export function HomeDashboard({
   const lastCycleLabel = lastLearningCycle ? relativeTime(lastLearningCycle) : null
 
   const learningBars = [
-    { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: "var(--brand)" },
-    { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: "#5ec49a" },
+    { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: BRAND },
+    { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: BRAND_SOFT },
   ]
 
   const systemStats = [
     {
       label: "AI systems online",
-      value: onlineSystems != null ? String(onlineSystems) : "—",
-      status: onlineSystems != null && onlineSystems > 0 ? ("active" as const) : ("idle" as const),
+      value: onlineSystems != null ? onlineSystems : null,
+      display: onlineSystems != null ? String(onlineSystems) : "—",
       known: onlineSystems != null,
       icon: Cpu,
+      tone: "brand" as const,
     },
     {
       label: "ML models active",
-      value: mlActive != null ? String(mlActive) : "—",
-      status: mlActive != null && mlActive > 0 ? ("processing" as const) : ("idle" as const),
+      value: mlActive != null ? mlActive : null,
+      display: mlActive != null ? String(mlActive) : "—",
       known: mlActive != null,
       icon: Robot,
+      tone: "brandSoft" as const,
     },
     {
       label: "Memories",
-      value: memoriesCount != null ? memoriesCount.toLocaleString() : "—",
-      status: memoriesCount != null && memoriesCount > 0 ? ("active" as const) : ("idle" as const),
+      value: memoriesCount != null ? memoriesCount : null,
+      display: memoriesCount != null ? memoriesCount.toLocaleString() : "—",
       known: memoriesCount != null,
       icon: Database,
+      tone: "muted" as const,
+    },
+  ]
+
+  const knownSystemTotal = systemStats
+    .filter((s) => s.known && s.value != null)
+    .reduce((sum, s) => sum + (s.value as number), 0)
+
+  type ActivityRow = {
+    id: string
+    item: string
+    status: "Pending" | "Online" | "Active" | "Idle" | "Clear"
+    detail: string
+    href: string
+    tone: "warning" | "success" | "idle"
+  }
+
+  const activityRows: ActivityRow[] =
+    pendingApprovals > 0
+      ? [
+          ...pendingApprovalItems.slice(0, 5).map((approval) => ({
+            id: approval.id,
+            item: approval.title ?? `Approval ${approval.id.slice(0, 8)}`,
+            status: "Pending" as const,
+            detail: "Needs your decision",
+            href: APP_ROUTES.approvals,
+            tone: "warning" as const,
+          })),
+          ...(pendingApprovalItems.length === 0
+            ? [
+                {
+                  id: "pending-count",
+                  item: `${pendingApprovals} pending approval${pendingApprovals === 1 ? "" : "s"}`,
+                  status: "Pending" as const,
+                  detail: "Open the approvals queue",
+                  href: APP_ROUTES.approvals,
+                  tone: "warning" as const,
+                },
+              ]
+            : []),
+        ]
+      : [
+          {
+            id: "approvals-clear",
+            item: "Approvals",
+            status: "Clear" as const,
+            detail: "No items waiting",
+            href: APP_ROUTES.approvals,
+            tone: "success" as const,
+          },
+          {
+            id: "ai-systems",
+            item: "AI systems online",
+            status: (onlineSystems != null && onlineSystems > 0 ? "Online" : "Idle") as
+              | "Online"
+              | "Idle",
+            detail: onlineSystems != null ? String(onlineSystems) : "—",
+            href: APP_ROUTES.intelligence,
+            tone: (onlineSystems != null && onlineSystems > 0 ? "success" : "idle") as
+              | "success"
+              | "idle",
+          },
+          {
+            id: "ml-models",
+            item: "ML models active",
+            status: (mlActive != null && mlActive > 0 ? "Active" : "Idle") as "Active" | "Idle",
+            detail: mlActive != null ? String(mlActive) : "—",
+            href: APP_ROUTES.intelligence,
+            tone: (mlActive != null && mlActive > 0 ? "success" : "idle") as "success" | "idle",
+          },
+          {
+            id: "memories",
+            item: "Memories",
+            status: (memoriesCount != null && memoriesCount > 0 ? "Active" : "Idle") as
+              | "Active"
+              | "Idle",
+            detail:
+              memoriesCount != null ? memoriesCount.toLocaleString() : "—",
+            href: APP_ROUTES.intelligence,
+            tone: (memoriesCount != null && memoriesCount > 0 ? "success" : "idle") as
+              | "success"
+              | "idle",
+          },
+        ]
+
+  const kpiCards = [
+    {
+      key: "approvals",
+      label: "Pending approvals",
+      value: <AnimatedCounter value={pendingApprovals} className="tabular-nums" />,
+      href: APP_ROUTES.approvals,
+      icon: ClipboardText,
+      warning: pendingApprovals > 0,
+      hint: pendingApprovals > 0 ? "Needs your decision →" : "All clear →",
+    },
+    {
+      key: "confidence",
+      label: "Avg confidence · 7d",
+      value: avgConfidence != null ? `${avgConfidence}%` : "—",
+      href: APP_ROUTES.intelligence,
+      icon: ChartLineUp,
+      warning: false,
+      hint: avgConfidence != null ? "From trust summary →" : "Warming up →",
+    },
+    {
+      key: "queries",
+      label: "Query rows logged",
+      value: <AnimatedCounter value={queryRows} className="tabular-nums" />,
+      href: APP_ROUTES.learning,
+      icon: Database,
+      warning: false,
+      hint: `${queryRows}/${queryRowsNeeded || 50} to learn →`,
+    },
+    {
+      key: "workflows",
+      label: "Workflow rows",
+      value: <AnimatedCounter value={workflowRows} className="tabular-nums" />,
+      href: APP_ROUTES.learning,
+      icon: Robot,
+      warning: false,
+      hint: `${workflowRows}/${workflowRowsNeeded || 30} observed →`,
     },
   ]
 
   return (
-    <div className="relative w-full overflow-x-hidden">
+    <div className="relative w-full overflow-x-hidden bg-muted/30">
       <motion.div
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-6xl space-y-5 pb-8 sm:pb-10"
+        className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:pb-10"
       >
-        <motion.div variants={item}>
-          <PageHeader
-            eyebrow="Home"
-            title={`Welcome back, ${roleLabel}`}
-            description="Monitor learning, clear approvals, and open Gravitre AI — status below reflects live API data only."
-            icon={NucleoIntelligence}
-            actions={
-              <>
-                <Button asChild size="sm">
-                  <Link href={APP_ROUTES.gravitreAi}>
-                    <Sparkle className="h-4 w-4" weight="fill" />
-                    Open Gravitre AI
-                  </Link>
-                </Button>
-                {pendingApprovals > 0 ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={APP_ROUTES.approvals}>
-                      <ClipboardText className="h-4 w-4" />
-                      {pendingApprovals} approval{pendingApprovals === 1 ? "" : "s"}
+        {/* Header */}
+        <motion.header variants={item} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome back, {roleLabel}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="sm">
+              <Link href={APP_ROUTES.gravitreAi}>
+                <Sparkle className="h-4 w-4" weight="fill" />
+                Open Gravitre AI
+              </Link>
+            </Button>
+            {pendingApprovals > 0 ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={APP_ROUTES.approvals}>
+                  <ClipboardText className="h-4 w-4" />
+                  {pendingApprovals} approval{pendingApprovals === 1 ? "" : "s"}
+                </Link>
+              </Button>
+            ) : null}
+            {showQuickActions
+              ? quickActions.map((action) => (
+                  <Button
+                    key={action.href}
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                  >
+                    <Link href={action.href}>
+                      {action.label}
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </Button>
-                ) : null}
-                {showQuickActions
-                  ? quickActions.map((action) => (
-                      <Button
-                        key={action.href}
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground"
-                      >
-                        <Link href={action.href}>
-                          {action.label}
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                    ))
-                  : null}
-              </>
-            }
-          >
-            {/* Phase 4–aligned chips: only when backend-backed values exist */}
-            <div className="flex flex-wrap items-center gap-2">
-              {pendingApprovals > 0 ? (
-                <StatusChip tone="pending" href={APP_ROUTES.approvals} pulse>
-                  Pending approval · {pendingApprovals}
-                </StatusChip>
-              ) : (
-                <StatusChip tone="approved" href={APP_ROUTES.approvals}>
-                  Approvals clear
-                </StatusChip>
-              )}
-              {avgConfidence != null ? (
-                <StatusChip tone="estimate" href={APP_ROUTES.intelligence}>
-                  Avg confidence · 7d · {avgConfidence}%
-                </StatusChip>
-              ) : (
-                <StatusChip tone="idle">Confidence · not yet available</StatusChip>
-              )}
-              {hasLearningSnapshot ? (
-                <StatusChip tone="idle" href={APP_ROUTES.learning}>
-                  Learning snapshot present
-                </StatusChip>
-              ) : (
-                <StatusChip tone="idle">Learning · warming up</StatusChip>
-              )}
-            </div>
-          </PageHeader>
-        </motion.div>
+                ))
+              : null}
+          </div>
+        </motion.header>
 
-        <motion.section
-          variants={item}
-          className={cn(
-            "border border-border bg-card p-4 shadow-sm sm:p-5",
-            RADIUS.panel,
+        {/* Status chips — real API-backed values only */}
+        <motion.div variants={item} className="flex flex-wrap items-center gap-2">
+          {pendingApprovals > 0 ? (
+            <StatusChip tone="pending" href={APP_ROUTES.approvals} pulse>
+              Pending approval · {pendingApprovals}
+            </StatusChip>
+          ) : (
+            <StatusChip tone="approved" href={APP_ROUTES.approvals}>
+              Approvals clear
+            </StatusChip>
           )}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <p className={TYPE.eyebrow}>System status</p>
-            <Link
-              href={APP_ROUTES.intelligence}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              Details
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {systemStats.map((stat) => (
-              <div
-                key={stat.label}
-                className={cn(
-                  "flex items-center justify-between border border-border bg-background px-3 py-2",
-                  RADIUS.tile,
-                )}
-              >
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <stat.icon className="h-4 w-4 text-primary" weight="duotone" />
-                  {stat.label}
-                </span>
-                <span className="flex items-center gap-2 text-sm font-semibold tabular-nums text-foreground">
-                  {stat.value}
-                  {stat.known ? (
-                    <PulseDot
-                      tone={stat.status === "processing" ? "intelligence" : "emerald"}
-                      size="sm"
-                      label={stat.status}
-                    />
-                  ) : null}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className={cn(TYPE.meta, "mt-3 flex items-center gap-2")}>
+          {avgConfidence != null ? (
+            <StatusChip tone="estimate" href={APP_ROUTES.intelligence}>
+              Avg confidence · 7d · {avgConfidence}%
+            </StatusChip>
+          ) : (
+            <StatusChip tone="idle">Confidence · not yet available</StatusChip>
+          )}
+          {hasLearningSnapshot ? (
+            <StatusChip tone="idle" href={APP_ROUTES.learning}>
+              Learning snapshot present
+            </StatusChip>
+          ) : (
+            <StatusChip tone="idle">Learning · warming up</StatusChip>
+          )}
+          <span className={cn(TYPE.meta, "inline-flex items-center gap-1.5")}>
             <Clock className="h-3.5 w-3.5" />
             Last learning cycle:{" "}
             <span className="text-foreground">{lastCycleLabel ?? "—"}</span>
-          </p>
+          </span>
+        </motion.div>
+
+        {/* KPI row — 4 cards */}
+        <motion.section
+          variants={item}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {kpiCards.map((card) => (
+            <Link
+              key={card.key}
+              href={card.href}
+              className={cn(
+                "group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40",
+                card.warning ? "border-amber-300/80" : "border-border",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                  card.warning
+                    ? "bg-amber-500/15 text-amber-700"
+                    : "bg-[color:var(--brand)]/10 text-[color:var(--brand)]",
+                )}
+              >
+                <card.icon className="h-5 w-5" weight="duotone" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                  {card.value}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{card.label}</p>
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80 group-hover:text-foreground">
+                  {card.hint}
+                </p>
+              </div>
+            </Link>
+          ))}
         </motion.section>
 
-        <motion.div variants={item}>
-          <StatsGrid columns={4}>
-            <StatCard
-              label="Pending approvals"
-              value={<AnimatedCounter value={pendingApprovals} className="tabular-nums" />}
-              variant={pendingApprovals > 0 ? "warning" : "success"}
+        {/* Learning progress toward targets */}
+        <motion.div variants={item} className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+            <ProgressFooter
+              percent={queryPct}
+              caption="Query progress toward learning target"
+              accent="brand"
             />
-            <StatCard
-              label="Avg confidence · 7d"
-              value={avgConfidence != null ? `${avgConfidence}%` : "—"}
-              variant={avgConfidence != null ? "success" : "default"}
-            />
-            <StatCard
-              label="Query rows logged"
-              value={<AnimatedCounter value={queryRows} className="tabular-nums" />}
-              variant="success"
-            />
-            <StatCard
-              label="Workflow rows"
-              value={<AnimatedCounter value={workflowRows} className="tabular-nums" />}
-              variant="success"
-            />
-          </StatsGrid>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground lg:grid-cols-4">
-            <Link href={APP_ROUTES.approvals} className="hover:text-foreground hover:underline">
-              {pendingApprovals > 0 ? "Needs your decision →" : "All clear →"}
-            </Link>
-            <Link href={APP_ROUTES.intelligence} className="hover:text-foreground hover:underline">
-              {avgConfidence != null ? "From trust summary →" : "Warming up →"}
-            </Link>
-            <Link href={APP_ROUTES.learning} className="hover:text-foreground hover:underline">
-              {queryRows}/{queryRowsNeeded || 50} to learn →
-            </Link>
-            <Link href={APP_ROUTES.learning} className="hover:text-foreground hover:underline">
-              {workflowRows}/{workflowRowsNeeded || 30} observed →
-            </Link>
           </div>
-          {/* Progress for learning targets (real row counts) */}
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <ProgressFooter percent={queryPct} caption="Query progress toward learning target" accent="brand" />
-            <ProgressFooter percent={workflowPct} caption="Workflow progress toward observed target" accent="brandSoft" />
+          <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+            <ProgressFooter
+              percent={workflowPct}
+              caption="Workflow progress toward observed target"
+              accent="brandSoft"
+            />
           </div>
         </motion.div>
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          {pendingApprovals > 0 ? (
-            <motion.section
-              variants={item}
-              className={cn(
-                "relative flex flex-col border border-warning/30 bg-warning/5 p-5 shadow-sm lg:col-span-2",
-                RADIUS.panel,
-              )}
-            >
-              <PanelHeader
-                icon={ClipboardText}
-                title="Awaiting your approval"
-                href={APP_ROUTES.approvals}
-                linkLabel="Review all"
-              />
-              <p className={cn(TYPE.bodyMuted, "mt-2")}>
-                {pendingApprovals} item{pendingApprovals === 1 ? "" : "s"} need your decision before
-                agents can proceed.
+        {/* Activity monitor */}
+        <motion.section
+          variants={item}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Activity monitor</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {pendingApprovals > 0
+                  ? "Pending approvals from your queue"
+                  : "Live system status from API data"}
               </p>
-              <ul className="mt-3 space-y-2">
-                {pendingApprovalItems.slice(0, 3).map((approval) => (
-                  <li key={approval.id}>
-                    <Link
-                      href={APP_ROUTES.approvals}
-                      className={cn(
-                        "flex items-center justify-between border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors hover:border-warning/40 hover:bg-warning/5",
-                        RADIUS.tile,
-                      )}
-                    >
-                      <span className="truncate">
-                        {approval.title ?? `Approval ${approval.id.slice(0, 8)}`}
-                      </span>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-warning" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <Button asChild size="sm" variant="outline" className="mt-4 w-full sm:mt-auto">
-                <Link href={APP_ROUTES.approvals}>
-                  Review {pendingApprovals} approval{pendingApprovals === 1 ? "" : "s"}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </motion.section>
-          ) : (
-            <motion.section
-              variants={item}
-              className={cn(
-                "border border-success/25 bg-success/5 p-5 shadow-sm lg:col-span-2",
-                RADIUS.panel,
-              )}
+            </div>
+            <Link
+              href={pendingApprovals > 0 ? APP_ROUTES.approvals : APP_ROUTES.intelligence}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
             >
-              <PanelHeader
-                icon={CheckCircle}
-                title="You're all caught up"
-                href={APP_ROUTES.approvals}
-                linkLabel="View queue"
-              />
-              <p className={cn(TYPE.bodyMuted, "mt-4")}>
-                No approvals waiting. Agents proceed only within policy and existing gates.
-              </p>
-            </motion.section>
-          )}
+              {pendingApprovals > 0 ? "Review all" : "Details"}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
 
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="pb-2 pr-4 font-medium">Item</th>
+                  <th className="pb-2 pr-4 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityRows.map((row) => (
+                  <tr key={row.id} className="border-b border-border/60 last:border-0">
+                    <td className="py-3 pr-4">
+                      <Link
+                        href={row.href}
+                        className="font-medium text-foreground hover:underline"
+                      >
+                        {row.item}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            row.tone === "warning" && "bg-amber-500",
+                            row.tone === "success" && "bg-[color:var(--brand)]",
+                            row.tone === "idle" && "bg-muted-foreground/40",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "text-xs font-medium",
+                            row.tone === "warning" && "text-amber-700",
+                            row.tone === "success" && "text-foreground",
+                            row.tone === "idle" && "text-muted-foreground",
+                          )}
+                        >
+                          {row.status}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="py-3 text-xs text-muted-foreground">{row.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.section>
+
+        {/* Bottom row: status breakdown + learning velocity */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <motion.section
             variants={item}
-            className={cn(
-              "border border-border bg-card p-5 shadow-sm lg:col-span-3",
-              RADIUS.panel,
-            )}
+            className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
           >
-            <PanelHeader
-              icon={Sparkle}
-              title="Confidence (trust summary)"
-              href={APP_ROUTES.intelligence}
-              linkLabel={SURFACE_COPY.insights.title}
-            />
-            {avgConfidence != null ? (
-              <div className="mt-6 flex flex-col items-start gap-2">
-                <p className={TYPE.metricValue}>{avgConfidence}%</p>
-                <p className={TYPE.metricLabel}>Average confidence · last 7 days</p>
-                <p className={TYPE.bodyMuted}>
-                  Sourced from the trust summary API — not a fabricated weekly sparkline.
-                </p>
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  "mt-4 border border-dashed border-border bg-muted/30 px-4 py-8 text-center",
-                  RADIUS.card,
-                )}
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-base font-semibold text-foreground">Status breakdown</h2>
+              <Link
+                href={APP_ROUTES.intelligence}
+                className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
               >
-                <p className={TYPE.cardTitle}>No confidence average yet</p>
-                <p className={cn(TYPE.meta, "mt-1")}>
-                  A 7-day average appears here once trust summary data is available.
-                </p>
-              </div>
-            )}
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-2">
-                <Robot className="h-4 w-4 text-primary" weight="duotone" />
-                ML models: <span className="font-medium text-foreground">{mlActive ?? "—"}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-primary" weight="duotone" />
-                Memories: <span className="font-medium text-foreground">{memoriesCount ?? "—"}</span>
-              </span>
+                {SURFACE_COPY.insights.title}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-          </motion.section>
-        </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Panel reduced={reduced}>
-            <PanelHeader
-              icon={Brain}
-              title="Insights status"
-              href={APP_ROUTES.intelligence}
-              linkLabel={`View ${SURFACE_COPY.insights.title}`}
-            />
-            {hasLearningSnapshot || mlActive != null || memoriesCount != null ? (
-              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                <MiniStat label="AI systems online" value={onlineSystems ?? "—"} />
-                <MiniStat label="ML models active" value={mlActive ?? "—"} />
-                <MiniStat label="Last learning cycle" value={lastCycleLabel ?? "—"} />
+            {hasLearningSnapshot || mlActive != null || memoriesCount != null || onlineSystems != null ? (
+              <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-center">
+                {/* Simple ring progress using known totals */}
+                <div className="relative mx-auto flex h-36 w-36 shrink-0 items-center justify-center sm:mx-0">
+                  <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      fill="none"
+                      className="stroke-muted"
+                      strokeWidth="3.5"
+                    />
+                    {systemStats.map((stat, index) => {
+                      if (!stat.known || stat.value == null || knownSystemTotal <= 0) return null
+                      const share = (stat.value / knownSystemTotal) * 100
+                      const circumference = 2 * Math.PI * 14
+                      const dash = (share / 100) * circumference
+                      let offset = 0
+                      for (let i = 0; i < index; i++) {
+                        const prev = systemStats[i]
+                        if (prev.known && prev.value != null && knownSystemTotal > 0) {
+                          offset += (prev.value / knownSystemTotal) * circumference
+                        }
+                      }
+                      const stroke =
+                        stat.tone === "brand"
+                          ? BRAND
+                          : stat.tone === "brandSoft"
+                            ? BRAND_SOFT
+                            : "#94a3b8"
+                      return (
+                        <circle
+                          key={stat.label}
+                          cx="18"
+                          cy="18"
+                          r="14"
+                          fill="none"
+                          stroke={stroke}
+                          strokeWidth="3.5"
+                          strokeDasharray={`${dash} ${circumference - dash}`}
+                          strokeDashoffset={-offset}
+                          strokeLinecap="butt"
+                        />
+                      )
+                    })}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-semibold tabular-nums text-foreground">
+                      {knownSystemTotal > 0 ? knownSystemTotal : "—"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">Tracked</span>
+                  </div>
+                </div>
+
+                <ul className="flex-1 space-y-3">
+                  {systemStats.map((stat) => (
+                    <li key={stat.label} className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span
+                          className={cn(
+                            "h-2 w-2 rounded-full",
+                            stat.tone === "brand" && "bg-[color:var(--brand)]",
+                            stat.tone === "brandSoft" && "bg-[#5ec49a]",
+                            stat.tone === "muted" && "bg-slate-400",
+                          )}
+                        />
+                        <stat.icon className="h-3.5 w-3.5 text-muted-foreground" weight="duotone" />
+                        {stat.label}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums text-foreground">
+                        {stat.display}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : (
-              <div
-                className={cn(
-                  "mt-4 border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center",
-                  RADIUS.card,
-                )}
-              >
+              <div className="mt-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
                 <Brain className="mx-auto h-8 w-8 text-primary" weight="duotone" />
                 <p className={cn(TYPE.cardTitle, "mt-2")}>{SURFACE_COPY.insightsHealth.warmingTitle}</p>
                 <p className={cn(TYPE.meta, "mt-1")}>{SURFACE_COPY.insightsHealth.warmingHint}</p>
               </div>
             )}
-          </Panel>
+          </motion.section>
 
-          <Panel reduced={reduced}>
-            <PanelHeader
-              icon={ChartLineUp}
-              title="Learning velocity"
-              href={APP_ROUTES.learning}
-              linkLabel={SURFACE_COPY.learning.title}
-            />
-            <div className="mt-4 h-40">
+          <motion.section
+            variants={item}
+            className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-base font-semibold text-foreground">Learning velocity</h2>
+              <Link
+                href={APP_ROUTES.learning}
+                className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+              >
+                {SURFACE_COPY.learning.title}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="mt-4 h-44">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={learningBars} layout="vertical" barSize={18} margin={{ left: 0, right: 8 }}>
+                <BarChart data={learningBars} layout="vertical" barSize={20} margin={{ left: 0, right: 8 }}>
                   <XAxis type="number" hide domain={[0, "dataMax"]} />
                   <YAxis
                     type="category"
@@ -491,8 +625,11 @@ export function HomeDashboard({
                 </span>
               ) : null}
             </p>
-          </Panel>
+          </motion.section>
+        </div>
 
+        {/* Secondary panels: revenue risks + predictive */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <Panel reduced={reduced}>
             <PanelHeader
               icon={WarningCircle}
@@ -501,14 +638,11 @@ export function HomeDashboard({
               linkLabel="View all signals"
             />
             {revenueRisks.length === 0 ? (
-              <div
-                className={cn(
-                  "mt-6 border border-dashed border-success/30 bg-success/5 px-4 py-8 text-center",
-                  RADIUS.card,
-                )}
-              >
-                <CheckCircle className="mx-auto h-8 w-8 text-success" weight="duotone" />
-                <p className={cn(TYPE.cardTitle, "mt-2 text-success")}>No signals this period</p>
+              <div className="mt-6 rounded-xl border border-dashed border-[color:var(--brand)]/30 bg-[color:var(--brand)]/5 px-4 py-8 text-center">
+                <CheckCircle className="mx-auto h-8 w-8 text-[color:var(--brand)]" weight="duotone" />
+                <p className={cn(TYPE.cardTitle, "mt-2 text-[color:var(--brand)]")}>
+                  No signals this period
+                </p>
                 <p className={cn(TYPE.meta, "mt-1")}>No revenue risk items returned by the API.</p>
               </div>
             ) : (
@@ -519,10 +653,7 @@ export function HomeDashboard({
                     initial={reduced ? false : { opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08 }}
-                    className={cn(
-                      "border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-destructive/30 hover:bg-destructive/5",
-                      RADIUS.tile,
-                    )}
+                    className="rounded-xl border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-destructive/30 hover:bg-destructive/5"
                   >
                     <span className="font-medium text-foreground">{risk.title}</span>
                     <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{risk.summary}</p>
@@ -542,12 +673,7 @@ export function HomeDashboard({
             {predictiveSummary ? (
               <p className={cn(TYPE.bodyMuted, "mt-4")}>{predictiveSummary}</p>
             ) : (
-              <div
-                className={cn(
-                  "mt-4 border border-dashed border-border bg-muted/30 px-4 py-8 text-center",
-                  RADIUS.card,
-                )}
-              >
+              <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
                 <p className={TYPE.cardTitle}>No forecast summary yet</p>
                 <p className={cn(TYPE.meta, "mt-1")}>
                   Workflow success trends and anomaly signals appear here once enough run history
@@ -583,12 +709,11 @@ function ProgressFooter({
 }) {
   return (
     <div>
-      <div className={cn("h-1.5 w-full overflow-hidden bg-muted", RADIUS.control)}>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <motion.div
           className={cn(
-            "h-full",
+            "h-full rounded-full",
             accent === "brand" ? "bg-[color:var(--brand)]" : "bg-[#5ec49a]",
-            RADIUS.control,
           )}
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
@@ -600,24 +725,12 @@ function ProgressFooter({
   )
 }
 
-function MiniStat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className={cn("border border-border bg-background px-3 py-2", RADIUS.tile)}>
-      <p className={TYPE.metricLabel}>{label}</p>
-      <p className="mt-1 font-semibold text-foreground">{value}</p>
-    </div>
-  )
-}
-
 function Panel({ children, reduced }: { children: React.ReactNode; reduced: boolean }) {
   return (
     <motion.section
       variants={cardVariants}
       whileHover={reduced ? undefined : { y: -2 }}
-      className={cn(
-        "border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md",
-        RADIUS.panel,
-      )}
+      className="rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
     >
       {children}
     </motion.section>
@@ -638,12 +751,12 @@ function PanelHeader({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-primary" weight="duotone" />
-        <h3 className={TYPE.cardTitle}>{title}</h3>
+        <Icon className="h-5 w-5 text-[color:var(--brand)]" weight="duotone" />
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
       </div>
       <Link
         href={href}
-        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
       >
         {linkLabel}
         <ArrowRight className="h-3 w-3" />

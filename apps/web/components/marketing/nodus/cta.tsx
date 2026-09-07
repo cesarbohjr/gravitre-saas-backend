@@ -4,15 +4,15 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import {
   AnthropicLogo,
-  AppleIcon,
-  FacebookIcon,
-  GoogleIcon,
+  ClayLogo,
+  HubSpotLogo,
   LinearLogo,
-  MetaLogo,
   NotionLogo,
   OpenAILogo,
+  SalesforceLogo,
   SlackLogo,
   SupabaseLogo,
+  ZapierLogo,
 } from "@/components/marketing/nodus-icons/general";
 import { Container } from "./container";
 import { SectionHeading } from "./seciton-heading";
@@ -50,20 +50,21 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
   ringDurationsSec,
   numRings = 3,
 }) => {
+  // Real Gravitre connectors + AI tools — spread across rings, no social-only fillers.
   const logos = [
-    SupabaseLogo,
-    OpenAILogo,
-    MetaLogo,
+    HubSpotLogo,
     SlackLogo,
+    SalesforceLogo,
     NotionLogo,
-    LinearLogo,
-    AnthropicLogo,
-    SupabaseLogo,
+    ClayLogo,
     OpenAILogo,
-    MetaLogo,
-    GoogleIcon,
-    FacebookIcon,
-    AppleIcon,
+    AnthropicLogo,
+    ZapierLogo,
+    LinearLogo,
+    SupabaseLogo,
+    HubSpotLogo,
+    SalesforceLogo,
+    ClayLogo,
   ];
   const total = logos.length;
 
