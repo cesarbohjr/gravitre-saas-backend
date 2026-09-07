@@ -12,6 +12,10 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { GoogleOAuthIcon, MicrosoftOAuthIcon } from "@/components/marketing/oauth-provider-icons"
+import { AuthIllustration } from "@/components/marketing/nodus/auth-illustration"
+import { Container } from "@/components/marketing/nodus/container"
+import { Heading } from "@/components/marketing/nodus/heading"
+import { SubHeading } from "@/components/marketing/nodus/subheading"
 
 // Human-readable error messages
 function humanizeAuthError(message: string): string {
@@ -177,42 +181,33 @@ export default function GetStartedPage() {
   const anyLoading = isLoading || loadingProvider !== null
 
   return (
-    <div className="min-h-screen bg-card relative overflow-x-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/10/50 via-white to-white" />
-      <div 
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)`,
-          backgroundSize: '48px 48px',
-        }}
-      />
-
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-6 sm:py-12">
+    <div className="min-h-screen bg-white">
+      <Container className="border-divide min-h-screen border-x py-10 md:py-16">
+        <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-16">
+          <div className="hidden md:block">
+            <AuthIllustration />
+          </div>
+          <div className="flex w-full items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full max-w-[420px]"
         >
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Put one AI brain to work
-            </h1>
-            <p className="mt-3 text-muted-foreground">
+          <div className="mb-8 text-left">
+            <Heading className="text-left text-3xl lg:text-4xl">
+              Put Gravitre to work
+            </Heading>
+            <SubHeading as="p" className="mt-3 text-left">
               Connect your stack, run agents and workflows, approve what matters.
-              <br className="hidden sm:block" />
               No credit card required.
-            </p>
-            <p className="mt-4 text-xs text-muted-foreground">
+            </SubHeading>
+            <p className="mt-4 text-xs text-gray-600">
               7-day free trial · Cancel anytime · Encrypted by default
             </p>
           </div>
 
-          {/* Card */}
-          <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-border/40 p-6 sm:p-8">
+          <div className="shadow-aceternity rounded-2xl border border-divide bg-white p-6 sm:p-8">
             {/* Success message */}
             {successMessage && (
               <div className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-3">
@@ -398,7 +393,9 @@ export default function GetStartedPage() {
             </Link>
           </div>
         </motion.div>
-      </div>
+          </div>
+        </div>
+      </Container>
     </div>
   )
 }

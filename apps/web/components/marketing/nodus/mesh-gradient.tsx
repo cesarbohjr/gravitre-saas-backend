@@ -18,7 +18,7 @@ function resolveCssColorToRGB(color: string): [number, number, number] {
   const computed = getComputedStyle(el).color;
   document.body.removeChild(el);
   const match = computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-  if (!match) return [241, 116, 99];
+  if (!match) return [22, 163, 116];
   return [
     parseInt(match[1], 10),
     parseInt(match[2], 10),

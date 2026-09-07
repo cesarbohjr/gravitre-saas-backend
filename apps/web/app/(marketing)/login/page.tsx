@@ -3,8 +3,8 @@
 import { Suspense, useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "lucide-react"
+import { motion } from "framer-motion"
+import { Eye, EyeOff, Loader2, Github, ArrowRight } from "lucide-react"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
@@ -13,12 +13,10 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { GravitreMarketingLogo } from "@/components/marketing/gravitre-marketing-logo"
 import { GoogleOAuthIcon, MicrosoftOAuthIcon } from "@/components/marketing/oauth-provider-icons"
-
-const features = [
-  "One brain across tools and teams",
-  "Agents, workflows, and approvals",
-  "Live connector checks before writes",
-]
+import { AuthIllustration } from "@/components/marketing/nodus/auth-illustration"
+import { Container } from "@/components/marketing/nodus/container"
+import { Heading } from "@/components/marketing/nodus/heading"
+import { SubHeading } from "@/components/marketing/nodus/subheading"
 
 function LoginPageContent() {
   const router = useRouter()
@@ -29,7 +27,6 @@ function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
-  const [activeFeature, setActiveFeature] = useState(0)
   const [authError, setAuthError] = useState<string | null>(null)
   const [authInfo, setAuthInfo] = useState<string | null>(null)
   const [showSignupCta, setShowSignupCta] = useState(false)
@@ -45,14 +42,7 @@ function LoginPageContent() {
   const displayedAuthError = authError ?? sessionExpiredMessage
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature((prev) => (prev + 1) % features.length)
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Clear stale Supabase cookies when redirected with an auth error (breaks OAuth loops).
-  useEffect(() => {
+    // Clear stale Supabase cookies when redirected with an auth error (breaks OAuth loops).
     const error = searchParams.get("error")
     if (
       !error ||
@@ -255,87 +245,29 @@ function LoginPageContent() {
 
   // Don't block render - show form immediately, redirect happens via useEffect if logged in
   return (
-    <div className="min-h-screen bg-muted/50 relative overflow-x-hidden">
-      {/* Background grid */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
+    <div className="min-h-screen bg-white">
+      <Container className="border-divide min-h-screen border-x py-10 md:py-16">
+        <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-16">
+          <div className="hidden md:block">
+            <AuthIllustration />
+          </div>
 
-      {/* Main content - split layout */}
-      <div className="relative z-10 min-h-screen flex">
-        
-        {/* Left side - Branding */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center px-8 xl:px-16 relative">
-          {/* Decorative gradient orb */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-br from-emerald-100/40 to-teal-100/30 rounded-full blur-3xl pointer-events-none" />
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="relative z-10 flex flex-col items-center text-center"
-          >
-            <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-[1.15] tracking-tight">
-              One AI brain for
-              <br />
-              <span className="text-primary">your entire business.</span>
-            </h1>
-            
-            {/* Animated feature text */}
-            <div className="mt-6 h-8">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={activeFeature}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-lg text-muted-foreground"
-                >
-                  {features[activeFeature]}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-
-            {/* Trust indicators */}
-            <div className="mt-12 flex items-center gap-6 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                <span className="text-sm">Secure by Design</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                <span className="text-sm">Enterprise Ready</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Right side - Login form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 py-6 sm:py-12">
+          <div className="flex w-full items-center justify-center">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-[440px]"
           >
-            <div className="bg-card rounded-2xl border border-border/80 shadow-xl shadow-border/40 p-6 sm:p-8 lg:p-10">
-              {/* Header */}
-              <div className="text-center mb-8">
-                {/* Mobile logo */}
-                <div className="lg:hidden mb-6">
+            <div className="shadow-aceternity rounded-2xl border border-divide bg-white p-6 sm:p-8 lg:p-10">
+              <div className="mb-8 text-left">
+                <div className="mb-6 md:hidden">
                   <GravitreMarketingLogo height={40} className="h-10" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Access your AI command center
-                </p>
+                <Heading className="text-left text-3xl lg:text-4xl">Welcome back</Heading>
+                <SubHeading as="p" className="mt-2 text-left">
+                  Sign in to your Gravitre workspace
+                </SubHeading>
                 {displayedAuthError && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-red-600">{displayedAuthError}</p>
@@ -344,7 +276,7 @@ function LoginPageContent() {
                         type="button"
                         onClick={handleResendVerification}
                         disabled={isResendingVerification}
-                        className="inline-block text-sm font-medium text-primary hover:text-primary transition-colors disabled:opacity-50"
+                        className="inline-block text-sm font-medium text-brand transition-colors disabled:opacity-50"
                       >
                         {isResendingVerification ? "Sending..." : "Resend verification email"}
                       </button>
@@ -352,14 +284,14 @@ function LoginPageContent() {
                     {showSignupCta && (
                       <Link
                         href="/get-started"
-                        className="inline-block text-sm font-medium text-primary hover:text-primary transition-colors"
+                        className="text-brand inline-block text-sm font-medium transition-colors"
                       >
                         Sign up here
                       </Link>
                     )}
                   </div>
                 )}
-                {authInfo && <p className="mt-3 text-sm text-primary">{authInfo}</p>}
+                {authInfo && <p className="text-brand mt-3 text-sm">{authInfo}</p>}
               </div>
 
               {/* OAuth buttons */}
@@ -488,8 +420,9 @@ function LoginPageContent() {
               </div>
             </div>
           </motion.div>
+          </div>
         </div>
-      </div>
+      </Container>
     </div>
   )
 }
