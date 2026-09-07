@@ -4,6 +4,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, Sparkles, Wrench, Shield, Zap } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 const releases = [
   ...MARKETING_COPY.changelog.releases,
@@ -41,37 +42,34 @@ const getTypeColor = (type: string) => {
 
 export default function ChangelogPage() {
   return (
-    <div className="bg-card">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">Changelog</h1>
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">{MARKETING_COPY.changelog.subtitle}</p>
-            <div className="mt-8">
-              <Link href="/roadmap" className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary">View our roadmap<ArrowRight className="h-4 w-4" /></Link>
-            </div>
-          </motion.div>
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="Changelog"
+        title="Changelog"
+        description={MARKETING_COPY.changelog.subtitle}
+      >
+        <div className="mt-6">
+          <Link href="/roadmap" className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary">
+            View our roadmap
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-      </section>
+      </MarketingPageHero>
 
-      {/* Subscribe */}
-      <section className="px-6 pb-16">
-        <div className="mx-auto max-w-2xl">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+      <MarketingRails>
+        {/* Subscribe */}
+        <div className="mb-12">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6 text-center shadow-sm max-w-2xl mx-auto">
             <p className="text-sm text-muted-foreground mb-4">Get notified when we ship new features</p>
             <form className="flex gap-3 max-w-md mx-auto">
-              <input type="email" placeholder="Enter your email" className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+              <input type="email" placeholder="Enter your email" className="flex-1 rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
               <button type="submit" className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-primary/100">Subscribe</button>
             </form>
           </motion.div>
         </div>
-      </section>
 
-      {/* Timeline */}
-      <section className="px-6 py-16 border-t border-border">
-        <div className="mx-auto max-w-3xl">
+        {/* Timeline */}
+        <div className="max-w-3xl mx-auto">
           <div className="relative">
             <div className="absolute left-0 md:left-24 top-0 bottom-0 w-px bg-muted" />
             <div className="space-y-12">
@@ -103,24 +101,12 @@ export default function ChangelogPage() {
           </div>
 
           <div className="mt-12 text-center">
-            <button className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">View older releases<ArrowRight className="h-4 w-4" /></button>
+            <button className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-gray-50">View older releases<ArrowRight className="h-4 w-4" /></button>
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* CTA */}
-      <section className="px-6 py-24 border-t border-border bg-muted/50">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">Have feature requests?</h2>
-            <p className="text-muted-foreground mb-8">We&apos;d love to hear from you. Share your ideas and vote on features in our public roadmap.</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/roadmap" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90">View roadmap<ArrowRight className="h-4 w-4" /></Link>
-              <Link href="/contact" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">Send feedback</Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <MarketingPageEndCta />
     </div>
   )
 }

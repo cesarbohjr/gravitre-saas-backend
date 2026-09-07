@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DesktopDownloadSection } from "@/components/marketing/desktop-download-section"
 import { DESKTOP_RELEASE_MANIFEST } from "@/lib/desktop-release"
+import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 export const metadata: Metadata = {
   title: "Download Gravitre Desktop",
@@ -10,11 +11,12 @@ export const metadata: Metadata = {
 
 export default function DownloadPage() {
   return (
-    <div className="relative overflow-hidden bg-card">
+    <div className="relative overflow-hidden bg-white">
       <DesktopDownloadSection
         initialManifest={DESKTOP_RELEASE_MANIFEST}
-        className="relative overflow-hidden bg-card"
+        className="relative overflow-hidden bg-white"
       />
+      <MarketingPageEndCta />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, Brain, Database, Shield, Sparkles, Workflow, Cpu, Lock } from "lucide-react"
 import { FeaturesLegacyContent } from "@/components/marketing/features/legacy-page"
+import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 const orbitNodes = [
   { icon: Database, label: "Connectors", tone: "text-blue-600 bg-blue-100 border-blue-200", angle: 0 },
@@ -77,7 +78,7 @@ function IntelligenceCore() {
 
 export function TechnologyPage() {
   return (
-    <div className="bg-card">
+    <div className="bg-white">
       {/* Hero */}
       <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-white to-white" />
@@ -155,32 +156,7 @@ export function TechnologyPage() {
       {/* Governance + AI stack (reused, hero/tail suppressed) */}
       <FeaturesLegacyContent section="governance" showHero={false} showTail={false} />
 
-      {/* CTA */}
-      <section className="relative overflow-hidden border-t border-border bg-gradient-to-b from-white to-primary/10 py-24">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
-            Intelligence you can audit, execution you can trust
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground text-pretty">
-            See how GIBE and governed execution work together across your connected tools.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/get-started"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/100"
-            >
-              Get started
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/features"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50"
-            >
-              Back to platform features
-            </Link>
-          </div>
-        </div>
-      </section>
+      <MarketingPageEndCta />
     </div>
   )
 }

@@ -44,33 +44,45 @@ export const Footer = () => {
             Put Gravitre to work
           </Button>
         </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-2 md:mb-0">
-          <p className="text-sm font-medium text-gray-600">Product</p>
+        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0">
+          <p className="mb-2 text-sm font-medium text-gray-600">Product</p>
           {product.map((item) => (
-            <Link href={item.href} key={item.title} className="text-footer-link my-2 text-sm font-medium">
+            <Link
+              href={item.href}
+              key={item.title}
+              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+            >
               {item.title}
             </Link>
           ))}
         </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-2 md:mb-0">
-          <p className="text-sm font-medium text-gray-600">Company</p>
+        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0">
+          <p className="mb-2 text-sm font-medium text-gray-600">Company</p>
           {company.map((item) => (
-            <Link href={item.href} key={item.title} className="text-footer-link my-2 text-sm font-medium">
+            <Link
+              href={item.href}
+              key={item.title}
+              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+            >
               {item.title}
             </Link>
           ))}
         </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-2 md:mb-0 lg:col-span-2">
-          <p className="text-sm font-medium text-gray-600">Legal</p>
+        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0 lg:col-span-2">
+          <p className="mb-2 text-sm font-medium text-gray-600">Legal</p>
           {legal.map((item) => (
-            <Link href={item.href} key={item.title} className="text-footer-link my-2 text-sm font-medium">
+            <Link
+              href={item.href}
+              key={item.title}
+              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+            >
               {item.title}
             </Link>
           ))}
           <button
             type="button"
             onClick={() => openMarketingConsentSettings()}
-            className="text-footer-link my-2 text-left text-sm font-medium"
+            className="text-footer-link my-1.5 text-left text-sm font-medium transition-colors hover:text-charcoal-700"
           >
             Cookie settings
           </button>

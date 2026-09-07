@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 const sections = [
   {
@@ -93,44 +94,46 @@ To exercise these rights, contact us at privacy@gravitre.app.`,
 
 export default function PrivacyPage() {
   return (
-    <div className="bg-card">
-      <section className="px-6 py-24 lg:py-32">
-        <div className="mx-auto max-w-3xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="text-4xl font-semibold text-foreground mb-4">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-2">Last updated: April 1, 2026</p>
-            <p className="text-muted-foreground mb-12">
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="Legal"
+        title="Privacy Policy"
+        description={
+          <>
+            <span className="block text-sm">Last updated: April 1, 2026</span>
+            <span className="block mt-2">
               This privacy policy describes how Gravitre Inc. (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) collects, 
               uses, and shares information about you when you use our services.
-            </p>
+            </span>
+          </>
+        }
+        align="left"
+      />
 
-            <div className="space-y-12">
-              {sections.map((section, i) => (
-                <motion.div
-                  key={section.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <h2 className="text-xl font-semibold text-foreground mb-4">{section.title}</h2>
-                  <div className="prose prose-zinc max-w-none">
-                    {section.content.split('\n\n').map((paragraph, j) => (
-                      <p key={j} className="text-muted-foreground whitespace-pre-line mb-4">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+      <MarketingRails>
+        <div className="mx-auto max-w-3xl space-y-12">
+          {sections.map((section, i) => (
+            <motion.div
+              key={section.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <h2 className="text-xl font-semibold text-charcoal mb-4">{section.title}</h2>
+              <div className="prose prose-zinc max-w-none">
+                {section.content.split('\n\n').map((paragraph, j) => (
+                  <p key={j} className="text-gray-600 whitespace-pre-line mb-4">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </motion.div>
+          ))}
         </div>
-      </section>
+      </MarketingRails>
+
+      <MarketingPageEndCta />
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
   ChromeVendorIcon,
   EdgeVendorIcon,
 } from "@/components/marketing/browser-vendor-icons"
+import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 const activationSteps = [
   {
@@ -69,7 +70,7 @@ export function ExtensionPage() {
   const storeListing = installHref.startsWith("http")
 
   return (
-    <div className="bg-card">
+    <div className="bg-white">
       <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-24">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/10/80 via-white to-white" />
         <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-primary/15/50 blur-3xl" />
@@ -406,35 +407,7 @@ export function ExtensionPage() {
         </div>
       </section>
 
-      <section className="border-t border-border py-16">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <Sparkles className="mx-auto h-8 w-8 text-primary" />
-          <h2 className="mt-4 text-2xl font-bold text-foreground">Ready for first value?</h2>
-          <p className="mt-3 text-muted-foreground">
-            Connect HubSpot or Apollo, install the extension, enrich one profile,
-            approve one write, open Outcomes.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href={installHref}
-              {...(storeListing
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary/100"
-            >
-              {installLabel}
-              <ArrowRight className="h-4 w-4" />
-            </a>
-            <Link
-              href="/get-started"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted/50"
-            >
-              <Link2 className="h-4 w-4" />
-              Create a Gravitre account
-            </Link>
-          </div>
-        </div>
-      </section>
+      <MarketingPageEndCta />
     </div>
   )
 }

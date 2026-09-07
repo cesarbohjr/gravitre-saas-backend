@@ -583,7 +583,7 @@ export function FeaturesLegacyContent({
     return ids.includes(active) && !excluded.has(active)
   }
   return (
-    <div className="relative overflow-hidden bg-card">
+    <div className="relative overflow-hidden bg-white">
       {showHero && section === "all" ? (
       <>
       {/* Hero */}

@@ -3,6 +3,9 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, Clock, Calendar } from "lucide-react"
 import { SITE_URL, getAllBlogSlugs, getBlogPost, type BlogPost } from "../posts"
+import { Container } from "@/components/marketing/nodus/container"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 
 export const dynamicParams = false
 
@@ -146,11 +149,13 @@ export default async function BlogPostPage({
   const { Content } = post
 
   return (
-    <div className="bg-card">
+    <div className="bg-white">
       <ArticleJsonLd post={post} />
 
-      <article className="px-6 pb-16 pt-28 lg:pt-32">
-        <div className="mx-auto max-w-3xl">
+      <Container className="border-divide border-x">
+        <DivideX />
+        <article className="px-4 md:px-8 pb-16 pt-20">
+          <div className="mx-auto max-w-3xl">
           {/* Breadcrumb / back */}
           <nav aria-label="Breadcrumb" className="mb-8">
             <Link
@@ -268,8 +273,11 @@ export default async function BlogPostPage({
               <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
-        </div>
-      </article>
+          </div>
+        </article>
+      </Container>
+      
+      <MarketingPageEndCta />
     </div>
   )
 }
