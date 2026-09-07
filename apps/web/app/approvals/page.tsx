@@ -374,11 +374,11 @@ function DecisionCard({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       className={cn(
-        "relative rounded-lg border-l-4 transition-all cursor-pointer",
+        "relative cursor-pointer rounded-[var(--np-radius-md)] border-l-4 transition-all",
         config.color,
-        isSelected 
-          ? "bg-card border border-primary/30 shadow-lg" 
-          : "bg-card/50 border border-border hover:bg-card hover:border-border"
+        isSelected
+          ? "border border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
+          : "border border-divide bg-[color:var(--g-surface-1)]/80 hover:bg-[color:var(--g-surface-2)]",
       )}
       onClick={onSelect}
     >
@@ -723,7 +723,7 @@ function DetailPanel({
       </div>
 
       {/* Footer Actions */}
-      <div className="p-6 border-t border-border bg-card/50">
+      <div className="border-t border-divide bg-[color:var(--g-surface-2)] p-6">
         {approval.status !== "pending" ? (
           <Button variant="outline" size="lg" className="w-full gap-2 h-11" asChild>
             <Link href={approval.context.runId ? `/runs/${approval.context.runId}` : "/runs"}>
@@ -933,7 +933,7 @@ function ApprovalsContent() {
               }
             />
             <div className="px-3 sm:px-4 pb-3 sm:pb-4">
-            <div className="mb-3 flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
+            <div className="mb-3 flex gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -1030,7 +1030,7 @@ function ApprovalsContent() {
         </div>
 
         {/* Right: Detail Panel - Hidden on mobile unless item selected */}
-        <div className={`flex-1 bg-card/30 border-t lg:border-t-0 border-border ${!selectedApproval ? "hidden lg:block" : ""}`}>
+        <div className={`flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 ${!selectedApproval ? "hidden lg:block" : ""}`}>
           <DetailPanel 
             approval={selectedApproval} 
             onApprove={handleApprove}

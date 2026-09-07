@@ -364,10 +364,10 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       whileTap={reduced ? undefined : { scale: 0.98 }}
       className={cn(
         "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
-        RADIUS.card,
+        "rounded-[var(--np-radius-lg)]",
         isSelected
-          ? "border-primary/30 bg-card/70 shadow-lg z-10"
-          : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
+          ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] z-10"
+          : "hover:border-divide hover:bg-[color:var(--g-surface-2)] hover:shadow-[var(--np-shadow)]",
         agent.status === "idle" && "opacity-85",
       )}
     >

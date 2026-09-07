@@ -211,12 +211,12 @@ export function WorkflowCard({
     >
       <Link href={`/workflows/${id}`}>
         <div className={`
-          relative cursor-pointer rounded-xl border bg-[color:var(--g-surface-1)] p-4 shadow-[var(--g-shadow-surface)] transition-all duration-200
+          relative cursor-pointer rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-all duration-200
           hover:border-[color:var(--g-border-active)] hover:shadow-[var(--g-shadow-elevated)]
-          ${isRunning ? "border-[color:var(--g-signal)]/35" : "border-[color:var(--g-border-default)]"}
+          ${isRunning ? "border-[color:var(--g-signal)]/35" : "border-divide"}
         `}>
           {isRunning ? (
-            <div className="pointer-events-none absolute inset-0 rounded-xl bg-[color:var(--g-signal)]/[0.04]" />
+            <div className="pointer-events-none absolute inset-0 rounded-[var(--np-radius-lg)] bg-[color:var(--g-signal)]/[0.04]" />
           ) : null}
 
           {/* Header */}

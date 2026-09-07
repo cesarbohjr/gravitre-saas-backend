@@ -633,7 +633,9 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className={cn("overflow-hidden border border-border bg-card/50 backdrop-blur-sm", RADIUS.card)}
+                className={cn(
+                  "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
+                )}
               >
                 <DataTable
                   columns={columns}

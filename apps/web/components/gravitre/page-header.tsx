@@ -3,7 +3,7 @@
 import type { ComponentType } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 
 /** Lucide or Nucleo semantic icons — only `className` is required at call sites. */
 type HeaderIcon = ComponentType<{ className?: string }>
@@ -42,7 +42,13 @@ export function PageHeader({
   const tint = iconColor ?? "from-primary/15 to-primary/5"
 
   return (
-    <div className={cn("min-w-0 p-4 sm:p-6", !className?.includes("border") && "border-b border-border", className)}>
+    <div
+      className={cn(
+        "min-w-0 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5",
+        !className?.includes("border") && "border-b border-divide",
+        className,
+      )}
+    >
       <div className="mb-4 flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           {Icon && (
@@ -50,19 +56,17 @@ export function PageHeader({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className={cn(
-                // ring-border/60 is theme-aware (was ring-white/10, invisible
-                // in light mode). Consumers appending ring-* still override it.
-                "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60",
-                tint
+                "flex shrink-0 items-center justify-center rounded-[var(--np-radius-md)] ring-1",
+                usesBrandTint
+                  ? "bg-[color:var(--g-brand-soft)] ring-[color:var(--g-brand-border)]"
+                  : cn("bg-gradient-to-br ring-border/60", tint),
               )}
               style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
             >
-              {/* On the brand tint the glyph reads as branded; on a custom
-                  tint it stays neutral so it can't clash with that hue. */}
               <Icon
                 className={cn(
                   "h-5 w-5 shrink-0",
-                  usesBrandTint ? "text-primary" : "text-foreground",
+                  usesBrandTint ? "text-[color:var(--g-brand)]" : "text-foreground",
                 )}
               />
             </motion.div>
@@ -99,10 +103,8 @@ export function StatsGrid({ children, columns = 3, className }: StatsGridProps) 
   return (
     <div
       className={cn(
-        "grid gap-2 sm:gap-3",
+        "grid gap-[var(--np-kpi-gap)]",
         columns === 2 && "grid-cols-2",
-        // Start at 2 cols on small phones so labels like "Recommendation
-        // success rate" aren't crushed, then expand to 3 from sm up.
         columns === 3 && "grid-cols-2 sm:grid-cols-3",
         columns === 4 && "grid-cols-2 sm:grid-cols-4",
         className
@@ -131,18 +133,18 @@ export function StatCard({
   // mode. The `--success`/`--warning`/`--info`/`--destructive` tokens already
   // carry per-theme values.
   const variantStyles = {
-    default: "bg-secondary/50",
-    success: "border-success/20 bg-success/10",
-    warning: "border-warning/20 bg-warning/10",
-    info: "border-info/20 bg-info/10",
-    danger: "border-destructive/20 bg-destructive/10",
+    default: "border-divide bg-[color:var(--g-surface-1)]",
+    success: "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]",
+    warning: "border-amber-300/50 bg-amber-500/10",
+    info: "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)]",
+    danger: "border-destructive/25 bg-destructive/10",
   }
 
   const valueColors = {
-    default: "text-foreground",
-    success: "text-success",
-    warning: "text-warning",
-    info: "text-info",
+    default: "text-[color:var(--g-text-primary)]",
+    success: "text-[color:var(--g-brand)]",
+    warning: "text-amber-800",
+    info: "text-[color:var(--g-brand-active)]",
     danger: "text-destructive",
   }
 
@@ -151,16 +153,16 @@ export function StatCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "p-2 sm:p-3 text-center border border-transparent",
-        RADIUS.tile,
+        "border p-3 text-center shadow-[var(--np-shadow)] sm:p-4",
+        "rounded-[var(--np-radius-lg)]",
         variantStyles[variant],
         className
       )}
     >
-      <div className={cn("text-lg sm:text-xl font-semibold tabular-nums", valueColors[variant])}>
+      <div className={cn("text-lg font-semibold tabular-nums sm:text-xl", valueColors[variant])}>
         {value}
       </div>
-      <div className={TYPE.metricLabel}>{label}</div>
+      <div className={cn(TYPE.metricLabel, "mt-0.5 text-[color:var(--g-text-muted)]")}>{label}</div>
     </motion.div>
   )
 }

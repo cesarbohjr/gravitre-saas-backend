@@ -597,14 +597,19 @@ const nucleoByName: Partial<
   chevronDown: NucleoChevronDown,
   forward: NucleoArrowRight,
   agents: NucleoAgent,
+  team: NucleoAgent,
   ai: NucleoIntelligence,
   brain: NucleoIntelligence,
+  sparkles: NucleoIntelligence,
   workflows: NucleoWorkflow,
   automations: NucleoWorkflow,
   workflow: NucleoWorkflow,
+  waypoints: NucleoWorkflow,
   connectors: NucleoConnector,
   apps: NucleoConnector,
+  blocks: NucleoConnector,
   approvals: NucleoApproval,
+  clipboardCheck: NucleoApproval,
 }
 
 // Icon component props

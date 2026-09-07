@@ -421,3 +421,18 @@ Cesar approved Gate audit (“I approve”). Authorization to implement **P1 →
 
 **Not claimed:** production visual PASS (needs Vercel Ready + authenticated `/home` vs PNG).  
 **Scaffold:** (a) authorized by Gate approval — no invented prices/claims/Enable toggles.
+
+---
+
+## Shipped — P4–P7 (2026-09-07)
+
+Cesar authorized “move to p4+”. See `docs/delivery/nodus-product-ui-p4-p7-shipped-2026-09-07.md`.
+
+| Phase | Delivered |
+|-------|-----------|
+| P4 | `nodus-product` primitives (table/badge/empty/page-header/status) + PageHeader/StatCard Nodus tokens |
+| P5 | Nucleo map for sidebar IconNames (`team`/`waypoints`/`blocks`/`clipboardCheck`/`sparkles`); Lucide residual for others |
+| P6 | Agents orb + Workflows card/table chrome |
+| P7 | Activity panes + Approvals queue/detail chrome |
+
+**Not claimed:** authenticated visual fidelity PASS. P8+ still open.

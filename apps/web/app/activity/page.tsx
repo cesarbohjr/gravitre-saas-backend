@@ -545,8 +545,8 @@ function ActivityPageInner() {
             <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
               <section
                 className={cn(
-                  "flex min-h-0 flex-col overflow-hidden border border-border bg-card shadow-sm lg:w-[380px] lg:shrink-0",
-                  RADIUS.panel,
+                  "flex min-h-0 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:w-[380px] lg:shrink-0",
+                  "rounded-[var(--np-radius-lg)]",
                 )}
               >
                 {/* Count lives on the tab now — repeating it here read as two
@@ -808,8 +808,8 @@ function ActivityPageInner() {
 
               <section
                 className={cn(
-                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-border bg-card shadow-sm",
-                  RADIUS.panel,
+                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
+                  "rounded-[var(--np-radius-lg)]",
                 )}
               >
                 {/* The pane header now names what is selected instead of saying
