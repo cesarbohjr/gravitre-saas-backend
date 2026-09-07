@@ -97,6 +97,27 @@ def _clear_assistant_tool_caches():
 
 
 @pytest.fixture(autouse=True)
+def _clear_org_context_caches():
+    """Isolate the get_org_context TTL/singleflight cache + service-client
+    singleton (backend/app/auth/dependencies.py, org_context_cache.py) between
+    tests. Every test in this suite shares the same test SUPABASE_URL/
+    SUPABASE_SERVICE_ROLE_KEY (see `_set_required_env_vars` above), so without
+    this, one test's cached org-context resolution (or cached, patched
+    `create_client` mock) would silently leak into the next test that happens
+    to reuse the same user_id/org_id — exactly the class of shared-mutable-
+    module-state bug this program has hit before with other short-TTL caches.
+    """
+    from app.auth.dependencies import clear_cached_service_client
+    from app.auth.org_context_cache import clear_org_context_cache
+
+    clear_org_context_cache()
+    clear_cached_service_client()
+    yield
+    clear_org_context_cache()
+    clear_cached_service_client()
+
+
+@pytest.fixture(autouse=True)
 def _reset_singletons():
     import app.services.model_router as model_router_module
     import app.services.decision_service as decision_service_module
