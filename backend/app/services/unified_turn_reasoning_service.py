@@ -620,6 +620,7 @@ async def run_unified_turn_shadow(
         }
         use_embed, shape_label, retrieval_query = False, "conversational", _msg
         embed_on = False
+        max_tools = 0
         t_after_narrow = time.perf_counter()
     else:
         all_tools = registry.get_tools_for_agent(permitted, connected)
