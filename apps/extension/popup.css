@@ -1,8 +1,19 @@
+:root {
+  /* Nodus full-match token bridge (light-first) — mirror apps/web globals */
+  --background: #ffffff;
+  --foreground: #202020;
+  --primary: #16a374;
+  --primary-foreground: #ffffff;
+  --muted-foreground: #8b8b8b;
+  --border: #eaedf1;
+  --brand: #16a374;
+}
+
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  color: #0f172a;
-  background: #fff;
+  font-family: "Inter Display", "Segoe UI", system-ui, sans-serif;
+  color: var(--foreground);
+  background: var(--background);
   width: 300px;
 }
 main {
@@ -14,7 +25,7 @@ h1 {
   letter-spacing: -0.02em;
 }
 .muted {
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.45;
   margin: 0 0 12px;
@@ -26,9 +37,9 @@ h1 {
 }
 button {
   appearance: none;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #0f172a;
-  color: #fff;
+  border: 1px solid var(--border);
+  background: var(--primary);
+  color: var(--primary-foreground);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 13px;
@@ -37,6 +48,6 @@ button {
   text-align: left;
 }
 button.secondary {
-  background: #fff;
-  color: #0f172a;
+  background: var(--background);
+  color: var(--foreground);
 }

@@ -1,28 +1,30 @@
 :root {
   /**
-   * Desktop token bridge (UI 2.0 Phase 9) — aliases map to the same semantic
-   * roles as apps/web/app/globals.css dark theme. Layout chrome stays local;
-   * only color/type tokens are shared by name.
-   *
-   * Web dark SOT (approx):
-   *   --background ≈ oklch(0.08 0.01 250) → #0B0F14
-   *   --primary    ≈ oklch(0.72 0.14 162) → #16a374 family
-   *   --card       ≈ oklch(0.11 0.01 250)
+   * Desktop token bridge — Nodus full-match / light-first (Gate 0 approved).
+   * Semantic names must match apps/web/app/globals.css :root.
+   * Brand green #16a374 (logo). Typography: Inter Display + DM Mono when bundled;
+   * system stack is the fallback until desktop ships the same font files.
    */
-  color-scheme: light dark;
-  --background: #0b0f14;
-  --foreground: #f2f4f3;
-  --card: #11161d;
-  --border: #2a332e;
-  --muted: #171c19;
-  --muted-foreground: #8b968f;
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #202020;
+  --card: #ffffff;
+  --border: #eaedf1;
+  --muted: #f5f5f5;
+  --muted-foreground: #8b8b8b;
   --primary: #16a374;
-  --primary-foreground: #f5fffa;
+  --primary-foreground: #ffffff;
   --destructive: #c45c5c;
   --warning: #c9a227;
   --success: #16a374;
   --info: #4d8fd9;
   --ring: #16a374;
+  --brand: #16a374;
+  --brand-soft: #e0f3ec;
+  --g-canvas: #ffffff;
+  --g-background: #f9f9f9;
+  --g-text-primary: #202020;
+  --g-text-muted: #8b8b8b;
   --status-pending: var(--warning);
   --status-approved: var(--success);
   --status-rejected: var(--destructive);
@@ -37,11 +39,11 @@
   --panel: var(--card);
   --text: var(--foreground);
   --accent: var(--primary);
-  --accent-dim: color-mix(in srgb, var(--primary) 55%, #0b0f14);
+  --accent-dim: color-mix(in srgb, var(--primary) 55%, #ffffff);
   --danger: var(--destructive);
   --warn: var(--warning);
 
-  font-family: "Geist", "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+  font-family: "Inter Display", "Segoe UI", "SF Pro Text", system-ui, sans-serif;
 }
 
 * {

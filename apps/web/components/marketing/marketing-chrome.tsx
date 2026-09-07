@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -44,7 +44,6 @@ export function MarketingChrome({
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
   const { setTheme } = useTheme()
-  const savedThemeRef = useRef<string | null>(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,17 +53,14 @@ export function MarketingChrome({
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // UI 3.0 Phase 3: light-first marketing daylight canvas.
-  // Restore the user's ThemeProvider preference on leave so the product app
-  // keeps working light / dark / system.
+  // Light-first only (Nodus full-match Gate 0) — marketing stays daylight; no dark restore.
   useEffect(() => {
     const root = document.documentElement
-    savedThemeRef.current = localStorage.getItem("theme")
     root.dataset.marketingCanvas = "daylight"
     setTheme("light")
     return () => {
       delete root.dataset.marketingCanvas
-      setTheme(savedThemeRef.current || "system")
+      setTheme("light")
     }
   }, [setTheme])
 

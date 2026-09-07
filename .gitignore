@@ -67,3 +67,7 @@ tests_list.txt
 # Screenshots from scripts/verify-topbar-touch-targets.mjs
 .playwright-out/
 .vercel
+
+# Licensed Nodus (Aceternity) — source on disk, not committed by default
+vendor/nodus-agent-template/
+

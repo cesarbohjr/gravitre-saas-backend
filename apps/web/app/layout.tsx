@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { MotionProvider } from '@/components/motion-provider'
@@ -13,10 +12,9 @@ import { EnterpriseBrandingProvider } from '@/lib/enterprise-branding-context'
 import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
+import { interDisplay } from '@/fonts/inter-display/inter'
+import { dmMono } from '@/fonts/dm-mono'
 import './globals.css'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 // Allow pinch-to-zoom for accessibility (low-vision users).
 // iOS auto-zoom on focus is prevented via 16px-minimum input font sizes, not by blocking zoom.
@@ -25,10 +23,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
-    { media: '(prefers-color-scheme: dark)', color: '#0B0F14' },
-  ],
+  // Light-first only (Nodus full-match Gate 0 decision).
+  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#ffffff' }],
 }
 
 export const metadata: Metadata = {
@@ -81,12 +77,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${interDisplay.variable} ${dmMono.variable}`}
+    >
       <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem
+          forcedTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <MotionProvider>

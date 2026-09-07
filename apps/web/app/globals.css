@@ -4,35 +4,85 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Nodus Agent Template tokens → Gravitre (Gate 0 approved 2026-09-06).
+ * Orange #f17463 → logo green #16a374. Light-first only.
+ * Vendor zip remains gitignored; committed mirrors live under apps/web/fonts.
+ */
+@theme {
+  --font-primary: var(--font-inter-display), 'Inter Display', ui-sans-serif, sans-serif;
+  --color-charcoal-900: #202020;
+  --color-charcoal-800: #29292e;
+  --color-charcoal-700: #343434;
+  --color-gray-100: #f9f9f9;
+  --color-gray-200: #f5f5f5;
+  --color-gray-300: #eaedf1;
+  --color-gray-400: #d7d7d7;
+  --color-gray-500: #c0c0c0;
+  --color-gray-600: #8b8b8b;
+  /* Nodus --color-brand was #f17463; Gravitre brand green */
+  --color-brand: #16a374;
+  --color-brand-soft: #e0f3ec;
+  --shadow-aceternity:
+    0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
+    0px 0px 0px 1px rgba(25, 28, 33, 0.08);
+  --background-repeating-gradient: radial-gradient(
+    var(--color-gray-300) 1px,
+    transparent 1px
+  );
+  --repeat-gradient-size: 10px 10px;
+  --animate-orbit: orbit 24s linear infinite;
+  --animate-counter-orbit: counter-orbit 24s linear infinite;
+
+  @keyframes orbit {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes counter-orbit {
+    0% {
+      transform: rotate(360deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+}
+
 :root {
-  /* Gravitre Brand - Light theme */
-  /* Primary: Emerald green | Accent: Electric blue */
-  /* Background: warm mineral canvas (Design Pass 2 light) */
-  --background: oklch(0.985 0.006 110);
-  --foreground: oklch(0.22 0.018 165);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 160);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 160);
-  /* Primary: Gravitre brand emerald green */
-  --primary: oklch(0.55 0.14 162);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.006 160);
-  --secondary-foreground: oklch(0.18 0.02 160);
-  --muted: oklch(0.96 0.006 160);
-  --muted-foreground: oklch(0.48 0.02 160);
+  /* Gravitre Brand — light-first (Nodus full-match) */
+  /* Brand green #16a374 from gravitre-icon-green-1024.png */
+  --brand: #16a374;
+  --brand-soft: #e0f3ec;
+  --background: #ffffff;
+  --foreground: #202020;
+  --card: #ffffff;
+  --card-foreground: #202020;
+  --popover: #ffffff;
+  --popover-foreground: #202020;
+  /* Primary = Gravitre brand green (was approximate oklch; now exact hex) */
+  --primary: #16a374;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #202020;
+  --muted: #f5f5f5;
+  --muted-foreground: #8b8b8b;
   /* Accent = the interactive hover/active SURFACE token (shadcn semantics),
      not a decorative brand color. It was electric blue (hue 250, chroma .16 on
      the foreground), which tinted every `hover:bg-accent` / `hover:text-
      accent-foreground` blue and fought the emerald active state. Keep it on the
      brand-neutral ramp (hue 160); genuine blue lives in --info / --chart-2. */
-  --accent: oklch(0.95 0.012 160);
-  --accent-foreground: oklch(0.18 0.02 160);
+  --accent: #f5f5f5;
+  --accent-foreground: #202020;
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.01 160);
-  --input: oklch(0.96 0.006 160);
-  --ring: oklch(0.55 0.14 162);
+  --border: #eaedf1;
+  --input: #f5f5f5;
+  --ring: #16a374;
   /* Status colors. The -foreground pairs are for content sitting on a SOLID
      status fill (e.g. a filled success dot); text on a low-opacity status tint
      should use text-success/-warning/-info instead. */
@@ -69,14 +119,14 @@
   /* Top inset highlight for "glass" edge on elevated surfaces */
   --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.6);
   /* Sidebar: subtle cool surface with brand-emerald accents */
-  --sidebar: oklch(0.97 0.008 160);
-  --sidebar-foreground: oklch(0.18 0.02 160);
-  --sidebar-primary: oklch(0.55 0.14 162);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.012 160);
-  --sidebar-accent-foreground: oklch(0.18 0.02 160);
-  --sidebar-border: oklch(0.91 0.008 160);
-  --sidebar-ring: oklch(0.55 0.14 162);
+  --sidebar: #f9f9f9;
+  --sidebar-foreground: #202020;
+  --sidebar-primary: #16a374;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #202020;
+  --sidebar-border: #eaedf1;
+  --sidebar-ring: #16a374;
   /* Assistant chat avatar (design handoff). A muted brand green (#3f5b52) that
      stays dark in both themes so the white mark keeps contrast without needing a
      per-theme asset swap. `speaking` brightens to --primary, which is the same
@@ -110,39 +160,45 @@
   --status-idle: var(--muted-foreground);
 
   /* ------------------------------------------------------------------
-     UI 3.0 Design System — light-first foundations (Hybrid A+B).
-     Warm mineral canvas · graphite · violet intelligence · emerald truth ·
-     cyan signal · amber approval. Depth via shadow / tint / translucency.
-     Marketing `[data-marketing-canvas="void"]` is transitional until Phase 3
-     flips to daylight + Hybrid product-stage hero.
+     Nodus full-match foundations (light-first).
+     White/Nodus gray canvas · charcoal type · brand green #16a374 ·
+     violet intelligence (product only) · cyan signal · amber approval.
+     Same token names bridge web app, desktop, extension, responsive web.
      ------------------------------------------------------------------ */
-  --g-canvas: oklch(0.985 0.006 110);
+  --g-canvas: #ffffff;
   --g-void: var(--g-canvas);
-  --g-background: oklch(0.97 0.007 110);
-  --g-background-muted: oklch(0.95 0.009 110);
-  --g-surface-1: oklch(0.995 0.003 110);
-  --g-surface-2: oklch(0.975 0.006 110);
-  --g-surface-3: oklch(0.955 0.01 110);
-  --g-surface-elevated: oklch(0.998 0.002 110);
-  --g-surface-active: color-mix(in oklch, oklch(0.55 0.16 290) 6%, var(--g-surface-1));
-  --g-text-primary: oklch(0.22 0.018 165);
-  --g-text-secondary: oklch(0.42 0.02 165);
-  --g-text-muted: oklch(0.56 0.018 165);
-  --g-text-disabled: color-mix(in oklch, var(--g-text-muted) 55%, transparent);
-  --g-border-subtle: oklch(0.82 0.012 160 / 0.45);
-  --g-border-default: oklch(0.78 0.014 160 / 0.55);
-  --g-border-strong: oklch(0.7 0.016 160 / 0.65);
-  --g-border-active: color-mix(in oklch, var(--primary) 28%, var(--g-border-default));
+  --g-background: #f9f9f9;
+  --g-background-muted: #f5f5f5;
+  --g-surface-1: #ffffff;
+  --g-surface-2: #f9f9f9;
+  --g-surface-3: #f5f5f5;
+  --g-surface-elevated: #ffffff;
+  --g-surface-active: color-mix(in srgb, #16a374 6%, var(--g-surface-1));
+  --g-text-primary: #202020;
+  --g-text-secondary: #343434;
+  --g-text-muted: #8b8b8b;
+  --g-text-disabled: color-mix(in srgb, var(--g-text-muted) 55%, transparent);
+  --g-border-subtle: color-mix(in srgb, #eaedf1 85%, transparent);
+  --g-border-default: #eaedf1;
+  --g-border-strong: #d7d7d7;
+  --g-border-active: color-mix(in srgb, var(--primary) 28%, var(--g-border-default));
   --g-intelligence: oklch(0.52 0.16 290);
   --g-intelligence-bright: oklch(0.46 0.18 290);
   --g-intelligence-soft: oklch(0.94 0.035 290);
   --g-intelligence-surface: color-mix(in oklch, oklch(0.55 0.16 290) 8%, var(--g-surface-1));
   --g-intelligence-glow: 0 8px 32px -12px color-mix(in oklch, oklch(0.55 0.16 290) 28%, transparent);
   --g-emerald: var(--primary);
-  --g-emerald-bright: oklch(0.48 0.14 162);
-  --g-emerald-soft: oklch(0.94 0.035 160);
-  --g-emerald-surface: color-mix(in oklch, var(--primary) 8%, var(--g-surface-1));
-  --g-emerald-glow: 0 8px 28px -10px color-mix(in oklch, var(--primary) 30%, transparent);
+  --g-emerald-bright: #128a63;
+  --g-emerald-soft: #e0f3ec;
+  --g-emerald-surface: color-mix(in srgb, var(--primary) 8%, var(--g-surface-1));
+  --g-emerald-glow: 0 8px 28px -10px color-mix(in srgb, var(--primary) 30%, transparent);
+  /* Nodus divide / pattern tokens */
+  --divide: #eaedf1;
+  --dots: #eaedf1;
+  --line: #eaedf1;
+  --footer-link: #676767;
+  --canvas: #c0c0c0;
+  --canvas-fill: #d7d7d7;
   --g-signal: oklch(0.55 0.11 220);
   --g-signal-soft: oklch(0.94 0.03 220);
   --g-signal-surface: color-mix(in oklch, oklch(0.55 0.11 220) 8%, var(--g-surface-1));
@@ -442,8 +498,17 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-inter-display), 'Inter Display', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), 'DM Mono', ui-monospace, monospace;
+  --font-primary: var(--font-sans);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-divide: var(--divide);
+  --color-dots: var(--dots);
+  --color-line: var(--line);
+  --color-footer-link: var(--footer-link);
+  --color-canvas: var(--canvas);
+  --color-canvas-fill: var(--canvas-fill);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
