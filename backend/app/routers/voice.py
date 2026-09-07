@@ -442,11 +442,37 @@ def post_session_cancel(
 
 
 @router.post("/turn-taking/event")
-def post_turn_taking_event(
+async def post_turn_taking_event(
     body: TurnEventRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     _org: Annotated[str | None, Depends(get_org_context)],
 ) -> dict[str, Any]:
+    """Legacy HTTP duplex path: apply one VAD/STT turn-taking event to
+    in-memory turn state and return the updated snapshot.
+
+    Perf fix (2026-09-07, live regression: this endpoint's own p50/p95 under
+    realistic same-user concurrent bursts — Deepgram fires interim STT events
+    every ~100-300ms and the frontend does not serialize `postTurnTakingEvent`
+    calls, see `apps/web/hooks/use-voice-duplex-session.ts` — measured
+    ~800-1030ms per call even though `get_org_context` itself resolved in
+    0-125ms for every one of those calls (confirmed via live Railway logs).
+    Root cause: this handler was a *sync* `def`, so FastAPI/Starlette
+    dispatched it (and nothing else here needs a worker thread — the body
+    below does zero I/O, it's pure in-memory dataclass manipulation) through
+    Starlette's `run_in_threadpool` (anyio's worker-thread pool) on every
+    call. Under a same-user burst of N concurrent calls, all N sync
+    dispatches contend for OS threads + the GIL at the same time, adding a
+    near-uniform few-hundred-ms-to-1s tax to every call in the burst — this
+    matches the live symptom exactly: 15 concurrent calls each measured
+    ~1.3s, while 15 *sequential* calls to the same endpoint measured p50
+    143.7ms/p95 185.4ms (see `.tmp_probe_turn_taking_latency.py`).
+    Fix: mark this `async def`. There is nothing to await inside besides the
+    dependencies FastAPI already resolves on the event loop directly
+    (`get_current_user`, `get_org_context` are both `async def`); the actual
+    body is pure computation and now runs inline on the event loop with zero
+    thread-pool round-trip, for any real level of concurrent VAD-event
+    traffic from one voice session.
+    """
     from app.services.voice_session_service import (
         apply_stt_event_to_turn_state,
         new_turn_state,

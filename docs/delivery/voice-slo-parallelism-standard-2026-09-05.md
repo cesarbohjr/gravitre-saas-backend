@@ -505,3 +505,45 @@ This fixes the confirmed **routing** bug (why a session ever lands on the legacy
 The mutation-proof "runs off the event-loop thread" test above is itself the standing safeguard for the fix's own mechanism (a future refactor that moves the import back onto the request path, or removes `asyncio.to_thread`, fails a test immediately). No new live-scheduled probe was added in this addendum beyond that — the existing Phase 4 TTS-model guard-rail (Addendum 8) and this addendum's own tests are the current safeguard surface for the voice-startup path; a live, scheduled post-deploy probe hitting `/api/voice/status` and asserting sub-second first-call latency would be a reasonable further addition and is named here as an open item, not silently deferred.
 
 **Verification status**: root cause reproduced directly (9,583.6ms local cold-import measurement, same order of magnitude as the live 12,880ms/6,600ms trace) and confirmed via live backend logs correlated to the user's report — this is PASS-with-evidence for the *diagnosis*. The *fix* is deployed and regression-tested (5,610 backend + 199 frontend tests green) but, per this program's own standing rule, **is not closed until Cesar personally re-tests the live voice session** (a fresh deploy's first "Talk" press should no longer risk the legacy fallback) — carried forward as the same non-negotiable human-verification requirement as Addendum 8's Phase 3, not yet separately discharged for this addendum.
+
+## Addendum 10 (2026-09-07) — Legacy path's own `/turn-taking/event` latency (flagged, not fixed, in Addendum 9): audit + fix
+
+Follow-up request, explicit: fix the legacy HTTP duplex path's own separate `/turn-taking/event` latency (1–6s observed in the Addendum 9 live trace) to meet a 500ms budget, with zero regression to voice quality or the already-fixed no-reply/no-audio path. Note in passing: at the time this work started, an unrelated, parallel agent had already landed `5b184ab7` (`fix(voice-latency): pin conversational spoken to gpt-5.4-nano; tighten speculative EOT adopt`) directly on `main` — confirmed via `git log`/`git fetch` before touching anything here, and this addendum's own diff is scoped to files that agent did not touch (`backend/app/routers/voice.py`, this doc, one new test file).
+
+### Phase 0 — Audit, real evidence before any fix
+
+1. **First, confirmed the org-context fix (Addendum 7/the prior turn's work in this program, `get_org_context` TTL cache + singleflight + concurrent `is_platform_admin`/`list_member_org_ids`) is genuinely deployed and working.** Live sequential probe (`.tmp_probe_turn_taking_latency.py`, 25 real HTTPS calls, real HS256 JWT, real deployed backend via `railway run`):
+   ```
+   cold_first_call_ms: 371.1
+   warm_p50_ms:        143.7
+   warm_p95_ms:        185.4
+   warm_max_ms:        188.5
+   ```
+   Sequential calls are already well inside the 500ms budget — confirming the fix from the prior turn is live and effective for the *sequential* case.
+2. **Re-ran the realistic-concurrency probe** (`.tmp_probe_turn_taking_concurrent.py` — 15 same-user, same-org concurrent calls, matching the real live pattern: Deepgram fires interim STT events every ~100–300ms and the frontend does not serialize `postTurnTakingEvent` calls, confirmed in `apps/web/hooks/use-voice-duplex-session.ts`'s `onmessage` handler, which invokes the handler via `void`, unawaited):
+   ```
+   n_concurrent: 15
+   burst_wall_clock_ms: 1347.7
+   p50_ms: 1329.9   p95_ms: 1345.0   max_ms: 1345.0   min_ms: 1311.1
+   ```
+   Still ~9x the sequential cost, and every one of the 15 calls finished within a 34ms window of each other — the signature of a *shared, uniform* tax applied to the whole burst, not per-call cost.
+3. **Pulled fresh live Railway logs for the exact same burst** and found the real, direct evidence: `org_context_resolved` (the dependency the prior fix targeted) logged `elapsed_ms=0` to `elapsed_ms=392` for every one of the 15 calls in the burst — i.e. **the dependency the last fix targeted is genuinely fast now**. But the `app.main` request-completion log line for those *same* `request_id`s showed **475ms–1030ms total**, hundreds of ms higher than `org_context_resolved`'s own elapsed time. The gap is real and lives somewhere *after* org-context resolution, not in it.
+4. **Root cause, confirmed by reading the handler**: `post_turn_taking_event` (`backend/app/routers/voice.py`) was declared as a **sync `def`**, not `async def`, even though its body does zero I/O — it only builds a `TurnTakingState` dataclass and calls `apply_stt_event_to_turn_state` (pure in-memory string/dataclass manipulation, confirmed by reading `voice_session_service.py`). FastAPI/Starlette dispatches every sync `def` route handler through `starlette.concurrency.run_in_threadpool` (anyio's worker-thread pool). Under a same-user burst of N concurrent calls (the real, live pattern — not a probe artifact), N sync dispatches contend for OS worker threads and the GIL at the same moment, adding a near-uniform tax to every call in the burst — exactly matching the observed signature (uniform ~1.3s across all 15 calls, `org_context_resolved` itself fast). `post_stt_live_token` and `post_session_cancel` on the same router share this same *sync `def`* shape, but are called at session-start/barge-in frequency, not per-VAD-event frequency, so they were not in scope for this specific, live-flagged symptom and were left untouched.
+
+### Phase 1 — Fix
+
+`backend/app/routers/voice.py`: changed `post_turn_taking_event` from `def` to `async def`. Nothing else changed — its two dependencies (`get_current_user`, `get_org_context`) were already `async def` and are resolved by FastAPI directly on the event loop regardless; the body itself has no blocking call to `await` (confirmed: no network, no DB, no `time.sleep`, no file I/O), so this is a pure removal of unnecessary thread-pool dispatch overhead, not a behavior change. Zero risk to voice quality: this endpoint returns turn-taking *state* JSON only, never touches TTS/STT audio generation or ElevenLabs/Deepgram configuration.
+
+### Mutation proof
+
+`backend/tests/routers/test_voice_turn_taking_async_perf.py` (2 new tests):
+- `test_post_turn_taking_event_is_async_def` — fails immediately if a future edit reverts the handler to a sync `def` (the exact silent-regression shape that let this ship undetected the first time: no single-call test would ever catch it, since a single call's *behavior* is identical either way — only concurrent-load timing differs).
+- `test_post_turn_taking_event_body_has_no_blocking_calls` — structural guard: since the handler now runs directly on the event loop with no thread-pool isolation, asserts its source never gains a genuinely blocking call (sync `requests.`/`httpx.Client(`/`supabase.create_client(`/`time.sleep(`/`.execute()` marker), which would otherwise stall the whole event loop for every concurrent voice session on that worker, not just the caller.
+
+### Regression battery
+
+Full backend suite: **5,624 passed, 3 skipped, 0 failed** (`pytest -q`, ~20m32s), including the 2 new tests above and the existing 4 turn-taking-related tests (`pytest -k turn_taking`, all green). No frontend files touched by this addendum.
+
+### Re-measurement — pending live deploy
+
+Committed and pushed; live re-measurement of the same 15-concurrent-call burst against the deployed tip, plus a full 3-scenario voice-latency probe to confirm zero regression to the already-proven speculative-generation/SLO work, to follow immediately after deploy confirmation. Numbers will be appended below this line once measured against the live, deployed `git_sha` — not estimated.
