@@ -58,11 +58,14 @@ Mobile responsive: inherits web tokens; Nodus breakpoints preserved when marketi
 
 ## Explicitly not done yet (next)
 
-1. Marketing homepage = Nodus section order + real Gravitre logo (no fake prices/claims)
-2. Port Nodus marketing primitives (navbar, hero, CTA, …)
+1. ~~Marketing homepage = Nodus section order + real Gravitre logo~~ → **in progress Phase 5** (see visual parity plan)
+2. Port remaining marketing routes
 3. Nucleo pass on product chrome
 4. App shell PLATFORM-ADAPT from Nodus material
-5. Bundle Inter Display into desktop/extension packages (currently family-name fallback)
+5. Bundle Inter Display into desktop/extension packages
+
+Visual parity plan: `docs/delivery/ui-3-0-nodus-full-match-visual-parity-plan-2026-09-06.md`
+
 
 ---
 
