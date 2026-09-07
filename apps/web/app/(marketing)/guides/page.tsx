@@ -2,25 +2,25 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  ArrowRight, 
-  Clock, 
+import {
+  ArrowRight,
+  Clock,
   BookOpen,
   Zap,
   Bot,
   Workflow,
   Database,
-  Shield,
-  Code,
-  Users,
   Lightbulb,
-  TrendingUp,
-  Settings,
   Play,
-  Filter
 } from "lucide-react"
 import { useState } from "react"
 import { guideHref } from "@/lib/marketing-guide-links"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  MarketingPageEndCta,
+  MarketingPageHero,
+  MarketingRails,
+} from "@/components/marketing/nodus/page-shell"
 
 const categories = [
   { id: "all", label: "All Guides", icon: BookOpen },
@@ -53,7 +53,8 @@ const guides = [
   },
   {
     title: "Understanding Agent Capabilities",
-    description: "Deep dive into what AI agents can do: data analysis, content generation, decision making, and more.",
+    description:
+      "Deep dive into what AI agents can do: data analysis, content generation, decision making, and more.",
     category: "agents",
     difficulty: "Intermediate",
     time: "15 min",
@@ -62,7 +63,8 @@ const guides = [
   },
   {
     title: "Building Multi-Step Workflows",
-    description: "Create sophisticated automation workflows that chain multiple agents and actions together.",
+    description:
+      "Create sophisticated automation workflows that chain multiple agents and actions together.",
     category: "workflows",
     difficulty: "Intermediate",
     time: "20 min",
@@ -71,7 +73,8 @@ const guides = [
   },
   {
     title: "Connecting Salesforce CRM",
-    description: "Step-by-step guide to integrating Gravitre with your Salesforce instance for sales automation.",
+    description:
+      "Step-by-step guide to integrating Gravitre with your Salesforce instance for sales automation.",
     category: "integrations",
     difficulty: "Beginner",
     time: "12 min",
@@ -119,7 +122,8 @@ const guides = [
   },
   {
     title: "Workflow Error Handling",
-    description: "Implement robust error handling, retries, and fallback strategies in your workflows.",
+    description:
+      "Implement robust error handling, retries, and fallback strategies in your workflows.",
     category: "workflows",
     difficulty: "Advanced",
     time: "18 min",
@@ -183,137 +187,53 @@ const difficultyColors: Record<string, string> = {
 
 export default function GuidesPage() {
   const [activeCategory, setActiveCategory] = useState("all")
-  
-  const filteredGuides = activeCategory === "all" 
-    ? guides 
-    : guides.filter(g => g.category === activeCategory)
-  
-  const featuredGuides = guides.filter(g => g.featured)
+
+  const filteredGuides =
+    activeCategory === "all" ? guides : guides.filter((g) => g.category === activeCategory)
+
+  const featuredGuides = guides.filter((g) => g.featured)
 
   return (
-    <div className="bg-card">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
-        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-primary/15/50 rounded-full blur-3xl" />
-        
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 mb-6">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Learning Resources</span>
-            </div>
-            
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Guides & Tutorials
-            </h1>
-            
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Step-by-step tutorials to help you master Gravitre. From your first agent 
-              to advanced automation patterns.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="Learning Resources"
+        title="Guides & Tutorials"
+        description="Step-by-step tutorials to help you master Gravitre. From your first agent to advanced automation patterns."
+      />
 
-      {/* Featured Guides */}
-      <section className="px-6 pb-16">
-        <div className="mx-auto max-w-6xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-8"
-          >
-            <h2 className="text-2xl font-bold text-foreground">Featured Guides</h2>
-          </motion.div>
-          
-          <div className="grid gap-6 md:grid-cols-3">
-            {featuredGuides.map((guide, i) => (
-              <motion.a
-                key={guide.title}
-                href={guideHref(guide.title)}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
-              >
-                <div className="aspect-video bg-gradient-to-br from-primary/10 via-white to-muted/50 p-6 flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="h-8 w-8 text-muted-foreground" />
-                  </div>
+      <DivideX />
+
+      <MarketingRails>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-8"
+        >
+          <h2 className="text-2xl font-bold text-foreground">Featured Guides</h2>
+        </motion.div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {featuredGuides.map((guide, i) => (
+            <motion.a
+              key={guide.title}
+              href={guideHref(guide.title)}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
+            >
+              <div className="aspect-video bg-gradient-to-br from-primary/10 via-white to-muted/50 p-6 flex items-center justify-center">
+                <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Play className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}>
-                      {guide.difficulty}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {guide.time}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
-                    {guide.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
-                </div>
-              </motion.a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* All Guides */}
-      <section className="px-6 py-16 border-t border-border">
-        <div className="mx-auto max-w-6xl">
-          {/* Category Filter */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex flex-wrap gap-2 mb-8"
-          >
-            {categories.map((cat) => {
-              const Icon = cat.icon
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`
-                    inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
-                    ${activeCategory === cat.id 
-                      ? 'bg-primary text-white' 
-                      : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground border border-border'
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  {cat.label}
-                </button>
-              )
-            })}
-          </motion.div>
-
-          {/* Guide Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredGuides.map((guide, i) => (
-              <motion.a
-                key={guide.title}
-                href={guideHref(guide.title)}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="group p-5 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all"
-              >
+              </div>
+              <div className="p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
+                  >
                     {guide.difficulty}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -321,18 +241,81 @@ export default function GuidesPage() {
                     {guide.time}
                   </span>
                 </div>
-                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
+                <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
                   {guide.title}
                 </h3>
                 <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
-              </motion.a>
-            ))}
-          </div>
+              </div>
+            </motion.a>
+          ))}
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Learning Path */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="flex flex-wrap gap-2 mb-8"
+        >
+          {categories.map((cat) => {
+            const Icon = cat.icon
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`
+                    inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
+                    ${
+                      activeCategory === cat.id
+                        ? "bg-primary text-white"
+                        : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground border border-border"
+                    }
+                  `}
+              >
+                <Icon className="h-4 w-4" />
+                {cat.label}
+              </button>
+            )
+          })}
+        </motion.div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredGuides.map((guide, i) => (
+            <motion.a
+              key={guide.title}
+              href={guideHref(guide.title)}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+              className="group p-5 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
+                >
+                  {guide.difficulty}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {guide.time}
+                </span>
+              </div>
+              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
+                {guide.title}
+              </h3>
+              <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
+            </motion.a>
+          ))}
+        </div>
+      </MarketingRails>
+
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -343,18 +326,42 @@ export default function GuidesPage() {
             <h2 className="text-3xl font-bold text-foreground mb-4">Recommended Learning Path</h2>
             <p className="text-muted-foreground">Follow this path to master Gravitre step by step</p>
           </motion.div>
-          
+
           <div className="relative">
-            {/* Timeline line */}
             <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-primary/100 via-emerald-300 to-transparent hidden sm:block" />
-            
+
             <div className="space-y-6">
               {[
-                { step: 1, title: "Set up your workspace", desc: "Configure your team, invite members, set permissions", time: "15 min" },
-                { step: 2, title: "Create your first agent", desc: "Build a simple AI agent to understand the basics", time: "10 min" },
-                { step: 3, title: "Connect integrations", desc: "Link your tools like Salesforce, Slack, HubSpot", time: "20 min" },
-                { step: 4, title: "Build a workflow", desc: "Chain agents and actions into automated workflows", time: "25 min" },
-                { step: 5, title: "Monitor and optimize", desc: "Use analytics to improve agent performance", time: "15 min" },
+                {
+                  step: 1,
+                  title: "Set up your workspace",
+                  desc: "Configure your team, invite members, set permissions",
+                  time: "15 min",
+                },
+                {
+                  step: 2,
+                  title: "Create your first agent",
+                  desc: "Build a simple AI agent to understand the basics",
+                  time: "10 min",
+                },
+                {
+                  step: 3,
+                  title: "Connect integrations",
+                  desc: "Link your tools like Salesforce, Slack, HubSpot",
+                  time: "20 min",
+                },
+                {
+                  step: 4,
+                  title: "Build a workflow",
+                  desc: "Chain agents and actions into automated workflows",
+                  time: "25 min",
+                },
+                {
+                  step: 5,
+                  title: "Monitor and optimize",
+                  desc: "Use analytics to improve agent performance",
+                  time: "15 min",
+                },
               ].map((item, i) => (
                 <motion.div
                   key={item.step}
@@ -379,10 +386,11 @@ export default function GuidesPage() {
             </div>
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Video Tutorials */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -400,8 +408,8 @@ export default function GuidesPage() {
               </div>
             </div>
             <p className="text-muted-foreground mb-6">
-              Prefer video content? Our YouTube channel has dozens of tutorials, 
-              walkthroughs, and tips from the Gravitre team and community.
+              Prefer video content? Our YouTube channel has dozens of tutorials, walkthroughs, and
+              tips from the Gravitre team and community.
             </p>
             <a
               href="https://youtube.com/@gravitre"
@@ -414,10 +422,11 @@ export default function GuidesPage() {
             </a>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* CTA */}
-      <section className="px-6 py-20 border-t border-border bg-muted/50">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -446,7 +455,9 @@ export default function GuidesPage() {
             </div>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
+
+      <MarketingPageEndCta />
     </div>
   )
 }

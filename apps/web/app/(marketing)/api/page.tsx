@@ -2,11 +2,10 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  ArrowRight, 
-  Code, 
-  Terminal, 
-  Zap, 
+import {
+  ArrowRight,
+  Terminal,
+  Zap,
   Lock,
   Clock,
   Globe,
@@ -17,9 +16,14 @@ import {
   Webhook,
   Key,
   BarChart3,
-  AlertCircle
 } from "lucide-react"
 import { useState } from "react"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  MarketingPageEndCta,
+  MarketingPageHero,
+  MarketingRails,
+} from "@/components/marketing/nodus/page-shell"
 
 const endpoints = [
   {
@@ -91,20 +95,20 @@ const endpoints = [
 ]
 
 const sdks = [
-  { 
-    name: "Node.js", 
+  {
+    name: "Node.js",
     install: "npm install @gravitre/sdk",
     color: "text-green-400",
     docs: "/docs/api/quickstart",
   },
-  { 
-    name: "Python", 
+  {
+    name: "Python",
     install: "pip install gravitre",
     color: "text-blue-400",
     docs: "/docs/api/quickstart",
   },
-  { 
-    name: "Go", 
+  {
+    name: "Go",
     install: "go get github.com/gravitre/go-sdk",
     color: "text-cyan-400",
     docs: "/docs/api/quickstart",
@@ -159,18 +163,15 @@ console.log(result.steps);  // Array of step outputs
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
-  
+
   const copy = () => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-  
+
   return (
-    <button 
-      onClick={copy}
-      className="p-2 rounded-lg hover:bg-muted transition-colors"
-    >
+    <button onClick={copy} className="p-2 rounded-lg hover:bg-muted transition-colors">
       {copied ? (
         <Check className="h-4 w-4 text-emerald-400" />
       ) : (
@@ -182,84 +183,64 @@ function CopyButton({ text }: { text: string }) {
 
 export default function APIPage() {
   return (
-    <div className="bg-card">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/15/50 rounded-full blur-3xl" />
-        
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="REST API v1"
+        title={
+          <>
+            Build with the
+            <br />
+            <span className="text-brand">Gravitre API</span>
+          </>
+        }
+        description="Execute workflows, query intelligence endpoints, and wire Gravitre into your stack — with the same connector health and approval gates as the product UI."
+      >
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link
+            href="/docs/api/quickstart"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white hover:bg-foreground/90 transition-colors"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/100/10 px-4 py-2 mb-6">
-              <Terminal className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">REST API v1</span>
-            </div>
-            
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              <span className="text-foreground">
-                Build with the
-              </span>
-              <br />
-              <span className="text-primary">Gravitre API</span>
-            </h1>
-            
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Execute workflows, query intelligence endpoints, and wire Gravitre into your stack —
-              with the same connector health and approval gates as the product UI.
-            </p>
-            
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/docs/api/quickstart"
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white hover:bg-foreground/90 transition-colors"
-              >
-                Get Started
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/docs/api/reference"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-              >
-                <BookOpen className="h-4 w-4" />
-                API Reference
-              </Link>
-            </div>
-          </motion.div>
+            Get Started
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/docs/api/reference"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <BookOpen className="h-4 w-4" />
+            API Reference
+          </Link>
         </div>
-      </section>
+      </MarketingPageHero>
 
-      {/* Features */}
-      <section className="px-6 py-16 border-t border-border">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-start gap-4 p-5 rounded-xl border border-border bg-muted/50"
-              >
-                <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                  <feature.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-foreground">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+      <DivideX />
+
+      <MarketingRails>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature, i) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="flex items-start gap-4 p-5 rounded-xl border border-border bg-muted/50"
+            >
+              <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <feature.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+              </div>
+            </motion.div>
+          ))}
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Code Example */}
-      <section className="px-6 py-20">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -267,10 +248,14 @@ export default function APIPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-foreground mb-4">Simple, powerful integration</h2>
-            <p className="text-muted-foreground">Execute AI agents with just a few lines of code</p>
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Simple, powerful integration
+            </h2>
+            <p className="text-muted-foreground">
+              Execute AI agents with just a few lines of code
+            </p>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -290,36 +275,41 @@ export default function APIPage() {
             </div>
             <pre className="p-6 overflow-x-auto text-sm">
               <code className="text-muted-foreground font-mono">
-                {codeExample.split('\n').map((line, i) => (
+                {codeExample.split("\n").map((line, i) => (
                   <div key={i} className="leading-relaxed">
-                    {line.includes('import') && <span className="text-purple-400">{line}</span>}
-                    {line.includes('const') && !line.includes('import') && (
+                    {line.includes("import") && <span className="text-purple-400">{line}</span>}
+                    {line.includes("const") && !line.includes("import") && (
                       <span>
                         <span className="text-purple-400">const </span>
-                        <span className="text-white">{line.replace('const ', '')}</span>
+                        <span className="text-white">{line.replace("const ", "")}</span>
                       </span>
                     )}
-                    {line.includes('await') && (
+                    {line.includes("await") && (
                       <span>
                         <span className="text-purple-400">await </span>
-                        <span className="text-white">{line.replace(/.*await /, '')}</span>
+                        <span className="text-white">{line.replace(/.*await /, "")}</span>
                       </span>
                     )}
-                    {line.includes('//') && <span className="text-muted-foreground">{line}</span>}
-                    {line.includes('console') && <span className="text-cyan-400">{line}</span>}
-                    {!line.includes('import') && !line.includes('const') && !line.includes('await') && !line.includes('//') && !line.includes('console') && (
-                      <span className="text-muted-foreground">{line}</span>
-                    )}
+                    {line.includes("//") && <span className="text-muted-foreground">{line}</span>}
+                    {line.includes("console") && <span className="text-cyan-400">{line}</span>}
+                    {!line.includes("import") &&
+                      !line.includes("const") &&
+                      !line.includes("await") &&
+                      !line.includes("//") &&
+                      !line.includes("console") && (
+                        <span className="text-muted-foreground">{line}</span>
+                      )}
                   </div>
                 ))}
               </code>
             </pre>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Endpoints */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -328,7 +318,7 @@ export default function APIPage() {
             className="flex items-center justify-between mb-8"
           >
             <h2 className="text-2xl font-bold text-foreground">API Endpoints</h2>
-            <Link 
+            <Link
               href="/docs/api/reference"
               className="text-sm text-primary hover:text-primary flex items-center gap-1"
             >
@@ -336,7 +326,7 @@ export default function APIPage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
           </motion.div>
-          
+
           <div className="space-y-3">
             {endpoints.map((endpoint, i) => (
               <motion.div
@@ -347,10 +337,12 @@ export default function APIPage() {
                 transition={{ delay: i * 0.05 }}
                 className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/50 hover:border-primary/50 transition-colors cursor-pointer"
               >
-                <span className={`
+                <span
+                  className={`
                   px-2 py-1 rounded text-xs font-mono font-semibold shrink-0
-                  ${endpoint.method === 'GET' ? 'bg-blue-100 text-blue-600' : 'bg-primary/15 text-primary'}
-                `}>
+                  ${endpoint.method === "GET" ? "bg-blue-100 text-blue-600" : "bg-primary/15 text-primary"}
+                `}
+                >
                   {endpoint.method}
                 </span>
                 <code className="text-sm text-foreground font-mono">{endpoint.path}</code>
@@ -359,15 +351,18 @@ export default function APIPage() {
                     {endpoint.badge}
                   </span>
                 )}
-                <span className="text-sm text-muted-foreground ml-auto hidden sm:block">{endpoint.description}</span>
+                <span className="text-sm text-muted-foreground ml-auto hidden sm:block">
+                  {endpoint.description}
+                </span>
               </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* SDKs */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -378,7 +373,7 @@ export default function APIPage() {
             <h2 className="text-3xl font-bold text-foreground mb-4">Official SDKs</h2>
             <p className="text-muted-foreground">Type-safe clients for your favorite languages</p>
           </motion.div>
-          
+
           <div className="grid gap-4 sm:grid-cols-3">
             {sdks.map((sdk, i) => (
               <motion.div
@@ -389,9 +384,15 @@ export default function APIPage() {
                 transition={{ delay: i * 0.1 }}
                 className="p-6 rounded-xl border border-border bg-muted/50"
               >
-                <h3 className={`text-lg font-semibold ${sdk.color.replace('400', '600')} mb-3`}>{sdk.name}</h3>
+                <h3
+                  className={`text-lg font-semibold ${sdk.color.replace("400", "600")} mb-3`}
+                >
+                  {sdk.name}
+                </h3>
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-foreground border border-border mb-4">
-                  <code className="text-xs text-muted-foreground font-mono flex-1 truncate">{sdk.install}</code>
+                  <code className="text-xs text-muted-foreground font-mono flex-1 truncate">
+                    {sdk.install}
+                  </code>
                   <CopyButton text={sdk.install} />
                 </div>
                 <Link
@@ -405,10 +406,11 @@ export default function APIPage() {
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Webhooks & Events */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-8 lg:grid-cols-2">
             <motion.div
@@ -422,8 +424,8 @@ export default function APIPage() {
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">Webhooks</h3>
               <p className="text-muted-foreground mb-6">
-                Receive real-time notifications when runs complete, workflows trigger, or errors occur. 
-                All webhooks are signed for security.
+                Receive real-time notifications when runs complete, workflows trigger, or errors
+                occur. All webhooks are signed for security.
               </p>
               <Link
                 href="/docs/api/webhooks"
@@ -433,7 +435,7 @@ export default function APIPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.div>
-            
+
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -445,8 +447,8 @@ export default function APIPage() {
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">Authentication</h3>
               <p className="text-muted-foreground mb-6">
-                Secure API access with scoped API keys or OAuth 2.0. 
-                Fine-grained permissions let you control exactly what each integration can access.
+                Secure API access with scoped API keys or OAuth 2.0. Fine-grained permissions let
+                you control exactly what each integration can access.
               </p>
               <Link
                 href="/docs/api/authentication"
@@ -458,10 +460,11 @@ export default function APIPage() {
             </motion.div>
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Rate Limits */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -475,10 +478,12 @@ export default function APIPage() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-foreground mb-2">Rate Limits</h3>
-                <p className="text-muted-foreground">Generous limits designed for production workloads</p>
+                <p className="text-muted-foreground">
+                  Generous limits designed for production workloads
+                </p>
               </div>
             </div>
-            
+
             <div className="grid gap-4 sm:grid-cols-3">
               {[
                 { plan: "Starter", limit: "100 req/min", burst: "200 req/min" },
@@ -494,10 +499,11 @@ export default function APIPage() {
             </div>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* CTA */}
-      <section className="px-6 py-20 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -526,7 +532,9 @@ export default function APIPage() {
             </div>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
+
+      <MarketingPageEndCta />
     </div>
   )
 }

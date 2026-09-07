@@ -23,7 +23,7 @@ export const Button = <T extends React.ElementType = "button">({
       {...props}
       className={cn(
         // w-fit keeps black CTAs content-sized (footer column was stretching block buttons)
-        "inline-flex w-fit items-center justify-center rounded-xl px-6 py-2 text-center text-sm font-medium transition duration-150 active:scale-[0.98] sm:text-base",
+        "inline-flex w-fit items-center justify-center rounded-xl px-5 py-1.5 text-center text-sm font-medium transition duration-150 active:scale-[0.98] sm:px-6 sm:py-2 sm:text-base",
         variant === "primary"
           ? "bg-charcoal-900 text-white dark:bg-white dark:text-black"
           : variant === "brand"

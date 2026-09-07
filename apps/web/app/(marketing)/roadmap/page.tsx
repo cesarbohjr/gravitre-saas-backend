@@ -3,6 +3,12 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, CheckCircle2, Circle, Clock, ThumbsUp, MessageSquare } from "lucide-react"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  MarketingPageEndCta,
+  MarketingPageHero,
+  MarketingRails,
+} from "@/components/marketing/nodus/page-shell"
 
 const roadmapItems = {
   shipped: [
@@ -130,68 +136,56 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 export default function RoadmapPage() {
   return (
-    <div className="bg-card">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="Roadmap"
+        title="Product Roadmap"
+        description="See what we're building, vote on features you want, and help shape the future of Gravitre."
+      >
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="#suggest"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90"
           >
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-              Product Roadmap
-            </h1>
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              See what we&apos;re building, vote on features you want, and help shape the future of Gravitre.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="#suggest"
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90"
-              >
-                Suggest a feature
-                <ArrowRight className="h-4 w-4" />
-              </a>
-              <Link
-                href="/changelog"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary"
-              >
-                View changelog
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </motion.div>
+            Suggest a feature
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          <Link
+            href="/changelog"
+            className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary"
+          >
+            View changelog
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-      </section>
+      </MarketingPageHero>
 
-      {/* Legend */}
-      <section className="px-6 pb-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span className="text-sm text-muted-foreground">Shipped</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-600" />
-              <span className="text-sm text-muted-foreground">In Progress</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Circle className="h-4 w-4 text-cyan-600" />
-              <span className="text-sm text-muted-foreground">Planned</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Circle className="h-4 w-4 text-purple-600" />
-              <span className="text-sm text-muted-foreground">Exploring</span>
-            </div>
+      <DivideX />
+
+      <MarketingRails className="py-8">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground">Shipped</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-amber-600" />
+            <span className="text-sm text-muted-foreground">In Progress</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Circle className="h-4 w-4 text-cyan-600" />
+            <span className="text-sm text-muted-foreground">Planned</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Circle className="h-4 w-4 text-purple-600" />
+            <span className="text-sm text-muted-foreground">Exploring</span>
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* In Progress */}
-      <section className="px-6 py-12 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -219,10 +213,9 @@ export default function RoadmapPage() {
                       <StatusBadge status="inProgress" />
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
-                    {/* Progress bar */}
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 rounded-full bg-muted">
-                        <div 
+                        <div
                           className="h-2 rounded-full bg-amber-500 transition-all"
                           style={{ width: `${item.progress}%` }}
                         />
@@ -245,10 +238,11 @@ export default function RoadmapPage() {
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Planned */}
-      <section className="px-6 py-12 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -287,10 +281,11 @@ export default function RoadmapPage() {
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Exploring */}
-      <section className="px-6 py-12 border-t border-border bg-muted/50">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -324,10 +319,11 @@ export default function RoadmapPage() {
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Recently Shipped */}
-      <section className="px-6 py-12 border-t border-border">
+      <DivideX />
+
+      <MarketingRails>
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -357,11 +353,12 @@ export default function RoadmapPage() {
             ))}
           </div>
         </div>
-      </section>
+      </MarketingRails>
 
-      {/* Suggest Feature */}
-      <section id="suggest" className="px-6 py-24 border-t border-border bg-muted/50">
-        <div className="mx-auto max-w-xl text-center">
+      <DivideX />
+
+      <MarketingRails>
+        <div id="suggest" className="mx-auto max-w-xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -391,7 +388,9 @@ export default function RoadmapPage() {
             </form>
           </motion.div>
         </div>
-      </section>
+      </MarketingRails>
+
+      <MarketingPageEndCta />
     </div>
   )
 }

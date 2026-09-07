@@ -108,7 +108,7 @@ export function DesktopCompanionPreview() {
 
               <div className="flex-1 space-y-3">
                 <motion.div
-                  className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-[#16a374] px-3.5 py-2.5 text-sm leading-relaxed text-white"
+                  className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-blue-500 px-3.5 py-2.5 text-sm leading-relaxed text-white"
                   initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

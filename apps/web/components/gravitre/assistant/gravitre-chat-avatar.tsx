@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import { motion, useReducedMotion } from "framer-motion"
 
+import { LogoSVG } from "@/components/marketing/nodus/logo"
 import { cn } from "@/lib/utils"
 
 export type GravitreAvatarState = "idle" | "thinking" | "searching" | "speaking"
@@ -51,8 +51,7 @@ export function GravitreChatAvatar({
     <div
       className={cn(
         "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-        isSpeaking ? "bg-primary" : "bg-assistant-avatar",
-        "text-assistant-avatar-foreground",
+        isSpeaking ? "bg-primary text-white" : "border border-border bg-white text-foreground shadow-sm dark:bg-neutral-900 dark:text-white",
         "transition-colors duration-300",
         className,
       )}
@@ -127,15 +126,7 @@ export function GravitreChatAvatar({
           }
           className="flex h-full w-full items-center justify-center"
         >
-          <Image
-            src="/images/gravitre-mark-white.png"
-            alt=""
-            aria-hidden
-            width={1030}
-            height={572}
-            className="w-[18px] object-contain"
-            priority={false}
-          />
+          <LogoSVG className="size-[22px]" />
         </motion.div>
       )}
     </div>

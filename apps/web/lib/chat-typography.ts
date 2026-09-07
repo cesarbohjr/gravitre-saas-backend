@@ -8,13 +8,13 @@ export const CHAT_ROLE_LABEL_CLASS =
 export const CHAT_BUBBLE_BASE_CLASS =
   "max-w-full rounded-[10px] px-3 py-2 text-[13px] leading-relaxed sm:text-[14px]"
 
-// Handoff user bubble — solid #16a374.
+// Homepage Nodus chat parity — blue user bubbles, gray AI bubbles.
 export const CHAT_USER_BUBBLE_CLASS =
-  "bg-[#16a374] text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+  "bg-blue-500 text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
 
-// Handoff assistant bubble — white / dark card over patterned canvas.
+// Homepage Nodus chat parity — soft gray assistant bubble.
 export const CHAT_ASSISTANT_BUBBLE_CLASS =
-  "border border-[#ececea] bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-[#3a3a3a] dark:bg-[#292929] dark:text-[#e9e9e6]"
+  "border border-transparent bg-gray-100 text-charcoal-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
 
 export const CHAT_BODY_TEXT_CLASS = "text-[14px] leading-relaxed"
 

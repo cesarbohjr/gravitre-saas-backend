@@ -20,6 +20,12 @@ import {
   CheckCircle2,
 } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  MarketingPageEndCta,
+  MarketingPageHero,
+  MarketingRails,
+} from "@/components/marketing/nodus/page-shell"
 
 const WHY_STATS = [
   { value: "60+", label: "Installable templates" },
@@ -156,7 +162,7 @@ function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.24) }}
-      className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-md"
+      className="flex flex-col rounded-2xl border border-divide bg-gray-50 p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:bg-white hover:shadow-md"
     >
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${asset.tone}`}>
         <Icon className="h-6 w-6" />
@@ -186,54 +192,39 @@ export function MarketplacePage() {
   const filtered = active === "All" ? ASSETS : ASSETS.filter((a) => a.category === active)
 
   return (
-    <div className="bg-card">
-      {/* Hero + catalog */}
-      <section className="relative overflow-hidden pt-28 pb-16 sm:pt-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-white to-white" />
-        <div className="absolute -top-20 right-10 h-64 w-64 rounded-full bg-teal-200/30 blur-3xl" />
+    <div className="bg-white">
+      <MarketingPageHero
+        badge="Gravitre Marketplace"
+        title={
+          <>
+            {MARKETING_COPY.marketplace.title.split(" for the same brain")[0]} for the{" "}
+            <span className="text-brand">same brain</span>
+          </>
+        }
+        description={MARKETING_COPY.marketplace.subtitle}
+      >
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActive(cat)}
+              className={`rounded-full border px-5 py-2 text-sm font-medium transition-all ${
+                active === cat
+                  ? "border-charcoal-900 bg-charcoal-900 text-white"
+                  : "border-divide bg-white text-gray-600 hover:text-charcoal-700"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </MarketingPageHero>
 
-        <div className="relative mx-auto max-w-7xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mx-auto max-w-3xl text-center"
-          >
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2">
-              <span className="h-2 w-2 rounded-full bg-primary/100" />
-              <span className="text-sm font-medium text-primary">Gravitre Marketplace</span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
-              {MARKETING_COPY.marketplace.title.split(" for the same brain")[0]}
-              {" for the "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                same brain
-              </span>
-            </h1>
-            <p className="mt-5 text-lg text-muted-foreground text-pretty">
-              {MARKETING_COPY.marketplace.subtitle}
-            </p>
-          </motion.div>
+      <DivideX />
 
-          {/* Filter pills */}
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActive(cat)}
-                className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all ${
-                  active === cat
-                    ? "border-foreground bg-foreground text-white"
-                    : "border-border bg-card text-foreground hover:border-border hover:bg-muted/50"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Catalog grid */}
-          <motion.div layout className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <MarketingRails>
+          <motion.div layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <AnimatePresence mode="popLayout">
               {filtered.map((asset, i) => (
                 <CatalogCard key={asset.name} asset={asset} index={i} />
@@ -241,20 +232,19 @@ export function MarketplacePage() {
             </AnimatePresence>
           </motion.div>
 
-          {/* Install steps */}
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             {STEPS.map((step) => {
               const Icon = step.icon
               return (
                 <div
                   key={step.n}
-                  className="flex min-w-[220px] flex-1 items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm sm:max-w-xs"
+                  className="border-divide flex min-w-[220px] flex-1 items-center gap-3 rounded-lg border bg-gray-50 px-5 py-4 sm:max-w-xs"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-sm font-bold text-primary">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand-soft)] text-sm font-bold text-[color:var(--brand)]">
                     {step.n}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-primary" />
+                    <Icon className="h-4 w-4 text-[color:var(--brand)]" />
                     <div>
                       <div className="text-sm font-semibold text-foreground">{step.title}</div>
                       <div className="text-xs text-muted-foreground">{step.detail}</div>
@@ -264,13 +254,11 @@ export function MarketplacePage() {
               )
             })}
           </div>
-        </div>
-      </section>
+      </MarketingRails>
 
-      {/* Why the marketplace — compact stats + governance guarantees (no
-         duplicate headline/pack cards; the catalog above already covers them) */}
-      <section className="border-t border-border bg-muted/50 py-20 lg:py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <DivideX />
+
+      <MarketingRails>
           <div className="grid gap-4 sm:grid-cols-3">
             {WHY_STATS.map((stat, i) => (
               <motion.div
@@ -279,7 +267,7 @@ export function MarketplacePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm"
+                className="border-divide rounded-lg border bg-gray-50 p-6 text-center"
               >
                 <div className="text-3xl font-bold text-foreground">{stat.value}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
@@ -290,52 +278,16 @@ export function MarketplacePage() {
             {WHY_GUARANTEES.map((item) => (
               <li
                 key={item}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"
+                className="border-divide flex items-center gap-2 rounded-lg border bg-white px-4 py-3 text-sm text-foreground"
               >
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--brand)]" />
                 {item}
               </li>
             ))}
           </ul>
-        </div>
-      </section>
+      </MarketingRails>
 
-      {/* CTA */}
-      <section className="relative overflow-hidden border-t border-border bg-gradient-to-b from-white to-primary/10 py-24">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
-            Start from a proven template
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground text-pretty">
-            Every install runs a readiness check first and keeps the same approval gates as the rest of Gravitre.
-          </p>
-          <ul className="mx-auto mt-8 flex max-w-2xl flex-col gap-3 text-left sm:flex-row sm:justify-center sm:gap-8">
-            {["Readiness check before install", "Human approval on writes", "Version history and rollback"].map(
-              (item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-foreground">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                  {item}
-                </li>
-              ),
-            )}
-          </ul>
-          <div className="mt-9 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/get-started"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/100"
-            >
-              Browse the marketplace
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/features/technology"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50"
-            >
-              See the technology
-            </Link>
-          </div>
-        </div>
-      </section>
+      <MarketingPageEndCta />
     </div>
   )
 }

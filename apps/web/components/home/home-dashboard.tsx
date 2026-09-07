@@ -108,8 +108,8 @@ export function HomeDashboard({
   const lastCycleLabel = lastLearningCycle ? relativeTime(lastLearningCycle) : null
 
   const learningBars = [
-    { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: "var(--info)" },
-    { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: "var(--success)" },
+    { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: "var(--brand)" },
+    { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: "#5ec49a" },
   ]
 
   const systemStats = [
@@ -274,12 +274,12 @@ export function HomeDashboard({
             <StatCard
               label="Avg confidence · 7d"
               value={avgConfidence != null ? `${avgConfidence}%` : "—"}
-              variant={avgConfidence != null ? "info" : "default"}
+              variant={avgConfidence != null ? "success" : "default"}
             />
             <StatCard
               label="Query rows logged"
               value={<AnimatedCounter value={queryRows} className="tabular-nums" />}
-              variant="info"
+              variant="success"
             />
             <StatCard
               label="Workflow rows"
@@ -303,8 +303,8 @@ export function HomeDashboard({
           </div>
           {/* Progress for learning targets (real row counts) */}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <ProgressFooter percent={queryPct} caption="Query progress toward learning target" accent="info" />
-            <ProgressFooter percent={workflowPct} caption="Workflow progress toward observed target" accent="success" />
+            <ProgressFooter percent={queryPct} caption="Query progress toward learning target" accent="brand" />
+            <ProgressFooter percent={workflowPct} caption="Workflow progress toward observed target" accent="brandSoft" />
           </div>
         </motion.div>
 
@@ -579,13 +579,17 @@ function ProgressFooter({
 }: {
   percent: number
   caption: string
-  accent: "info" | "success"
+  accent: "brand" | "brandSoft"
 }) {
   return (
     <div>
       <div className={cn("h-1.5 w-full overflow-hidden bg-muted", RADIUS.control)}>
         <motion.div
-          className={cn("h-full", accent === "info" ? "bg-info" : "bg-success", RADIUS.control)}
+          className={cn(
+            "h-full",
+            accent === "brand" ? "bg-[color:var(--brand)]" : "bg-[#5ec49a]",
+            RADIUS.control,
+          )}
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.8, ease: "easeOut" }}

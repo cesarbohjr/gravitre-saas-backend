@@ -47,7 +47,7 @@ export function UserAccountAvatar({
       ) : null}
       <AvatarFallback
         className={cn(
-          "bg-emerald-600 font-semibold text-white",
+          "bg-blue-500 font-semibold text-white",
           fallbackClassName,
         )}
       >
