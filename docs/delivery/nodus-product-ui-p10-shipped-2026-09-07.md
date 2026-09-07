@@ -1,6 +1,6 @@
 # Nodus product UI — P10 shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready + authenticated `/settings` visual check)  
+**Status:** Shipped to `main` — Vercel Ready  
 **Gate:** Cesar “approved. start p10” — Settings / secondary / dialogs — no visual islands
 
 ## Delivered
@@ -21,5 +21,5 @@
 
 ## Evidence
 
-- Deploy: cite Vercel Ready id after push.
+- Deploy READY: `dpl_AE2Gq47G8eU8HxLdPvG6MaSqfQR1` @ tip `ad07b7df` (production alias `gravitre.app`)
 - Visual PASS: **not claimed** until signed-in `/settings` (+ billing/approvals) screenshot vs mineral shell.
