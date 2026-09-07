@@ -1,9 +1,9 @@
 # GRAVITRE × NODUS — VISUAL PARITY PLAN (vs Aceternity preview)
 
 **Date:** 2026-09-06  
-**Status:** **ACTIVE — Phase 5 in progress** (homepage Nodus port on `main` working tree; deploy required for gravitre.app)  
+**Status:** **ACTIVE — Phases 5–7 on main** (homepage + core marketing + auth chrome); await deploy for gravitre.app  
 **Preview SOT:** https://ui.aceternity.com/template-preview/nodus-agent-template  
-**Live today:** https://gravitre.app/ still shows the pre-Nodus marketing site until Phase 5 is committed, pushed, and redeployed
+**Live today:** https://gravitre.app/ updates after Vercel/Railway redeploy of `main`
 
 
 ---
