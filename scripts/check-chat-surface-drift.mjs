@@ -184,8 +184,8 @@ for (const file of files) {
         `${rel}: must not render AgentIdentityAvatar — chat discs are always the Gravitre mark`,
       )
     }
-    if (!src.includes("gravitre-mark-white.png")) {
-      failures.push(`${rel}: must render the Gravitre mark asset`)
+    if (!src.includes("LogoSVG") && !src.includes("gravitre-mark-white.png")) {
+      failures.push(`${rel}: must render the Gravitre mark (LogoSVG or gravitre-mark-white.png)`)
     }
     if (!src.includes("useReducedMotion")) {
       failures.push(`${rel}: must honour prefers-reduced-motion`)

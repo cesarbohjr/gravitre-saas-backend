@@ -110,8 +110,8 @@ const MiddleCard = () => {
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700">
           <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)] [animation-duration:2s]"></div>
           <div className="via-brand absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)] [animation-delay:1s] [animation-duration:2s]"></div>
-          <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-2.5 text-black dark:bg-neutral-900 dark:text-white">
-            <LogoSVG className="h-10 w-10" />
+          <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-1 text-black dark:bg-neutral-900 dark:text-white">
+            <LogoSVG className="size-[52px]" />
           </div>
         </div>
         <HorizontalLine />
@@ -174,7 +174,7 @@ const MiddleCard = () => {
                           delay: 0.4 + index * 0.1,
                           ease: "easeOut",
                         }}
-                        className="h-full rounded-full bg-neutral-300 dark:bg-neutral-400"
+                        className="h-full rounded-full bg-[color:var(--brand)]"
                       />
                     </div>
                   </div>

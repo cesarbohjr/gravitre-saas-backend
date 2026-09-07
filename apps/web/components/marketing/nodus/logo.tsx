@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils"
 
 /**
  * Gravitre mark for animation hubs / chat avatars.
- * Dense two-bar SVG (fills the viewBox like the original Nodus geometric mark).
- * Prefer this over padded PNG tiles so logos read at the same visual weight.
+ * Dense two-bar SVG — thick bars nearly fill the viewBox so visual weight
+ * matches the original Nodus geometric mark (not a thin outline).
  */
 export function LogoSVG({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
@@ -18,10 +18,10 @@ export function LogoSVG({ className, ...props }: SVGProps<SVGSVGElement>) {
       aria-hidden
       {...props}
     >
-      {/* Two parallel slanted bars — ~70% of the box, matching Nodus fill weight */}
+      {/* ~85% fill: thick bars + tight gap, same optical mass as Nodus squares */}
       <g transform="translate(12 12) skewX(-14) translate(-12 -12)">
-        <rect x="3.5" y="5.2" width="17" height="4.6" rx="2.1" />
-        <rect x="3.5" y="14.2" width="17" height="4.6" rx="2.1" />
+        <rect x="1.5" y="3.2" width="21" height="7" rx="2.4" />
+        <rect x="1.5" y="13.8" width="21" height="7" rx="2.4" />
       </g>
     </svg>
   )
@@ -33,9 +33,9 @@ export const Logo = () => {
       <Image
         src="/images/gravitre-logo-black.png"
         alt="Gravitre"
-        width={140}
-        height={40}
-        className="h-8 w-auto"
+        width={160}
+        height={48}
+        className="h-9 w-auto sm:h-10"
         priority
       />
     </Link>

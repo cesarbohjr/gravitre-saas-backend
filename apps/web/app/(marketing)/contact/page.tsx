@@ -64,7 +64,7 @@ export default function ContactPage() {
       <Container className="border-divide min-h-[calc(100vh-8rem)] border-x py-10 md:py-20">
         <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-20">
           <div>
-            <LogoSVG className="text-brand size-8" />
+            <LogoSVG className="text-brand size-10" />
             <Badge text="Contact" />
             <Heading className="mt-4 text-left lg:text-4xl">Get in touch</Heading>
             <SubHeading as="p" className="mt-4 max-w-xl text-left">

@@ -28,8 +28,8 @@ export type GravitreAvatarState = "idle" | "thinking" | "searching" | "speaking"
  *   speaking   — TTS is actively playing this message
  *
  * Deviations from the handoff, kept to match shipped chat chrome:
- *   1. Circle is 36px (not 32px) to match the user avatar opposite it.
- *   2. Uses `gravitre-mark-white.png` (same glyph; dark disc in both themes).
+ *   1. Circle is 40px (not 32px) so the dense Gravitre mark matches Nodus chat weight.
+ *   2. Uses dense LogoSVG mark (same glyph; white disc idle / primary disc speaking).
  */
 export function GravitreChatAvatar({
   state = "idle",
@@ -50,7 +50,7 @@ export function GravitreChatAvatar({
   return (
     <div
       className={cn(
-        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
         isSpeaking ? "bg-primary text-white" : "border border-border bg-white text-foreground shadow-sm dark:bg-neutral-900 dark:text-white",
         "transition-colors duration-300",
         className,
@@ -96,8 +96,8 @@ export function GravitreChatAvatar({
           {[0, 0.15, 0.3].map((delay, i) => (
             <motion.span
               key={delay}
-              className="w-[2.5px] rounded-full bg-current"
-              style={{ height: 10 }}
+              className="w-[3px] rounded-full bg-current"
+              style={{ height: 12 }}
               animate={
                 reduceMotion
                   ? { scaleY: 0.7 }
@@ -124,9 +124,10 @@ export function GravitreChatAvatar({
               ? { duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
               : { duration: 0 }
           }
-          className="flex h-full w-full items-center justify-center"
+          className="flex h-full w-full items-center justify-center p-1"
         >
-          <LogoSVG className="size-[22px]" />
+          {/* LogoSVG denser mark — same optical weight as Nodus chat avatar */}
+          <LogoSVG className="size-[28px]" data-gravitre-mark="svg" />
         </motion.div>
       )}
     </div>
