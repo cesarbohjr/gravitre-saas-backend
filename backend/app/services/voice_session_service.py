@@ -82,8 +82,12 @@ def is_turn_cancelled(turn_id: str) -> bool:
     return False
 
 
-def split_speakable_chunks(buffer: str, *, min_chars: int = 24) -> tuple[list[str], str]:
-    """Emit speakable chunks at sentence boundaries; keep remainder provisional."""
+def split_speakable_chunks(buffer: str, *, min_chars: int = 12) -> tuple[list[str], str]:
+    """Emit speakable chunks at sentence boundaries; keep remainder provisional.
+
+    Default ``min_chars=12`` (was 24) so spoken streaming can start TTS on a
+    shorter first clause without waiting for an 80-char flush.
+    """
     parts = _SENTENCE_END.split(buffer)
     if len(parts) <= 1:
         stripped = buffer.rstrip()
@@ -91,7 +95,7 @@ def split_speakable_chunks(buffer: str, *, min_chars: int = 24) -> tuple[list[st
         # (common for short voice answers like "Four.").
         if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
             return [stripped], ""
-        if len(buffer) >= max(min_chars * 3, 80) and (" " in buffer):
+        if len(buffer) >= max(min_chars * 2, 40) and (" " in buffer):
             # Long clause without terminal punctuation — flush a clause on comma/space.
             idx = buffer.rfind(", ", 0, len(buffer) - 10)
             if idx < min_chars:

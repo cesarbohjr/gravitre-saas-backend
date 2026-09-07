@@ -1589,17 +1589,33 @@ class AgentIntelligence:
         # own parallelization for the larger sibling fix).
         from app.services.mcp_client_service import get_mcp_client_service
 
-        connected_early, mcp_tools_early, engine_settings = await asyncio.gather(
-            asyncio.to_thread(
-                self.tool_registry.list_connected_integrations,
-                client,
-                org_id,
-                environment_name=environment_name,
-                force_live=_connectors_force_live,
-            ),
-            get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id),
-            load_intelligence_engine_settings(org_id, active_settings, client=client),
-        )
+        # Spoken non-write: defer MCP catalog off the critical path — mode
+        # resolution only needs has_mcp_tools for bumping FAST→standard, and
+        # spoken lite stays on fast without MCP tools.
+        if bool(spoken_mode) and not is_direct_connector_write_intent(task_text):
+            connected_early, engine_settings = await asyncio.gather(
+                asyncio.to_thread(
+                    self.tool_registry.list_connected_integrations,
+                    client,
+                    org_id,
+                    environment_name=environment_name,
+                    force_live=_connectors_force_live,
+                ),
+                load_intelligence_engine_settings(org_id, active_settings, client=client),
+            )
+            mcp_tools_early = []
+        else:
+            connected_early, mcp_tools_early, engine_settings = await asyncio.gather(
+                asyncio.to_thread(
+                    self.tool_registry.list_connected_integrations,
+                    client,
+                    org_id,
+                    environment_name=environment_name,
+                    force_live=_connectors_force_live,
+                ),
+                get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id),
+                load_intelligence_engine_settings(org_id, active_settings, client=client),
+            )
         _mark("connected_integrations")
         _mark("mcp_tools")
         _mark("engine_settings")

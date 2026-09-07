@@ -5,12 +5,39 @@ realtime voice session (Deepgram live WS + ElevenLabs stream).
 """
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from typing import Any
 
 import httpx
 
 from app.config import Settings
+
+# Process-scoped ElevenLabs HTTP client — reuse TCP/TLS across TTS calls so
+# HTTP duplex TTFA does not pay a fresh connect on every speakable chunk.
+# Pipecat already warms a WS; this is the equivalent for the HTTP stream path.
+_elevenlabs_client: httpx.Client | None = None
+_elevenlabs_client_lock = threading.Lock()
+
+
+def _get_elevenlabs_http_client(timeout: httpx.Timeout | float) -> httpx.Client:
+    global _elevenlabs_client
+    with _elevenlabs_client_lock:
+        if _elevenlabs_client is None or _elevenlabs_client.is_closed:
+            _elevenlabs_client = httpx.Client(
+                timeout=timeout,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+        return _elevenlabs_client
+
+
+def reset_elevenlabs_http_client_for_tests() -> None:
+    """Close and clear the shared client (unit tests only)."""
+    global _elevenlabs_client
+    with _elevenlabs_client_lock:
+        if _elevenlabs_client is not None and not _elevenlabs_client.is_closed:
+            _elevenlabs_client.close()
+        _elevenlabs_client = None
 
 # Legacy 3-voice shortcuts (env-overridable). Full library is voice_library_service.
 DEFAULT_VOICES: dict[str, dict[str, str]] = {
@@ -248,8 +275,8 @@ def synthesize_speech(
         "model_id": model,
         "voice_settings": {"stability": 0.4, "similarity_boost": 0.75},
     }
-    with httpx.Client(timeout=60.0) as client:
-        resp = client.post(url, headers=headers, json=body)
+    client = _get_elevenlabs_http_client(60.0)
+    resp = client.post(url, headers=headers, json=body)
     if resp.status_code >= 400:
         _raise_upstream("ElevenLabs", resp)
     meta = {
@@ -329,15 +356,15 @@ def synthesize_speech_stream(
         "optimize_streaming_latency": 3,
     }
     timeout = httpx.Timeout(connect=5.0, read=20.0, write=20.0, pool=10.0)
-    with httpx.Client(timeout=timeout) as client:
-        with client.stream("POST", url, headers=headers, json=body) as resp:
-            if resp.status_code >= 400:
-                # Need body for classification
-                _ = resp.read()
-                _raise_upstream("ElevenLabs", resp)
-            for chunk in resp.iter_bytes(chunk_size=2048):
-                if chunk:
-                    yield chunk
+    client = _get_elevenlabs_http_client(timeout)
+    with client.stream("POST", url, headers=headers, json=body) as resp:
+        if resp.status_code >= 400:
+            # Need body for classification
+            _ = resp.read()
+            _raise_upstream("ElevenLabs", resp)
+        for chunk in resp.iter_bytes(chunk_size=2048):
+            if chunk:
+                yield chunk
 
 
 def transcribe_audio(

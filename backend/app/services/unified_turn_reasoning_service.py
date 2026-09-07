@@ -581,6 +581,26 @@ async def run_unified_turn_shadow(
     wall_start = time.perf_counter()
     registry = get_tool_registry()
     from app.operators.react_engine import resolve_permitted_tools
+    from app.services.conversational_turn_gate import (
+        _CONNECTOR_HINT_RE,
+        _DATA_TASK_RE,
+        heuristic_turn_shape,
+    )
+    from app.services.narrowed_tools import mark_narrowed
+
+    # Spoken conversational chat that is not data/connector-shaped: skip catalog
+    # narrow (~37ms measured) and attach no tools. Keep tools for data/asks and
+    # for full/write depth. Do NOT blank tools on reasoning_depth alone.
+    _depth_conversational = str(reasoning_depth or "").strip().lower() == "conversational"
+    _msg = (message or "").strip()
+    _heuristic = heuristic_turn_shape(_msg) if _msg else None
+    _spoken_chat_no_tools = bool(
+        spoken_mode
+        and _depth_conversational
+        and not _DATA_TASK_RE.search(_msg)
+        and not _CONNECTOR_HINT_RE.search(_msg)
+        and (_heuristic is None or _heuristic.shape == "conversational")
+    )
 
     # Phase 1: custom/department agents must not receive the full org catalog when
     # their row scopes tools/systems — same resolve_permitted_tools as classical ReAct.
@@ -588,56 +608,70 @@ async def run_unified_turn_shadow(
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
     if "platform" not in connected:
         connected.append("platform")
-    all_tools = registry.get_tools_for_agent(permitted, connected)
-    t_after_registry = time.perf_counter()
-
-    use_embed, shape_label, retrieval_query = is_task_shaped_for_retrieval(message or "")
-    embed_flag = bool(getattr(active, "unified_turn_embedding_tool_retrieval", True))
-    min_catalog = int(getattr(active, "unified_turn_embed_min_catalog_tools", 40) or 40)
-    catalog_large_enough = len(all_tools) >= min_catalog
-    embed_on = embed_flag and use_embed and catalog_large_enough
-    if use_embed:
-        max_tools = int(
-            getattr(active, "unified_turn_task_max_tools", None)
-            or getattr(active, "unified_turn_shadow_max_tools", 32)
-            or 16
-        )
-    else:
-        max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
-
-    if embed_on:
-        visible, tool_stats = embed_narrow_tools_for_turn(
-            all_tools,
-            query=retrieval_query or message,
-            settings=active,
-            org_id=org_id,
-            connected_integrations=connected,
-            requires_action=None,
-            max_tools=max_tools,
-        )
-    else:
-        visible, tool_stats = narrow_tools_for_turn(
-            all_tools,
-            query=retrieval_query or message,
-            connected_integrations=connected,
-            requires_action=None,
-            max_tools=max_tools,
-        )
-        skip_reason = None
-        if embed_flag and use_embed and not catalog_large_enough:
-            skip_reason = f"catalog_below_embed_min:{len(all_tools)}<{min_catalog}"
+    if _spoken_chat_no_tools:
+        all_tools: list[Any] = []
+        t_after_registry = time.perf_counter()
+        visible = mark_narrowed([], stats={"spokenChatNoTools": True}, source="spoken_chat_no_tools")
         tool_stats = {
-            **(tool_stats or {}),
-            "retrievalMethod": "keyword_narrow_tools_for_turn",
+            "retrievalMethod": "spoken_chat_no_tools",
             "embeddingToolRetrieval": False,
-            "embeddingSkippedReason": skip_reason,
+            "spokenChatNoTools": True,
+            "visibleTools": 0,
         }
-    # Passed through directly, not as list(visible or []): _stable_tool_list has
-    # its own preserve-branch, and wrapping in list() here strips the marker
-    # before that branch can see it, leaving the branch dead. Third instance of
-    # the same mistake, found by scripts/scan_narrowed_tools_strips.py.
-    visible = _stable_tool_list(visible or [])
-    t_after_narrow = time.perf_counter()
+        use_embed, shape_label, retrieval_query = False, "conversational", _msg
+        embed_on = False
+        t_after_narrow = time.perf_counter()
+    else:
+        all_tools = registry.get_tools_for_agent(permitted, connected)
+        t_after_registry = time.perf_counter()
+
+        use_embed, shape_label, retrieval_query = is_task_shaped_for_retrieval(message or "")
+        embed_flag = bool(getattr(active, "unified_turn_embedding_tool_retrieval", True))
+        min_catalog = int(getattr(active, "unified_turn_embed_min_catalog_tools", 40) or 40)
+        catalog_large_enough = len(all_tools) >= min_catalog
+        embed_on = embed_flag and use_embed and catalog_large_enough
+        if use_embed:
+            max_tools = int(
+                getattr(active, "unified_turn_task_max_tools", None)
+                or getattr(active, "unified_turn_shadow_max_tools", 32)
+                or 16
+            )
+        else:
+            max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
+
+        if embed_on:
+            visible, tool_stats = embed_narrow_tools_for_turn(
+                all_tools,
+                query=retrieval_query or message,
+                settings=active,
+                org_id=org_id,
+                connected_integrations=connected,
+                requires_action=None,
+                max_tools=max_tools,
+            )
+        else:
+            visible, tool_stats = narrow_tools_for_turn(
+                all_tools,
+                query=retrieval_query or message,
+                connected_integrations=connected,
+                requires_action=None,
+                max_tools=max_tools,
+            )
+            skip_reason = None
+            if embed_flag and use_embed and not catalog_large_enough:
+                skip_reason = f"catalog_below_embed_min:{len(all_tools)}<{min_catalog}"
+            tool_stats = {
+                **(tool_stats or {}),
+                "retrievalMethod": "keyword_narrow_tools_for_turn",
+                "embeddingToolRetrieval": False,
+                "embeddingSkippedReason": skip_reason,
+            }
+        # Passed through directly, not as list(visible or []): _stable_tool_list has
+        # its own preserve-branch, and wrapping in list() here strips the marker
+        # before that branch can see it, leaving the branch dead. Third instance of
+        # the same mistake, found by scripts/scan_narrowed_tools_strips.py.
+        visible = _stable_tool_list(visible or [])
+        t_after_narrow = time.perf_counter()
 
     # G.5.2 progressive disclosure — stubs + search_catalog_tools (A1/A2).
     # Candidate set stays the narrowed list; full schemas load on demand.
@@ -1855,7 +1889,14 @@ async def apply_unified_turn_live(
     # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
     # ambiguous clarify). Runs before shadow + orch so classical never invents
     # steps when a retrieved plan exists.
-    if conversation_id:
+    # Spoken conversational with no pending: skip — pure chat never needs pack
+    # plan retrieval on the critical path (~10–40ms DB).
+    _skip_retrieve_plan = (
+        bool(spoken_mode)
+        and str(reasoning_depth or "").strip().lower() == "conversational"
+        and not has_pending_family(task_state)
+    )
+    if conversation_id and not _skip_retrieve_plan:
         from app.services.retrieve_plan_gate import (
             retrieve_plan_or_none,
             stage_retrieved_plan_turn,

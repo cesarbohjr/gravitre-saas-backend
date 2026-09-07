@@ -54,20 +54,32 @@ def test_normalize_elevenlabs_output_format_never_sends_bare_mpeg(raw, expected_
 
 def test_synthesize_stream_uses_mp3_enum_not_bare_mpeg():
     settings = _settings(elevenlabs_api_key="k")
+    from app.services import tier1_voice_service as tvs
+
+    tvs.reset_elevenlabs_http_client_for_tests()
     stream_cm = MagicMock()
     stream_resp = MagicMock(status_code=200)
     stream_resp.iter_bytes.return_value = [b"ID3chunk"]
     stream_cm.__enter__.return_value = stream_resp
-    with patch("app.services.tier1_voice_service.httpx.Client") as client_cls:
-        client = client_cls.return_value.__enter__.return_value
-        client.stream.return_value = stream_cm
-        from app.services.tier1_voice_service import synthesize_speech_stream
-
-        chunks = list(synthesize_speech_stream(settings, text="Hello", output_format="mpeg"))
+    client = MagicMock()
+    client.is_closed = False
+    client.stream.return_value = stream_cm
+    with patch.object(tvs, "_get_elevenlabs_http_client", return_value=client):
+        chunks = list(tvs.synthesize_speech_stream(settings, text="Hello", output_format="mpeg"))
     assert chunks == [b"ID3chunk"]
     url = client.stream.call_args.args[1]
     assert "output_format=mp3_44100_128" in url
     assert "output_format=mpeg" not in url
+
+
+def test_elevenlabs_http_client_is_reused():
+    from app.services import tier1_voice_service as tvs
+
+    tvs.reset_elevenlabs_http_client_for_tests()
+    a = tvs._get_elevenlabs_http_client(5.0)
+    b = tvs._get_elevenlabs_http_client(5.0)
+    assert a is b
+    tvs.reset_elevenlabs_http_client_for_tests()
 
 
 def test_voice_status_reports_disabled_without_keys():
@@ -86,11 +98,15 @@ def test_synthesize_requires_key():
 
 def test_synthesize_calls_elevenlabs():
     settings = _settings(elevenlabs_api_key="k")
+    from app.services import tier1_voice_service as tvs
+
+    tvs.reset_elevenlabs_http_client_for_tests()
     fake_resp = MagicMock(status_code=200, content=b"ID3fake")
-    with patch("app.services.tier1_voice_service.httpx.Client") as client_cls:
-        client = client_cls.return_value.__enter__.return_value
-        client.post.return_value = fake_resp
-        audio, ctype, meta = synthesize_speech(settings, text="Hello world", voice_key="adam")
+    client = MagicMock()
+    client.is_closed = False
+    client.post.return_value = fake_resp
+    with patch.object(tvs, "_get_elevenlabs_http_client", return_value=client):
+        audio, ctype, meta = tvs.synthesize_speech(settings, text="Hello world", voice_key="adam")
     assert audio == b"ID3fake"
     assert ctype == "audio/mpeg"
     assert meta["voice_key"] == "adam"

@@ -47,6 +47,14 @@ def test_split_speakable_chunks_terminal_punct_no_trailing_space():
     assert rem == ""
 
 
+def test_split_speakable_chunks_earlier_clause_flush():
+    """Spoken TTFA cut: flush a long clause before the old 80-char bar."""
+    buf = "Gravitre helps teams automate connected workflows across systems and agents"
+    ready, rem = split_speakable_chunks(buf, min_chars=12)
+    assert ready, "expected an earlier clause flush"
+    assert len(ready[0]) >= 12
+
+
 def test_normalize_spoken_text_removes_visual_markdown():
     source = (
         "## Update\n"
