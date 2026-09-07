@@ -183,11 +183,11 @@ export function GlobalCommandBar() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Search or run a command"
-        className="group flex h-11 items-center justify-center gap-2 rounded-full border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-3 text-sm text-[color:var(--g-text-muted)] transition-colors hover:border-[color:var(--g-border-active)] hover:bg-[color:var(--g-surface-3)] hover:text-[color:var(--g-text-primary)] sm:h-8 sm:px-3.5"
+        className="group flex h-11 items-center justify-center gap-2 rounded-xl border border-divide bg-[color:var(--g-background)] px-3 text-sm text-gray-600 shadow-aceternity transition-colors hover:border-brand/40 hover:bg-white hover:text-charcoal-900 sm:h-8 sm:px-3.5"
       >
         <Icon name="search" size="sm" className="shrink-0" />
         <span className="hidden lg:inline font-medium">Search or command...</span>
-        <kbd className="ml-1 hidden items-center gap-0.5 rounded-md border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--g-text-muted)] lg:inline-flex">
+        <kbd className="ml-1 hidden items-center gap-0.5 rounded-md border border-divide bg-white px-2 py-0.5 font-mono text-[10px] text-gray-600 lg:inline-flex">
           <Icon name="command" size="xs" />K
         </kbd>
       </button>

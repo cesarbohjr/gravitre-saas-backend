@@ -130,7 +130,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] transition-all duration-300 ease-in-out",
+          // Nodus Phase 8: gray rail, white content canvas, divide borders
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-divide bg-[color:var(--g-background)] transition-all duration-300 ease-in-out",
           // Mobile: slide-out drawer
           "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full",
@@ -140,7 +141,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         )}
       >
         {/* Logo */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-border-subtle)] px-3 md:px-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-divide px-3 md:px-2">
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>
@@ -168,25 +169,13 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                   <img
                     src="/images/gravitre-icon-black.png"
                     alt="Gravitre"
-                    className="h-16 w-16 object-contain dark:hidden"
-                  />
-                  <img
-                    src="/images/gravitre-icon-white.png"
-                    alt="Gravitre"
-                    className="h-16 w-16 hidden object-contain dark:block"
+                    className="h-16 w-16 object-contain"
                   />
                 </div>
                 <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src="/images/gravitre-logo-black.png"
                     alt="Gravitre"
-                    className="dark:hidden"
-                    style={{ height: "40px", width: "auto" }}
-                  />
-                  <img
-                    src="/images/gravitre-logo-white.png"
-                    alt="Gravitre"
-                    className="hidden dark:block"
                     style={{ height: "40px", width: "auto" }}
                   />
                 </div>
@@ -376,10 +365,10 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         </nav>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-2 py-2.5 md:px-2">
+        <div className="shrink-0 border-t border-divide bg-[color:var(--g-background)] px-2 py-2.5 md:px-2">
           <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary shadow-sm">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand shadow-aceternity">
                 <Icon name="shield" size="xs" className="text-primary-foreground" />
               </div>
               <div className={cn("flex flex-col", navExpanded ? "md:flex" : "md:hidden")}>

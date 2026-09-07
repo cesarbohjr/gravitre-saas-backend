@@ -63,8 +63,8 @@ export function SidebarNavLink({
       className={cn(
         "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
         isActive
-          ? "border-l-2 -ml-px border-l-[color:var(--g-emerald)] bg-[color:var(--g-surface-active)] pl-[9px] text-[color:var(--g-text-primary)]"
-          : "-ml-px border-l-2 border-l-transparent pl-[9px] text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)] hover:text-[color:var(--g-text-primary)]",
+          ? "border-l-2 -ml-px border-l-brand bg-brand/10 pl-[9px] text-charcoal-900"
+          : "-ml-px border-l-2 border-l-transparent pl-[9px] text-gray-600 hover:bg-white hover:text-charcoal-900",
       )}
     >
       <Icon

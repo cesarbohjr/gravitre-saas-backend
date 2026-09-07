@@ -21,7 +21,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
 import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
@@ -165,9 +164,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       <header
         data-testid="app-top-bar"
         className={cn(
-          // Phones get a taller bar with larger tap targets — the 48px bar with
-          // 32px icon buttons tested below the 44px minimum on touch.
-          "flex items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 sm:px-4",
+          // Nodus Phase 8: divide border + aceternity elevation on light chrome
+          "flex items-center justify-between border-b border-divide bg-white px-3 shadow-aceternity sm:px-4",
           compact ? "h-11 sm:h-10" : "h-12 sm:h-12",
         )}
       >
@@ -292,16 +290,16 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!compact ? (
-          <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full bg-secondary/50 border border-border/50">
+          <div className="hidden items-center gap-0.5 rounded-xl border border-divide bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => switchMode("admin")}
                   className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200",
+                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
                     mode === "admin"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-white text-charcoal-900 shadow-aceternity"
+                      : "text-gray-600 hover:text-charcoal-900"
                   )}
                 >
                   Admin
@@ -316,10 +314,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 <button
                   onClick={() => switchMode("lite")}
                   className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200",
+                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
                     mode === "lite"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-white text-charcoal-900 shadow-aceternity"
+                      : "text-gray-600 hover:text-charcoal-900"
                   )}
                 >
                   Lite
@@ -331,9 +329,6 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </Tooltip>
           </div>
           ) : null}
-
-          {/* Theme Toggle */}
-          <ThemeToggle />
 
           {/* B1: Meson build chrome is full-seat only — Lite uses assigned workflows, not the builder. */}
           {!compact && !isLite ? <MesonToolbarTrigger /> : null}
@@ -352,9 +347,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-72 max-w-72 p-0 overflow-hidden">
+            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-72 max-w-72 overflow-hidden border-divide p-0 shadow-aceternity">
               {/* Profile header with gradient */}
-              <div className="relative overflow-hidden border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-4 py-4">
+              <div className="relative overflow-hidden border-b border-divide bg-[color:var(--g-background)] px-4 py-4">
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
                     <UserAccountAvatar useCurrentUser size="xl" />
@@ -372,7 +367,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               </div>
               
               {/* Quick stats */}
-              <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+              <div className="grid grid-cols-3 divide-x divide-divide border-b border-divide">
                 <div className="px-3 py-2.5 text-center">
                   <p className="text-lg font-semibold text-foreground">
                     {activeWorkflows ?? "—"}
