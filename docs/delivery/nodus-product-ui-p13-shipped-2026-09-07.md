@@ -1,6 +1,6 @@
 # Nodus product UI — P13 shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready; extension load-unpacked for overlay check)  
+**Status:** Shipped to `main` — Vercel Ready (web connect)  
 **Gate:** Cesar “move to P13 Extension” — Compressed same system: Context / Capture / Agent / Action / Approval / Status
 
 ## Delivered
@@ -19,5 +19,5 @@ No new prices, claims, badges, or Enable entitlement toggles. Behavior unchanged
 
 ## Evidence
 
-- Deploy: cite Vercel Ready id after push (web connect page).
+- Deploy READY: `dpl_FyyRJ8nQFXjzkY5sRjRE56HEoBiN` @ tip `ac2bd666` (production alias `gravitre.app`)
 - Extension overlay PASS: **not claimed** until load-unpacked visual check on a host page.
