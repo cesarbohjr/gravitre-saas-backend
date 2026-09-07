@@ -3,13 +3,10 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import {
-  ArrowRight,
   CheckCircle2,
-  Link2,
   ListChecks,
   MessageSquare,
   Shield,
-  Sparkles,
   Workflow,
 } from "lucide-react"
 import {
@@ -23,7 +20,9 @@ import {
   ChromeVendorIcon,
   EdgeVendorIcon,
 } from "@/components/marketing/browser-vendor-icons"
-import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { Button } from "@/components/marketing/nodus/button"
+import { MarketingPageEndCta, MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
+import { DivideX } from "@/components/marketing/nodus/divide"
 
 const activationSteps = [
   {
@@ -71,87 +70,57 @@ export function ExtensionPage() {
 
   return (
     <div className="bg-white">
-      <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-24">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10/80 via-white to-white" />
-        <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-primary/15/50 blur-3xl" />
-        <div className="relative mx-auto max-w-3xl px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+      <MarketingPageHero
+        badge="Chrome · Edge · Brave · overlay and approve"
+        title={
+          <>
+            Enrich the page. <span className="text-brand">Approve the write.</span>
+          </>
+        }
+        description="Gravitre lives where you already work: LinkedIn, Gmail, Outlook, company sites. Real actions, not guesses. Your approval before every write. Full audit in Outcomes. Not another CRM bot — just Gravitre, closer."
+      >
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button
+            as="a"
+            href={installHref}
+            {...(storeListing
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 shadow-sm shadow-foreground/5">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/100" />
-              <span className="text-sm font-medium text-primary">
-                Chrome · Edge · Brave · overlay and approve
-              </span>
-            </div>
-
-            <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
-              Enrich the page.{" "}
-              <span className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                Approve the write.
-              </span>
-            </h1>
-
-            <div className="mx-auto mt-6 max-w-2xl space-y-3 text-lg leading-relaxed text-muted-foreground">
-              <p>
-                Gravitre lives where you already work: LinkedIn, Gmail, Outlook, company
-                sites.{" "}
-                <span className="font-semibold text-foreground">Real actions, not guesses.</span>{" "}
-                Your approval before every write. Full audit in Outcomes.
-              </p>
-              <p>Not another CRM bot. Just Gravitre, closer.</p>
-            </div>
-
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <a
-                href={installHref}
-                {...(storeListing
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
-              >
-                {installLabel}
-                <ArrowRight className="h-4 w-4" />
-              </a>
-              <Link
-                href="/docs/guides/how-to/browser-extension"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50"
-              >
-                Setup guide
-              </Link>
-            </div>
-
-            <ul
-              aria-label="Supported browsers"
-              className="mt-10 flex items-end justify-center gap-8 sm:gap-10"
-            >
-              {(
-                [
-                  { label: "Chrome", Icon: ChromeVendorIcon },
-                  { label: "Edge", Icon: EdgeVendorIcon },
-                  { label: "Brave", Icon: BraveVendorIcon },
-                ] as const
-              ).map(({ label, Icon }) => (
-                <li key={label} className="flex flex-col items-center gap-2.5">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card shadow-sm shadow-foreground/5">
-                    <Icon className="h-7 w-7" />
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground">{label}</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+            {installLabel}
+          </Button>
+          <Button as={Link} href="/docs/guides/how-to/browser-extension" variant="secondary">
+            Setup guide
+          </Button>
         </div>
-      </section>
+        <ul
+          aria-label="Supported browsers"
+          className="mt-10 flex items-end justify-center gap-8 sm:gap-10"
+        >
+          {(
+            [
+              { label: "Chrome", Icon: ChromeVendorIcon },
+              { label: "Edge", Icon: EdgeVendorIcon },
+              { label: "Brave", Icon: BraveVendorIcon },
+            ] as const
+          ).map(({ label, Icon }) => (
+            <li key={label} className="flex flex-col items-center gap-2.5">
+              <span className="border-divide flex h-14 w-14 items-center justify-center rounded-2xl border bg-gray-50">
+                <Icon className="h-7 w-7" />
+              </span>
+              <span className="text-xs font-medium text-gray-600">{label}</span>
+            </li>
+          ))}
+        </ul>
+      </MarketingPageHero>
 
-      <section className="border-t border-border py-16">
-        <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
+      <DivideX />
+
+      <MarketingRails>
+          <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
             Activation in five steps
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-gray-600">
             The milestone that matters: install → connect → enrich → approve →
             Outcomes. Minutes, not a project plan.
           </p>
@@ -163,7 +132,7 @@ export function ExtensionPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+                className="rounded-lg border border-divide bg-gray-50 p-5"
               >
                 <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
                   {step.n}
@@ -173,15 +142,15 @@ export function ExtensionPage() {
               </motion.li>
             ))}
           </ol>
-        </div>
-      </section>
+      </MarketingRails>
 
-      <section className="border-t border-border py-16">
-        <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
+      <DivideX />
+
+      <MarketingRails>
+          <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
             Steps 3 and 4, on the page
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-gray-600">
             The overlay opens beside whatever you are already looking at. You
             never leave the tab to enrich, and you never leave it to approve.
           </p>
@@ -239,18 +208,18 @@ export function ExtensionPage() {
               />
             </motion.div>
           </div>
-        </div>
-      </section>
+      </MarketingRails>
 
-      <section className="border-t border-border py-16">
-        <div className="mx-auto max-w-5xl px-6">
-          <p className="text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <DivideX />
+
+      <MarketingRails>
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
             Supporting proof
           </p>
-          <h2 className="mt-2 text-center text-xl font-bold text-foreground">
+          <h2 className="mt-2 text-center text-xl font-medium text-charcoal-700">
             No separate queue, no separate audit trail
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-gray-600">
             The overlay does not get its own approval queue or audit trail. A
             staged write waits in the same Approvals queue as chat, and the run
             lands in the same Activity feed — tagged with its source.
@@ -301,14 +270,14 @@ export function ExtensionPage() {
               />
             </motion.div>
           </div>
-        </div>
-      </section>
+      </MarketingRails>
 
-      <section className="border-t border-border bg-muted/50/60 py-16">
-        <div className="mx-auto grid max-w-5xl gap-10 px-6 lg:grid-cols-2">
+      <DivideX />
+
+      <MarketingRails className="grid gap-10 lg:grid-cols-2">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Supported surfaces</h2>
-            <p className="mt-3 text-muted-foreground">
+            <h2 className="text-2xl font-medium text-charcoal-700">Supported surfaces</h2>
+            <p className="mt-3 text-gray-600">
               Explicit host allowlist — no silent expansion. Page context only;
               creates and list membership use governed catalog actions (Apollo /
               HubSpot where connected). Outside-allowlist attempts are recorded
@@ -330,7 +299,7 @@ export function ExtensionPage() {
             </p>
           </div>
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-lg border border-divide bg-gray-50 p-5">
               <Shield className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Same governance as chat</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -339,7 +308,7 @@ export function ExtensionPage() {
                 not a side channel.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-lg border border-divide bg-gray-50 p-5">
               <ListChecks className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">What it will not do</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -348,7 +317,7 @@ export function ExtensionPage() {
                 call it.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-lg border border-divide bg-gray-50 p-5">
               <MessageSquare className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -367,7 +336,7 @@ export function ExtensionPage() {
                 .
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-lg border border-divide bg-gray-50 p-5">
               <Workflow className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Workflows from the overlay</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -404,8 +373,7 @@ export function ExtensionPage() {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+      </MarketingRails>
 
       <MarketingPageEndCta />
     </div>

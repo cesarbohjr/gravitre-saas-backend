@@ -2,9 +2,12 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Brain, Database, Shield, Sparkles, Workflow, Cpu, Lock } from "lucide-react"
+import { Brain, Database, Shield, Sparkles, Workflow, Cpu, Lock } from "lucide-react"
 import { FeaturesLegacyContent } from "@/components/marketing/features/legacy-page"
-import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { Button } from "@/components/marketing/nodus/button"
+import { Container } from "@/components/marketing/nodus/container"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
 
 const orbitNodes = [
   { icon: Database, label: "Connectors", tone: "text-blue-600 bg-blue-100 border-blue-200", angle: 0 },
@@ -79,76 +82,47 @@ function IntelligenceCore() {
 export function TechnologyPage() {
   return (
     <div className="bg-white">
-      {/* Hero */}
-      <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-white to-white" />
-        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
-        <div className="absolute top-32 -left-16 h-64 w-64 rounded-full bg-emerald-200/30 blur-3xl" />
-
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-2">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2">
-              <Cpu className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Platform technology</span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
-              The engine inside the{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                one brain
+      <MarketingPageHero
+        badge="Platform technology"
+        title={
+          <>
+            The engine inside the{" "}
+            <span className="text-brand">one brain</span>
+          </>
+        }
+        description="GIBE — the Gravitre Intelligent Business Engine — learns from your connected stack and routes actions through governed, human-approved execution. Memory, models, and judgment for the same brain that powers Gravitre AI, agents, and workflows."
+      >
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
+          {specPills.map((pill) => {
+            const Icon = pill.icon
+            return (
+              <span
+                key={pill.label}
+                className="inline-flex items-center gap-2 rounded-full border border-divide bg-gray-50 px-3.5 py-2 text-sm font-medium text-charcoal-700"
+              >
+                <Icon className="h-4 w-4 text-brand" />
+                {pill.label}
               </span>
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
-              GIBE — the Gravitre Intelligent Business Engine — learns from your connected stack and routes
-              actions through governed, human-approved execution. Memory, models, and judgment for the same
-              brain that powers Gravitre AI, agents, and workflows.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-2.5">
-              {specPills.map((pill) => {
-                const Icon = pill.icon
-                return (
-                  <span
-                    key={pill.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm"
-                  >
-                    <Icon className="h-4 w-4 text-primary" />
-                    {pill.label}
-                  </span>
-                )
-              })}
-            </div>
-
-            <div className="mt-9 flex flex-wrap gap-4">
-              <Link
-                href="/get-started"
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-foreground/90"
-              >
-                Start free
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/features/marketplace"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50"
-              >
-                Explore the marketplace
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="flex justify-center"
-          >
-            <IntelligenceCore />
-          </motion.div>
+            )
+          })}
         </div>
-      </section>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button as={Link} href="/get-started">
+            Start free
+          </Button>
+          <Button as={Link} href="/features/marketplace" variant="secondary">
+            Explore the marketplace
+          </Button>
+        </div>
+      </MarketingPageHero>
+
+      <DivideX />
+
+      <Container className="border-divide flex justify-center border-x px-4 py-16 md:px-8">
+        <IntelligenceCore />
+      </Container>
+
+      <DivideX />
 
       {/* GIBE intelligence sections (reused, hero/tail suppressed) */}
       <FeaturesLegacyContent section="intelligence" showHero={false} showTail={false} />

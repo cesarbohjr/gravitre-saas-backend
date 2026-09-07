@@ -100,7 +100,7 @@ function PricingCard({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean 
         <div
           className="mb-4 p-4 rounded-2xl"
           style={{
-            background: `linear-gradient(to right, rgb(${tier.color === "emerald" ? "22 163 116" : tier.color === "amber" ? "245 158 11" : "59 130 246"} / 0.1), transparent)`,
+            background: `linear-gradient(to right, rgb(${tier.color === "emerald" ? "22 163 116" : "59 130 246"} / 0.1), transparent)`,
           }}
         >
           <div className="flex items-center gap-2">

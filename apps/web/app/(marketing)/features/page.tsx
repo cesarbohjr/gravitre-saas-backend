@@ -18,7 +18,7 @@ export default function FeaturesPage() {
           {MARKETING_COPY.featuresHero.pills.map((pill) => (
             <span
               key={pill}
-              className="px-4 py-2 rounded-full bg-card border border-border text-sm font-medium text-foreground shadow-sm"
+              className="px-4 py-2 rounded-full bg-gray-50 border border-divide text-sm font-medium text-charcoal-700"
             >
               {pill}
             </span>
