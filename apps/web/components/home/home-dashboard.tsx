@@ -41,6 +41,7 @@ import { cardVariants, useMotionPrefs } from "@/lib/animations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { StatusChip } from "@/components/gravitre/visual"
+import { GravitreMetric, GravitreSurface } from "@/components/gravitre/nodus-product/metric"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -65,6 +66,29 @@ type HomeDashboardProps = {
   learningVelocity?: string | null
   showGettingStarted: boolean
   showRoleQuickActions?: boolean
+  /** Live agent counts — null when list unavailable (honest dash). */
+  activeAgents?: number | null
+  agentTotal?: number | null
+  agentStatusCounts?: {
+    active: number
+    idle: number
+    processing: number
+    error: number
+  } | null
+  /** Verified run success rate % — null when no runs. */
+  successRate?: number | null
+  avgDurationMs?: number | null
+  runsByDay?: Array<{ date: string; count: number }>
+  activeWorkflows?: number | null
+}
+
+function formatDuration(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—"
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  const seconds = ms / 1000
+  if (seconds < 60) return `${seconds.toFixed(1)}s`
+  const minutes = seconds / 60
+  return `${minutes.toFixed(1)}m`
 }
 
 function pct(current: number, needed: number) {
@@ -96,6 +120,13 @@ export function HomeDashboard({
   learningVelocity,
   showGettingStarted,
   showRoleQuickActions = false,
+  activeAgents = null,
+  agentTotal = null,
+  agentStatusCounts = null,
+  successRate = null,
+  avgDurationMs = null,
+  runsByDay = [],
+  activeWorkflows = null,
 }: HomeDashboardProps) {
   const { reduced, container, item } = useMotionPrefs()
   const quickActions = ROLE_QUICK_ACTIONS[roleId] ?? ROLE_QUICK_ACTIONS.ops
@@ -107,37 +138,80 @@ export function HomeDashboard({
   const onlineSystems = aiSystemsOnline ?? mlActive ?? null
   const lastCycleLabel = lastLearningCycle ? relativeTime(lastLearningCycle) : null
 
-  const learningBars = [
-    { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: BRAND },
-    { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: BRAND_SOFT },
-  ]
+  const learningBars =
+    runsByDay.length > 0
+      ? runsByDay.slice(-7).map((day) => ({
+          name: day.date.slice(5),
+          current: day.count,
+          target: Math.max(...runsByDay.map((d) => d.count), 1),
+          fill: BRAND,
+        }))
+      : [
+          { name: "Queries", current: queryRows, target: queryRowsNeeded || 50, fill: BRAND },
+          { name: "Workflows", current: workflowRows, target: workflowRowsNeeded || 30, fill: BRAND_SOFT },
+        ]
 
-  const systemStats = [
-    {
-      label: "AI systems online",
-      value: onlineSystems != null ? onlineSystems : null,
-      display: onlineSystems != null ? String(onlineSystems) : "—",
-      known: onlineSystems != null,
-      icon: Cpu,
-      tone: "brand" as const,
-    },
-    {
-      label: "ML models active",
-      value: mlActive != null ? mlActive : null,
-      display: mlActive != null ? String(mlActive) : "—",
-      known: mlActive != null,
-      icon: Robot,
-      tone: "brandSoft" as const,
-    },
-    {
-      label: "Memories",
-      value: memoriesCount != null ? memoriesCount : null,
-      display: memoriesCount != null ? memoriesCount.toLocaleString() : "—",
-      known: memoriesCount != null,
-      icon: Database,
-      tone: "muted" as const,
-    },
-  ]
+  const systemStats = agentStatusCounts
+    ? [
+        {
+          label: "Active",
+          value: agentStatusCounts.active,
+          display: String(agentStatusCounts.active),
+          known: true,
+          icon: Robot,
+          tone: "brand" as const,
+        },
+        {
+          label: "Processing",
+          value: agentStatusCounts.processing,
+          display: String(agentStatusCounts.processing),
+          known: true,
+          icon: Cpu,
+          tone: "brandSoft" as const,
+        },
+        {
+          label: "Idle",
+          value: agentStatusCounts.idle,
+          display: String(agentStatusCounts.idle),
+          known: true,
+          icon: Clock,
+          tone: "muted" as const,
+        },
+        {
+          label: "Error",
+          value: agentStatusCounts.error,
+          display: String(agentStatusCounts.error),
+          known: true,
+          icon: WarningCircle,
+          tone: "muted" as const,
+        },
+      ]
+    : [
+        {
+          label: "AI systems online",
+          value: onlineSystems != null ? onlineSystems : null,
+          display: onlineSystems != null ? String(onlineSystems) : "—",
+          known: onlineSystems != null,
+          icon: Cpu,
+          tone: "brand" as const,
+        },
+        {
+          label: "ML models active",
+          value: mlActive != null ? mlActive : null,
+          display: mlActive != null ? String(mlActive) : "—",
+          known: mlActive != null,
+          icon: Robot,
+          tone: "brandSoft" as const,
+        },
+        {
+          label: "Memories",
+          value: memoriesCount != null ? memoriesCount : null,
+          display: memoriesCount != null ? memoriesCount.toLocaleString() : "—",
+          known: memoriesCount != null,
+          icon: Database,
+          tone: "muted" as const,
+        },
+      ]
 
   const knownSystemTotal = systemStats
     .filter((s) => s.known && s.value != null)
@@ -222,50 +296,75 @@ export function HomeDashboard({
 
   const kpiCards = [
     {
-      key: "approvals",
-      label: "Pending approvals",
-      value: <AnimatedCounter value={pendingApprovals} className="tabular-nums" />,
-      href: APP_ROUTES.approvals,
-      icon: ClipboardText,
+      key: "agents",
+      label: "Active agents",
+      value:
+        activeAgents != null ? (
+          <AnimatedCounter value={activeAgents} className="tabular-nums" />
+        ) : (
+          "—"
+        ),
+      href: APP_ROUTES.agents,
+      icon: <Robot className="h-4 w-4" weight="duotone" />,
+      warning: false,
+      hint:
+        agentTotal != null
+          ? `${activeAgents ?? 0} active · ${agentTotal} total →`
+          : "Connect agents to populate →",
+    },
+    {
+      key: "success",
+      label: "Task success rate",
+      value: successRate != null ? `${successRate}%` : "—",
+      href: APP_ROUTES.runs,
+      icon: <CheckCircle className="h-4 w-4" weight="duotone" />,
+      warning: false,
+      hint: successRate != null ? "Verified runs →" : "No runs yet →",
+    },
+    {
+      key: "duration",
+      label: "Average execution time",
+      value: formatDuration(avgDurationMs),
+      href: APP_ROUTES.runs,
+      icon: <Clock className="h-4 w-4" weight="duotone" />,
+      warning: false,
+      hint: avgDurationMs != null ? "Mean run duration →" : "Waiting for runs →",
+    },
+    {
+      key: "workflows-active",
+      label: "Active workflows",
+      value:
+        activeWorkflows != null ? (
+          <AnimatedCounter value={activeWorkflows} className="tabular-nums" />
+        ) : pendingApprovals > 0 ? (
+          <AnimatedCounter value={pendingApprovals} className="tabular-nums" />
+        ) : (
+          "—"
+        ),
+      href: pendingApprovals > 0 ? APP_ROUTES.approvals : APP_ROUTES.workflows,
+      icon:
+        pendingApprovals > 0 ? (
+          <ClipboardText className="h-4 w-4" weight="duotone" />
+        ) : (
+          <ChartLineUp className="h-4 w-4" weight="duotone" />
+        ),
       warning: pendingApprovals > 0,
-      hint: pendingApprovals > 0 ? "Needs your decision →" : "All clear →",
-    },
-    {
-      key: "confidence",
-      label: "Avg confidence · 7d",
-      value: avgConfidence != null ? `${avgConfidence}%` : "—",
-      href: APP_ROUTES.intelligence,
-      icon: ChartLineUp,
-      warning: false,
-      hint: avgConfidence != null ? "From trust summary →" : "Warming up →",
-    },
-    {
-      key: "queries",
-      label: "Query rows logged",
-      value: <AnimatedCounter value={queryRows} className="tabular-nums" />,
-      href: APP_ROUTES.learning,
-      icon: Database,
-      warning: false,
-      hint: `${queryRows}/${queryRowsNeeded || 50} to learn →`,
-    },
-    {
-      key: "workflows",
-      label: "Workflow rows",
-      value: <AnimatedCounter value={workflowRows} className="tabular-nums" />,
-      href: APP_ROUTES.learning,
-      icon: Robot,
-      warning: false,
-      hint: `${workflowRows}/${workflowRowsNeeded || 30} observed →`,
+      hint:
+        pendingApprovals > 0
+          ? `${pendingApprovals} pending approval${pendingApprovals === 1 ? "" : "s"} →`
+          : activeWorkflows != null
+            ? "Live workflow count →"
+            : "No active workflows →",
     },
   ]
 
   return (
-    <div className="relative w-full overflow-x-hidden bg-muted/30">
+    <div className="relative w-full overflow-x-hidden bg-[color:var(--g-canvas)]">
       <motion.div
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:pb-10"
+        className="relative z-10 mx-auto max-w-6xl space-y-5 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)] sm:pb-10"
       >
         {/* Header */}
         <motion.header variants={item} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -343,69 +442,48 @@ export function HomeDashboard({
           </span>
         </motion.div>
 
-        {/* KPI row — 4 cards */}
+        {/* KPI row — Nodus Product Image hierarchy, live Gravitre fields */}
         <motion.section
           variants={item}
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4"
         >
           {kpiCards.map((card) => (
-            <Link
+            <GravitreMetric
               key={card.key}
+              label={card.label}
+              value={card.value}
+              hint={card.hint}
               href={card.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40",
-                card.warning ? "border-amber-300/80" : "border-border",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                  card.warning
-                    ? "bg-amber-500/15 text-amber-700"
-                    : "bg-[color:var(--brand)]/10 text-[color:var(--brand)]",
-                )}
-              >
-                <card.icon className="h-5 w-5" weight="duotone" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
-                  {card.value}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">{card.label}</p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80 group-hover:text-foreground">
-                  {card.hint}
-                </p>
-              </div>
-            </Link>
+              icon={card.icon}
+              warning={card.warning}
+            />
           ))}
         </motion.section>
 
         {/* Learning progress toward targets */}
-        <motion.div variants={item} className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+        <motion.div variants={item} className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-2">
+          <GravitreSurface padded={false} className="px-4 py-3">
             <ProgressFooter
               percent={queryPct}
               caption="Query progress toward learning target"
               accent="brand"
             />
-          </div>
-          <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+          </GravitreSurface>
+          <GravitreSurface padded={false} className="px-4 py-3">
             <ProgressFooter
               percent={workflowPct}
               caption="Workflow progress toward observed target"
               accent="brandSoft"
             />
-          </div>
+          </GravitreSurface>
         </motion.div>
 
-        {/* Activity monitor */}
-        <motion.section
-          variants={item}
-          className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
-        >
+        {/* Workflow monitor — Nodus table grammar, real operational rows */}
+        <motion.section variants={item}>
+          <GravitreSurface>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Activity monitor</h2>
+              <h2 className="text-base font-semibold text-foreground">Workflow monitor</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {pendingApprovals > 0
                   ? "Pending approvals from your queue"
@@ -469,26 +547,31 @@ export function HomeDashboard({
               </tbody>
             </table>
           </div>
+          </GravitreSurface>
         </motion.section>
 
-        {/* Bottom row: status breakdown + learning velocity */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <motion.section
-            variants={item}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
-          >
+        {/* Bottom row: agents/status donut + runs / learning bars */}
+        <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
+          <motion.section variants={item}>
+            <GravitreSurface>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-base font-semibold text-foreground">Status breakdown</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                {agentStatusCounts ? "Agents by status" : "Status breakdown"}
+              </h2>
               <Link
-                href={APP_ROUTES.intelligence}
+                href={agentStatusCounts ? APP_ROUTES.agents : APP_ROUTES.intelligence}
                 className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
               >
-                {SURFACE_COPY.insights.title}
+                {agentStatusCounts ? "View agents" : SURFACE_COPY.insights.title}
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
-            {hasLearningSnapshot || mlActive != null || memoriesCount != null || onlineSystems != null ? (
+            {agentStatusCounts ||
+            hasLearningSnapshot ||
+            mlActive != null ||
+            memoriesCount != null ||
+            onlineSystems != null ? (
               <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-center">
                 {/* Simple ring progress using known totals */}
                 <div className="relative mx-auto flex h-36 w-36 shrink-0 items-center justify-center sm:mx-0">
@@ -572,19 +655,20 @@ export function HomeDashboard({
                 <p className={cn(TYPE.meta, "mt-1")}>{SURFACE_COPY.insightsHealth.warmingHint}</p>
               </div>
             )}
+            </GravitreSurface>
           </motion.section>
 
-          <motion.section
-            variants={item}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
-          >
+          <motion.section variants={item}>
+            <GravitreSurface>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-base font-semibold text-foreground">Learning velocity</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                {runsByDay.length > 0 ? "Runs · past 7 days" : "Learning velocity"}
+              </h2>
               <Link
-                href={APP_ROUTES.learning}
+                href={runsByDay.length > 0 ? APP_ROUTES.runs : APP_ROUTES.learning}
                 className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
               >
-                {SURFACE_COPY.learning.title}
+                {runsByDay.length > 0 ? "View runs" : SURFACE_COPY.learning.title}
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
@@ -615,9 +699,11 @@ export function HomeDashboard({
               </ResponsiveContainer>
             </div>
             <p className={cn(TYPE.bodyMuted, "mt-2")}>
-              {hasLearningSnapshot
-                ? "Gravitre is capturing query patterns, workflow outcomes, and memory promotion candidates."
-                : "Connect tools and run your first workflow — learning accelerates as soon as data flows in."}
+              {runsByDay.length > 0
+                ? "Daily run counts from metrics overview — no synthetic series."
+                : hasLearningSnapshot
+                  ? "Gravitre is capturing query patterns, workflow outcomes, and memory promotion candidates."
+                  : "Connect tools and run your first workflow — learning accelerates as soon as data flows in."}
               {readyModelCount != null ? (
                 <span className="mt-1 block text-foreground">
                   {readyModelCount} model{readyModelCount === 1 ? "" : "s"} ready for training.
@@ -625,11 +711,12 @@ export function HomeDashboard({
                 </span>
               ) : null}
             </p>
+            </GravitreSurface>
           </motion.section>
         </div>
 
         {/* Secondary panels: revenue risks + predictive */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
           <Panel reduced={reduced}>
             <PanelHeader
               icon={WarningCircle}
@@ -730,7 +817,7 @@ function Panel({ children, reduced }: { children: React.ReactNode; reduced: bool
     <motion.section
       variants={cardVariants}
       whileHover={reduced ? undefined : { y: -2 }}
-      className="rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+      className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-shadow sm:p-6"
     >
       {children}
     </motion.section>

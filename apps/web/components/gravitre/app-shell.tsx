@@ -85,13 +85,16 @@ function daysLeft(isoDate: string): number {
 const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 
 function readNavExpandedPreference(): boolean {
-  if (typeof window === "undefined") return false
-  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
+  if (typeof window === "undefined") return true
+  // Nodus Product Image shows a labeled sidebar; default expanded when unset.
+  const stored = localStorage.getItem(NAV_EXPANDED_STORAGE_KEY)
+  if (stored === null) return true
+  return stored === "true"
 }
 
 export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [navExpanded, setNavExpanded] = useState(false)
+  const [navExpanded, setNavExpanded] = useState(true)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
     () =>

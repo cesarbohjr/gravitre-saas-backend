@@ -10,6 +10,8 @@ import {
   architectureAdminApi,
   intelligenceApi,
   approvalsApi,
+  metricsApi,
+  agentsApi,
 } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import {
@@ -66,6 +68,16 @@ export default function HomePage() {
     () => approvalsApi.list(),
     { revalidateOnFocus: false },
   )
+  const { data: metricsOverview } = useSWR(
+    user ? "home/metrics-overview" : null,
+    () => metricsApi.overview(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  const { data: agentsList } = useSWR(
+    user ? "home/agents-list" : null,
+    () => agentsApi.list(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
 
   const roleId =
     roleFromOnboardingStepData(onboarding?.step_data) ??
@@ -100,8 +112,32 @@ export default function HomePage() {
   const showGettingStarted = !onboarding?.welcome_completed && !onboarding?.skipped
   const showRoleQuickActions = showGettingStarted || !learning?.hasAnySnapshot
 
+  const agents = agentsList?.agents ?? []
+  const activeAgents = agents.filter((agent) => {
+    const status = String(agent.status ?? "").toLowerCase()
+    return status === "active" || status === "processing" || status === "running"
+  }).length
+  const agentStatusCounts = {
+    active: agents.filter((a) => String(a.status ?? "").toLowerCase() === "active").length,
+    idle: agents.filter((a) => String(a.status ?? "").toLowerCase() === "idle").length,
+    processing: agents.filter((a) => {
+      const s = String(a.status ?? "").toLowerCase()
+      return s === "processing" || s === "running"
+    }).length,
+    error: agents.filter((a) => String(a.status ?? "").toLowerCase() === "error").length,
+  }
+  const totalRuns = metricsOverview?.total_runs ?? 0
+  const successfulRuns = metricsOverview?.successful_runs ?? 0
+  const successRate =
+    totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 1000) / 10 : null
+  const avgDurationMs =
+    typeof metricsOverview?.avg_run_duration_ms === "number"
+      ? metricsOverview.avg_run_duration_ms
+      : null
+  const runsByDay = metricsOverview?.runs_by_day ?? []
+
   return (
-    <AppShell title="Home">
+    <AppShell title="Dashboard">
       {onboardingLoading && user ? (
         <div className="space-y-4" aria-busy="true" aria-label="Loading home dashboard">
           <Skeleton className="h-10 w-64" />
@@ -117,41 +153,52 @@ export default function HomePage() {
           message="Refresh the page or try again in a moment."
         />
       ) : (
-      <HomeDashboard
-        roleId={roleId}
-        roleLabel={roleMeta?.label ?? "there"}
-        pendingApprovals={pendingApprovals}
-        pendingApprovalItems={pendingApprovalItems.map((item) => ({
-          id: item.id,
-          title: item.workflow_name ?? item.workflowName ?? `Run ${item.id.slice(0, 8)}`,
-        }))}
-        avgConfidence={avgConfidence}
-        queryRows={learning?.queryRows ?? 0}
-        queryRowsNeeded={learning?.queryRowsNeeded ?? 50}
-        workflowRows={learning?.workflowRows ?? 0}
-        workflowRowsNeeded={learning?.workflowRowsNeeded ?? 30}
-        hasLearningSnapshot={Boolean(learning?.hasAnySnapshot)}
-        mlActive={mlActive}
-        memoriesCount={memoriesCount}
-        aiSystemsOnline={aiSystemsOnline}
-        lastLearningCycle={lastLearningCycle}
-        revenueRisks={revenueRisks}
-        predictiveSummary={
-          typeof predictive?.summary === "string" ? predictive.summary : null
-        }
-        readyModelCount={
-          typeof learningLive?.ready_model_count === "number"
-            ? learningLive.ready_model_count
-            : null
-        }
-        learningVelocity={
-          typeof learningStatus?.learning_velocity === "string"
-            ? learningStatus.learning_velocity
-            : null
-        }
-        showGettingStarted={showGettingStarted}
-        showRoleQuickActions={showRoleQuickActions}
-      />
+        <HomeDashboard
+          roleId={roleId}
+          roleLabel={roleMeta?.label ?? "there"}
+          pendingApprovals={pendingApprovals}
+          pendingApprovalItems={pendingApprovalItems.map((item) => ({
+            id: item.id,
+            title: item.workflow_name ?? item.workflowName ?? `Run ${item.id.slice(0, 8)}`,
+          }))}
+          avgConfidence={avgConfidence}
+          queryRows={learning?.queryRows ?? 0}
+          queryRowsNeeded={learning?.queryRowsNeeded ?? 50}
+          workflowRows={learning?.workflowRows ?? 0}
+          workflowRowsNeeded={learning?.workflowRowsNeeded ?? 30}
+          hasLearningSnapshot={Boolean(learning?.hasAnySnapshot)}
+          mlActive={mlActive}
+          memoriesCount={memoriesCount}
+          aiSystemsOnline={aiSystemsOnline}
+          lastLearningCycle={lastLearningCycle}
+          revenueRisks={revenueRisks}
+          predictiveSummary={
+            typeof predictive?.summary === "string" ? predictive.summary : null
+          }
+          readyModelCount={
+            typeof learningLive?.ready_model_count === "number"
+              ? learningLive.ready_model_count
+              : null
+          }
+          learningVelocity={
+            typeof learningStatus?.learning_velocity === "string"
+              ? learningStatus.learning_velocity
+              : null
+          }
+          showGettingStarted={showGettingStarted}
+          showRoleQuickActions={showRoleQuickActions}
+          activeAgents={agents.length > 0 ? activeAgents : null}
+          agentTotal={agents.length > 0 ? agents.length : null}
+          agentStatusCounts={agents.length > 0 ? agentStatusCounts : null}
+          successRate={successRate}
+          avgDurationMs={avgDurationMs}
+          runsByDay={runsByDay}
+          activeWorkflows={
+            typeof metricsOverview?.active_workflows === "number"
+              ? metricsOverview.active_workflows
+              : null
+          }
+        />
       )}
     </AppShell>
   )

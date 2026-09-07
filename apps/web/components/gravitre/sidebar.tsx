@@ -132,16 +132,16 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         className={cn(
           // Nodus Phase 8: gray rail, white content canvas, divide borders
           "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-divide bg-[color:var(--g-background)] transition-all duration-300 ease-in-out",
-          // Mobile: slide-out drawer
-          "w-64",
+          // Mobile: slide-out drawer (Nodus labeled rail ~220px)
+          "w-[var(--np-sidebar)]",
           isOpen ? "translate-x-0" : "-translate-x-full",
           // Tablet+: pinned rail; width follows user expand preference
           "md:static md:z-auto md:translate-x-0",
-          navExpanded ? "md:w-60" : "md:w-16",
+          navExpanded ? "md:w-[var(--np-sidebar)]" : "md:w-[var(--np-sidebar-rail)]",
         )}
       >
         {/* Logo */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-divide px-3 md:px-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-divide px-3 md:px-2.5">
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>

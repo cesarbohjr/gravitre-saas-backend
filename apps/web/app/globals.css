@@ -58,6 +58,28 @@
   /* Brand green #16a374 from gravitre-icon-green-1024.png */
   --brand: #16a374;
   --brand-soft: #e0f3ec;
+  /* Explicit brand ladder (Nodus product reconstruction Gate 2026-09-07) */
+  --g-brand: #16a374;
+  --g-brand-hover: #128a63;
+  --g-brand-active: #0f7a58;
+  --g-brand-soft: #e0f3ec;
+  --g-brand-muted: #5ec49a;
+  --g-brand-surface: color-mix(in srgb, #16a374 6%, #ffffff);
+  --g-brand-border: color-mix(in srgb, #16a374 22%, #eaedf1);
+  --g-brand-glow: 0 8px 28px -10px color-mix(in srgb, #16a374 30%, transparent);
+  /* Nodus Product Image layout tokens (measured from dashboard@3x.png) */
+  --np-sidebar: 220px;
+  --np-sidebar-rail: 64px;
+  --np-page-pad: 24px;
+  --np-page-pad-sm: 16px;
+  --np-kpi-gap: 16px;
+  --np-radius-sm: 6px;
+  --np-radius-md: 8px;
+  --np-radius-lg: 12px;
+  --np-row-h: 48px;
+  --np-header-h: 40px;
+  --np-nav-icon: 16px;
+  --np-shadow: var(--shadow-aceternity);
   --background: #ffffff;
   --foreground: #202020;
   --card: #ffffff;
