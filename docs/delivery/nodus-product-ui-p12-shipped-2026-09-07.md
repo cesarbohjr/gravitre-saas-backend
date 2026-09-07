@@ -1,6 +1,6 @@
 # Nodus product UI — P12 shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready + desktop visual check)  
+**Status:** Shipped to `main` — Vercel Ready  
 **Gate:** Cesar “approved p11, now start p12” — Desktop densify (denser panes, shortcuts, context menus)
 
 ## Delivered
@@ -21,5 +21,5 @@ No new prices, claims, badges, or Enable entitlement toggles. Shortcuts/menus on
 
 ## Evidence
 
-- Deploy: cite Vercel Ready id after push.
+- Deploy READY: `dpl_4paZHYNHX7s9RfHNUyeugS5K59pM` @ tip `f6cd76a1` (production alias `gravitre.app`)
 - Visual PASS: **not claimed** until signed-in desktop check (home/agents/workflows + ⌘B / right-click).
