@@ -1,6 +1,6 @@
 # Nodus product UI — P11 shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready + mobile visual check)  
+**Status:** Shipped to `main` — Vercel Ready  
 **Gate:** Cesar “approved. move to p11” — Mobile adapt (drawer / bottom nav; tables → cards; progressive disclosure)
 
 ## Delivered
@@ -21,5 +21,5 @@ No new prices, claims, badges, or Enable entitlement toggles. Bottom tabs are ex
 
 ## Evidence
 
-- Deploy: cite Vercel Ready id after push.
+- Deploy READY: `dpl_GN6rsM7beaAmyaH1GazLa2vRZWwL` @ tip `232eeae6` (production alias `gravitre.app`)
 - Visual PASS: **not claimed** until signed-in phone-width check of shell + Activity/Workflows.
