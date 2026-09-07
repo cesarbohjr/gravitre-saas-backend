@@ -172,7 +172,7 @@ function OrganizationSettings({
 
       {/* Upload Dialog */}
       <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload Organization Logo</DialogTitle>
             <DialogDescription>Choose an image file to use as your organization logo.</DialogDescription>
@@ -340,7 +340,7 @@ function SecuritySettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <div className="flex items-center gap-3">
           <Lock className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -380,7 +380,7 @@ function SecuritySettings() {
           </Button>
         </div>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <div className="flex items-center gap-3">
           <Shield className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -392,7 +392,7 @@ function SecuritySettings() {
           {twoFaEnabled ? "Enabled" : "Enable"}
         </Button>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <div className="flex items-center gap-3">
           <Globe className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -405,7 +405,7 @@ function SecuritySettings() {
 
       {/* SSO Dialog */}
       <Dialog open={ssoDialog} onOpenChange={setSsoDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Configure Single Sign-On</DialogTitle>
             <DialogDescription>Connect your identity provider for seamless authentication.</DialogDescription>
@@ -501,7 +501,7 @@ function SecuritySettings() {
 
       {/* 2FA Dialog */}
       <Dialog open={twoFaDialog} onOpenChange={setTwoFaDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
             <DialogDescription>
@@ -531,7 +531,7 @@ function SecuritySettings() {
 
       {/* IP Allowlist Dialog */}
       <Dialog open={ipDialog} onOpenChange={setIpDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Configure IP Allowlist</DialogTitle>
             <DialogDescription>Only allow access from specific IP addresses or ranges.</DialogDescription>
@@ -605,7 +605,7 @@ function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-6">
       {apiKeys.map((apiKey) => (
-        <div key={apiKey.id} className="rounded-lg border border-border bg-card p-4">
+        <div key={apiKey.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm font-medium text-foreground">{apiKey.name}</p>
@@ -684,7 +684,7 @@ function NotificationSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <div className="flex items-center gap-3">
           <Mail className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -699,7 +699,7 @@ function NotificationSettings() {
           className="h-4 w-4 rounded border-border" 
         />
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <div className="flex items-center gap-3">
           <Bell className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -727,7 +727,7 @@ function NotificationSettings() {
 
       {/* Slack Dialog */}
       <Dialog open={slackDialog} onOpenChange={setSlackDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Configure Slack Notifications</DialogTitle>
             <DialogDescription>Connect your Slack workspace to receive alerts.</DialogDescription>
@@ -869,10 +869,10 @@ function TeamSettings({
 
   return (
     <div className="space-y-6">
-      <AdaptiveDataView className="rounded-lg border border-border overflow-hidden">
+      <AdaptiveDataView className="rounded-[var(--np-radius-lg)] border border-divide overflow-hidden shadow-[var(--np-shadow)]">
         <table className="w-full min-w-[480px]">
           <thead>
-            <tr className="border-b border-border bg-secondary/30">
+            <tr className="border-b border-divide bg-secondary/30">
               <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Member</th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Role</th>
               <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Actions</th>
@@ -882,7 +882,7 @@ function TeamSettings({
             {members.map((member) => {
               const titleLine = [member.job_title, member.department].filter(Boolean).join(" · ")
               return (
-              <tr key={member.id ?? member.email} className="border-b border-border last:border-0">
+              <tr key={member.id ?? member.email} className="border-b border-divide last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <UserAccountAvatar
@@ -931,7 +931,7 @@ function TeamSettings({
 
       {/* Invite Dialog */}
       <Dialog open={inviteDialog} onOpenChange={setInviteDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
             <DialogDescription>Send an invitation to join your organization.</DialogDescription>
@@ -981,7 +981,7 @@ function TeamSettings({
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editDialog} onOpenChange={() => setEditDialog(null)}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
             <DialogDescription>
@@ -1125,11 +1125,11 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
           Loading webhooks…
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-6 text-sm text-muted-foreground shadow-[var(--np-shadow)]">
           Could not load webhooks. Refresh and try again.
         </div>
       ) : webhooks.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center">
+        <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] p-8 text-center">
           <Webhook className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="text-sm font-medium text-foreground">No webhooks configured yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -1138,7 +1138,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
       ) : (
         webhooks.map((webhook) => (
-          <div key={webhook.id} className="rounded-lg border border-border bg-card p-4">
+          <div key={webhook.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
             <div className="flex items-start justify-between mb-2">
               <code className="text-xs font-mono text-foreground break-all">{webhook.url}</code>
               <div className="flex items-center gap-2 shrink-0">
@@ -1176,7 +1176,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
       </Button>
 
       <Dialog open={addDialog} onOpenChange={setAddDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Webhook</DialogTitle>
             <DialogDescription>Configure a new outbound webhook endpoint.</DialogDescription>
@@ -1268,7 +1268,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {/* Use Case Defaults */}
-      <div className="space-y-4 pt-6 border-t border-border">
+      <div className="space-y-4 pt-6 border-t border-divide">
         <div>
           <h3 className="text-sm font-medium text-foreground">Default by Use Case</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -1277,7 +1277,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between p-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
             <div className="flex items-center gap-3">
               {/* Two peer rows telling apart task types, so the categorical
                   --chart-* ramp rather than health tones (emerald here did not
@@ -1297,7 +1297,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between p-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-1/10 text-chart-1">
                 <Users className="h-4 w-4" />
@@ -1317,7 +1317,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {/* Fallback Model */}
-      <div className="space-y-4 pt-6 border-t border-border">
+      <div className="space-y-4 pt-6 border-t border-divide">
         <div>
           <h3 className="text-sm font-medium text-foreground">Fallback Model</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -1331,7 +1331,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {/* Model Policies */}
-      <div className="space-y-4 pt-6 border-t border-border">
+      <div className="space-y-4 pt-6 border-t border-divide">
         <div>
           <h3 className="text-sm font-medium text-foreground">Model Policies</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -1340,7 +1340,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
         
         <div className="space-y-3">
-          <label className="flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors">
+          <label className="flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] cursor-pointer hover:bg-secondary/50 transition-colors">
             <div className="flex items-center gap-3">
               <Shield className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -1351,7 +1351,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
             <input type="checkbox" defaultChecked className="rounded border-border" />
           </label>
 
-          <label className="flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors">
+          <label className="flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] cursor-pointer hover:bg-secondary/50 transition-colors">
             <div className="flex items-center gap-3">
               <Info className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -1524,7 +1524,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
         <p className="text-sm font-medium text-foreground">Gravitre Lite Seats</p>
         <p className="text-xs text-muted-foreground mt-1">
           Included: {summary?.included_display ?? (summary?.unlimited ? "Unlimited" : String(summary?.included ?? 0))}
@@ -1536,7 +1536,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
 
       <div className="space-y-3">
         {departments.map((department) => (
-          <div key={department.id} className="rounded-lg border border-border bg-card p-4">
+          <div key={department.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-foreground">{department.name}</p>
@@ -1624,7 +1624,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                 Send Gravitre invite email so this user can verify and onboard
               </label>
             </div>
-            <div className="mt-3 space-y-2 border-t border-border pt-3">
+            <div className="mt-3 space-y-2 border-t border-divide pt-3">
               <p className="text-xs font-medium text-foreground">Assign workflow / agent / council / knowledge pack</p>
               <p className="text-[11px] text-muted-foreground">
                 Lite seats in this department can run assigned workflows (Meson build still requires a full seat).
@@ -1677,7 +1677,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] space-y-3">
         <p className="text-sm font-medium text-foreground">Add Department</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
@@ -1753,7 +1753,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-foreground">Internal voice (staff chat)</p>
@@ -1780,7 +1780,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
 
       {addons.length > 0 ? (
         <>
-          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+          <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
             <p className="text-sm font-medium text-foreground">Monthly addon total</p>
             <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -1789,7 +1789,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
           <div className="space-y-3">
             {addons.map((addon) => (
-              <div key={addon.code} className="rounded-lg border border-border bg-card p-4">
+              <div key={addon.code} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">{addon.name}</p>
@@ -1810,7 +1810,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </>
       ) : (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
           <p className="text-sm font-medium text-foreground">No billable Meson addons</p>
           <p className="mt-1 text-xs text-muted-foreground">
             There are no Stripe-wired Meson addons available for purchase. Voice is plan-included above.
@@ -1840,7 +1840,7 @@ function SoftUsageMeter({
   const pct = hasLimit ? Math.min(100, (used / included) * 100) : 0
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border/70 bg-card/80 p-4">
+    <div className="flex flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">{label}</p>
         {hasLimit ? (
@@ -1937,7 +1937,7 @@ function BillingUsageSettings() {
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
         <p className="text-sm font-medium text-foreground">Estimated overage</p>
         <p className="mt-1 text-2xl font-semibold tabular-nums">${totalEstimatedOverage.toFixed(2)}</p>
         {showResearch && researchOverageUsd > 0 ? (
@@ -2051,7 +2051,7 @@ function SettingsContent() {
   const renderContent = () => {
     if (!canAccessSettingsSection(activeSection, isAdmin)) {
       return (
-        <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4 text-sm text-muted-foreground">
           Admin or owner permission is required to manage this section.
         </div>
       )

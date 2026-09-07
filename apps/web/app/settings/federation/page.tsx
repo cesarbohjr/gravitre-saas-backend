@@ -212,7 +212,7 @@ function FederationContent() {
     <SettingsShell activeSection="federation" isAdmin={isAdmin} hideHeader>
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Hero */}
-      <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="relative mb-8 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
         <GridPattern className="absolute inset-0 opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent" />
         <div className="relative flex flex-col gap-6 p-6 sm:p-8">
@@ -252,7 +252,7 @@ function FederationContent() {
                 initial="hidden"
                 animate="show"
                 variants={fadeUp}
-                className="rounded-xl border border-border/60 bg-background/60 p-4 backdrop-blur-sm"
+                className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]/80 p-4 backdrop-blur-sm"
               >
                 <div className="flex items-center gap-2">
                   <s.icon className={cn("h-4 w-4", s.accent)} />
@@ -497,7 +497,7 @@ function LoadingPlaceholder() {
   return (
     <div className="grid gap-4">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-24 animate-pulse rounded-xl border border-border/60 bg-muted/40" />
+        <div key={i} className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
       ))}
     </div>
   )
@@ -520,7 +520,7 @@ function PageHeaderlessSection({
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-28 animate-pulse rounded-xl border border-border/60 bg-muted/40"
+            className="h-28 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]"
           />
         ))}
       </div>

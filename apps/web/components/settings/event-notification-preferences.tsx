@@ -50,7 +50,7 @@ export function EventNotificationPreferences() {
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-secondary/20 p-4">
+    <div className="space-y-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-4">
       <div>
         <p className="text-sm font-medium text-foreground">Event notifications</p>
         <p className="text-xs text-muted-foreground">
@@ -63,7 +63,7 @@ export function EventNotificationPreferences() {
           return (
             <div
               key={eventType}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2"
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-2"
             >
               <span className="text-sm text-foreground">{label}</span>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">

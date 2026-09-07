@@ -465,3 +465,17 @@ Cesar authorized “move to P9”. See `docs/delivery/nodus-product-ui-p9-shippe
 | Agent `/chat` + mode chips | Align with `/ai`; violet retired from chat mode selector |
 
 **Not claimed:** authenticated `/ai` visual fidelity PASS. P10+ (Settings) still open.
+
+---
+
+## Shipped — P10 (2026-09-07)
+
+Cesar authorized “approved. start p10”. See `docs/delivery/nodus-product-ui-p10-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Settings shell + Card/Dialog/AlertDialog | Divide / `--g-surface-*` / `--np-radius-lg` / `--np-shadow` |
+| Settings routes (billing, approvals, profile, …) | Surface islands retired; billing amounts untouched |
+| Empty / error shells | Federation empty + work-section error on same tokens |
+
+**Not claimed:** authenticated `/settings` visual fidelity PASS. P11+ (Mobile) still open.

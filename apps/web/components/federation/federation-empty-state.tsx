@@ -18,16 +18,16 @@ export function FederationEmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-6 py-12 text-center shadow-[var(--np-shadow)]">
       {visual ? (
         <div className="mb-1 w-full">{visual}</div>
       ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] text-[color:var(--g-text-muted)] border border-divide">
           <Icon className="h-6 w-6" />
         </div>
       )}
-      <h3 className="mt-4 text-sm font-semibold">{title}</h3>
-      <p className="mt-1 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">
+      <h3 className="mt-4 text-sm font-semibold text-[color:var(--g-text-primary)]">{title}</h3>
+      <p className="mt-1 max-w-sm text-pretty text-sm leading-relaxed text-[color:var(--g-text-muted)]">
         {description}
       </p>
       {action && <div className="mt-5">{action}</div>}

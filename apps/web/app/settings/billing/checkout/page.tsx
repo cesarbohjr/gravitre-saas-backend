@@ -59,7 +59,7 @@ function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" data-testid="payment-element-form">
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Subscribe to</p>

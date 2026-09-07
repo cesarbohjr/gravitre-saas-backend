@@ -88,7 +88,7 @@ export function MemoryEntityEmbeddingsSettings({ isAdmin }: { isAdmin: boolean }
   }
 
   return (
-    <div className="space-y-4 pt-6 border-t border-border">
+    <div className="space-y-4 pt-6 border-t border-divide">
       <div>
         <h3 className="text-sm font-medium text-foreground">Chat entity matching (Memory)</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -97,7 +97,7 @@ export function MemoryEntityEmbeddingsSettings({ isAdmin }: { isAdmin: boolean }
         </p>
       </div>
 
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border">
+      <div className="flex items-start gap-2 p-3 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] border border-divide">
         <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="text-xs text-muted-foreground space-y-1.5">
           <p>
@@ -115,7 +115,7 @@ export function MemoryEntityEmbeddingsSettings({ isAdmin }: { isAdmin: boolean }
       </div>
 
       <label
-        className={`flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 transition-colors ${
+        className={`flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] transition-colors ${
           isAdmin ? "cursor-pointer hover:bg-secondary/50" : "opacity-70"
         }`}
       >

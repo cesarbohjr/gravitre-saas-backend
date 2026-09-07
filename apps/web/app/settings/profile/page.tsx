@@ -283,7 +283,7 @@ export default function ProfilePage() {
                 {showAvatarModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowAvatarModal(false)}>
                     <div 
-                      className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+                      className="bg-[color:var(--g-surface-1)] border border-divide rounded-[var(--np-radius-lg)] shadow-[var(--np-shadow)] p-6 w-full max-w-sm mx-4 shadow-2xl"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-between mb-6">
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                       <div className="space-y-3">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-left"
+                          className="w-full flex items-center gap-3 p-4 rounded-xl border border-divide bg-[color:var(--g-surface-2)] hover:bg-secondary/50 transition-colors text-left"
                         >
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                             <ImagePlus className="h-5 w-5 text-primary" />
@@ -405,7 +405,7 @@ export default function ProfilePage() {
                   <div 
                     key={stat.label}
                     className={cn(
-                      "group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:border-border/80 hover:shadow-lg hover:shadow-black/5",
+                      "group relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-4 transition-all duration-300 hover:border-border/80 hover:shadow-lg hover:shadow-black/5",
                       mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                     )}
                     style={{ transitionDelay: `${300 + i * 100}ms` }}
@@ -424,25 +424,21 @@ export default function ProfilePage() {
                 ))}
 
                 {/* Meson Insights Card */}
-                {/* Meson's sub-brand is violet everywhere else (the wizard, its
-                    launch trigger), so this card used the wrong accent —
-                    purple/pink appear nowhere else in the product. */}
+                {/* Profile insight tile — mineral shell only; no live Meson % claim. */}
                 <div className={cn(
-                  "relative overflow-hidden rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 transition-all duration-500 delay-500",
+                  "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-all duration-500 delay-500",
                   mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 )}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-[color:var(--g-brand-soft)] blur-2xl -translate-y-1/2 translate-x-1/2" />
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                      <span className="text-xs font-medium uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                      <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
+                      <span className="text-xs font-medium uppercase tracking-wider text-[color:var(--g-brand)]">
                         Meson Insight
                       </span>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      You&apos;ve approved{" "}
-                      <span className="font-semibold text-violet-600 dark:text-violet-400">23% more</span>{" "}
-                      workflow requests this month. Your team is becoming more autonomous.
+                    <p className="text-sm text-[color:var(--g-text-muted)] leading-relaxed">
+                      Placeholder insight — live Meson stats are not wired on this profile surface.
                     </p>
                   </div>
                 </div>
@@ -560,7 +556,7 @@ export default function ProfilePage() {
                       value={profile.timezone}
                       onChange={(e) => handleChange("timezone", e.target.value)}
                       aria-label="Timezone"
-                      className="mt-2 w-full h-11 rounded-xl border border-border bg-card px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none"
+                      className="mt-2 w-full h-11 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none"
                     >
                       <option value="America/Los_Angeles">Pacific Time (PT)</option>
                       <option value="America/Denver">Mountain Time (MT)</option>
@@ -589,7 +585,7 @@ export default function ProfilePage() {
                       onFocus={() => setActiveField("bio")}
                       onBlur={() => setActiveField(null)}
                       className={cn(
-                        "w-full h-32 rounded-xl border bg-card px-4 py-3 text-sm text-foreground resize-none transition-all duration-300 outline-none",
+                        "w-full h-32 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-4 py-3 text-sm text-foreground resize-none transition-all duration-300 outline-none",
                         activeField === "bio" 
                           ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
                           : "border-border hover:border-muted-foreground/50"
@@ -657,7 +653,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="space-y-3">
                     {(sessionsData?.sessions ?? []).map((session) => (
-                      <div key={session.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div key={session.id} className="flex items-center justify-between rounded-[var(--np-radius-md)] border border-divide p-3">
                         <div>
                           <p className="text-sm font-medium text-foreground">{session.device}</p>
                           <p className="text-xs text-muted-foreground">{session.ip} · {session.last_active}</p>
@@ -717,7 +713,7 @@ function InputField({
         {label}
       </label>
       <div className={cn(
-        "mt-2 relative rounded-xl border bg-card transition-all duration-300",
+        "mt-2 relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] transition-all duration-300",
         isActive 
           ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
           : "border-border hover:border-muted-foreground/50"

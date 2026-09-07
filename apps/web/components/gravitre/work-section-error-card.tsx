@@ -31,12 +31,12 @@ export function WorkSectionErrorCard({
     return (
       <div
         className={cn(
-          "rounded-xl border border-primary/25 bg-primary/5 px-6 py-8 text-center",
+          "rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] px-6 py-8 text-center shadow-[var(--np-shadow)]",
           className,
         )}
       >
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Icon name="lock" size="md" className="text-primary" />
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--g-brand)]/15">
+          <Icon name="lock" size="md" className="text-[color:var(--g-brand)]" />
         </div>
         <p className="text-sm font-medium text-foreground">{billingAccessTitle(error)}</p>
         <p className="mt-1 text-xs text-muted-foreground">{billingAccessMessage(error)}</p>
@@ -60,12 +60,12 @@ export function WorkSectionErrorCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-red-500/20 bg-red-500/5 px-6 py-8 text-center",
+        "rounded-[var(--np-radius-lg)] border border-destructive/25 bg-destructive/5 px-6 py-8 text-center shadow-[var(--np-shadow)]",
         className,
       )}
     >
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-        <Icon name="warning" size="md" className="text-red-400" />
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+        <Icon name="warning" size="md" className="text-destructive" />
       </div>
       <p className="text-sm font-medium text-foreground">{title}</p>
       <p className="mt-1 text-xs text-muted-foreground">{message}</p>

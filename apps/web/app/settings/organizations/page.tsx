@@ -200,7 +200,7 @@ export default function ManageOrganizationsPage() {
       <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
       {/* Header. The old "Settings > Organizations" breadcrumb was the only way
           back before; the rail now marks this section as active, so it went. */}
-      <div className="border-b border-border">
+      <div className="border-b border-divide">
         <div className="px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -424,7 +424,7 @@ export default function ManageOrganizationsPage() {
         )}
 
         {/* Help Section */}
-        <div className="mt-12 p-6 rounded-xl bg-secondary/30 border border-border">
+        <div className="mt-12 p-6 rounded-[var(--np-radius-lg)] bg-[color:var(--g-surface-2)] border border-divide shadow-[var(--np-shadow)]">
           <div className="flex items-start gap-4">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <Icon name="help" size="sm" className="text-primary" />

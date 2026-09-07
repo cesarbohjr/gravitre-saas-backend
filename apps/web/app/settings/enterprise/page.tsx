@@ -81,7 +81,7 @@ function EnterprisePageContent() {
         </div>
 
         {!loading && !canAccessEnterprise ? (
-          <div className="mt-8 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-16 text-center">
+          <div className="mt-8 flex flex-col items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Lock className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             </div>

@@ -54,7 +54,7 @@ export default function PermissionsMatrixPage() {
         <div className="space-y-6 p-4 md:p-6">
           {/* Matches the approvals hero, which previously used a different
               two-hue gradient — sibling settings pages now share one wash. */}
-          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-primary/5 p-6 md:p-8">
+          <div className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-brand-soft)] via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] p-6 md:p-8">
             <div className="pointer-events-none absolute -right-8 -top-10 opacity-60">
               <GlowOrb size={200} color="emerald" intensity={0.22} />
             </div>
@@ -64,8 +64,8 @@ export default function PermissionsMatrixPage() {
               className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
             >
               <div className="max-w-xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-                  <Shield className="h-3.5 w-3.5 text-primary" />
+                <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 text-xs font-medium text-[color:var(--g-text-muted)] backdrop-blur">
+                  <Shield className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
                   Access control
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
@@ -75,7 +75,7 @@ export default function PermissionsMatrixPage() {
                   What each workspace role can access. Loaded from org role definitions on the backend.
                 </p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-background/75 px-4 py-3 backdrop-blur">
+              <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Roles</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{roles.length}</p>
               </div>
@@ -85,15 +85,15 @@ export default function PermissionsMatrixPage() {
           {adminLoading || (isLoading && !data) ? (
             /* Was a centered spinner, which collapsed the layout and then jumped
                when the table arrived. This mirrors the real table's shape. */
-            <div className="overflow-hidden rounded-2xl border border-border bg-card/70 shadow-sm">
-              <div className="flex gap-4 border-b border-border bg-muted/40 px-4 py-3">
+            <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] shadow-sm">
+              <div className="flex gap-4 border-b border-divide bg-[color:var(--g-surface-2)] px-4 py-3">
                 <Skeleton className="h-4 w-40" />
                 {roles.map((role) => (
                   <Skeleton key={role} className="h-4 flex-1" />
                 ))}
               </div>
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 border-b border-border/60 px-4 py-3 last:border-0">
+                <div key={i} className="flex items-center gap-4 border-b border-divide/60 px-4 py-3 last:border-0">
                   <Skeleton className="h-4 w-40" />
                   {roles.map((role) => (
                     <div key={role} className="flex flex-1 justify-center">
@@ -108,10 +108,10 @@ export default function PermissionsMatrixPage() {
               Could not load role permissions. Try again later.
             </div>
           ) : (
-            <AdaptiveDataView className="overflow-hidden rounded-2xl border border-border bg-card/70 shadow-sm">
+            <AdaptiveDataView className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] shadow-sm">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40 text-left">
+                  <tr className="border-b border-divide bg-[color:var(--g-surface-2)] text-left">
                     <th className="px-4 py-3 font-medium text-foreground">Capability</th>
                     {roles.map((role) => (
                       <th key={role} className="px-4 py-3 text-center font-medium text-foreground">
@@ -122,7 +122,7 @@ export default function PermissionsMatrixPage() {
                 </thead>
                 <tbody>
                   {capabilities.map((row) => (
-                    <tr key={row.key} className="border-b border-border/60 last:border-0">
+                    <tr key={row.key} className="border-b border-divide/60 last:border-0">
                       <td className="px-4 py-3 text-foreground">{row.capability}</td>
                       {roles.map((role) => (
                         <td key={role} className="px-4 py-3">

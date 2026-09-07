@@ -49,10 +49,10 @@ export function SettingsShell({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col md:flex-row">
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/80 px-4 py-3 backdrop-blur md:hidden">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur md:hidden">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold text-foreground">{activeMeta?.title}</h1>
-          <p className="truncate text-xs text-muted-foreground">{activeMeta?.description}</p>
+          <h1 className="truncate text-lg font-semibold text-[color:var(--g-text-primary)]">{activeMeta?.title}</h1>
+          <p className="truncate text-xs text-[color:var(--g-text-muted)]">{activeMeta?.description}</p>
         </div>
         <Button
           variant="outline"
@@ -66,7 +66,7 @@ export function SettingsShell({
       </div>
 
       {mobileMenuOpen ? (
-        <div className="z-20 border-b border-border bg-card md:hidden">
+        <div className="z-20 border-b border-divide bg-[color:var(--g-surface-1)] md:hidden">
           <div className="grid grid-cols-2 gap-2 p-3">
             {flatNav.map((section) => (
               <SettingsNavItem
@@ -84,13 +84,13 @@ export function SettingsShell({
         </div>
       ) : null}
 
-      <aside className="relative z-30 hidden w-64 shrink-0 border-r border-border bg-card/95 p-4 backdrop-blur-sm md:block">
+      <aside className="relative z-30 hidden w-64 shrink-0 border-r border-divide bg-[color:var(--g-surface-1)]/95 p-4 backdrop-blur-sm md:block">
         <nav className="space-y-4" aria-label="Settings sections">
           {tiers.map((tier) => {
             const sections = settingsSectionsForTier(tier, isAdmin)
             return (
               <div key={tier}>
-                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--g-text-muted)]">
                   {SETTINGS_TIER_LABELS[tier]}
                 </p>
                 <div className="space-y-1">
@@ -109,19 +109,19 @@ export function SettingsShell({
         </nav>
       </aside>
 
-      <div className="relative z-10 min-w-0 flex-1 overflow-auto">
+      <div className="relative z-10 min-w-0 flex-1 overflow-auto bg-[color:var(--g-canvas)]">
         <div
           className={cn(
             "mx-auto",
             hideHeader
               ? cn(wide ? "max-w-5xl" : "max-w-2xl md:mx-0")
-              : cn("p-4 md:p-6", wide ? "max-w-5xl" : "max-w-2xl md:mx-0"),
+              : cn("px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] md:py-6", wide ? "max-w-5xl" : "max-w-2xl md:mx-0"),
           )}
         >
           {showHeader ? (
             <div className="mb-6 hidden md:block">
-              <h1 className="mb-1 text-xl font-semibold text-foreground">{activeMeta?.title}</h1>
-              <p className="text-sm text-muted-foreground">{activeMeta?.description}</p>
+              <h1 className="mb-1 text-xl font-semibold text-[color:var(--g-text-primary)]">{activeMeta?.title}</h1>
+              <p className="text-sm text-[color:var(--g-text-muted)]">{activeMeta?.description}</p>
             </div>
           ) : null}
           {children}
@@ -144,11 +144,11 @@ function SettingsNavItem({
 }) {
   const isActive = activeSection === section.id
   const className = cn(
-    "flex w-full items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors",
+    "flex w-full items-center gap-3 rounded-[var(--np-radius-md)] px-3 text-left text-sm transition-colors",
     compact ? "py-3" : "py-2",
     isActive
-      ? "bg-primary/10 font-medium text-primary"
-      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+      ? "bg-[color:var(--g-brand-soft)] font-medium text-[color:var(--g-brand)]"
+      : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)] hover:text-[color:var(--g-text-primary)]",
   )
 
   if (section.href) {

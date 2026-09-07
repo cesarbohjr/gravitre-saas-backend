@@ -699,19 +699,19 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
         {/* Ambient background scoped to billing content — never covers the settings rail */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
-            <MorphingBackground colors={["emerald", "blue", "violet"]} />
+            <MorphingBackground colors={["emerald", "blue"]} />
           </div>
           <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/92 to-background" />
         </div>
         
         {/* Hero Header */}
-        <div className="relative z-10 overflow-hidden border-b border-border/50">
+        <div className="relative z-10 overflow-hidden border-b border-divide/50">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-chart-4/10" />
           <div className="absolute top-0 right-0 pointer-events-none">
             <GlowOrb size={280} color="emerald" intensity={0.22} />
           </div>
           <div className="absolute bottom-0 left-0 pointer-events-none">
-            <GlowOrb size={220} color="violet" intensity={0.16} />
+            <GlowOrb size={220} color="emerald" intensity={0.16} />
           </div>
           
           <div className="relative px-4 py-6 md:px-6 md:py-8">
@@ -801,7 +801,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               </motion.div>
 
               {planKnown && subStatus !== "canceled" ? (
-                <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+                <div className="mt-4 flex items-center justify-between gap-4 border-t border-divide/60 pt-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">Auto-renew</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
@@ -870,7 +870,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     <div
                       key={metric.name}
                       className={cn(
-                        "relative flex flex-col rounded-2xl border border-border/70 bg-card/80 p-4 transition-opacity duration-500",
+                        "relative flex flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-4 transition-opacity duration-500",
                         mounted ? "opacity-100" : "opacity-0",
                       )}
                       style={{ transitionDelay: `${200 + i * 60}ms` }}
@@ -934,7 +934,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               </div>
 
               {showVoiceBilling ? (
-                <div className="mt-4 rounded-2xl border border-border/70 bg-card/80 p-4">
+                <div className="mt-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-semibold text-foreground">Voice Minutes top-up</p>
@@ -997,7 +997,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     </p>
                   ) : null}
 
-                  <div className="mt-4 border-t border-border/60 pt-4">
+                  <div className="mt-4 border-t border-divide/60 pt-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">Auto top-up</p>
@@ -1080,7 +1080,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
 
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* Projection chart */}
-                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden lg:col-span-3">
+                <div className="relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] backdrop-blur-sm p-6 overflow-hidden lg:col-span-3">
                   <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none">
                     <GlowOrb size={100} color="emerald" intensity={0.2} />
                   </div>
@@ -1132,7 +1132,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 </div>
 
                 {/* Closest to limit — which resource is the binding constraint */}
-                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden lg:col-span-2">
+                <div className="relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] backdrop-blur-sm p-6 overflow-hidden lg:col-span-2">
                   <h3 className="text-xs font-medium text-muted-foreground mb-4">Closest to limit</h3>
                   <div className="space-y-4">
                     {[...resolvedUsageMetrics]
@@ -1179,7 +1179,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                   Payment Method
                 </h2>
                 
-                <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:shadow-lg hover:shadow-black/5">
+                <div className="group relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5 transition-all duration-300 hover:shadow-lg hover:shadow-black/5">
                   {/* Card visual */}
                   <div className="relative mb-4 aspect-[1.6/1] rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-4 overflow-hidden">
                     {/* Card pattern */}
@@ -1218,7 +1218,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 </div>
 
                 {/* Billing address quick link */}
-                <div className="mt-4 p-4 rounded-xl border border-dashed border-border bg-secondary/30">
+                <div className="mt-4 p-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]">
                   <p className="text-xs text-muted-foreground mb-2">Billing Address</p>
                   <p className="text-sm text-foreground">{billingAddress.street}</p>
                   <p className="text-sm text-foreground">{billingAddress.city}, {billingAddress.state} {billingAddress.zip}</p>
@@ -1254,7 +1254,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                   </Button>
                 </div>
 
-                <div className="rounded-2xl border border-border overflow-hidden bg-card">
+                <div className="rounded-[var(--np-radius-lg)] border border-divide overflow-hidden bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                   {invoiceRows.length === 0 ? (
                     <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                       No invoices yet. Your billing history will appear here after your first payment.
@@ -1265,7 +1265,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       key={invoice.id}
                       className={cn(
                         "flex items-center justify-between px-5 py-4 transition-all duration-300 hover:bg-secondary/50 group",
-                        i !== invoiceRows.length - 1 && "border-b border-border"
+                        i !== invoiceRows.length - 1 && "border-b border-divide"
                       )}
                     >
                       <div className="flex items-center gap-4">
@@ -1305,7 +1305,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
 
             {/* Footer */}
             <div className={cn(
-              "relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary/50 to-secondary/30 p-6 transition-all duration-500 delay-600",
+              "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-surface-2)] to-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6 transition-all duration-500 delay-600",
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1360,7 +1360,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     "flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-primary bg-primary/5"
-                      : "border-border/70 bg-card hover:border-border",
+                      : "border-divide bg-[color:var(--g-surface-1)] hover:border-divide",
                     isProcessing && "opacity-60",
                   )}
                 >
