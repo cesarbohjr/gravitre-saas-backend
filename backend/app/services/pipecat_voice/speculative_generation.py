@@ -54,11 +54,14 @@ _DONE = object()
 
 
 def _normalize_for_match(text: str) -> str:
-    """Whitespace/case-insensitive comparison — Deepgram framing/capitalization
+    """Whitespace/case/punctuation-insensitive comparison — Deepgram framing
     can differ trivially between an interim partial and the final transcript
     without the underlying words actually differing.
     """
-    return " ".join((text or "").strip().split()).casefold()
+    import re
+
+    cleaned = re.sub(r"[^\w\s]", " ", (text or "").strip().casefold())
+    return " ".join(cleaned.split())
 
 
 @dataclass

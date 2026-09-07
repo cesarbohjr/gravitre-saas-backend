@@ -62,7 +62,7 @@ def _apply_max_tokens_kwargs(kwargs: dict[str, Any], model: str, max_tokens: int
 
 class OpenAIAdapter(ProviderAdapter):
     provider_name = "openai"
-    supported_models = ["gpt-5.5", "gpt-5.4-mini", "gpt-4.1", "text-embedding-3-small"]
+    supported_models = ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-4.1", "text-embedding-3-small"]
 
     def __init__(
         self,

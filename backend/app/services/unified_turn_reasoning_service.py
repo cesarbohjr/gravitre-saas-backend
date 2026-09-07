@@ -481,10 +481,12 @@ def _resolve_model(
 
     # Spoken/simple conversational depth must not pay the task-tier model
     # (gpt-5.4-mini) when ambiguous heuristics flip use_embed=True — that was
-    # the live simple-turn floor (~700ms model TTFT) while depth already said
-    # conversational. Write/full depth keeps UNIFIED_TURN_TASK_MODEL_TIER.
+    # the live simple-turn floor (~700ms–1.5s model TTFT) while depth already said
+    # conversational. Default pin: gpt-5.4-nano (VOICE_CONVERSATIONAL_MODEL).
+    # Write/full depth keeps UNIFIED_TURN_TASK_MODEL_TIER.
     if str(reasoning_depth or "").strip().lower() == "conversational":
-        return "gpt-4o-mini"
+        pinned = str(getattr(settings, "voice_conversational_model", "") or "").strip()
+        return pinned or "gpt-5.4-nano"
 
     if task_shaped:
         tier_name = str(getattr(settings, "unified_turn_task_model_tier", "") or "").strip().lower()
@@ -1122,8 +1124,16 @@ async def run_unified_turn_shadow(
                 kwargs["tool_choice"] = "none" if conversational_no_tools else "auto"
             if _supports_custom_temperature(model):
                 kwargs["temperature"] = 0.2
+            # GPT-5.4 nano/mini support reasoning.effort; force none on the
+            # conversational voice pin so we do not pay latent reasoning tokens.
+            if str(model).startswith("gpt-5.4-nano") or (
+                str(reasoning_depth or "").strip().lower() == "conversational"
+                and "nano" in str(model).lower()
+            ):
+                kwargs["reasoning_effort"] = "none"
             if conversational_no_tools:
                 breakdown["conversational_no_tools"] = True
+                breakdown["voice_conversational_model"] = model
             round_start = time.perf_counter()
             completion = await _complete_unified_turn(
                 router,

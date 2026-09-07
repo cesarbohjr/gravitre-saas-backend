@@ -78,7 +78,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         org_id: str,
         user_id: str,
         agent: dict[str, Any] | None = None,
-        min_chars: int = 12,
+        min_chars: int = 8,
         conversation_id: str | None = None,
         llm_context: Any | None = None,
         speculative_coordinator: SpeculativeGenerationCoordinator | None = None,

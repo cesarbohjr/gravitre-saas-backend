@@ -153,6 +153,7 @@ TOKENS_PER_CREDIT = 1000
 MODEL_MULTIPLIERS: list[tuple[str, float]] = [
     ("gpt-5.5", 2.0),
     ("gpt-5.4-mini", 1.0),
+    ("gpt-5.4-nano", 0.4),
     ("gpt-4.1", 1.5),
     ("claude-sonnet", 2.0),
     ("claude-haiku", 1.0),

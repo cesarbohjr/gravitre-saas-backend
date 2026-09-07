@@ -6,6 +6,7 @@ from app.services.model_router import TaskType
 AVAILABLE_MODELS: dict[str, dict[str, str]] = {
     "gpt-5.5": {"provider": "openai", "label": "GPT-5.5", "description": "Most capable"},
     "gpt-5.4-mini": {"provider": "openai", "label": "GPT-5.4 Mini", "description": "Fast & efficient"},
+    "gpt-5.4-nano": {"provider": "openai", "label": "GPT-5.4 Nano", "description": "Fastest / cheapest GPT-5.4"},
     "claude-sonnet-4-6": {"provider": "anthropic", "label": "Claude Sonnet 4.6", "description": "Best for writing"},
     "claude-haiku-4-5-20251001": {
         "provider": "anthropic",

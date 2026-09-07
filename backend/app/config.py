@@ -581,6 +581,16 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Conversational spoken / reasoning_depth=conversational unified-turn model.
+    # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
+    # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.
+    voice_conversational_model: str = Field(
+        default="gpt-5.4-nano",
+        validation_alias=AliasChoices(
+            "VOICE_CONVERSATIONAL_MODEL",
+            "voice_conversational_model",
+        ),
+    )
     twilio_auth_token: str = Field(
         default="",
         validation_alias=AliasChoices("TWILIO_AUTH_TOKEN", "twilio_auth_token"),

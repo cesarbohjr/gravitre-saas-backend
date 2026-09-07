@@ -43,15 +43,11 @@ class TestStartAndAdoptExactMatch:
         assert collected == ["a", "b", "c"]
 
     @pytest.mark.asyncio
-    async def test_adopt_is_case_and_whitespace_insensitive(self):
-        """MUTATION PROOF: trivial STT capitalization/spacing differences
-        between the interim partial and the final transcript must not block
-        an otherwise-identical adoption — revert to a raw `==` and this
-        fails.
-        """
+    async def test_adopt_is_punctuation_insensitive(self):
+        """Punctuation-only STT framing diffs must still adopt (probable-EOT win)."""
         coordinator = SpeculativeGenerationCoordinator()
         run = start_speculative_run(
-            text="  What Is Two Plus Two  ",
+            text="what is two plus two?",
             runner=lambda: _events("ok"),
             create_task=_create_task,
         )
