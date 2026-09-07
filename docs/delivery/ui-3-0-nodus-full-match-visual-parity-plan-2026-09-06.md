@@ -1,7 +1,7 @@
 # GRAVITRE × NODUS — VISUAL PARITY PLAN (vs Aceternity preview)
 
 **Date:** 2026-09-06  
-**Status:** **ACTIVE — Phases 5–8 on main** (marketing + auth + app shell PLATFORM-ADAPT); await deploy for product chrome  
+**Status:** **ACTIVE — Phases 5–9 on main** (marketing + auth + app shell + desktop/extension); await deploy / package builds  
 **Preview SOT:** https://ui.aceternity.com/template-preview/nodus-agent-template  
 **Live today:** https://gravitre.app/ updates after Vercel redeploy of `main`
 
@@ -36,9 +36,8 @@ It did **not** replace homepage sections, navbar, or marketing chrome with the l
 |-------|-------------|-------------------|
 | ✅ 0 | Inventory + Cesar decisions | No |
 | ✅ 3–4 | Tokens, fonts, green, light-first bridges | Subtle (fonts/primary) if redeployed; layout still old |
-| ✅ 5–7 | Marketing homepage + routes + auth chrome | Yes |
-| ✅ 8 | App shell PLATFORM-ADAPT | Product UI |
-| 9 | Desktop + extension denser adapt | Non-web |
+| ✅ 5–8 | Marketing + auth + app shell | Yes |
+| ✅ 9 | Desktop + extension denser adapt | Desktop/extension packages |
 | 10 | Residue audit (Notus/orange/fake claims) | Hardening |
 
 ---

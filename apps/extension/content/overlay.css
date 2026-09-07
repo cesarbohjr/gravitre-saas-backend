@@ -4,11 +4,24 @@
   top: 72px;
   right: 16px;
   z-index: 2147483646;
-  width: min(360px, calc(100vw - 24px));
+  width: min(340px, calc(100vw - 24px));
   font-family: "Inter Display", "Segoe UI", system-ui, sans-serif;
   color: #202020;
+  --background: #ffffff;
+  --foreground: #202020;
+  --charcoal-900: #202020;
+  --gray-100: #f9f9f9;
+  --gray-200: #f5f5f5;
+  --gray-600: #8b8b8b;
   --primary: #16a374;
+  --primary-foreground: #ffffff;
+  --brand: #16a374;
+  --brand-soft: #e0f3ec;
   --border: #eaedf1;
+  --divide: #eaedf1;
+  --shadow-aceternity:
+    0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
+    0px 0px 0px 1px rgba(25, 28, 33, 0.08);
 }
 
 #gravitre-overlay-root * {
@@ -16,104 +29,109 @@
 }
 
 .gvt-card {
-  background: #fff;
-  border: 1px solid var(--border, #eaedf1);
-  border-radius: 16px;
-  box-shadow: 0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
-    0px 0px 0px 1px rgba(25, 28, 33, 0.08);
-  padding: 14px 14px 12px;
+  background: var(--background);
+  border: 1px solid var(--divide);
+  border-radius: 12px;
+  box-shadow: var(--shadow-aceternity);
+  padding: 12px;
 }
 
 .gvt-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .gvt-brand {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--charcoal-900);
 }
 
 .gvt-close {
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: var(--gray-600);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
   padding: 4px;
 }
 
 .gvt-muted {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.45;
-  margin: 0 0 10px;
+  color: var(--gray-600);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0 0 8px;
 }
 
 .gvt-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 0;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  gap: 3px;
+  padding: 7px 0;
+  border-top: 1px solid var(--divide);
 }
 
 .gvt-label {
-  font-size: 11px;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #94a3b8;
+  letter-spacing: 0.05em;
+  color: var(--gray-600);
 }
 
 .gvt-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
+  color: var(--charcoal-900);
 }
 
 .gvt-badge {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--brand-soft);
+  color: #128a63;
 }
 
 .gvt-badge.warn {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: rgba(201, 162, 39, 0.16);
+  color: #92400e;
 }
 
 .gvt-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .gvt-btn {
   appearance: none;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #0f172a;
-  color: #fff;
+  border: 1px solid transparent;
+  background: var(--brand);
+  color: var(--primary-foreground);
   border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 13px;
+  padding: 8px 10px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
 }
 
 .gvt-btn.secondary {
-  background: #fff;
-  color: #0f172a;
+  background: var(--background);
+  color: var(--charcoal-900);
+  border-color: var(--divide);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .gvt-btn:disabled {
@@ -122,69 +140,69 @@
 }
 
 .gvt-outcome {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #f8fafc;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--divide);
+  background: var(--gray-100);
   text-align: left;
 }
 
 .gvt-outcome-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
-  color: #0f172a;
-  margin-bottom: 4px;
+  color: var(--charcoal-900);
+  margin-bottom: 3px;
 }
 
 .gvt-outcome-summary {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #334155;
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #343434;
 }
 
 .gvt-outcome-verified,
 .gvt-outcome-unverified,
 .gvt-outcome-flagged {
   display: inline-block;
-  margin-bottom: 8px;
-  font-size: 11px;
+  margin-bottom: 6px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 2px 7px;
+  border-radius: 6px;
 }
 
 .gvt-outcome-verified {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: var(--brand-soft);
+  color: #128a63;
 }
 
 .gvt-outcome-unverified {
-  background: rgba(148, 163, 184, 0.18);
-  color: #475569;
+  background: var(--gray-200);
+  color: var(--gray-600);
 }
 
 .gvt-outcome-flagged {
-  background: rgba(245, 158, 11, 0.16);
+  background: rgba(201, 162, 39, 0.16);
   color: #92400e;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  border: 1px solid rgba(201, 162, 39, 0.35);
 }
 
 .gvt-outcome-finding {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 6px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.4;
-  color: #0f172a;
+  line-height: 1.35;
+  color: var(--charcoal-900);
 }
 
 .gvt-outcome-next {
-  margin: 0 0 8px;
-  padding-left: 18px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #475569;
+  margin: 0 0 6px;
+  padding-left: 16px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--gray-600);
 }
 
 .gvt-outcome-links {
@@ -194,31 +212,31 @@
 }
 
 .gvt-outcome-link {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--brand);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .gvt-step {
-  font-size: 12px;
-  line-height: 1.4;
-  margin: 4px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 3px 0;
   padding-left: 2px;
 }
 
 .gvt-step-pending {
-  color: #64748b;
+  color: var(--gray-600);
 }
 
 .gvt-step-running {
-  color: #0f766e;
+  color: var(--brand);
   font-weight: 600;
 }
 
 .gvt-step-done {
-  color: #047857;
+  color: #128a63;
 }
 
 .gvt-step-failed {
@@ -226,68 +244,68 @@
 }
 
 .gvt-confirm {
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(201, 162, 39, 0.1);
+  border: 1px solid rgba(201, 162, 39, 0.35);
 }
 
 .gvt-confirm p {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.45;
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.4;
   color: #92400e;
 }
 
 .gvt-input {
   width: 100%;
-  margin: 0 0 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
+  margin: 0 0 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--divide);
   border-radius: 8px;
-  font-size: 13px;
-  color: #0f172a;
-  background: #fff;
+  font-size: 12px;
+  color: var(--charcoal-900);
+  background: var(--background);
 }
 
 .gvt-chat-input {
   width: 100%;
-  margin: 4px 0 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
+  margin: 3px 0 6px;
+  padding: 7px 9px;
+  border: 1px solid var(--divide);
   border-radius: 8px;
-  font-size: 13px;
-  color: #0f172a;
-  background: #fff;
+  font-size: 12px;
+  color: var(--charcoal-900);
+  background: var(--background);
   resize: vertical;
-  min-height: 52px;
+  min-height: 48px;
   font-family: inherit;
 }
 
 .gvt-chat-mode {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 8px;
+  gap: 5px;
+  margin: 0 0 6px;
 }
 
 .gvt-mode-btn {
   appearance: none;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: #fff;
-  color: #334155;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
+  border: 1px solid var(--divide);
+  background: var(--background);
+  color: #343434;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .gvt-mode-btn.active {
-  border-color: rgba(22, 163, 116, 0.6);
-  background: rgba(22, 163, 116, 0.1);
-  color: #047857;
+  border-color: color-mix(in srgb, var(--brand) 50%, var(--divide));
+  background: var(--brand-soft);
+  color: #128a63;
 }
 
 .gvt-mode-btn:disabled {

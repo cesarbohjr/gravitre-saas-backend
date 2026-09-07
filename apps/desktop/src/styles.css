@@ -1,17 +1,22 @@
 :root {
   /**
-   * Desktop token bridge — Nodus full-match / light-first (Gate 0 approved).
-   * Semantic names must match apps/web/app/globals.css :root.
-   * Brand green #16a374 (logo). Typography: Inter Display + DM Mono when bundled;
-   * system stack is the fallback until desktop ships the same font files.
+   * Desktop token bridge — Nodus Phase 9 denser adapt.
+   * Mirrors apps/web globals (light-first). Brand #16a374.
    */
   color-scheme: light;
   --background: #ffffff;
   --foreground: #202020;
   --card: #ffffff;
   --border: #eaedf1;
+  --divide: #eaedf1;
   --muted: #f5f5f5;
   --muted-foreground: #8b8b8b;
+  --charcoal-900: #202020;
+  --charcoal-700: #343434;
+  --gray-100: #f9f9f9;
+  --gray-200: #f5f5f5;
+  --gray-300: #eaedf1;
+  --gray-600: #8b8b8b;
   --primary: #16a374;
   --primary-foreground: #ffffff;
   --destructive: #c45c5c;
@@ -23,8 +28,18 @@
   --brand-soft: #e0f3ec;
   --g-canvas: #ffffff;
   --g-background: #f9f9f9;
+  --g-background-muted: #f5f5f5;
   --g-text-primary: #202020;
   --g-text-muted: #8b8b8b;
+  --shadow-aceternity:
+    0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
+    0px 0px 0px 1px rgba(25, 28, 33, 0.08);
+  --radius-control: 0.65rem;
+  --radius-chip: 0.45rem;
+  --space-1: 0.25rem;
+  --space-2: 0.4rem;
+  --space-3: 0.55rem;
+  --space-4: 0.75rem;
   --status-pending: var(--warning);
   --status-approved: var(--success);
   --status-rejected: var(--destructive);
@@ -34,7 +49,7 @@
   --status-estimate: var(--warning);
   --status-idle: var(--muted-foreground);
 
-  /* Legacy desktop aliases (keep class names working) */
+  /* Legacy desktop aliases */
   --bg: var(--background);
   --panel: var(--card);
   --text: var(--foreground);
@@ -44,6 +59,8 @@
   --warn: var(--warning);
 
   font-family: "Inter Display", "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 * {
@@ -55,8 +72,8 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--g-canvas);
+  color: var(--g-text-primary);
 }
 
 button,
@@ -69,132 +86,148 @@ textarea {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--g-canvas);
 }
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--divide);
+  background: var(--g-background);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .brand {
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  color: var(--charcoal-900);
 }
 
 .pill {
   margin-left: auto;
-  font-size: 0.68rem;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--muted-foreground);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
+  color: var(--gray-600);
+  border: 1px solid var(--divide);
+  border-radius: var(--radius-chip);
+  padding: 0.15rem 0.45rem;
+  background: var(--g-canvas);
 }
 
 .pill.ok {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--divide));
+  background: var(--brand-soft);
 }
 
 .tabs {
   display: flex;
-  gap: 0.25rem;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--divide);
+  background: var(--g-background);
 }
 
 .tab {
   border: 0;
   background: transparent;
-  color: var(--muted-foreground);
-  padding: 0.4rem 0.65rem;
-  border-radius: 0.45rem;
+  color: var(--gray-600);
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-chip);
   cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .tab.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  color: var(--charcoal-900);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .main {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0.75rem;
+  padding: var(--space-3);
+  background: var(--g-canvas);
 }
 
 .messages {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--space-3);
   min-height: 12rem;
 }
 
 .bubble {
   max-width: 92%;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.85rem;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: 0.875rem;
+  line-height: 1.45;
   white-space: pre-wrap;
 }
 
 .bubble.user {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--accent) 28%, var(--panel));
+  background: var(--brand-soft);
+  color: var(--charcoal-900);
 }
 
 .bubble.assistant {
   align-self: flex-start;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--g-canvas);
+  border: 1px solid var(--divide);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .composer {
-  border-top: 1px solid var(--border);
-  padding: 0.65rem;
-  background: var(--panel);
+  border-top: 1px solid var(--divide);
+  padding: var(--space-3);
+  background: var(--g-background);
 }
 
 .composer-row {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
   align-items: flex-end;
 }
 
 .composer textarea {
   flex: 1;
   resize: none;
-  min-height: 2.6rem;
+  min-height: 2.4rem;
   max-height: 7rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--divide);
+  background: var(--g-canvas);
+  color: var(--g-text-primary);
+  padding: var(--space-3) var(--space-3);
 }
 
 .composer button,
 .btn {
   border: 0;
-  border-radius: 0.65rem;
-  background: var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--brand);
   color: var(--primary-foreground);
-  padding: 0.55rem 0.8rem;
+  padding: var(--space-3) 0.75rem;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .btn.ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--g-canvas);
+  border: 1px solid var(--divide);
+  color: var(--charcoal-900);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .btn.warn {
@@ -204,27 +237,30 @@ textarea {
 
 .btn.danger {
   background: var(--danger);
+  color: #fff;
 }
 
 .modality {
   display: flex;
-  gap: 0.35rem;
-  margin-bottom: 0.45rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .modality button {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted-foreground);
-  border-radius: 999px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.75rem;
+  border: 1px solid var(--divide);
+  background: var(--g-canvas);
+  color: var(--gray-600);
+  border-radius: var(--radius-chip);
+  padding: 0.15rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .modality button.active {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--divide));
+  color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .modality button:disabled {
@@ -236,32 +272,32 @@ textarea {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 1.25rem;
-  margin-bottom: 0.4rem;
+  height: 1.1rem;
+  margin-bottom: var(--space-2);
   opacity: 0.7;
 }
 
 .wave span {
   width: 3px;
-  background: var(--muted-foreground);
+  background: var(--gray-600);
   border-radius: 2px;
   animation: pulse 1s ease-in-out infinite;
 }
 
 .wave.live span {
-  background: var(--accent);
+  background: var(--brand);
 }
 
 .voice-controls {
   display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .btn.ghost.active {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--divide));
+  color: var(--brand);
+  background: var(--brand-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -284,36 +320,39 @@ textarea {
 .list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .card {
-  border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 0.75rem;
-  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--divide);
+  background: var(--g-canvas);
+  border-radius: var(--radius-control);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-aceternity);
 }
 
 .card h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.85rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--charcoal-900);
 }
 
 .card p {
   margin: 0;
-  color: var(--muted-foreground);
-  font-size: 0.78rem;
+  color: var(--gray-600);
+  font-size: 0.75rem;
 }
 
 .card-actions {
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0.55rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .muted {
-  color: var(--muted-foreground);
-  font-size: 0.82rem;
+  color: var(--gray-600);
+  font-size: 0.78rem;
 }
 
 .auth {
@@ -322,11 +361,14 @@ textarea {
   height: 100%;
   padding: 1.25rem;
   text-align: center;
-  gap: 0.75rem;
+  gap: var(--space-4);
+  background: var(--g-background);
 }
 
 .auth h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--charcoal-900);
 }
