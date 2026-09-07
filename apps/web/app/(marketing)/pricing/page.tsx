@@ -49,7 +49,7 @@ function renderPlanComparisonCell(value: PlanComparisonCell, tier: "node" | "con
     tier === "node"
       ? "inline-flex items-center justify-center px-2 py-1 rounded-full bg-muted text-sm font-semibold text-foreground"
       : tier === "control"
-        ? "inline-flex items-center justify-center px-2 py-1 rounded-full bg-amber-100 text-sm font-semibold text-amber-700"
+        ? "inline-flex items-center justify-center px-2 py-1 rounded-full bg-brand/10 text-sm font-semibold text-brand"
         : "inline-flex items-center justify-center px-2 py-1 rounded-full bg-primary/15 text-sm font-semibold text-primary"
 
   return <span className={className}>{value}</span>
@@ -58,41 +58,29 @@ function renderPlanComparisonCell(value: PlanComparisonCell, tier: "node" | "con
 export default function PricingPage() {
   return (
     <PricingAnnualProvider>
-      <div className="relative overflow-hidden bg-card">
-        {/* Hero */}
-        <section className="relative py-24 sm:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-amber-50 via-transparent to-transparent" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-amber-100/30 rounded-full blur-3xl" />
-
+      <div className="relative overflow-hidden bg-white">
+        {/* Hero — Nodus chrome · authorized Gravitre plans below */}
+        <section className="border-divide relative border-x border-b py-16 sm:py-24 md:pt-28">
           <div className="relative mx-auto max-w-7xl px-6">
             <div className="mx-auto max-w-3xl text-center">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 backdrop-blur-sm px-4 py-2">
-                <div className="h-2 w-2 rounded-full bg-amber-500" />
-                <span className="text-sm font-medium text-amber-700">{MARKETING_COPY.pricing.badge}</span>
-              </div>
+              <p className="text-brand text-sm font-normal">{MARKETING_COPY.pricing.badge}</p>
 
-              <div className="overflow-hidden">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-                  <span className="text-foreground">{MARKETING_COPY.pricing.headline[0]}</span>
-                </h1>
-              </div>
-              <div className="overflow-hidden">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-                  <span className="bg-gradient-to-r from-amber-600 to-orange-500 bg-clip-text text-transparent">
-                    {MARKETING_COPY.pricing.headline[1]}
-                  </span>
-                </h1>
-              </div>
+              <h1 className="mt-4 text-4xl font-medium tracking-tight text-black sm:text-5xl lg:text-6xl">
+                {MARKETING_COPY.pricing.headline[0]}{" "}
+                <span className="text-brand">{MARKETING_COPY.pricing.headline[1]}</span>
+              </h1>
 
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">{MARKETING_COPY.pricing.subhead}</p>
-              <p className="mt-3 text-sm text-muted-foreground">{MARKETING_COPY.pricing.subheadNote}</p>
+              <p className="mt-6 text-base font-medium tracking-tight text-gray-600 md:text-base lg:text-lg">
+                {MARKETING_COPY.pricing.subhead}
+              </p>
+              <p className="mt-3 text-sm text-gray-600">{MARKETING_COPY.pricing.subheadNote}</p>
 
               <div className="mt-6">
                 <Link
                   href="/get-started"
-                  className="group inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition-all hover:bg-muted/50 hover:border-border"
+                  className="group inline-flex items-center gap-2 rounded-xl bg-charcoal-900 px-6 py-2 text-sm font-medium text-white transition duration-150 active:scale-[0.98] sm:text-base"
                 >
-                  Start free — no card required
+                  Put Gravitre to work
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </div>

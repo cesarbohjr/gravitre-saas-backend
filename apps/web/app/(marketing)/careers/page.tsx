@@ -1,137 +1,129 @@
-"use client"
-
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { ArrowRight, MapPin, Clock, Users, Zap, Heart, Globe } from "lucide-react"
+import { Badge } from "@/components/marketing/nodus/badge"
+import { Button } from "@/components/marketing/nodus/button"
+import { Container } from "@/components/marketing/nodus/container"
+import { CTA } from "@/components/marketing/nodus/cta"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
+import { SubHeading } from "@/components/marketing/nodus/subheading"
+import {
+  BoltIcon,
+  CloudCheckIcon,
+  HeartHandsIcon,
+  ShieldSplitIcon,
+  SparklesIcon,
+  TelescopeIcon,
+} from "@/components/marketing/nodus-icons/card-icons"
 
-const benefits = [
-  { icon: Heart, title: "Health & Wellness", description: "Comprehensive health, dental, and vision insurance for you and your family" },
-  { icon: Zap, title: "Equity", description: "Competitive equity packages so you share in our success" },
-  { icon: Globe, title: "Remote-first", description: "Work from anywhere with flexible hours and async communication" },
-  { icon: Users, title: "Learning & Growth", description: "$2,500 annual learning budget for courses, conferences, and books" },
-  { icon: Clock, title: "Unlimited PTO", description: "Take the time you need to recharge and do your best work" },
-  { icon: MapPin, title: "Offsites", description: "Regular team retreats to connect in person and have fun together" },
+const why = [
+  {
+    title: "Complete ownership",
+    description: "Own outcomes end to end — from first sketch to production.",
+    icon: <CloudCheckIcon className="text-brand size-6" />,
+  },
+  {
+    title: "High-paced environment",
+    description: "Ship quality at startup velocity with enterprise precision.",
+    icon: <BoltIcon className="text-brand size-6" />,
+  },
+  {
+    title: "Absolute integrity",
+    description: "Transparency and honesty guide every decision.",
+    icon: <ShieldSplitIcon className="text-brand size-6" />,
+  },
+  {
+    title: "People-first culture",
+    description: "Growth, well-being, and success are part of the mission.",
+    icon: <HeartHandsIcon className="text-brand size-6" />,
+  },
+  {
+    title: "Meaningful impact",
+    description: "Build technology that changes how teams run their business.",
+    icon: <SparklesIcon className="text-brand size-6" />,
+  },
+  {
+    title: "Vision driven",
+    description: "Help build one AI brain for the entire business.",
+    icon: <TelescopeIcon className="text-brand size-4" />,
+  },
 ]
 
+/**
+ * Careers — Nodus layout · Gravitre copy.
+ * No fake investor / press logos or stock team photos.
+ */
 export default function CareersPage() {
   return (
-    <div className="bg-card">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-emerald-600/20 mb-6">
-              We&apos;re hiring
-            </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">
+    <main>
+      <Container className="border-divide flex flex-col items-center border-x pb-16">
+        <div className="divide-divide border-divide grid w-full grid-cols-1 border-b lg:grid-cols-2 lg:divide-x">
+          <div className="flex flex-col items-start justify-start px-4 py-10 md:px-8 md:py-32">
+            <Badge text="Careers" />
+            <SectionHeading className="mt-4 text-left">
               Build one AI brain for business with us
-            </h1>
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join a world-class team working on challenging problems at the intersection of AI, automation, and enterprise software.
-            </p>
-            <div className="mt-8">
-              <a href="#openings" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90">
-                View open roles
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* How we work */}
-      <section className="px-6 py-16 border-t border-border">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-semibold text-foreground">How we work</h2>
-            <p className="mt-2 text-muted-foreground max-w-2xl mx-auto text-pretty">
-              The principles that shape how we build, collaborate, and grow together.
-            </p>
+            </SectionHeading>
+            <SubHeading className="mt-6 mr-auto max-w-md text-left">
+              Join a team working at the intersection of AI, automation, and
+              enterprise software — with ownership, integrity, and customer focus.
+            </SubHeading>
+            <Button as={Link} href="#open-roles" className="mt-6">
+              View roles
+            </Button>
           </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
+            <p className="font-mono text-xs tracking-tight text-neutral-500 uppercase">
+              How we work
+            </p>
             {[
-              { title: "Ownership", description: "You own outcomes end to end — from the first sketch to production." },
-              { title: "Customer obsession", description: "We start with the customer problem and work backward to the solution." },
-              { title: "Bias for action", description: "We ship, learn, and iterate quickly instead of waiting for perfect." },
-              { title: "Default to open", description: "We share context openly so everyone can do their best work." },
-            ].map((value, i) => (
-              <motion.div
-                key={value.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="border-l-2 border-primary/20 pl-4"
-              >
-                <h3 className="font-medium text-foreground">{value.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{value.description}</p>
-              </motion.div>
+              "Ownership — outcomes end to end",
+              "Customer obsession — start with the problem",
+              "Bias for action — ship, learn, iterate",
+              "Default to open — share context",
+            ].map((line) => (
+              <p key={line} className="text-charcoal-700 text-sm font-medium md:text-base">
+                {line}
+              </p>
             ))}
           </div>
         </div>
-      </section>
+      </Container>
 
-      {/* Why Join */}
-      <section className="px-6 py-24 border-t border-border bg-muted/50">
-        <div className="mx-auto max-w-7xl">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <h2 className="text-3xl font-semibold text-foreground mb-4">Why join Gravitre?</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">We offer competitive compensation and benefits, plus a culture that values impact over hours.</p>
-          </motion.div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {benefits.map((benefit, i) => {
-              const Icon = benefit.icon
-              return (
-                <motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">{benefit.title}</h3>
-                  <p className="text-sm text-muted-foreground">{benefit.description}</p>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      <div id="open-roles" className="scroll-mt-24">
+      <Container className="border-divide flex flex-col items-center border-x border-b py-16 pb-20">
+        <Badge text="Open Roles" />
+        <SectionHeading className="mt-4 px-4 text-center">
+          Open roles
+        </SectionHeading>
+        <SubHeading className="mx-auto mt-4 max-w-lg px-4 text-center">
+          We are not listing invented openings. Reach out if you want to build with us.
+        </SubHeading>
+        <Button as={Link} href="/contact" className="mt-8">
+          Contact careers
+        </Button>
+      </Container>
+      </div>
 
-      {/* Open Roles */}
-      <section id="openings" className="px-6 py-24 border-t border-border">
-        <div className="mx-auto max-w-4xl">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <h2 className="text-3xl font-semibold text-foreground mb-4">Open roles</h2>
-            <p className="text-muted-foreground">
-              Don&apos;t see a role that fits? Send us your resume at <a href="mailto:careers@gravitre.app" className="text-primary hover:text-primary">careers@gravitre.app</a>
-            </p>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="rounded-2xl border border-border bg-muted/50 p-12 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15">
-              <Users className="h-6 w-6 text-primary" />
+      <Container className="border-divide flex flex-col items-center border-x border-b py-16 pb-20">
+        <Badge text="Why Gravitre" />
+        <SectionHeading className="mt-4 px-4 text-center">
+          Why work at Gravitre?
+        </SectionHeading>
+        <div className="mt-12 grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:grid-cols-3">
+          {why.map((item) => (
+            <div
+              key={item.title}
+              className="relative z-10 rounded-lg bg-gray-50 p-4 transition duration-200 md:p-5"
+            >
+              <div className="flex items-center gap-2">{item.icon}</div>
+              <h3 className="mt-4 mb-2 text-lg font-medium">{item.title}</h3>
+              <p className="text-gray-600">{item.description}</p>
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">No open roles right now</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              We don&apos;t have any positions open at the moment, but we&apos;re always growing. Send your resume to{" "}
-              <a href="mailto:careers@gravitre.app" className="text-primary hover:text-primary">careers@gravitre.app</a> and we&apos;ll reach out when something opens up.
-            </p>
-          </motion.div>
+          ))}
         </div>
-      </section>
+      </Container>
 
-      {/* CTA */}
-      <section className="px-6 py-24 border-t border-border bg-muted/50">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="text-3xl font-semibold text-foreground mb-4">Not ready to apply?</h2>
-            <p className="text-muted-foreground mb-8">Follow us on social media and our blog to stay updated on new roles and company news.</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/blog" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">Read our blog</Link>
-              <a href="https://twitter.com" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">Follow on X</a>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-    </div>
+      <CTA />
+      <DivideX />
+    </main>
   )
 }
