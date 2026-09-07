@@ -752,11 +752,14 @@ async def run_unified_turn_shadow(
     )
     # Full Module D spec is the system instruction (not a post-hoc phrase bank).
     # spoken_mode stacks Register 5 (SPOKEN); agent injects self-recognition by name.
+    # Spoken conversational omits few-shots (~1k tokens) to cut model TTFT; write/full keep them.
+    _omit_few_shots = bool(spoken_mode and _depth_conversational)
     system = apply_voice(
         build_module_d_unified_system_prompt(
             extra_operator_rules=voice_system_prompt_section(),
             spoken_mode=bool(spoken_mode),
             agent=agent,
+            include_few_shots=not _omit_few_shots,
         )
     )
     user_parts = []

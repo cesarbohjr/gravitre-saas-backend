@@ -85,8 +85,10 @@ def is_turn_cancelled(turn_id: str) -> bool:
 def split_speakable_chunks(buffer: str, *, min_chars: int = 12) -> tuple[list[str], str]:
     """Emit speakable chunks at sentence boundaries; keep remainder provisional.
 
-    Default ``min_chars=12`` (was 24) so spoken streaming can start TTS on a
-    shorter first clause without waiting for an 80-char flush.
+    Short provisional answers (under ~48 chars) flush on a word boundary once
+    ``min_chars`` is met so TTFA does not wait for terminal punctuation
+    (e.g. "Two plus two" while "equals four." is still generating). Longer
+    buffers keep a higher clause floor to avoid a TTS round-trip per phrase.
     """
     parts = _SENTENCE_END.split(buffer)
     if len(parts) <= 1:
@@ -95,11 +97,14 @@ def split_speakable_chunks(buffer: str, *, min_chars: int = 12) -> tuple[list[st
         # (common for short voice answers like "Four.").
         if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
             return [stripped], ""
-        if len(buffer) >= max(min_chars * 2, 40) and (" " in buffer):
-            # Long clause without terminal punctuation — flush a clause on comma/space.
-            idx = buffer.rfind(", ", 0, len(buffer) - 10)
+        # Short answers: early word-boundary flush. Longer: higher floor.
+        clause_floor = min_chars if len(buffer) < 48 else max(min_chars * 2, 40)
+        if len(buffer) >= clause_floor and (" " in buffer):
+            cut_tail = 2 if len(buffer) < 48 else 10
+            space_tail = 1 if len(buffer) < 48 else 5
+            idx = buffer.rfind(", ", 0, max(len(buffer) - cut_tail, 0))
             if idx < min_chars:
-                idx = buffer.rfind(" ", 0, len(buffer) - 5)
+                idx = buffer.rfind(" ", 0, max(len(buffer) - space_tail, min_chars))
             if idx >= min_chars:
                 return [buffer[:idx].strip()], buffer[idx:].lstrip()
         return [], buffer

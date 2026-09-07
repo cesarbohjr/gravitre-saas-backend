@@ -55,6 +55,24 @@ def test_split_speakable_chunks_earlier_clause_flush():
     assert len(ready[0]) >= 12
 
 
+def test_split_speakable_chunks_short_answer_mid_sentence_flush():
+    """Short answers must not wait for '.' — flush once a first clause exists."""
+    ready, rem = split_speakable_chunks("Two plus two equals", min_chars=12)
+    assert ready, "expected mid-sentence flush before terminal punctuation"
+    assert ready[0].startswith("Two")
+    assert len(ready[0]) >= 12
+    assert rem  # remainder kept for the next delta
+
+
+def test_spoken_conversational_prompt_omits_few_shots():
+    full = build_module_d_unified_system_prompt(spoken_mode=True, include_few_shots=True)
+    lean = build_module_d_unified_system_prompt(spoken_mode=True, include_few_shots=False)
+    assert "Few-shot demonstrations" in full
+    assert "Few-shot demonstrations" not in lean
+    assert "Register 5 — SPOKEN" in lean
+    assert len(lean) < len(full)
+
+
 def test_normalize_spoken_text_removes_visual_markdown():
     source = (
         "## Update\n"

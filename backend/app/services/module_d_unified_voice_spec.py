@@ -283,8 +283,13 @@ def build_module_d_unified_system_prompt(
     extra_operator_rules: str = "",
     spoken_mode: bool = False,
     agent: dict | None = None,
+    include_few_shots: bool = True,
 ) -> str:
-    """Compose the system prompt for the unified reasoning call."""
+    """Compose the system prompt for the unified reasoning call.
+
+    ``include_few_shots=False`` is for spoken conversational latency only —
+    write/full depth must keep the demos (caller gates on reasoning_depth).
+    """
     from app.services.conversational_behavior import conversational_behavior_section
     from app.services.expert_dialogue_library import expert_dialogue_prompt_section
     from app.services.voice_agent_profile import (
@@ -292,15 +297,20 @@ def build_module_d_unified_system_prompt(
         spoken_register_section,
     )
 
-    shots = "\n\n".join(
-        f"User: {u}\nAssistant: {a}" for u, a in MODULE_D_FEW_SHOT_EXCHANGES
-    )
     parts = [
         MODULE_D_UNIFIED_SYSTEM_SPEC,
         conversational_behavior_section(),
-        "## Few-shot demonstrations (match register and honesty; do not copy verbatim every time)",
-        shots,
     ]
+    if include_few_shots:
+        shots = "\n\n".join(
+            f"User: {u}\nAssistant: {a}" for u, a in MODULE_D_FEW_SHOT_EXCHANGES
+        )
+        parts.extend(
+            [
+                "## Few-shot demonstrations (match register and honesty; do not copy verbatim every time)",
+                shots,
+            ]
+        )
     if agent:
         self_name = agent_self_recognition_section(agent)
         if self_name:
