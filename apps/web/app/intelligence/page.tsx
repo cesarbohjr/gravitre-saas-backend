@@ -23,7 +23,7 @@ import { LivingMineralField } from "@/components/gravitre/visual"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
-import { TYPE, RADIUS } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { ESTIMATED_CONFIDENCE_LABEL } from "@/lib/outcome-labels"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -220,7 +220,7 @@ function IntelligenceCenterInner() {
         )}
 
         {avgConfidence == null && !isLoading ? (
-          <p className={cn(TYPE.meta, "rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2", RADIUS.tile)}>
+          <p className={cn(TYPE.meta, "rounded-[var(--np-radius-md)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-3 py-2")}>
             Avg confidence not yet available for this period — shown as — rather than a fabricated score.
           </p>
         ) : null}
@@ -237,17 +237,14 @@ function IntelligenceCenterInner() {
 
         <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className={cn("border border-border bg-card p-5 shadow-sm", RADIUS.panel)}>
+        <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
+          <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
             <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h2>
             <p className={cn(TYPE.bodyMuted, "mt-1")}>
               {SURFACE_COPY.sections.routingTraceHint}
             </p>
             <div
-              className={cn(
-                "mt-4 border border-dashed border-border bg-muted/30 px-4 py-6 text-center",
-                RADIUS.card,
-              )}
+              className="mt-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-6 text-center"
             >
               <p className={TYPE.cardTitle}>No live routing trace on this hub</p>
               <p className={cn(TYPE.meta, "mt-1")}>
@@ -256,7 +253,7 @@ function IntelligenceCenterInner() {
               </p>
             </div>
           </section>
-          <section className={cn("border border-border bg-card p-5 shadow-sm", RADIUS.panel)}>
+          <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
             <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h2>
             <p className={cn(TYPE.bodyMuted, "mt-1")}>{SURFACE_COPY.sections.latestSimulationHint}</p>
             <div className="mt-4">
@@ -265,7 +262,7 @@ function IntelligenceCenterInner() {
           </section>
         </div>
 
-        <div className="space-y-6 border-t border-border pt-6">
+        <div className="space-y-6 border-t border-divide pt-6">
           {LINK_GROUPS.map((group) => (
             <section key={group.heading} aria-labelledby={`links-${group.heading}`}>
               <div className="mb-3">
@@ -281,17 +278,11 @@ function IntelligenceCenterInner() {
                     <Link
                       key={link.route}
                       href={link.route}
-                      className={cn(
-                        "group border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30 hover:bg-accent/50",
-                        RADIUS.panel,
-                      )}
+                      className="group rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-surface)]"
                     >
                       <div className="flex items-start gap-3">
                         <span
-                          className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center bg-primary/10 text-primary",
-                            RADIUS.tile,
-                          )}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-intelligence-surface)] text-[color:var(--g-intelligence)]"
                         >
                           <LinkIcon className="h-5 w-5" weight="duotone" aria-hidden />
                         </span>

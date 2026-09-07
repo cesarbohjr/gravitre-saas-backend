@@ -103,7 +103,7 @@ export function AvailableConnectorsStrip({
             key={entry.vendorKey}
             type="button"
             onClick={() => onSelect(entry.type)}
-            className="group flex w-[200px] max-w-[80vw] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
+            className="group flex w-[200px] max-w-[80vw] shrink-0 items-center gap-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-2.5 text-left shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-soft)]"
           >
             <ConnectorIcon vendor={entry.type} size="sm" />
             <div className="min-w-0 flex-1">

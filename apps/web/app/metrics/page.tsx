@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
@@ -299,7 +300,7 @@ function MetricCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-xl border border-border bg-card"
+      className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
     >
       {/* Background gradient */}
       <div className={cn(
@@ -513,7 +514,7 @@ export default function MetricsPage() {
           eyebrow="Intelligence · Operational health"
           title={SURFACE_COPY.pages.metrics.headline}
           description={SURFACE_COPY.pages.metrics.description}
-          icon={Activity}
+          icon={NucleoIntelligence}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
@@ -625,8 +626,8 @@ export default function MetricsPage() {
             {/* Main Charts + Meson Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Run Volume Chart */}
-              <div className="lg:col-span-2 rounded-xl border border-border bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="lg:col-span-2 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+                <div className="flex items-center justify-between border-b border-divide px-4 py-3">
                   <h3 className="text-sm font-medium text-foreground">Execution Volume</h3>
                   <div className="flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-1.5">
@@ -680,9 +681,9 @@ export default function MetricsPage() {
               </div>
 
               {/* Meson Insights Panel */}
-              <div className="rounded-xl border border-border bg-gradient-to-br from-card to-primary/5 overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
+              <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+                <div className="flex items-center gap-2 border-b border-divide px-4 py-3">
+                  <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
                   <h3 className="text-sm font-medium text-foreground">Meson Insights</h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
@@ -696,8 +697,8 @@ export default function MetricsPage() {
             {/* Bottom Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* Latency Chart with anomaly markers */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+                <div className="flex items-center justify-between border-b border-divide px-4 py-3">
                   <h3 className="text-sm font-medium text-foreground">Latency Distribution</h3>
                   {latencySpikeTime ? (
                     <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
@@ -749,8 +750,8 @@ export default function MetricsPage() {
               </div>
 
               {/* Throughput with target line */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border">
+              <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+                <div className="border-b border-divide px-4 py-3">
                   <h3 className="text-sm font-medium text-foreground">Weekly Throughput</h3>
                 </div>
                 <div className="p-4">

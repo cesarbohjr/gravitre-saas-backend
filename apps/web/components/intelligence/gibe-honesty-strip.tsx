@@ -10,7 +10,7 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { StatusChip } from "@/components/gravitre/visual"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { TYPE, RADIUS } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { CONFIDENCE_ESTIMATE_METHODOLOGY } from "@/lib/outcome-labels"
 import {
   summarizeOrgTraining,
@@ -55,8 +55,7 @@ export function GibeHonestyStrip({
   return (
     <section
       className={cn(
-        "border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5 shadow-[var(--g-shadow-surface)]",
-        RADIUS.panel,
+        "rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]",
         className,
       )}
       data-gibe-honesty-strip=""
@@ -90,10 +89,7 @@ export function GibeHonestyStrip({
 
       {shown.length === 0 ? (
         <div
-          className={cn(
-            "mt-4 border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)]/50 px-4 py-8 text-center",
-            RADIUS.card,
-          )}
+          className="mt-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]/50 px-4 py-8 text-center"
         >
           <NucleoIntelligence className="mx-auto text-muted-foreground" size={32} aria-hidden />
           <p className={cn(TYPE.cardTitle, "mt-2")}>No runtime model status yet</p>

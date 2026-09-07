@@ -35,7 +35,7 @@ function RelationshipsLens() {
   return (
     <ul className="space-y-2 text-sm">
       {rows.slice(0, 20).map((row, index) => (
-        <li key={String(row.id ?? index)} className="rounded-lg border border-border/60 px-3 py-2">
+        <li key={String(row.id ?? index)} className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
           <span className="font-medium">{readString(row.source_entity_type, "entity")}</span> →{" "}
           <span className="font-medium">{readString(row.target_entity_type, "entity")}</span>
           <span className="ml-2 text-muted-foreground">{readString(row.relationship_type, "")}</span>
@@ -119,7 +119,7 @@ export default function IntelligenceMemoryPage() {
               candidates.map((candidate) => {
                 const auditMatch = auditItems.find((row) => row.candidate_id === candidate.id)
                 return (
-                  <article key={candidate.id} className="rounded-2xl border border-border/70 bg-card p-4">
+                  <article key={candidate.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <MemoryCategoryChip category={candidate.memory_category} size="md" />
                       <div className="flex gap-2">
@@ -161,7 +161,7 @@ export default function IntelligenceMemoryPage() {
               <EmptyState title="No recent auto-promotions" description="Auto-promotions appear when thresholds are met." />
             ) : (
               autoItems.map((item, index) => (
-                <article key={String(item.memory_id ?? index)} className="rounded-2xl border border-border/70 bg-card p-4">
+                <article key={String(item.memory_id ?? index)} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
                   <p className="text-sm text-foreground">{plainDecisionReasoning(item.decisionReasoning ?? item)}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {item.decided_at ? formatDistanceToNow(new Date(String(item.decided_at)), { addSuffix: true }) : "Recently"}
@@ -188,7 +188,7 @@ export default function IntelligenceMemoryPage() {
             {auditItems.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {auditItems.slice(0, 10).map((row, index) => (
-                  <li key={String(row.id ?? index)} className="rounded-lg border border-border/60 px-3 py-2">
+                  <li key={String(row.id ?? index)} className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
                     <span className="font-medium">{readString(row.entity_type, "memory")}</span> ·{" "}
                     {plainDecisionReasoning(row.decision_reasoning ?? row.decisionReasoning)}
                   </li>

@@ -211,7 +211,7 @@ export default function ConnectorDetailPage() {
     <AppShell title={connector.name} breadcrumbVendor={connector.type}>
       <div className="flex flex-col min-h-full">
         {/* Header */}
-        <div className="border-b border-border px-4 md:px-6 py-4">
+        <div className="border-b border-divide px-4 py-4 md:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex items-start gap-4">
               <Link 
@@ -310,7 +310,7 @@ export default function ConnectorDetailPage() {
         <div className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
           {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-card border-border">
+            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -323,7 +323,7 @@ export default function ConnectorDetailPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border">
+            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -336,7 +336,7 @@ export default function ConnectorDetailPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border">
+            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -349,7 +349,7 @@ export default function ConnectorDetailPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border">
+            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -365,7 +365,7 @@ export default function ConnectorDetailPage() {
           </div>
 
           {/* Usage metrics — available when observability is wired for this connector */}
-          <Card className="bg-card border-border">
+          <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Usage metrics</CardTitle>
               <CardDescription className="text-xs">
@@ -390,7 +390,7 @@ export default function ConnectorDetailPage() {
           {/* Configuration */}
           <div className="grid gap-6">
             {/* Configuration */}
-            <Card className="bg-card border-border">
+            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Key className="h-4 w-4 text-warning" />
@@ -457,7 +457,7 @@ export default function ConnectorDetailPage() {
           </div>
 
           {/* Activity Logs */}
-          <Card className="bg-card border-border">
+          <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">Activity Logs</CardTitle>

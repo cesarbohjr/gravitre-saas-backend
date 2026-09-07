@@ -436,3 +436,18 @@ Cesar authorized “move to p4+”. See `docs/delivery/nodus-product-ui-p4-p7-sh
 | P7 | Activity panes + Approvals queue/detail chrome |
 
 **Not claimed:** authenticated visual fidelity PASS. P8+ still open.
+
+---
+
+## Shipped — P8 (2026-09-07)
+
+Cesar authorized “move to P8”. See `docs/delivery/nodus-product-ui-p8-shipped-2026-09-07.md`.
+
+| Surface | Delivered |
+|---------|-----------|
+| Connectors list + detail | Nodus card/filter/surface chrome; vendor logos unchanged |
+| Sources | Card + header mineral shell |
+| GIBE hub + honesty + health | Divide/surface; violet on intel icon tiles only |
+| Memory + Metrics | Card/chart shells; NucleoIntelligence on metrics header |
+
+**Not claimed:** authenticated visual fidelity PASS. P9+ (AI Chat) still open.

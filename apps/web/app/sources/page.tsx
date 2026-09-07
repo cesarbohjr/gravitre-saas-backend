@@ -232,28 +232,28 @@ function SourceTile({
       transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
       whileHover={{ y: -4, scale: 1.02 }}
       className={cn(
-        "group relative rounded-2xl border transition-all duration-300 overflow-hidden",
+        "group relative overflow-hidden rounded-[var(--np-radius-lg)] border transition-all duration-300",
         source.status === "error" 
-          ? "border-red-500/30 bg-gradient-to-br from-red-500/5 via-card to-card" 
-          : "border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5",
-        source.status === "syncing" && "border-blue-500/30",
-        source.status === "connected" && "ring-1 ring-emerald-500/10"
+          ? "border-destructive/30 bg-[color:var(--g-surface-1)]" 
+          : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:border-[color:var(--g-brand-border)]",
+        source.status === "syncing" && "border-[color:var(--g-signal)]/40",
+        source.status === "connected" && "ring-1 ring-[color:var(--g-brand-border)]"
       )}
     >
       {/* Top accent gradient */}
       <div className={cn(
         "absolute top-0 left-0 right-0 h-1",
-        source.status === "connected" && "bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500",
-        source.status === "syncing" && "bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500",
-        source.status === "error" && "bg-gradient-to-r from-red-500 via-red-400 to-red-500",
-        source.status === "disconnected" && "bg-gradient-to-r from-zinc-500 via-zinc-400 to-zinc-500"
+        source.status === "connected" && "bg-[color:var(--g-brand)]",
+        source.status === "syncing" && "bg-[color:var(--g-signal)]",
+        source.status === "error" && "bg-destructive",
+        source.status === "disconnected" && "bg-muted-foreground/40"
       )} />
       
       {/* Syncing animation overlay */}
       {source.status === "syncing" && (
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden rounded-[var(--np-radius-lg)] pointer-events-none">
           <motion.div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-[color:var(--g-signal)]/10 to-transparent"
             animate={{ x: ["-100%", "100%"] }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           />
@@ -592,7 +592,7 @@ export default function SourcesPage() {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 flex-shrink-0 border-b border-border/50 bg-card/30 backdrop-blur-sm">
+        <div className="relative z-10 flex-shrink-0 border-b border-divide bg-[color:var(--g-surface-1)]/90 backdrop-blur-sm">
           {error && (
             <div className="mx-6 mt-3 mb-0 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
               <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>

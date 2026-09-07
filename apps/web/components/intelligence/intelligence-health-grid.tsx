@@ -127,7 +127,7 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
       )}
 
       {maturityView ? (
-        <div className="rounded-2xl border border-border/70 bg-card p-4 md:p-5">
+        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] md:p-5">
           <div className="flex items-start gap-3">
             <Sparkle className="h-5 w-5 shrink-0 text-primary" weight="duotone" aria-hidden />
             <div>

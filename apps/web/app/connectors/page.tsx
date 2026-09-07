@@ -477,14 +477,14 @@ function ConnectorNode({
       )}>
         {/* Node */}
         <div className={cn(
-          "relative rounded-xl border bg-card p-3 md:p-4 transition-all duration-300 w-full md:min-w-[240px]",
-          isHovered ? "border-foreground/20 shadow-lg" : "border-border",
-          connector.status === "connected" && "shadow-success/5",
-          connector.status === "error" && "shadow-destructive/5 border-destructive/30"
+          "relative rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 md:p-4 transition-all duration-300 w-full md:min-w-[240px] shadow-[var(--np-shadow)]",
+          isHovered ? "border-[color:var(--g-border-active)]" : "border-divide",
+          connector.status === "connected" && "shadow-[var(--g-brand-glow)]",
+          connector.status === "error" && "border-destructive/30"
         )}>
           {/* Status indicator */}
           <div className={cn(
-            "absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center ring-4 ring-card",
+            "absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center ring-4 ring-[color:var(--g-surface-1)]",
             config.bg
           )}>
             {isSyncing ? (
@@ -2757,7 +2757,7 @@ function ConnectorsPageContent() {
                       // change shape.
                       "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
                       statusFilter === status.value
-                        ? "bg-card shadow-sm text-foreground border-border"
+                        ? "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] text-foreground border-divide"
                         : "text-muted-foreground border-transparent hover:text-foreground",
                     )}
                   >
@@ -2797,15 +2797,15 @@ function ConnectorsPageContent() {
                 ) : null}
               </div>
               {/* Status Filter Pills */}
-              <div className="hidden lg:flex items-center gap-1 border rounded-lg p-1 bg-secondary/30">
+              <div className="hidden lg:flex items-center gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1">
                 {statusFilterOptions.map((status) => (
                   <button
                     key={status.value}
                     onClick={() => setStatusFilter(status.value)}
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--np-radius-sm)] text-xs font-medium transition-all",
                       statusFilter === status.value 
-                        ? "bg-card shadow-sm text-foreground" 
+                        ? "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] text-foreground" 
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
