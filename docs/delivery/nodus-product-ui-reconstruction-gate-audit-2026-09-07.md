@@ -479,3 +479,17 @@ Cesar authorized “approved. start p10”. See `docs/delivery/nodus-product-ui-
 | Empty / error shells | Federation empty + work-section error on same tokens |
 
 **Not claimed:** authenticated `/settings` visual fidelity PASS. P11+ (Mobile) still open.
+
+---
+
+## Shipped — P11 (2026-09-07)
+
+Cesar authorized “approved. move to p11”. See `docs/delivery/nodus-product-ui-p11-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Bottom nav + shell pad | Primary tabs from existing routes; full nav stays in drawer |
+| AdaptiveDataView / DataTable | Mobile cards; table from `md` up |
+| Workflows + Activity + Approvals | Grid lock; list/detail swap; CTA above bottom nav |
+
+**Not claimed:** authenticated mobile visual fidelity PASS. P12+ (Desktop densify) still open.

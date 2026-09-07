@@ -42,7 +42,7 @@ import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import { INTERACTION, MOTION, RADIUS, TYPE } from "@/lib/design-system"
-import { ExternalLink, RefreshCw, X } from "lucide-react"
+import { ArrowLeft, ExternalLink, RefreshCw, X } from "lucide-react"
 
 type ActivityTab = "all" | "objects" | "failures"
 
@@ -116,6 +116,8 @@ function ActivityPageInner() {
     if (next === "all") params.delete("tab")
     else params.set("tab", next)
     const qs = params.toString()
+    setSelectedOutcomeId(null)
+    setSelectedWorkObjectId(null)
     router.replace(qs ? `/activity?${qs}` : "/activity")
   }
 
@@ -178,14 +180,28 @@ function ActivityPageInner() {
     [workObjectListData],
   )
 
-  const selectedOutcome =
-    outcomes.find((o) => o.id === selectedOutcomeId) ||
-    outcomes.find((o) => o.runId === selectedOutcomeId) ||
-    outcomes[0] ||
-    null
+  const selectedOutcomeExplicit =
+    selectedOutcomeId == null
+      ? null
+      : outcomes.find((o) => o.id === selectedOutcomeId) ||
+        outcomes.find((o) => o.runId === selectedOutcomeId) ||
+        null
+  // Desktop keeps first-row preview; mobile only opens detail after an explicit tap.
+  const selectedOutcome = selectedOutcomeExplicit ?? outcomes[0] ?? null
 
-  const selectedWorkObject =
-    workObjects.find((o) => o.id === selectedWorkObjectId) || workObjects[0] || null
+  const selectedWorkObjectExplicit =
+    selectedWorkObjectId == null
+      ? null
+      : workObjects.find((o) => o.id === selectedWorkObjectId) || null
+  const selectedWorkObject = selectedWorkObjectExplicit ?? workObjects[0] ?? null
+
+  const mobileDetailOpen =
+    tab === "objects" ? selectedWorkObjectId != null : selectedOutcomeId != null
+
+  const clearMobileDetail = () => {
+    setSelectedOutcomeId(null)
+    setSelectedWorkObjectId(null)
+  }
 
   const selectedIndex =
     tab === "objects"
@@ -547,6 +563,7 @@ function ActivityPageInner() {
                 className={cn(
                   "flex min-h-0 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:w-[380px] lg:shrink-0",
                   "rounded-[var(--np-radius-lg)]",
+                  mobileDetailOpen ? "hidden lg:flex" : "flex",
                 )}
               >
                 {/* Count lives on the tab now — repeating it here read as two
@@ -810,6 +827,7 @@ function ActivityPageInner() {
                 className={cn(
                   "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
                   "rounded-[var(--np-radius-lg)]",
+                  mobileDetailOpen ? "flex" : "hidden lg:flex",
                 )}
               >
                 {/* The pane header now names what is selected instead of saying
@@ -818,9 +836,19 @@ function ActivityPageInner() {
                     continuous path rather than a hunt inside the body copy. */}
                 <div
                   className={cn(
-                    "flex shrink-0 items-center justify-between gap-3 border-b border-border bg-gradient-to-b from-muted/40 to-card/95 px-3 py-2 backdrop-blur",
+                    "flex shrink-0 flex-col gap-1 border-b border-divide bg-gradient-to-b from-muted/40 to-[color:var(--g-surface-1)]/95 px-3 py-2 backdrop-blur",
                   )}
                 >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 h-8 w-fit px-2 lg:hidden"
+                    onClick={clearMobileDetail}
+                  >
+                    <ArrowLeft className="mr-1 h-4 w-4" />
+                    Back to list
+                  </Button>
+                  <div className="flex items-center justify-between gap-3">
                   <span className={cn(TYPE.eyebrow, "truncate")}>
                     {tab === "objects"
                       ? selectedWorkObject?.title || "WorkObject detail"
@@ -839,6 +867,7 @@ function ActivityPageInner() {
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   ) : null}
+                  </div>
                 </div>
                 <div className="min-h-0 flex-1 p-3 lg:overflow-y-auto md:p-4">
                   {isPanelLoading || (tab === "objects" && workObjectDetailLoading) ? (

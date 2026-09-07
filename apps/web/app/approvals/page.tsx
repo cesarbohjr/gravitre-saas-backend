@@ -906,7 +906,7 @@ function ApprovalsContent() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row h-full pb-24 lg:pb-0">
+      <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0">
         {/* Left: Queue */}
         <div className={cn(
           "w-full lg:w-[420px] flex-shrink-0 lg:border-r border-border flex flex-col",
@@ -1044,7 +1044,7 @@ function ApprovalsContent() {
       </div>
 
       {selectedApproval ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-divide bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-lg gap-2">
             <Button
               variant="outline"

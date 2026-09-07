@@ -5,6 +5,7 @@ import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
 import { TopBar } from "./top-bar"
+import { MobileBottomNav } from "./mobile-bottom-nav"
 import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { usePathname, useRouter } from "next/navigation"
@@ -450,12 +451,19 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
               isImmersiveChat || fillViewport
-                ? "overflow-hidden pb-0"
-                : "overflow-y-auto overflow-x-hidden pb-4",
+                ? cn(
+                    "overflow-hidden",
+                    pathname.includes("/builder") ? "pb-0" : "pb-16 md:pb-0",
+                  )
+                : cn(
+                    "overflow-y-auto overflow-x-hidden",
+                    pathname.includes("/builder") ? "pb-4" : "pb-20 md:pb-4",
+                  ),
             )}
           >
             {children}
           </main>
+          <MobileBottomNav />
         </div>
       
       {/* Command Palette - accessible via Cmd+K */}

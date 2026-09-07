@@ -34,6 +34,7 @@ import { INTERACTION, RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
@@ -203,6 +204,8 @@ export default function WorkflowsPage() {
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const isMobile = useIsMobile()
+  const effectiveViewMode = isMobile ? "grid" : viewMode
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
@@ -536,7 +539,7 @@ export default function WorkflowsPage() {
               value={viewMode}
               onChange={setViewMode}
               ariaLabel="Switch workflow layout"
-              className="shrink-0 bg-secondary/50"
+              className="hidden shrink-0 bg-secondary/50 md:inline-flex"
             />
           </div>
 
@@ -564,7 +567,7 @@ export default function WorkflowsPage() {
           ) : (
           /* Content - Premium animated */
           <AnimatePresence mode="wait">
-            {viewMode === "grid" ? (
+            {effectiveViewMode === "grid" ? (
               <motion.div
                 key="grid"
                 initial={{ opacity: 0, y: 20 }}
