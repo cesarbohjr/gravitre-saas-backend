@@ -1711,87 +1711,107 @@ async def apply_unified_turn_live(
         resolve_unified_live_pending_reply,
         unified_live_message_violates_no_pending_hold,
     )
+    from app.services.pending_reply_classifier import has_pending_family
 
     _guard_t0 = time.perf_counter()
-    channel_result = await resolve_unified_live_channel_override_reply(
-        message=message,
-        task_state=task_state,
-        org_id=org_id,
-        client=client,
-        conversation_id=conversation_id,
-        settings=active,
+    # Spoken conversational with no pending write/plan: skip sequential channel /
+    # meta / pending resolvers (~100–400ms). Write-shaped + pending family keep
+    # the full guard chain.
+    _skip_live_guards = (
+        bool(spoken_mode)
+        and str(reasoning_depth or "").strip().lower() == "conversational"
+        and not has_pending_family(task_state)
     )
-    _guard_t1 = time.perf_counter()
-    if channel_result and (channel_result.user_message or "").strip():
-        channel_result.live_served = True
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=channel_result,
+    if _skip_live_guards:
+        _guard_t1 = _guard_t0
+        _guard_t2 = _guard_t0
+        _guard_t3 = time.perf_counter()
+        logger.info(
+            "apply_unified_turn_live_guards_ms org_id=%s channel_ms=0 meta_ms=0 pending_ms=0 "
+            "total_guard_ms=%s skipped=spoken_conversational_no_pending",
+            org_id,
+            int((_guard_t3 - _guard_t0) * 1000),
         )
-        updated_state = dict(task_state or {})
-        clarified = safe_normalize_stored_dict(updated_state, key='clarified_params')
-        from app.services.gravitre_voice import detect_channel_override_integration
-
-        override = detect_channel_override_integration(message)
-        if override:
-            clarified["channel_override"] = override
-            updated_state["clarified_params"] = clarified
-            updated_state["preferred_connector"] = override
-        payload = _unified_live_turn_payload(channel_result, updated_state)
-        return payload
-
-    meta_result = await resolve_unified_live_meta_capability_reply(
-        message=message,
-        task_state=task_state,
-        org_id=org_id,
-        connected_integrations=connected_integrations,
-        client=client,
-        settings=active,
-    )
-    _guard_t2 = time.perf_counter()
-    if meta_result and (meta_result.user_message or "").strip():
-        meta_result.live_served = True
-        emit_unified_turn_shadow_audit(
-            client=client,
+    else:
+        channel_result = await resolve_unified_live_channel_override_reply(
+            message=message,
+            task_state=task_state,
             org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=meta_result,
-        )
-        return _unified_live_turn_payload(meta_result, task_state)
-
-    pending_result = await resolve_unified_live_pending_reply(
-        message=message,
-        task_state=task_state,
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        client=client,
-        settings=active,
-    )
-    _guard_t3 = time.perf_counter()
-    logger.info(
-        "apply_unified_turn_live_guards_ms org_id=%s channel_ms=%s meta_ms=%s pending_ms=%s "
-        "total_guard_ms=%s",
-        org_id,
-        int((_guard_t1 - _guard_t0) * 1000),
-        int((_guard_t2 - _guard_t1) * 1000),
-        int((_guard_t3 - _guard_t2) * 1000),
-        int((_guard_t3 - _guard_t0) * 1000),
-    )
-    if pending_result and (pending_result.user_message or "").strip():
-        pending_result.live_served = True
-        emit_unified_turn_shadow_audit(
             client=client,
-            org_id=org_id,
-            actor_id=user_id,
             conversation_id=conversation_id,
-            result=pending_result,
+            settings=active,
         )
-        return _unified_live_turn_payload(pending_result, task_state)
+        _guard_t1 = time.perf_counter()
+        if channel_result and (channel_result.user_message or "").strip():
+            channel_result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=channel_result,
+            )
+            updated_state = dict(task_state or {})
+            clarified = safe_normalize_stored_dict(updated_state, key='clarified_params')
+            from app.services.gravitre_voice import detect_channel_override_integration
+
+            override = detect_channel_override_integration(message)
+            if override:
+                clarified["channel_override"] = override
+                updated_state["clarified_params"] = clarified
+                updated_state["preferred_connector"] = override
+            payload = _unified_live_turn_payload(channel_result, updated_state)
+            return payload
+
+        meta_result = await resolve_unified_live_meta_capability_reply(
+            message=message,
+            task_state=task_state,
+            org_id=org_id,
+            connected_integrations=connected_integrations,
+            client=client,
+            settings=active,
+        )
+        _guard_t2 = time.perf_counter()
+        if meta_result and (meta_result.user_message or "").strip():
+            meta_result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=meta_result,
+            )
+            return _unified_live_turn_payload(meta_result, task_state)
+
+        pending_result = await resolve_unified_live_pending_reply(
+            message=message,
+            task_state=task_state,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+            settings=active,
+        )
+        _guard_t3 = time.perf_counter()
+        logger.info(
+            "apply_unified_turn_live_guards_ms org_id=%s channel_ms=%s meta_ms=%s pending_ms=%s "
+            "total_guard_ms=%s",
+            org_id,
+            int((_guard_t1 - _guard_t0) * 1000),
+            int((_guard_t2 - _guard_t1) * 1000),
+            int((_guard_t3 - _guard_t2) * 1000),
+            int((_guard_t3 - _guard_t0) * 1000),
+        )
+        if pending_result and (pending_result.user_message or "").strip():
+            pending_result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=pending_result,
+            )
+            return _unified_live_turn_payload(pending_result, task_state)
 
     # confirm/reject/modify/slot_answer return None from the pending resolver so
     # classical Module B can execute them. Do not let shadow invent a yes/hold.
