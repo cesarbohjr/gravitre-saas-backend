@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
 
 const sectionColors = SIDEBAR_SECTION_COLORS
 
@@ -35,10 +36,9 @@ interface SidebarProps {
   onClose?: () => void
   /** Desktop/tablet: show icon rail (false) vs full labels (true). */
   navExpanded?: boolean
-  onToggleNavExpanded?: () => void
 }
 
-export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, navExpanded = false }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const isMobile = useIsMobile()
@@ -140,59 +140,65 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           navExpanded ? "md:w-[var(--np-sidebar)]" : "md:w-[var(--np-sidebar-rail)]",
         )}
       >
-        {/* Logo */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-divide px-3 md:px-2.5">
-          <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
+        {/* Logo — full wordmark when expanded; mark-only on collapsed rail.
+            Expand/collapse lives on the top-bar hamburger only (no sidebar caret). */}
+        <div className="flex h-12 shrink-0 items-center border-b border-divide px-3 md:px-2.5">
+          <Link
+            href="/"
+            className={cn(
+              "flex min-w-0 flex-1 items-center",
+              !navExpanded && "md:justify-center",
+            )}
+            onClick={onClose}
+          >
             {effectiveLogoUrl ? (
               <>
-                <div className={cn("hidden md:flex items-center justify-center h-16 w-16", navExpanded && "md:hidden")}>
+                <div
+                  className={cn(
+                    "hidden items-center justify-center md:flex",
+                    navExpanded && "md:hidden",
+                  )}
+                >
                   <img
                     src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Workspace logo"
-                    className="h-10 w-10 object-contain"
+                    className="h-8 w-8 object-contain"
                     crossOrigin="anonymous"
                   />
                 </div>
-                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
+                <div className={cn("min-w-0", navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Workspace logo"
-                    className="object-contain"
-                    style={{ height: "40px", width: "auto", maxWidth: "180px" }}
+                    className="h-9 w-auto max-w-[168px] object-contain object-left"
                     crossOrigin="anonymous"
                   />
                 </div>
               </>
             ) : (
               <>
-                <div className={cn("hidden md:flex h-16 w-16 items-center justify-center", navExpanded && "md:hidden")}>
+                <div
+                  className={cn(
+                    "hidden items-center justify-center md:flex",
+                    navExpanded && "md:hidden",
+                  )}
+                >
                   <img
                     src="/images/gravitre-icon-black.png"
                     alt="Gravitre"
-                    className="h-16 w-16 object-contain"
+                    className="h-8 w-8 object-contain"
                   />
                 </div>
-                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
+                <div className={cn("min-w-0", navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src="/images/gravitre-logo-black.png"
                     alt="Gravitre"
-                    style={{ height: "40px", width: "auto" }}
+                    className="h-9 w-auto max-w-[168px] object-contain object-left"
                   />
                 </div>
               </>
             )}
           </Link>
-          {onToggleNavExpanded ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden h-8 w-8 shrink-0 md:inline-flex hover:bg-sidebar-accent"
-              onClick={onToggleNavExpanded}
-              aria-label={navExpanded ? "Collapse navigation" : "Expand navigation"}
-            >
-              <Icon name={navExpanded ? "caretLeft" : "caretRight"} size="sm" />
-            </Button>
-          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -263,6 +269,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                       // blocks navigation — the original "menu opens, items dead" bug —
                       // so we render a bare Link there instead.
                       const showTooltip = !isMobile && !navExpanded
+                      const NavIcon = resolveSidebarNavIcon(item.icon)
                       const itemClassName = cn(
                         "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
                         navExpanded
@@ -284,20 +291,34 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                       )
                       const inner = (
                                 <>
-                                <Icon
-                                  name={item.icon}
-                                  size="md"
-                                  emphasis={item.emphasis && isActive && !lockedFullSeat}
-                                  className={cn(
-                                    "shrink-0 transition-colors md:h-5 md:w-5",
-                                    navExpanded && "md:h-4 md:w-4",
-                                    lockedFullSeat
-                                      ? "text-muted-foreground/40"
-                                      : isActive
-                                        ? colors.activeIcon
-                                        : "text-muted-foreground/70 group-hover:text-foreground",
-                                  )}
-                                />
+                                {NavIcon ? (
+                                  <NavIcon
+                                    size={navExpanded ? 16 : 20}
+                                    className={cn(
+                                      "shrink-0 transition-colors",
+                                      lockedFullSeat
+                                        ? "text-muted-foreground/40"
+                                        : isActive
+                                          ? colors.activeIcon
+                                          : "text-muted-foreground/70 group-hover:text-foreground",
+                                    )}
+                                  />
+                                ) : (
+                                  <Icon
+                                    name={item.icon}
+                                    size="md"
+                                    emphasis={item.emphasis && isActive && !lockedFullSeat}
+                                    className={cn(
+                                      "shrink-0 transition-colors md:h-5 md:w-5",
+                                      navExpanded && "md:h-4 md:w-4",
+                                      lockedFullSeat
+                                        ? "text-muted-foreground/40"
+                                        : isActive
+                                          ? colors.activeIcon
+                                          : "text-muted-foreground/70 group-hover:text-foreground",
+                                    )}
+                                  />
+                                )}
                                 <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
                                   {item.name}
                                 </span>

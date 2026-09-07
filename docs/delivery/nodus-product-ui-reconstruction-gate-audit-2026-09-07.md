@@ -521,3 +521,19 @@ Cesar authorized “move to P13 Extension”. See `docs/delivery/nodus-product-u
 | Connect bridge | `/extension/connect` mineral shell |
 
 **Not claimed:** load-unpacked overlay visual fidelity PASS. P14+ (marketing screenshots) still open.
+
+---
+
+## Shipped — P14 + P15 (2026-09-07)
+
+Cesar authorized Connectors/rail/logo fixes + sharp sidebar icons + “Start P14 and P15” + deploy. See `docs/delivery/nodus-product-ui-p14-p15-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Connectors header | Description full-width; short “Connected systems.” lead |
+| Rail chrome | Hamburger-only expand; full wordmark; no sidebar caret |
+| Sidebar icons | Sharp Nodus-style square-cap outlines |
+| P14 | Capture pipeline continuity → `/product/app-*.png` marketing |
+| P15 | `e2e/visual/nodus-product-fidelity.spec.ts` @ 1280/1440/390 + scorecard |
+
+**Not claimed:** marketing PNG visual PASS (needs re-capture post-Ready) or Playwright fidelity PASS (baselines + filled scorecard).

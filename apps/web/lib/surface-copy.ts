@@ -179,7 +179,7 @@ export const SURFACE_COPY = {
     connectors: {
       title: "Connectors",
       headline: "Connectors",
-      description: "Connected systems Gravitre reads from and writes to.",
+      description: "Connected systems.",
     },
     memory: {
       title: "Memory",

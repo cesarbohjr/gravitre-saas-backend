@@ -164,14 +164,6 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
     setSidebarOpen(true)
   }
 
-  const handleToggleNavExpanded = () => {
-    setNavExpanded((prev) => {
-      const next = !prev
-      localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
-      return next
-    })
-  }
-
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
     user ? "/api/billing/status" : null,
@@ -372,7 +364,6 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           navExpanded={navExpanded}
-          onToggleNavExpanded={handleToggleNavExpanded}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar} />

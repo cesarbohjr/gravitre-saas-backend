@@ -49,8 +49,10 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="mb-3 flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 items-center gap-2.5">
+      {/* Title + actions share a row; description is full-width below so long
+          leads cannot squeeze into a ~1-word column and inflate header height. */}
+      <div className="mb-2 flex min-w-0 flex-col justify-between gap-3 sm:mb-2.5 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:max-w-[min(100%,28rem)]">
           {Icon && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -79,15 +81,17 @@ export function PageHeader({
               </div>
             ) : null}
             <h1 className={TYPE.pageTitle}>{title}</h1>
-            {description && <p className={TYPE.pageLead}>{description}</p>}
           </div>
         </div>
         {actions && (
-          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-1 sm:justify-end">
             {actions}
           </div>
         )}
       </div>
+      {description ? (
+        <p className={cn(TYPE.pageLead, "mb-3 max-w-3xl text-pretty")}>{description}</p>
+      ) : null}
       {children}
     </div>
   )

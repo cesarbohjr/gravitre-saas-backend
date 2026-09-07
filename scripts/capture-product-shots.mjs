@@ -2,6 +2,9 @@
  * Captures product screenshots for the marketing site from the real app
  * surfaces rendered by /e2e/shots/<view>.
  *
+ * P14: marketing screenshots ← these captures (`apps/web/public/product/app-*.png`).
+ * Re-run after product chrome changes so `/` and `/features` stay continuous.
+ *
  * Runs Playwright inside the PROJECT sandbox, which is the only place that can
  * reach the local dev server. (The agent-browser tool runs in a separate
  * sandbox where `localhost` resolves to the production domain, so screenshots
