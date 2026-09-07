@@ -58,8 +58,8 @@ const modes: {
     label: "Standard",
     description: "Balanced default",
     icon: Gauge,
-    color: "text-emerald-500",
-    activeBg: "bg-emerald-500/10 border-emerald-500/30",
+    color: "text-[color:var(--g-brand)]",
+    activeBg: "bg-[color:var(--g-brand-soft)] border-[color:var(--g-brand-border)]",
     placeholder: "Ask anything about your AI team...",
   },
   {
@@ -67,8 +67,8 @@ const modes: {
     label: "Reasoning",
     description: "Complex analysis",
     icon: Brain,
-    color: "text-violet-500",
-    activeBg: "bg-violet-500/10 border-violet-500/30",
+    color: "text-[color:var(--g-brand-active)]",
+    activeBg: "bg-[color:var(--g-brand-surface)] border-[color:var(--g-brand-border)]",
     placeholder: "Describe a complex problem to analyze...",
   },
   {
@@ -76,8 +76,8 @@ const modes: {
     label: "Agent",
     description: "Execute tasks",
     icon: Bot,
-    color: "text-sky-500",
-    activeBg: "bg-sky-500/10 border-sky-500/30",
+    color: "text-[color:var(--g-signal)]",
+    activeBg: "bg-[color:var(--g-signal)]/10 border-[color:var(--g-signal)]/30",
     placeholder: "Describe a task for the agent to execute...",
   },
 ]
@@ -169,7 +169,7 @@ export function AssistantModelSelector({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-muted/50"
+            className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-1.5 text-muted-foreground transition-colors hover:bg-[color:var(--g-surface-2)]"
             aria-label="Choose model"
             title="Choose model"
           >
@@ -218,7 +218,7 @@ export function AssistantModelSelector({
       </DropdownMenu>
 
       <span
-        className="hidden rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
+        className="hidden rounded-[var(--np-radius-sm)] border border-divide bg-[color:var(--g-surface-1)] px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
         title={`Model: ${activeModel?.label ?? "Auto"}`}
       >
         {modelBadgeLabel}

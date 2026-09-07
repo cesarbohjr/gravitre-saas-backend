@@ -6,7 +6,7 @@
  */
 
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { STATUS, TYPE } from "@/lib/design-system"
 import { NucleoApproval } from "@/components/icons/nucleo/semantic"
 
 export function PlanApprovalChrome({
@@ -23,15 +23,14 @@ export function PlanApprovalChrome({
   return (
     <div
       className={cn(
-        "overflow-hidden border bg-card",
-        RADIUS.panel,
+        "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
         "border-[color:var(--status-pending)]/30",
         className,
       )}
     >
       <div
         className={cn(
-          "flex h-8 items-center justify-between gap-2 border-b border-border px-3",
+          "flex h-8 items-center justify-between gap-2 border-b border-divide px-3",
           STATUS.pending,
           "rounded-none border-x-0 border-t-0",
         )}
@@ -41,7 +40,7 @@ export function PlanApprovalChrome({
           <span className={cn(TYPE.meta, "truncate font-medium")}>{title}</span>
         </div>
       </div>
-      <div className="space-y-2 bg-background px-3 py-2.5">
+      <div className="space-y-2 bg-[color:var(--g-canvas)] px-3 py-2.5">
         {summary ? <p className="text-sm text-foreground">{summary}</p> : null}
         {children}
       </div>

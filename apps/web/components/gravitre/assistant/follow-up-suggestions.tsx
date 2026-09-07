@@ -25,7 +25,7 @@ export function FollowUpSuggestions({
           transition={{ delay: i * 0.1, duration: 0.3 }}
           onClick={() => onSelect(text)}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition-colors hover:border-emerald-500/40 hover:bg-muted/50",
+            "inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-1.5 text-xs text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-soft)]",
           )}
         >
           <span className="truncate max-w-[240px]">{text.length > 40 ? `${text.slice(0, 40)}…` : text}</span>

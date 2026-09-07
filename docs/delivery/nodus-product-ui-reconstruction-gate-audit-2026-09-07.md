@@ -451,3 +451,17 @@ Cesar authorized “move to P8”. See `docs/delivery/nodus-product-ui-p8-shippe
 | Memory + Metrics | Card/chart shells; NucleoIntelligence on metrics header |
 
 **Not claimed:** authenticated visual fidelity PASS. P9+ (AI Chat) still open.
+
+---
+
+## Shipped — P9 (2026-09-07)
+
+Cesar authorized “move to P9”. See `docs/delivery/nodus-product-ui-p9-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Bubbles + shell CSS | Brand-green user / mineral assistant; `--g-canvas` + `--divide` chat surface |
+| Composer + Agent Elements | Nodus radius/shadow; no ChatGPT white pill / `bg-card` tool chrome |
+| Agent `/chat` + mode chips | Align with `/ai`; violet retired from chat mode selector |
+
+**Not claimed:** authenticated `/ai` visual fidelity PASS. P10+ (Settings) still open.

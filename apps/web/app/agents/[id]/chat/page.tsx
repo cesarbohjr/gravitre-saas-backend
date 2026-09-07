@@ -464,7 +464,7 @@ export default function AgentChatPage({
   return (
     <AppShell title="Chat">
       <div className="ai-surface-shell ai-chat-surface flex h-full min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-success/10 bg-card/80 px-3 backdrop-blur-md md:px-4">
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-divide bg-[color:var(--chat-surface,var(--g-canvas))] px-3 md:px-4">
           {!headerCollapsed ? (
             <>
               <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -579,7 +579,7 @@ export default function AgentChatPage({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 + i * 0.05 }}
                     onClick={() => submitText(suggestion)}
-                    className="rounded-xl border border-success/15 bg-card/80 px-3 py-2.5 text-left text-xs text-muted-foreground transition-all hover:border-success/30 hover:bg-success/5 hover:text-foreground"
+                    className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-2.5 text-left text-xs text-muted-foreground shadow-[var(--np-shadow)] transition-all hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-soft)] hover:text-foreground"
                   >
                     {suggestion}
                   </motion.button>

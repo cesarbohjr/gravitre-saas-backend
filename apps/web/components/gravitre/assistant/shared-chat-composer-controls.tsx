@@ -346,9 +346,9 @@ export function SharedChatComposerControls({
 
       <div
         className={cn(
-          "flex min-h-[44px] items-end gap-1.5 rounded-full border bg-white px-2 py-1.5 dark:bg-[#262626]",
+          "flex min-h-[44px] items-end gap-1.5 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] px-2 py-1.5 shadow-[var(--np-shadow)]",
           bordered
-            ? "border-[color:var(--chat-surface-border)] focus-within:border-[#16a374]/50"
+            ? "border-divide focus-within:border-[color:var(--g-brand-border)]"
             : "border-transparent",
         )}
       >
@@ -368,7 +368,7 @@ export function SharedChatComposerControls({
           disabled={disabled}
           placeholder={placeholder}
           className={cn(
-            "max-h-[120px] min-h-[36px] w-full flex-1 resize-none bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-[color:var(--chat-surface-muted)] dark:text-[#f2f2f0]",
+            "max-h-[120px] min-h-[36px] w-full flex-1 resize-none bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-[color:var(--chat-surface-muted)] text-[color:var(--g-text-primary)]",
             textareaClassName,
           )}
           onInput={(event) => {
@@ -402,7 +402,7 @@ export function SharedChatComposerControls({
               className={cn(
                 "mb-0.5 h-8 w-8 shrink-0 rounded-full",
                 canSubmit && !disabled
-                  ? "bg-[#16a374] text-white hover:bg-[#128a63]"
+                  ? "bg-[color:var(--g-brand)] text-white hover:bg-[color:var(--g-brand-hover)]"
                   : "disabled:opacity-40",
               )}
               aria-label="Send message"

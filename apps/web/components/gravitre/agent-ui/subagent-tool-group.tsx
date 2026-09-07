@@ -6,7 +6,7 @@
  */
 
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { STATUS, TYPE } from "@/lib/design-system"
 import { Users } from "lucide-react"
 
 export function SubagentToolGroup({
@@ -20,12 +20,15 @@ export function SubagentToolGroup({
 }) {
   return (
     <div
-      className={cn("overflow-hidden border bg-card", RADIUS.card, className)}
+      className={cn(
+        "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
+        className,
+      )}
       data-testid="subagent-tool-group"
     >
       <div
         className={cn(
-          "flex h-8 items-center gap-1.5 border-b border-border px-3",
+          "flex h-8 items-center gap-1.5 border-b border-divide px-3",
           STATUS.running,
           "rounded-none border-x-0 border-t-0",
         )}
@@ -35,7 +38,7 @@ export function SubagentToolGroup({
           Agent contributions ({count})
         </span>
       </div>
-      <div className="space-y-2 bg-background p-3">{children}</div>
+      <div className="space-y-2 bg-[color:var(--g-canvas)] p-3">{children}</div>
     </div>
   )
 }

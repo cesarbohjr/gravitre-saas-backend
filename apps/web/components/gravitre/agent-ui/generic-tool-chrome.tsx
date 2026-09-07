@@ -6,7 +6,7 @@
  */
 
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { STATUS, TYPE } from "@/lib/design-system"
 import { Plug } from "lucide-react"
 
 export function GenericToolChrome({
@@ -21,8 +21,7 @@ export function GenericToolChrome({
   return (
     <div
       className={cn(
-        "mt-2 overflow-hidden border bg-card text-xs text-foreground",
-        RADIUS.card,
+        "mt-2 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] text-xs text-foreground shadow-[var(--np-shadow)]",
         className,
       )}
       data-testid="generic-tool-chrome"
@@ -30,7 +29,7 @@ export function GenericToolChrome({
     >
       <div
         className={cn(
-          "flex h-7 items-center gap-1.5 border-b border-border px-2.5",
+          "flex h-7 items-center gap-1.5 border-b border-divide px-2.5",
           STATUS.idle,
           "rounded-none border-x-0 border-t-0",
         )}
@@ -38,7 +37,7 @@ export function GenericToolChrome({
         <Plug className="h-3 w-3 shrink-0" aria-hidden />
         <span className={cn(TYPE.meta, "truncate font-medium")}>{toolName}</span>
       </div>
-      <div className="bg-background px-2.5 py-2">{children}</div>
+      <div className="bg-[color:var(--g-canvas)] px-2.5 py-2">{children}</div>
     </div>
   )
 }

@@ -913,16 +913,16 @@
      `background-attachment: local` keeps both scrolling on iOS Safari.
      ============================================================ */
   .ai-chat-surface {
-    --chat-surface: var(--background);
-    --chat-surface-border: var(--border);
-    --chat-surface-muted: var(--muted-foreground);
+    --chat-surface: var(--g-canvas);
+    --chat-surface-border: var(--divide);
+    --chat-surface-muted: var(--g-text-muted);
     background-color: var(--chat-surface);
-    color: var(--foreground);
+    color: var(--g-text-primary);
   }
   .dark .ai-chat-surface {
-    --chat-surface: var(--background);
-    --chat-surface-border: var(--border);
-    --chat-surface-muted: var(--muted-foreground);
+    --chat-surface: var(--g-canvas);
+    --chat-surface-border: var(--divide);
+    --chat-surface-muted: var(--g-text-muted);
     color: var(--foreground);
   }
 
@@ -931,7 +931,7 @@
     /* Pure black at 0.1 over warm `--background` composited to ~rgb(225 227 225)
        (muddy cream). Lower alpha + brand-green tint → ~rgb(240 243 240) sage. */
     --chat-bg-scrim: rgb(18 46 36 / 0.045);
-    background-color: var(--background);
+    background-color: var(--g-canvas);
     background-image: var(--chat-bg-tile),
       linear-gradient(var(--chat-bg-scrim, transparent), var(--chat-bg-scrim, transparent));
     background-repeat: repeat, no-repeat;

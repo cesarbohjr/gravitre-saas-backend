@@ -1,20 +1,20 @@
 /** Shared typography tokens for every in-product chat surface.
- *  Handoff 5a/5b — warm stone canvas, compact rounded bubbles, brand green send.
+ *  P9 — Nodus×Gravitre mineral shell: brand-green user, surface assistant bubbles.
  */
 
 export const CHAT_ROLE_LABEL_CLASS =
-  "mb-1 px-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted,#a19a91)]"
+  "mb-1 px-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted,var(--g-text-muted))]"
 
 export const CHAT_BUBBLE_BASE_CLASS =
-  "max-w-full rounded-[10px] px-3 py-2 text-[13px] leading-relaxed sm:text-[14px]"
+  "max-w-full rounded-[var(--np-radius-md)] px-3 py-2 text-[13px] leading-relaxed sm:text-[14px]"
 
-// Homepage Nodus chat parity — blue user bubbles, gray AI bubbles.
+/** User turns — brand green (not marketing blue / ChatGPT purple). */
 export const CHAT_USER_BUBBLE_CLASS =
-  "bg-blue-500 text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+  "bg-[color:var(--g-brand)] text-white shadow-[var(--np-shadow)]"
 
-// Homepage Nodus chat parity — soft gray assistant bubble.
+/** Assistant turns — mineral surface + divide hairline. */
 export const CHAT_ASSISTANT_BUBBLE_CLASS =
-  "border border-transparent bg-gray-100 text-charcoal-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+  "border border-divide bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
 
 export const CHAT_BODY_TEXT_CLASS = "text-[14px] leading-relaxed"
 

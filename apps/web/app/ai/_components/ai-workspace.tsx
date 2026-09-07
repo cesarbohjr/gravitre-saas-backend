@@ -2344,7 +2344,7 @@ export function AiWorkspace({
             ) : null}
 
             {!showLanding && !conversationLoading && showEmptyThreadHint ? (
-              <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-8 text-center text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">This conversation is empty</p>
                 <p className="mt-1 text-xs">Send a message below to continue this thread.</p>
               </div>
@@ -2409,7 +2409,7 @@ export function AiWorkspace({
                     key={example.text}
                     type="button"
                     onClick={() => void submitPrompt(example.text)}
-                    className="rounded-full border border-[color:var(--chat-surface-border)] bg-white/80 px-3 py-1.5 text-center text-xs text-[color:var(--chat-surface-muted)] transition-all hover:border-[#16a374]/40 hover:text-foreground dark:bg-[#262626]"
+                    className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-1.5 text-center text-xs text-[color:var(--chat-surface-muted)] shadow-[var(--np-shadow)] transition-all hover:border-[color:var(--g-brand-border)] hover:text-foreground"
                   >
                     {example.text}
                   </button>
@@ -2427,14 +2427,14 @@ export function AiWorkspace({
                   {connectedFileAttachments.map((file) => (
                     <span
                       key={`${file.vendor}-${file.file_id}`}
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#16a374]/25 bg-white px-2.5 py-1 text-xs dark:bg-[#262626]"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] px-2.5 py-1 text-xs shadow-[var(--np-shadow)]"
                       title={
                         file.web_link
                           ? `${file.name} — stays in your connected account (read-only for this chat)`
                           : file.name
                       }
                     >
-                      <FolderOpen className="h-3 w-3 shrink-0 text-[#16a374]" />
+                      <FolderOpen className="h-3 w-3 shrink-0 text-[color:var(--g-brand)]" />
                       <span className="truncate">{file.name}</span>
                       <button
                         type="button"
