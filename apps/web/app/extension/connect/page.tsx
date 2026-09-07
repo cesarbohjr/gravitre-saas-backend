@@ -79,23 +79,30 @@ function ExtensionConnectInner() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-4 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Connect Gravitre extension</h1>
-      <p className="text-sm text-muted-foreground">
-        The extension uses your existing Gravitre login and organization — no separate
-        identity. Overlay actions go through the same write-authority gate and Outcomes as
-        chat.
-      </p>
-      <p className="text-sm">{status}</p>
-      <div className="flex gap-2">
-        <Button disabled={!ready || busy} onClick={connect}>
-          {busy ? "Connecting…" : "Authorize extension"}
-        </Button>
-        {!session ? (
-          <Button variant="outline" asChild>
-            <a href="/login">Sign in</a>
+    <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-4 p-[var(--np-page-pad)] sm:p-6">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] sm:p-6">
+        <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--g-text-muted)]">
+          Extension
+        </p>
+        <h1 className="text-xl font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-2xl">
+          Connect Gravitre extension
+        </h1>
+        <p className="mt-2 text-sm text-[color:var(--g-text-muted)]">
+          The extension uses your existing Gravitre login and organization — no separate
+          identity. Overlay actions go through the same write-authority gate and Outcomes as
+          chat.
+        </p>
+        <p className="mt-4 text-sm text-[color:var(--g-text-primary)]">{status}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button disabled={!ready || busy} onClick={connect}>
+            {busy ? "Connecting…" : "Authorize extension"}
           </Button>
-        ) : null}
+          {!session ? (
+            <Button variant="outline" asChild>
+              <a href="/login">Sign in</a>
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -103,7 +110,11 @@ function ExtensionConnectInner() {
 
 export default function ExtensionConnectPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-[color:var(--g-text-muted)]">Loading…</div>
+      }
+    >
       <ExtensionConnectInner />
     </Suspense>
   )

@@ -9,6 +9,27 @@
     return node
   }
 
+  /** Labeled compress block — Context / Capture / Agent / Action / Approval / Status */
+  function makeSection(title) {
+    const wrap = el("section", "gvt-section")
+    wrap.appendChild(el("div", "gvt-section-title", title))
+    const content = el("div", "gvt-section-body")
+    wrap.appendChild(content)
+    return { wrap, content }
+  }
+
+  function contextHostLabel(pageContext, pageUrl) {
+    if (pageContext?.host) return String(pageContext.host)
+    if (pageUrl) {
+      try {
+        return new URL(pageUrl).hostname
+      } catch {
+        return String(pageUrl).slice(0, 64)
+      }
+    }
+    return "This page"
+  }
+
   /** Compact BusinessOutcome evidence — matched preview for connector writes. */
   function renderBusinessOutcomeCard(parent, result) {
     const bo = result?.businessOutcome
@@ -112,17 +133,43 @@
     close.addEventListener("click", () => root.remove())
     header.appendChild(close)
     card.appendChild(header)
-    card.appendChild(
-      el(
-        "p",
-        "gvt-muted",
-        "Enrichment from connected connectors. Writes need your approval — same gate as chat.",
-      ),
+
+    const contextSec = makeSection("Context")
+    contextSec.content.appendChild(
+      el("p", "gvt-muted", "Writes need your approval — same gate as chat."),
     )
+    contextSec.content.appendChild(
+      el("div", "gvt-value", contextHostLabel(pageContext, pageUrl)),
+    )
+    if (pageContext?.pageType) {
+      const typeRow = el("div", "gvt-row")
+      typeRow.appendChild(el("div", "gvt-label", "Page"))
+      typeRow.appendChild(el("div", "gvt-value", String(pageContext.pageType)))
+      contextSec.content.appendChild(typeRow)
+    }
+    card.appendChild(contextSec.wrap)
+
+    const statusSec = makeSection("Status")
     const status = el("p", "gvt-muted", "Loading…")
-    card.appendChild(status)
-    const body = el("div")
-    card.appendChild(body)
+    statusSec.content.appendChild(status)
+    card.appendChild(statusSec.wrap)
+
+    const captureSec = makeSection("Capture")
+    captureSec.wrap.hidden = true
+    card.appendChild(captureSec.wrap)
+
+    const actionSec = makeSection("Action")
+    actionSec.wrap.hidden = true
+    card.appendChild(actionSec.wrap)
+
+    const approvalSec = makeSection("Approval")
+    approvalSec.wrap.hidden = true
+    card.appendChild(approvalSec.wrap)
+
+    const agentSec = makeSection("Agent")
+    agentSec.wrap.hidden = true
+    card.appendChild(agentSec.wrap)
+
     root.appendChild(card)
 
     chrome.runtime.sendMessage(
@@ -134,9 +181,13 @@
         }
         const result = response.result || {}
         status.textContent = result.voiceNote || "Ready."
-        body.innerHTML = ""
+        captureSec.content.innerHTML = ""
+        actionSec.content.innerHTML = ""
+        approvalSec.content.innerHTML = ""
+        agentSec.content.innerHTML = ""
 
         const extracted = result.extracted || {}
+        let captureCount = 0
         ;[
           ["Name", extracted.fullName],
           ["Title", extracted.title],
@@ -144,11 +195,13 @@
           ["Email", extracted.email],
         ].forEach(([label, value]) => {
           if (!value) return
+          captureCount += 1
           const row = el("div", "gvt-row")
           row.appendChild(el("div", "gvt-label", label))
           row.appendChild(el("div", "gvt-value", value))
-          body.appendChild(row)
+          captureSec.content.appendChild(row)
         })
+        captureSec.wrap.hidden = captureCount === 0
 
         ;(result.matches || []).forEach((match) => {
           const row = el("div", "gvt-row")
@@ -160,7 +213,7 @@
           )
           row.appendChild(badge)
           if (match.error) row.appendChild(el("div", "gvt-muted", match.error))
-          body.appendChild(row)
+          statusSec.content.appendChild(row)
         })
 
         const actions = el("div", "gvt-actions")
@@ -168,6 +221,7 @@
         confirmBox.style.display = "none"
 
         function showConfirm(suggestion, params) {
+          approvalSec.wrap.hidden = false
           confirmBox.style.display = "block"
           confirmBox.innerHTML = ""
           confirmBox.appendChild(
@@ -200,6 +254,9 @@
           no.type = "button"
           no.addEventListener("click", () => {
             confirmBox.style.display = "none"
+            if (!approvalSec.content.querySelector(".gvt-confirm:not([style*='display: none'])")) {
+              /* keep section if workflow plans remain */
+            }
           })
           yes.addEventListener("click", () => {
             function finishWithToken(token) {
@@ -217,7 +274,7 @@
                     status.textContent = exec?.error || "Action failed"
                     return
                   }
-                  showExecuteResult(status, card, exec.result || {})
+                  showExecuteResult(status, statusSec.content, exec.result || {})
                 },
               )
             }
@@ -292,7 +349,7 @@
                   showConfirm(suggestion, pre.result.params || params)
                   return
                 }
-                showExecuteResult(status, card, pre.result || {})
+                showExecuteResult(status, statusSec.content, pre.result || {})
               },
             )
           })
@@ -306,7 +363,8 @@
         wfBox.appendChild(wfStatus)
         const wfList = el("div", "gvt-actions")
         wfBox.appendChild(wfList)
-        body.appendChild(wfBox)
+        actionSec.content.appendChild(wfBox)
+        actionSec.wrap.hidden = false
 
         chrome.runtime.sendMessage({ type: "LIST_WORKFLOWS" }, (wfRes) => {
           if (!wfRes?.ok) {
@@ -328,6 +386,7 @@
             )
             btn.type = "button"
             btn.addEventListener("click", () => {
+              approvalSec.wrap.hidden = false
               const plan = el("div", "gvt-confirm")
               plan.appendChild(
                 el("p", null, `Plan: ${wf.name} — approve to run all steps.`),
@@ -415,7 +474,7 @@
                               ? `gvt-step gvt-step-${st === "completed" ? "done" : "running"}`
                               : "gvt-step gvt-step-failed"
                         })
-                        if (r.runId && !renderBusinessOutcomeCard(card, r)) {
+                        if (r.runId && !renderBusinessOutcomeCard(statusSec.content, r)) {
                           status.textContent = `Workflow ${r.status} — open Activity for evidence.`
                         } else if (!r.runId) {
                           status.textContent = r.error || "Workflow finished"
@@ -430,7 +489,7 @@
               row.appendChild(yes)
               row.appendChild(no)
               plan.appendChild(row)
-              wfBox.appendChild(plan)
+              approvalSec.content.appendChild(plan)
             })
             wfList.appendChild(btn)
           })
@@ -646,7 +705,7 @@
               chatReply.textContent = r.answer || "(no answer)"
               playVoiceReply(r.answer || "")
               if (r.businessOutcome) {
-                renderBusinessOutcomeCard(card, r)
+                renderBusinessOutcomeCard(statusSec.content, r)
               }
               if (r.openInGravitreUrl || r.openInGravitreeUrl) {
                 lastHandoffUrl = r.openInGravitreUrl || r.openInGravitreeUrl
@@ -695,7 +754,8 @@
         chatActions.appendChild(askBtn)
         chatActions.appendChild(continueBtn)
         chatBox.appendChild(chatActions)
-        body.appendChild(chatBox)
+        agentSec.content.appendChild(chatBox)
+        agentSec.wrap.hidden = false
 
         const openApp = el("button", "gvt-btn secondary", "Open in Gravitre")
         openApp.type = "button"
@@ -705,8 +765,9 @@
           window.open(`https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`, "_blank")
         })
         actions.appendChild(openApp)
-        body.appendChild(actions)
-        body.appendChild(confirmBox)
+        actionSec.content.insertBefore(actions, actionSec.content.firstChild)
+        actionSec.wrap.hidden = false
+        approvalSec.content.appendChild(confirmBox)
       },
     )
   }

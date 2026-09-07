@@ -8,8 +8,14 @@
   <body>
     <main>
       <h1>Gravitre</h1>
-      <p id="status" class="muted">Checking session…</p>
-      <div id="actions" class="actions"></div>
+      <section class="gvt-section" aria-label="Status">
+        <div class="gvt-section-title">Status</div>
+        <p id="status" class="muted">Checking session…</p>
+      </section>
+      <section class="gvt-section" aria-label="Action">
+        <div class="gvt-section-title">Action</div>
+        <div id="actions" class="actions"></div>
+      </section>
     </main>
     <script src="popup.js"></script>
   </body>

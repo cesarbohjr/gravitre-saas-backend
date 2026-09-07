@@ -15,13 +15,22 @@
   </head>
   <body>
     <main>
-      <h1>Gravitre overlay</h1>
-      <p class="muted">
-        Overlay-and-approve only. Reads and writes use your connected catalog
-        actions and show verified evidence in Activity — not a parallel system.
-      </p>
-      <p id="status" class="muted">Checking session…</p>
-      <div id="actions" class="actions"></div>
+      <h1>Gravitre</h1>
+      <section class="gvt-section" aria-label="Context">
+        <div class="gvt-section-title">Context</div>
+        <p class="muted">
+          Overlay-and-approve only. Reads and writes use your connected catalog
+          actions and show verified evidence in Activity — not a parallel system.
+        </p>
+      </section>
+      <section class="gvt-section" aria-label="Status">
+        <div class="gvt-section-title">Status</div>
+        <p id="status" class="muted">Checking session…</p>
+      </section>
+      <section class="gvt-section" aria-label="Action">
+        <div class="gvt-section-title">Action</div>
+        <div id="actions" class="actions"></div>
+      </section>
     </main>
     <script src="popup.js"></script>
   </body>

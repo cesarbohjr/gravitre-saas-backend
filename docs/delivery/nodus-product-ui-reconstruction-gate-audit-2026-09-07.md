@@ -507,3 +507,17 @@ Cesar authorized “approved p11, now start p12”. See `docs/delivery/nodus-pro
 | Context menus | Workflows / Activity / Approvals — existing actions only |
 
 **Not claimed:** authenticated desktop visual fidelity PASS. P13+ (Extension) still open.
+
+---
+
+## Shipped — P13 (2026-09-07)
+
+Cesar authorized “move to P13 Extension”. See `docs/delivery/nodus-product-ui-p13-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| Extension tokens | `--g-*` / `--np-*` on popup + overlay CSS |
+| Compress UI | Context / Capture / Status / Action / Approval / Agent sections |
+| Connect bridge | `/extension/connect` mineral shell |
+
+**Not claimed:** load-unpacked overlay visual fidelity PASS. P14+ (marketing screenshots) still open.
