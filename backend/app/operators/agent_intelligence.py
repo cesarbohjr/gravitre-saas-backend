@@ -1770,6 +1770,7 @@ class AgentIntelligence:
 
         # Module B Phase 4 — orphan strategic-plan recovery via shared intent check
         # (continue / modify / cancel), not CONFIRM_PATTERN alone.
+        early_state: dict[str, Any] | None = None
         if conversation_id and (task_text or "").strip():
             early_state = await get_conversation_state_service(active_settings).get_task_state(
                 conversation_id,
@@ -1941,7 +1942,12 @@ class AgentIntelligence:
         _mark("spoken_lite_decided")
 
         if spoken_lite_path:
-            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+            # Defaults only — dialogue_settings are unused on the lite path before
+            # LIVE returns; a DB round-trip here was pure critical-path waste.
+            dialogue_settings = {
+                "sentiment_detection_enabled": False,
+                "spoken_lite_defaults": True,
+            }
             _mark("dialogue_settings_lite")
             sentiment = {"recommended_adaptation": "none"}
             understanding = {
@@ -2068,12 +2074,16 @@ class AgentIntelligence:
                 "complexityRiskFloor": True,
             }
 
-        task_state = await get_conversation_state_service(active_settings).get_task_state(
-            conversation_id or "",
-            org_id,
-            client=client,
-        )
-        _mark("task_state_initial")
+        if spoken_lite_path and isinstance(early_state, dict):
+            task_state = dict(early_state)
+            _mark("task_state_initial")
+        else:
+            task_state = await get_conversation_state_service(active_settings).get_task_state(
+                conversation_id or "",
+                org_id,
+                client=client,
+            )
+            _mark("task_state_initial")
         # Module D expression range — bind conversation-scoped phrase rotation for
         # the whole stream (connector + ReAct tool_error + house phrases).
         from app.services.gravitre_voice import bind_voice_expression_state
@@ -2108,20 +2118,30 @@ class AgentIntelligence:
                 **ledger_patch(_ledger),
                 "recent_user_messages": [task_text],
             }
+            task_state = {**(task_state or {}), **_ledger_updates}
             if conversation_id:
-                await get_conversation_state_service(active_settings).update_task_state(
-                    conversation_id,
-                    org_id,
-                    _ledger_updates,
-                    client=client,
-                )
-                task_state = await get_conversation_state_service(active_settings).get_task_state(
-                    conversation_id,
-                    org_id,
-                    client=client,
-                )
-            else:
-                task_state = {**(task_state or {}), **_ledger_updates}
+                # Spoken lite: do not block first token on ledger persist + re-get.
+                if spoken_lite_path:
+                    asyncio.create_task(
+                        get_conversation_state_service(active_settings).update_task_state(
+                            conversation_id,
+                            org_id,
+                            _ledger_updates,
+                            client=client,
+                        )
+                    )
+                else:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        _ledger_updates,
+                        client=client,
+                    )
+                    task_state = await get_conversation_state_service(active_settings).get_task_state(
+                        conversation_id,
+                        org_id,
+                        client=client,
+                    )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "parameter_ledger mid-pipeline ingest failed conversation_id=%s error=%s",
@@ -2129,14 +2149,24 @@ class AgentIntelligence:
                 exc,
             )
         _mark("parameter_ledger")
-        persona = await get_persona_service(active_settings).get_persona_for_request(
-            org_id,
-            user_id,
-            pipeline_classification.get("department") or department_scope,
-            conversation_id,
-            explicit_persona=explicit_persona,
-        )
-        _mark("persona_resolved")
+        if spoken_lite_path:
+            # Persona is SSE metadata only on LIVE conversational — not in the
+            # system prompt. Hardcode to skip nested task_state/dialogue DB.
+            persona = {
+                "persona_key": (explicit_persona or "friendly_assistant").strip() or "friendly_assistant",
+                "system_prompt_modifier": "",
+                "spoken_lite_skip": True,
+            }
+            _mark("persona_resolved")
+        else:
+            persona = await get_persona_service(active_settings).get_persona_for_request(
+                org_id,
+                user_id,
+                pipeline_classification.get("department") or department_scope,
+                conversation_id,
+                explicit_persona=explicit_persona,
+            )
+            _mark("persona_resolved")
 
         # Phase 1: resolve custom/department agent before unified LIVE so tool
         # catalog uses the same resolve_permitted_tools path as classical ReAct.

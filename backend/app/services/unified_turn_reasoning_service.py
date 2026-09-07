@@ -471,8 +471,20 @@ def _standing_user_corrections_block(
     )
 
 
-def _resolve_model(settings: Settings, *, task_shaped: bool = False) -> str:
+def _resolve_model(
+    settings: Settings,
+    *,
+    task_shaped: bool = False,
+    reasoning_depth: str = "full",
+) -> str:
     from app.config import MODEL_TIERS
+
+    # Spoken/simple conversational depth must not pay the task-tier model
+    # (gpt-5.4-mini) when ambiguous heuristics flip use_embed=True — that was
+    # the live simple-turn floor (~700ms model TTFT) while depth already said
+    # conversational. Write/full depth keeps UNIFIED_TURN_TASK_MODEL_TIER.
+    if str(reasoning_depth or "").strip().lower() == "conversational":
+        return "gpt-4o-mini"
 
     if task_shaped:
         tier_name = str(getattr(settings, "unified_turn_task_model_tier", "") or "").strip().lower()
@@ -491,13 +503,18 @@ def _resolve_unified_turn_model(
     *,
     agent: dict[str, Any] | None,
     task_shaped: bool = False,
+    reasoning_depth: str = "full",
 ) -> str:
     """Honor agent-configured model for unified-turn tool calling when set."""
+    # Conversational depth wins over agent model pin so voice simple turns
+    # stay on the fast path; write/full still honor agent.model.
+    if str(reasoning_depth or "").strip().lower() == "conversational":
+        return _resolve_model(settings, task_shaped=False, reasoning_depth="conversational")
     if agent:
         configured = str(agent.get("model") or "").strip()
         if configured:
             return configured
-    return _resolve_model(settings, task_shaped=task_shaped)
+    return _resolve_model(settings, task_shaped=task_shaped, reasoning_depth=reasoning_depth)
 
 
 async def run_unified_turn_shadow(
@@ -534,7 +551,9 @@ async def run_unified_turn_shadow(
         resolve_provider_for_model,
     )
 
-    probe_model = _resolve_unified_turn_model(active, agent=agent, task_shaped=False)
+    probe_model = _resolve_unified_turn_model(
+        active, agent=agent, task_shaped=False, reasoning_depth=reasoning_depth
+    )
     probe_provider = resolve_provider_for_model(probe_model)
     if not provider_tools_configured(probe_provider, active):
         return UnifiedTurnShadowResult(
@@ -895,7 +914,12 @@ async def run_unified_turn_shadow(
     # Hypothetical full-catalog payload for the same connected set (not sent).
     full_catalog_bytes = len(json.dumps(all_tools, separators=(",", ":")).encode("utf-8"))
 
-    model = _resolve_unified_turn_model(active, agent=agent, task_shaped=use_embed)
+    model = _resolve_unified_turn_model(
+        active,
+        agent=agent,
+        task_shaped=use_embed,
+        reasoning_depth=reasoning_depth,
+    )
 
     # Phase 0 (voice-latency, 2026-09-05): real, per-source context-size
     # breakdown — chars AND real tiktoken tokens (not the len//4 heuristic
@@ -905,33 +929,71 @@ async def run_unified_turn_shadow(
     # `breakdown["prompt_tokens"]` below) so any drift between "sum of our
     # labeled sections" and "what the provider actually charged for" is
     # visible rather than assumed to match.
-    from app.services.real_token_counter import count_real_tokens
-
+    #
+    # Conversational spoken: defer expensive tiktoken on the critical path —
+    # char estimate only until after first token (audit still gets prompt_tokens
+    # from the provider response).
     history_text = "\n".join(str(m.get("content") or "") for m in history_messages)
     tool_schemas_text = json.dumps(list(attach_tools or []), separators=(",", ":"))
-    context_size_breakdown: dict[str, dict[str, int]] = {
-        "system_prompt": {
-            "chars": len(system or ""),
-            "tokens": count_real_tokens(system or "", model=model),
-        },
-        "conversation_history": {
-            "chars": len(history_text),
-            "tokens": count_real_tokens(history_text, model=model),
-            "turn_count": len(history_messages),
-        },
-        "tool_schemas": {
-            "chars": 0,
-            "tokens": count_real_tokens(tool_schemas_text, model=model),
-            "tool_count": len(attach_tools or []),
-        },
-    }
-    for label, text in context_parts:
-        slot = context_size_breakdown.setdefault(label, {"chars": 0, "tokens": 0})
-        slot["chars"] += len(text)
-        slot["tokens"] += count_real_tokens(text, model=model)
-    context_real_tokens_total = sum(
-        int(v.get("tokens") or 0) for v in context_size_breakdown.values()
+    conversational_fast = str(reasoning_depth or "").strip().lower() == "conversational" and bool(
+        spoken_mode
     )
+    if conversational_fast:
+
+        def _est_tokens(text: str) -> int:
+            return max(0, len(text or "") // 4)
+
+        context_size_breakdown: dict[str, dict[str, int]] = {
+            "system_prompt": {
+                "chars": len(system or ""),
+                "tokens": _est_tokens(system or ""),
+            },
+            "conversation_history": {
+                "chars": len(history_text),
+                "tokens": _est_tokens(history_text),
+                "turn_count": len(history_messages),
+            },
+            "tool_schemas": {
+                "chars": 0,
+                "tokens": _est_tokens(tool_schemas_text),
+                "tool_count": len(attach_tools or []),
+            },
+        }
+        for label, text in context_parts:
+            slot = context_size_breakdown.setdefault(label, {"chars": 0, "tokens": 0})
+            slot["chars"] += len(text)
+            slot["tokens"] += _est_tokens(text)
+        context_real_tokens_total = sum(
+            int(v.get("tokens") or 0) for v in context_size_breakdown.values()
+        )
+        breakdown_note_estimate = True
+    else:
+        from app.services.real_token_counter import count_real_tokens
+
+        context_size_breakdown = {
+            "system_prompt": {
+                "chars": len(system or ""),
+                "tokens": count_real_tokens(system or "", model=model),
+            },
+            "conversation_history": {
+                "chars": len(history_text),
+                "tokens": count_real_tokens(history_text, model=model),
+                "turn_count": len(history_messages),
+            },
+            "tool_schemas": {
+                "chars": 0,
+                "tokens": count_real_tokens(tool_schemas_text, model=model),
+                "tool_count": len(attach_tools or []),
+            },
+        }
+        for label, text in context_parts:
+            slot = context_size_breakdown.setdefault(label, {"chars": 0, "tokens": 0})
+            slot["chars"] += len(text)
+            slot["tokens"] += count_real_tokens(text, model=model)
+        context_real_tokens_total = sum(
+            int(v.get("tokens") or 0) for v in context_size_breakdown.values()
+        )
+        breakdown_note_estimate = False
 
     router = get_model_router()
     from app.services.providers.provider_tool_router import resolve_provider_for_model
@@ -959,6 +1021,7 @@ async def run_unified_turn_shadow(
         "progressive_disclosure": progressive_on,
         "system_prompt_chars": system_prompt_chars,
         "messages_chars": messages_chars,
+        "context_token_estimate_only": bool(breakdown_note_estimate),
         "total_tools": len(all_tools),
         "visible_tools": len(
             [

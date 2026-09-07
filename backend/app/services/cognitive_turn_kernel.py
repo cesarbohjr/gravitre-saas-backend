@@ -155,28 +155,44 @@ class CognitiveTurnKernel:
             )
         )
 
-        # 2 RECALL
+        # 2 RECALL — skip heavy multi-store fetch on spoken conversational depth.
+        # Same honesty as KNOWLEDGE skip: keep GOVERN; do not pretend memory was
+        # consulted. Write/full depth still recalls all five stores.
         t0 = time.perf_counter()
+        conversational = (request.reasoning_depth or "full").strip().lower() == "conversational"
         try:
-            ctx.memory_pack = await self._recall(request, client)
-            recall_signal = memory_recall_signal(ctx)
-            ctx.stages.append(
-                StageRecord(
-                    stage="RECALL",
-                    ok=True,
-                    ms=_elapsed_ms(t0),
-                    # `keys` alone described the pack's shape, which is a
-                    # constant, so the stage said nothing about what happened.
-                    meta={"keys": list(_MEMORY_KEYS), "recall": recall_signal},
+            if conversational and request.spoken_mode:
+                ctx.memory_pack = _empty_memory_pack()
+                ctx.memory_pack[RECALL_STATS_KEY] = {
+                    **(ctx.memory_pack.get(RECALL_STATS_KEY) or {}),
+                    "skipped": "conversational_spoken_depth",
+                }
+                ctx.stages.append(
+                    StageRecord(
+                        stage="RECALL",
+                        ok=True,
+                        ms=_elapsed_ms(t0),
+                        meta={"skipped": "conversational_spoken_depth", "keys": list(_MEMORY_KEYS)},
+                    )
                 )
-            )
-            await asyncio.to_thread(
-                _emit_memory_recall_audit,
-                client=client,
-                request=request,
-                signal=recall_signal,
-                turn_id=turn_id,
-            )
+            else:
+                ctx.memory_pack = await self._recall(request, client)
+                recall_signal = memory_recall_signal(ctx)
+                ctx.stages.append(
+                    StageRecord(
+                        stage="RECALL",
+                        ok=True,
+                        ms=_elapsed_ms(t0),
+                        meta={"keys": list(_MEMORY_KEYS), "recall": recall_signal},
+                    )
+                )
+                await asyncio.to_thread(
+                    _emit_memory_recall_audit,
+                    client=client,
+                    request=request,
+                    signal=recall_signal,
+                    turn_id=turn_id,
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning("cognitive_recall_failed error=%s", exc)
             ctx.memory_pack = _empty_memory_pack()
@@ -186,7 +202,6 @@ class CognitiveTurnKernel:
 
         # 3 KNOWLEDGE — full fabric merge for consequential/full turns only.
         # Conversational spoken depth keeps RECALL + GOVERN; skips heavy retrieval.
-        conversational = (request.reasoning_depth or "full").strip().lower() == "conversational"
         t0 = time.perf_counter()
         try:
             if conversational:

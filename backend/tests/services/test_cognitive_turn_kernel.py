@@ -239,6 +239,35 @@ async def test_conversational_depth_skips_knowledge_merge():
 
 
 @pytest.mark.asyncio
+async def test_spoken_conversational_skips_recall_stores(monkeypatch):
+    """Spoken conversational depth must not pay five-store RECALL before first token."""
+    kernel = CognitiveTurnKernel(settings=SimpleNamespace(cognitive_turn_kernel_enabled=True))
+    called = {"recall": False}
+
+    async def _boom(*_a, **_k):
+        called["recall"] = True
+        raise AssertionError("RECALL should be skipped")
+
+    monkeypatch.setattr(CognitiveTurnKernel, "_recall", _boom)
+
+    with patch.object(CognitiveTurnKernel, "_persist_trace", new_callable=AsyncMock):
+        ctx = await kernel.run_pre_act(
+            CognitiveTurnRequest(
+                org_id="org-1",
+                message="what is two plus two",
+                spoken_mode=True,
+                reasoning_depth="conversational",
+                client=SimpleNamespace(),
+                connected_integrations=[],
+            )
+        )
+
+    assert called["recall"] is False
+    recall = next(s for s in ctx.stages if s.stage == "RECALL")
+    assert recall.meta.get("skipped") == "conversational_spoken_depth"
+
+
+@pytest.mark.asyncio
 async def test_plan_reuses_connected_integrations_without_relist(monkeypatch):
     """PLAN must not re-call live connector listing when the caller already passed a snapshot."""
     from app.services.tool_registry import ToolRegistry
