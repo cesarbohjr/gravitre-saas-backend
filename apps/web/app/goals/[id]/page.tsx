@@ -4,6 +4,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -34,49 +35,60 @@ export default function GoalDetailPage() {
   )
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-3xl space-y-6 p-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild className="gap-2">
-            <Link href="/goals">
-              <ArrowLeft className="h-4 w-4" />
-              Goals
-            </Link>
-          </Button>
-        </div>
+    <AppShell title={data?.goal.objective ?? "Goal"}>
+      <div className="mx-auto max-w-3xl space-y-6 pb-6">
+        <GravitrePageHeader
+          eyebrow="Goals"
+          title={
+            isLoading
+              ? "Loading…"
+              : error
+                ? "Could not load goal"
+                : (data?.goal.objective ?? "Goal")
+          }
+          description={
+            data?.goal.department
+              ? `Department: ${data.goal.department}`
+              : undefined
+          }
+          icon={<Target className="h-5 w-5" />}
+          actions={
+            <Button variant="ghost" size="sm" asChild className="gap-2">
+              <Link href="/goals">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Link>
+            </Button>
+          }
+        >
+          {data ? (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {data.goal.status ? (
+                <Badge variant="outline" className="capitalize">
+                  {data.goal.status}
+                </Badge>
+              ) : null}
+              {data.goal.category ? (
+                <Badge variant="outline" className="capitalize">
+                  {data.goal.category}
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
+        </GravitrePageHeader>
 
-        {error ? (
-          <WorkSectionErrorCard
-            title="Could not load goal"
-            message={error instanceof Error ? error.message : "Unknown error"}
-            onRetry={() => void mutate()}
-          />
-        ) : isLoading || !data ? (
-          <Skeleton className="h-48 w-full rounded-xl" />
-        ) : (
-          <>
-            <div className="rounded-xl border border-border/60 bg-card/40 p-6">
-              <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-semibold text-foreground">{data.goal.objective}</h1>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {data.goal.status ? (
-                      <Badge variant="outline" className="capitalize">
-                        {data.goal.status}
-                      </Badge>
-                    ) : null}
-                    {data.goal.category ? (
-                      <Badge variant="outline" className="capitalize">
-                        {data.goal.category}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
+          {error ? (
+            <WorkSectionErrorCard
+              title="Could not load goal"
+              message={error instanceof Error ? error.message : "Unknown error"}
+              onRetry={() => void mutate()}
+            />
+          ) : isLoading || !data ? (
+            <Skeleton className="h-48 w-full rounded-xl" />
+          ) : (
+            <>
+              <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6">
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Progress</span>
                   <span className="font-medium text-foreground">{data.completionPercentage}%</span>
@@ -88,38 +100,38 @@ export default function GoalDetailPage() {
                   />
                 </div>
               </div>
-            </div>
 
-            {data.milestoneStatus.length > 0 ? (
-              <div className="rounded-xl border border-border/60 bg-card/40 p-6">
-                <h2 className="mb-4 text-sm font-medium text-foreground">Plan milestones</h2>
-                <div className="space-y-3">
-                  {data.milestoneStatus.map((milestone) => (
-                    <div
-                      key={milestone.id}
-                      className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2"
-                    >
-                      <span className="text-sm text-foreground">{milestone.title}</span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "capitalize",
-                          milestone.status === "completed"
-                            ? "border-success/30 text-success"
-                            : milestone.status === "in_progress"
-                              ? "border-blue-500/30 text-blue-400"
-                              : "border-zinc-500/30 text-zinc-400"
-                        )}
+              {data.milestoneStatus.length > 0 ? (
+                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6">
+                  <h2 className="mb-4 text-sm font-medium text-foreground">Plan milestones</h2>
+                  <div className="space-y-3">
+                    {data.milestoneStatus.map((milestone) => (
+                      <div
+                        key={milestone.id}
+                        className="flex items-center justify-between rounded-lg border border-divide/60 px-3 py-2"
                       >
-                        {milestone.status.replace("_", " ")}
-                      </Badge>
-                    </div>
-                  ))}
+                        <span className="text-sm text-foreground">{milestone.title}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "capitalize",
+                            milestone.status === "completed"
+                              ? "border-success/30 text-success"
+                              : milestone.status === "in_progress"
+                                ? "border-blue-500/30 text-blue-400"
+                                : "border-zinc-500/30 text-zinc-400"
+                          )}
+                        >
+                          {milestone.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </>
-        )}
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
     </AppShell>
   )

@@ -6,7 +6,6 @@ import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
-import { GlowOrb } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Shield, Check, X, Users } from "lucide-react"
 import { TYPE } from "@/lib/design-system"
@@ -57,9 +56,6 @@ export default function PermissionsMatrixPage() {
           {/* Matches the approvals hero, which previously used a different
               two-hue gradient — sibling settings pages now share one wash. */}
           <div className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-brand-soft)] via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] p-6 md:p-8">
-            <div className="pointer-events-none absolute -right-8 -top-10 opacity-60">
-              <GlowOrb size={200} color="emerald" intensity={0.22} />
-            </div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

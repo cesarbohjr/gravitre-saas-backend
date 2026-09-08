@@ -8,9 +8,10 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-panel"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 import { workflowsApi, runsApi } from "@/lib/api"
@@ -25,7 +26,6 @@ import {
   Play,
   Rocket,
   Sparkles,
-  Workflow,
 } from "lucide-react"
 
 export default function WorkflowDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -126,69 +126,70 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell title={workflow?.name ?? "Workflow"}>
-      <div className="mx-auto max-w-5xl p-4 sm:p-6 space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <Button variant="ghost" size="sm" className="-ml-2 h-8" asChild>
-              <Link href="/workflows">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Workflows
-              </Link>
-            </Button>
-            {isLoading ? (
-              <Skeleton className="h-8 w-64" />
-            ) : error ? (
-              <h1 className="text-xl font-semibold">Workflow unavailable</h1>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Workflow className="h-5 w-5 text-muted-foreground" />
-                  <h1 className="text-xl font-semibold tracking-tight">{workflow?.name ?? "Workflow"}</h1>
-                  {workflow?.status ? (
-                    <StatusChip status={String(workflow.status)}>
-                      {formatStatusLabel(String(workflow.status))}
-                    </StatusChip>
-                  ) : null}
-                  {workflow?.environment ? (
-                    <EnvironmentBadge
-                      environment={workflow.environment === "production" ? "production" : "staging"}
-                    />
-                  ) : null}
-                </div>
-                {workflow?.description ? (
-                  <p className="text-sm text-muted-foreground max-w-2xl">{workflow.description}</p>
-                ) : null}
-              </>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/runs?workflow_id=${encodeURIComponent(id)}`}>
-                <Play className="h-4 w-4 mr-1" />
-                Run history
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/workflows/${id}/builder`}>
-                <Sparkles className="h-4 w-4 mr-1" />
-                Open builder
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              disabled={!canRunLive || isRunning || isLoading || Boolean(error) || hasActiveRun}
-              onClick={() => void handleRunNow()}
-            >
-              {isRunning ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Rocket className="h-4 w-4 mr-1" />
-              )}
-              Run now
-            </Button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-5xl space-y-6 pb-6">
+        <GravitrePageHeader
+          eyebrow="Workflows"
+          title={
+            isLoading
+              ? "Loading…"
+              : error
+                ? "Workflow unavailable"
+                : (workflow?.name ?? "Workflow")
+          }
+          description={!isLoading && !error ? workflow?.description : undefined}
+          icon={<NucleoWorkflow className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/workflows">
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/runs?workflow_id=${encodeURIComponent(id)}`}>
+                  <Play className="h-4 w-4 mr-1" />
+                  Run history
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/workflows/${id}/builder`}>
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  Open builder
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                disabled={!canRunLive || isRunning || isLoading || Boolean(error) || hasActiveRun}
+                onClick={() => void handleRunNow()}
+              >
+                {isRunning ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4 mr-1" />
+                )}
+                Run now
+              </Button>
+            </div>
+          }
+        >
+          {!isLoading && !error && workflow ? (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {workflow.status ? (
+                <StatusChip status={String(workflow.status)}>
+                  {formatStatusLabel(String(workflow.status))}
+                </StatusChip>
+              ) : null}
+              {workflow.environment ? (
+                <EnvironmentBadge
+                  environment={workflow.environment === "production" ? "production" : "staging"}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </GravitrePageHeader>
 
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -380,6 +381,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             </Card>
           </>
         )}
+        </div>
       </div>
     </AppShell>
   )

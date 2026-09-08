@@ -6,8 +6,10 @@ import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
+import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { lookupConnectorCategory, resolveConnectorDisplayStatus } from "@/lib/connectors"
@@ -210,47 +212,19 @@ export default function ConnectorDetailPage() {
   return (
     <AppShell title={connector.name} breadcrumbVendor={connector.type}>
       <div className="flex flex-col min-h-full">
-        {/* Header */}
-        <div className="border-b border-divide px-4 py-4 md:px-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="flex items-start gap-4">
-              <Link 
-                href="/connectors" 
-                className="mt-1 p-1.5 rounded-md hover:bg-secondary transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-              </Link>
-              <div className="flex items-center gap-4">
-                <ConnectorIcon 
-                  vendor={connector.type}
-                  status={isSyncing ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
-                  size="md"
-                  showStatusIndicator
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-semibold text-foreground">{connector.name}</h1>
-                    <span className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                      connector.environment === "production" 
-                        ? "bg-success/10 text-success" 
-                        : "bg-warning/10 text-warning"
-                    )}>
-                      {connector.environment}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{connector.description}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span>{connector.type}</span>
-                    <span className="text-border">|</span>
-                    <span>{connector.category}</span>
-                    <span className="text-border">|</span>
-                    <span>Created {connector.createdAt}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+        <GravitrePageHeader
+          eyebrow="Connectors"
+          title={connector.name}
+          description={connector.description}
+          icon={<NucleoConnector className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/connectors">
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
               <KnowledgeSyncButton
                 connectorId={connectorId}
                 connectorType={String(
@@ -262,9 +236,9 @@ export default function ConnectorDetailPage() {
                   (liveConnector as Connector | undefined)?.status ?? connector.status,
                 )}
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="gap-2"
                 onClick={handleSync}
                 disabled={isSyncing || connector.status !== "connected"}
@@ -272,9 +246,9 @@ export default function ConnectorDetailPage() {
                 <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
                 {isSyncing ? "Syncing..." : "Sync Now"}
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="gap-2"
                 onClick={() => setShowConfigDialog(true)}
               >
@@ -293,7 +267,7 @@ export default function ConnectorDetailPage() {
                     Export Logs
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="text-destructive"
                     onClick={() => setShowDeleteDialog(true)}
                   >
@@ -303,8 +277,32 @@ export default function ConnectorDetailPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <ConnectorIcon
+              vendor={connector.type}
+              status={isSyncing ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
+              size="sm"
+              showStatusIndicator
+            />
+            <span
+              className={cn(
+                "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                connector.environment === "production"
+                  ? "bg-success/10 text-success"
+                  : "bg-warning/10 text-warning",
+              )}
+            >
+              {connector.environment}
+            </span>
+            <span className="text-xs text-muted-foreground">{connector.type}</span>
+            <span className="text-border text-xs">|</span>
+            <span className="text-xs text-muted-foreground">{connector.category}</span>
+            <span className="text-border text-xs">|</span>
+            <span className="text-xs text-muted-foreground">Created {connector.createdAt}</span>
           </div>
-        </div>
+        </GravitrePageHeader>
 
         {/* Main Content */}
         <div className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
