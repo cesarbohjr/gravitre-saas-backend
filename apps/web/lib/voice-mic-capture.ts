@@ -158,6 +158,8 @@ export function buildMicAudioConstraints(
 
 export function readEffectiveMicSettings(track: MediaStreamTrack): MicEffectiveSettings {
   const settings = track.getSettings?.() ?? {}
+  // `latency` is present in Chromium getSettings() but not in all TS DOM lib versions.
+  const latencyMs = (settings as MediaTrackSettings & { latency?: number }).latency
   return {
     deviceId: settings.deviceId,
     label: track.label || undefined,
@@ -166,7 +168,7 @@ export function readEffectiveMicSettings(track: MediaStreamTrack): MicEffectiveS
     echoCancellation: settings.echoCancellation,
     noiseSuppression: settings.noiseSuppression,
     autoGainControl: settings.autoGainControl,
-    latency: settings.latency,
+    latency: latencyMs,
     sampleSize: settings.sampleSize,
   }
 }
