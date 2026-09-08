@@ -5,7 +5,8 @@ import useSWR from "swr"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -77,21 +78,25 @@ export default function IntelligenceReportsPage() {
   return (
     <AppShell title={reportsCopy.title}>
       <div className="space-y-6 p-4 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground text-pretty">{reportsCopy.description}</p>
-          {tab !== "roi" ? (
-            <Select value={String(period)} onValueChange={(value) => setPeriod(Number(value) as IntelligencePeriod)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : null}
-        </div>
+        <GravitrePageHeader
+          title={reportsCopy.title}
+          description={reportsCopy.description}
+          icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={
+            tab !== "roi" ? (
+              <Select value={String(period)} onValueChange={(value) => setPeriod(Number(value) as IntelligencePeriod)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="90">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : null
+          }
+        />
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap">
@@ -144,15 +149,18 @@ export default function IntelligenceReportsPage() {
                         }}
                       />
                     ) : (
-                      <StatsGrid columns={2} className="mt-3">
-                        <StatCard label="Recommendations" value={readNumber(byEvent.recommendation_created, 0)} />
-                        <StatCard
+                      <section className="mt-3 grid grid-cols-2 gap-[var(--np-kpi-gap)]">
+                        <GravitreMetric
+                          label="Recommendations"
+                          value={readNumber(byEvent.recommendation_created, 0)}
+                        />
+                        <GravitreMetric
                           label="Acceptance rate"
                           value={approvalRate != null ? formatPercent(approvalRate) : "—"}
                         />
-                        <StatCard label="Outcomes measured" value={deptEvents} />
-                        <StatCard label="Benchmark" value={readString(benchmark, "—")} variant="info" />
-                      </StatsGrid>
+                        <GravitreMetric label="Outcomes measured" value={deptEvents} />
+                        <GravitreMetric label="Benchmark" value={readString(benchmark, "—")} />
+                      </section>
                     )}
                   </article>
                 )

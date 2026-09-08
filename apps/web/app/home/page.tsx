@@ -78,6 +78,7 @@ export default function HomePage() {
           reorderWidget={layoutApi.reorderWidget}
           resizeWidget={layoutApi.resizeWidget}
           resetLayout={layoutApi.resetLayout}
+          applyPreset={layoutApi.applyPreset}
           saving={layoutApi.saving}
         />
       )}

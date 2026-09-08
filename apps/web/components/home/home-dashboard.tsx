@@ -25,7 +25,7 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { packWidgets } from "@/lib/dashboard/place-widgets"
 import type { DashboardRange, DashboardWidget } from "@/lib/dashboard/types"
-import { KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
+import { DASHBOARD_PRESETS, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import { DashboardWidgetView } from "@/components/home/dashboard-widget-view"
 import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
@@ -49,6 +49,7 @@ type HomeDashboardProps = {
   reorderWidget: (widgetId: string, toOrder: number) => void
   resizeWidget: (widgetId: string) => void
   resetLayout: () => void
+  applyPreset: (presetId: string) => void
   saving?: boolean
 }
 
@@ -69,6 +70,7 @@ export function HomeDashboard({
   reorderWidget,
   resizeWidget,
   resetLayout,
+  applyPreset,
   saving = false,
 }: HomeDashboardProps) {
   const { reduced, container, item } = useMotionPrefs()
@@ -120,6 +122,20 @@ export function HomeDashboard({
                   <span className="mr-1 text-base leading-none">+</span>
                   Add KPI
                 </Button>
+                <Select
+                  onValueChange={(presetId) => applyPreset(presetId)}
+                >
+                  <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Apply dashboard preset">
+                    <SelectValue placeholder="Presets" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DASHBOARD_PRESETS.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id} title={preset.description}>
+                        {preset.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button type="button" size="sm" variant="ghost" className="h-8" onClick={resetLayout}>
                   Reset layout
                 </Button>

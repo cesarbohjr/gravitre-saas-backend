@@ -8,7 +8,7 @@ import { ArrowLeft, ChartLineUp, Play } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -185,21 +185,23 @@ export default function ModelProfilePage() {
                 </div>
               </div>
             </div>
-            <StatsGrid columns={3}>
-              <StatCard label="Model type" value={readString(catalogEntry.model_type, "—").replace(/_/g, " ")} />
-              <StatCard
+            <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+              <GravitreMetric
+                label="Model type"
+                value={readString(catalogEntry.model_type, "—").replace(/_/g, " ")}
+              />
+              <GravitreMetric
                 label="Advisory only"
                 value={statusEntry?.advisory_only ? "Yes — recommends, doesn’t auto-act" : "No"}
-                variant="info"
               />
-              <StatCard
+              <GravitreMetric
                 label="Fallback when untrained"
                 value={readString(statusEntry?.fallback, readString(catalogEntry.fallback, "—")).replace(
                   /_/g,
                   " ",
                 )}
               />
-            </StatsGrid>
+            </section>
             {!isPlanned ? (
               <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">Activation checklist</p>
@@ -221,14 +223,14 @@ export default function ModelProfilePage() {
                 description="This appears once sufficient outcome data accumulates for this model."
               />
             ) : (
-              <StatsGrid columns={3}>
-                <StatCard label="Evaluation status" value={readString(modelPerformance.status, "—")} />
-                <StatCard label="Samples" value={readNumber(modelPerformance.samples, 0)} />
-                <StatCard
+              <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+                <GravitreMetric label="Evaluation status" value={readString(modelPerformance.status, "—")} />
+                <GravitreMetric label="Samples" value={readNumber(modelPerformance.samples, 0)} />
+                <GravitreMetric
                   label="Recommendation approval"
                   value={formatPercent(evaluations?.recommendation_approval_rate as number | null)}
                 />
-              </StatsGrid>
+              </section>
             )}
           </TabsContent>
 
@@ -250,11 +252,17 @@ export default function ModelProfilePage() {
           </TabsContent>
 
           <TabsContent value="impact" className="mt-6 space-y-4">
-            <StatsGrid columns={3}>
-              <StatCard label="Linked outcome events" value={recentEvents.length} />
-              <StatCard label="Avg confidence" value={formatScore(readNumber(outcomes?.avg_confidence, NaN) || null)} />
-              <StatCard label="Departments" value={(catalogEntry.use_cases as string[] | undefined)?.length ?? "—"} />
-            </StatsGrid>
+            <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+              <GravitreMetric label="Linked outcome events" value={recentEvents.length} />
+              <GravitreMetric
+                label="Avg confidence"
+                value={formatScore(readNumber(outcomes?.avg_confidence, NaN) || null)}
+              />
+              <GravitreMetric
+                label="Departments"
+                value={(catalogEntry.use_cases as string[] | undefined)?.length ?? "—"}
+              />
+            </section>
             {recentEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No outcome events linked to this model in the selected period.</p>
             ) : (

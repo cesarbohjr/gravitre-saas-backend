@@ -53,3 +53,18 @@ describe("packWidgets", () => {
     expect(new Set(placed.map((p) => `${p.x},${p.y},${p.w},${p.h}`)).size).toBe(placed.length)
   })
 })
+
+describe("dashboard presets", () => {
+  it("builds layouts from registry metrics only", async () => {
+    const { DASHBOARD_PRESETS, KPI_BY_ID } = await import("@/lib/dashboard/kpi-registry")
+    expect(DASHBOARD_PRESETS.length).toBeGreaterThanOrEqual(5)
+    for (const preset of DASHBOARD_PRESETS) {
+      const layout = preset.build()
+      expect(layout.version).toBe(1)
+      expect(layout.widgets.length).toBeGreaterThan(0)
+      for (const w of layout.widgets) {
+        expect(KPI_BY_ID[w.metricId]).toBeTruthy()
+      }
+    }
+  })
+})

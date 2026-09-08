@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { DashboardLayout, DashboardWidget, WidgetSize } from "@/lib/dashboard/types"
-import { createDefaultLayout, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
+import { createDefaultLayout, getDashboardPreset, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import {
   fetchRemoteLayout,
   readLocalLayout,
@@ -135,6 +135,15 @@ export function useDashboardLayout(orgId: string | null, userId: string | null) 
     void persist(createDefaultLayout())
   }, [persist])
 
+  const applyPreset = useCallback(
+    (presetId: string) => {
+      const preset = getDashboardPreset(presetId)
+      if (!preset) return
+      void persist(preset.build())
+    },
+    [persist],
+  )
+
   const displayedMetricIds = useMemo(
     () => new Set(layout.widgets.map((w) => w.metricId)),
     [layout.widgets],
@@ -152,6 +161,7 @@ export function useDashboardLayout(orgId: string | null, userId: string | null) 
     resizeWidget,
     setRange,
     resetLayout,
+    applyPreset,
     displayedMetricIds,
   }
 }

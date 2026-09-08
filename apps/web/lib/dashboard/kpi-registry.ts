@@ -461,3 +461,148 @@ export function createDefaultLayout(): DashboardLayout {
     ],
   }
 }
+
+export type DashboardPresetId =
+  | "operations"
+  | "executive"
+  | "agents"
+  | "workflows"
+  | "models"
+  | "gibe"
+  | "governance"
+  | "system"
+
+export type DashboardPreset = {
+  id: DashboardPresetId
+  name: string
+  description: string
+  build: () => DashboardLayout
+}
+
+function layoutFromMetricIds(
+  metricIds: string[],
+  globalRange: DashboardLayout["globalRange"] = "7d",
+): DashboardLayout {
+  return {
+    version: 1,
+    globalRange,
+    updatedAt: new Date().toISOString(),
+    widgets: metricIds.map((metricId, order) => widget(metricId, order)),
+  }
+}
+
+/** Saved collections of existing registry widgets — no invented metrics. */
+export const DASHBOARD_PRESETS: DashboardPreset[] = [
+  {
+    id: "operations",
+    name: "Operations",
+    description: "Nodus default — agents, success, latency, workflows, monitor, breakdowns",
+    build: createDefaultLayout,
+  },
+  {
+    id: "executive",
+    name: "Executive",
+    description: "Success rate, workflows, approvals, confidence, revenue risks",
+    build: () =>
+      layoutFromMetricIds([
+        "runs.success_rate",
+        "workflows.active",
+        "approvals.pending",
+        "gibe.avg_confidence",
+        "runs.total",
+        "connectors.active",
+        "gibe.revenue_risks",
+        "gibe.predictive",
+      ]),
+  },
+  {
+    id: "agents",
+    name: "Agents",
+    description: "Agent roster health and monitor table",
+    build: () =>
+      layoutFromMetricIds([
+        "agents.active",
+        "agents.total",
+        "agents.executing",
+        "agents.error",
+        "agents.monitor",
+        "agents.by_status",
+      ]),
+  },
+  {
+    id: "workflows",
+    name: "Workflows",
+    description: "Workflow and run throughput focus",
+    build: () =>
+      layoutFromMetricIds([
+        "workflows.active",
+        "workflows.total",
+        "runs.success_rate",
+        "runs.avg_duration",
+        "runs.total",
+        "runs.breakdown",
+        "approvals.pending",
+      ]),
+  },
+  {
+    id: "models",
+    name: "AI / Models",
+    description: "Model and architecture live counts with run latency",
+    build: () =>
+      layoutFromMetricIds([
+        "system.ml_models_live",
+        "system.architecture_live",
+        "runs.avg_latency",
+        "runs.success_rate",
+        "usage.records_processed",
+        "runs.breakdown",
+      ]),
+  },
+  {
+    id: "gibe",
+    name: "GIBE",
+    description: "Confidence, learning progress, risks, predictive ops",
+    build: () =>
+      layoutFromMetricIds([
+        "gibe.avg_confidence",
+        "gibe.learning_query",
+        "gibe.learning_workflow",
+        "system.memory_promotions",
+        "gibe.revenue_risks",
+        "gibe.predictive",
+      ]),
+  },
+  {
+    id: "governance",
+    name: "Governance",
+    description: "Approvals and connector health",
+    build: () =>
+      layoutFromMetricIds([
+        "approvals.pending",
+        "connectors.active",
+        "connectors.health_latency",
+        "runs.success_rate",
+        "agents.error",
+        "agents.monitor",
+      ]),
+  },
+  {
+    id: "system",
+    name: "System Health",
+    description: "Architecture, connectors, latency, and promotions",
+    build: () =>
+      layoutFromMetricIds([
+        "system.architecture_live",
+        "system.ml_models_live",
+        "connectors.active",
+        "connectors.health_latency",
+        "runs.avg_latency",
+        "system.memory_promotions",
+        "runs.breakdown",
+      ]),
+  },
+]
+
+export function getDashboardPreset(id: string): DashboardPreset | undefined {
+  return DASHBOARD_PRESETS.find((p) => p.id === id)
+}
