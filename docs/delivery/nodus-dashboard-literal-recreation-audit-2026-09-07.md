@@ -1,7 +1,7 @@
 # Gravitre Dashboard — Literal Nodus Recreation + Configurable KPI System
 
 **Date:** 2026-09-07  
-**Status:** **AUDIT COMPLETE — STOPPED FOR CESAR APPROVAL** (no configurable-dashboard implementation yet)  
+**Status:** **IMPLEMENTATION IN PROGRESS (Cesar approved 2026-09-08)** — configurable Nodus-faithful dashboard on `/home`  
 **References:** `apps/web/public/nodus/dashboard@3x.png` (3312×1860), live `/home`, Gate `nodus-product-ui-reconstruction-gate-audit-2026-09-07.md`  
 **Canvas:** `nodus-dashboard-literal-recreation-audit.canvas.tsx`
 
@@ -240,6 +240,22 @@ Execution health · Approval queue · Connector health · Model catalog live cou
 
 ## Scaffold honesty
 
-**(a)** Audit explicitly requested. Configurable dashboard **not implemented** pending approval.  
-Combo-stack page chrome (Activity + hubs) + page-title token alignment ship separately under Cesar’s “commit, push, deploy combo stack” instruction.  
-No invented prices, claims, badges, or Enable toggles. No fake metrics.
+**(a)** Audit + implementation explicitly requested and approved (Cesar, 2026-09-08).  
+No invented prices, claims, badges, or Enable toggles. No fake metrics.  
+KPI registry seeds **AVAILABLE NOW** only. Overview date range UI includes 1h/24h but API maps those to `7d` (backend `_validate_range` accepts `7d|30d|90d` only).
+
+---
+
+## Implementation (2026-09-08)
+
+| Phase | Delivered |
+|-------|-----------|
+| D1 | camelCase normalize for metrics + aiOs; compact `GravitrePageHeader` on `/home` |
+| D2 | Default layout: 4 KPIs · Workflow monitor · Agents donut · Runs breakdown |
+| D3 | `KPI_REGISTRY` + `useHomeDashboardData` shared SWR fetches |
+| D4 | Edit mode · `+ Add KPI` picker (search/categories) · remove widget |
+| D5 | CSS 12-col packer · HTML5 drag reflow · size cycle · mobile ↑↓ |
+| D6 | `localStorage` + `/api/settings/dashboard-layout` → `user_ui_preferences` |
+| D7 | Vitest pack/normalize; mobile reorder; keyboard-friendly remove/resize |
+
+**Files:** `apps/web/lib/dashboard/*`, `apps/web/components/home/*`, `apps/web/hooks/use-dashboard-layout.ts`, `apps/web/hooks/use-home-dashboard-data.ts`, `supabase/migrations/20260908010000_user_ui_preferences.sql`

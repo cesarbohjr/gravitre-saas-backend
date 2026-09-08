@@ -864,13 +864,39 @@ export interface SSOInitResponse {
 }
 
 // ============ Metrics ============
+/** Live `/api/metrics/overview` shape (camelCase). Snake keys kept optional for legacy reads. */
 export interface MetricsOverview {
-  total_workflows: number
-  active_workflows: number
-  total_runs: number
-  successful_runs: number
-  failed_runs: number
-  pending_approvals: number
+  totalWorkflows?: number
+  activeWorkflows?: number
+  totalRuns?: number
+  successRate?: number
+  avgDuration?: number
+  avgLatency?: number
+  recordsProcessed?: number
+  activeConnectors?: number
+  totalConnectors?: number
+  connectorHealthLatencyMs?: number
+  connectorHealthLatencyP95Ms?: number
+  changes?: {
+    totalRuns?: number
+    successRate?: number
+    recordsProcessed?: number
+    avgLatency?: number
+  }
+  trends?: {
+    totalRuns?: number[]
+    successRate?: number[]
+    recordsProcessed?: number[]
+    avgLatency?: number[]
+  }
+  honesty?: Record<string, unknown>
+  /** @deprecated legacy snake — prefer camel */
+  total_workflows?: number
+  active_workflows?: number
+  total_runs?: number
+  successful_runs?: number
+  failed_runs?: number
+  pending_approvals?: number
   avg_run_duration_ms?: number
   runs_by_day?: { date: string; count: number }[]
   runs_by_status?: { status: string; count: number }[]
