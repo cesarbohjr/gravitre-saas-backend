@@ -614,6 +614,30 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("VOICE_NEAR_FAR_V1", "voice_near_far_v1"),
     )
+    # Voice 3.0 Phase 2 — echo / noise (default OFF except silent tap fix).
+    voice_mic_silent_tap_v2: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("VOICE_MIC_SILENT_TAP_V2", "voice_mic_silent_tap_v2"),
+    )
+    voice_echo_test_mode: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_ECHO_TEST_MODE", "voice_echo_test_mode"),
+    )
+    voice_krisp: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_KRISP", "voice_krisp"),
+    )
+    krisp_viva_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("KRISP_VIVA_API_KEY", "krisp_viva_api_key"),
+    )
+    krisp_viva_filter_model_path: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "KRISP_VIVA_FILTER_MODEL_PATH",
+            "krisp_viva_filter_model_path",
+        ),
+    )
     # Conversational spoken / reasoning_depth=conversational unified-turn model.
     # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
     # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.

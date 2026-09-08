@@ -33,6 +33,12 @@ export type VoiceStatus = {
     mic_selector_v1?: boolean
     near_far_v1?: boolean
   }
+  phase2_echo_noise?: {
+    mic_silent_tap_v2?: boolean
+    echo_test_mode?: boolean
+    krisp_enabled?: boolean
+    krisp_configured?: boolean
+  }
 }
 
 let cachedStatus: VoiceStatus | null = null

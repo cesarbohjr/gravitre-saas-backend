@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest"
 import {
   AudioPreRollBuffer,
   concatPcm16,
+  EchoLeakMonitor,
   resolveMicCaptureTuning,
   updateSpeechGate,
   voiceMicPhase1FlagsFromStatus,
+  voiceMicPhase2FlagsFromStatus,
 } from "@/lib/voice-mic-capture"
 import { inferMicFieldProfile as inferFromDevices } from "@/lib/voice-mic-devices"
 
@@ -74,6 +76,22 @@ describe("concatPcm16", () => {
     const a = new Int16Array([1, 2])
     const b = new Int16Array([3])
     expect(Array.from(concatPcm16(a, b))).toEqual([1, 2, 3])
+  })
+})
+
+describe("EchoLeakMonitor", () => {
+  it("flags suspected echo when agent-speaking RMS is high", () => {
+    const mon = new EchoLeakMonitor()
+    for (let i = 0; i < 10; i++) mon.observe(0.03)
+    const snap = mon.reset()
+    expect(snap.echo_leak_suspected).toBe(true)
+    expect(snap.agent_speaking_rms_peak).toBeGreaterThan(0.02)
+  })
+})
+
+describe("voiceMicPhase2FlagsFromStatus", () => {
+  it("defaults silent tap on", () => {
+    expect(voiceMicPhase2FlagsFromStatus(null).silentTapV2).toBe(true)
   })
 })
 

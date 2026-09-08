@@ -24,10 +24,13 @@ import {
 import {
   acquireVoiceMicrophoneStream,
   createVoiceMicProcessor,
+  EchoLeakMonitor,
   voiceMicPhase1FlagsFromStatus,
+  voiceMicPhase2FlagsFromStatus,
   type MicEffectiveSettings,
   type MicLevelSnapshot,
   type VoiceMicPhase1Flags,
+  type VoiceMicPhase2Flags,
 } from "@/lib/voice-mic-capture"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { postMicDiagnostics } from "@/lib/voice-mic-telemetry-client"
@@ -149,6 +152,8 @@ export function useVoiceDuplexSession(options: Options) {
   optsRef.current = options
 
   const phase1FlagsRef = useRef<VoiceMicPhase1Flags>(voiceMicPhase1FlagsFromStatus(null))
+  const phase2FlagsRef = useRef<VoiceMicPhase2Flags>(voiceMicPhase2FlagsFromStatus(null))
+  const echoLeakRef = useRef(new EchoLeakMonitor())
   const voiceStatusRef = useRef<VoiceStatus | null>(null)
   const micSessionIdRef = useRef<string | null>(null)
   const telemetryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -216,6 +221,38 @@ export function useVoiceDuplexSession(options: Options) {
     audioElRef.current = null
   }, [stopPcmPlayback])
 
+  const stopMicTelemetry = useCallback(() => {
+    if (telemetryTimerRef.current) {
+      clearInterval(telemetryTimerRef.current)
+      telemetryTimerRef.current = null
+    }
+  }, [])
+
+  const emitMicDiagnostics = useCallback(
+    (event: "session_start" | "periodic" | "session_end" | "echo_test") => {
+      const flags = phase1FlagsRef.current
+      if (!flags.micTelemetry && event !== "echo_test") return
+      if (event === "echo_test" && !phase2FlagsRef.current.echoTestMode) return
+      const levels = micProcessorRef.current?.getLastLevels() || micLevels
+      if (!levels && event === "periodic") return
+      const echoLeak =
+        event === "echo_test" ? echoLeakRef.current.reset() : undefined
+      void postMicDiagnostics({
+        session_id: micSessionIdRef.current || undefined,
+        orchestration: orchestrationRef.current,
+        mic_profile: micProfile || undefined,
+        device_label: micEffective?.label,
+        effective_settings: micEffective || undefined,
+        metrics: {
+          ...(levels || {}),
+          ...(echoLeak ? { echo_leak: echoLeak } : {}),
+        },
+        event: event === "echo_test" ? "echo_test" : event,
+      })
+    },
+    [micEffective, micLevels, micProfile],
+  )
+
   const enqueuePcm = useCallback(
     (pcm: Int16Array, sampleRate: number) => {
       const ctx = audioCtxRef.current
@@ -254,11 +291,14 @@ export function useVoiceDuplexSession(options: Options) {
         pcmSourcesRef.current = pcmSourcesRef.current.filter((s) => s !== src)
         if (pcmSourcesRef.current.length === 0) {
           agentSpeakingRef.current = false
+          if (phase2FlagsRef.current.echoTestMode) {
+            emitMicDiagnostics("echo_test")
+          }
           if (activeRef.current) setPresence("listening")
         }
       }
     },
-    [],
+    [emitMicDiagnostics],
   )
 
   const playNext = useCallback(async () => {
@@ -348,32 +388,6 @@ export function useVoiceDuplexSession(options: Options) {
       rafRef.current = null
     }
   }
-
-  const stopMicTelemetry = useCallback(() => {
-    if (telemetryTimerRef.current) {
-      clearInterval(telemetryTimerRef.current)
-      telemetryTimerRef.current = null
-    }
-  }, [])
-
-  const emitMicDiagnostics = useCallback(
-    (event: "session_start" | "periodic" | "session_end") => {
-      const flags = phase1FlagsRef.current
-      if (!flags.micTelemetry) return
-      const levels = micProcessorRef.current?.getLastLevels() || micLevels
-      if (!levels && event === "periodic") return
-      void postMicDiagnostics({
-        session_id: micSessionIdRef.current || undefined,
-        orchestration: orchestrationRef.current,
-        mic_profile: micProfile || undefined,
-        device_label: micEffective?.label,
-        effective_settings: micEffective || undefined,
-        metrics: levels || {},
-        event,
-      })
-    },
-    [micEffective, micLevels, micProfile],
-  )
 
   const startMicTelemetry = useCallback(() => {
     stopMicTelemetry()
@@ -806,6 +820,7 @@ export function useVoiceDuplexSession(options: Options) {
     voiceStatusRef.current = status
     setVoiceStatus(status)
     phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
+    phase2FlagsRef.current = voiceMicPhase2FlagsFromStatus(status)
     const built = await buildPipecatVoiceWsUrl({
       status,
       agentId: optsRef.current.agentId,
@@ -916,6 +931,7 @@ export function useVoiceDuplexSession(options: Options) {
         stream,
         tuning,
         prerollEnabled,
+        silentTapV2: phase2FlagsRef.current.silentTapV2,
         onPcm: (pcm) => {
           if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
           try {
@@ -926,6 +942,9 @@ export function useVoiceDuplexSession(options: Options) {
         },
         onLevels: (snapshot) => {
           setMicLevels(snapshot)
+          if (phase2FlagsRef.current.echoTestMode && agentSpeakingRef.current) {
+            echoLeakRef.current.observe(snapshot.rms)
+          }
         },
         agentSpeaking: () => agentSpeakingRef.current,
         onBargeIn: () => void bargeIn(),
@@ -965,6 +984,7 @@ export function useVoiceDuplexSession(options: Options) {
       voiceStatusRef.current = status
       setVoiceStatus(status)
       phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
+      phase2FlagsRef.current = voiceMicPhase2FlagsFromStatus(status)
       const usePipecat = !options.forceHttpDuplex && shouldUsePipecatVoice(status)
       orchestrationRef.current = usePipecat ? "pipecat" : "http"
       setOrchestration(orchestrationRef.current)
@@ -1033,11 +1053,17 @@ export function useVoiceDuplexSession(options: Options) {
           stream,
           tuning,
           prerollEnabled,
+          silentTapV2: phase2FlagsRef.current.silentTapV2,
           onPcm: (pcm) => {
             if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
             wsRef.current.send(pcm.buffer)
           },
-          onLevels: (snapshot) => setMicLevels(snapshot),
+          onLevels: (snapshot) => {
+            setMicLevels(snapshot)
+            if (phase2FlagsRef.current.echoTestMode && agentSpeakingRef.current) {
+              echoLeakRef.current.observe(snapshot.rms)
+            }
+          },
         })
         processorRef.current = micProcessorRef.current.processor
       } catch (err) {

@@ -27,6 +27,7 @@ from app.services.pipecat_voice.backchannel_turn_strategy import (
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
 from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
+from app.services.pipecat_voice.krisp_factory import build_krisp_viva_input_filter
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
@@ -119,6 +120,8 @@ def build_pipecat_voice_task(
 
     voice_id, model = resolve_voice_and_tts_model(settings, agent=agent, voice_key=voice_key)
 
+    krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
+
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -128,6 +131,7 @@ def build_pipecat_voice_task(
             audio_out_sample_rate=16000,
             audio_in_channels=1,
             audio_out_channels=1,
+            audio_in_filter=krisp_filter,
             serializer=GravitreJsonAudioSerializer(),
         ),
     )
@@ -282,6 +286,7 @@ def build_pipecat_voice_task(
         "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
         "speculative_generation": "probable_eot_cancelable_adopt_on_match" if use_flux else "disabled_non_flux_stt",
         **stt_info,
+        **krisp_meta,
     }
 
     @transport.event_handler("on_client_connected")

@@ -25,6 +25,7 @@ import {
   type MicEffectiveSettings,
   type MicLevelSnapshot,
   voiceMicPhase1FlagsFromStatus,
+  voiceMicPhase2FlagsFromStatus,
 } from "@/lib/voice-mic-capture"
 import {
   getStoredMicDeviceId,
@@ -207,6 +208,13 @@ export function VoiceMicSettingsPopover({
             <div>SNR: {levels?.snr?.toFixed(1) ?? "—"}</div>
             <div>Clip: {levels?.clipping_pct?.toFixed(2) ?? "0"}%</div>
           </div>
+        ) : null}
+
+        {voiceMicPhase2FlagsFromStatus(voiceStatus).echoTestMode ? (
+          <p className="text-[11px] text-muted-foreground">
+            Echo test active — stay silent while the agent speaks; leak metrics post to
+            diagnostics after each reply.
+          </p>
         ) : null}
 
         {effectiveSettings ? (

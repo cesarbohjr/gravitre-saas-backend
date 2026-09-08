@@ -239,6 +239,14 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             "mic_selector_v1": bool(getattr(settings, "voice_mic_selector_v1", False)),
             "near_far_v1": bool(getattr(settings, "voice_near_far_v1", False)),
         },
+        "phase2_echo_noise": {
+            "mic_silent_tap_v2": bool(getattr(settings, "voice_mic_silent_tap_v2", True)),
+            "echo_test_mode": bool(getattr(settings, "voice_echo_test_mode", False)),
+            "krisp_enabled": bool(getattr(settings, "voice_krisp", False)),
+            "krisp_configured": bool(
+                (getattr(settings, "krisp_viva_filter_model_path", None) or "").strip()
+            ),
+        },
     }
 
 

@@ -18,6 +18,19 @@ export type VoiceMicPhase1Flags = {
   nearFarV1: boolean
 }
 
+export type VoiceMicPhase2Flags = {
+  silentTapV2: boolean
+  echoTestMode: boolean
+  krispEnabled: boolean
+}
+
+export type EchoLeakSnapshot = {
+  agent_speaking_rms_peak: number
+  agent_speaking_rms_avg: number
+  samples: number
+  echo_leak_suspected: boolean
+}
+
 export type MicEffectiveSettings = {
   deviceId?: string
   label?: string
@@ -56,6 +69,41 @@ const DEFAULT_FLAGS: VoiceMicPhase1Flags = {
   prerollMs: 300,
   micSelector: false,
   nearFarV1: false,
+}
+
+export function voiceMicPhase2FlagsFromStatus(status?: VoiceStatus | null): VoiceMicPhase2Flags {
+  const p2 = status?.phase2_echo_noise
+  return {
+    silentTapV2: p2?.mic_silent_tap_v2 !== false,
+    echoTestMode: Boolean(p2?.echo_test_mode),
+    krispEnabled: Boolean(p2?.krisp_enabled),
+  }
+}
+
+export class EchoLeakMonitor {
+  private sum = 0
+  private count = 0
+  private peak = 0
+
+  observe(rms: number): void {
+    this.sum += rms
+    this.count += 1
+    if (rms > this.peak) this.peak = rms
+  }
+
+  reset(): EchoLeakSnapshot {
+    const avg = this.count > 0 ? this.sum / this.count : 0
+    const out: EchoLeakSnapshot = {
+      agent_speaking_rms_peak: round4(this.peak),
+      agent_speaking_rms_avg: round4(avg),
+      samples: this.count,
+      echo_leak_suspected: this.peak > 0.025 || avg > 0.012,
+    }
+    this.sum = 0
+    this.count = 0
+    this.peak = 0
+    return out
+  }
 }
 
 export function voiceMicPhase1FlagsFromStatus(status?: VoiceStatus | null): VoiceMicPhase1Flags {
@@ -332,6 +380,8 @@ export function createVoiceMicProcessor(options: {
   onLevels?: (snapshot: MicLevelSnapshot) => void
   agentSpeaking?: () => boolean
   onBargeIn?: () => void
+  /** Phase 2: route mic tap through gain=0 to avoid speaker echo leak. */
+  silentTapV2?: boolean
 }): VoiceMicProcessorHandle {
   const source = options.ctx.createMediaStreamSource(options.stream)
   const processor = options.ctx.createScriptProcessor(4096, 1, 1)
@@ -387,7 +437,10 @@ export function createVoiceMicProcessor(options: {
   }
 
   source.connect(processor)
-  processor.connect(options.ctx.destination)
+  const tapGain = options.ctx.createGain()
+  tapGain.gain.value = options.silentTapV2 !== false ? 0 : 1
+  processor.connect(tapGain)
+  tapGain.connect(options.ctx.destination)
 
   return {
     processor,
