@@ -5,39 +5,24 @@ import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { StatusBadge } from "@/components/gravitre/status-badge"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { sourceTypeVendorKey } from "@/lib/brand-vendor"
-import {
-  MorphingBackground,
-  GlowOrb,
-  NeuralNetwork,
-  DataStream,
-  StatusBeacon,
-  AnimatedCounter,
-  GridPattern
-} from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { HIGHLIGHT } from "@/lib/design-system"
-import { 
-  Plus, 
-  Database, 
+import {
+  Plus,
+  Database,
   Workflow,
-  Bot,
   RefreshCw,
-  Layers,
-  CircleDot,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   ExternalLink,
-  Zap,
   Table2,
   Clock,
-  TrendingUp,
-  Sparkles
+  ChevronDown,
 } from "lucide-react"
+import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { sourcesApi } from "@/lib/api"
@@ -231,67 +216,34 @@ function SourceTile({
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -2 }}
       className={cn(
         "group relative overflow-hidden rounded-[var(--np-radius-lg)] border transition-all duration-300",
-        source.status === "error" 
-          ? "border-destructive/30 bg-[color:var(--g-surface-1)]" 
+        source.status === "error"
+          ? "border-destructive/30 bg-[color:var(--g-surface-1)]"
           : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:border-[color:var(--g-brand-border)]",
         source.status === "syncing" && "border-[color:var(--g-signal)]/40",
-        source.status === "connected" && "ring-1 ring-[color:var(--g-brand-border)]"
       )}
     >
-      {/* Top accent gradient */}
-      <div className={cn(
-        "absolute top-0 left-0 right-0 h-1",
-        source.status === "connected" && "bg-[color:var(--g-brand)]",
-        source.status === "syncing" && "bg-[color:var(--g-signal)]",
-        source.status === "error" && "bg-destructive",
-        source.status === "disconnected" && "bg-muted-foreground/40"
-      )} />
-      
-      {/* Syncing animation overlay */}
-      {source.status === "syncing" && (
-        <div className="absolute inset-0 overflow-hidden rounded-[var(--np-radius-lg)] pointer-events-none">
-          <motion.div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-[color:var(--g-signal)]/10 to-transparent"
-            animate={{ x: ["-100%", "100%"] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          />
-          <DataStream direction="horizontal" color="blue" speed={0.5} className="opacity-20" />
-        </div>
-      )}
-      
-      {/* Connected glow */}
-      {source.status === "connected" && (
-        <div className="absolute top-0 right-0 w-32 h-32 -translate-y-1/2 translate-x-1/2 pointer-events-none">
-          <GlowOrb size={80} color="emerald" intensity={0.3} />
-        </div>
-      )}
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 h-0.5",
+          source.status === "connected" && "bg-[color:var(--g-brand)]",
+          source.status === "syncing" && "bg-[color:var(--g-signal)]",
+          source.status === "error" && "bg-destructive",
+          source.status === "disconnected" && "bg-muted-foreground/40",
+        )}
+      />
 
       <div className="relative p-5" onClick={onToggle}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <motion.div
-              className="relative"
-              animate={source.status === "syncing" ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <ConnectorIcon
-                vendor={sourceTypeVendorKey(source.type)}
-                name={source.name}
-                size="md"
-                showStatusIndicator={false}
-              />
-              {source.status === "syncing" && (
-                <motion.div
-                  className="absolute inset-0 rounded-2xl border-2 border-blue-400"
-                  animate={{ scale: [1, 1.2], opacity: [0.8, 0] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                />
-              )}
-            </motion.div>
+            <ConnectorIcon
+              vendor={sourceTypeVendorKey(source.type)}
+              name={source.name}
+              size="md"
+              showStatusIndicator={false}
+            />
             <div>
               <h3 className="text-sm font-semibold text-foreground">{source.name}</h3>
               <p className="text-xs text-muted-foreground">{source.type}</p>
@@ -300,23 +252,19 @@ function SourceTile({
           <HealthRing health={source.health} />
         </div>
 
-        {/* Connection status with live pulse */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className={cn(
-            "flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
-            source.status === "connected" && HIGHLIGHT.brand,
-            source.status === "syncing" && HIGHLIGHT.signal,
-            source.status === "error" && HIGHLIGHT.danger,
-            source.status === "disconnected" && HIGHLIGHT.neutral,
-          )}>
-            <StatusBeacon 
-              status={source.status === "connected" ? "active" : source.status === "syncing" ? "processing" : source.status === "error" ? "error" : "idle"} 
-              size="sm" 
-              pulse={source.status === "syncing" || source.status === "connected"}
-            />
+        <div className="mb-4 flex items-center gap-2">
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+              source.status === "connected" && HIGHLIGHT.brand,
+              source.status === "syncing" && HIGHLIGHT.signal,
+              source.status === "error" && HIGHLIGHT.danger,
+              source.status === "disconnected" && HIGHLIGHT.neutral,
+            )}
+          >
             {source.status}
-          </div>
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Clock className="h-2.5 w-2.5" />
             {source.lastSync}
           </span>
@@ -333,7 +281,7 @@ function SourceTile({
           </div>
           <div className="text-center p-2 rounded-lg bg-secondary/50">
             <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-              <CircleDot className="h-3 w-3" />
+              <Database className="h-3 w-3" />
             </div>
             <p className="text-sm font-semibold text-foreground">{source.records}</p>
             <p className="text-[9px] text-muted-foreground">records</p>
@@ -395,7 +343,6 @@ function SourceTile({
               
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <Bot className="h-3 w-3" />
                   {source.operatorsUsing} operators
                 </span>
               </div>
@@ -448,7 +395,8 @@ function SourceTile({
 
 // Add Source Modal — see components/gravitre/add-data-source-modal.tsx
 
-const SOURCES_HEADER_COLLAPSED_KEY = "gravitre:sources-header-collapsed"
+const SOURCES_TITLE = "Sources"
+const SOURCES_DESCRIPTION = "Connected databases and warehouses your agents and workflows can query."
 
 export default function SourcesPage() {
   const { user } = useAuth()
@@ -457,10 +405,6 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
-  const [headerCollapsed, setHeaderCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false
-    return window.localStorage.getItem(SOURCES_HEADER_COLLAPSED_KEY) === "1"
-  })
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
@@ -515,222 +459,100 @@ export default function SourcesPage() {
     }
   }
 
-  const toggleHeaderCollapsed = () => {
-    setHeaderCollapsed((collapsed) => {
-      const next = !collapsed
-      window.localStorage.setItem(SOURCES_HEADER_COLLAPSED_KEY, next ? "1" : "0")
-      return next
-    })
-  }
-
-  // Group sources by category
-  const groupedSources = sources.reduce((acc, source) => {
-    if (!acc[source.category]) acc[source.category] = []
-    acc[source.category].push(source)
-    return acc
-  }, {} as Record<string, Source[]>)
+  const groupedSources = sources.reduce(
+    (acc, source) => {
+      if (!acc[source.category]) acc[source.category] = []
+      acc[source.category].push(source)
+      return acc
+    },
+    {} as Record<string, Source[]>,
+  )
 
   const categories = Object.keys(groupedSources) as (keyof typeof categoryLabels)[]
-
-  // Stats
-  const connectedCount = sources.filter(s => s.status === "connected" || s.status === "syncing").length
+  const connectedCount = sources.filter((s) => s.status === "connected" || s.status === "syncing").length
+  const errorCount = sources.filter((s) => s.status === "error").length
   const totalRecords = sources.reduce((acc, s) => {
     const num = parseFloat(s.records.replace(/[KM]/g, ""))
     const multiplier = s.records.includes("M") ? 1000000 : s.records.includes("K") ? 1000 : 1
-    return acc + num * multiplier
+    return acc + (Number.isFinite(num) ? num * multiplier : 0)
   }, 0)
-
-  const categoryFilterButtons = (
-    <>
-      <button
-        onClick={() => setSelectedCategory(null)}
-        className={cn(
-          "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-          selectedCategory === null
-            ? "bg-primary text-primary-foreground"
-            : "bg-secondary text-muted-foreground hover:text-foreground",
-        )}
-      >
-        All
-      </button>
-      {categories.map((cat) => (
-        <button
-          key={cat}
-          onClick={() => setSelectedCategory(cat)}
-          className={cn(
-            "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-            selectedCategory === cat
-              ? "bg-primary text-primary-foreground"
-              : "bg-secondary text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {categoryLabels[cat]}
-        </button>
-      ))}
-    </>
-  )
+  const totalTables = sources.reduce((a, s) => a + s.tables, 0)
 
   return (
-    <AppShell title="Sources">
-      <div className="relative flex flex-col h-full overflow-hidden">
-        {/* Premium ambient background */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <MorphingBackground colors={["cyan", "blue", "violet"]} />
-          <div className="absolute inset-0 bg-background/90 backdrop-blur-3xl" />
-        </div>
-        
-        {/* Neural network visualization */}
-        <div className="absolute inset-0 pointer-events-none z-0 opacity-15">
-          <NeuralNetwork nodeCount={15} color="cyan" />
-        </div>
-        
-        {/* Ambient orbs */}
-        <div className="absolute top-40 right-20 pointer-events-none z-0">
-          <GlowOrb size={300} color="blue" intensity={0.2} />
-        </div>
-        <div className="absolute bottom-20 left-1/4 pointer-events-none z-0">
-          <GlowOrb size={200} color="blue" intensity={0.15} />
-        </div>
+    <AppShell title={SOURCES_TITLE}>
+      <div>
+        <GravitrePageHeader
+          title={SOURCES_TITLE}
+          description={SOURCES_DESCRIPTION}
+          icon={<NucleoConnector className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+                <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
+                Refresh
+              </Button>
+              <Button size="sm" onClick={() => setAddModalOpen(true)} disabled={isLoading}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add Source
+              </Button>
+            </div>
+          }
+        />
 
-        {/* Header */}
-        <div className="relative z-10 flex-shrink-0 border-b border-divide bg-[color:var(--g-surface-1)]/90 backdrop-blur-sm">
-          {error && (
-            <div className="mx-6 mt-3 mb-0 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          {error ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
               <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => mutate()}>
                 Retry
               </Button>
             </div>
-          )}
-          {!headerCollapsed ? (
-            <div className="px-6 pt-4 pb-4">
-              <div className="flex items-center justify-between mb-4">
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                  <h1 className="text-2xl font-bold text-foreground">Data Landscape</h1>
-                  <p className="text-sm text-muted-foreground mt-1">Your connected data ecosystem</p>
-                </motion.div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleHeaderCollapsed}
-                    aria-label="Hide overview for a clearer source canvas"
-                    aria-expanded
-                    title="Clear canvas"
-                    className="h-9 w-9 shrink-0"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      size="sm"
-                      className="h-9 gap-2 shadow-lg"
-                      onClick={() => setAddModalOpen(true)}
-                      disabled={isLoading}
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Add Source
-                    </Button>
-                  </motion.div>
-                </div>
-              </div>
+          ) : null}
 
-              <motion.div
-                className="flex flex-wrap items-center gap-4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+          <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
+            <GravitreMetric label="Connected" value={connectedCount} hint="Connected or syncing" />
+            <GravitreMetric
+              label="Records"
+              value={formatCompactCount(totalRecords)}
+              hint="Across listed sources"
+            />
+            <GravitreMetric label="Tables" value={totalTables} hint="Schema table count" />
+            <GravitreMetric
+              label="Errors"
+              value={errorCount}
+              hint="Sources needing attention"
+              warning={errorCount > 0}
+            />
+          </section>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                  selectedCategory === null
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground",
+                )}
               >
-                <motion.div
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 shadow-lg shadow-emerald-500/5"
-                  whileHover={{ scale: 1.02, y: -2 }}
+                All
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                    selectedCategory === cat
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                    <Database className="h-4 w-4 text-emerald-400" />
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold text-emerald-400">
-                      <AnimatedCounter value={connectedCount} duration={1} />
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-1.5">connected</span>
-                  </div>
-                </motion.div>
-                <motion.div
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 shadow-lg shadow-blue-500/5"
-                  whileHover={{ scale: 1.02, y: -2 }}
-                >
-                  <div className="h-9 w-9 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                    <CircleDot className="h-4 w-4 text-blue-400" />
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold text-blue-400">{(totalRecords / 1000000).toFixed(1)}M</span>
-                    <span className="text-xs text-muted-foreground ml-1.5">records</span>
-                  </div>
-                </motion.div>
-                <motion.div
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20 shadow-lg shadow-violet-500/5"
-                  whileHover={{ scale: 1.02, y: -2 }}
-                >
-                  <div className="h-9 w-9 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                    <Layers className="h-4 w-4 text-violet-400" />
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold text-violet-400">
-                      <AnimatedCounter value={sources.reduce((a, s) => a + s.tables, 0)} duration={1.5} />
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-1.5">tables</span>
-                  </div>
-                </motion.div>
-
-                <div className="ml-auto flex flex-wrap items-center gap-2">{categoryFilterButtons}</div>
-              </motion.div>
+                  {categoryLabels[cat]}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold tracking-tight text-foreground">Data Landscape</p>
-                <p className="text-xs text-muted-foreground">
-                  {connectedCount} connected · {(totalRecords / 1000000).toFixed(1)}M records ·{" "}
-                  {sources.reduce((a, s) => a + s.tables, 0)} tables
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <div className="hidden md:flex flex-wrap items-center gap-2">{categoryFilterButtons}</div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleHeaderCollapsed}
-                  aria-label="Show data landscape overview"
-                  aria-expanded={false}
-                  title="Show overview"
-                  className="h-9 w-9 shrink-0"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                <Button size="sm" className="h-9 gap-2" onClick={() => setAddModalOpen(true)} disabled={isLoading}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Add Source
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Data landscape grid - Premium */}
-        <div className="relative z-10 flex-1 overflow-auto p-6">
-          {/* Grid pattern */}
-          <div className="absolute inset-0 pointer-events-none opacity-20">
-            <GridPattern size={50} color="blue" animated />
-          </div>
-          
-          <div className="relative z-10 mb-4 flex justify-end">
             <DataFreshness
               updatedAt={data ? Date.now() : null}
               isRefreshing={isValidating}
@@ -738,69 +560,66 @@ export default function SourcesPage() {
             />
           </div>
 
-          {/* Loading skeletons */}
-          {isLoading && sources.length === 0 && (
-            <div className="relative z-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {isLoading && sources.length === 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
               ))}
             </div>
-          )}
+          ) : null}
 
-          {/* Empty state */}
-          {!isLoading && !error && sources.length === 0 && (
-            <div className="relative z-10">
-              <EmptyState
-                icon={Database}
-                title="No data sources yet"
-                description="Connect your first data source to ground your agents in real business data."
-                action={{ label: "Add Data Source", onClick: () => setAddModalOpen(true) }}
-              />
-            </div>
-          )}
+          {!isLoading && !error && sources.length === 0 ? (
+            <EmptyState
+              icon={Database}
+              title="No data sources yet"
+              description="Connect your first data source to ground your agents in real business data."
+              action={{ label: "Add Data Source", onClick: () => setAddModalOpen(true) }}
+            />
+          ) : null}
 
-          {/* No results after filtering */}
-          {!isLoading && sources.length > 0 && categories.filter(cat => selectedCategory === null || cat === selectedCategory).length === 0 && (
-            <div className="relative z-10">
-              <NoResultsState onClear={() => setSelectedCategory(null)} />
-            </div>
-          )}
+          {!isLoading &&
+          sources.length > 0 &&
+          categories.filter((cat) => selectedCategory === null || cat === selectedCategory).length === 0 ? (
+            <NoResultsState onClear={() => setSelectedCategory(null)} />
+          ) : null}
 
           <AnimatePresence mode="wait">
             {categories
-              .filter(cat => selectedCategory === null || cat === selectedCategory)
+              .filter((cat) => selectedCategory === null || cat === selectedCategory)
               .map((category, catIndex) => (
-              <motion.div 
-                key={category} 
-                className="relative mb-10"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: catIndex * 0.1 }}
-              >
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="h-8 w-1 rounded-full bg-gradient-to-b from-cyan-500 to-blue-500" />
-                  <h2 className="text-base font-semibold text-foreground">{categoryLabels[category]}</h2>
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-secondary">
-                    {groupedSources[category].length} source{groupedSources[category].length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {groupedSources[category].map((source, index) => (
-                    <SourceTile
-                      key={source.id}
-                      source={source}
-                      index={index}
-                      isExpanded={expandedSource === source.id}
-                      onToggle={() => setExpandedSource(expandedSource === source.id ? null : source.id)}
-                      onSync={handleSync}
-                      onDelete={handleDelete}
-                      isMutating={mutatingSourceId === source.id}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                <motion.div
+                  key={category}
+                  className="mb-10"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ delay: catIndex * 0.05 }}
+                >
+                  <div className="mb-4 flex items-center gap-3">
+                    <h2 className="text-base font-semibold text-foreground">{categoryLabels[category]}</h2>
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                      {groupedSources[category].length} source
+                      {groupedSources[category].length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {groupedSources[category].map((source, index) => (
+                      <SourceTile
+                        key={source.id}
+                        source={source}
+                        index={index}
+                        isExpanded={expandedSource === source.id}
+                        onToggle={() =>
+                          setExpandedSource(expandedSource === source.id ? null : source.id)
+                        }
+                        onSync={handleSync}
+                        onDelete={handleDelete}
+                        isMutating={mutatingSourceId === source.id}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
           </AnimatePresence>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { sourceTypeVendorKey } from "@/lib/brand-vendor"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { SourceQueryPanel } from "@/components/gravitre/source-query-panel"
@@ -28,6 +29,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react"
+import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import {
   Dialog,
   DialogContent,
@@ -177,56 +179,83 @@ export default function SourceDetailPage() {
 
   return (
     <AppShell title={name}>
-      <div className="p-6">
-        <button
-          onClick={() => router.push("/sources")}
-          className="mb-4 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      <div>
+        <GravitrePageHeader
+          eyebrow="Sources"
+          title={name}
+          description={String(source.description ?? `${source.type} data source`)}
+          icon={<NucleoConnector className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/sources">
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
+              <StatusBadge variant={statusVariants[status] ?? "muted"} dot>
+                {status}
+              </StatusBadge>
+              <EnvironmentBadge environment={environment} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2"
+                onClick={() => void handleTestConnection()}
+                disabled={testingConnection}
+              >
+                {testingConnection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                Test Connection
+              </Button>
+              <Button size="sm" className="h-9 gap-2" onClick={() => void handleSync()} disabled={syncing}>
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Sync Now
+              </Button>
+            </div>
+          }
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Sources
-        </button>
-
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
+          <div className="flex items-center gap-3 pt-1">
             <ConnectorIcon
               vendor={sourceTypeVendorKey(String(source.type ?? ""))}
               name={name}
-              size="md"
+              size="sm"
               showStatusIndicator={false}
             />
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {String(source.description ?? `${source.type} data source`)}
-              </p>
-              <div className="flex items-center gap-2 mt-3">
-                <StatusBadge variant={statusVariants[status] ?? "muted"} dot>
-                  {status}
-                </StatusBadge>
-                <EnvironmentBadge environment={environment} />
-                <span className="text-xs text-muted-foreground">{String(source.type ?? "")}</span>
-              </div>
+            <span className="text-xs text-muted-foreground">{String(source.type ?? "")}</span>
+          </div>
+        </GravitrePageHeader>
+
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
+            <GravitreMetric label="Status" value={status} hint="Connection lifecycle" />
+            <GravitreMetric
+              label="Tables"
+              value={schemaTables.length || formatCount(Number(source.tables ?? 0))}
+              hint="From schema when available"
+            />
+            <GravitreMetric
+              label="Records"
+              value={formatCount(Number(source.recordCount ?? source.record_count ?? 0))}
+              hint="Reported row volume"
+            />
+            <GravitreMetric
+              label="Last sync"
+              value={formatRelative(
+                (source.lastSync as string | undefined) ??
+                  (source.last_sync as string | undefined) ??
+                  (source.lastSyncAt as string | undefined),
+              )}
+              hint="Most recent sync"
+            />
+          </section>
+
+          {testMessage ? (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-400">
+              {testMessage}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void handleTestConnection()} disabled={testingConnection}>
-              {testingConnection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-              Test Connection
-            </Button>
-            <Button size="sm" className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => void handleSync()} disabled={syncing}>
-              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Sync Now
-            </Button>
-          </div>
-        </div>
+          ) : null}
 
-        {testMessage ? (
-          <div className="mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-400">
-            {testMessage}
-          </div>
-        ) : null}
-
-        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Overview</h2>
@@ -404,6 +433,7 @@ export default function SourceDetailPage() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
