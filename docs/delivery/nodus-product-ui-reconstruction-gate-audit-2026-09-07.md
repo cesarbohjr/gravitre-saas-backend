@@ -537,3 +537,5 @@ Cesar authorized Connectors/rail/logo fixes + sharp sidebar icons + “Start P14
 | P15 | `e2e/visual/nodus-product-fidelity.spec.ts` @ 1280/1440/390 + scorecard |
 
 **Not claimed:** marketing PNG visual PASS (needs re-capture post-Ready) or Playwright fidelity PASS (baselines + filled scorecard).
+
+Deploy READY: `dpl_9Jy5b6yRKQWSMKhfrUYNQkMoUS1L` @ `3bebd6b0`.

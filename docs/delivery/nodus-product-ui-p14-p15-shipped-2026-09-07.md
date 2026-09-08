@@ -1,6 +1,6 @@
 # Nodus product UI — P14 + P15 shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready)  
+**Status:** Shipped to `main` — Vercel Ready (web)  
 **Gate:** Cesar — fix Connectors header + rail chrome + sharp sidebar icons; start P14/P15; commit/push/deploy
 
 ## Bugfixes (same ship)
@@ -38,3 +38,9 @@ Baselines: generate with `pnpm exec playwright test e2e/visual/nodus-product-fid
 
 **(a)** Explicitly authorized in this conversation (UI fixes + P14/P15 + deploy).  
 No new prices, claims, badges, or Enable entitlement toggles.
+
+## Evidence
+
+- Deploy READY: `dpl_9Jy5b6yRKQWSMKhfrUYNQkMoUS1L` @ tip `3bebd6b0` (production alias `gravitre.app`)
+- Marketing PNG re-capture PASS: **not claimed** until `node scripts/capture-product-shots.mjs` refreshes `/product/app-*.png` against current chrome
+- Playwright fidelity PASS: **not claimed** until baselines + filled scorecard
