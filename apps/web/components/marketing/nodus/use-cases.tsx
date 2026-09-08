@@ -7,10 +7,10 @@ import { SubHeading } from "./subheading";
 import {
   DevopsIcon,
   PhoneIcon,
-  TruckIcon,
   DatabaseIcon,
   WalletIcon,
   GraphIcon,
+  SparklesIcon,
 } from "@/components/marketing/nodus-icons/card-icons";
 import { Scale } from "./scale";
 import { motion } from "framer-motion";
@@ -20,37 +20,37 @@ export const UseCases = () => {
     {
       title: "DevOps",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Automate deployments, incident response, and infrastructure checks — with approval gates before anything hits production.",
       icon: <DevopsIcon className="text-brand size-6" />,
     },
     {
       title: "SalesOps",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Sync CRM records, route leads, and coordinate follow-ups across HubSpot, Salesforce, and Slack without manual handoffs.",
       icon: <GraphIcon className="text-brand size-6" />,
     },
     {
-      title: "Supply Chain",
+      title: "Marketing Ops",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
-      icon: <TruckIcon className="text-brand size-6" />,
+        "Orchestrate campaigns, route inbound leads, and sync performance data from your marketing stack — with human approval on sends and spend.",
+      icon: <SparklesIcon className="text-brand size-6" />,
     },
     {
       title: "Customer Support",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Triage tickets, summarize conversations, and escalate with full context pulled from connected helpdesk and chat tools.",
       icon: <PhoneIcon className="text-brand size-6" />,
     },
     {
       title: "DataOps",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Move data between systems, monitor pipeline health, and surface anomalies before they break downstream workflows.",
       icon: <DatabaseIcon className="text-brand size-6" />,
     },
     {
       title: "FinOps",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Track spend signals, reconcile usage, and route approval workflows for budget changes and vendor actions.",
       icon: <WalletIcon className="text-brand size-6" />,
     },
   ];
@@ -60,12 +60,12 @@ export const UseCases = () => {
       <div className="relative flex flex-col items-center py-20">
         <Badge text="Use Cases" />
         <SectionHeading className="mt-4">
-          Across various Industries
+          Across your operations
         </SectionHeading>
 
         <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
-          We empower developers and technical teams to create, simulate, and
-          manage AI-driven workflows visually
+          One shared brain coordinates agents, workflows, and people across
+          departments — with governance and audit trails on every action.
         </SubHeading>
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">

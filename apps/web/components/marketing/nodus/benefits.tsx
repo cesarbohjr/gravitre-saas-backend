@@ -27,37 +27,37 @@ export const Benefits = () => {
     {
       title: "Launch Faster",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Ship agent workflows from a template or prompt — with connector executability checks before the first production run.",
       icon: <RocketIcon className="text-brand size-6" />,
     },
     {
       title: "Iterate Rapidly",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Simulate runs, debug in sandbox, and adjust steps without redeploying your entire stack.",
       icon: <RealtimeSyncIcon className="text-brand size-6" />,
     },
     {
       title: "Scale Smarter",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Add agents and workflows as teams grow — permissions and approval policy scale with them.",
       icon: <GraphIcon className="text-brand size-6" />,
     },
     {
       title: "Reuse Intelligence",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Shared org memory, entity graph, and GIBE learning so every agent benefits from prior outcomes.",
       icon: <ReuseBrainIcon className="text-brand size-6" />,
     },
     {
       title: "Prevent Breakdowns",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Failure predictions from auth expiry, missing scopes, and run history — fix issues before workflows break.",
       icon: <ShieldIcon className="text-brand size-6" />,
     },
     {
       title: "Automate More",
       description:
-        "Visually orchestrate autonomous agents without writing boilerplate code",
+        "Expand from chat to scheduled workflows, Marketplace templates, and cross-department handoffs — always with approval gates.",
       icon: <ScreenCogIcon className="text-brand size-6" />,
     },
   ];

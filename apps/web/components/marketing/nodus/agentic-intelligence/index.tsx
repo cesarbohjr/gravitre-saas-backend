@@ -36,8 +36,8 @@ export const AgenticIntelligence = () => {
         </SectionHeading>
 
         <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
-          Build, test and deploy AI agents with a powerful visual interface
-          designed for technical teams
+          Build, connect, and govern AI agents from one visual workspace —
+          scoped to your org with approval gates on every write.
         </SubHeading>
         <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x">
           <Card className="overflow-hidden mask-b-from-80%">
@@ -46,8 +46,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>LLM Model Selector</CardTitle>
             </div>
             <CardDescription>
-              Track real-time activity of agents with detailed records of
-              triggers, tools used, outcomes, and timestamps.
+              Route each step to the right model — OpenAI, Anthropic, Llama,
+              and more — with org-level defaults and per-workflow overrides.
             </CardDescription>
             <LLMModelSelectorSkeleton />
           </Card>
@@ -57,8 +57,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>Text to workflow builder</CardTitle>
             </div>
             <CardDescription>
-              Preview and debug workflow logic in a safe sandbox before
-              deploying, helping you iterate with confidence.
+              Describe what you want in plain language and Gravitre drafts
+              agents, steps, and connector actions for your review.
             </CardDescription>
             <TextToWorkflowBuilderSkeleton />
           </Card>
@@ -71,8 +71,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>Native Tools Integration</CardTitle>
             </div>
             <CardDescription className="relative z-10">
-              Track real-time activity of agents with detailed records of
-              triggers, tools used, outcomes, and timestamps.
+              Agents call HubSpot, Slack, Salesforce, and your stack through
+              verified connectors — not mock APIs or placeholder integrations.
             </CardDescription>
             <div className="relative z-10 min-w-0">
               <NativeToolsIntegrationSkeleton />
@@ -86,8 +86,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>One Click Auth</CardTitle>
             </div>
             <CardDescription>
-              A drag-and-drop interface to create, connect, and configure agents
-              into logical workflows
+              Connect OAuth integrations in minutes with live scope and health
+              checks before anything runs in production.
             </CardDescription>
           </Card>
           <Card>
@@ -96,8 +96,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>Realtime Sync</CardTitle>
             </div>
             <CardDescription>
-              Agents operate independently and coordinate tasks to complete
-              complex all goals
+              Agents share context and hand off tasks in real time — coordinated
+              through one business brain, not isolated chatbots.
             </CardDescription>
           </Card>
           <Card>
@@ -106,8 +106,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>Custom Connector SDK</CardTitle>
             </div>
             <CardDescription>
-              Run agent workflows in a sandbox to preview behavior, debug logic,
-              and test interactions
+              Build private connectors for internal APIs and proprietary systems
+              with the same governance as native integrations.
             </CardDescription>
           </Card>
         </div>
