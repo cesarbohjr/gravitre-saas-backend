@@ -17,7 +17,7 @@ import { IntegrationsLogo } from "@/components/marketing/nodus-icons/bento-icons
 
 export const DesignYourWorkflowSkeleton = () => {
   return (
-    <div className="mt-12 flex flex-col items-center">
+    <div className="mt-8 flex origin-top scale-[0.72] flex-col items-center sm:mt-12 sm:scale-90 md:scale-100">
       <div className="relative">
         <Card
           title="Slack"
@@ -26,9 +26,9 @@ export const DesignYourWorkflowSkeleton = () => {
           cta="Connected"
           tone="default"
         />
-        <LeftSVG className="absolute top-12 -left-32" />
-        <RightSVG className="absolute top-12 -right-32" />
-        <CenterSVG className="absolute top-24 right-[107px]" />
+        <LeftSVG className="absolute top-12 -left-32 hidden sm:block" />
+        <RightSVG className="absolute top-12 -right-32 hidden sm:block" />
+        <CenterSVG className="absolute top-24 right-[107px] hidden sm:block" />
       </div>
 
       <div className="mt-12 flex flex-row gap-4.5">
@@ -78,7 +78,7 @@ export const ConnectYourTooklsSkeleton = () => {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="relative h-70 w-60 -translate-x-2 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
+        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] -translate-x-1 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
       >
         <div className="absolute -top-4 -right-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white shadow-xl">
           <Scale />
@@ -154,7 +154,7 @@ export const ConnectYourTooklsSkeleton = () => {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 1 }}
-        className="relative h-70 w-60 translate-x-10 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
+        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] translate-x-1 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
       >
         <div className="absolute -top-4 -left-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white shadow-xl dark:bg-neutral-800">
           <Scale />

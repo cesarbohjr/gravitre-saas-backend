@@ -62,12 +62,12 @@ export const HowItWorks = () => {
     return () => clearInterval(interval);
   }, [activeTab]);
   return (
-    <Container className="border-divide border-x">
-      <div className="flex flex-col items-center pt-16">
+    <Container className="border-divide overflow-x-hidden border-x">
+      <div className="flex flex-col items-center px-4 pt-16 md:px-0">
         <Badge text="How it works" />
-        <SectionHeading className="mt-4">Integrates easily</SectionHeading>
+        <SectionHeading className="mt-4 px-2">Integrates easily</SectionHeading>
 
-        <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
+        <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
           We empower developers and technical teams to create, simulate, and
           manage AI-driven workflows visually
         </SubHeading>
@@ -131,7 +131,7 @@ export const HowItWorks = () => {
               <p className="relative z-20 mt-2 text-left text-sm text-gray-600 dark:text-neutral-300">
                 {tab.description}
               </p>
-              <div className="relative mx-auto h-80 w-full overflow-hidden mask-t-from-90% mask-r-from-90% mask-b-from-90% mask-l-from-90% sm:h-80 sm:w-160">
+              <div className="relative mx-auto h-80 w-full max-w-full overflow-hidden mask-t-from-90% mask-r-from-90% mask-b-from-90% mask-l-from-90% sm:h-80 sm:max-w-160">
                 {tab.skeleton}
               </div>
             </div>

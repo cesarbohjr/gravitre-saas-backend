@@ -23,7 +23,7 @@ export function MarketingChrome({ children }: { children: React.ReactNode }) {
   }, [setTheme])
 
   return (
-    <div className="min-h-screen bg-white text-charcoal-900" data-marketing-canvas="daylight">
+    <div className="min-h-screen overflow-x-hidden bg-white text-charcoal-900" data-marketing-canvas="daylight">
       <Navbar />
       <DivideX />
       {children}

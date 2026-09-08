@@ -19,7 +19,6 @@ import {
 } from "@/components/marketing/nodus-icons/general";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTypewriter } from "@/components/marketing/nodus-hooks/use-typewriter";
 import { LogoSVG } from "../logo";
@@ -47,13 +46,13 @@ export const LLMModelSelectorSkeleton = () => {
     },
   ];
   return (
-    <motion.div className="relative mx-auto mt-20 h-full max-h-70 min-h-40 w-[85%] rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
+    <motion.div className="relative mx-auto mt-20 h-full max-h-70 min-h-40 w-[85%] max-w-full rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1, delay: 1.5 }}
-        className="shadow-aceternity absolute -top-10 -right-10 z-20 flex w-40 shrink-0 flex-col items-start rounded-lg bg-white text-xs dark:bg-neutral-900"
+        className="shadow-aceternity absolute -top-10 right-0 z-20 flex w-36 shrink-0 flex-col items-start rounded-lg bg-white text-xs sm:-right-6 sm:w-40 md:-right-10 dark:bg-neutral-900"
       >
         <div className="flex w-full items-center justify-between p-2">
           <div className="flex items-center gap-2 font-medium">
@@ -280,17 +279,17 @@ export const TextToWorkflowBuilderSkeleton = () => {
   }, [visibleMessages, chatContainerRef]);
 
   return (
-    <motion.div className="relative mx-auto mt-2 h-full max-h-70 min-h-40 w-[85%] p-4">
-      <div className="absolute inset-x-0 -bottom-4 mx-auto flex w-[85%] items-center justify-between rounded-lg border border-gray-300 bg-white shadow-[0px_2px_12px_0px_rgba(0,0,0,0.08)] dark:border-neutral-700 dark:bg-neutral-800">
+    <motion.div className="relative mx-auto mt-2 h-full max-h-70 min-h-40 w-[85%] max-w-full p-4">
+      <div className="absolute inset-x-0 -bottom-4 mx-auto flex w-[min(85%,100%)] max-w-full items-center justify-between rounded-lg border border-gray-300 bg-white shadow-[0px_2px_12px_0px_rgba(0,0,0,0.08)] dark:border-neutral-700 dark:bg-neutral-800">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={handleKeyPress}
-          className="flex-1 border-none px-4 py-4 text-xs placeholder-neutral-600 focus:outline-none"
+          className="min-w-0 flex-1 border-none px-3 py-4 text-xs placeholder-neutral-600 focus:outline-none sm:px-4"
           placeholder="Ask Gravitre"
         />
-        <div className="mr-4 flex items-center gap-2">
+        <div className="mr-3 flex shrink-0 items-center gap-2 sm:mr-4">
           <AttachmentIcon />
           <button onClick={handleSendMessage} className="cursor-pointer">
             <SendIcon />
@@ -355,20 +354,14 @@ const UserMessage = ({
 
   return (
     <div className="flex justify-end gap-3">
-      <div className="flex max-w-xs flex-col gap-1">
-        <div className="rounded-2xl rounded-br-md bg-blue-500 px-4 py-2 text-sm text-white">
+      <div className="flex min-w-0 max-w-[min(20rem,calc(100%-2.5rem))] flex-col gap-1">
+        <div className="rounded-2xl rounded-br-md bg-blue-500 px-4 py-2 text-sm break-words text-white">
           {isActive ? displayText : content}
           {isActive && !isComplete && <span className="animate-pulse">|</span>}
         </div>
       </div>
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-medium text-white">
-        <Image
-          src="/avatar.webp"
-          alt="user"
-          width={32}
-          height={32}
-          className="rounded-full"
-        />
+        U
       </div>
     </div>
   );
@@ -399,8 +392,8 @@ const AssistantMessage = ({
       <div className="shadow-aceternity flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1.5 text-black dark:bg-neutral-900 dark:text-white">
         <LogoSVG className="size-4" />
       </div>
-      <div className="flex max-w-xs flex-col gap-1">
-        <div className="text-charcoal-700 rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2 text-sm">
+      <div className="flex min-w-0 max-w-[min(20rem,calc(100%-2.5rem))] flex-col gap-1">
+        <div className="text-charcoal-700 rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2 text-sm break-words">
           {isActive ? displayText : content}
           {isActive && !isComplete && <span className="animate-pulse">|</span>}
         </div>
@@ -409,19 +402,39 @@ const AssistantMessage = ({
   );
 };
 
+const NativeToolsHubLogo = () => (
+  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700">
+    <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)] [animation-duration:2s]"></div>
+    <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)] [animation-delay:1s] [animation-duration:2s]"></div>
+    <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-3.5 text-black dark:bg-neutral-900 dark:text-white">
+      <LogoSVG className="size-6" />
+    </div>
+  </div>
+);
+
 export const NativeToolsIntegrationSkeleton = () => {
   return (
     <>
-      <div className="relative mx-auto my-24 h-full w-full scale-[2] sm:scale-[1.5] md:scale-[1.2] lg:hidden">
-        <Image
-          src="/illustrations/native-tools-integration.svg"
-          alt="Native Tools Integration"
-          width={1200}
-          height={1200}
-          className="dark:invert dark:filter"
-        />
+      {/* Mobile: inline composition (missing /illustrations/native-tools-integration.svg + scale-[2] blew the layout) */}
+      <div className="relative mx-auto my-8 flex w-full max-w-sm flex-col items-center gap-6 px-1 lg:hidden">
+        <div className="flex w-full flex-col items-start gap-4">
+          <TextIconBlock icon={<WindowIcon />} text="Meeting Summarizer" />
+          <TextIconBlock icon={<CodeIcon />} text="Code Reviewer" />
+          <TextIconBlock icon={<PhoneIcon />} text="Customer Support" />
+        </div>
+        <NativeToolsHubLogo />
+        <span className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500 dark:bg-blue-900 dark:text-white">
+          Connected
+        </span>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <IconBlock icon={<NotionLogo className="size-6" />} />
+          <IconBlock icon={<LinearLogo className="size-6" />} />
+          <IconBlock icon={<SupabaseLogo className="size-6" />} />
+          <IconBlock icon={<SlackLogo className="size-6" />} />
+          <IconBlock icon={<OpenAILogo className="size-6" />} />
+        </div>
       </div>
-      <motion.div className="relative mx-auto my-12 hidden h-full max-h-70 min-h-80 max-w-[67rem] grid-cols-2 p-4 lg:grid">
+      <motion.div className="relative mx-auto my-12 hidden h-full max-h-70 min-h-80 max-w-[67rem] grid-cols-2 overflow-hidden p-4 lg:grid">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-10">
             <TextIconBlock icon={<WindowIcon />} text="Meeting Summarizer">
@@ -434,13 +447,7 @@ export const NativeToolsIntegrationSkeleton = () => {
               <BottomSVG className="absolute -right-84 bottom-2" />
             </TextIconBlock>
           </div>
-          <div className="relative h-16 w-16 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700">
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)] [animation-duration:2s]"></div>
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)] [animation-delay:1s] [animation-duration:2s]"></div>
-            <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-3.5 text-black dark:bg-neutral-900 dark:text-white">
-              <LogoSVG className="size-6" />
-            </div>
-          </div>
+          <NativeToolsHubLogo />
         </div>
         <div className="relative flex h-full w-full items-center justify-start">
           <RightSideSVG />

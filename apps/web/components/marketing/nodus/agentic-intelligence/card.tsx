@@ -21,7 +21,7 @@ export const CardTitle = ({
   return (
     <h3
       className={cn(
-        "text-charcoal-700 text-lg font-medium dark:text-neutral-100",
+        "text-charcoal-700 min-w-0 text-lg font-medium break-words dark:text-neutral-100",
         className,
       )}
     >
@@ -40,7 +40,7 @@ export const CardDescription = ({
   return (
     <p
       className={cn(
-        "mt-2 text-base text-gray-600 dark:text-gray-300",
+        "mt-2 text-base break-words text-gray-600 dark:text-gray-300",
         className,
       )}
     >

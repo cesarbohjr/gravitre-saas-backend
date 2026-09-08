@@ -28,10 +28,10 @@ type Tab = {
 
 export const AgenticIntelligence = () => {
   return (
-    <Container className="border-divide border-x">
-      <div className="flex flex-col items-center py-16">
+    <Container className="border-divide overflow-x-hidden border-x">
+      <div className="flex flex-col items-center px-4 py-16 md:px-0">
         <Badge text="Features" />
-        <SectionHeading className="mt-4">
+        <SectionHeading className="mt-4 px-2">
           Built for Agentic Intelligence
         </SectionHeading>
 
@@ -39,10 +39,10 @@ export const AgenticIntelligence = () => {
           Build, test and deploy AI agents with a powerful visual interface
           designed for technical teams
         </SubHeading>
-        <div className="border-divide divide-divide mt-16 grid grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x">
+        <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x">
           <Card className="overflow-hidden mask-b-from-80%">
-            <div className="flex items-center gap-2">
-              <BrainIcon />
+            <div className="flex min-w-0 items-center gap-2">
+              <BrainIcon className="shrink-0" />
               <CardTitle>LLM Model Selector</CardTitle>
             </div>
             <CardDescription>
@@ -52,8 +52,8 @@ export const AgenticIntelligence = () => {
             <LLMModelSelectorSkeleton />
           </Card>
           <Card className="overflow-hidden mask-b-from-80%">
-            <div className="flex items-center gap-2">
-              <MouseBoxIcon />
+            <div className="flex min-w-0 items-center gap-2">
+              <MouseBoxIcon className="shrink-0" />
               <CardTitle>Text to workflow builder</CardTitle>
             </div>
             <CardDescription>
@@ -63,24 +63,26 @@ export const AgenticIntelligence = () => {
             <TextToWorkflowBuilderSkeleton />
           </Card>
         </div>
-        <div className="w-full">
+        <div className="w-full min-w-0">
           <Card className="relative w-full max-w-none overflow-hidden">
             <div className="pointer-events-none absolute inset-0 h-full w-full bg-[radial-gradient(var(--color-dots)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"></div>
-            <div className="flex items-center gap-2">
-              <NativeIcon />
+            <div className="relative z-10 flex min-w-0 items-center gap-2">
+              <NativeIcon className="shrink-0" />
               <CardTitle>Native Tools Integration</CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="relative z-10">
               Track real-time activity of agents with detailed records of
               triggers, tools used, outcomes, and timestamps.
             </CardDescription>
-            <NativeToolsIntegrationSkeleton />
+            <div className="relative z-10 min-w-0">
+              <NativeToolsIntegrationSkeleton />
+            </div>
           </Card>
         </div>
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-10 md:grid-cols-3">
           <Card>
-            <div className="flex items-center gap-2">
-              <FingerprintIcon />
+            <div className="flex min-w-0 items-center gap-2">
+              <FingerprintIcon className="shrink-0" />
               <CardTitle>One Click Auth</CardTitle>
             </div>
             <CardDescription>
@@ -89,8 +91,8 @@ export const AgenticIntelligence = () => {
             </CardDescription>
           </Card>
           <Card>
-            <div className="flex items-center gap-2">
-              <RealtimeSyncIcon />
+            <div className="flex min-w-0 items-center gap-2">
+              <RealtimeSyncIcon className="shrink-0" />
               <CardTitle>Realtime Sync</CardTitle>
             </div>
             <CardDescription>
@@ -99,8 +101,8 @@ export const AgenticIntelligence = () => {
             </CardDescription>
           </Card>
           <Card>
-            <div className="flex items-center gap-2">
-              <SDKIcon />
+            <div className="flex min-w-0 items-center gap-2">
+              <SDKIcon className="shrink-0" />
               <CardTitle>Custom Connector SDK</CardTitle>
             </div>
             <CardDescription>

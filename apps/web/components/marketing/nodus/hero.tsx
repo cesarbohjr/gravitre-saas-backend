@@ -18,12 +18,12 @@ export const Hero = () => {
   return (
     <Container className="border-divide flex flex-col items-center justify-center border-x px-4 pt-10 pb-10 md:pt-32 md:pb-20">
       <Badge text="One AI brain for your entire business" />
-      <Heading className="mt-4">
+      <Heading className="mt-4 max-w-full px-1 text-balance">
         Manage agents, workflows, and{" "}
         <span className="text-brand">operations</span>
       </Heading>
 
-      <SubHeading className="mx-auto mt-6 max-w-lg">{h.subhead}</SubHeading>
+      <SubHeading className="mx-auto mt-6 max-w-lg px-1">{h.subhead}</SubHeading>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
         <Button as={Link} href="/get-started">
