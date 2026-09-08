@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { intelligenceApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -113,50 +113,50 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           {isLoading ? "Loading…" : error ? "Unavailable" : `Last ${signals?.period ?? "24h"}`}
         </span>
       </div>
-      <StatsGrid columns={3}>
-        <StatCard
+      <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
+        <GravitreMetric
           label="Latest deploy check"
           value={
             deploy?.pass != null
               ? passFail(deploy.pass)
               : deploy?.verdict?.replace(/_/g, " ").slice(0, 18) ?? "—"
           }
-          variant={deploy?.pass === true ? "success" : deploy?.pass === false ? "danger" : "default"}
+          warning={deploy?.pass === false}
         />
-        <StatCard
+        <GravitreMetric
           label="Ungoverned fallback rate"
           value={ft?.fallthrough_pct != null ? `${ft.fallthrough_pct}%` : "—"}
-          variant={ft?.alerts?.length ? "warning" : "default"}
+          warning={Boolean(ft?.alerts?.length)}
         />
-        <StatCard
+        <GravitreMetric
           label="Nightly reliability check"
           value={passFail(hardening?.pass)}
-          variant={hardening?.pass === true ? "success" : hardening?.pass === false ? "danger" : "default"}
+          warning={hardening?.pass === false}
         />
-        <StatCard
+        <GravitreMetric
           label="Time to first token (typical)"
           value={ttft?.wall_p50_ms != null ? `${ttft.wall_p50_ms} ms` : "—"}
-          variant={ttft?.alerts?.length ? "warning" : "default"}
+          warning={Boolean(ttft?.alerts?.length)}
         />
-        <StatCard
+        <GravitreMetric
           label="Time to first token (slow / max)"
           value={
             ttft?.wall_p99_ms != null || ttft?.wall_max_ms != null
               ? `${ttft?.wall_p99_ms ?? "—"} / ${ttft?.wall_max_ms ?? "—"} ms`
               : "—"
           }
-          variant={ttft?.alerts?.length ? "warning" : "default"}
+          warning={Boolean(ttft?.alerts?.length)}
         />
-        <StatCard
+        <GravitreMetric
           label="AI page ready time (typical)"
           value={
             mount?.ai_nav_to_interactive_p50_ms != null
               ? `${mount.ai_nav_to_interactive_p50_ms} ms`
               : "—"
           }
-          variant={mount?.alerts?.length ? "warning" : "default"}
+          warning={Boolean(mount?.alerts?.length)}
         />
-        <StatCard
+        <GravitreMetric
           label="Prompt reuse (cache)"
           value={
             cache?.avg_cached_prompt_ratio != null
@@ -164,36 +164,36 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
               : "—"
           }
         />
-        <StatCard
+        <GravitreMetric
           label="Cache speed gain"
           value={cache?.avg_ttft_delta_ms != null ? `${cache.avg_ttft_delta_ms} ms` : "—"}
         />
-        <StatCard
+        <GravitreMetric
           label="Research lookups healthy"
           value={
             research?.sample_count
               ? `${research.serper_pct ?? 0}% primary (${research.sample_count})`
               : "—"
           }
-          variant={research?.alerts?.length ? "warning" : "default"}
+          warning={Boolean(research?.alerts?.length)}
         />
-      </StatsGrid>
+      </section>
       {voiceLatency && (voiceLatency.end_to_end?.sample_count ?? 0) > 0 ? (
         <div className="mt-4 border-t border-border/60 pt-4">
           <h4 className="text-xs font-medium tracking-tight text-muted-foreground">
             Voice turn latency (real, per-stage — Flux path)
           </h4>
-          <StatsGrid columns={3} className="mt-2">
-            <StatCard
+          <section className="mt-2 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
+            <GravitreMetric
               label="Voice reply speed (typical / worst)"
               value={
                 voiceLatency.end_to_end?.p50_ms != null
                   ? `${voiceLatency.end_to_end.p50_ms} / ${voiceLatency.end_to_end.p99_ms ?? "—"} ms`
                   : "—"
               }
-              variant={voiceLatency.alerts?.length ? "warning" : "default"}
+              warning={Boolean(voiceLatency.alerts?.length)}
             />
-            <StatCard
+            <GravitreMetric
               label="Voice LLM first token (typical)"
               value={
                 voiceLatency.llm_first_token?.p50_ms != null
@@ -201,7 +201,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
                   : "—"
               }
             />
-            <StatCard
+            <GravitreMetric
               label="Voice first speech chunk sent to TTS"
               value={
                 voiceLatency.tts_requested?.p50_ms != null
@@ -209,7 +209,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
                   : "—"
               }
             />
-          </StatsGrid>
+          </section>
         </div>
       ) : null}
     </section>

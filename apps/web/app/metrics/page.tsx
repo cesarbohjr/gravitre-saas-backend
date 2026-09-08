@@ -5,7 +5,7 @@ import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -510,11 +510,11 @@ export default function MetricsPage() {
   return (
     <AppShell title={SURFACE_COPY.pages.metrics.title}>
       <div className="flex flex-col h-full">
-        <PageHeader
+        <GravitrePageHeader
           eyebrow="Intelligence · Operational health"
           title={SURFACE_COPY.pages.metrics.headline}
           description={SURFACE_COPY.pages.metrics.description}
-          icon={NucleoIntelligence}
+          icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
@@ -577,7 +577,7 @@ export default function MetricsPage() {
           >
             Back to Intelligence hub
           </a>
-        </PageHeader>
+        </GravitrePageHeader>
 
         <div className="flex-1 overflow-auto">
           <div className="p-4 md:p-6 space-y-4 md:space-y-6">

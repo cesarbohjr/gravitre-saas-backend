@@ -15,7 +15,7 @@ import {
 } from "@/lib/outcome-labels"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 import { HubTabs } from "@/components/gravitre/hub-tabs"
-import { StatsGrid, StatCard } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 
 type RangeId = "7d" | "30d" | "90d"
 
@@ -63,26 +63,24 @@ export default function LiteResultsPage() {
     >
       <OutcomeMethodologyCallout variant="operational" />
 
-      <StatsGrid columns={4}>
-        <StatCard
+      <section className="mb-4 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+        <GravitreMetric
           label={OPERATIONAL_TASKS_COMPLETED_LABEL}
           value={summary?.tasks_completed ?? 0}
         />
-        <StatCard
+        <GravitreMetric
           label={OPERATIONAL_SUCCESS_RATE_LABEL}
           value={`${summary?.success_rate ?? 0}%`}
-          variant="success"
         />
-        <StatCard
+        <GravitreMetric
           label="Avg completion (hrs)"
           value={summary?.avg_completion_time_hours ?? 0}
-          variant="info"
         />
-        <StatCard
+        <GravitreMetric
           label="Workflows used"
           value={summary?.by_workflow.length ?? 0}
         />
-      </StatsGrid>
+      </section>
 
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">

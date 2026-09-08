@@ -5,7 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
@@ -94,10 +94,10 @@ export default function GoalsPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl space-y-6 p-6">
-        <PageHeader
+        <GravitrePageHeader
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}
-          icon={Target}
+          icon={<Target className="h-5 w-5" />}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={refreshGoals} className="gap-2">

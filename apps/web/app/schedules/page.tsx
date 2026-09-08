@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react"
 import useSWR from "swr"
 
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -55,12 +55,12 @@ export default function SchedulesPage() {
       <div className="mx-auto w-full min-w-0 max-w-7xl p-4 sm:p-6">
         {/* Shared PageHeader rather than a bespoke title block, so the type
             scale, icon tile and action row match every other hub page. */}
-        <PageHeader
-          className="mb-5 min-w-0 border-0 p-0"
+        <GravitrePageHeader
+          className="mb-5 min-w-0 border-0 px-0"
           eyebrow="Operations"
           title="Schedules"
           description="All workflow schedules, task runs and training jobs across your organization."
-          icon={CalendarClock}
+          icon={<CalendarClock className="h-5 w-5" />}
           actions={
             <>
               <Button

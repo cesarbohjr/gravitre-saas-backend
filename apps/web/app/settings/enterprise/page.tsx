@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -71,9 +71,10 @@ function EnterprisePageContent() {
         hideHeader
       >
       <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">
-        <PageHeader
+        <GravitrePageHeader
           title="Enterprise"
           description="Advanced controls for data residency, white labeling, workforce analytics, and security."
+          className="px-0"
         />
 
         <div className="mt-4">

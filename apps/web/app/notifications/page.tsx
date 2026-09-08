@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -226,11 +226,10 @@ export default function NotificationsPage() {
   return (
     <AppShell title="Notifications">
       <div className="flex flex-col h-full">
-        <PageHeader
+        <GravitrePageHeader
           title="Notifications"
           description="Stay updated on your workflows and deliverables"
-          icon={Bell}
-          iconColor="from-blue-500/20 to-cyan-500/20"
+          icon={<Bell className="h-5 w-5" />}
           actions={
             <>
               <Button 
@@ -252,12 +251,16 @@ export default function NotificationsPage() {
             </>
           }
         >
-          <StatsGrid columns={3}>
-            <StatCard label="Unread" value={unreadCount} variant={unreadCount > 0 ? "warning" : "default"} />
-            <StatCard label="Today" value={todayCount} variant="info" />
-            <StatCard label="Total" value={notifications.length} />
-          </StatsGrid>
-        </PageHeader>
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+            <GravitreMetric
+              label="Unread"
+              value={unreadCount}
+              warning={unreadCount > 0}
+            />
+            <GravitreMetric label="Today" value={todayCount} />
+            <GravitreMetric label="Total" value={notifications.length} />
+          </section>
+        </GravitrePageHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {/* Filters */}
