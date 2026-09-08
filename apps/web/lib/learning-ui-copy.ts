@@ -208,3 +208,26 @@ export function memoryCategoryLabel(value: unknown): string {
   }
   return map[raw] ?? snakeToTitle(raw)
 }
+
+/** Operator explainer for Learning → Relationships (plain language, no product claims). */
+export const RELATIONSHIPS_GUIDE = {
+  title: "What Relationships does",
+  lead:
+    "This tab manages your org’s knowledge graph: who and what exists, and how those things connect when agents answer questions.",
+  nodesTitle: "Org knowledge nodes",
+  nodesBody:
+    "Entities you add by hand — companies, people, customers, vendors, products. Agents use them to recognize names in your org instead of guessing.",
+  nodesHint: "Start here if the list is empty: add a few real names your team already uses.",
+  linksTitle: "Business relationships",
+  linksBody:
+    "Connections Gravitre learns over time between terms, agents, and work. Review them; archive ones that are noise so answers stay consistent.",
+  linksHint: "These fill in as Learning runs on indexed sources and glossary terms — you do not create them here.",
+  nodesSectionDescription:
+    "Manual entities agents use to ground answers in your org. Not pricing or entitlement controls.",
+  linksSectionDescription:
+    "Learned links between terms, agents, and work. Archive noise; keep what helps agents stay consistent.",
+  nodesEmpty:
+    "No knowledge nodes yet. Add a company, employee, customer, vendor, or product so agents can resolve those names when answering.",
+  linksEmpty:
+    "No relationships yet. They appear as Learning runs over indexed sources and glossary terms.",
+} as const

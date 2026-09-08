@@ -14,9 +14,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
-import { entityTypeLabel, relationshipTypeLabel } from "@/lib/learning-ui-copy"
+import {
+  entityTypeLabel,
+  relationshipTypeLabel,
+  RELATIONSHIPS_GUIDE,
+} from "@/lib/learning-ui-copy"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
-import { Graph, ArrowRight, Archive, ArrowCounterClockwise, TreeStructure } from "@phosphor-icons/react"
+import {
+  Graph,
+  ArrowRight,
+  Archive,
+  ArrowCounterClockwise,
+  TreeStructure,
+  Info,
+} from "@phosphor-icons/react"
 import { readNumber, SectionCard } from "./shared"
 
 type Row = Record<string, unknown>
@@ -203,9 +214,50 @@ export function RelationshipsTab({
 
   return (
     <div className="space-y-6">
+      <section
+        aria-labelledby="relationships-guide-heading"
+        className="rounded-2xl border border-dashed border-border/80 bg-secondary/30 px-4 py-4 sm:px-5"
+      >
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 dark:text-emerald-400">
+            <Info className="h-5 w-5" weight="duotone" aria-hidden />
+          </span>
+          <div className="min-w-0 space-y-3">
+            <div>
+              <h2 id="relationships-guide-heading" className="text-base font-semibold text-foreground">
+                {RELATIONSHIPS_GUIDE.title}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground text-pretty">
+                {RELATIONSHIPS_GUIDE.lead}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 bg-card/80 p-3">
+                <p className="text-sm font-medium text-foreground">{RELATIONSHIPS_GUIDE.nodesTitle}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {RELATIONSHIPS_GUIDE.nodesBody}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground text-pretty">
+                  {RELATIONSHIPS_GUIDE.nodesHint}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/80 p-3">
+                <p className="text-sm font-medium text-foreground">{RELATIONSHIPS_GUIDE.linksTitle}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {RELATIONSHIPS_GUIDE.linksBody}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground text-pretty">
+                  {RELATIONSHIPS_GUIDE.linksHint}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <SectionCard
-        title="Org knowledge nodes"
-        description="Typed company, employee, customer, vendor, and product nodes used in the cognitive KNOWLEDGE stage. No pricing or entitlement toggles."
+        title={RELATIONSHIPS_GUIDE.nodesTitle}
+        description={RELATIONSHIPS_GUIDE.nodesSectionDescription}
         icon={<TreeStructure className="h-5 w-5" weight="duotone" aria-hidden />}
         action={
           <Badge variant="outline" className="font-normal tabular-nums">
@@ -250,8 +302,7 @@ export function RelationshipsTab({
             <p className="text-sm text-muted-foreground">Loading knowledge nodes…</p>
           ) : nodes.length === 0 ? (
             <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-              No knowledge nodes yet. Add company, employee, customer, vendor, or product entities so agents
-              can ground answers in your org graph.
+              {RELATIONSHIPS_GUIDE.nodesEmpty}
             </p>
           ) : (
             <ul className="divide-y divide-border/70 rounded-xl border border-border/60">
@@ -283,8 +334,8 @@ export function RelationshipsTab({
       </SectionCard>
 
       <SectionCard
-        title="Business relationships"
-        description="Links Gravitre learned between terms, agents, and work. Archive noise; keep what helps agents stay consistent."
+        title={RELATIONSHIPS_GUIDE.linksTitle}
+        description={RELATIONSHIPS_GUIDE.linksSectionDescription}
         icon={<Graph className="h-5 w-5" weight="duotone" aria-hidden />}
         action={
           <Badge variant="outline" className="font-normal tabular-nums">
@@ -297,7 +348,7 @@ export function RelationshipsTab({
           <p className="text-sm text-muted-foreground">Loading relationships…</p>
         ) : relationships.length === 0 && !showArchived ? (
           <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-            No relationships yet. They appear as company intelligence runs over your indexed sources and glossary.
+            {RELATIONSHIPS_GUIDE.linksEmpty}
           </p>
         ) : (
           <div className="space-y-4">
