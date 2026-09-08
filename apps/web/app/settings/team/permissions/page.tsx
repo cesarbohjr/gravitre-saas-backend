@@ -9,6 +9,8 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { GlowOrb } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Shield, Check, X, Users } from "lucide-react"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
@@ -64,14 +66,12 @@ export default function PermissionsMatrixPage() {
               className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
             >
               <div className="max-w-xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 text-xs font-medium text-[color:var(--g-text-muted)] backdrop-blur">
+                <div className={cn(TYPE.eyebrow, "mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 normal-case tracking-normal")}>
                   <Shield className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
                   Access control
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  Role permissions
-                </h1>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <h1 className={TYPE.pageTitle}>Role permissions</h1>
+                <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
                   What each workspace role can access. Loaded from org role definitions on the backend.
                 </p>
               </div>

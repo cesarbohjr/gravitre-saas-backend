@@ -9,6 +9,7 @@ import { ArrowLeft, Loader2, RefreshCw, Shield } from "lucide-react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
+import { TYPE } from "@/lib/design-system"
 import { ApiRequestError } from "@/lib/api"
 import { startPlanCheckout } from "@/lib/billing-checkout"
 import {
@@ -248,8 +249,8 @@ function BillingCheckoutPageInner() {
           </Link>
 
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground">Complete your subscription</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className={TYPE.pageTitle}>Complete your subscription</h1>
+            <p className={`${TYPE.pageLead} mt-1`}>
               Enter payment details to activate {plan.name} and restore full access.
             </p>
           </div>

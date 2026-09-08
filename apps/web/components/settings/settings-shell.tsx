@@ -4,6 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import {
   ADMIN_ONLY_SETTINGS_SECTIONS,
   SETTINGS_SECTIONS,
@@ -51,8 +52,8 @@ export function SettingsShell({
     <div className="relative flex h-full min-h-0 flex-col md:flex-row">
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur md:hidden">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold text-[color:var(--g-text-primary)]">{activeMeta?.title}</h1>
-          <p className="truncate text-xs text-[color:var(--g-text-muted)]">{activeMeta?.description}</p>
+          <h1 className={cn(TYPE.pageTitle, "truncate text-lg sm:text-lg")}>{activeMeta?.title}</h1>
+          <p className={cn(TYPE.pageLead, "truncate")}>{activeMeta?.description}</p>
         </div>
         <Button
           variant="outline"
@@ -90,9 +91,7 @@ export function SettingsShell({
             const sections = settingsSectionsForTier(tier, isAdmin)
             return (
               <div key={tier}>
-                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--g-text-muted)]">
-                  {SETTINGS_TIER_LABELS[tier]}
-                </p>
+                <p className={cn(TYPE.eyebrow, "mb-1.5 px-3")}>{SETTINGS_TIER_LABELS[tier]}</p>
                 <div className="space-y-1">
                   {sections.map((section) => (
                     <SettingsNavItem
@@ -115,13 +114,16 @@ export function SettingsShell({
             "mx-auto",
             hideHeader
               ? cn(wide ? "max-w-5xl" : "max-w-2xl md:mx-0")
-              : cn("px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] md:py-6", wide ? "max-w-5xl" : "max-w-2xl md:mx-0"),
+              : cn(
+                  "px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] md:py-6",
+                  wide ? "max-w-5xl" : "max-w-2xl md:mx-0",
+                ),
           )}
         >
           {showHeader ? (
             <div className="mb-6 hidden md:block">
-              <h1 className="mb-1 text-xl font-semibold text-[color:var(--g-text-primary)]">{activeMeta?.title}</h1>
-              <p className="text-sm text-[color:var(--g-text-muted)]">{activeMeta?.description}</p>
+              <h1 className={cn(TYPE.pageTitle, "mb-1")}>{activeMeta?.title}</h1>
+              <p className={TYPE.pageLead}>{activeMeta?.description}</p>
             </div>
           ) : null}
           {children}

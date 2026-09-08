@@ -37,6 +37,7 @@ import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { TYPE } from "@/lib/design-system"
 
 interface AuthSession {
   id: string
@@ -343,7 +344,7 @@ export default function ProfilePage() {
 
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <h1 className="text-2xl font-semibold text-foreground">
+                    <h1 className={TYPE.pageTitle}>
                       {profile.firstName} {profile.lastName}
                     </h1>
                     <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 border border-success/20">

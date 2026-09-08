@@ -9,6 +9,7 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { GlowOrb } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { TYPE } from "@/lib/design-system"
 import {
   ArrowRight,
   CheckCircle2,
@@ -238,14 +239,12 @@ function ApprovalsContent() {
           className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
         >
           <div className="max-w-xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 text-xs font-medium text-[color:var(--g-text-muted)] backdrop-blur">
+            <div className={cn(TYPE.eyebrow, "mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 normal-case tracking-normal")}>
               <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
               Governance
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Human-in-the-loop
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            <h1 className={TYPE.pageTitle}>Human-in-the-loop</h1>
+            <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
               Require approval before high-impact actions run. Scope by organization, department, or
               person — more specific rules win when several match.
             </p>

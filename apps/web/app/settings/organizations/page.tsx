@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
@@ -198,33 +199,27 @@ export default function ManageOrganizationsPage() {
   return (
     <AppShell title="Settings">
       <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
-      {/* Header. The old "Settings > Organizations" breadcrumb was the only way
-          back before; the rail now marks this section as active, so it went. */}
-      <div className="border-b border-divide">
-        <div className="px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Organizations</h1>
-              <p className="text-muted-foreground mt-1">
-                Create and manage your organizations and workspaces
-              </p>
-            </div>
-            
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Icon name="plus" size="sm" />
-                  Create Organization
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Create Organization</DialogTitle>
-                  <DialogDescription>
-                    Create a new organization to collaborate with your team
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
+      <GravitrePageHeader
+        className="!px-0 border-b-0 mb-6"
+        title="Organizations"
+        description="Create and manage your organizations and workspaces"
+        icon={<Building2 className="h-5 w-5" aria-hidden />}
+        actions={
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Icon name="plus" size="sm" />
+                Create Organization
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Organization</DialogTitle>
+                <DialogDescription>
+                  Create a new organization to collaborate with your team
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="org-name">Organization Name</Label>
                     <Input
@@ -261,9 +256,8 @@ export default function ManageOrganizationsPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Content */}
       <div className="px-6 py-8">

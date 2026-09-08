@@ -70,6 +70,7 @@ import {
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useSettingsSectionNav } from "@/lib/settings-nav"
@@ -738,7 +739,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     </motion.div>
                     <div>
                       <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-foreground">
+                        <h1 className={TYPE.pageTitle}>
                           {planKnown
                             ? `${currentPlan!.name} Plan`
                             : overviewLoading
