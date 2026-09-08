@@ -519,8 +519,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ELEVENLABS_TTS_MODEL", "elevenlabs_tts_model"),
     )
     elevenlabs_default_voice: str = Field(
-        default="rachel",
+        default="sarah",
         validation_alias=AliasChoices("ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"),
+    )
+    elevenlabs_voice_sarah: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_VOICE_SARAH", "elevenlabs_voice_sarah"),
     )
     elevenlabs_voice_rachel: str = Field(
         default="",
@@ -533,6 +537,10 @@ class Settings(BaseSettings):
     elevenlabs_voice_josh: str = Field(
         default="",
         validation_alias=AliasChoices("ELEVENLABS_VOICE_JOSH", "elevenlabs_voice_josh"),
+    )
+    elevenlabs_voice_eric: str = Field(
+        default="",
+        validation_alias=AliasChoices("ELEVENLABS_VOICE_ERIC", "elevenlabs_voice_eric"),
     )
     deepgram_api_key: str = Field(
         default="",

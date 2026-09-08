@@ -20,10 +20,12 @@ def _settings(**kwargs):
         elevenlabs_api_key="",
         deepgram_api_key="",
         elevenlabs_tts_model="eleven_flash_v2_5",
-        elevenlabs_default_voice="rachel",
+        elevenlabs_default_voice="sarah",
+        elevenlabs_voice_sarah="",
         elevenlabs_voice_rachel="",
         elevenlabs_voice_adam="",
         elevenlabs_voice_josh="",
+        elevenlabs_voice_eric="",
         deepgram_stt_model="nova-2",
     )
     base.update(kwargs)
@@ -87,7 +89,8 @@ def test_voice_status_reports_disabled_without_keys():
     assert status["tts_enabled"] is False
     assert status["stt_enabled"] is False
     assert status["write_confirm_policy"] == "nl_yes_same_path_as_text"
-    assert len(status["voices"]) == 3
+    assert len(status["voices"]) == 5
+    assert status["default_voice"] == "sarah"
 
 
 def test_synthesize_requires_key():
@@ -128,6 +131,14 @@ def test_transcribe_calls_deepgram():
         text, meta = transcribe_audio(settings, audio_bytes=b"\x00\x01", content_type="audio/webm")
     assert text == "create an apollo list named demo"
     assert meta["provider"] == "deepgram"
+
+
+def test_resolve_voice_id_defaults_to_sarah():
+    from app.services.tier1_voice_service import resolve_voice_id
+
+    key, vid = resolve_voice_id(_settings(), None)
+    assert key == "sarah"
+    assert vid == "EXAVITQu4vr4xnSDxMaL"
 
 
 def test_write_confirm_policy_is_not_voice_bypass():

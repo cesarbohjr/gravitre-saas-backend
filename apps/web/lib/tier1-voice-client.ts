@@ -138,7 +138,7 @@ export async function synthesizeViaElevenLabsDetailed(
     headers,
     body: JSON.stringify({
       text,
-      voice: options?.voice || status.default_voice || "rachel",
+      voice: options?.voice || status.default_voice || "sarah",
       ...(options?.agentId ? { agent_id: options.agentId } : {}),
     }),
     timeoutMs: 45_000,

@@ -30,11 +30,13 @@ from app.services.pipecat_voice.pipeline import (
 
 class _Settings:
     def __init__(self, *, elevenlabs_tts_model: str = "eleven_flash_v2_5") -> None:
-        self.elevenlabs_default_voice = "rachel"
+        self.elevenlabs_default_voice = "sarah"
         self.elevenlabs_tts_model = elevenlabs_tts_model
+        self.elevenlabs_voice_sarah = ""
         self.elevenlabs_voice_rachel = ""
         self.elevenlabs_voice_adam = ""
         self.elevenlabs_voice_josh = ""
+        self.elevenlabs_voice_eric = ""
 
 
 class TestDefaultResolutionStaysOnFlash:

@@ -39,8 +39,14 @@ def reset_elevenlabs_http_client_for_tests() -> None:
             _elevenlabs_client.close()
         _elevenlabs_client = None
 
-# Legacy 3-voice shortcuts (env-overridable). Full library is voice_library_service.
+# Shortcut keys (env-overridable). Full library is voice_library_service.
+# Default product voice is Sarah (warmer / more natural than Rachel demo).
 DEFAULT_VOICES: dict[str, dict[str, str]] = {
+    "sarah": {
+        "id": "EXAVITQu4vr4xnSDxMaL",
+        "label": "Sarah",
+        "description": "Soft, reassuring, natural conversational",
+    },
     "rachel": {
         "id": "21m00Tcm4TlvDq8ikWAM",
         "label": "Rachel",
@@ -55,6 +61,11 @@ DEFAULT_VOICES: dict[str, dict[str, str]] = {
         "id": "TxGEqnHWrfWFTfGW9XjX",
         "label": "Josh",
         "description": "Conversational male",
+    },
+    "eric": {
+        "id": "cjVigY5qzO86Huf0OWal",
+        "label": "Eric",
+        "description": "Friendly midwestern American",
     },
 }
 
@@ -164,7 +175,7 @@ def voice_status(settings: Settings) -> dict[str, Any]:
             {"key": k, "id": v["id"], "label": v["label"], "description": v["description"]}
             for k, v in voices.items()
         ],
-        "default_voice": settings.elevenlabs_default_voice or "rachel",
+        "default_voice": settings.elevenlabs_default_voice or "sarah",
         "default_tts_model": (settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip(),
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "write_confirm_note": (
@@ -217,9 +228,11 @@ def voice_status(settings: Settings) -> dict[str, Any]:
 def _resolved_voices(settings: Settings) -> dict[str, dict[str, str]]:
     out = {k: dict(v) for k, v in DEFAULT_VOICES.items()}
     overrides = {
+        "sarah": settings.elevenlabs_voice_sarah,
         "rachel": settings.elevenlabs_voice_rachel,
         "adam": settings.elevenlabs_voice_adam,
         "josh": settings.elevenlabs_voice_josh,
+        "eric": settings.elevenlabs_voice_eric,
     }
     for key, vid in overrides.items():
         if (vid or "").strip():
@@ -229,11 +242,11 @@ def _resolved_voices(settings: Settings) -> dict[str, dict[str, str]]:
 
 def resolve_voice_id(settings: Settings, voice_key: str | None) -> tuple[str, str]:
     voices = _resolved_voices(settings)
-    key = (voice_key or settings.elevenlabs_default_voice or "rachel").strip().lower()
+    key = (voice_key or settings.elevenlabs_default_voice or "sarah").strip().lower()
     if key not in voices:
         if len(key) >= 16:
             return key, key
-        key = "rachel"
+        key = "sarah"
     return key, voices[key]["id"]
 
 
@@ -273,7 +286,7 @@ def synthesize_speech(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": {"stability": 0.4, "similarity_boost": 0.75},
+        "voice_settings": {"stability": 0.35, "similarity_boost": 0.8},
     }
     client = _get_elevenlabs_http_client(60.0)
     resp = client.post(url, headers=headers, json=body)
@@ -352,7 +365,7 @@ def synthesize_speech_stream(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": {"stability": 0.4, "similarity_boost": 0.75},
+        "voice_settings": {"stability": 0.35, "similarity_boost": 0.8},
         "optimize_streaming_latency": 3,
     }
     timeout = httpx.Timeout(connect=5.0, read=20.0, write=20.0, pool=10.0)

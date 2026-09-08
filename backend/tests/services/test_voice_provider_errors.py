@@ -15,10 +15,12 @@ def _settings(**kwargs):
         elevenlabs_api_key="k",
         deepgram_api_key="",
         elevenlabs_tts_model="eleven_flash_v2_5",
-        elevenlabs_default_voice="rachel",
+        elevenlabs_default_voice="sarah",
+        elevenlabs_voice_sarah="",
         elevenlabs_voice_rachel="",
         elevenlabs_voice_adam="",
         elevenlabs_voice_josh="",
+        elevenlabs_voice_eric="",
         deepgram_stt_model="nova-2",
     )
     base.update(kwargs)
@@ -45,10 +47,14 @@ def test_classify_500_is_service_failure_502():
 
 
 def test_synthesize_maps_402_upstream():
+    from app.services import tier1_voice_service as tvs
+
+    tvs.reset_elevenlabs_http_client_for_tests()
     fake_resp = MagicMock(status_code=402, text='{"detail":"quota"}')
-    with patch("app.services.tier1_voice_service.httpx.Client") as client_cls:
-        client = client_cls.return_value.__enter__.return_value
-        client.post.return_value = fake_resp
+    client = MagicMock()
+    client.is_closed = False
+    client.post.return_value = fake_resp
+    with patch.object(tvs, "_get_elevenlabs_http_client", return_value=client):
         with pytest.raises(VoiceProviderError) as caught:
             synthesize_speech(_settings(), text="Hello")
     assert caught.value.status_code == 402
