@@ -12,7 +12,7 @@ Cesar re-tested live and reported the voice still sounds unnatural / robotic —
 |--------|-------|
 | Default key `rachel` (`21m00Tcm4TlvDq8ikWAM`) | Default key **`sarah`** (`EXAVITQu4vr4xnSDxMaL`) |
 | Descriptor: clear professional | Soft, reassuring, natural conversational (curated library) |
-| HTTP TTS stability 0.4 / sim 0.75 | Slightly more expressive: **0.35 / 0.8** |
+| HTTP TTS stability 0.4 / sim 0.75 | Medium expressiveness: stability **0.25**, similarity **0.75**, style **0.4**, speaker boost on |
 
 Rachel / Adam / Josh remain selectable; Eric added as a friendly male shortcut.
 

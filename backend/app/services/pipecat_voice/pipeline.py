@@ -34,7 +34,7 @@ from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_e2e_latency_sample
 from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
-from app.services.tier1_voice_service import resolve_voice_id
+from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, resolve_voice_id
 
 logger = get_logger(__name__)
 
@@ -174,6 +174,12 @@ def build_pipecat_voice_task(
         model=str(model),
         sample_rate=16000,
         auto_mode=True,
+        params=ElevenLabsTTSService.InputParams(
+            stability=float(CONVERSATIONAL_VOICE_SETTINGS["stability"]),
+            similarity_boost=float(CONVERSATIONAL_VOICE_SETTINGS["similarity_boost"]),
+            style=float(CONVERSATIONAL_VOICE_SETTINGS["style"]),
+            use_speaker_boost=bool(CONVERSATIONAL_VOICE_SETTINGS["use_speaker_boost"]),
+        ),
     )
     interrupt_reporter = ElevenLabsInterruptReporter()
 

@@ -76,6 +76,15 @@ LATENCY_TARGETS_MS = {
     "end_to_end_feels_human_ms": (700, 900),
 }
 
+# Medium expressiveness for live conversational TTS (HTTP + Pipecat).
+# Lower stability + moderate style = more natural variation than the old flat demo defaults.
+CONVERSATIONAL_VOICE_SETTINGS: dict[str, float | bool] = {
+    "stability": 0.25,
+    "similarity_boost": 0.75,
+    "style": 0.4,
+    "use_speaker_boost": True,
+}
+
 
 class VoiceProviderError(Exception):
     def __init__(
@@ -286,7 +295,7 @@ def synthesize_speech(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": {"stability": 0.35, "similarity_boost": 0.8},
+        "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
     }
     client = _get_elevenlabs_http_client(60.0)
     resp = client.post(url, headers=headers, json=body)
@@ -365,7 +374,7 @@ def synthesize_speech_stream(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": {"stability": 0.35, "similarity_boost": 0.8},
+        "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
         "optimize_streaming_latency": 3,
     }
     timeout = httpx.Timeout(connect=5.0, read=20.0, write=20.0, pool=10.0)

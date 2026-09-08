@@ -133,6 +133,15 @@ def test_transcribe_calls_deepgram():
     assert meta["provider"] == "deepgram"
 
 
+def test_conversational_voice_settings_are_medium_expressive():
+    from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS
+
+    assert CONVERSATIONAL_VOICE_SETTINGS["stability"] == 0.25
+    assert CONVERSATIONAL_VOICE_SETTINGS["similarity_boost"] == 0.75
+    assert CONVERSATIONAL_VOICE_SETTINGS["style"] == 0.4
+    assert CONVERSATIONAL_VOICE_SETTINGS["use_speaker_boost"] is True
+
+
 def test_resolve_voice_id_defaults_to_sarah():
     from app.services.tier1_voice_service import resolve_voice_id
 
