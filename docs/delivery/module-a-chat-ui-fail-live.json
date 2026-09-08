@@ -1,0 +1,35 @@
+{
+  "verified_at": "2026-09-08T08:30:44.541609+00:00",
+  "module": "A",
+  "ticket": "STA-329",
+  "path": "chat_ui_execute",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "conversation_id": "6a613c5d-5f53-4e9f-ae4f-e272760d1728",
+  "chat_http": 200,
+  "execute_body_preview": "{'skipped': True, 'reason': 'chat_consumed_pending_plan'}",
+  "fanout": {
+    "run_id": "bbffd052-c871-4169-a414-6c1a56214a11",
+    "run_status_legacy": "failed",
+    "run_status_contract": "failed",
+    "audit_event_ids": ["4c6eb8c7-8a1c-425a-9250-da6989093140"],
+    "audit_log_ids": ["20e42086-0ef8-4e34-bf64-1681f033fbd7"],
+    "notification_ids": ["042220f9-148c-4db7-a9c5-660ea04addd5"],
+    "learning_event_ids": ["c56d3b72-f490-4744-81dd-7a3797ac0e1e"]
+  },
+  "checks": {
+    "chat_or_execute_reached": true,
+    "run_id_present": true,
+    "runs_legacy_failed": true,
+    "runs_contract_failed": true,
+    "audit_events": true,
+    "audit_logs": true,
+    "notifications_run_failed": true,
+    "learning_workflow_failed": true
+  },
+  "health_git_sha_at_verify": "f848b28d56fa6bd6036c135f66b4935415096f1e",
+  "pass": true,
+  "note": "Railway prod API path: seeded awaiting_plan_confirm + POST chat confirm; finalize_execution_outcome fanout complete."
+}

@@ -9,11 +9,16 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import useSWR from "swr"
 import { AnimatePresence, motion } from "framer-motion"
-import { Blocks, ChevronDown, X } from "lucide-react"
+import { Blocks, ChevronDown, Sparkles, X } from "lucide-react"
 import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
-import type { MesonSuggestion } from "@/lib/api"
+import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { mesonApi, type MesonSuggestion } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { APP_ROUTES } from "@/lib/app-routes"
 import {
   resolveMesonPageFromPath,
   routeMesonSuggestion,
@@ -22,12 +27,112 @@ import {
 import { cn } from "@/lib/utils"
 import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+/**
+ * Quick-launch prompts into the full AI workspace, surfaced from the top Meson
+ * box (replaces the retired bottom-right helper launcher — single entry point).
+ */
+const QUICK_LAUNCH_PROMPTS = [
+  { label: "Summarize pending approvals", prompt: "Summarize my pending approvals and what needs a decision." },
+  { label: "Agent status overview", prompt: "Give me a brief status of my agents and anything failing." },
+  { label: "Recent run failures", prompt: "What workflow runs failed recently and why?" },
+  { label: "Connector health", prompt: "Which connectors need attention right now?" },
+] as const
+
+/**
+ * Meson as the voice of Gravitre: surfaces the org's real, org-wide GIBE
+ * business-intelligence signal (same source as the /intelligence page),
+ * independent of whatever page-specific tips are showing below it.
+ */
+function MesonGibeVoice() {
+  const { user } = useAuth()
+  const swrKey = user ? ["meson-gibe-voice"] : null
+  const { data, isLoading } = useSWR(swrKey, () => mesonApi.insights(), {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 120_000,
+    keepPreviousData: true,
+  })
+
+  const insight = data?.insights?.find((item) => item.title?.trim() && item.summary?.trim())
+
+  if (isLoading && !insight) {
+    return (
+      <div className="space-y-1.5 rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
+        <Skeleton className="h-3 w-2/3 bg-violet-500/10" />
+        <Skeleton className="h-3 w-full bg-violet-500/10" />
+      </div>
+    )
+  }
+
+  if (!insight) return null
+
+  return (
+    <div className="rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+        <Sparkles className="h-3 w-3" />
+        GIBE · Meson&apos;s take
+      </div>
+      <p className="text-xs font-medium leading-snug text-foreground">{insight.title}</p>
+      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+        {insight.summary}
+      </p>
+      <Link
+        href={APP_ROUTES.intelligence}
+        className="mt-1 inline-block text-[10px] font-medium text-violet-600 underline-offset-4 hover:underline dark:text-violet-400"
+      >
+        Advisory only — open Intelligence (GIBE)
+      </Link>
+    </div>
+  )
+}
+
+/** The quick-launcher/setup option, folded into the top Meson box. */
+function MesonQuickLauncher() {
+  const router = useRouter()
+
+  const openFull = (prompt?: string) => {
+    const href = prompt
+      ? `${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(prompt)}`
+      : APP_ROUTES.gravitreAi
+    router.push(href)
+  }
+
+  return (
+    <div className="mt-3 border-t border-border/60 pt-3">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <NucleoAgent className="h-3 w-3" />
+        Quick launcher
+      </p>
+      <ul className="space-y-1">
+        {QUICK_LAUNCH_PROMPTS.map((item) => (
+          <li key={item.label}>
+            <button
+              type="button"
+              onClick={() => openFull(item.prompt)}
+              className={cn(
+                "w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-2.5 py-2 text-left text-xs",
+                "transition-colors hover:bg-[color:var(--g-surface-2)]",
+              )}
+            >
+              {item.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Button type="button" size="sm" className="mt-2 w-full" onClick={() => openFull()}>
+        Open full AI workspace
+      </Button>
+    </div>
+  )
+}
 
 type MesonToolbarContextValue = {
   visible: boolean
@@ -197,14 +302,18 @@ export function MesonToolbarPopup() {
               </Button>
             </div>
           </div>
-          <div className="max-h-[min(50vh,360px)] overflow-y-auto p-3">
-            <MesonPagePanel
-              key={`${mesonPage.page}:${mesonPage.entityId ?? ""}`}
-              page={mesonPage.page}
-              entityId={mesonPage.entityId}
-              compact
-              onSuggestionClick={handleSuggestionClick}
-            />
+          <div className="max-h-[min(70vh,480px)] overflow-y-auto p-3">
+            <MesonGibeVoice />
+            <div className="mt-3">
+              <MesonPagePanel
+                key={`${mesonPage.page}:${mesonPage.entityId ?? ""}`}
+                page={mesonPage.page}
+                entityId={mesonPage.entityId}
+                compact
+                onSuggestionClick={handleSuggestionClick}
+              />
+            </div>
+            <MesonQuickLauncher />
           </div>
         </motion.div>
       ) : null}

@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-09-08T08:31:13.806868+00:00",
+  "base": "https://api.gravitre.app",
+  "health_git_sha": "f848b28d56fa6bd6036c135f66b4935415096f1e",
+  "expected_sha_prefix": "bc4c133d",
+  "sha_match": false,
+  "ops_http": 200,
+  "ops_summary": {
+    "window_hours": 24,
+    "event_count": 7,
+    "pass_rate": 0.5,
+    "by_source_present": true
+  },
+  "pass": false,
+  "note": "Ops summary endpoint healthy (HTTP 200). Script fail is stale expected_sha_prefix from Jul tip-deploy only — not a Module A fanout failure. Prod chat-UI path is the authoritative Railway re-verify."
+}

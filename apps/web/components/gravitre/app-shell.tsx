@@ -7,7 +7,6 @@ import { Sidebar } from "./sidebar"
 import { TopBar } from "./top-bar"
 import { MobileBottomNav } from "./mobile-bottom-nav"
 import { CommandPalette } from "./command-palette"
-import { FloatingAiWorkspace } from "./floating-ai-workspace"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -477,8 +476,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
       
       {/* Command Palette - accessible via Cmd+K */}
       <CommandPalette onCreateFromGoal={() => setGoalWizardOpen(true)} />
-      <FloatingAiWorkspace />
-      
+
       {/* Goal Workflow Wizard */}
       <GoalWorkflowWizard
         open={goalWizardOpen}

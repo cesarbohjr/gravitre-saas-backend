@@ -189,11 +189,16 @@ export function formatJobStatus(status: JobStatus): string {
 
 export function relativeTime(iso: string | null | undefined): string {
   if (!iso) return "just now"
-  const diff = Date.now() - new Date(iso).getTime()
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) {
+    // Already-human relative copy (fixtures / agent cards) — do not Date-parse.
+    return iso
+  }
+  const diff = Date.now() - parsed.getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return "just now"
   if (mins < 60) return `${mins}m ago`
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours}h ago`
-  return new Date(iso).toLocaleDateString()
+  return parsed.toLocaleDateString()
 }

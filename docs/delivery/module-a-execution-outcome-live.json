@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-09-08T08:31:24.973373+00:00",
+  "module": "A",
+  "ticket": "STA-329",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "conversation_id": "00000000-0000-4000-8000-083117273798",
+  "run_id": "060dbcae-8c99-413c-8ebd-d2b0e9bbe569",
+  "run_status_legacy": "failed",
+  "run_status_contract": "failed",
+  "audit_event_ids": ["72b7be8e-fc3f-4643-ac96-603822c872fd"],
+  "audit_log_ids": ["10c5bab6-1d32-420f-91ee-0783cef16ac2"],
+  "notification_ids": ["ed1ef328-e917-4516-93f0-171787783844"],
+  "learning_event_ids": ["1aaa6f7f-56ee-4ff5-a5d8-e9bf47239481"],
+  "checks": {
+    "runs_legacy_failed": true,
+    "runs_contract_failed": true,
+    "audit_events": true,
+    "audit_logs": true,
+    "notifications_run_failed": true,
+    "notifications_exactly_one": true,
+    "learning_workflow_failed": true
+  },
+  "pass": true,
+  "note": "Direct finalize_orchestration_run → finalize_execution_outcome against prod Supabase (service role)."
+}
