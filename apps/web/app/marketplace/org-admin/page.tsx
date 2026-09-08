@@ -4,6 +4,12 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { AssetOutcomeEditor } from "@/components/marketplace/asset-outcome-editor"
 import { AssetPricingEditor, formatAssetPriceLabel } from "@/components/marketplace/asset-pricing-editor"
 import { AssetVersionHistory } from "@/components/marketplace/asset-version-history"
@@ -65,7 +71,7 @@ function OrgAssetRow({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <GravitreSurface className="space-y-3 p-4 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +156,7 @@ function OrgAssetRow({
       {showVersionHistory ? (
         <AssetVersionHistory slug={asset.slug} disabled={Boolean(busy)} onRolledBack={onPricingSaved} />
       ) : null}
-    </div>
+    </GravitreSurface>
   )
 }
 
@@ -275,8 +281,10 @@ export default function MarketplaceOrgAdminPage() {
   if (!isAdmin) {
     return (
       <AppShell title="Org marketplace admin">
-        <div className="mx-auto max-w-lg rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-          Admin access is required to review org-published assets.
+        <div className="bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <GravitreSurface className="mx-auto max-w-lg text-center text-sm text-muted-foreground">
+            Admin access is required to review org-published assets.
+          </GravitreSurface>
         </div>
       </AppShell>
     )
@@ -284,178 +292,197 @@ export default function MarketplaceOrgAdminPage() {
 
   return (
     <AppShell title="Internal publish queue">
-      <div className="mx-auto max-w-3xl space-y-8">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace/assets">
-            <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
-            Marketplace
-          </Link>
-        </Button>
-
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-semibold">
-              <Shield className="h-5 w-5 text-primary" aria-hidden />
-              Org marketplace admin
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Create drafts, publish internally, or submit to the public catalog after publisher onboarding.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {!canSubmitPublic ? (
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/marketplace/publisher">Become a publisher</Link>
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Gravitre Marketplace"
+          title="Org marketplace admin"
+          description="Create drafts, publish internally, or submit to the public catalog after publisher onboarding."
+          icon={<Shield className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/assets">
+                  <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
+                  Marketplace
+                </Link>
               </Button>
-            ) : null}
-            <Button size="sm" asChild>
-              <Link href="/marketplace/org/assets/new">
-                <PlusCircle className="mr-1.5 h-4 w-4" aria-hidden />
-                New draft
-              </Link>
-            </Button>
-          </div>
-        </header>
-
-        {canSubmitPublic ? (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-            Public publishing is enabled for{" "}
-            <span className="font-medium text-foreground">
-              {publisherData?.publisher?.displayName}
-            </span>
-            . Use <strong className="font-medium text-foreground">Public catalog</strong> on drafts to
-            reach the Gravitre review queue.
-          </div>
-        ) : null}
-
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Draft assets</h2>
-          {draftsLoading && !draftData ? (
-            <div className="h-24 animate-pulse rounded-xl border bg-muted/40" />
-          ) : draftError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              Could not load draft assets.
+              {!canSubmitPublic ? (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/marketplace/publisher">Become a publisher</Link>
+                </Button>
+              ) : null}
+              <Button size="sm" asChild>
+                <Link href="/marketplace/org/assets/new">
+                  <PlusCircle className="mr-1.5 h-4 w-4" aria-hidden />
+                  New draft
+                </Link>
+              </Button>
             </div>
-          ) : drafts.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No draft assets yet.{" "}
-              <Link href="/marketplace/org/assets/new" className="text-primary underline-offset-4 hover:underline">
-                Create one
-              </Link>
-              .
-            </div>
-          ) : (
-            drafts.map((asset) => (
-              <OrgAssetRow
-                key={asset.id}
-                asset={asset}
-                busy={busy}
-                showDraftActions
-                canSubmitPublic={canSubmitPublic}
-                onSubmit={handleSubmit}
-                onSubmitPublic={handleSubmitPublic}
-                onArchive={handleArchive}
-                onPricingSaved={refreshAll}
-              />
-            ))
-          )}
-        </section>
+          }
+        />
 
-        {canSubmitPublic ? (
+        <div className="mx-auto max-w-3xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-4">
+            <GravitreMetric
+              label="Drafts"
+              value={draftsLoading && !draftData ? "—" : drafts.length}
+            />
+            <GravitreMetric
+              label="Internal queue"
+              value={isLoading && !data ? "—" : pending.length}
+            />
+            <GravitreMetric
+              label="Published internal"
+              value={publishedLoading && !publishedData ? "—" : published.length}
+            />
+            <GravitreMetric
+              label="Public pending"
+              value={canSubmitPublic ? publicPending.length : "—"}
+              hint={canSubmitPublic ? "Gravitre review" : "Publisher required"}
+            />
+          </section>
+
+          {canSubmitPublic ? (
+            <GravitreSurface className="border-primary/20 bg-primary/5 text-sm text-muted-foreground">
+              Public publishing is enabled for{" "}
+              <span className="font-medium text-foreground">
+                {publisherData?.publisher?.displayName}
+              </span>
+              . Use <strong className="font-medium text-foreground">Public catalog</strong> on drafts to
+              reach the Gravitre review queue.
+            </GravitreSurface>
+          ) : null}
+
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Public catalog submissions</h2>
-            {publicPending.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No drafts awaiting Gravitre public review. Submit a draft with{" "}
-                <span className="font-medium text-foreground">Public catalog</span>.
-              </div>
-            ) : (
-              publicPending.map((asset) => (
-                <div
-                  key={asset.id}
-                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">{asset.title}</h3>
-                      <Badge variant="secondary">public review</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{asset.slug}</p>
-                  </div>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href="/marketplace/platform-admin">View platform queue</Link>
+            <h2 className="text-sm font-semibold text-foreground">Draft assets</h2>
+            {draftsLoading && !draftData ? (
+              <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
+            ) : draftError ? (
+              <GravitreSurface className="border-destructive/30 bg-destructive/5 text-sm text-destructive">
+                Could not load draft assets.
+              </GravitreSurface>
+            ) : drafts.length === 0 ? (
+              <GravitreEmpty
+                title="No draft assets yet"
+                hint="Create a draft to start the internal publish flow."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/marketplace/org/assets/new">Create one</Link>
                   </Button>
-                </div>
+                }
+              />
+            ) : (
+              drafts.map((asset) => (
+                <OrgAssetRow
+                  key={asset.id}
+                  asset={asset}
+                  busy={busy}
+                  showDraftActions
+                  canSubmitPublic={canSubmitPublic}
+                  onSubmit={handleSubmit}
+                  onSubmitPublic={handleSubmitPublic}
+                  onArchive={handleArchive}
+                  onPricingSaved={refreshAll}
+                />
               ))
             )}
           </section>
-        ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Internal publish queue</h2>
-          {isLoading && !data ? (
-            <div className="h-24 animate-pulse rounded-xl border bg-muted/40" />
-          ) : error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              Could not load pending assets.
-            </div>
-          ) : pending.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No assets awaiting review.
-            </div>
-          ) : (
-            pending.map((asset) => (
-              <OrgAssetRow
-                key={asset.id}
-                asset={asset}
-                busy={busy}
-                showReviewActions
-                onApprove={handleApprove}
-                onReject={setRejectTarget}
-                onPricingSaved={refreshAll}
-              />
-            ))
-          )}
-        </section>
+          {canSubmitPublic ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-foreground">Public catalog submissions</h2>
+              {publicPending.length === 0 ? (
+                <GravitreEmpty
+                  title="No drafts awaiting Gravitre public review"
+                  hint="Submit a draft with Public catalog to reach the platform queue."
+                />
+              ) : (
+                publicPending.map((asset) => (
+                  <GravitreSurface
+                    key={asset.id}
+                    className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">{asset.title}</h3>
+                        <Badge variant="secondary">public review</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{asset.slug}</p>
+                    </div>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href="/marketplace/platform-admin">View platform queue</Link>
+                    </Button>
+                  </GravitreSurface>
+                ))
+              )}
+            </section>
+          ) : null}
 
-        {canSubmitPublic && publicPublished.length > 0 ? (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Published public catalog assets</h2>
-            <p className="text-xs text-muted-foreground">
-              Update pricing on live public assets without unpublishing.
-            </p>
-            {publicPublished.map((asset) => (
-              <OrgAssetRow
-                key={asset.id}
-                asset={asset}
-                busy={busy}
-                showPublishedPricing
-                onPricingSaved={refreshAll}
-              />
-            ))}
+            <h2 className="text-sm font-semibold text-foreground">Internal publish queue</h2>
+            {isLoading && !data ? (
+              <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
+            ) : error ? (
+              <GravitreSurface className="border-destructive/30 bg-destructive/5 text-sm text-destructive">
+                Could not load pending assets.
+              </GravitreSurface>
+            ) : pending.length === 0 ? (
+              <GravitreEmpty title="No assets awaiting review" hint="Submitted drafts appear here for approval." />
+            ) : (
+              pending.map((asset) => (
+                <OrgAssetRow
+                  key={asset.id}
+                  asset={asset}
+                  busy={busy}
+                  showReviewActions
+                  onApprove={handleApprove}
+                  onReject={setRejectTarget}
+                  onPricingSaved={refreshAll}
+                />
+              ))
+            )}
           </section>
-        ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Published internal assets</h2>
-          {publishedLoading && !publishedData ? (
-            <div className="h-24 animate-pulse rounded-xl border bg-muted/40" />
-          ) : published.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Approved assets appear here with version history and rollback.
-            </div>
-          ) : (
-            published.map((asset) => (
-              <OrgAssetRow
-                key={asset.id}
-                asset={asset}
-                busy={busy}
-                showVersionHistory
-                onPricingSaved={refreshAll}
+          {canSubmitPublic && publicPublished.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-foreground">Published public catalog assets</h2>
+              <p className="text-xs text-muted-foreground">
+                Update pricing on live public assets without unpublishing.
+              </p>
+              {publicPublished.map((asset) => (
+                <OrgAssetRow
+                  key={asset.id}
+                  asset={asset}
+                  busy={busy}
+                  showPublishedPricing
+                  onPricingSaved={refreshAll}
+                />
+              ))}
+            </section>
+          ) : null}
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Published internal assets</h2>
+            {publishedLoading && !publishedData ? (
+              <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
+            ) : published.length === 0 ? (
+              <GravitreEmpty
+                title="No published internal assets yet"
+                hint="Approved assets appear here with version history and rollback."
               />
-            ))
-          )}
-        </section>
+            ) : (
+              published.map((asset) => (
+                <OrgAssetRow
+                  key={asset.id}
+                  asset={asset}
+                  busy={busy}
+                  showVersionHistory
+                  onPricingSaved={refreshAll}
+                />
+              ))
+            )}
+          </section>
+        </div>
       </div>
 
       <Dialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && setRejectTarget(null)}>

@@ -6,8 +6,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
@@ -70,127 +76,6 @@ function toDisplayMemory(memory: AgentMemory): DisplayMemory {
   }
 }
 
-function BrainVisualization() {
-  return (
-    <div className="relative h-48 flex items-center justify-center">
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full border border-success/20"
-          style={{
-            width: 120 + i * 60,
-            height: 120 + i * 60,
-          }}
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 20 + i * 10,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        >
-          <motion.div
-            className="absolute h-2 w-2 rounded-full bg-emerald-500"
-            style={{
-              top: "50%",
-              left: -4,
-              transform: "translateY(-50%)",
-            }}
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-          />
-        </motion.div>
-      ))}
-
-      <motion.div
-        className="relative z-10 h-24 w-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-success/30"
-        animate={{
-          boxShadow: [
-            "0 0 40px rgba(16, 185, 129, 0.3)",
-            "0 0 60px rgba(16, 185, 129, 0.5)",
-            "0 0 40px rgba(16, 185, 129, 0.3)",
-          ],
-        }}
-        transition={{ duration: 3, repeat: Infinity }}
-      >
-        <Icon name="brain" size="xl" className="text-white" />
-        <motion.div
-          className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-      </motion.div>
-
-      {[
-        { x: -80, y: -40, delay: 0, color: "blue" },
-        { x: 80, y: -30, delay: 0.2, color: "rose" },
-        { x: -70, y: 50, delay: 0.4, color: "signal" },
-        { x: 90, y: 40, delay: 0.6, color: "amber" },
-      ].map((node, i) => (
-        <motion.div
-          key={i}
-          className={cn(
-            "absolute h-4 w-4 rounded-full",
-            node.color === "blue" && "bg-blue-500",
-            node.color === "rose" && "bg-rose-500",
-            node.color === "signal" && "bg-[color:var(--g-signal)]",
-            node.color === "amber" && "bg-amber-500",
-          )}
-          style={{ x: node.x, y: node.y }}
-          animate={{
-            y: [node.y - 5, node.y + 5, node.y - 5],
-            opacity: [0.5, 1, 0.5],
-          }}
-          transition={{ duration: 3, repeat: Infinity, delay: node.delay }}
-        />
-      ))}
-    </div>
-  )
-}
-
-function StatCard({ label, value, icon, color, suffix }: { label: string; value: string | number; icon: string; color: string; suffix?: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={cn(
-        "relative overflow-hidden rounded-2xl border p-5",
-        "bg-card/50 border-border backdrop-blur-sm"
-      )}
-    >
-      <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-20" style={{
-        background: color === "emerald" ? "radial-gradient(circle, #10b981 0%, transparent 70%)" :
-                   color === "blue" ? "radial-gradient(circle, #3b82f6 0%, transparent 70%)" :
-                   color === "signal" ? "radial-gradient(circle, color-mix(in oklch, var(--g-signal) 55%, transparent) 0%, transparent 70%)" :
-                   "radial-gradient(circle, #f59e0b 0%, transparent 70%)"
-      }} />
-
-      <div className={cn(
-        "h-10 w-10 rounded-xl flex items-center justify-center mb-3",
-        color === "emerald" && "bg-success/10",
-        color === "blue" && "bg-blue-500/10",
-        color === "signal" && "bg-[color:var(--g-signal-surface)]",
-        color === "amber" && "bg-warning/10",
-      )}>
-        <Icon
-          name={icon as IconName}
-          size="sm"
-          className={cn(
-            color === "emerald" && "text-success",
-            color === "blue" && "text-blue-400",
-            color === "signal" && "text-[color:var(--g-signal)]",
-            color === "amber" && "text-warning",
-          )}
-        />
-      </div>
-      <p className="text-3xl font-bold text-foreground">
-        {value}
-        {suffix && <span className="text-lg text-muted-foreground ml-0.5">{suffix}</span>}
-      </p>
-      <p className="text-sm text-muted-foreground">{label}</p>
-    </motion.div>
-  )
-}
-
 function MemoryCard({ memory, index, onEdit, onDelete }: {
   memory: DisplayMemory
   index: number
@@ -208,6 +93,12 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
   }
 
   const colors = colorClasses[category.color]
+  const confidenceStroke =
+    memory.confidence >= 90
+      ? "var(--g-brand)"
+      : memory.confidence >= 70
+        ? "var(--warning)"
+        : "var(--destructive)"
 
   return (
     <motion.div
@@ -217,14 +108,13 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       className={cn(
-        "group relative rounded-2xl border p-5 transition-all duration-300",
-        "bg-card/50 border-border hover:border-muted-foreground/30",
-        isHovered && "shadow-lg shadow-black/10"
+        "group relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors",
+        "hover:bg-[color:var(--g-surface-2)]",
       )}
     >
       <motion.div
         className={cn(
-          "absolute inset-0 rounded-2xl opacity-0 transition-opacity",
+          "absolute inset-0 rounded-[var(--np-radius-lg)] opacity-0 transition-opacity",
           colors.ring, "ring-2"
         )}
         animate={{ opacity: isHovered ? 1 : 0 }}
@@ -241,13 +131,13 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
 
         <div className="relative h-10 w-10">
           <svg className="h-10 w-10 -rotate-90">
-            <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-secondary" />
+            <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-[color:var(--g-surface-2)]" />
             <motion.circle
               cx="20"
               cy="20"
               r="16"
               fill="none"
-              stroke={memory.confidence >= 90 ? "#10b981" : memory.confidence >= 70 ? "#f59e0b" : "#ef4444"}
+              stroke={confidenceStroke}
               strokeWidth="3"
               strokeLinecap="round"
               strokeDasharray={100}
@@ -510,51 +400,38 @@ export default function AgentMemoryPage({
 
   return (
     <AppShell title="Agent Memory">
-      <div className="flex flex-col min-h-full">
-        <div className="relative overflow-hidden border-b border-border">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-500/5" />
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-
-          <div className="relative px-8 py-6">
-            <div className="flex items-center gap-2 text-sm mb-6">
-              <Link href="/agents" className="text-muted-foreground hover:text-foreground transition-colors">
-                AI Team
-              </Link>
-              <Icon name="chevronRight" size="xs" className="text-muted-foreground/50" />
-              <Link href={`/agents/${id}`} className="text-muted-foreground hover:text-foreground transition-colors">
-                {agent?.name || "Agent"}
-              </Link>
-              <Icon name="chevronRight" size="xs" className="text-muted-foreground/50" />
-              <span className="text-foreground">Memory</span>
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="AI Team"
+          title={`${agent?.name || "Agent"}'s Memory`}
+          description="Facts, preferences, patterns, and rules this agent uses in future work."
+          icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/agents/${id}`}>Back to profile</Link>
+              </Button>
+              <Button
+                className="gap-2"
+                onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
+              >
+                <Icon name="add" size="sm" />
+                Add Memory
+              </Button>
             </div>
+          }
+        />
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-              <div className="lg:col-span-4 flex flex-col items-center justify-center">
-                <BrainVisualization />
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-center mt-4"
-                >
-                  <h1 className="text-xl font-semibold text-foreground">{agent?.name || "Agent"}&apos;s Memory</h1>
-                  <p className="text-sm text-muted-foreground">Everything the agent has learned</p>
-                </motion.div>
-              </div>
+        <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric label="Total Memories" value={stats.total} />
+            <GravitreMetric label="Avg Confidence" value={`${stats.avgConfidence}%`} />
+            <GravitreMetric label="Total Usage" value={stats.totalUsage} />
+            <GravitreMetric label="Protected Rules" value={stats.protected} />
+          </section>
 
-              <div className="lg:col-span-8 grid grid-cols-2 gap-4 content-center sm:grid-cols-4">
-                <StatCard label="Total Memories" value={stats.total} icon="brain" color="emerald" />
-                <StatCard label="Avg Confidence" value={stats.avgConfidence} icon="target" color="blue" suffix="%" />
-                <StatCard label="Total Usage" value={stats.totalUsage} icon="activity" color="signal" />
-                <StatCard label="Protected Rules" value={stats.protected} icon="shield" color="amber" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 px-8 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2 p-1 rounded-xl bg-secondary/50">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-1 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-1">
               {[
                 { id: "all", label: "All", icon: null },
                 { id: "fact", label: "Facts", icon: "database", color: "blue" },
@@ -566,17 +443,17 @@ export default function AgentMemoryPage({
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    "flex items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
                     activeCategory === cat.id
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {cat.icon && <Icon name={cat.icon as IconName} size="sm" />}
                   {cat.label}
                   <span className={cn(
-                    "px-1.5 py-0.5 rounded-md text-xs",
-                    activeCategory === cat.id ? "bg-secondary" : "bg-transparent"
+                    "rounded-[var(--np-radius-sm)] px-1.5 py-0.5 text-xs",
+                    activeCategory === cat.id ? "bg-[color:var(--g-surface-2)]" : "bg-transparent"
                   )}>
                     {categoryCounts[cat.id as keyof typeof categoryCounts]}
                   </span>
@@ -584,32 +461,23 @@ export default function AgentMemoryPage({
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative w-72">
-                <Icon name="search" size="sm" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search memories..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success"
-                />
-              </div>
-              <Button
-                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
-                onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
-              >
-                <Icon name="add" size="sm" />
-                Add Memory
-              </Button>
+            <div className="relative w-full max-w-sm">
+              <Icon name="search" size="sm" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search memories..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-[color:var(--g-brand-border)] focus:outline-none focus:ring-2 focus:ring-[color:var(--g-brand)]/30"
+              />
             </div>
           </div>
 
           {isLoading ? (
-            <div className="text-sm text-muted-foreground py-12 text-center">Loading memories...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading memories...</div>
           ) : (
             <AnimatePresence mode="popLayout">
-              <motion.div layout className="grid grid-cols-2 gap-4">
+              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredMemories.map((memory, i) => (
                   <MemoryCard
                     key={memory.id}
@@ -627,17 +495,20 @@ export default function AgentMemoryPage({
           )}
 
           {!isLoading && filteredMemories.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20"
-            >
-              <div className="h-20 w-20 rounded-2xl bg-secondary flex items-center justify-center mb-4">
-                <Icon name="search" size="xl" className="text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">No memories found</h3>
-              <p className="text-sm text-muted-foreground">Try adjusting your search or add a new memory</p>
-            </motion.div>
+            <GravitreEmpty
+              icon={<Icon name="search" size="sm" />}
+              title="No memories found"
+              hint="Try adjusting your search or add a new memory"
+              action={
+                <Button
+                  className="gap-2"
+                  onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
+                >
+                  <Icon name="add" size="sm" />
+                  Add Memory
+                </Button>
+              }
+            />
           )}
         </div>
       </div>

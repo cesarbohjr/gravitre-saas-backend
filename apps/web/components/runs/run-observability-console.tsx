@@ -72,7 +72,7 @@ function Stat({
   value: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+    <div className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
       <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
@@ -91,11 +91,11 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="space-y-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
         <Skeleton className="h-5 w-48" />
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-lg" />
+            <Skeleton key={i} className="h-16 rounded-[var(--np-radius-md)]" />
           ))}
         </div>
       </div>
@@ -104,14 +104,14 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
 
   if (error || !data) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 text-sm text-muted-foreground shadow-[var(--np-shadow)]">
         Observability join unavailable for this run.
       </div>
     )
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-4">
+    <section className="space-y-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Run observability</h2>
@@ -174,7 +174,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
               return (
                 <li
                   key={`${h.action}-${idx}`}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
+                  className="flex items-center justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide px-2 py-1 text-xs"
                 >
                   <span className="truncate font-medium">{label}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -208,7 +208,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
               {data.contextSources.map((src) => (
                 <li
                   key={src}
-                  className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-foreground"
+                  className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-2 py-0.5 text-[11px] text-foreground"
                 >
                   {src}
                 </li>
@@ -227,7 +227,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
               {data.toolsCalled.slice(0, 12).map((tool, idx) => (
                 <li
                   key={`${tool.tool}-${idx}`}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
+                  className="flex items-center justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide px-2 py-1 text-xs"
                 >
                   <span className="truncate font-medium">{tool.tool || tool.action || "tool"}</span>
                   <span
@@ -271,7 +271,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
               return (
                 <li
                   key={`${kind}-${idx}`}
-                  className="flex items-center gap-2 rounded-md border border-border/70 px-2 py-1 text-xs"
+                  className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide px-2 py-1 text-xs"
                 >
                   <span className="w-16 shrink-0 text-[10px] uppercase text-muted-foreground">
                     {kind}

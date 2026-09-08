@@ -21,7 +21,13 @@ import {
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
-import { HubTabs, type HubTabItem } from "@/components/gravitre/hub-tabs"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
@@ -37,12 +43,13 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/lib/icons"
+import { NucleoActivity, NucleoSearch } from "@/components/icons/nucleo/semantic"
 import { businessOutcomesApi, workObjectsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
-import { INTERACTION, MOTION, RADIUS, TYPE } from "@/lib/design-system"
-import { ArrowLeft, ExternalLink, RefreshCw, X } from "lucide-react"
+import { INTERACTION, MOTION, TYPE } from "@/lib/design-system"
+import { ArrowLeft, ExternalLink, X } from "lucide-react"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -311,7 +318,7 @@ function ActivityPageInner() {
   // Surface the loaded count on the tab itself so the strip carries information
   // rather than just switching panels. Omitted while loading so it doesn't
   // flash a misleading 0.
-  const activityTabs: Array<HubTabItem<ActivityTab>> = [
+  const activityTabs: Array<{ id: ActivityTab; label: string; count?: number }> = [
     { id: "all", label: "All", count: isLoading ? undefined : outcomes.length },
     {
       id: "objects",
@@ -326,82 +333,98 @@ function ActivityPageInner() {
       {/* lg+: fill the viewport and delegate scrolling to the panes. Below lg
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 md:px-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
-        {/* Icon tile + eyebrow + title matches the assignments / marketplace
-            header baseline. The supporting lead is deliberately omitted: this
-            layout is viewport-locked, and a paragraph here costs the list pane
-            a row of vertical budget on short screens. */}
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className={cn(
-                "hidden h-10 w-10 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 sm:flex",
-                RADIUS.tile,
-              )}
-            >
-              <Icon name="activity" size="md" className="text-primary" />
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden">
+        <GravitrePageHeader
+          className="shrink-0"
+          eyebrow="Execution log"
+          title="Activity"
+          icon={<NucleoActivity className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {tab === "all" || tab === "objects" ? (
+                <DataFreshness
+                  updatedAt={
+                    tab === "objects"
+                      ? workObjectListData
+                        ? Date.now()
+                        : null
+                      : data
+                        ? Date.now()
+                        : null
+                  }
+                  isRefreshing={isPanelRefreshing}
+                  onRefresh={refreshRows}
+                />
+              ) : null}
+              <Button asChild variant="outline" size="sm" className="h-8">
+                <Link href={APP_ROUTES.audit}>Export audit</Link>
+              </Button>
             </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className={TYPE.eyebrow}>Execution log</p>
-              <div className="flex items-center gap-2">
-                <h1 className={TYPE.pageTitle}>Activity</h1>
-                {/* Reads as "this surface is live" — the list revalidates on
-                    focus, so a static header would understate that. */}
-                <AnimatePresence>
-                  {isPanelRefreshing ? (
-                    <motion.span
-                      initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: MOTION.fast }}
-                      className="relative flex h-2 w-2"
-                      aria-hidden
-                    >
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                    </motion.span>
+          }
+        >
+          <div className="flex gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1 sm:w-fit">
+            {activityTabs.map((item) => {
+              const active = tab === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition",
+                    active
+                      ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-sm"
+                      : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                  )}
+                >
+                  {item.label}
+                  {typeof item.count === "number" ? (
+                    <span className="ml-1.5 tabular-nums text-[color:var(--g-text-muted)]">
+                      {item.count}
+                    </span>
                   ) : null}
-                </AnimatePresence>
-              </div>
-            </div>
+                </button>
+              )
+            })}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <HubTabs
-              tabs={activityTabs}
-              active={tab}
-              onSelect={setTab}
-              ariaLabel="Activity views"
-              size="sm"
+        </GravitrePageHeader>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
+        {/* KPI strip — same GravitreMetric combo as /home; honest loaded counts only */}
+        {tab !== "failures" ? (
+          <section className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric
+              label="Outcomes"
+              value={isLoading ? "—" : outcomes.length}
+              hint={isLoading ? "Loading" : "Loaded in view"}
+              icon={<NucleoActivity className="h-4 w-4" />}
             />
-            {tab === "all" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("h-8 gap-1.5", RADIUS.control)}
-                onClick={refreshRows}
-                disabled={isPanelRefreshing}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", isPanelRefreshing && "animate-spin")} />
-                Refresh
-              </Button>
-            ) : null}
-            {tab === "objects" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("h-8 gap-1.5", RADIUS.control)}
-                onClick={refreshRows}
-                disabled={isPanelRefreshing}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", isPanelRefreshing && "animate-spin")} />
-                Refresh
-              </Button>
-            ) : null}
-            <Button asChild variant="outline" size="sm" className={cn("h-8", RADIUS.control)}>
-              <Link href={APP_ROUTES.audit}>Export audit</Link>
-            </Button>
-          </div>
-        </header>
+            <GravitreMetric
+              label="WorkObjects"
+              value={workObjectsLoading ? "—" : workObjects.length}
+              hint={workObjectsLoading ? "Loading" : "Loaded in view"}
+              icon={<Icon name="clipboardList" size="sm" />}
+            />
+            <GravitreMetric
+              label="Selected"
+              value={
+                tab === "objects"
+                  ? selectedWorkObject
+                    ? 1
+                    : "—"
+                  : selectedOutcome
+                    ? 1
+                    : "—"
+              }
+              hint="Inspector focus"
+            />
+            <GravitreMetric
+              label="Filters"
+              value={activeFilterCount}
+              hint={activeFilterCount > 0 ? "Active" : "None"}
+            />
+          </section>
+        ) : null}
 
         {tab === "failures" ? (
           <FailureAlertsPanel />
@@ -540,7 +563,7 @@ function ActivityPageInner() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={cn("h-8 gap-1.5 text-xs text-muted-foreground", RADIUS.control)}
+                      className="h-8 gap-1.5 text-xs text-muted-foreground"
                       onClick={resetFilters}
                     >
                       {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"}
@@ -553,85 +576,64 @@ function ActivityPageInner() {
             </HubFilterBar>
 
             {panelError ? (
-              <div
-                className={cn(
-                  "flex items-center gap-2 border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive",
-                  RADIUS.card,
-                )}
-              >
+              <div className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
                 <Icon name="shieldAlert" size="sm" className="shrink-0" />
                 Could not load {tab === "objects" ? "WorkObjects" : "activity"}. Refresh and try again.
               </div>
             ) : null}
 
-            <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
-              <section
+            <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] lg:flex-row">
+              <GravitreSurface
+                padded={false}
                 className={cn(
-                  "flex min-h-0 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:w-[340px] lg:shrink-0",
-                  "rounded-[var(--np-radius-lg)]",
+                  "flex min-h-0 flex-col overflow-hidden lg:w-[340px] lg:shrink-0",
                   mobileDetailOpen ? "hidden lg:flex" : "flex",
                 )}
               >
-                {/* Count lives on the tab now — repeating it here read as two
-                    different numbers at a glance. */}
-                <div
-                  className={cn(
-                    "shrink-0 border-b border-border bg-gradient-to-b from-muted/40 to-card/95 px-3 py-2 backdrop-blur",
-                    TYPE.eyebrow,
-                  )}
-                >
+                <div className={cn("shrink-0 border-b border-divide px-3 py-2", TYPE.eyebrow)}>
                   Recent
                 </div>
-                {/* `relative` anchors the scroll-fade overlay below. */}
                 <div className="relative min-h-0 flex-1">
-                  {/* Signals more rows below the fold without adding chrome.
-                      pointer-events-none so it can never eat a row click. */}
                   <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden h-8 bg-gradient-to-t from-card to-transparent lg:block"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden h-8 bg-gradient-to-t from-[color:var(--g-surface-1)] to-transparent lg:block"
                     aria-hidden
                   />
                   <div className="min-h-0 h-full lg:overflow-y-auto">
                   {isPanelLoading ? (
                     <ListSkeleton items={5} className="p-3" />
                   ) : currentRows.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-                      <div
-                        className={cn(
-                          "flex h-11 w-11 items-center justify-center border border-border bg-muted/50",
-                          RADIUS.tile,
-                        )}
-                      >
-                        <Icon name="activity" size="md" className="text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {hasActiveFilters
-                            ? `No matching ${tab === "objects" ? "WorkObjects" : "activity"}`
-                            : tab === "objects"
-                              ? "No WorkObjects yet"
-                              : "No activity yet"}
-                        </p>
-                        <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                          {hasActiveFilters
-                            ? "No results for these filters. Try widening them to see more."
-                            : tab === "objects"
-                              ? "Complete connector actions in chat or runs and WorkObjects will be attributed here."
-                              : "Run a workflow or complete work in chat — results land here automatically."}
-                        </p>
-                      </div>
-                      {hasActiveFilters ? (
-                        <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
-                          Clear filters
-                        </Button>
-                      ) : (
-                        <Button asChild size="sm" className="h-8">
-                          <Link href={APP_ROUTES.gravitreAi}>Start in chat</Link>
-                        </Button>
-                      )}
-                    </div>
+                    <GravitreEmpty
+                      className="m-3 border-0 shadow-none"
+                      icon={<NucleoActivity className="h-5 w-5" />}
+                      title={
+                        hasActiveFilters
+                          ? `No matching ${tab === "objects" ? "WorkObjects" : "activity"}`
+                          : tab === "objects"
+                            ? "No WorkObjects yet"
+                            : "No activity yet"
+                      }
+                      hint={
+                        hasActiveFilters
+                          ? "No results for these filters. Try widening them to see more."
+                          : tab === "objects"
+                            ? "Complete connector actions in chat or runs and WorkObjects will be attributed here."
+                            : "Run a workflow or complete work in chat — results land here automatically."
+                      }
+                      action={
+                        hasActiveFilters ? (
+                          <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                            Clear filters
+                          </Button>
+                        ) : (
+                          <Button asChild size="sm" className="h-8">
+                            <Link href={APP_ROUTES.gravitreAi}>Start in chat</Link>
+                          </Button>
+                        )
+                      }
+                    />
                   ) : (
                     <ul
-                      className="divide-y divide-border"
+                      className="divide-y divide-divide"
                       role="listbox"
                       aria-label={tab === "objects" ? "WorkObject list" : "Recent activity"}
                       aria-activedescendant={
@@ -670,15 +672,15 @@ function ActivityPageInner() {
                                     "group relative flex w-full flex-col gap-0.5 py-2 pl-3.5 pr-3 text-left transition-colors duration-150",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                     active
-                                      ? "bg-gradient-to-r from-primary/[0.07] to-transparent"
-                                      : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-transparent",
+                                      ? "bg-[color:var(--g-brand-soft)]/60"
+                                      : "hover:bg-[color:var(--g-surface-2)]",
                                   )}
                                   onClick={() => setSelectedWorkObjectId(id)}
                                 >
                                   {active ? (
                                     <motion.span
                                       layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-primary"
+                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-brand)]"
                                       transition={
                                         reduceMotion
                                           ? { duration: 0 }
@@ -757,8 +759,8 @@ function ActivityPageInner() {
                                     String(outcome.status || "").toLowerCase() === "flagged_for_review" &&
                                       "bg-warning/[0.05]",
                                     active
-                                      ? "bg-gradient-to-r from-primary/[0.07] to-transparent"
-                                      : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-transparent",
+                                      ? "bg-[color:var(--g-brand-soft)]/60"
+                                      : "hover:bg-[color:var(--g-surface-2)]",
                                   )}
                                   onClick={() => setSelectedOutcomeId(id)}
                                 >
@@ -771,7 +773,7 @@ function ActivityPageInner() {
                                   {active ? (
                                     <motion.span
                                       layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-primary"
+                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-brand)]"
                                       transition={
                                         reduceMotion
                                           ? { duration: 0 }
@@ -854,24 +856,16 @@ function ActivityPageInner() {
                   )}
                   </div>
                 </div>
-              </section>
+              </GravitreSurface>
 
-              <section
+              <GravitreSurface
+                padded={false}
                 className={cn(
-                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
-                  "rounded-[var(--np-radius-lg)]",
+                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
                   mobileDetailOpen ? "flex" : "hidden lg:flex",
                 )}
               >
-                {/* The pane header now names what is selected instead of saying
-                    "Detail" over an unlabelled card, and carries the jump to the
-                    underlying run — so the list -> outcome -> run trace is one
-                    continuous path rather than a hunt inside the body copy. */}
-                <div
-                  className={cn(
-                    "flex shrink-0 flex-col gap-1 border-b border-divide bg-gradient-to-b from-muted/40 to-[color:var(--g-surface-1)]/95 px-3 py-2 backdrop-blur",
-                  )}
-                >
+                <div className="flex shrink-0 flex-col gap-1 border-b border-divide px-3 py-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -891,8 +885,7 @@ function ActivityPageInner() {
                     <Link
                       href={`/runs/${selectedOutcome.runId}`}
                       className={cn(
-                        "inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
-                        RADIUS.control,
+                        "inline-flex shrink-0 items-center gap-1 rounded-[var(--np-radius-md)] px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-[color:var(--g-surface-2)] hover:text-foreground",
                         INTERACTION,
                       )}
                     >
@@ -921,12 +914,12 @@ function ActivityPageInner() {
                               {formatStatusLabel(String(selectedWorkObject.status || "identified"))}
                             </StatusChip>
                             {selectedWorkObject.priority ? (
-                              <span className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                                priority {selectedWorkObject.priority}
+                              <span className="rounded-[var(--np-radius-md)] border border-divide px-2 py-0.5 text-[11px] text-muted-foreground">
+                                {selectedWorkObject.priority}
                               </span>
                             ) : null}
                             {selectedWorkObject.department ? (
-                              <span className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                              <span className="rounded-[var(--np-radius-md)] border border-divide px-2 py-0.5 text-[11px] text-muted-foreground">
                                 {selectedWorkObject.department}
                               </span>
                             ) : null}
@@ -962,7 +955,10 @@ function ActivityPageInner() {
                           ) : (
                             <ul className="space-y-2">
                               {workObjectEvents.map((event) => (
-                                <li key={event.id} className="rounded border border-border bg-muted/30 p-2">
+                                <li
+                                  key={event.id}
+                                  className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2"
+                                >
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                                     <span className="font-medium text-foreground">
                                       {event.actionName || event.eventType || "action"}
@@ -1003,26 +999,19 @@ function ActivityPageInner() {
                       </motion.div>
                     </AnimatePresence>
                   ) : (
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <div
-                        className={cn(
-                          "flex h-11 w-11 items-center justify-center border border-border bg-muted/50",
-                          RADIUS.tile,
-                        )}
-                      >
-                        <Icon name="search" size="md" className="text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">Nothing selected</p>
-                      <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-                        Pick an item from the list to inspect its evidence and timeline.
-                      </p>
-                    </div>
+                    <GravitreEmpty
+                      className="border-0 shadow-none"
+                      icon={<NucleoSearch className="h-5 w-5" />}
+                      title="Nothing selected"
+                      hint="Pick an item from the list to inspect its evidence and timeline."
+                    />
                   )}
                 </div>
-              </section>
+              </GravitreSurface>
             </div>
           </>
         )}
+        </div>
       </div>
     </AppShell>
   )

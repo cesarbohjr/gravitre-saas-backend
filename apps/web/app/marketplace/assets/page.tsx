@@ -6,6 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,9 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GridPattern } from "@/components/gravitre/premium-effects"
 import { FilterChip, SegmentedControl } from "@/components/gravitre/filter-chip"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -157,10 +162,10 @@ function ReadinessRing({
 
 function AssetCardSkeleton() {
   return (
-    <div className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-lg" />
+          <Skeleton className="h-10 w-10 rounded-[var(--np-radius-md)]" />
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-20" />
@@ -169,7 +174,7 @@ function AssetCardSkeleton() {
         <Skeleton className="h-9 w-9 rounded-full" />
       </div>
       <Skeleton className="mb-4 h-12 w-full" />
-      <Skeleton className="mb-4 h-16 w-full rounded-lg" />
+      <Skeleton className="mb-4 h-16 w-full rounded-[var(--np-radius-md)]" />
       <div className="mt-auto flex gap-2">
         <Skeleton className="h-8 w-20" />
         <Skeleton className="h-8 w-20" />
@@ -210,15 +215,11 @@ function AssetCard({
       whileHover={reduceMotion ? undefined : { y: -3 }}
       transition={{ duration: 0.35, delay: reduceMotion ? 0 : index * 0.04 }}
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden border bg-gradient-to-br from-card via-card to-muted/20 p-5 shadow-sm transition-shadow hover:shadow-lg",
-        RADIUS.card,
-        asset.installed ? "border-success/30" : "border-border/80 hover:border-primary/30",
+        "group relative flex h-full flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-shadow hover:shadow-md",
+        "rounded-[var(--np-radius-lg)]",
+        asset.installed ? "border-success/30" : "hover:border-[color:var(--g-brand-border)]",
       )}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-primary/10 opacity-0 blur-2xl transition-opacity group-hover:opacity-100"
-      />
       <div className="relative mb-3 flex items-start justify-between gap-3">
         <button
           type="button"
@@ -538,58 +539,59 @@ function MarketplaceAssetsContent() {
 
   return (
     <AppShell title="Marketplace">
-      {/* shrink-0 stops the AppShell's flex-col <main> from compressing this
-         wrapper to the viewport height. Without it, the grid overflows but is
-         clipped by overflow-hidden (used for the decorative grid pattern),
-         which silently kills page scroll and cuts off cards. */}
-      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
-        <GridPattern className="opacity-40" />
-        <div className="relative space-y-6">
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-muted/30 p-5 md:p-6">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-primary/15 blur-3xl"
-            />
-            <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-2xl space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className={TYPE.eyebrow}>Gravitre Marketplace</p>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    <Package className="h-3 w-3" aria-hidden />
-                    {categories?.totalAssets ?? 0} packs
-                  </span>
-                </div>
-                <h1 className={TYPE.pageTitle}>Install packs into your workspace</h1>
-                <p className={TYPE.pageLead}>
-                  One click provisions agents, workflows, and knowledge — then we notify you with deep links
-                  to open them.
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
-                <Button asChild className="rounded-full">
-                  <Link href="/marketplace/installed">
-                    View installed
-                    <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-                <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground md:justify-end">
-                  <Link href="/marketplace/submit" className="transition-colors hover:text-foreground">
-                    Partner submissions
-                  </Link>
-                  <Link href="/marketplace/connectors" className="transition-colors hover:text-foreground">
-                    Partner connectors
-                  </Link>
-                  <Link href="/connectors" className="transition-colors hover:text-foreground">
-                    Connectors
-                  </Link>
-                </nav>
-              </div>
+      {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
+         so the grid can scroll with the page instead of clipping. */}
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Gravitre Marketplace"
+          title="Install packs into your workspace"
+          description="One click provisions agents, workflows, and knowledge — then we notify you with deep links to open them."
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <Button asChild size="sm">
+                <Link href="/marketplace/installed">
+                  View installed
+                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+              <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--g-text-muted)] sm:justify-end">
+                <Link href="/marketplace/submit" className="transition-colors hover:text-foreground">
+                  Partner submissions
+                </Link>
+                <Link href="/marketplace/connectors" className="transition-colors hover:text-foreground">
+                  Partner connectors
+                </Link>
+                <Link href="/connectors" className="transition-colors hover:text-foreground">
+                  Connectors
+                </Link>
+              </nav>
             </div>
-          </div>
+          }
+        />
+
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+            <GravitreMetric
+              label="Catalog packs"
+              value={categories ? (categories.totalAssets ?? 0).toLocaleString() : "—"}
+              hint="Published assets"
+              icon={<Package className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="In view"
+              value={isLoading ? "—" : visibleAssets.length}
+              hint={activeDepartmentLabel ? activeDepartmentLabel : "Current filters"}
+            />
+            <GravitreMetric
+              label="Installed (view)"
+              value={isLoading ? "—" : visibleAssets.filter((a) => a.installed).length}
+              hint="Among loaded results"
+            />
+          </section>
 
           {/* Toolbar: search + department + price, then type chips */}
-          <div className="space-y-3 rounded-2xl border border-border/60 bg-card/60 p-3 md:p-4">
+          <GravitreSurface className="space-y-3 p-3 sm:p-4 md:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -597,7 +599,7 @@ function MarketplaceAssetsContent() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search marketplace…"
-                  className="rounded-full pl-9"
+                  className="rounded-[var(--np-radius-md)] pl-9"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -605,7 +607,7 @@ function MarketplaceAssetsContent() {
                   value={departmentFilter ?? "all"}
                   onValueChange={(value) => setDepartmentFilter(value === "all" ? null : value)}
                 >
-                  <SelectTrigger className="w-full rounded-full sm:w-[200px]" aria-label="Filter by department">
+                  <SelectTrigger className="w-full rounded-[var(--np-radius-md)] sm:w-[200px]" aria-label="Filter by department">
                     <SelectValue placeholder="All departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -629,7 +631,7 @@ function MarketplaceAssetsContent() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+            <div className="flex flex-wrap items-center gap-2 border-t border-divide pt-3">
               {TYPE_FILTERS.map((filter) => (
                 <FilterChip
                   key={filter.id}
@@ -641,7 +643,7 @@ function MarketplaceAssetsContent() {
                 />
               ))}
             </div>
-          </div>
+          </GravitreSurface>
 
           {/* Result meta + clear */}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -655,7 +657,6 @@ function MarketplaceAssetsContent() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="rounded-full"
                 onClick={() => {
                   setTypeFilter("all")
                   setDepartmentFilter(null)
@@ -675,16 +676,16 @@ function MarketplaceAssetsContent() {
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+            <GravitreSurface className="border-destructive/40 bg-destructive/5 text-sm text-destructive">
               <p className="font-medium">Failed to load marketplace catalog.</p>
               <p className="mt-1 text-destructive/80">
                 {error instanceof Error && error.message.trim()
                   ? error.message
                   : "Check that the FastAPI backend is running and FASTAPI_BASE_URL points at it (local default: http://localhost:8000)."}
               </p>
-            </div>
+            </GravitreSurface>
           ) : visibleAssets.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>
+            <GravitreEmpty title={emptyMessage} hint="Adjust filters or clear search to see more packs." />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {visibleAssets.map((asset, index) => (

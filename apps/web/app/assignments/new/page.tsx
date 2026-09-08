@@ -5,8 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
+import { NavTasks } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
 import { hoverLift, pressScale } from "@/lib/animations"
 import { agentsApi, marketplaceApi } from "@/lib/api"
@@ -80,7 +85,7 @@ function avatarGradient(color?: string): string {
   if (value.includes("purple") || value.includes("violet")) return "from-violet-500 to-purple-500"
   if (value.includes("rose")) return "from-rose-500 to-pink-500"
   if (value.includes("cyan")) return "from-cyan-500 to-blue-500"
-  return "from-emerald-500 to-teal-500"
+  return "from-[color:var(--g-brand)] to-[color:var(--g-brand-active)]"
 }
 
 function NewAssignmentPageContent() {
@@ -230,15 +235,61 @@ function NewAssignmentPageContent() {
 
   return (
     <AppShell title="New Assignment">
-      <div className="flex h-full">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          className="shrink-0"
+          eyebrow="Work"
+          title="New Assignment"
+          description="Create a new task for your agent"
+          icon={<NavTasks className="h-5 w-5" />}
+          actions={
+            <div className="flex items-center gap-3">
+              {currentStep > 1 && (
+                <Button variant="outline" onClick={handleBack}>
+                  <Icon name="chevronLeft" size="sm" className="mr-1" />
+                  Back
+                </Button>
+              )}
+              {currentStep < 6 ? (
+                <Button 
+                  onClick={handleNext} 
+                  disabled={!canProceed()}
+                  className="gap-2"
+                >
+                  Continue
+                  <Icon name="chevronRight" size="sm" />
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleRun}
+                  disabled={isWorking || agentsLoading}
+                  className="gap-2 transition-transform duration-150 active:scale-95 motion-safe:hover:scale-[1.03]"
+                >
+                  {isWorking ? (
+                    <>
+                      <Icon name="running" size="sm" className="animate-spin" />
+                      Starting...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="play" size="sm" />
+                      Run Task
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <p className="text-sm text-muted-foreground">
+            Step {currentStep} of {steps.length}: {steps[currentStep - 1].title} — {steps[currentStep - 1].description}
+          </p>
+        </GravitrePageHeader>
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left Sidebar - Steps */}
-        <div className="w-72 border-r border-border bg-card/50 flex flex-col">
-          <div className="p-6 border-b border-border">
-            <h2 className="font-semibold text-foreground">Assign Work</h2>
-            <p className="text-sm text-muted-foreground mt-1">Create a new task for your agent</p>
-          </div>
-          
-          <div className="p-6 flex-1">
+        <div className="flex w-72 flex-col border-r border-divide bg-[color:var(--g-surface-1)]">
+          <div className="flex-1 p-6">
             <div className="space-y-1">
               {steps.map((step, index) => {
                 const isActive = step.id === currentStep
@@ -266,8 +317,8 @@ function NewAssignmentPageContent() {
                     )}
                     <div className={cn(
                       "relative h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 transition-colors",
-                      isActive && "bg-emerald-500 text-white",
-                      isCompleted && "bg-emerald-500/20 text-emerald-400",
+                      isActive && "bg-[color:var(--g-brand)] text-white",
+                      isCompleted && "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                       isUpcoming && "bg-secondary text-muted-foreground"
                     )}>
                       {isCompleted ? (
@@ -299,10 +350,10 @@ function NewAssignmentPageContent() {
 
           {/* Selected Agent Preview */}
           {agent && (
-            <div className="p-6 border-t border-border">
+            <div className="border-t border-divide p-6">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "h-10 w-10 rounded-xl flex items-center justify-center bg-gradient-to-br",
+                  "flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                   agent.gradient
                 )}>
                   <Icon name="ai" size="sm" className="text-white" />
@@ -317,55 +368,9 @@ function NewAssignmentPageContent() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="px-8 py-6 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-foreground">{steps[currentStep - 1].title}</h1>
-                <p className="text-sm text-muted-foreground mt-1">{steps[currentStep - 1].description}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                {currentStep > 1 && (
-                  <Button variant="outline" onClick={handleBack}>
-                    <Icon name="chevronLeft" size="sm" className="mr-1" />
-                    Back
-                  </Button>
-                )}
-                {currentStep < 6 ? (
-                  <Button 
-                    onClick={handleNext} 
-                    disabled={!canProceed()}
-                    className="gap-2"
-                  >
-                    Continue
-                    <Icon name="chevronRight" size="sm" />
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleRun}
-                    disabled={isWorking || agentsLoading}
-                    className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 transition-transform duration-150 active:scale-95 motion-safe:hover:scale-[1.03]"
-                  >
-                    {isWorking ? (
-                      <>
-                        <Icon name="running" size="sm" className="animate-spin" />
-                        Starting...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="play" size="sm" />
-                        Run Task
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-
+        <div className="flex flex-1 flex-col overflow-hidden">
           {/* Step Content */}
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)] sm:py-8">
             <AnimatePresence mode="wait" custom={direction}>
               {/* Step 1: Select Agent */}
               {currentStep === 1 && (
@@ -397,22 +402,22 @@ function NewAssignmentPageContent() {
                         setAgentAutoResolved(false)
                       }}
                       className={cn(
-                        "relative flex items-center gap-4 p-5 rounded-xl border text-left transition-colors",
+                        "relative flex items-center gap-4 p-5 rounded-[var(--np-radius-lg)] border text-left transition-colors",
                         selectedAgent === a.id
-                          ? "border-emerald-500/50 bg-emerald-500/5"
-                          : "border-border bg-card hover:border-border/80 hover:bg-secondary/30"
+                          ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]"
+                          : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:bg-[color:var(--g-surface-2)]"
                       )}
                     >
                       {selectedAgent === a.id && (
                         <motion.span
                           layoutId="assignment-agent-ring"
-                          className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-emerald-500/40"
+                          className="pointer-events-none absolute inset-0 rounded-[var(--np-radius-lg)] ring-1 ring-[color:var(--g-brand-border)]"
                           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
                           aria-hidden
                         />
                       )}
                       <div className={cn(
-                        "h-14 w-14 rounded-xl flex items-center justify-center bg-gradient-to-br shrink-0",
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                         a.gradient
                       )}>
                         <Icon name="ai" size="lg" className="text-white" />
@@ -423,13 +428,13 @@ function NewAssignmentPageContent() {
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                             <motion.div
-                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                              className="h-full rounded-full bg-[color:var(--g-brand)]"
                               initial={reduced ? false : { width: 0 }}
                               animate={{ width: `${a.trainingProgress}%` }}
                               transition={reduced ? { duration: 0 } : { duration: 0.7, delay: index * 0.05 + 0.15, ease: "easeOut" }}
                             />
                           </div>
-                          <span className="text-xs text-emerald-400">{a.trainingProgress}%</span>
+                          <span className="text-xs text-[color:var(--g-brand)]">{a.trainingProgress}%</span>
                         </div>
                       </div>
                       {selectedAgent === a.id && (
@@ -437,7 +442,7 @@ function NewAssignmentPageContent() {
                           initial={reduced ? false : { scale: 0.4, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ type: "spring", stiffness: 500, damping: 22 }}
-                          className="relative h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center"
+                          className="relative flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--g-brand)]"
                         >
                           <Icon name="check" size="xs" className="text-white" />
                         </motion.div>
@@ -460,7 +465,7 @@ function NewAssignmentPageContent() {
                   className="max-w-2xl space-y-4"
                 >
                   {agent ? (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                    <GravitreSurface className="flex items-center justify-between gap-3 p-4" padded={false}>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
                           {agentAutoResolved ? "Auto-selected" : "Assigned to"} {agent.name}
@@ -476,10 +481,10 @@ function NewAssignmentPageContent() {
                       >
                         Change agent
                       </Button>
-                    </div>
+                    </GravitreSurface>
                   ) : null}
-                  <div className="rounded-xl border border-border bg-card overflow-hidden">
-                    <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-emerald-500/5 to-transparent">
+                  <GravitreSurface padded={false} className="overflow-hidden">
+                    <div className="border-b border-divide bg-[color:var(--g-surface-2)] px-6 py-4">
                       <h3 className="font-semibold text-foreground">What do you need done?</h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         Describe the task in detail. Be specific about what you want to achieve.
@@ -532,7 +537,7 @@ function NewAssignmentPageContent() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </GravitreSurface>
                 </motion.div>
               )}
 
@@ -549,11 +554,11 @@ function NewAssignmentPageContent() {
                   className="space-y-6"
                 >
                   {/* Training Knowledge Toggle */}
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+                  <GravitreSurface className="border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] p-5" padded={false}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                          <Icon name="brain" size="md" className="text-emerald-400" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)]">
+                          <Icon name="brain" size="md" className="text-[color:var(--g-brand)]" />
                         </div>
                         <div>
                           <p className="font-semibold text-foreground">Use Training Knowledge</p>
@@ -566,7 +571,7 @@ function NewAssignmentPageContent() {
                         onClick={() => setUseTrainingKnowledge(!useTrainingKnowledge)}
                         className={cn(
                           "h-6 w-11 rounded-full transition-colors",
-                          useTrainingKnowledge ? "bg-emerald-500" : "bg-secondary"
+                          useTrainingKnowledge ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-surface-2)]"
                         )}
                       >
                         <div className={cn(
@@ -575,11 +580,11 @@ function NewAssignmentPageContent() {
                         )} />
                       </button>
                     </div>
-                  </div>
+                  </GravitreSurface>
 
                   {/* Data Sources */}
-                  <div className="rounded-xl border border-border bg-card overflow-hidden">
-                    <div className="px-6 py-4 border-b border-border">
+                  <GravitreSurface padded={false} className="overflow-hidden">
+                    <div className="border-b border-divide px-6 py-4">
                       <h3 className="font-semibold text-foreground">Data Sources</h3>
                       <p className="text-sm text-muted-foreground">Select systems to pull data from</p>
                     </div>
@@ -619,7 +624,7 @@ function NewAssignmentPageContent() {
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </GravitreSurface>
                 </motion.div>
               )}
 
@@ -644,10 +649,10 @@ function NewAssignmentPageContent() {
                         key={output.id}
                         onClick={() => toggleOutput(output.id)}
                         className={cn(
-                          "flex flex-col items-center gap-3 p-6 rounded-xl border transition-all",
+                          "flex flex-col items-center gap-3 p-6 rounded-[var(--np-radius-lg)] border transition-all",
                           selectedOutputs.includes(output.id)
                             ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/20"
-                            : "border-border bg-card hover:border-border/80"
+                            : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:bg-[color:var(--g-surface-2)]"
                         )}
                       >
                         <div className={cn(
@@ -696,10 +701,10 @@ function NewAssignmentPageContent() {
                         key={dest.id}
                         onClick={() => toggleDestination(dest.id)}
                         className={cn(
-                          "flex items-center gap-4 p-5 rounded-xl border transition-all text-left",
+                          "flex items-center gap-4 p-5 rounded-[var(--np-radius-lg)] border transition-all text-left",
                           selectedDestinations.includes(dest.id)
                             ? "border-amber-500/50 bg-amber-500/5"
-                            : "border-border bg-card hover:border-border/80"
+                            : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:bg-[color:var(--g-surface-2)]"
                         )}
                       >
                         <div className={cn(
@@ -724,7 +729,7 @@ function NewAssignmentPageContent() {
                   </div>
 
                   {/* Approval Settings */}
-                  <div className="rounded-xl border border-border bg-card p-5">
+                  <GravitreSurface className="p-5" padded={false}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
@@ -741,7 +746,7 @@ function NewAssignmentPageContent() {
                         onClick={() => setRequireApproval(!requireApproval)}
                         className={cn(
                           "h-6 w-11 rounded-full transition-colors",
-                          requireApproval ? "bg-emerald-500" : "bg-secondary"
+                          requireApproval ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-surface-2)]"
                         )}
                       >
                         <div className={cn(
@@ -750,7 +755,7 @@ function NewAssignmentPageContent() {
                         )} />
                       </button>
                     </div>
-                  </div>
+                  </GravitreSurface>
                 </motion.div>
               )}
 
@@ -767,8 +772,8 @@ function NewAssignmentPageContent() {
                   className="max-w-2xl space-y-6"
                 >
                   {/* Summary Card */}
-                  <div className="rounded-xl border border-border bg-card overflow-hidden">
-                    <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-emerald-500/5 to-transparent">
+                  <GravitreSurface padded={false} className="overflow-hidden">
+                    <div className="border-b border-divide bg-[color:var(--g-surface-2)] px-6 py-4">
                       <h3 className="font-semibold text-foreground">Assignment Summary</h3>
                     </div>
                     <div className="divide-y divide-border">
@@ -777,7 +782,7 @@ function NewAssignmentPageContent() {
                         <span className="text-sm text-muted-foreground">Agent</span>
                         <div className="flex items-center gap-2">
                           <div className={cn(
-                            "h-6 w-6 rounded-md flex items-center justify-center bg-gradient-to-br",
+                            "flex h-6 w-6 items-center justify-center rounded-[var(--np-radius-sm)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                             agent?.gradient
                           )}>
                             <Icon name="ai" size="xs" className="text-white" />
@@ -802,7 +807,7 @@ function NewAssignmentPageContent() {
                         <span className="text-sm text-muted-foreground">Training Knowledge</span>
                         <span className={cn(
                           "text-sm font-medium",
-                          useTrainingKnowledge ? "text-emerald-400" : "text-muted-foreground"
+                          useTrainingKnowledge ? "text-[color:var(--g-brand)]" : "text-muted-foreground"
                         )}>
                           {useTrainingKnowledge ? "Enabled" : "Disabled"}
                         </span>
@@ -843,19 +848,19 @@ function NewAssignmentPageContent() {
                         <span className="text-sm text-muted-foreground">Approval Required</span>
                         <span className={cn(
                           "text-sm font-medium",
-                          requireApproval ? "text-emerald-400" : "text-amber-400"
+                          requireApproval ? "text-[color:var(--g-brand)]" : "text-amber-600"
                         )}>
                           {requireApproval ? "Yes" : "No (Auto-send)"}
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </GravitreSurface>
 
                   {/* Ready Notice */}
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+                  <GravitreSurface className="border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] p-5" padded={false}>
                     <div className="flex items-start gap-4">
-                      <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                        <Icon name="sparkles" size="md" className="text-emerald-400" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)]">
+                        <Icon name="sparkles" size="md" className="text-[color:var(--g-brand)]" />
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">Ready to run</p>
@@ -864,12 +869,13 @@ function NewAssignmentPageContent() {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </GravitreSurface>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
+      </div>
       </div>
     </AppShell>
   )

@@ -3,9 +3,13 @@
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -18,26 +22,6 @@ import {
   ROI_PAGE_TITLE,
 } from "@/lib/marketplace-outcome-labels"
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: number
-  icon: typeof Package
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
-      </div>
-      <p className="text-3xl font-semibold tabular-nums text-foreground">{value.toLocaleString()}</p>
-    </div>
-  )
-}
-
 function TopAssetsTable({
   rows,
 }: {
@@ -45,7 +29,7 @@ function TopAssetsTable({
 }) {
   if (!rows.length) return null
   return (
-    <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
+    <GravitreSurface className="lg:col-span-3">
       <h2 className="mb-3 text-sm font-semibold text-foreground">Top assets by usage</h2>
       <ul className="space-y-2 text-sm">
         {rows.map((row) => (
@@ -64,13 +48,14 @@ function TopAssetsTable({
           </li>
         ))}
       </ul>
-    </div>
+    </GravitreSurface>
   )
 }
+
 function FacetTable({ title, rows }: { title: string; rows: { key: string; count: number }[] }) {
   if (!rows.length) return null
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <GravitreSurface>
       <h2 className="mb-3 text-sm font-semibold text-foreground">{title}</h2>
       <ul className="space-y-2 text-sm">
         {rows.slice(0, 8).map((row) => (
@@ -80,7 +65,7 @@ function FacetTable({ title, rows }: { title: string; rows: { key: string; count
           </li>
         ))}
       </ul>
-    </div>
+    </GravitreSurface>
   )
 }
 
@@ -100,8 +85,10 @@ export default function MarketplaceAnalyticsPage() {
   if (!isAdmin) {
     return (
       <AppShell title="Marketplace analytics">
-        <div className="mx-auto max-w-lg rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          Admin access is required to view marketplace analytics.
+        <div className="bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <GravitreSurface className="mx-auto max-w-lg text-center text-sm text-muted-foreground">
+            Admin access is required to view marketplace analytics.
+          </GravitreSurface>
         </div>
       </AppShell>
     )
@@ -109,55 +96,79 @@ export default function MarketplaceAnalyticsPage() {
 
   return (
     <AppShell title="Marketplace analytics">
-      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
-        <GridPattern className="opacity-40" />
-        <div className="relative space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-                <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
-                Marketplace analytics
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Catalog adoption and your organization&apos;s install activity.
-              </p>
-            </div>
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Gravitre Marketplace"
+          title="Marketplace analytics"
+          description="Catalog adoption and your organization's install activity."
+          icon={<BarChart3 className="h-5 w-5" />}
+          actions={
             <Button variant="outline" size="sm" asChild>
               <Link href="/marketplace/assets">
                 <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                 Marketplace home
               </Link>
             </Button>
-          </div>
+          }
+        />
 
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           {isLoading && !data ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-28 rounded-xl" />
+                <Skeleton key={index} className="h-28 rounded-[var(--np-radius-lg)]" />
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            <GravitreSurface className="border-destructive/30 bg-destructive/5 text-sm text-destructive">
               Could not load analytics summary.
-            </div>
+            </GravitreSurface>
           ) : data ? (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <StatCard label="Catalog assets" value={data.catalog.totalAssets} icon={Package} />
-                <StatCard label="Global installs" value={data.catalog.totalInstallCount} icon={Download} />
-                <StatCard label="Global clones" value={data.catalog.totalCloneCount} icon={Copy} />
-                <StatCard label="Your active installs" value={data.org.activeInstalls} icon={Package} />
-                <StatCard label="Your saved assets" value={data.org.savedAssets} icon={Star} />
-                <StatCard label="Your reviews" value={data.org.reviewsSubmitted} icon={Star} />
-                <StatCard label="Usage events" value={data.org.usageEvents ?? 0} icon={BarChart3} />
+              <div className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-3">
+                <GravitreMetric
+                  label="Catalog assets"
+                  value={data.catalog.totalAssets.toLocaleString()}
+                  icon={<Package className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Global installs"
+                  value={data.catalog.totalInstallCount.toLocaleString()}
+                  icon={<Download className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Global clones"
+                  value={data.catalog.totalCloneCount.toLocaleString()}
+                  icon={<Copy className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Your active installs"
+                  value={data.org.activeInstalls.toLocaleString()}
+                  icon={<Package className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Your saved assets"
+                  value={data.org.savedAssets.toLocaleString()}
+                  icon={<Star className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Your reviews"
+                  value={data.org.reviewsSubmitted.toLocaleString()}
+                  icon={<Star className="h-4 w-4" />}
+                />
+                <GravitreMetric
+                  label="Usage events"
+                  value={(data.org.usageEvents ?? 0).toLocaleString()}
+                  icon={<BarChart3 className="h-4 w-4" />}
+                />
               </div>
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-3">
                 <FacetTable title="By department" rows={data.catalog.byDepartment} />
                 <FacetTable title="By category" rows={data.catalog.byCategory} />
                 <FacetTable title="By asset type" rows={data.catalog.byAssetType} />
               </div>
               <TopAssetsTable rows={data.org.topAssetsByUsage ?? []} />
-              <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
+              <GravitreSurface>
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -171,24 +182,24 @@ export default function MarketplaceAnalyticsPage() {
                   </Button>
                 </div>
                 {roiLoading && !roi ? (
-                  <Skeleton className="h-24 w-full rounded-lg" />
+                  <Skeleton className="h-24 w-full rounded-[var(--np-radius-md)]" />
                 ) : roi ? (
                   <>
-                    <div className="mb-4 grid gap-4 sm:grid-cols-3">
-                      <StatCard
+                    <div className="mb-4 grid gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+                      <GravitreMetric
                         label={CATALOG_ESTIMATE_HOURS_LABEL}
-                        value={roi.totalEstimatedHoursSaved}
-                        icon={Clock}
+                        value={roi.totalEstimatedHoursSaved.toLocaleString()}
+                        icon={<Clock className="h-4 w-4" />}
                       />
-                      <StatCard
+                      <GravitreMetric
                         label={ADOPTED_ESTIMATE_HOURS_LABEL}
-                        value={roi.totalRealizedHoursSaved}
-                        icon={TrendingUp}
+                        value={roi.totalRealizedHoursSaved.toLocaleString()}
+                        icon={<TrendingUp className="h-4 w-4" />}
                       />
-                      <StatCard
+                      <GravitreMetric
                         label={ADOPTION_RATE_ESTIMATE_LABEL}
-                        value={roi.realizationRate}
-                        icon={BarChart3}
+                        value={roi.realizationRate.toLocaleString()}
+                        icon={<BarChart3 className="h-4 w-4" />}
                       />
                     </div>
                     {roi.byAsset.length ? (
@@ -201,7 +212,7 @@ export default function MarketplaceAnalyticsPage() {
                     )}
                   </>
                 ) : null}
-              </div>
+              </GravitreSurface>
             </>
           ) : null}
         </div>

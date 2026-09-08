@@ -18,6 +18,7 @@ import { XmarkOutline24 } from "./XmarkOutline24"
 import { BellOutline24 } from "./BellOutline24"
 import { CommandOutline24 } from "./CommandOutline24"
 import { MagnifierOutline24 } from "./MagnifierOutline24"
+import { NavActivity } from "@/components/icons/nodus-nav/outline"
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string
@@ -60,6 +61,17 @@ export const NucleoBell = withSize(BellOutline24)
 export const NucleoCommand = withSize(CommandOutline24)
 /** Search / magnifier */
 export const NucleoSearch = withSize(MagnifierOutline24)
+/** Activity / execution log */
+export const NucleoActivity = ({
+  className,
+  size = 24,
+  width,
+  height,
+  ...props
+}: IconProps) => {
+  const dim = width ?? height ?? size
+  return <NavActivity className={className} size={dim} {...props} />
+}
 
 export const SEMANTIC_NUCLEO = {
   agent: NucleoAgent,
@@ -68,6 +80,7 @@ export const SEMANTIC_NUCLEO = {
   voice: NucleoVoice,
   approval: NucleoApproval,
   workflow: NucleoWorkflow,
+  activity: NucleoActivity,
   arrowRight: NucleoArrowRight,
   menu: NucleoMenu,
   chevronDown: NucleoChevronDown,

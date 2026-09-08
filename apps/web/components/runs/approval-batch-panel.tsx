@@ -48,7 +48,7 @@ export function ApprovalBatchPanel({
   const allDecided = pendingItems.every((item) => decisions[item.itemKey])
 
   return (
-    <div className="mb-4 space-y-3 rounded-md border border-border bg-background/60 p-3">
+    <div className="mb-4 space-y-3 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Batch review ({batch.items.length} items)
       </p>
@@ -93,7 +93,7 @@ function BatchItemRow({
     item.status === "pending" ? (decision ? decision : "pending") : item.status
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded border border-border px-3 py-2">
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
       <div>
         <p className="text-sm font-medium text-foreground">{item.label}</p>
         {item.sourceNodeId ? (

@@ -13,9 +13,9 @@ import useSWR from "swr"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { toast } from "sonner"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { GravitreSurface } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Select,
@@ -200,7 +200,7 @@ export function FailureAlertsPanel() {
         {/* Ops summary is context, not the task — collapsed by default so alerts
             are the first thing on screen. */}
         <Collapsible open={opsOpen} onOpenChange={setOpsOpen}>
-          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform duration-200", !opsOpen && "-rotate-90")}
               aria-hidden
@@ -225,8 +225,7 @@ export function FailureAlertsPanel() {
             ))}
           </div>
         ) : alerts.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <GravitreSurface className="flex flex-col items-center justify-center gap-3 py-16 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
                 <ShieldCheck className="h-6 w-6 text-success" aria-hidden />
               </div>
@@ -243,8 +242,7 @@ export function FailureAlertsPanel() {
                 <ShieldAlert className="mr-1.5 h-4 w-4" aria-hidden />
                 Scan workflows
               </Button>
-            </CardContent>
-          </Card>
+          </GravitreSurface>
         ) : (
           <div className="space-y-2">
             {grouped.map((group) => (
@@ -292,7 +290,7 @@ function SeverityGroup({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className="rounded-lg border border-border bg-card"
+      className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
     >
       <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
         <ChevronDown

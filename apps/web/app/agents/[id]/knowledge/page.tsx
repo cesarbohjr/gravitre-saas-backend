@@ -7,9 +7,16 @@ import useSWR from "swr"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Icon, type IconName } from "@/lib/icons"
+import { NavDatabase } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
 import { useAuth } from "@/lib/auth-context"
@@ -235,107 +242,47 @@ export default function AgentKnowledgePage({
 
   return (
     <AppShell title={`${agent.name} - Knowledge Base`}>
-      <div className="flex flex-col min-h-full">
-        {/* Header */}
-        <div className="border-b border-border bg-card/50">
-          <div className="px-6 py-6">
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-sm mb-4">
-              <Link
-                href="/agents"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                AI Team
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="AI Team"
+          title="Knowledge Base"
+          description={`Training data and custom instructions for ${agent.name}`}
+          icon={<NavDatabase className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/agents/${agentId}`}>
+                <Button variant="outline" className="gap-2">
+                  Profile
+                </Button>
               </Link>
-              <span className="text-muted-foreground/50">/</span>
-              <Link
-                href={`/agents/${agentId}`}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {agent.name}
+              <Link href={`/agents/${agentId}/capabilities`}>
+                <Button variant="outline" className="gap-2">
+                  Capabilities
+                </Button>
               </Link>
-              <span className="text-muted-foreground/50">/</span>
-              <span className="text-foreground">Knowledge Base</span>
+              <Link href="/training">
+                <Button variant="outline" className="gap-2">
+                  <Icon name="add" size="sm" />
+                  Add Training Data
+                </Button>
+              </Link>
             </div>
+          }
+        />
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-success/20">
-                  <Icon name="database" size="md" className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Knowledge Base</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Training data and custom instructions for {agent.name}
-                  </p>
-                </div>
-              </div>
+        <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric label="Datasets" value={stats.totalDatasets} />
+            <GravitreMetric label="Instructions" value={stats.totalInstructions} />
+            <GravitreMetric label="Ready datasets" value={stats.readyDatasets} />
+            <GravitreMetric
+              label="Last Updated"
+              value={datasets[0]?.updated_at ? formatDate(datasets[0].updated_at) : "—"}
+            />
+          </section>
 
-              <div className="flex items-center gap-2">
-                <Link href={`/agents/${agentId}/capabilities`}>
-                  <Button variant="outline" className="gap-2">
-                    Capabilities
-                  </Button>
-                </Link>
-                <Link href="/training">
-                  <Button variant="outline" className="gap-2">
-                    <Icon name="add" size="sm" />
-                    Add Training Data
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 mt-6 sm:grid-cols-4">
-              {[
-                { label: "Datasets", value: stats.totalDatasets, sub: `${stats.readyDatasets} ready`, icon: "database", color: "emerald" },
-                { label: "Instructions", value: stats.totalInstructions, sub: `${stats.activeInstructions} active`, icon: "file", color: "blue" },
-                { label: "Training Status", value: stats.readyDatasets > 0 ? "Ready" : "Empty", sub: "Knowledge available", icon: "check", color: stats.readyDatasets > 0 ? "emerald" : "amber" },
-                { label: "Last Updated", value: datasets[0]?.updated_at ? formatDate(datasets[0].updated_at) : "Never", sub: "Most recent change", icon: "clock", color: "signal" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="p-4 rounded-xl border border-border bg-card"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center",
-                      stat.color === "emerald" && "bg-success/10",
-                      stat.color === "blue" && "bg-blue-500/10",
-                      stat.color === "signal" && "bg-[color:var(--g-signal-surface)]",
-                      stat.color === "amber" && "bg-warning/10",
-                    )}>
-                      <Icon 
-                        name={stat.icon as IconName} 
-                        size="sm" 
-                        className={cn(
-                          stat.color === "emerald" && "text-success",
-                          stat.color === "blue" && "text-blue-400",
-                          stat.color === "signal" && "text-[color:var(--g-signal)]",
-                          stat.color === "amber" && "text-warning",
-                        )} 
-                      />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                      <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 p-6">
           {/* Tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/50 w-fit mb-6">
-            {[
+          <div className="mb-6 flex w-fit flex-wrap items-center gap-1 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-1">            {[
               { id: "sources", label: "Assigned Sources", icon: "database" },
               { id: "datasets", label: "Training Datasets", icon: "database" },
               { id: "instructions", label: "Custom Instructions", icon: "file" },
@@ -345,9 +292,9 @@ export default function AgentKnowledgePage({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "flex items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
                   activeTab === tab.id
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -365,7 +312,7 @@ export default function AgentKnowledgePage({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <div className="mb-6 rounded-xl border border-border bg-card/50 p-4 space-y-3">
+                <GravitreSurface className="mb-6 space-y-3">
                   <AgentKnowledgePacksEditor
                     value={packDraft}
                     onChange={setPackDraft}
@@ -375,7 +322,7 @@ export default function AgentKnowledgePage({
                     {savingPacks ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     Save knowledge packs
                   </Button>
-                </div>
+                </GravitreSurface>
                 <AgentKnowledgeAssignmentsPanel agentId={agentId} />
               </motion.div>
             )}
@@ -388,21 +335,19 @@ export default function AgentKnowledgePage({
                 exit={{ opacity: 0, y: -10 }}
               >
                 {datasets.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-4">
-                      <Icon name="database" size="lg" className="text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No Training Data</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                      Add training datasets to improve {agent.name}&apos;s knowledge and capabilities.
-                    </p>
-                    <Link href="/training">
-                      <Button className="gap-2">
-                        <Icon name="add" size="sm" />
-                        Add Training Data
-                      </Button>
-                    </Link>
-                  </div>
+                  <GravitreEmpty
+                    icon={<Icon name="database" size="sm" />}
+                    title="No Training Data"
+                    hint={`Add training datasets to improve ${agent.name}'s knowledge and capabilities.`}
+                    action={
+                      <Link href="/training">
+                        <Button className="gap-2">
+                          <Icon name="add" size="sm" />
+                          Add Training Data
+                        </Button>
+                      </Link>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3">
                     {datasets.map((dataset, i) => (
@@ -411,7 +356,7 @@ export default function AgentKnowledgePage({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors"
+                        className="group flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)]"
                       >
                         <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
                           <Icon name="database" size="sm" className="text-success" />
@@ -460,21 +405,19 @@ export default function AgentKnowledgePage({
                 exit={{ opacity: 0, y: -10 }}
               >
                 {instructions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-4">
-                      <Icon name="file" size="lg" className="text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No Custom Instructions</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                      Add custom instructions to guide {agent.name}&apos;s behavior and responses.
-                    </p>
-                    <Link href="/training">
-                      <Button className="gap-2">
-                        <Icon name="add" size="sm" />
-                        Add Instructions
-                      </Button>
-                    </Link>
-                  </div>
+                  <GravitreEmpty
+                    icon={<Icon name="file" size="sm" />}
+                    title="No Custom Instructions"
+                    hint={`Add custom instructions to guide ${agent.name}'s behavior and responses.`}
+                    action={
+                      <Link href="/training">
+                        <Button className="gap-2">
+                          <Icon name="add" size="sm" />
+                          Add Instructions
+                        </Button>
+                      </Link>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3">
                     {instructions.map((instruction, i) => (
@@ -483,7 +426,7 @@ export default function AgentKnowledgePage({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors"
+                        className="group flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)]"
                       >
                         <div className={cn(
                           "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",

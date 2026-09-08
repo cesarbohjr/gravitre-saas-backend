@@ -48,6 +48,7 @@ export const SIDEBAR_NUCLEO_BY_ICON: Partial<Record<IconName, NavIcon>> = {
   database: NavDatabase,
   calendar: NavCalendar,
   checkCircle: NavActivity,
+  activity: NavActivity,
   package: NavPackage,
   fileText: NavFile,
   chartLine: NavChart,

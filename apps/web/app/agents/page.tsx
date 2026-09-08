@@ -6,7 +6,12 @@ import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
@@ -60,7 +65,7 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
@@ -622,12 +627,12 @@ function AgentDetailPanel({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border">
-        <div className="bg-card p-3 sm:p-4 text-center">
-          <div className="text-xl sm:text-2xl font-semibold text-foreground">{agent.stats.tasksToday}</div>
+      <div className="grid grid-cols-2 gap-px bg-divide sm:grid-cols-4">
+        <div className="bg-[color:var(--g-surface-1)] p-3 text-center sm:p-4">
+          <div className="text-xl font-semibold text-foreground sm:text-2xl">{agent.stats.tasksToday}</div>
           <div className={TYPE.metricLabel}>Tasks Today</div>
         </div>
-        <div className="bg-card p-4 text-center">
+        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
           {(() => {
             const rate = getDisplaySuccessRate(agent)
             return (
@@ -643,18 +648,19 @@ function AgentDetailPanel({
           })()}
           <div className={TYPE.metricLabel}>Success Rate</div>
         </div>
-        <div className="bg-card p-4 text-center">
+        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
           <div className="text-2xl font-semibold text-foreground">{agent.stats.avgResponseTime}</div>
           <div className={TYPE.metricLabel}>Avg Response</div>
         </div>
-        <div className="bg-card p-4 text-center">
+        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
           <div className="text-2xl font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
           <div className={TYPE.metricLabel}>Workflows</div>
         </div>
       </div>
 
       {/* Capabilities */}
-      <div className="p-6 border-b border-border">
+      <GravitreSurface className="rounded-none border-x-0 border-t-0 shadow-none" padded={false}>
+        <div className="p-6">
         <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
           Capabilities
         </h3>
@@ -667,17 +673,19 @@ function AgentDetailPanel({
               transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 25 }}
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border cursor-default hover:border-muted-foreground/50 hover:shadow-sm transition-colors"
+              className="flex cursor-default items-center gap-2 rounded-lg border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 transition-colors hover:border-muted-foreground/50 hover:shadow-sm"
             >
               <Sparkles className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm text-foreground">{cap}</span>
             </motion.div>
           ))}
         </div>
-      </div>
+        </div>
+      </GravitreSurface>
 
       {/* Connected Systems */}
-      <div className="p-6 border-b border-border">
+      <GravitreSurface className="rounded-none border-x-0 border-t-0 shadow-none" padded={false}>
+        <div className="p-6">
         <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
           Connected Systems
         </h3>
@@ -691,30 +699,34 @@ function AgentDetailPanel({
               whileHover={{ scale: 1.05 }}
               // `text-blue-400` on a 10% tint was tuned for dark mode and
               // failed contrast in light mode; --info adapts per theme.
-              className="px-2.5 py-1 rounded-md bg-info/10 border border-info/20 hover:bg-info/15 hover:border-info/30 transition-colors cursor-default"
+              className="cursor-default rounded-md border border-info/20 bg-info/10 px-2.5 py-1 transition-colors hover:border-info/30 hover:bg-info/15"
             >
               <span className="text-xs text-info">{perm}</span>
             </motion.div>
           ))}
         </div>
-      </div>
+        </div>
+      </GravitreSurface>
 
       {/* Last Activity */}
-      <div className="p-6 flex-1">
+      <div className="flex-1 p-6">
         <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
           Recent Activity
         </h3>
-        <div className={cn(
-          "rounded-lg border p-4",
-          agent.status === "error" ? "border-destructive/30 bg-destructive/5" : "border-border bg-secondary/30"
-        )}>
+        <GravitreSurface
+          className={cn(
+            "p-4",
+            agent.status === "error" ? "border-destructive/30 bg-destructive/5" : undefined,
+          )}
+          padded={false}
+        >
           <div className="flex items-start gap-3">
             <div className={cn(
-              "h-8 w-8 rounded-full flex items-center justify-center",
+              "flex h-8 w-8 items-center justify-center rounded-full",
               agent.status === "error" ? "bg-destructive/10" : "bg-info/10"
             )}>
               {agent.status === "processing" ? (
-                <Activity className="h-4 w-4 text-info animate-pulse" />
+                <Activity className="h-4 w-4 animate-pulse text-info" />
               ) : agent.status === "error" ? (
                 <Shield className="h-4 w-4 text-destructive" />
               ) : (
@@ -723,10 +735,10 @@ function AgentDetailPanel({
             </div>
             <div className="flex-1">
               <p className="text-sm text-foreground">{agent.lastAction}</p>
-              <p className="text-xs text-muted-foreground mt-1">{agent.lastActionTime}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{agent.lastActionTime}</p>
             </div>
           </div>
-        </div>
+        </GravitreSurface>
       </div>
 
       {/* Footer Actions - Train Agent, Assign Work, View Memory */}
@@ -1084,10 +1096,10 @@ export default function AgentsPage() {
 
   return (
   <AppShell title={SURFACE_COPY.pages.agents.title}>
-    <div className="relative flex h-full flex-col overflow-hidden bg-background lg:flex-row">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row">
   {/* Left - Agent Roster with Orbs */}
-  <div className="relative z-10 flex flex-1 flex-col border-border/50 lg:border-r">
-          <div className="relative z-10 px-4 pt-4 md:px-6 space-y-3">
+  <div className="relative z-10 flex flex-1 flex-col border-divide lg:border-r">
+          <div className="relative z-10 space-y-3 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
             <Suspense fallback={null}>
               <AgentsHubTabs active="roster" />
             </Suspense>
@@ -1095,23 +1107,28 @@ export default function AgentsPage() {
           </div>
           {/* Collapse only hides overview title/stats — primary CTAs stay reachable. */}
           {!headerCollapsed ? (
-            <PageHeader
-              eyebrow="AI Team"
-              title={SURFACE_COPY.pages.agents.rosterTitle}
-              description={SURFACE_COPY.pages.agents.description}
-              icon={NucleoAgent}
-              actions={rosterActions}
-            >
-              <StatsGrid columns={4}>
-                <StatCard
+            <>
+              <GravitrePageHeader
+                className="shrink-0"
+                eyebrow="AI Team"
+                title={SURFACE_COPY.pages.agents.rosterTitle}
+                description={SURFACE_COPY.pages.agents.description}
+                icon={<NucleoAgent className="h-5 w-5" />}
+                actions={rosterActions}
+              />
+              <section className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)] lg:grid-cols-4">
+                <GravitreMetric
                   label="Total"
                   value={<AnimatedCounter value={totalAgents} duration={0.8} />}
+                  hint="In roster"
+                  icon={<NucleoAgent className="h-4 w-4" />}
                 />
-                <StatCard
+                <GravitreMetric
                   label="Active"
                   value={<AnimatedCounter value={activeCount} duration={0.8} />}
-                  variant="success"
+                  hint={activeCount > 0 ? "Ready" : "None active"}
                   className={activeCount > 0 ? "border-success/30" : undefined}
+                  icon={<Play className="h-4 w-4" />}
                 />
                 <motion.div
                   animate={
@@ -1120,30 +1137,32 @@ export default function AgentsPage() {
                       : { scale: 1 }
                   }
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  className={RADIUS.tile}
                 >
-                  <StatCard
+                  <GravitreMetric
                     label="Running"
                     value={<AnimatedCounter value={runningCount} duration={0.8} />}
-                    variant="info"
+                    hint={runningCount > 0 ? "Live work" : "None running"}
                     className={runningCount > 0 ? "border-info/30" : undefined}
+                    icon={<Activity className="h-4 w-4" />}
                   />
                 </motion.div>
-                <StatCard
+                <GravitreMetric
                   label="Failed"
                   value={<AnimatedCounter value={failedCount} duration={0.8} />}
-                  variant={failedCount > 0 ? "danger" : "default"}
+                  hint={failedCount > 0 ? "Needs attention" : "None failed"}
+                  warning={failedCount > 0}
                   className={failedCount > 0 ? "border-destructive/30" : undefined}
+                  icon={<Shield className="h-4 w-4" />}
                 />
-              </StatsGrid>
-            </PageHeader>
+              </section>
+            </>
           ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background/40 px-3 py-2.5 backdrop-blur-sm sm:px-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-divide bg-[color:var(--g-surface-1)]/60 px-[var(--np-page-pad-sm)] py-2.5 backdrop-blur-sm sm:px-[var(--np-page-pad)]">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                <p className="truncate text-sm font-semibold tracking-tight text-[color:var(--g-text-primary)]">
                   {SURFACE_COPY.pages.agents.rosterTitle}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[color:var(--g-text-muted)]">
                   {runningCount} running · {activeCount} active · {totalAgents} total
                   {failedCount > 0 ? ` · ${failedCount} failed` : ""}
                   {totalTasks > 0 ? ` · ${totalTasks} tasks today` : ""}
@@ -1154,10 +1173,10 @@ export default function AgentsPage() {
           )}
 
           {/* Search */}
-          <div className="p-3 sm:p-4 border-b border-border space-y-2">
+          <div className="space-y-2 border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--g-text-muted)]" />
                 <input
                   ref={searchInputRef}
                   type="search"
@@ -1165,7 +1184,7 @@ export default function AgentsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search agents"
-                  className="w-full h-10 sm:h-9 rounded-lg border border-border bg-secondary pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-10 w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:h-9"
                 />
                 {searchQuery ? (
                   <button
@@ -1175,7 +1194,7 @@ export default function AgentsPage() {
                       setSearchQuery("")
                       searchInputRef.current?.focus()
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -1195,34 +1214,34 @@ export default function AgentsPage() {
               </Button>
             </div>
             {normalizedSearchQuery && agents.length > 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[color:var(--g-text-muted)]">
                 {filteredAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
               </p>
             ) : null}
           </div>
 
           {/* Agent Orb Grid - Premium with particle field */}
-          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-5">
+          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
             {/* Center stage area. On mobile it keeps a fixed-height band for the
                horizontal carousel; on desktop it grows with content (min-h-0) so
                a tall, wrapped constellation flows from the top and scrolls in the
                parent instead of being vertically centered and clipped. */}
-            <div className="relative flex flex-1 flex-col min-h-[360px] sm:min-h-0">
+            <div className="relative flex min-h-[360px] flex-1 flex-col sm:min-h-0">
               {/* Circular platform effect (clipped so the large rings never force
                  horizontal overflow on narrow/mobile viewports). */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
                 <motion.div 
-                  className="w-[600px] h-[600px] rounded-full border border-chart-4/10"
+                  className="h-[600px] w-[600px] rounded-full border border-chart-4/10"
                   animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
                   transition={{ duration: 8, repeat: Infinity }}
                 />
                 <motion.div 
-                  className="absolute w-[450px] h-[450px] rounded-full border border-chart-2/10"
+                  className="absolute h-[450px] w-[450px] rounded-full border border-chart-2/10"
                   animate={{ scale: [1.05, 1, 1.05], opacity: [0.4, 0.2, 0.4] }}
                   transition={{ duration: 6, repeat: Infinity }}
                 />
                 <motion.div 
-                  className="absolute w-[300px] h-[300px] rounded-full border border-chart-1/10"
+                  className="absolute h-[300px] w-[300px] rounded-full border border-chart-1/10"
                   animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }}
                   transition={{ duration: 5, repeat: Infinity }}
                 />
@@ -1239,9 +1258,9 @@ export default function AgentsPage() {
                 "relative z-10 flex w-full gap-4 sm:gap-6 lg:gap-8",
                 // Mobile carousel. overflow-x-auto forces overflow-y to clip, so
                 // full-height orbs are centered within the tall band.
-                "my-auto flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 py-4",
+                "-mx-4 my-auto snap-x snap-mandatory flex-nowrap items-center overflow-x-auto px-4 py-4 scrollbar-hide",
                 // sm+: wrapping constellation, top-aligned — denser than marketing stage.
-                "sm:my-0 sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:py-6",
+                "sm:mx-0 sm:my-0 sm:snap-none sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:py-6",
               )}>
                 {error ? (
                   <WorkSectionErrorCard
@@ -1251,7 +1270,7 @@ export default function AgentsPage() {
                     className="mx-auto max-w-sm"
                   />
                 ) : isLoading && agents.length === 0 ? (
-                  <div className="mx-auto flex flex-wrap justify-center gap-6 sm:gap-8 pt-4 sm:pt-6 pb-20">
+                  <div className="mx-auto flex flex-wrap justify-center gap-6 pb-20 pt-4 sm:gap-8 sm:pt-6">
                     {Array.from({ length: 6 }).map((_, index) => (
                       <div key={index} className="flex flex-col items-center gap-3">
                         <Skeleton className="h-24 w-24 rounded-full" />
@@ -1261,38 +1280,37 @@ export default function AgentsPage() {
                     ))}
                   </div>
                 ) : filteredAgents.length === 0 ? (
-                  <div className="mx-auto text-center space-y-3 px-4">
+                  <div className="mx-auto w-full max-w-sm px-4">
                     {normalizedSearchQuery ? (
-                      <>
-                        <Bot className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                        <p className="text-sm text-muted-foreground">
-                          No agents matching &apos;{searchQuery.trim()}&apos;
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery("")
-                            searchInputRef.current?.focus()
-                          }}
-                        >
-                          Clear search
-                        </Button>
-                      </>
+                      <GravitreEmpty
+                        icon={<Bot className="h-5 w-5" />}
+                        title={`No agents matching '${searchQuery.trim()}'`}
+                        hint="Try a different name, role, or department."
+                        action={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSearchQuery("")
+                              searchInputRef.current?.focus()
+                            }}
+                          >
+                            Clear search
+                          </Button>
+                        }
+                      />
                     ) : (
-                      <>
-                        {/* Matches the search-empty branch above, which already
-                            leads with an icon, so the two states look related. */}
-                        <Bot className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                        <p className="text-sm font-medium text-foreground">No agents yet</p>
-                        <p className="mx-auto max-w-xs text-sm text-muted-foreground text-pretty">
-                          Create your first AI teammate to start delegating work.
-                        </p>
-                        <Button onClick={() => router.push("/agents/new")} className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          New Agent
-                        </Button>
-                      </>
+                      <GravitreEmpty
+                        icon={<Bot className="h-5 w-5" />}
+                        title="No agents yet"
+                        hint="Create your first AI teammate to start delegating work."
+                        action={
+                          <Button onClick={() => router.push("/agents/new")} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            New Agent
+                          </Button>
+                        }
+                      />
                     )}
                   </div>
                 ) : (
@@ -1326,7 +1344,7 @@ export default function AgentsPage() {
           />
         ) : null}
 
-{/* Right - Agent Detail Panel - Premium glassmorphism */}
+{/* Right - Agent Detail Panel */}
         <AnimatePresence initial={false}>
           {/* Only reserve the side-panel width when there is actually an agent
              to show. Previously the panel defaulted open and reserved 420px even
@@ -1339,7 +1357,7 @@ export default function AgentsPage() {
               animate={{ width: 420, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative z-10 hidden lg:block overflow-hidden bg-card/40 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-border/50 shadow-2xl shrink-0"
+              className="relative z-10 hidden shrink-0 overflow-hidden border-t border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:block lg:border-l lg:border-t-0"
             >
               {/* Was a full-opacity violet -> blue -> emerald rainbow strip,
                   which read as decoration rather than as part of the product.

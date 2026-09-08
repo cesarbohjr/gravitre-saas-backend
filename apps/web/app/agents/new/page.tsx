@@ -4,7 +4,12 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
+import { NucleoAgent } from "@/components/icons/nucleo/semantic"
 import {
   ArrowLeft,
   ArrowRight,
@@ -244,25 +249,25 @@ export default function NewAgentPage() {
 
   return (
     <AppShell title="Add Team Member">
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              href="/agents"
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Your AI Team
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-foreground">Add Team Member</span>
-          </div>
-        </div>
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="AI Team"
+          title="Add Team Member"
+          description="Configure purpose, skills, apps, and limits for a new agent."
+          icon={<NucleoAgent className="h-5 w-5" />}
+          actions={
+            <Button variant="outline" asChild>
+              <Link href="/agents" className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                Your AI Team
+              </Link>
+            </Button>
+          }
+        />
 
         {/* Progress Steps */}
-        <div className="border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between max-w-3xl mx-auto">
+        <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)]">
+          <div className="mx-auto flex max-w-3xl items-center justify-between">
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div className="flex items-center gap-2">
@@ -271,8 +276,8 @@ export default function NewAgentPage() {
                     currentStep === step.id
                       ? "bg-foreground text-background"
                       : currentStep > step.id
-                        ? "bg-success text-success-foreground"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-[color:var(--g-brand)] text-white"
+                        : "bg-[color:var(--g-surface-2)] text-muted-foreground"
                   )}>
                     {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
                   </div>
@@ -288,7 +293,7 @@ export default function NewAgentPage() {
                 {index < steps.length - 1 && (
                   <div className={cn(
                     "mx-4 h-px w-12 transition-colors",
-                    currentStep > step.id ? "bg-success" : "bg-border"
+                    currentStep > step.id ? "bg-[color:var(--g-brand)]" : "bg-divide"
                   )} />
                 )}
               </div>
@@ -297,8 +302,8 @@ export default function NewAgentPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="max-w-2xl mx-auto">
+        <div className="flex-1 overflow-y-auto px-[var(--np-page-pad-sm)] py-8 sm:px-[var(--np-page-pad)]">
+          <div className="mx-auto max-w-2xl">
             {/* Step 1: Purpose */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -354,7 +359,7 @@ export default function NewAgentPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-border bg-card p-4">
+                  <GravitreSurface>
                     <AgentPersonalitySection
                       voiceProfile={voiceProfile}
                       onVoiceProfileChange={setVoiceProfile}
@@ -363,7 +368,7 @@ export default function NewAgentPage() {
                       department={selectedDepartment}
                       showVoiceConfigure={showVoiceConfigure}
                     />
-                  </div>
+                  </GravitreSurface>
 
                   <AgentIdentityPicker
                     name={agentName.trim() || "New Agent"}
@@ -371,7 +376,7 @@ export default function NewAgentPage() {
                     avatarColor={selectedColor}
                     onIconChange={setSelectedIcon}
                     onColorChange={setSelectedColor}
-                    className="rounded-lg border border-border bg-card p-4"
+                    className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
                   />
 
                   {/* Model Selection */}
@@ -390,7 +395,7 @@ export default function NewAgentPage() {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-border bg-card p-4">
+                <GravitreSurface>
                   <div className="flex items-start gap-3">
                     <Sparkles className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
@@ -400,7 +405,7 @@ export default function NewAgentPage() {
                       </p>
                     </div>
                   </div>
-                </div>
+                </GravitreSurface>
               </div>
             )}
 
@@ -592,7 +597,7 @@ export default function NewAgentPage() {
                   </p>
                 </div>
 
-                <div className="rounded-lg border border-border bg-card divide-y divide-border">
+                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] divide-y divide-border">
                   {/* Name & Purpose */}
                   <div className="p-5">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name & Purpose</p>
@@ -600,7 +605,7 @@ export default function NewAgentPage() {
                       {(() => {
                         const AgentIcon = getAgentIcon(agentName)
                         return (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--g-brand)]">
                             <AgentIcon className="h-7 w-7 text-white" />
                           </div>
                         )
@@ -694,7 +699,7 @@ export default function NewAgentPage() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border px-6 py-4">
+        <div className="border-t border-divide px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)]">
           <div className="flex items-center justify-between max-w-2xl mx-auto">
             <Button
               variant="outline"

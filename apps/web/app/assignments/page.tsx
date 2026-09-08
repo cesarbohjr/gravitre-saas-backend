@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+} from "@/components/gravitre/nodus-product"
 import { AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
@@ -15,9 +20,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Icon, type IconName } from "@/lib/icons"
+import { Icon } from "@/lib/icons"
+import { NavTasks } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
-import { INTERACTION, RADIUS, TYPE } from "@/lib/design-system"
+import { INTERACTION } from "@/lib/design-system"
 import { type DemoAssignment } from "@/lib/demo-assignments"
 import {
   ASSIGNMENTS_REFRESH_KEY,
@@ -58,11 +64,11 @@ const initialAssignments: Assignment[] = []
 const ASSIGNMENTS_REFRESH_MS = 15_000
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; dotColor: string; icon: string }> = {
-  running: { label: "Running", color: "text-blue-400", bgColor: "bg-blue-500/10", dotColor: "bg-blue-500", icon: "activity" },
-  completed: { label: "Completed", color: "text-emerald-400", bgColor: "bg-emerald-500/10", dotColor: "bg-emerald-500", icon: "check" },
-  pending: { label: "Queued", color: "text-amber-400", bgColor: "bg-amber-500/10", dotColor: "bg-amber-500", icon: "clock" },
-  failed: { label: "Failed", color: "text-red-400", bgColor: "bg-red-500/10", dotColor: "bg-red-500", icon: "warning" },
-  needs_approval: { label: "Needs Approval", color: "text-violet-400", bgColor: "bg-violet-500/10", dotColor: "bg-violet-500", icon: "shield" },
+  running: { label: "Running", color: "text-info", bgColor: "bg-info/10", dotColor: "bg-info", icon: "activity" },
+  completed: { label: "Completed", color: "text-[color:var(--g-brand)]", bgColor: "bg-[color:var(--g-brand-soft)]", dotColor: "bg-[color:var(--g-brand)]", icon: "check" },
+  pending: { label: "Queued", color: "text-amber-700", bgColor: "bg-amber-500/10", dotColor: "bg-amber-500", icon: "clock" },
+  failed: { label: "Failed", color: "text-destructive", bgColor: "bg-destructive/10", dotColor: "bg-destructive", icon: "warning" },
+  needs_approval: { label: "Needs Approval", color: "text-violet-700", bgColor: "bg-violet-500/10", dotColor: "bg-violet-500", icon: "shield" },
 }
 
 function deriveAssignmentProgress(assignment: DemoAssignment): number {
@@ -97,10 +103,10 @@ function AssignmentProgressBar({ assignment }: { assignment: DemoAssignment }) {
 
   const fillClass = cn(
     "h-full rounded-full transition-[width] duration-300 ease-out",
-    assignment.status === "running" && "bg-blue-500",
-    assignment.status === "completed" && "bg-emerald-500",
-    assignment.status === "needs_approval" && "bg-gradient-to-r from-violet-500 to-amber-500",
-    assignment.status === "failed" && "bg-red-500",
+    assignment.status === "running" && "bg-info",
+    assignment.status === "completed" && "bg-[color:var(--g-brand)]",
+    assignment.status === "needs_approval" && "bg-violet-500",
+    assignment.status === "failed" && "bg-destructive",
     assignment.status === "pending" && "bg-amber-500/70",
   )
 
@@ -110,25 +116,17 @@ function AssignmentProgressBar({ assignment }: { assignment: DemoAssignment }) {
         <Tooltip>
           <TooltipTrigger asChild>
             <div
-              className="relative h-2 w-full cursor-default overflow-hidden rounded-full bg-muted/80"
+              className="relative h-2 w-full cursor-default overflow-hidden rounded-full bg-[color:var(--g-surface-2)]"
               aria-label={`${percent}% complete`}
             >
               <div className={fillClass} style={{ width: `${percent}%` }} />
-              {assignment.status === "running" && percent > 0 ? (
-                <div
-                  className="pointer-events-none absolute inset-y-0 left-0 overflow-hidden rounded-full"
-                  style={{ width: `${percent}%` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-white/30 to-blue-500/0 animate-shimmer" />
-                </div>
-              ) : null}
             </div>
           </TooltipTrigger>
           <TooltipContent side="top">{percent}% complete</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       {runningLabel ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-blue-400">
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-info">
           <RefreshCw className="h-3 w-3 shrink-0 animate-spin" />
           <span className="line-clamp-1">{runningLabel}</span>
         </p>
@@ -141,11 +139,11 @@ function AssignmentProgressBar({ assignment }: { assignment: DemoAssignment }) {
 function ActivityPulse() {
   return (
     <div className="relative flex items-center gap-2">
-      <div className="relative h-3 w-3">
-        <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
-        <div className="relative h-full w-full rounded-full bg-emerald-500" />
+      <div className="relative h-2.5 w-2.5">
+        <div className="absolute inset-0 animate-ping rounded-full bg-[color:var(--g-brand)] opacity-60" />
+        <div className="relative h-full w-full rounded-full bg-[color:var(--g-brand)]" />
       </div>
-      <span className="text-xs font-medium text-emerald-400">Live</span>
+      <span className="text-xs font-medium text-[color:var(--g-brand)]">Live</span>
     </div>
   )
 }
@@ -184,36 +182,29 @@ function AssignmentCard({
         }
       }}
       className={cn(
-        "group relative cursor-pointer overflow-hidden border border-border bg-card/80 p-4 backdrop-blur-sm transition-all hover:border-muted-foreground/30 hover:shadow-lg sm:p-5",
-        // One card radius everywhere. Was rounded-xl -> sm:rounded-2xl, which
-        // meant cards changed shape at the breakpoint while sibling surfaces
-        // on the same page did not.
-        RADIUS.card,
+        "group relative cursor-pointer overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)] sm:p-5",
         INTERACTION,
       )}
     >
       {/* Status indicator line */}
       <div className={cn(
-        "absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl",
-        assignment.status === "running" && "bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 animate-pulse",
-        assignment.status === "completed" && "bg-emerald-500",
+        "absolute left-0 right-0 top-0 h-0.5",
+        assignment.status === "running" && "bg-info",
+        assignment.status === "completed" && "bg-[color:var(--g-brand)]",
         assignment.status === "pending" && "bg-amber-500",
-        assignment.status === "failed" && "bg-red-500",
-        assignment.status === "needs_approval" && "bg-gradient-to-r from-violet-500 to-purple-500",
+        assignment.status === "failed" && "bg-destructive",
+        assignment.status === "needs_approval" && "bg-violet-500",
       )} />
 
       <div className="flex items-start gap-3 sm:gap-4">
         {/* Agent Avatar */}
         <div className="relative shrink-0">
-          <div className={cn(
-            "h-10 w-10 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl bg-gradient-to-br flex items-center justify-center text-white",
-            assignment.agent.gradient
-          )}>
+          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)] sm:h-12 sm:w-12">
             <assignment.agent.icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           {assignment.status === "running" && (
             <motion.div
-              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center"
+              className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-info"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
@@ -258,8 +249,8 @@ function AssignmentCard({
               <div className="flex items-center gap-1.5 ml-auto">
                 <span className={cn(
                   "font-medium",
-                  assignment.confidence >= 90 ? "text-emerald-400" : 
-                  assignment.confidence >= 70 ? "text-amber-400" : "text-red-400"
+                  assignment.confidence >= 90 ? "text-[color:var(--g-brand)]" : 
+                  assignment.confidence >= 70 ? "text-amber-600" : "text-destructive"
                 )}>
                   {assignment.confidence}% confident
                 </span>
@@ -272,7 +263,7 @@ function AssignmentCard({
                   event.stopPropagation()
                   onOpenApproval()
                 }}
-                className="ml-auto text-xs font-medium text-violet-400 underline-offset-2 hover:underline"
+                className="ml-auto text-xs font-medium text-violet-600 underline-offset-2 hover:underline"
               >
                 Approval
               </button>
@@ -304,9 +295,9 @@ function AssignmentListSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className={cn("border border-border bg-card/50 p-5", RADIUS.card)}>
+        <div key={index} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
           <div className="flex items-start gap-4">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+            <Skeleton className="h-12 w-12 shrink-0 rounded-[var(--np-radius-md)]" />
             <div className="flex-1 space-y-3">
               <Skeleton className="h-4 w-2/5" />
               <Skeleton className="h-3 w-3/5" />
@@ -317,93 +308,6 @@ function AssignmentListSkeleton() {
         </div>
       ))}
     </div>
-  )
-}
-
-// Stats Card
-type StatTrendDirection = "up" | "down" | "neutral"
-
-type AssignmentStat = {
-  label: string
-  value: number
-  icon: IconName
-  color: "blue" | "emerald" | "violet" | "amber"
-  trend?: { label: string; direction: StatTrendDirection }
-  duration?: number
-}
-
-function StatTrendBadge({ trend }: { trend: { label: string; direction: StatTrendDirection } }) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium sm:text-xs",
-        trend.direction === "up" && "border-emerald-500/25 bg-emerald-500/10 text-emerald-400",
-        trend.direction === "down" && "border-red-500/25 bg-red-500/10 text-red-400",
-        trend.direction === "neutral" && "border-border bg-secondary/60 text-muted-foreground",
-      )}
-    >
-      {trend.label}
-    </span>
-  )
-}
-
-function StatCard({ stat, index }: { stat: AssignmentStat; index: number }) {
-  const valueColorClass = cn(
-    stat.color === "blue" && "text-blue-400",
-    stat.color === "emerald" && "text-emerald-400",
-    stat.color === "amber" && "text-amber-400",
-    stat.color === "violet" && "text-violet-400",
-  )
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ y: -2, transition: { duration: 0.15 } }}
-      className={cn(
-        "relative overflow-hidden border p-5 transition-colors",
-        RADIUS.card,
-        "border-border bg-card/50 hover:bg-secondary/30",
-        stat.color === "blue" && stat.value > 0 && "border-blue-500/20",
-        stat.color === "violet" && stat.value > 0 && "border-violet-500/20",
-      )}
-    >
-      <div
-        className="absolute -top-6 -right-6 h-24 w-24 rounded-full opacity-10"
-        style={{
-          background:
-            stat.color === "blue"
-              ? "radial-gradient(circle, #3b82f6 0%, transparent 70%)"
-              : stat.color === "emerald"
-                ? "radial-gradient(circle, #10b981 0%, transparent 70%)"
-                : stat.color === "amber"
-                  ? "radial-gradient(circle, #f59e0b 0%, transparent 70%)"
-                  : "radial-gradient(circle, #8b5cf6 0%, transparent 70%)",
-        }}
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div
-            className={cn(
-              "mb-2 flex h-8 w-8 items-center justify-center rounded-lg sm:mb-3 sm:h-10 sm:w-10 sm:rounded-xl",
-              stat.color === "blue" && "bg-blue-500/10",
-              stat.color === "emerald" && "bg-emerald-500/10",
-              stat.color === "amber" && "bg-amber-500/10",
-              stat.color === "violet" && "bg-violet-500/10",
-            )}
-          >
-            <Icon name={stat.icon} size="sm" className={valueColorClass} />
-          </div>
-          <p className={cn("text-2xl font-bold sm:text-3xl", valueColorClass)}>
-            <AnimatedCounter value={stat.value} duration={stat.duration ?? 0.7 + index * 0.1} />
-          </p>
-          <p className="text-xs text-muted-foreground sm:text-sm">{stat.label}</p>
-        </div>
-        {stat.trend ? <StatTrendBadge trend={stat.trend} /> : null}
-      </div>
-    </motion.div>
   )
 }
 
@@ -418,12 +322,12 @@ type AssignmentFilterOption = {
 }
 
 const filterAccentStyles: Record<FilterAccent, string> = {
-  default: "bg-card border-border/80 shadow-sm",
-  blue: "bg-blue-500/10 border-blue-500/25 shadow-sm shadow-blue-500/5",
-  violet: "bg-violet-500/10 border-violet-500/25 shadow-sm shadow-violet-500/5",
-  emerald: "bg-emerald-500/10 border-emerald-500/25 shadow-sm shadow-emerald-500/5",
-  amber: "bg-amber-500/10 border-amber-500/25 shadow-sm shadow-amber-500/5",
-  red: "bg-red-500/10 border-red-500/25 shadow-sm shadow-red-500/5",
+  default: "bg-[color:var(--g-surface-1)] border-divide shadow-[var(--np-shadow)]",
+  blue: "bg-info/10 border-info/25 shadow-[var(--np-shadow)]",
+  violet: "bg-violet-500/10 border-violet-500/25 shadow-[var(--np-shadow)]",
+  emerald: "bg-[color:var(--g-brand-soft)] border-[color:var(--g-brand-border)] shadow-[var(--np-shadow)]",
+  amber: "bg-amber-500/10 border-amber-500/25 shadow-[var(--np-shadow)]",
+  red: "bg-destructive/10 border-destructive/25 shadow-[var(--np-shadow)]",
 }
 
 function AssignmentFilterTabs({
@@ -439,11 +343,7 @@ function AssignmentFilterTabs({
     <div
       role="tablist"
       aria-label="Filter assignments by status"
-      className={cn(
-        "flex items-center gap-1 overflow-x-auto bg-secondary/50 p-1 scrollbar-none",
-        // Pill container, matching HubTabs / SegmentedControl / FilterChip.
-        RADIUS.control,
-      )}
+      className="flex items-center gap-1 overflow-x-auto rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1 scrollbar-none"
     >
       {options.map((option) => {
         const isActive = value === option.id
@@ -455,30 +355,30 @@ function AssignmentFilterTabs({
             aria-selected={isActive}
             onClick={() => onChange(option.id)}
             className={cn(
-              "relative z-10 flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
+              "relative z-10 flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--np-radius-md)] px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
               isActive ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {isActive ? (
               <motion.span
                 layoutId="assignment-filter-active"
-                className={cn("absolute inset-0 rounded-lg border", filterAccentStyles[option.accent])}
+                className={cn("absolute inset-0 rounded-[var(--np-radius-md)] border", filterAccentStyles[option.accent])}
                 transition={{ type: "spring", stiffness: 500, damping: 38 }}
               />
             ) : null}
             <span className="relative z-10 flex items-center gap-1.5">
               {option.showAttentionDot ? (
                 <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
                 </span>
               ) : null}
               {option.label}
             </span>
             <span
               className={cn(
-                "relative z-10 rounded-md px-1 py-0.5 text-[10px] tabular-nums sm:px-1.5 sm:text-xs",
-                isActive ? "bg-secondary/80 text-foreground" : "text-muted-foreground",
+                "relative z-10 rounded-[var(--np-radius-sm)] px-1 py-0.5 text-[10px] tabular-nums sm:px-1.5 sm:text-xs",
+                isActive ? "bg-[color:var(--g-surface-2)] text-foreground" : "text-muted-foreground",
               )}
             >
               <AnimatedCounter value={option.count} duration={0.45} />
@@ -535,51 +435,10 @@ export default function AssignmentsPage() {
     ? assignmentList 
     : assignmentList.filter(a => a.status === filter)
 
-  const stats = useMemo<AssignmentStat[]>(() => {
-    const inProgress = assignmentList.filter((a) => a.status === "running").length
-    const completed = assignmentList.filter((a) => a.status === "completed").length
-    const pendingApproval = assignmentList.filter((a) => a.status === "needs_approval").length
-    const queued = assignmentList.filter((a) => a.status === "pending").length
-
-    return [
-      {
-        label: "In Progress",
-        value: inProgress,
-        icon: "activity",
-        color: "blue",
-        trend: inProgress > 0 ? { label: "Active now", direction: "neutral" } : undefined,
-        duration: 0.6,
-      },
-      {
-        label: "Completed",
-        value: completed,
-        icon: "check",
-        color: "emerald",
-        trend: completed > 0 ? { label: "Finished tasks", direction: "neutral" } : undefined,
-        duration: 0.75,
-      },
-      {
-        label: "Pending Approval",
-        value: pendingApproval,
-        icon: "clock",
-        color: "violet",
-        trend: pendingApproval > 0
-          ? { label: "Awaiting review", direction: "neutral" }
-          : { label: "All clear", direction: "neutral" },
-        duration: 0.85,
-      },
-      {
-        label: "Queued",
-        value: queued,
-        icon: "list",
-        color: "amber",
-        trend: queued > 0
-          ? { label: `${queued} scheduled`, direction: "neutral" }
-          : undefined,
-        duration: 0.95,
-      },
-    ]
-  }, [assignmentList])
+  const inProgressCount = assignmentList.filter((a) => a.status === "running").length
+  const completedCount = assignmentList.filter((a) => a.status === "completed").length
+  const pendingApprovalCount = assignmentList.filter((a) => a.status === "needs_approval").length
+  const queuedCount = assignmentList.filter((a) => a.status === "pending").length
 
   const filterOptions = useMemo<AssignmentFilterOption[]>(() => {
     const countByStatus = (status: DemoAssignment["status"]) =>
@@ -617,62 +476,73 @@ export default function AssignmentsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.assignments.title}>
-      <div className="flex flex-col min-h-full">
-        {/* Header */}
-        <div className="relative overflow-hidden border-b border-border">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5" />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          
-          <div className="relative px-4 sm:px-8 py-4 sm:py-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-3 sm:gap-4">
-                {/* Icon tile matches PageHeader's: same 10x10 box, RADIUS.tile
-                    and brand tint, instead of a bespoke 14x14 emerald gradient
-                    with a hardcoded rgba glow that sat outside the palette. */}
-                <div
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60",
-                    RADIUS.tile,
-                  )}
-                >
-                  <Icon name="tasks" size="lg" className="text-primary" />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <p className={TYPE.eyebrow}>Work</p>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <h1 className={TYPE.pageTitle}>{SURFACE_COPY.pages.assignments.title}</h1>
-                    <ActivityPulse />
-                  </div>
-                  <p className={cn(TYPE.pageLead, "hidden sm:block")}>{SURFACE_COPY.pages.assignments.description}</p>
-                </div>
-              </div>
-              
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Work"
+          title={SURFACE_COPY.pages.assignments.title}
+          description={SURFACE_COPY.pages.assignments.description}
+          icon={<NavTasks className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <ActivityPulse />
               <Button
-                className={cn("w-full gap-2 shadow-sm sm:w-auto", RADIUS.control)}
+                className="w-full gap-2 shadow-[var(--np-shadow)] sm:w-auto"
                 onClick={openNewAssignment}
               >
                 <Icon name="add" size="sm" />
                 New Assignment
               </Button>
             </div>
+          }
+        />
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {stats.map((stat, i) => (
-                <StatCard key={stat.label} stat={stat} index={i} />
-              ))}
-            </div>
-          </div>
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-6">
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric
+              label="In Progress"
+              value={
+                showListSkeleton ? "—" : <AnimatedCounter value={inProgressCount} duration={0.6} />
+              }
+              hint={inProgressCount > 0 ? "Running now" : "None running"}
+              icon={<Icon name="activity" size="sm" />}
+            />
+            <GravitreMetric
+              label="Completed"
+              value={
+                showListSkeleton ? "—" : <AnimatedCounter value={completedCount} duration={0.75} />
+              }
+              hint="Finished assignments"
+              icon={<Icon name="check" size="sm" />}
+            />
+            <GravitreMetric
+              label="Pending Approval"
+              value={
+                showListSkeleton ? (
+                  "—"
+                ) : (
+                  <AnimatedCounter value={pendingApprovalCount} duration={0.85} />
+                )
+              }
+              hint={pendingApprovalCount > 0 ? "Needs review" : "None waiting"}
+              warning={pendingApprovalCount > 0}
+              icon={<Icon name="shield" size="sm" />}
+            />
+            <GravitreMetric
+              label="Queued"
+              value={
+                showListSkeleton ? "—" : <AnimatedCounter value={queuedCount} duration={0.95} />
+              }
+              hint="Waiting to start"
+              icon={<Icon name="clock" size="sm" />}
+            />
+          </section>
 
-        {/* Filters & Content */}
-        <div className="flex-1 px-4 sm:px-8 py-4 sm:py-6">
           {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-0">
             <AssignmentFilterTabs options={filterOptions} value={filter} onChange={setFilter} />
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 h-9">
+              <Button variant="outline" size="sm" className="h-9 gap-2">
                 <Icon name="filter" size="sm" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
@@ -693,7 +563,6 @@ export default function AssignmentsPage() {
               title="Could not load assignments"
               message="Your assignments list could not be refreshed. Showing the last loaded data if available."
               onRetry={() => void refreshAssignments()}
-              className="mb-4"
             />
           ) : null}
 
@@ -723,27 +592,21 @@ export default function AssignmentsPage() {
           )}
 
           {!showListSkeleton && filteredAssignments.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20"
-            >
-              <div className="h-20 w-20 rounded-2xl bg-secondary flex items-center justify-center mb-4">
-                <Icon name="tasks" size="xl" className="text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                {assignmentList.length === 0 ? "No assignments yet" : "No assignments found"}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {assignmentList.length === 0
+            <GravitreEmpty
+              icon={<Icon name="tasks" size="lg" />}
+              title={assignmentList.length === 0 ? "No assignments yet" : "No assignments found"}
+              hint={
+                assignmentList.length === 0
                   ? "Assign your first task to an AI agent on your team."
-                  : "Try adjusting your filters or create a new assignment"}
-              </p>
-              <Button onClick={openNewAssignment} className="gap-2">
-                <Icon name="add" size="sm" />
-                New Assignment
-              </Button>
-            </motion.div>
+                  : "Try adjusting your filters or create a new assignment"
+              }
+              action={
+                <Button onClick={openNewAssignment} className="gap-2">
+                  <Icon name="add" size="sm" />
+                  New Assignment
+                </Button>
+              }
+            />
           )}
         </div>
       </div>

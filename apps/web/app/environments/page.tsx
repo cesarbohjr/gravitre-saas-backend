@@ -5,6 +5,12 @@ import { useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -15,13 +21,11 @@ import {
   Trash2, 
   Server,
   Shield,
-  Users,
   Database,
   Copy,
   Check,
   ArrowRight,
   Activity,
-  Zap,
   ExternalLink,
   GitBranch
 } from "lucide-react"
@@ -196,14 +200,15 @@ function EnvironmentNode({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        "relative rounded-2xl border-2 transition-all cursor-pointer",
+        "relative cursor-pointer rounded-[var(--np-radius-lg)] border-2 transition-all",
         cfg.color, cfg.bg,
+        "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
         isSelected ? `ring-2 ring-primary ${cfg.glow}` : "hover:border-primary/30"
       )}
       onClick={onSelect}
     >
       {/* Header */}
-      <div className="p-5 border-b border-border/50">
+      <div className="border-b border-divide p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-4">
             <div className={cn(
@@ -251,7 +256,7 @@ function EnvironmentNode({
       </div>
 
       {/* Resources */}
-      <div className="p-5 border-b border-border/50">
+      <div className="border-b border-divide p-5">
         <div className="grid grid-cols-2 gap-2">
           <ResourceIndicator icon={NucleoWorkflow} count={environment.resources.workflows} label="workflows" />
           <ResourceIndicator icon={NucleoAgent} count={environment.resources.agents} label="agents" />
@@ -396,19 +401,13 @@ export default function EnvironmentsPage() {
 
   return (
     <AppShell title="Environments">
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-              Failed to load environments. Showing latest available data.
-            </div>
-          )}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">Environments</h1>
-              <p className="text-sm text-muted-foreground mt-1">Infrastructure overview and deployment pipeline</p>
-            </div>
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Infrastructure"
+          title="Environments"
+          description="Infrastructure overview and deployment pipeline"
+          icon={<Server className="h-5 w-5" />}
+          actions={
             <Button
               size="sm"
               className="h-8 gap-2"
@@ -431,75 +430,90 @@ export default function EnvironmentsPage() {
               <Plus className="h-3.5 w-3.5" />
               New Environment
             </Button>
-          </div>
+          }
+        >
+          {error && (
+            <div className="mb-3 rounded-[var(--np-radius-md)] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              Failed to load environments. Showing latest available data.
+            </div>
+          )}
+        </GravitrePageHeader>
 
-          {/* Quick stats */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20">
-              <div className="h-2 w-2 rounded-full bg-success" />
-              <span className="text-xs font-medium text-success">
-                {environments.filter(e => e.status === "active").length} active
-              </span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-info/10 border border-info/20">
-              <NucleoWorkflow className="h-3 w-3 text-info" />
-              <span className="text-xs font-medium text-info">
-                {environments.reduce((a, e) => a + e.resources.workflows, 0)} total workflows
-              </span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-              <NucleoAgent className="h-3 w-3 text-primary" />
-              <span className="text-xs font-medium text-primary">
-                {environments.reduce((a, e) => a + e.resources.agents, 0)} total agents
-              </span>
-            </div>
-          </div>
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] overflow-auto px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-6">
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric
+              label="Active"
+              value={isLoading ? "—" : environments.filter((e) => e.status === "active").length}
+              hint="Environments online"
+              icon={<Activity className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Total workflows"
+              value={
+                isLoading
+                  ? "—"
+                  : environments.reduce((a, e) => a + e.resources.workflows, 0)
+              }
+              hint="Across environments"
+              icon={<NucleoWorkflow className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Total agents"
+              value={
+                isLoading ? "—" : environments.reduce((a, e) => a + e.resources.agents, 0)
+              }
+              hint="Across environments"
+              icon={<NucleoAgent className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Environments"
+              value={isLoading ? "—" : environments.length}
+              hint="Configured"
+              icon={<Server className="h-4 w-4" />}
+            />
+          </section>
 
-        {!adminLoading && !isAdmin ? (
-          <div className="mx-6 mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-            <div className="flex items-center gap-3">
-              <Shield className="h-4 w-4 text-amber-400" />
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Admin access required.</span>
-                {" "}Ask an organization owner to grant you admin before changing environments.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="mx-6 mt-4 rounded-lg border border-border bg-secondary/40 p-3">
-            <div className="flex items-center gap-3">
-              <Shield className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Organization-wide changes.</span>
-                {" "}Environment updates apply to every user in this workspace.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Topology View */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-5xl mx-auto">
-            {!isLoading && sortedEnvs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
-                <Server className="h-8 w-8 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">No environments yet</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Create production to start your deployment pipeline.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  className="mt-2 gap-2"
-                  disabled={!isAdmin || adminLoading}
-                  onClick={() => void handleCreate("production")}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create production
-                </Button>
+          {!adminLoading && !isAdmin ? (
+            <GravitreSurface className="p-3" padded={false}>
+              <div className="flex items-center gap-3">
+                <Shield className="h-4 w-4 text-amber-400" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Admin access required.</span>
+                  {" "}Ask an organization owner to grant you admin before changing environments.
+                </p>
               </div>
+            </GravitreSurface>
+          ) : (
+            <GravitreSurface className="p-3" padded={false}>
+              <div className="flex items-center gap-3">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Organization-wide changes.</span>
+                  {" "}Environment updates apply to every user in this workspace.
+                </p>
+              </div>
+            </GravitreSurface>
+          )}
+
+          {/* Topology View */}
+          <div className="mx-auto w-full max-w-5xl">
+            {!isLoading && sortedEnvs.length === 0 ? (
+              <GravitreEmpty
+                icon={<Server className="h-5 w-5" />}
+                title="No environments yet"
+                hint="Create production to start your deployment pipeline."
+                action={
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    disabled={!isAdmin || adminLoading}
+                    onClick={() => void handleCreate("production")}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Create production
+                  </Button>
+                }
+              />
             ) : (
             <div className="flex flex-col items-center">
               {sortedEnvs.map((env, index) => (

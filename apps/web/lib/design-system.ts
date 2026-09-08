@@ -21,15 +21,15 @@
 
 /** Text roles, largest to smallest (app / hub density). */
 export const TYPE = {
-  /** The single <h1> on a page. */
+  /** The single <h1> on a page — Nodus product scale (~20–24px), not marketing H1. */
   pageTitle:
-    "font-sans text-2xl font-semibold tracking-tight text-[color:var(--g-text-primary)] md:text-3xl",
+    "font-sans text-xl font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-2xl",
   /** Supporting sentence under a page title. */
   pageLead: "font-sans text-sm text-pretty text-[color:var(--g-text-muted)]",
   /** Section heading inside a page (<h2>). */
   sectionTitle:
-    "font-sans text-lg font-semibold tracking-tight text-[color:var(--g-text-primary)]",
-  /** Card / list-item heading (<h3>). */
+    "font-sans text-base font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-lg",
+  /** Card / list-item heading (<h3>) / widget title. */
   cardTitle:
     "font-sans text-sm font-semibold leading-tight tracking-tight text-[color:var(--g-text-primary)]",
   /**

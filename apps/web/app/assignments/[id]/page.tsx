@@ -8,6 +8,12 @@ import { PulseRing } from "@/components/gravitre/premium-effects"
 import { useMotionPrefs } from "@/lib/animations"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import {
+  GravitreEmpty,
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Icon, type IconName } from "@/lib/icons"
+import { NavTasks } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
 import { formatAssignmentOutput } from "@/lib/plain-english"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
@@ -58,7 +65,7 @@ async function fetchAgentJob(id: string): Promise<AgentJob> {
 const typeConfig: Record<string, { icon: string; color: string; label: string; bg: string }> = {
   email: { icon: "mail", color: "text-blue-400", label: "Email", bg: "bg-blue-500/10" },
   social: { icon: "share", color: "text-violet-400", label: "Social", bg: "bg-violet-500/10" },
-  report: { icon: "chart", color: "text-emerald-400", label: "Report", bg: "bg-emerald-500/10" },
+  report: { icon: "chart", color: "text-[color:var(--g-brand)]", label: "Report", bg: "bg-[color:var(--g-brand-soft)]" },
   segment: { icon: "users", color: "text-amber-400", label: "Segment", bg: "bg-amber-500/10" },
   workflow: { icon: "workflow", color: "text-rose-400", label: "Workflow", bg: "bg-rose-500/10" },
 }
@@ -69,12 +76,12 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
   const runningStep = steps.find(s => s.status === "running")
 
   return (
-    <div className="rounded-2xl border border-border bg-card/50 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <GravitreSurface>
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
             <motion.div 
-              className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center"
+              className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] bg-info/10"
               animate={{ 
                 boxShadow: ["0 0 20px rgba(59, 130, 246, 0.2)", "0 0 30px rgba(59, 130, 246, 0.4)", "0 0 20px rgba(59, 130, 246, 0.2)"]
               }}
@@ -103,7 +110,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
       {/* Progress bar */}
       <div className="h-2 rounded-full bg-secondary overflow-hidden mb-6">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 bg-[length:200%_100%]"
+          className="h-full rounded-full bg-info"
           style={{ backgroundPosition: "0% 0%" }}
           animate={{ 
             width: `${currentProgress}%`,
@@ -134,11 +141,11 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
             <div className="relative">
               {step.status === "completed" && (
                 <motion.div 
-                  className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-brand-soft)]"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                 >
-                  <Icon name="check" size="sm" className="text-emerald-400" />
+                  <Icon name="check" size="sm" className="text-[color:var(--g-brand)]" />
                 </motion.div>
               )}
               {step.status === "running" && (
@@ -170,7 +177,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
               {i < steps.length - 1 && (
                 <div className={cn(
                   "absolute left-1/2 top-full w-0.5 h-3 -translate-x-1/2",
-                  step.status === "completed" ? "bg-emerald-500/30" : "bg-border"
+                  step.status === "completed" ? "bg-[color:var(--g-brand)]/30" : "bg-divide"
                 )} />
               )}
             </div>
@@ -195,7 +202,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
           </motion.div>
         ))}
       </div>
-    </div>
+    </GravitreSurface>
   )
 }
 
@@ -220,10 +227,10 @@ function DeliverableCard({
       layout
       onClick={onClick}
       className={cn(
-        "relative rounded-xl border p-4 cursor-pointer transition-all",
+        "relative cursor-pointer rounded-[var(--np-radius-lg)] border p-4 transition-all",
         isSelected 
-          ? "bg-secondary/50 border-emerald-500/50 ring-1 ring-emerald-500/20" 
-          : "bg-card/50 border-border hover:border-muted-foreground/30",
+          ? "border-emerald-500/50 bg-[color:var(--g-surface-2)] ring-1 ring-emerald-500/20" 
+          : "border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] hover:bg-[color:var(--g-surface-2)]",
         isApproved && "border-emerald-500/30"
       )}
       whileHover={{ scale: 1.01 }}
@@ -234,7 +241,7 @@ function DeliverableCard({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30"
+          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--g-brand)] shadow-[var(--np-shadow)]"
         >
           <Icon name="check" size="xs" className="text-white" />
         </motion.div>
@@ -341,7 +348,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div className="border-b border-divide p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", config.bg)}>
@@ -356,7 +363,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
                     <span className="text-muted-foreground/50">|</span>
                     <span className={cn(
                       "text-xs font-medium",
-                      deliverable.confidence >= 90 ? "text-emerald-400" : "text-amber-400"
+                      deliverable.confidence >= 90 ? "text-[color:var(--g-brand)]" : "text-amber-600"
                     )}>
                       {deliverable.confidence}% confidence
                     </span>
@@ -367,7 +374,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
           </div>
           
           {isApproved && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium">
+            <div className="flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--g-brand)]">
               <Icon name="check" size="xs" />
               Approved
             </div>
@@ -397,12 +404,12 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
       </div>
 
       {/* Actions */}
-      <div className="p-4 border-t border-border">
+      <div className="border-t border-divide p-4">
         <div className="flex items-center gap-3">
           {!isApproved ? (
             <>
               <Button 
-                className="flex-1 gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
+                className="flex-1 gap-2"
                 onClick={onApprove}
               >
                 <Icon name="check" size="sm" />
@@ -416,7 +423,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
           ) : (
             <>
               <Button 
-                className="flex-1 gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0"
+                className="flex-1 gap-2"
                 onClick={onPush}
                 disabled={isPushing}
               >
@@ -527,13 +534,13 @@ function AssignmentApprovalDialog({
                 animate={{ scale: 1, opacity: 1 }}
                 className={cn(
                   "relative flex h-14 w-14 items-center justify-center rounded-full",
-                  decisionSuccess === "approved" ? "bg-emerald-500/15" : "bg-red-500/15",
+                  decisionSuccess === "approved" ? "bg-[color:var(--g-brand-soft)]" : "bg-destructive/15",
                 )}
               >
                 <Icon
                   name={decisionSuccess === "approved" ? "check" : "warning"}
                   size="lg"
-                  className={decisionSuccess === "approved" ? "text-emerald-400" : "text-red-400"}
+                  className={decisionSuccess === "approved" ? "text-[color:var(--g-brand)]" : "text-destructive"}
                 />
               </motion.div>
             </div>
@@ -548,7 +555,7 @@ function AssignmentApprovalDialog({
           </div>
         ) : (
           <>
-        <DialogHeader className="border-b border-border px-6 py-5 text-left">
+        <DialogHeader className="border-b border-divide px-6 py-5 text-left">
           <DialogTitle className="text-lg">{title}</DialogTitle>
           <DialogDescription>
             Generated by {agentName}
@@ -562,14 +569,14 @@ function AssignmentApprovalDialog({
           </div>
         </div>
 
-        <div className="border-t border-border px-6 py-4">
+        <div className="border-t border-divide px-6 py-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Quality check
           </p>
           <ul className="space-y-2">
             {qualityChecks.map((check) => (
               <li key={check.label} className="flex items-start gap-2 text-sm">
-                <span className={check.status === "pass" ? "text-emerald-400" : "text-amber-400"}>
+                <span className={check.status === "pass" ? "text-[color:var(--g-brand)]" : "text-amber-600"}>
                   {check.status === "pass" ? "✓" : "⚠"}
                 </span>
                 <span className="text-foreground">{check.label}</span>
@@ -578,7 +585,7 @@ function AssignmentApprovalDialog({
           </ul>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-end sm:justify-end">
+        <div className="flex flex-col gap-3 border-t border-divide px-6 py-4 sm:flex-row sm:items-end sm:justify-end">
           {rejectMode ? (
             <div className="flex w-full flex-col gap-3">
               <label className="text-xs font-medium text-muted-foreground">
@@ -626,7 +633,7 @@ function AssignmentApprovalDialog({
                 Reject with note
               </Button>
               <Button
-                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+                className="gap-2"
                 onClick={() => void handleApproveClick()}
                 disabled={isSubmitting}
               >
@@ -840,8 +847,16 @@ export default function AssignmentDetailPage({
   if (isLoading && !job) {
     return (
       <AppShell title="Assignment">
-        <div className="flex h-full items-center justify-center">
-          <Icon name="spinner" size="lg" className="text-muted-foreground animate-spin" />
+        <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+          <GravitrePageHeader
+            eyebrow="Work"
+            title="Assignment"
+            description="Loading…"
+            icon={<NavTasks className="h-5 w-5" />}
+          />
+          <div className="flex flex-1 items-center justify-center px-[var(--np-page-pad)]">
+            <Icon name="spinner" size="lg" className="text-muted-foreground animate-spin" />
+          </div>
         </div>
       </AppShell>
     )
@@ -850,13 +865,29 @@ export default function AssignmentDetailPage({
   if (loadError || !job) {
     return (
       <AppShell title="Assignment">
-        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
-          <p className="text-sm text-muted-foreground">
-            {loadError instanceof Error ? loadError.message : "Assignment not found"}
-          </p>
-          <Link href="/assignments">
-            <Button variant="outline" size="sm">Back to Assignments</Button>
-          </Link>
+        <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+          <GravitrePageHeader
+            eyebrow="Work"
+            title="Assignment"
+            icon={<NavTasks className="h-5 w-5" />}
+            actions={
+              <Link href="/assignments">
+                <Button variant="outline" size="sm">Back to Assignments</Button>
+              </Link>
+            }
+          />
+          <div className="flex flex-1 items-center justify-center px-[var(--np-page-pad)]">
+            <GravitreEmpty
+              icon={<Icon name="warning" size="lg" />}
+              title="Assignment not found"
+              hint={loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}
+              action={
+                <Link href="/assignments">
+                  <Button variant="outline" size="sm">Back to Assignments</Button>
+                </Link>
+              }
+            />
+          </div>
         </div>
       </AppShell>
     )
@@ -879,130 +910,155 @@ export default function AssignmentDetailPage({
         isSubmitting={isDecisionPending}
       />
 
-      <div className="flex h-full">
-        {/* Left Column - Execution & Deliverables */}
-        <div className="w-[420px] border-r border-border flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="p-6 border-b border-border">
-            <Link href="/assignments" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-              <Icon name="chevronLeft" size="sm" />
-              Back to Assignments
-            </Link>
-            
-            <div className="flex items-center gap-3 mb-3">
-              <motion.div 
-                className="h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold"
-                animate={{ 
-                  boxShadow: ["0 0 20px rgba(16, 185, 129, 0.2)", "0 0 30px rgba(16, 185, 129, 0.4)", "0 0 20px rgba(16, 185, 129, 0.2)"]
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                {agentInitials}
-              </motion.div>
-              <div className="flex-1 min-w-0">
-                <h1 className="font-semibold text-foreground truncate">{taskTitle}</h1>
-                {taskBrief && taskBrief !== taskTitle ? (
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{taskBrief}</p>
-                ) : null}
-                <p className="text-xs text-muted-foreground mt-1">
-                  {agentName} · {createdAt} · {job.status.replace(/_/g, " ")}
-                </p>
-                {handoff ? (
-                  <div className="mt-2">
-                    <ExecutionModeBadge source={handoff} showMeta />
-                  </div>
-                ) : null}
-              </div>
-              {agentId && (
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          className="shrink-0"
+          eyebrow="Work"
+          title={taskTitle}
+          description={`${agentName} · ${createdAt} · ${job.status.replace(/_/g, " ")}`}
+          icon={<NavTasks className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {agentId ? (
                 <Link href={`/agents/${agentId}/chat`}>
                   <Button variant="outline" size="sm" className="text-xs">Chat</Button>
                 </Link>
-              )}
-            </div>
-
-            {needsApproval && (
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Awaiting your approval</p>
-                  <p className="text-xs text-muted-foreground">
-                    Review the generated output before it is sent to {handoff?.task?.description ? "destinations" : "downstream systems"}.
-                  </p>
-                </div>
-                <Button size="sm" className="gap-1" onClick={() => setApprovalDismissedManual(false)}>
-                  Review
+              ) : null}
+              <Link href="/assignments">
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Icon name="chevronLeft" size="sm" />
+                  Back
                 </Button>
-              </div>
-            )}
-
-            {approvalStatus === "approved" && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
-                <Icon name="check" size="sm" />
-                Approved and ready to deliver
-              </div>
-            )}
-
-            {approvalStatus === "rejected" && rejectionReason && (
-              <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-                Rejected: {rejectionReason}
-              </div>
-            )}
-          </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Execution Timeline */}
-            <ExecutionTimeline steps={executionSteps} currentProgress={progress} />
-
-            {/* Deliverables */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-foreground">Deliverables</h3>
-                  <p className="text-xs text-muted-foreground">{readyCount} ready | {approvedCount} approved</p>
-                </div>
-                {readyCount > 0 && approvedCount < readyCount && (
-                  <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleApproveAll}>
-                    <Icon name="check" size="xs" />
-                    Approve All
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {deliverables.length === 0 ? (
-                  <p className="col-span-2 text-sm text-muted-foreground py-4 text-center">
-                    {job.status === "running" || job.status === "queued"
-                      ? "Waiting for agent results…"
-                      : "No deliverables returned for this task."}
-                  </p>
-                ) : (
-                  deliverables.map((deliverable) => (
-                    <DeliverableCard
-                      key={deliverable.id}
-                      deliverable={deliverable}
-                      isSelected={selectedDeliverable === deliverable.id}
-                      isApproved={approvedItems.includes(deliverable.id)}
-                      onClick={() => setSelectedDeliverable(deliverable.id)}
-                      onApprove={() => handleApprove(deliverable.id)}
-                    />
-                  ))
-                )}
-              </div>
+              </Link>
             </div>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] text-sm font-bold text-[color:var(--g-brand)]">
+              {agentInitials}
+            </div>
+            {taskBrief && taskBrief !== taskTitle ? (
+              <p className="max-w-xl text-xs text-muted-foreground line-clamp-2">{taskBrief}</p>
+            ) : null}
+            {handoff ? <ExecutionModeBadge source={handoff} showMeta /> : null}
           </div>
+        </GravitrePageHeader>
+
+        <div className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] pt-3 sm:px-[var(--np-page-pad)] lg:grid-cols-4">
+          <GravitreMetric
+            label="Progress"
+            value={`${progress}%`}
+            hint={`${executionSteps.filter((s) => s.status === "completed").length} of ${executionSteps.length} steps`}
+            icon={<Icon name="activity" size="sm" />}
+          />
+          <GravitreMetric
+            label="Deliverables ready"
+            value={readyCount}
+            hint={`${approvedCount} approved`}
+            icon={<Icon name="check" size="sm" />}
+          />
+          <GravitreMetric
+            label="Confidence"
+            value={confidencePercent > 0 ? `${confidencePercent}%` : "—"}
+            hint="From agent handoff"
+            icon={<Icon name="shield" size="sm" />}
+          />
+          <GravitreMetric
+            label="Status"
+            value={job.status.replace(/_/g, " ")}
+            hint={needsApproval ? "Needs approval" : "Live status"}
+            warning={needsApproval}
+            icon={<Icon name="clock" size="sm" />}
+          />
         </div>
 
-        {/* Right Column - Preview Panel */}
-        <div className="flex-1 bg-card/30">
-          <PreviewPanel
-            deliverable={selectedItem || null}
-            isApproved={selectedItem ? approvedItems.includes(selectedItem.id) : false}
-            onApprove={() => selectedItem && handleApprove(selectedItem.id)}
-            onPush={handlePushDeliverable}
-            onEdit={handleEditDeliverable}
-            jobError={jobError}
-            isPushing={isPushing}
-          />
+        <div className="flex min-h-0 flex-1 overflow-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
+          {/* Left Column - Execution & Deliverables */}
+          <div className="flex w-[420px] shrink-0 flex-col overflow-hidden border-r border-divide pr-3">
+            <div className="flex-1 space-y-4 overflow-y-auto pb-4">
+              {needsApproval && (
+                <GravitreSurface className="border-violet-500/30 bg-violet-500/5 p-4" padded={false}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Awaiting your approval</p>
+                      <p className="text-xs text-muted-foreground">
+                        Review the generated output before it is sent to {handoff?.task?.description ? "destinations" : "downstream systems"}.
+                      </p>
+                    </div>
+                    <Button size="sm" className="gap-1" onClick={() => setApprovalDismissedManual(false)}>
+                      Review
+                    </Button>
+                  </div>
+                </GravitreSurface>
+              )}
+
+              {approvalStatus === "approved" && (
+                <GravitreSurface className="border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] p-4 text-sm text-[color:var(--g-brand)]" padded={false}>
+                  <div className="flex items-center gap-2">
+                    <Icon name="check" size="sm" />
+                    Approved and ready to deliver
+                  </div>
+                </GravitreSurface>
+              )}
+
+              {approvalStatus === "rejected" && rejectionReason && (
+                <GravitreSurface className="border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400" padded={false}>
+                  Rejected: {rejectionReason}
+                </GravitreSurface>
+              )}
+
+              <ExecutionTimeline steps={executionSteps} currentProgress={progress} />
+
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground">Deliverables</h3>
+                    <p className="text-xs text-muted-foreground">{readyCount} ready | {approvedCount} approved</p>
+                  </div>
+                  {readyCount > 0 && approvedCount < readyCount && (
+                    <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleApproveAll}>
+                      <Icon name="check" size="xs" />
+                      Approve All
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {deliverables.length === 0 ? (
+                    <p className="col-span-2 py-4 text-center text-sm text-muted-foreground">
+                      {job.status === "running" || job.status === "queued"
+                        ? "Waiting for agent results…"
+                        : "No deliverables returned for this task."}
+                    </p>
+                  ) : (
+                    deliverables.map((deliverable) => (
+                      <DeliverableCard
+                        key={deliverable.id}
+                        deliverable={deliverable}
+                        isSelected={selectedDeliverable === deliverable.id}
+                        isApproved={approvedItems.includes(deliverable.id)}
+                        onClick={() => setSelectedDeliverable(deliverable.id)}
+                        onApprove={() => handleApprove(deliverable.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Preview Panel */}
+          <GravitreSurface className="ml-3 min-h-0 flex-1 overflow-hidden" padded={false}>
+            <PreviewPanel
+              deliverable={selectedItem || null}
+              isApproved={selectedItem ? approvedItems.includes(selectedItem.id) : false}
+              onApprove={() => selectedItem && handleApprove(selectedItem.id)}
+              onPush={handlePushDeliverable}
+              onEdit={handleEditDeliverable}
+              jobError={jobError}
+              isPushing={isPushing}
+            />
+          </GravitreSurface>
         </div>
       </div>
 

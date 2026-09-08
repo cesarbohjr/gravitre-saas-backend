@@ -267,16 +267,17 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
         // not class-string order, which previously let a transparent
         // `bg-warning/[0.04]` win and show the mesh straight through the
         // flagged card's text.
-        "rounded-lg border px-3.5 py-3 text-sm shadow-sm",
+        "rounded-[var(--np-radius-md)] border border-divide px-3.5 py-3 text-sm shadow-[var(--np-shadow)]",
         style.surface,
         density === "export"
           ? "bg-background border-l-0"
           : state === "flagged"
             ? ""
-            : "bg-card",
+            : density === "timeline"
+              ? "bg-[color:var(--g-surface-2)] shadow-none"
+              : "bg-card",
         density === "chat" && "border-l-2",
         density === "chat" && style.accent,
-        density === "timeline" && "rounded-md",
         density === "timeline" && state === "flagged" && "border-l-2 border-l-warning",
         className,
       )}
@@ -297,7 +298,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
               "flex items-start justify-between gap-2",
               // In the inspector the card scrolls inside a fixed-height pane, so
               // pin the identity of what you're reading to the top.
-              collapsibleSections && "sticky top-0 z-10 -mx-0.5 bg-card/95 px-0.5 py-0.5 backdrop-blur-sm",
+              collapsibleSections && "sticky top-0 z-10 -mx-0.5 bg-[color:var(--g-surface-2)]/95 px-0.5 py-0.5 backdrop-blur-sm",
             )}
           >
             <p className="min-w-0 break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>

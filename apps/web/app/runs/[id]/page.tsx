@@ -8,6 +8,13 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { PulseDot } from "@/components/gravitre/visual"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import {
+  GravitreMetric,
+  GravitrePageHeader,
+  GravitreSurface,
+} from "@/components/gravitre/nodus-product"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import {
@@ -15,7 +22,6 @@ import {
   RefreshCw,
   XCircle,
   Clock,
-  Database,
   CheckCircle,
   AlertCircle,
   Play,
@@ -29,6 +35,8 @@ import { approvalsApi, businessOutcomesApi, runsApi, workflowsApi } from "@/lib/
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { cn } from "@/lib/utils"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import { RunObservabilityConsole } from "@/components/runs/run-observability-console"
 import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
@@ -206,7 +214,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const [isResolvingApproval, setIsResolvingApproval] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
 
-  const { data, error, isLoading, mutate } = useSWR<RunDetailResponse>(
+  const { data, error, isLoading, mutate, isValidating } = useSWR<RunDetailResponse>(
     `/api/runs/${id}`,
     fetcher,
     {
@@ -492,11 +500,93 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     setRollbackError(null)
   }
 
+  const headerTitle =
+    run.isChatOrchestration
+      ? run.goal || "Chat orchestration"
+      : run.workflowName || run.workflowId || "Workflow run"
+
+  const headerDescription = run.isChatOrchestration
+    ? `Triggered by ${run.triggeredBy}`
+    : `Workflow run · Triggered by ${run.triggeredBy}`
+
+  const runActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <DataFreshness
+        updatedAt={data ? Date.now() : null}
+        isRefreshing={isValidating}
+        onRefresh={() => void mutate()}
+      />
+      {canResumePaused && (
+        <Button
+          size="sm"
+          className="h-8 gap-2"
+          onClick={handleResumePaused}
+          disabled={!isAdmin || authLoading || isResuming}
+        >
+          {isResuming ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+          Resume
+        </Button>
+      )}
+      {canPause && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2"
+          onClick={handlePause}
+          disabled={!isAdmin || authLoading || isPausing}
+        >
+          {isPausing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Pause className="h-3.5 w-3.5" />
+          )}
+          Pause
+        </Button>
+      )}
+      {canCancel && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2"
+          onClick={handleCancel}
+          disabled={!isAdmin || authLoading || isCancelling}
+        >
+          {isCancelling ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <XCircle className="h-3.5 w-3.5" />
+          )}
+          Cancel
+        </Button>
+      )}
+      <Button size="sm" className="h-8 gap-2" onClick={handleRetry} disabled={isRetryingStep}>
+        {isRetryingStep ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="h-3.5 w-3.5" />
+        )}
+        {run.status === "running" || run.status === "paused" ? "Cancel & retry" : "Retry"}
+      </Button>
+    </div>
+  )
+
   if (isLoading && !data) {
     return (
       <AppShell title={`Run ${id}`}>
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
+        <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+          <GravitrePageHeader
+            eyebrow="Execution"
+            title="Run detail"
+            icon={<NucleoWorkflow className="h-5 w-5" />}
+            description="Loading run…"
+          />
+          <div className="flex flex-1 items-center justify-center px-[var(--np-page-pad)] py-8">
+            <Spinner size="lg" />
+          </div>
         </div>
       </AppShell>
     )
@@ -504,581 +594,518 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
   return (
     <AppShell title={`Run ${id}`}>
-      <div className="p-6">
-        <div className="mb-6">
-          <Link
-            href="/runs"
-            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Runs
-          </Link>
-
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-2 flex flex-wrap items-center gap-3">
-                <h1 className="font-mono text-xl font-semibold text-foreground">{id}</h1>
-                <StatusBadge variant={statusVariants[run.status] ?? "error"} dot>
-                  {run.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </StatusBadge>
-                <EnvironmentBadge environment={run.environment === "production" ? "production" : "staging"} />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {run.isChatOrchestration ? (
-                  <>
-                    Chat orchestration
-                    {run.goal ? (
-                      <>
-                        : <span className="text-foreground">{run.goal}</span>
-                      </>
-                    ) : null}
-                    {" · "}
-                  </>
-                ) : (
-                  <>
-                    Workflow:{" "}
-                    <span className="text-foreground">{run.workflowName || run.workflowId || "—"}</span>
-                    {" · "}
-                  </>
-                )}
-                Triggered by: <span className="text-foreground">{run.triggeredBy}</span>
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {canResumePaused && (
-                <Button
-                  size="sm"
-                  className="h-8 gap-2"
-                  onClick={handleResumePaused}
-                  disabled={!isAdmin || authLoading || isResuming}
-                >
-                  {isResuming ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Play className="h-3.5 w-3.5" />
-                  )}
-                  Resume
-                </Button>
-              )}
-              {canPause && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-2"
-                  onClick={handlePause}
-                  disabled={!isAdmin || authLoading || isPausing}
-                >
-                  {isPausing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Pause className="h-3.5 w-3.5" />
-                  )}
-                  Pause
-                </Button>
-              )}
-              {canCancel && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-2"
-                  onClick={handleCancel}
-                  disabled={!isAdmin || authLoading || isCancelling}
-                >
-                  {isCancelling ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <XCircle className="h-3.5 w-3.5" />
-                  )}
-                  Cancel
-                </Button>
-              )}
-              <Button
-                size="sm"
-                className="h-8 gap-2"
-                onClick={handleRetry}
-                disabled={isRetryingStep}
-              >
-                {isRetryingStep ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                {run.status === "running" || run.status === "paused" ? "Cancel & retry" : "Retry"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-6 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            Failed to load run details.
-            <Button variant="ghost" size="sm" className="ml-auto h-7" onClick={() => mutate()}>
-              Retry
-            </Button>
-          </div>
-        )}
-
-        {canInterrupt && !authLoading && !isAdmin && (
-          <div className="mb-6 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Pause and cancel require admin access.
-          </div>
-        )}
-
-        {run.stepsTotal > 0 ? (
-          <div className="mb-6 rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>
-                {run.status === "running"
-                  ? "Progress"
-                  : run.status === "completed"
-                    ? "Finished"
-                    : run.status === "failed"
-                      ? "Stopped after failure"
-                      : run.status === "cancelled"
-                        ? "Cancelled"
-                        : "Progress"}
-              </span>
-              <span className="font-mono text-foreground">
-                {run.stepsCompleted}/{run.stepsTotal} steps
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-secondary">
-              <div
-                className={
-                  run.status === "failed"
-                    ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all"
-                    : run.status === "cancelled"
-                      ? "h-full rounded-full bg-muted-foreground transition-all"
-                      : run.status === "running"
-                        ? "h-full rounded-full bg-[color:var(--status-running)] transition-all"
-                        : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
-                }
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round((run.stepsCompleted / Math.max(run.stepsTotal, 1)) * 100),
-                  )}%`,
-                }}
-              />
-            </div>
-            {run.status === "running" && run.stepsCompleted === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Waiting for the first step to finish. If this stays stuck, use Cancel — status updates
-                immediately so you can start a new run.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className="text-xs">Duration</span>
-            </div>
-            <p className="font-mono text-lg font-semibold text-foreground">{run.duration}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-              <Database className="h-4 w-4" />
-              <span className="text-xs">Records Processed</span>
-            </div>
-            <p className="text-lg font-semibold text-foreground">{run.recordsProcessed.toLocaleString()}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-              <CheckCircle className="h-4 w-4" />
-              <span className="text-xs">Steps Completed</span>
-            </div>
-            <p className="text-lg font-semibold text-foreground">
-              {run.stepsCompleted} / {run.stepsTotal}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-xs">Started</span>
-            </div>
-            <p className="truncate text-sm font-medium text-foreground">{run.startedAt}</p>
-          </div>
-        </div>
-
-        <div className="mb-6 rounded-lg border border-border bg-card p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Completed work</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                What landed in connected tools (Apollo, HubSpot, Outlook, Ads, Analytics, etc.) —
-                not just whether the run finished. Open each item in the source system when a link
-                is available.
-              </p>
-            </div>
-            {run.conversationId ? (
-              <Button asChild size="sm" variant="outline" className="h-8">
-                <Link href={`/ai?c=${encodeURIComponent(run.conversationId)}`}>
-                  Open conversation
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-          {run.isChatOrchestration && run.goal ? (
-            <p className="mb-3 text-sm text-foreground">
-              <span className="text-muted-foreground">Goal: </span>
-              {run.goal}
-            </p>
-          ) : null}
-          {steps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No step outputs recorded yet. If this run shows completed with empty work, the tools
-              may not have written durable records — check connector connection and approval queue.
-            </p>
-          ) : (
-            <ol className="space-y-2">
-              {steps.map((step, index) => {
-                const snap = step.outputSnapshot || {}
-                const summary =
-                  typeof snap.summary === "string"
-                    ? snap.summary
-                    : typeof snap.message === "string"
-                      ? snap.message
-                      : step.errorMessage || null
-                const external =
-                  typeof snap.external_url === "string"
-                    ? snap.external_url
-                    : typeof snap.result_url === "string" &&
-                        String(snap.result_url).startsWith("http")
-                      ? String(snap.result_url)
-                      : null
-                const effect =
-                  typeof snap.outcome_effect === "string" ? snap.outcome_effect : null
-                const alreadyExisted = snap.already_existed === true
-                const action =
-                  typeof snap.invoke_action === "string"
-                    ? snap.invoke_action
-                    : typeof snap.action === "string"
-                      ? snap.action
-                      : null
-                const portalOk =
-                  !external ||
-                  !external.includes("app.hubspot.com") ||
-                  /^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(external)
-                const honesty =
-                  alreadyExisted || effect === "already_existed"
-                    ? "Existing record — no new create proven"
-                    : effect === "unknown"
-                      ? "Write returned without durable proof"
-                      : effect === "noop"
-                        ? "No-op — vendor reported no change"
-                        : effect === "accepted_async"
-                          ? "Accepted asynchronously — completion not proven"
-                          : null
-                return (
-                  <li
-                    key={step.id}
-                    className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground">
-                        {index + 1}. {step.name}
-                        <span className="ml-2 text-xs font-normal capitalize text-muted-foreground">
-                          {step.status.replace(/_/g, " ")}
-                        </span>
-                      </p>
-                      {action ? (
-                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{action}</p>
-                      ) : null}
-                      {summary ? (
-                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
-                          {summary}
-                        </p>
-                      ) : null}
-                      {honesty ? (
-                        <p className="mt-1 text-[11px] font-medium text-warning">
-                          {honesty}
-                        </p>
-                      ) : null}
-                    </div>
-                    {external && portalOk ? (
-                      <Button asChild size="sm" variant="outline" className="h-7 shrink-0 text-xs">
-                        <a href={external} target="_blank" rel="noopener noreferrer">
-                          Open in source
-                        </a>
-                      </Button>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ol>
-          )}
-        </div>
-
-        {runErrorSummary ? (
-          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <p className="font-medium">{runErrorSummary.title}</p>
-            {runErrorSummary.fix ? (
-              <p className="mt-2 text-xs text-destructive/90">{runErrorSummary.fix}</p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {canResumePaused && (
-          <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Pause className="h-4 w-4 text-warning" />
-              <h2 className="text-sm font-semibold text-foreground">Run paused</h2>
-            </div>
-            <p className="mb-4 text-sm text-muted-foreground">
-              This run was paused by an operator. Resume to continue from the saved checkpoint.
-            </p>
-            <Button
-              size="sm"
-              className="h-8 gap-2"
-              disabled={!isAdmin || authLoading || isResuming}
-              onClick={handleResumePaused}
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          className="shrink-0"
+          eyebrow="Execution"
+          title={headerTitle}
+          description={headerDescription}
+          icon={<NucleoWorkflow className="h-5 w-5" />}
+          actions={runActions}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={APP_ROUTES.activity}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
-              {isResuming ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-              Resume run
-            </Button>
+              <ArrowLeft className="h-4 w-4" />
+              Back to Activity
+            </Link>
+            <span className="text-border">·</span>
+            <code className="font-mono text-xs text-muted-foreground">{id}</code>
+            <StatusBadge variant={statusVariants[run.status] ?? "error"} dot>
+              {run.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+            </StatusBadge>
+            <EnvironmentBadge
+              environment={run.environment === "production" ? "production" : "staging"}
+            />
           </div>
-        )}
+        </GravitrePageHeader>
 
-        {(canResolveGraphApproval || canResolveExecuteApproval) && (
-          <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <PulseDot tone="approval" size="md" label="Approval required" />
-              <h2 className="text-sm font-semibold text-foreground">
-                {canResolveGraphApproval ? "In-graph approval required" : "Execute approval required"}
-              </h2>
+        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] overflow-auto px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5">
+          {error && (
+            <div className="flex items-center gap-2 rounded-[var(--np-radius-lg)] border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Failed to load run details.
+              <Button variant="ghost" size="sm" className="ml-auto h-7" onClick={() => mutate()}>
+                Retry
+              </Button>
             </div>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {canResolveGraphApproval
-                ? approvalBatch
-                  ? "Review each deliverable below. Approved items continue; rejected items can re-enter upstream agents."
-                  : "This run paused at an approval node in the workflow graph. Approve to continue execution or reject to stop."
-                : "This run is waiting for admin approval before it can execute."}
-            </p>
-            {approvalBatch ? (
-              <ApprovalBatchPanel
-                batch={approvalBatch}
-                disabled={!isAdmin || authLoading}
-                isSubmitting={isResolvingApproval}
-                onSubmit={handleBatchApproval}
-              />
+          )}
+
+          {canInterrupt && !authLoading && !isAdmin && (
+            <div className="flex items-center gap-2 rounded-[var(--np-radius-lg)] border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Pause and cancel require admin access.
+            </div>
+          )}
+
+          {run.stepsTotal > 0 ? (
+            <GravitreSurface className="p-4" padded={false}>
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span>
+                  {run.status === "running"
+                    ? "Progress"
+                    : run.status === "completed"
+                      ? "Finished"
+                      : run.status === "failed"
+                        ? "Stopped after failure"
+                        : run.status === "cancelled"
+                          ? "Cancelled"
+                          : "Progress"}
+                </span>
+                <span className="font-mono text-foreground">
+                  {run.stepsCompleted}/{run.stepsTotal} steps
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[color:var(--g-surface-2)]">
+                <div
+                  className={
+                    run.status === "failed"
+                      ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all"
+                      : run.status === "cancelled"
+                        ? "h-full rounded-full bg-muted-foreground transition-all"
+                        : run.status === "running"
+                          ? "h-full rounded-full bg-[color:var(--status-running)] transition-all"
+                          : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
+                  }
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round((run.stepsCompleted / Math.max(run.stepsTotal, 1)) * 100),
+                    )}%`,
+                  }}
+                />
+              </div>
+              {run.status === "running" && run.stepsCompleted === 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Waiting for the first step to finish. If this stays stuck, use Cancel — status
+                  updates immediately so you can start a new run.
+                </p>
+              ) : null}
+            </GravitreSurface>
+          ) : null}
+
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric label="Duration" value={run.duration} icon={<Clock className="h-4 w-4" />} />
+            <GravitreMetric
+              label="Records processed"
+              value={run.recordsProcessed.toLocaleString()}
+              icon={<CheckCircle className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Steps completed"
+              value={`${run.stepsCompleted} / ${run.stepsTotal}`}
+              icon={<Play className="h-4 w-4" />}
+            />
+            <GravitreMetric label="Started" value={run.startedAt} icon={<Clock className="h-4 w-4" />} />
+          </section>
+
+          <GravitreSurface className="p-4" padded={false}>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Completed work</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  What landed in connected tools (Apollo, HubSpot, Outlook, Ads, Analytics, etc.) —
+                  not just whether the run finished. Open each item in the source system when a link
+                  is available.
+                </p>
+              </div>
+              {run.conversationId ? (
+                <Button asChild size="sm" variant="outline" className="h-8">
+                  <Link href={`/ai?c=${encodeURIComponent(run.conversationId)}`}>
+                    Open conversation
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+            {run.isChatOrchestration && run.goal ? (
+              <p className="mb-3 text-sm text-foreground">
+                <span className="text-muted-foreground">Goal: </span>
+                {run.goal}
+              </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                className="h-8 gap-2"
-                disabled={!isAdmin || authLoading || isResolvingApproval}
-                onClick={() =>
-                  canResolveGraphApproval ? handleGraphApproval("approved") : handleExecuteApproval("approved")
-                }
-              >
-                {isResolvingApproval ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-3.5 w-3.5" />
-                )}
-                Approve
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-2"
-                disabled={!isAdmin || authLoading || isResolvingApproval}
-                onClick={() =>
-                  canResolveGraphApproval ? handleGraphApproval("rejected") : handleExecuteApproval("rejected")
-                }
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                Reject
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="mb-6 rounded-lg border border-border bg-card">
-          <div className="border-b border-border p-4">
-            <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Steps in execution order with status</p>
-          </div>
-          <div className="p-4">
             {steps.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No steps recorded yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No step outputs recorded yet. If this run shows completed with empty work, the tools
+                may not have written durable records — check connector connection and approval queue.
+              </p>
             ) : (
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              <ol className="space-y-2">
                 {steps.map((step, index) => {
-                  const StatusIcon = stepStatusIcons[step.status]
+                  const snap = step.outputSnapshot || {}
+                  const summary =
+                    typeof snap.summary === "string"
+                      ? snap.summary
+                      : typeof snap.message === "string"
+                        ? snap.message
+                        : step.errorMessage || null
+                  const external =
+                    typeof snap.external_url === "string"
+                      ? snap.external_url
+                      : typeof snap.result_url === "string" &&
+                          String(snap.result_url).startsWith("http")
+                        ? String(snap.result_url)
+                        : null
+                  const effect =
+                    typeof snap.outcome_effect === "string" ? snap.outcome_effect : null
+                  const alreadyExisted = snap.already_existed === true
+                  const action =
+                    typeof snap.invoke_action === "string"
+                      ? snap.invoke_action
+                      : typeof snap.action === "string"
+                        ? snap.action
+                        : null
+                  const portalOk =
+                    !external ||
+                    !external.includes("app.hubspot.com") ||
+                    /^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(external)
+                  const honesty =
+                    alreadyExisted || effect === "already_existed"
+                      ? "Existing record — no new create proven"
+                      : effect === "unknown"
+                        ? "Write returned without durable proof"
+                        : effect === "noop"
+                          ? "No-op — vendor reported no change"
+                          : effect === "accepted_async"
+                            ? "Accepted asynchronously — completion not proven"
+                            : null
                   return (
-                    <div key={step.id} className="flex items-center gap-2">
-                      <div
-                        className={`flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2 ${step.status === "failed" ? "border-destructive/50" : ""} ${step.status === "awaiting_approval" ? "border-warning/50 animate-pulse" : ""}`}
-                      >
-                        <StatusIcon className={`h-3.5 w-3.5 ${stepStatusColors[step.status]}`} />
-                        <span className="whitespace-nowrap text-xs font-medium text-foreground">{step.name}</span>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          {step.status}
-                        </span>
+                    <li
+                      key={step.id}
+                      className="flex flex-wrap items-start justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">
+                          {index + 1}. {step.name}
+                          <span className="ml-2 text-xs font-normal capitalize text-muted-foreground">
+                            {step.status.replace(/_/g, " ")}
+                          </span>
+                        </p>
+                        {action ? (
+                          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                            {action}
+                          </p>
+                        ) : null}
+                        {summary ? (
+                          <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
+                            {summary}
+                          </p>
+                        ) : null}
+                        {honesty ? (
+                          <p className="mt-1 text-[11px] font-medium text-warning">{honesty}</p>
+                        ) : null}
                       </div>
-                      {index < steps.length - 1 && <div className="h-px w-4 shrink-0 bg-border" />}
-                    </div>
+                      {external && portalOk ? (
+                        <Button asChild size="sm" variant="outline" className="h-7 shrink-0 text-xs">
+                          <a href={external} target="_blank" rel="noopener noreferrer">
+                            Open in source
+                          </a>
+                        </Button>
+                      ) : null}
+                    </li>
                   )
                 })}
-              </div>
+              </ol>
             )}
-          </div>
-        </div>
+          </GravitreSurface>
 
-        <RunObservabilityConsole runId={id} />
+          {runErrorSummary ? (
+            <div className="rounded-[var(--np-radius-lg)] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">{runErrorSummary.title}</p>
+              {runErrorSummary.fix ? (
+                <p className="mt-2 text-xs text-destructive/90">{runErrorSummary.fix}</p>
+              ) : null}
+            </div>
+          ) : null}
 
-        <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border p-4">
-            <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Full step trace with payloads, logs, and connector details. Expand steps for raw data.
-            </p>
-          </div>
-          {businessOutcome ? (
-            <div className="mb-6">
-              <BusinessOutcomeView outcome={businessOutcome} density="timeline" />
-              <div className="mt-2">
+          {canResumePaused && (
+            <div className="rounded-[var(--np-radius-lg)] border border-warning/30 bg-warning/10 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Pause className="h-4 w-4 text-warning" />
+                <h2 className="text-sm font-semibold text-foreground">Run paused</h2>
+              </div>
+              <p className="mb-4 text-sm text-muted-foreground">
+                This run was paused by an operator. Resume to continue from the saved checkpoint.
+              </p>
+              <Button
+                size="sm"
+                className="h-8 gap-2"
+                disabled={!isAdmin || authLoading || isResuming}
+                onClick={handleResumePaused}
+              >
+                {isResuming ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                Resume run
+              </Button>
+            </div>
+          )}
+
+          {(canResolveGraphApproval || canResolveExecuteApproval) && (
+            <div className="rounded-[var(--np-radius-lg)] border border-warning/30 bg-warning/10 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <PulseDot tone="approval" size="md" label="Approval required" />
+                <h2 className="text-sm font-semibold text-foreground">
+                  {canResolveGraphApproval
+                    ? "In-graph approval required"
+                    : "Execute approval required"}
+                </h2>
+              </div>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {canResolveGraphApproval
+                  ? approvalBatch
+                    ? "Review each deliverable below. Approved items continue; rejected items can re-enter upstream agents."
+                    : "This run paused at an approval node in the workflow graph. Approve to continue execution or reject to stop."
+                  : "This run is waiting for admin approval before it can execute."}
+              </p>
+              {approvalBatch ? (
+                <ApprovalBatchPanel
+                  batch={approvalBatch}
+                  disabled={!isAdmin || authLoading}
+                  isSubmitting={isResolvingApproval}
+                  onSubmit={handleBatchApproval}
+                />
+              ) : null}
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={async () => {
-                    try {
-                      const md = await businessOutcomesApi.exportMarkdown(id)
-                      await navigator.clipboard.writeText(md)
-                      toast.success("BusinessOutcome export copied (same DTO as chat/timeline)")
-                    } catch (err) {
-                      toast.error("Export failed", {
-                        description: err instanceof Error ? err.message : "Please try again.",
-                      })
-                    }
-                  }}
+                  className="h-8 gap-2"
+                  disabled={!isAdmin || authLoading || isResolvingApproval}
+                  onClick={() =>
+                    canResolveGraphApproval
+                      ? handleGraphApproval("approved")
+                      : handleExecuteApproval("approved")
+                  }
                 >
-                  Copy export (same DTO)
+                  {isResolvingApproval ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  )}
+                  Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  disabled={!isAdmin || authLoading || isResolvingApproval}
+                  onClick={() =>
+                    canResolveGraphApproval
+                      ? handleGraphApproval("rejected")
+                      : handleExecuteApproval("rejected")
+                  }
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Reject
                 </Button>
               </div>
             </div>
-          ) : null}
-          <ExecutionTimeline steps={steps} onRetryStep={handleRetryStep} isRetrying={isRetryingStep} />
-        </div>
+          )}
 
-        {canCompensate && (
-          <div className="mb-6 rounded-lg border border-border bg-card">
-            <div className="border-b border-border px-4 py-3">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-foreground">Compensation</h2>
-              </div>
+          <GravitreSurface padded={false}>
+            <div className="border-b border-divide p-4">
+              <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Steps in execution order with status
+              </p>
             </div>
             <div className="p-4">
-              <p className="mb-4 text-sm text-muted-foreground">
-                Run compensating actions for side effects recorded during this failed run.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-2"
-                onClick={handleCompensate}
-                disabled={!isAdmin || authLoading || isCompensating}
-              >
-                {isCompensating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-3.5 w-3.5" />
-                )}
-                {isAdmin ? "Run compensation" : "Compensation (Admin only)"}
-              </Button>
-              {compensationSummary && (
-                <div className="mt-4 rounded-md border border-border bg-muted/30 p-3 text-sm">
-                  <p className="mb-2 font-medium text-foreground">
-                    {compensationSummary.compensated} compensated · {compensationSummary.failed} failed ·{" "}
-                    {compensationSummary.skipped} skipped
-                  </p>
-                  {compensationSummary.results.length > 0 && (
-                    <ul className="space-y-1 font-mono text-xs text-muted-foreground">
-                      {compensationSummary.results.map((result) => (
-                        <li key={result.recordId}>
-                          {result.action}: {result.status}
-                          {result.error ? ` — ${result.error}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+              {steps.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No steps recorded yet.</p>
+              ) : (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                  {steps.map((step, index) => {
+                    const StatusIcon = stepStatusIcons[step.status]
+                    return (
+                      <div key={step.id} className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2",
+                            step.status === "failed" && "border-destructive/50",
+                            step.status === "awaiting_approval" &&
+                              "animate-pulse border-warning/50",
+                          )}
+                        >
+                          <StatusIcon className={`h-3.5 w-3.5 ${stepStatusColors[step.status]}`} />
+                          <span className="whitespace-nowrap text-xs font-medium text-foreground">
+                            {step.name}
+                          </span>
+                          <span className="rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {step.status}
+                          </span>
+                        </div>
+                        {index < steps.length - 1 && (
+                          <div className="h-px w-4 shrink-0 bg-[color:var(--g-border-default)]" />
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          </GravitreSurface>
 
-        <div className="mt-6 rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Rollback</h2>
-            </div>
-          </div>
-          <div className="p-4">
-            <div className="mb-4 flex items-start gap-2 rounded-md border border-warning/20 bg-warning/10 px-3 py-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              <p className="text-xs text-warning">
-                Rollback will revert this run and any changes it made. This action cannot be undone and may affect
-                dependent workflows.
+          <RunObservabilityConsole runId={id} />
+
+          <GravitreSurface padded={false}>
+            <div className="border-b border-divide p-4">
+              <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Full step trace with payloads, logs, and connector details. Expand steps for raw
+                data.
               </p>
             </div>
-
-            {rollbackError && (
-              <div className="mb-4 flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                {rollbackError}
+            {businessOutcome ? (
+              <div className="border-b border-divide p-4">
+                <BusinessOutcomeView outcome={businessOutcome} density="timeline" />
+                <div className="mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={async () => {
+                      try {
+                        const md = await businessOutcomesApi.exportMarkdown(id)
+                        await navigator.clipboard.writeText(md)
+                        toast.success("BusinessOutcome export copied (same DTO as chat/timeline)")
+                      } catch (err) {
+                        toast.error("Export failed", {
+                          description: err instanceof Error ? err.message : "Please try again.",
+                        })
+                      }
+                    }}
+                  >
+                    Copy export (same DTO)
+                  </Button>
+                </div>
               </div>
-            )}
+            ) : null}
+            <ExecutionTimeline
+              steps={steps}
+              onRetryStep={handleRetryStep}
+              isRetrying={isRetryingStep}
+            />
+          </GravitreSurface>
 
-            {!showRollbackConfirm ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-2"
-                onClick={handleRequestRollback}
-                disabled={!isAdmin || authLoading}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {isAdmin ? "Request rollback" : "Rollback (Admin only)"}
-              </Button>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted-foreground">Are you sure you want to rollback this run?</span>
+          {canCompensate && (
+            <GravitreSurface padded={false}>
+              <div className="border-b border-divide px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold text-foreground">Compensation</h2>
+                </div>
+              </div>
+              <div className="p-4">
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Run compensating actions for side effects recorded during this failed run.
+                </p>
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
-                  className="h-8"
-                  onClick={handleConfirmRollback}
-                  disabled={isRollingBack}
+                  className="h-8 gap-2"
+                  onClick={handleCompensate}
+                  disabled={!isAdmin || authLoading || isCompensating}
                 >
-                  {isRollingBack ? (
-                    <>
-                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                      Rolling back...
-                    </>
+                  {isCompensating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    "Confirm"
+                    <RotateCcw className="h-3.5 w-3.5" />
                   )}
+                  {isAdmin ? "Run compensation" : "Compensation (Admin only)"}
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8" onClick={handleCancelRollback} disabled={isRollingBack}>
-                  Dismiss
-                </Button>
+                {compensationSummary && (
+                  <div className="mt-4 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-3 text-sm">
+                    <p className="mb-2 font-medium text-foreground">
+                      {compensationSummary.compensated} compensated · {compensationSummary.failed}{" "}
+                      failed · {compensationSummary.skipped} skipped
+                    </p>
+                    {compensationSummary.results.length > 0 && (
+                      <ul className="space-y-1 font-mono text-xs text-muted-foreground">
+                        {compensationSummary.results.map((result) => (
+                          <li key={result.recordId}>
+                            {result.action}: {result.status}
+                            {result.error ? ` — ${result.error}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </GravitreSurface>
+          )}
+
+          <GravitreSurface padded={false}>
+            <div className="border-b border-divide px-4 py-3">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-foreground">Rollback</h2>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="mb-4 flex items-start gap-2 rounded-[var(--np-radius-md)] border border-warning/20 bg-warning/10 px-3 py-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <p className="text-xs text-warning">
+                  Rollback will revert this run and any changes it made. This action cannot be
+                  undone and may affect dependent workflows.
+                </p>
+              </div>
+
+              {rollbackError && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {rollbackError}
+                </div>
+              )}
+
+              {!showRollbackConfirm ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={handleRequestRollback}
+                  disabled={!isAdmin || authLoading}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  {isAdmin ? "Request rollback" : "Rollback (Admin only)"}
+                </Button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Are you sure you want to rollback this run?
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-8"
+                    onClick={handleConfirmRollback}
+                    disabled={isRollingBack}
+                  >
+                    {isRollingBack ? (
+                      <>
+                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        Rolling back...
+                      </>
+                    ) : (
+                      "Confirm"
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={handleCancelRollback}
+                    disabled={isRollingBack}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
+            </div>
+          </GravitreSurface>
         </div>
       </div>
     </AppShell>
