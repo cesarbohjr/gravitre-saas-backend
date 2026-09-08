@@ -256,9 +256,9 @@ KPI registry seeds **AVAILABLE NOW** only. Overview date range UI includes 1h/24
 | D4 | Edit mode · `+ Add KPI` picker (search/categories) · remove widget |
 | D5 | CSS 12-col packer · HTML5 drag reflow · size cycle · mobile ↑↓ |
 | D6 | `localStorage` + `/api/settings/dashboard-layout` → `user_ui_preferences` |
-| D7 | Vitest pack/normalize; mobile reorder; keyboard-friendly remove/resize |
+| D7 | Vitest pack/normalize; mobile reorder; keyboard-friendly remove/resize; **home** added to Playwright fidelity pack + D7 scorecard (INCONCLUSIVE until baselines) |
 
-**Files:** `apps/web/lib/dashboard/*`, `apps/web/components/home/*`, `apps/web/hooks/use-dashboard-layout.ts`, `apps/web/hooks/use-home-dashboard-data.ts`, `supabase/migrations/20260908010000_user_ui_preferences.sql`
+**Files:** `apps/web/lib/dashboard/*`, `apps/web/components/home/*`, `apps/web/hooks/use-dashboard-layout.ts`, `apps/web/hooks/use-home-dashboard-data.ts`, `supabase/migrations/20260908010000_user_ui_preferences.sql`, `apps/web/app/e2e/shots/home/`, `docs/delivery/nodus-home-dashboard-d7-fidelity-scorecard-2026-09-08.md`
 
 ---
 

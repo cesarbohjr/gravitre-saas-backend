@@ -13,6 +13,7 @@
 import { test, expect } from "@playwright/test"
 
 const SURFACES = [
+  { name: "home", path: "/e2e/shots/home" },
   { name: "agents", path: "/e2e/shots/agents" },
   { name: "workflows", path: "/e2e/shots/workflows" },
   { name: "approvals", path: "/e2e/shots/approvals" },

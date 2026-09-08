@@ -1,13 +1,13 @@
 "use client"
 
 /**
- * Lite pages share Admin chrome (AppShell + PageHeader). Content stays simplified;
+ * Lite pages share Admin chrome (AppShell + GravitrePageHeader). Content stays simplified;
  * only nav IA and page body differ from Admin hubs.
  */
 
 import type { LucideIcon } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 
 interface LitePageShellProps {
@@ -24,7 +24,7 @@ interface LitePageShellProps {
 export function LitePageShell({
   title,
   description,
-  icon,
+  icon: Icon,
   actions,
   headerChildren,
   loading = false,
@@ -41,9 +41,14 @@ export function LitePageShell({
 
   return (
     <AppShell title={title}>
-      <PageHeader title={title} description={description} icon={icon} actions={actions}>
+      <GravitrePageHeader
+        title={title}
+        description={description}
+        icon={Icon ? <Icon className="h-5 w-5" /> : undefined}
+        actions={actions}
+      >
         {headerChildren}
-      </PageHeader>
+      </GravitrePageHeader>
       <div className="space-y-4 p-4 sm:p-6">{children}</div>
     </AppShell>
   )

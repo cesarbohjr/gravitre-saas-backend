@@ -693,6 +693,85 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
 
   "/api/agents": { agents },
 
+  // Home dashboard (/home + /e2e/shots/home) — camelCase overview + AI OS fields
+  // that normalizeMetricsOverview / normalizeAiOsStatus expect. Honest fixture
+  // counts only; no invented product claims.
+  "/api/metrics/overview": {
+    totalWorkflows: 12,
+    activeWorkflows: 8,
+    totalRuns: 2755,
+    successRate: 96.8,
+    avgDuration: 4200,
+    avgLatency: 310,
+    recordsProcessed: 18420,
+    activeConnectors: 4,
+    totalConnectors: 6,
+    connectorHealthLatencyMs: 180,
+    connectorHealthLatencyP95Ms: 420,
+    changes: {
+      totalRuns: 4.2,
+      successRate: 0.6,
+      recordsProcessed: 8.1,
+      avgLatency: -3.4,
+    },
+    trends: {
+      totalRuns: [210, 240, 255, 280, 300, 310, 320],
+      successRate: [94, 95, 95.5, 96, 96.2, 96.5, 96.8],
+      recordsProcessed: [1200, 1400, 1600, 1800, 2000, 2100, 2200],
+      avgLatency: [340, 330, 325, 320, 315, 312, 310],
+    },
+  },
+  "/api/admin/ai-os/status": {
+    ml_models_live: 3,
+    ml_models_planned: 2,
+    memory_promotions_pending: 1,
+    architecture_systems_live: 5,
+    architecture_systems_planned: 1,
+    intelligence_engine: { last_run: "2026-09-08T06:00:00.000Z" },
+  },
+  "/api/admin/intelligence/learning-progress": {
+    queryRows: 42,
+    queryRowsNeeded: 50,
+    workflowRows: 28,
+    workflowRowsNeeded: 30,
+    hasAnySnapshot: true,
+  },
+  "/api/admin/intelligence/trust-summary": {
+    avg_confidence: 0.86,
+  },
+  "/api/admin/intelligence/business-impact": {
+    scopeNote: "Fixture scope for visual capture only.",
+    businessImpactScore: 72,
+    scoreLabel: "Stable",
+    pendingReviewCount: 1,
+    pendingBusinessSignals: 2,
+    poorOutcomeAgents: 0,
+    avgOutcomeWinRate: 0.81,
+    revenueRiskItems: [
+      {
+        id: "risk_fixture_01",
+        severity: "medium",
+        title: "Connector retry backlog rising",
+        summary: "HubSpot write retries climbed over the last 24h.",
+        source: "fixture",
+        suggestionType: "ops",
+      },
+    ],
+    dimensions: { revenueRisk: 40, outcomeHealth: 78, operationalLoad: 55 },
+  },
+  "/api/admin/intelligence/predictive-ops": {
+    summary: "No critical predictive alerts in the fixture window.",
+  },
+  "/api/admin/intelligence/learning/live-dashboard": {
+    ready_model_count: 3,
+  },
+  "/api/admin/learning/status": {
+    learning_velocity: "steady",
+  },
+  "/api/settings/dashboard-layout": {
+    layout: null,
+  },
+
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
   // pathname matcher, but the page still gates the request on an org being
   // resolved from /api/organizations above.

@@ -6,6 +6,7 @@ import AgentsPage from "@/app/agents/page"
 import AiPage from "@/app/ai/page"
 import ApprovalsPage from "@/app/approvals/page"
 import ConnectorsPage from "@/app/connectors/page"
+import HomePage from "@/app/home/page"
 import WorkflowsPage from "@/app/workflows/page"
 
 import { ShotAuthProvider } from "./shot-auth"
@@ -24,6 +25,7 @@ export const SHOT_SURFACES = {
   ai: AiPage,
   approvals: ApprovalsPage,
   connectors: ConnectorsPage,
+  home: HomePage,
   workflows: WorkflowsPage,
 } as const
 

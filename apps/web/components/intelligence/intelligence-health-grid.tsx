@@ -2,7 +2,7 @@
 
 import useSWR from "swr"
 import Link from "next/link"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { CardSkeleton, StatsSkeleton } from "@/components/gravitre/loading-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -103,27 +103,26 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
       {trustLoading || maturityLoading ? (
         <StatsSkeleton count={4} />
       ) : (
-        <StatsGrid columns={4}>
-          <StatCard
+        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+          <GravitreMetric
             label="Trust confidence (7d avg)"
             value={avgConfidence != null ? formatPercent(avgConfidence) : "—"}
-            variant={avgConfidence != null ? "success" : "warning"}
+            warning={avgConfidence == null}
           />
-          <StatCard
+          <GravitreMetric
             label="Maturity level"
             value={maturityView?.level != null ? `L${maturityView.level}` : "—"}
-            variant="info"
           />
-          <StatCard
+          <GravitreMetric
             label="Maturity stage"
             value={readString(maturityView?.label, "—")}
           />
-          <StatCard
+          <GravitreMetric
             label="Stale source warnings"
             value={readNumber(trust?.stale_source_warnings?.length, 0)}
-            variant={readNumber(trust?.stale_source_warnings?.length, 0) > 0 ? "warning" : "success"}
+            warning={readNumber(trust?.stale_source_warnings?.length, 0) > 0}
           />
-        </StatsGrid>
+        </section>
       )}
 
       {maturityView ? (

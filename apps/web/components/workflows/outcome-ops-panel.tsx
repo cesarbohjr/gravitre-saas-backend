@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { workflowsApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -52,11 +52,15 @@ export function OutcomeOpsPanel({ className }: { className?: string }) {
           {isLoading ? "Loading…" : error ? "Unavailable" : `${summary?.event_count ?? 0} events`}
         </span>
       </div>
-      <StatsGrid columns={3}>
-        <StatCard label="Pass rate" value={pct(summary?.pass_rate)} variant="info" />
-        <StatCard label="Passed" value={summary?.totals?.pass ?? "—"} variant="success" />
-        <StatCard label="Failed" value={summary?.totals?.fail ?? "—"} variant="danger" />
-      </StatsGrid>
+      <section className="grid grid-cols-3 gap-[var(--np-kpi-gap)]">
+        <GravitreMetric label="Pass rate" value={pct(summary?.pass_rate)} />
+        <GravitreMetric label="Passed" value={summary?.totals?.pass ?? "—"} />
+        <GravitreMetric
+          label="Failed"
+          value={summary?.totals?.fail ?? "—"}
+          warning={(summary?.totals?.fail ?? 0) > 0}
+        />
+      </section>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <p className="mb-2 text-xs font-medium text-muted-foreground">By trigger source</p>

@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { intelligencePacksApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -59,18 +59,23 @@ export function PackKpiPanel({
                 : "Not installed"}
         </span>
       </div>
-      <StatsGrid columns={compact ? 2 : 3}>
-        <StatCard label="Signals" value={kpis?.signalsCount ?? "—"} />
-        <StatCard label="Entities" value={kpis?.entitiesCount ?? "—"} />
-        <StatCard label="Cache-linked" value={kpis?.cacheTouches ?? "—"} />
+      <section
+        className={cn(
+          "grid gap-[var(--np-kpi-gap)]",
+          compact ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-3",
+        )}
+      >
+        <GravitreMetric label="Signals" value={kpis?.signalsCount ?? "—"} />
+        <GravitreMetric label="Entities" value={kpis?.entitiesCount ?? "—"} />
+        <GravitreMetric label="Cache-linked" value={kpis?.cacheTouches ?? "—"} />
         {!compact ? (
           <>
-            <StatCard label="Agents" value={kpis?.agentCount ?? "—"} />
-            <StatCard label="Workflows" value={kpis?.workflowCount ?? "—"} />
-            <StatCard label="Assignments" value={kpis?.assignmentsCount ?? "—"} />
+            <GravitreMetric label="Agents" value={kpis?.agentCount ?? "—"} />
+            <GravitreMetric label="Workflows" value={kpis?.workflowCount ?? "—"} />
+            <GravitreMetric label="Assignments" value={kpis?.assignmentsCount ?? "—"} />
           </>
         ) : null}
-      </StatsGrid>
+      </section>
     </section>
   )
 }
