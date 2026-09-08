@@ -3,15 +3,16 @@
 import { use, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ModelDetailInsights } from "@/components/gravitre/model-detail-insights"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { connectorVendorKey } from "@/lib/connectors"
 import { useAuth } from "@/lib/auth-context"
@@ -19,8 +20,10 @@ import {
   connectedDataSources,
   inferenceSampleInputs,
   lookupBaseModelOption,
+  modelTypeMeta,
 } from "@/lib/ml-registry-catalog"
-import { ArrowLeft, Brain, RefreshCw } from "lucide-react"
+import { ArrowLeft, RefreshCw } from "lucide-react"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 
 const statusStyles: Record<string, string> = {
@@ -33,6 +36,10 @@ const statusStyles: Record<string, string> = {
   archived: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
 }
 
+function formatType(value: string): string {
+  return value.replace(/_/g, " ")
+}
+
 export default function ModelDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
@@ -43,11 +50,11 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
 
   const { data: model, error, isLoading, mutate, isValidating } = useSWR(
     user ? ["ml-model", id] : null,
-    () => mlModelsApi.get(id)
+    () => mlModelsApi.get(id),
   )
 
   const { data: connectorData } = useSWR(user ? "connectors-for-ml-detail" : null, () =>
-    connectorsApi.list()
+    connectorsApi.list(),
   )
 
   const connectedVendorKeys = useMemo(() => {
@@ -66,7 +73,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
 
   const baseModelOption = useMemo(
     () => (model ? lookupBaseModelOption(model.modelType, model.baseModel, connectedVendorKeys) : undefined),
-    [model, connectedVendorKeys]
+    [model, connectedVendorKeys],
   )
 
   const [inferenceJson, setInferenceJson] = useState("[]")
@@ -78,9 +85,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
   }, [model?.id, model?.modelType])
 
   const canDeploy =
-    model &&
-    (model.status === "ready" || model.status === "deployed") &&
-    model.currentVersion > 0
+    model && (model.status === "ready" || model.status === "deployed") && model.currentVersion > 0
 
   async function handleDeploy() {
     if (!model) return
@@ -132,74 +137,97 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
     setPredictResult(null)
   }
 
+  const typeMeta = model ? modelTypeMeta(model.modelType) : undefined
+  const versionLabel = model
+    ? model.deployedVersion != null
+      ? `v${model.currentVersion} · deployed v${model.deployedVersion}`
+      : `v${model.currentVersion}`
+    : "—"
+
   return (
     <AppShell title={model?.name ?? "Model"}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-        <div className="space-y-6">
-        <Button variant="ghost" size="sm" className="-ml-2 h-8" asChild>
-          <Link href="/models">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            {SURFACE_COPY.models.title}
-          </Link>
-        </Button>
-
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-32 w-full rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-xl" />
-          </div>
-        ) : error ? (
-          <WorkSectionErrorCard
-            title="Model unavailable"
-            message={error instanceof Error ? error.message : "Unknown error"}
-            error={error}
-            onRetry={() => mutate()}
-          />
-        ) : model ? (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
-            >
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Brain className="h-5 w-5 text-success" />
-                  <h1 className="text-xl font-semibold tracking-tight">{model.name}</h1>
-                  <Badge
-                    variant="outline"
-                    className={cn("capitalize", statusStyles[model.status] ?? statusStyles.draft)}
-                  >
-                    {model.status}
-                  </Badge>
-                </div>
-                {model.description ? (
-                  <p className="max-w-2xl text-sm text-muted-foreground">{model.description}</p>
-                ) : null}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+      <div>
+        <GravitrePageHeader
+          eyebrow={SURFACE_COPY.models.title}
+          title={model?.name ?? "Model"}
+          description={model?.description ?? SURFACE_COPY.models.description}
+          icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={APP_ROUTES.models}>
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Link>
+              </Button>
+              {model ? (
+                <Badge
+                  variant="outline"
+                  className={cn("capitalize", statusStyles[model.status] ?? statusStyles.draft)}
+                >
+                  {model.status}
+                </Badge>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating || isLoading}>
                 <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
                 Refresh
               </Button>
-            </motion.div>
+              {canDeploy ? (
+                <Button size="sm" onClick={() => void handleDeploy()} disabled={isDeploying}>
+                  {isDeploying ? "Deploying…" : "Deploy"}
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
 
-            <ModelDetailInsights
-              model={model}
-              baseModelOption={baseModelOption}
-              connectedDataSources={dataSources}
-              canDeploy={Boolean(canDeploy)}
-              isDeploying={isDeploying}
-              onDeploy={() => void handleDeploy()}
-              inferenceJson={inferenceJson}
-              onInferenceJsonChange={setInferenceJson}
-              isPredicting={isPredicting}
-              predictResult={predictResult}
-              predictError={predictError}
-              onRunInference={() => void handleRunInference()}
-              onResetInferenceSample={handleResetInferenceSample}
+        <div className="mx-auto max-w-7xl space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+            </div>
+          ) : error ? (
+            <WorkSectionErrorCard
+              title="Model unavailable"
+              message={error instanceof Error ? error.message : "Unknown error"}
+              error={error}
+              onRetry={() => mutate()}
             />
-          </>
-        ) : null}
+          ) : model ? (
+            <>
+              <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
+                <GravitreMetric label="Status" value={model.status} hint="Lifecycle stage" />
+                <GravitreMetric label="Version" value={versionLabel} hint="Current · deployed when set" />
+                <GravitreMetric
+                  label="Type"
+                  value={typeMeta?.label ?? formatType(model.modelType)}
+                  hint={formatType(model.modelType)}
+                />
+                <GravitreMetric
+                  label="Base model"
+                  value={model.baseModel ?? "—"}
+                  hint={baseModelOption?.label ?? "Registry base"}
+                />
+              </section>
+
+              <ModelDetailInsights
+                model={model}
+                baseModelOption={baseModelOption}
+                connectedDataSources={dataSources}
+                canDeploy={Boolean(canDeploy)}
+                isDeploying={isDeploying}
+                onDeploy={() => void handleDeploy()}
+                inferenceJson={inferenceJson}
+                onInferenceJsonChange={setInferenceJson}
+                isPredicting={isPredicting}
+                predictResult={predictResult}
+                predictError={predictError}
+                onRunInference={() => void handleRunInference()}
+                onResetInferenceSample={handleResetInferenceSample}
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </AppShell>

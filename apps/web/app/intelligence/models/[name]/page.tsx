@@ -4,11 +4,11 @@ import { useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, ChartLineUp, Play } from "@phosphor-icons/react"
+import { ArrowLeft, ChartLineUp, Cpu, Play } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { GravitreMetric } from "@/components/gravitre/nodus-product"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -90,6 +90,15 @@ export default function ModelProfilePage() {
     catalogEntry.min_data,
     readString(statusEntry?.activation, "See catalog requirements"),
   )
+  const lastTrainedRaw = readString(readinessEntry?.last_trained_at, "")
+  const lastTrainedParsed = lastTrainedRaw ? new Date(lastTrainedRaw) : null
+  const lastTrainedDisplay =
+    lastTrainedParsed && !Number.isNaN(lastTrainedParsed.getTime())
+      ? lastTrainedParsed.toLocaleString()
+      : lastTrainedRaw || "—"
+  const outcomeScore = catalogData?.outcomeScores?.[modelName]
+  const outcomeScoreDisplay =
+    outcomeScore == null || Number.isNaN(Number(outcomeScore)) ? "—" : formatScore(Number(outcomeScore))
 
   async function handleTrain() {
     setTraining(true)
@@ -111,172 +120,195 @@ export default function ModelProfilePage() {
 
   return (
     <AppShell title={guide.label}>
-      <div className="space-y-6 p-4 md:p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={APP_ROUTES.builtInModels}>
-              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
-              {SURFACE_COPY.builtInModels.title}
-            </Link>
-          </Button>
-          <Badge variant="outline" className={modelStatusChipClass(status)}>
-            {statusLabel(status)}
-          </Badge>
-          {!isPlanned && readinessStatus === "ready" ? (
-            <Button size="sm" onClick={handleTrain} disabled={training}>
-              <Play className="mr-2 h-4 w-4" weight="fill" aria-hidden />
-              {training ? "Queuing…" : "Retrain now"}
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-foreground">{guide.label}</h1>
+      <div>
+        <GravitrePageHeader
+          eyebrow={SURFACE_COPY.builtInModels.title}
+          title={guide.label}
+          description={guide.summary}
+          icon={<Cpu className="h-5 w-5" weight="duotone" aria-hidden />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={APP_ROUTES.builtInModels}>
+                  <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+                  Back
+                </Link>
+              </Button>
+              <Badge variant="outline" className={modelStatusChipClass(status)}>
+                {statusLabel(status)}
+              </Badge>
+              {!isPlanned && readinessStatus === "ready" ? (
+                <Button size="sm" onClick={handleTrain} disabled={training}>
+                  <Play className="mr-2 h-4 w-4" weight="fill" aria-hidden />
+                  {training ? "Queuing…" : "Retrain now"}
+                </Button>
+              ) : null}
+            </div>
+          }
+        >
           <p className="font-mono text-xs text-muted-foreground">{modelName}</p>
-          <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{guide.summary}</p>
-        </div>
+        </GravitrePageHeader>
 
-        {isPlanned ? (
-          <EmptyState
-            iconSlot={
-              <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-warning/10">
-                <ChartLineUp className="h-8 w-8 text-warning" weight="duotone" aria-hidden />
-              </span>
-            }
-            title={`${guide.label} — not yet active`}
-            description={plainDecisionReasoning(guide.dataExplainer || activationRequirement)}
-          />
-        ) : null}
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
+            <GravitreMetric
+              label="Readiness"
+              value={progress == null ? "—" : `${progress}%`}
+              hint={isPlanned ? "Not trainable yet" : readinessStatus.replace(/_/g, " ")}
+            />
+            <GravitreMetric
+              label="Signals"
+              value={isPlanned ? "—" : `${signalsAvailable} / ${minRequired}`}
+              hint="Examples toward training gate"
+            />
+            <GravitreMetric label="Outcome score" value={outcomeScoreDisplay} hint="Org score when measured" />
+            <GravitreMetric label="Last trained" value={lastTrainedDisplay} hint="From training readiness" />
+          </section>
 
-        <Tabs defaultValue="overview">
-          <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="readiness">Training readiness</TabsTrigger>
-            <TabsTrigger value="impact">Business impact</TabsTrigger>
-          </TabsList>
+          {isPlanned ? (
+            <EmptyState
+              iconSlot={
+                <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-warning/10">
+                  <ChartLineUp className="h-8 w-8 text-warning" weight="duotone" aria-hidden />
+                </span>
+              }
+              title={`${guide.label} — not yet active`}
+              description={plainDecisionReasoning(guide.dataExplainer || activationRequirement)}
+            />
+          ) : null}
 
-          <TabsContent value="overview" className="mt-6 space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
-                <p className="font-medium text-foreground">Why this matters</p>
-                <p className="mt-2 leading-relaxed text-muted-foreground">{guide.whyItMatters}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
-                <p className="font-medium text-foreground">About the data gate</p>
-                <p className="mt-2 leading-relaxed text-muted-foreground">{guide.dataExplainer}</p>
-                {guide.howToFeed ? (
-                  <p className="mt-2 leading-relaxed text-muted-foreground">
-                    <span className="font-medium text-foreground">How to feed it: </span>
-                    {guide.howToFeed}
+          <Tabs defaultValue="overview">
+            <TabsList className="flex w-full flex-wrap justify-start">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="readiness">Training readiness</TabsTrigger>
+              <TabsTrigger value="impact">Business impact</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-6 space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
+                  <p className="font-medium text-foreground">Why this matters</p>
+                  <p className="mt-2 leading-relaxed text-muted-foreground">{guide.whyItMatters}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
+                  <p className="font-medium text-foreground">About the data gate</p>
+                  <p className="mt-2 leading-relaxed text-muted-foreground">{guide.dataExplainer}</p>
+                  {guide.howToFeed ? (
+                    <p className="mt-2 leading-relaxed text-muted-foreground">
+                      <span className="font-medium text-foreground">How to feed it: </span>
+                      {guide.howToFeed}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    The number is a minimum quality gate, not a max. You can’t raise or lower it here — keep
+                    connecting sources and using the product so signals grow past the gate.
                   </p>
-                ) : null}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  The number is a minimum quality gate, not a max. You can’t raise or lower it here — keep
-                  connecting sources and using the product so signals grow past the gate.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={APP_ROUTES.models}>Add custom models</Link>
-                  </Button>
-                  <Button size="sm" variant="ghost" asChild>
-                    <Link href={APP_ROUTES.training}>Training</Link>
-                  </Button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={APP_ROUTES.models}>Add custom models</Link>
+                    </Button>
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link href={APP_ROUTES.training}>Training</Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-            <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-              <GravitreMetric
-                label="Model type"
-                value={readString(catalogEntry.model_type, "—").replace(/_/g, " ")}
-              />
-              <GravitreMetric
-                label="Advisory only"
-                value={statusEntry?.advisory_only ? "Yes — recommends, doesn’t auto-act" : "No"}
-              />
-              <GravitreMetric
-                label="Fallback when untrained"
-                value={readString(statusEntry?.fallback, readString(catalogEntry.fallback, "—")).replace(
-                  /_/g,
-                  " ",
-                )}
-              />
-            </section>
-            {!isPlanned ? (
-              <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">Activation checklist</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  <li>{readString(catalogEntry.min_data, guide.dataExplainer)}</li>
-                  <li>
-                    Examples collected: {signalsAvailable} / {minRequired} (gate, not ceiling)
-                  </li>
-                  <li>Status: {readinessStatus.replace(/_/g, " ")}</li>
-                </ul>
-              </div>
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="performance" className="mt-6 space-y-4">
-            {readString(modelPerformance.status) === "insufficient_data" ? (
-              <EmptyState
-                title="Not enough predictions measured yet"
-                description="This appears once sufficient outcome data accumulates for this model."
-              />
-            ) : (
               <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-                <GravitreMetric label="Evaluation status" value={readString(modelPerformance.status, "—")} />
-                <GravitreMetric label="Samples" value={readNumber(modelPerformance.samples, 0)} />
                 <GravitreMetric
-                  label="Recommendation approval"
-                  value={formatPercent(evaluations?.recommendation_approval_rate as number | null)}
+                  label="Model type"
+                  value={readString(catalogEntry.model_type, "—").replace(/_/g, " ")}
+                />
+                <GravitreMetric
+                  label="Advisory only"
+                  value={statusEntry?.advisory_only ? "Yes — recommends, doesn’t auto-act" : "No"}
+                />
+                <GravitreMetric
+                  label="Fallback when untrained"
+                  value={readString(statusEntry?.fallback, readString(catalogEntry.fallback, "—")).replace(
+                    /_/g,
+                    " ",
+                  )}
                 />
               </section>
-            )}
-          </TabsContent>
+              {!isPlanned ? (
+                <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">Activation checklist</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    <li>{readString(catalogEntry.min_data, guide.dataExplainer)}</li>
+                    <li>
+                      Examples collected: {signalsAvailable} / {minRequired} (gate, not ceiling)
+                    </li>
+                    <li>Status: {readinessStatus.replace(/_/g, " ")}</li>
+                  </ul>
+                </div>
+              ) : null}
+            </TabsContent>
 
-          <TabsContent value="readiness" className="mt-6 space-y-4">
-            {progress == null ? (
-              <p className="text-sm text-muted-foreground">
-                This model isn’t trainable for your org yet — it’s on the platform roadmap or disabled.
-              </p>
-            ) : (
-              <>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-muted-foreground tabular-nums">
-                  {signalsAvailable} / {minRequired} examples toward the training gate ·{" "}
-                  {readinessStatus.replace(/_/g, " ")}
+            <TabsContent value="performance" className="mt-6 space-y-4">
+              {readString(modelPerformance.status) === "insufficient_data" ? (
+                <EmptyState
+                  title="Not enough predictions measured yet"
+                  description="This appears once sufficient outcome data accumulates for this model."
+                />
+              ) : (
+                <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+                  <GravitreMetric label="Evaluation status" value={readString(modelPerformance.status, "—")} />
+                  <GravitreMetric label="Samples" value={readNumber(modelPerformance.samples, 0)} />
+                  <GravitreMetric
+                    label="Recommendation approval"
+                    value={formatPercent(evaluations?.recommendation_approval_rate as number | null)}
+                  />
+                </section>
+              )}
+            </TabsContent>
+
+            <TabsContent value="readiness" className="mt-6 space-y-4">
+              {progress == null ? (
+                <p className="text-sm text-muted-foreground">
+                  This model isn’t trainable for your org yet — it’s on the platform roadmap or disabled.
                 </p>
-                <p className="text-xs text-muted-foreground">{guide.dataExplainer}</p>
-              </>
-            )}
-          </TabsContent>
+              ) : (
+                <>
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {signalsAvailable} / {minRequired} examples toward the training gate ·{" "}
+                    {readinessStatus.replace(/_/g, " ")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{guide.dataExplainer}</p>
+                </>
+              )}
+            </TabsContent>
 
-          <TabsContent value="impact" className="mt-6 space-y-4">
-            <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-              <GravitreMetric label="Linked outcome events" value={recentEvents.length} />
-              <GravitreMetric
-                label="Avg confidence"
-                value={formatScore(readNumber(outcomes?.avg_confidence, NaN) || null)}
-              />
-              <GravitreMetric
-                label="Departments"
-                value={(catalogEntry.use_cases as string[] | undefined)?.length ?? "—"}
-              />
-            </section>
-            {recentEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No outcome events linked to this model in the selected period.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {recentEvents.slice(0, 8).map((row, index) => (
-                  <li key={String(row.id ?? index)} className="rounded-lg border border-border/60 px-3 py-2">
-                    {readString(row.outcome_event, "event").replace(/_/g, " ")} ·{" "}
-                    {readString(row.created_at, "—")}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="impact" className="mt-6 space-y-4">
+              <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+                <GravitreMetric label="Linked outcome events" value={recentEvents.length} />
+                <GravitreMetric
+                  label="Avg confidence"
+                  value={formatScore(readNumber(outcomes?.avg_confidence, NaN) || null)}
+                />
+                <GravitreMetric
+                  label="Departments"
+                  value={(catalogEntry.use_cases as string[] | undefined)?.length ?? "—"}
+                />
+              </section>
+              {recentEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No outcome events linked to this model in the selected period.
+                </p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {recentEvents.slice(0, 8).map((row, index) => (
+                    <li key={String(row.id ?? index)} className="rounded-lg border border-border/60 px-3 py-2">
+                      {readString(row.outcome_event, "event").replace(/_/g, " ")} ·{" "}
+                      {readString(row.created_at, "—")}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </AppShell>
   )

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Brain, ArrowCounterClockwise } from "@phosphor-icons/react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
@@ -50,15 +51,15 @@ export default function IntelligenceMemoryPage() {
   const [tab, setTab] = useState("org")
   const [reasonMemoryId, setReasonMemoryId] = useState<string | null>(null)
 
+  // Always load KPI feeds when signed in so the metric strip stays honest across tabs.
   const { data: candidatesData, error, mutate } = useSWR(
-    user && tab === "org" ? "intelligence/memory/candidates" : null,
+    user ? "intelligence/memory/candidates" : null,
     () => memoryPromotionApi.candidates({ status: "pending", limit: 50 }),
   )
-  const { data: auditData, mutate: mutateAudit } = useSWR(
-    user && tab === "org" ? "intelligence/memory/audit" : null,
-    () => memoryPromotionApi.audit({ limit: 50 }),
+  const { data: auditData, mutate: mutateAudit } = useSWR(user ? "intelligence/memory/audit" : null, () =>
+    memoryPromotionApi.audit({ limit: 50 }),
   )
-  const { data: autoData } = useSWR(user && tab === "auto" ? "intelligence/memory/auto" : null, () =>
+  const { data: autoData } = useSWR(user ? "intelligence/memory/auto" : null, () =>
     memoryPromotionApi.recentAutoPromotions({ limit: 25 }),
   )
 
@@ -98,105 +99,147 @@ export default function IntelligenceMemoryPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="space-y-6 p-4 md:p-6">
-        <p className="text-sm text-muted-foreground text-pretty">{copy.description}</p>
+      <div>
+        <GravitrePageHeader
+          eyebrow="Intelligence"
+          title={copy.title}
+          description={copy.description}
+          icon={<Brain className="h-5 w-5" weight="duotone" aria-hidden />}
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link href={APP_ROUTES.learning}>{copy.autoAdminLink}</Link>
+            </Button>
+          }
+        />
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="org">{copy.tabPromoted}</TabsTrigger>
-            <TabsTrigger value="auto">{copy.tabAuto}</TabsTrigger>
-            <TabsTrigger value="graph">{copy.tabGraph}</TabsTrigger>
-          </TabsList>
+        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+            <GravitreMetric
+              label="Pending promotions"
+              value={candidates.length}
+              hint="Awaiting review"
+              warning={candidates.length > 0}
+            />
+            <GravitreMetric
+              label="Auto-promotions"
+              value={autoItems.length}
+              hint="Recent automatic promotions"
+            />
+            <GravitreMetric
+              label="Audit events"
+              value={auditItems.length}
+              hint="Loaded trail (newest first)"
+            />
+          </section>
 
-          <TabsContent value="org" className="mt-6 space-y-4">
-            {candidates.length === 0 ? (
-              <EmptyState
-                iconSlot={<Brain className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
-                title="No pending promotion candidates"
-                description="Promoted memories appear here when the engine detects recurring org-wide patterns."
-              />
-            ) : (
-              candidates.map((candidate) => {
-                const auditMatch = auditItems.find((row) => row.candidate_id === candidate.id)
-                return (
-                  <article key={candidate.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <MemoryCategoryChip category={candidate.memory_category} size="md" />
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setReasonMemoryId(candidate.id)}>
-                          Why was this remembered?
-                        </Button>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="flex w-full flex-wrap justify-start">
+              <TabsTrigger value="org">{copy.tabPromoted}</TabsTrigger>
+              <TabsTrigger value="auto">{copy.tabAuto}</TabsTrigger>
+              <TabsTrigger value="graph">{copy.tabGraph}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="org" className="mt-6 space-y-4">
+              {candidates.length === 0 ? (
+                <EmptyState
+                  iconSlot={<Brain className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
+                  title="No pending promotion candidates"
+                  description="Promoted memories appear here when the engine detects recurring org-wide patterns."
+                />
+              ) : (
+                candidates.map((candidate) => {
+                  const auditMatch = auditItems.find((row) => row.candidate_id === candidate.id)
+                  return (
+                    <article
+                      key={candidate.id}
+                      className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <MemoryCategoryChip category={candidate.memory_category} size="md" />
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setReasonMemoryId(candidate.id)}>
+                            Why was this remembered?
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">
-                      {candidate.content ?? "—"}
+                      <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">
+                        {candidate.content ?? "—"}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Source: {candidate.source_table ?? "unknown"} · Freshness:{" "}
+                        {candidate.updated_at
+                          ? formatDistanceToNow(new Date(candidate.updated_at), { addSuffix: true })
+                          : "—"}
+                      </p>
+                      {reasonMemoryId === candidate.id ? (
+                        <p className="mt-3 rounded-lg border border-dashed border-border bg-secondary/40 p-3 text-sm text-foreground">
+                          {plainDecisionReasoning(
+                            auditMatch?.decision_reasoning ?? auditMatch?.decisionReasoning ?? candidate.metadata,
+                          )}
+                        </p>
+                      ) : null}
+                    </article>
+                  )
+                })
+              )}
+            </TabsContent>
+
+            <TabsContent value="auto" className="mt-6 space-y-4">
+              <p className="text-sm text-muted-foreground">{copy.autoHint}</p>
+              {autoItems.length === 0 ? (
+                <EmptyState
+                  title="No recent auto-promotions"
+                  description="Auto-promotions appear when thresholds are met."
+                />
+              ) : (
+                autoItems.map((item, index) => (
+                  <article
+                    key={String(item.memory_id ?? index)}
+                    className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
+                  >
+                    <p className="text-sm text-foreground">
+                      {plainDecisionReasoning(item.decisionReasoning ?? item)}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Source: {candidate.source_table ?? "unknown"} · Freshness:{" "}
-                      {candidate.updated_at
-                        ? formatDistanceToNow(new Date(candidate.updated_at), { addSuffix: true })
-                        : "—"}
+                      {item.decided_at
+                        ? formatDistanceToNow(new Date(String(item.decided_at)), { addSuffix: true })
+                        : "Recently"}
                     </p>
-                    {reasonMemoryId === candidate.id ? (
-                      <p className="mt-3 rounded-lg border border-dashed border-border bg-secondary/40 p-3 text-sm text-foreground">
-                        {plainDecisionReasoning(
-                          auditMatch?.decision_reasoning ?? auditMatch?.decisionReasoning ?? candidate.metadata,
-                        )}
-                      </p>
+                    {item.memory_id ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="mt-3"
+                        onClick={() => handleRollback(String(item.memory_id))}
+                      >
+                        <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
+                        Rollback
+                      </Button>
                     ) : null}
                   </article>
-                )
-              })
-            )}
-          </TabsContent>
+                ))
+              )}
+            </TabsContent>
 
-          <TabsContent value="auto" className="mt-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">{copy.autoHint}</p>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={APP_ROUTES.learning}>{copy.autoAdminLink}</Link>
-              </Button>
-            </div>
-            {autoItems.length === 0 ? (
-              <EmptyState title="No recent auto-promotions" description="Auto-promotions appear when thresholds are met." />
-            ) : (
-              autoItems.map((item, index) => (
-                <article key={String(item.memory_id ?? index)} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
-                  <p className="text-sm text-foreground">{plainDecisionReasoning(item.decisionReasoning ?? item)}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {item.decided_at ? formatDistanceToNow(new Date(String(item.decided_at)), { addSuffix: true }) : "Recently"}
-                  </p>
-                  {item.memory_id ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="mt-3"
-                      onClick={() => handleRollback(String(item.memory_id))}
+            <TabsContent value="graph" className="mt-6 space-y-4">
+              <p className="text-sm text-muted-foreground text-pretty">{copy.graphHint}</p>
+              <RelationshipsLens />
+              {auditItems.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {auditItems.slice(0, 10).map((row, index) => (
+                    <li
+                      key={String(row.id ?? index)}
+                      className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2"
                     >
-                      <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
-                      Rollback
-                    </Button>
-                  ) : null}
-                </article>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="graph" className="mt-6 space-y-4">
-            <p className="text-sm text-muted-foreground text-pretty">{copy.graphHint}</p>
-            <RelationshipsLens />
-            {auditItems.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {auditItems.slice(0, 10).map((row, index) => (
-                  <li key={String(row.id ?? index)} className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
-                    <span className="font-medium">{readString(row.entity_type, "memory")}</span> ·{" "}
-                    {plainDecisionReasoning(row.decision_reasoning ?? row.decisionReasoning)}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </TabsContent>
-        </Tabs>
+                      <span className="font-medium">{readString(row.entity_type, "memory")}</span> ·{" "}
+                      {plainDecisionReasoning(row.decision_reasoning ?? row.decisionReasoning)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </AppShell>
   )
