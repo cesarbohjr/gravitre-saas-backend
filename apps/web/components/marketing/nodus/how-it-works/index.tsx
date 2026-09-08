@@ -25,7 +25,7 @@ export const HowItWorks = () => {
     {
       title: "Design your Workflow",
       description:
-        "A drag-and-drop interface to create, connect, and configure agents into logical workflows",
+        "Map agents, tools, and approval steps in a visual builder — describe outcomes, not boilerplate glue code.",
       icon: FirstIcon,
       id: "workflow",
       skeleton: <DesignYourWorkflowSkeleton />,
@@ -33,7 +33,7 @@ export const HowItWorks = () => {
     {
       title: "Connect your Tools",
       description:
-        "Agents operate independently and coordinate tasks to complete all complex goals together",
+        "Link Salesforce, HubSpot, Slack, and 50+ systems with live auth, health, and executability checks.",
       icon: SecondIcon,
       id: "tools",
       skeleton: <ConnectYourTooklsSkeleton />,
@@ -41,7 +41,7 @@ export const HowItWorks = () => {
     {
       title: "Deploy & Scale",
       description:
-        "Run agent workflows in a sandbox to preview behavior, debug logic, and test interactions",
+        "Test in sandbox, simulate runs, then promote to production — every action logged with audit trails.",
       icon: ThirdIcon,
       id: "deploy",
       skeleton: <DeployAndScaleSkeleton />,
@@ -68,8 +68,8 @@ export const HowItWorks = () => {
         <SectionHeading className="mt-4 px-2">Integrates easily</SectionHeading>
 
         <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
-          We empower developers and technical teams to create, simulate, and
-          manage AI-driven workflows visually
+          Connect your stack, assign work to agents, and run workflows with
+          human approval where it matters.
         </SubHeading>
         {/* Desktop Tabs */}
         <div className="border-divide divide-divide mt-16 hidden w-full grid-cols-2 divide-x border-t lg:grid">
