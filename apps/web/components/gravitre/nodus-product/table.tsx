@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 
 /**
  * Nodus Product Image table shell — hairline divide, aceternity shadow, compact row height.
@@ -38,12 +39,7 @@ export function GravitreTable({
   className?: string
 }) {
   return (
-    <table
-      className={cn(
-        "w-full min-w-[420px] text-left text-sm",
-        className,
-      )}
-    >
+    <table className={cn("w-full min-w-[420px] text-left font-sans text-sm", className)}>
       {children}
     </table>
   )
@@ -59,7 +55,8 @@ export function GravitreTh({
   return (
     <th
       className={cn(
-        "h-[var(--np-row-h,40px)] border-b border-divide px-4 text-xs font-medium text-[color:var(--g-text-muted)]",
+        "h-[var(--np-row-h,40px)] border-b border-divide px-4",
+        TYPE.tableHead,
         className,
       )}
     >
@@ -78,7 +75,8 @@ export function GravitreTd({
   return (
     <td
       className={cn(
-        "h-[var(--np-row-h,40px)] border-b border-divide/70 px-4 text-[color:var(--g-text-primary)] last:border-0",
+        "h-[var(--np-row-h,40px)] border-b border-divide/70 px-4 last:border-0",
+        TYPE.tableCell,
         className,
       )}
     >

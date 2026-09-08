@@ -7,6 +7,7 @@ export {
   GravitreTd,
 } from "./table"
 export { GravitreBadge } from "./badge"
+export { HighlightChip } from "./highlight-chip"
 export { GravitreEmpty } from "./empty"
 export { GravitreStatus } from "./status"
 export type { GravitreStatusProps } from "./status"

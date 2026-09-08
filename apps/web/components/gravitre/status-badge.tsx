@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils"
 import { Icon, type IconName } from "@/lib/icons"
 import {
+  CHIP,
+  HIGHLIGHT,
   STATUS,
   STATUS_DOT,
   resolveStatusTone,
@@ -13,7 +15,7 @@ interface StatusBadgeProps {
   variant?: BadgeVariant
   /**
    * Prefer this when the chip encodes a governance/runtime state.
-   * Uses Phase 9 `--status-*` tokens via `STATUS` / `STATUS_DOT`.
+   * Uses Nodus soft-pill STATUS / STATUS_DOT tokens.
    */
   tone?: StatusTone
   children: React.ReactNode
@@ -25,21 +27,21 @@ interface StatusBadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-secondary text-secondary-foreground",
-  success: "bg-success/15 text-success",
-  warning: "bg-warning/15 text-warning",
-  error: "bg-destructive/15 text-destructive",
-  info: "bg-info/15 text-info",
-  muted: "bg-muted text-muted-foreground",
+  default: HIGHLIGHT.neutral,
+  success: HIGHLIGHT.brand,
+  warning: HIGHLIGHT.warning,
+  error: HIGHLIGHT.danger,
+  info: HIGHLIGHT.signal,
+  muted: HIGHLIGHT.neutral,
 }
 
 const variantDotStyles: Record<BadgeVariant, string> = {
-  default: "bg-secondary-foreground",
-  success: "bg-success",
-  warning: "bg-warning",
+  default: "bg-[color:var(--g-text-muted)]",
+  success: "bg-[color:var(--g-brand)]",
+  warning: "bg-[color:var(--g-approval)]",
   error: "bg-destructive",
-  info: "bg-info",
-  muted: "bg-muted-foreground",
+  info: "bg-[color:var(--g-signal)]",
+  muted: "bg-[color:var(--g-text-muted)]",
 }
 
 /** Legacy variant → STATUS tone when callers still pass variant alone. */
@@ -65,14 +67,7 @@ export function StatusBadge({
   const dotClass = resolvedTone ? STATUS_DOT[resolvedTone] : variantDotStyles[variant]
 
   return (
-    <span
-      title={title}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-        chipClass,
-        className
-      )}
-    >
+    <span title={title} className={cn(CHIP.compact, chipClass, className)}>
       {icon ? (
         <Icon name={icon} size="xs" />
       ) : dot ? (

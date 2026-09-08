@@ -1,14 +1,14 @@
 "use client"
 
 /**
- * StatusChip — canonical UI 3.0 status surface.
- * Uses STATUS / STATUS_DOT from design-system. Never invent TRAINED/live claims.
+ * StatusChip — canonical Nodus soft-pill / plain status surface.
+ * Uses STATUS / STATUS_DOT / CHIP from design-system. Never invent TRAINED/live claims.
  */
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
-  RADIUS,
+  CHIP,
   STATUS,
   STATUS_DOT,
   resolveStatusTone,
@@ -27,6 +27,11 @@ export type StatusChipProps = {
   dot?: boolean
   pulse?: boolean
   title?: string
+  /**
+   * `chip` — soft filled pill (default, Nodus model-tag style).
+   * `plain` — colored dot + graphite label (Nodus status column).
+   */
+  appearance?: "chip" | "plain"
 }
 
 export function StatusChip({
@@ -38,13 +43,12 @@ export function StatusChip({
   dot = true,
   pulse = false,
   title,
+  appearance = "chip",
 }: StatusChipProps) {
   const resolved = tone ?? (status ? resolveStatusTone(status) : "idle")
   const shouldPulse = pulse || resolved === "running"
   const classes = cn(
-    "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium",
-    RADIUS.control,
-    STATUS[resolved],
+    appearance === "plain" ? CHIP.plain : cn(CHIP.base, STATUS[resolved]),
     className,
   )
 
@@ -52,7 +56,7 @@ export function StatusChip({
     <>
       {dot ? (
         shouldPulse ? (
-          <PulseDot tone={resolved === "running" ? "intelligence" : "signal"} size="sm" />
+          <PulseDot tone={resolved === "running" ? "emerald" : "signal"} size="sm" />
         ) : (
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[resolved])} aria-hidden />
         )

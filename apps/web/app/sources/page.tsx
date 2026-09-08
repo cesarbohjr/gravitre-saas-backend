@@ -19,6 +19,7 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { HIGHLIGHT } from "@/lib/design-system"
 import { 
   Plus, 
   Database, 
@@ -302,11 +303,11 @@ function SourceTile({
         {/* Connection status with live pulse */}
         <div className="flex items-center gap-2 mb-4">
           <div className={cn(
-            "flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide",
-            source.status === "connected" && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-            source.status === "syncing" && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-            source.status === "error" && "bg-red-500/10 text-red-400 border border-red-500/20",
-            source.status === "disconnected" && "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20"
+            "flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+            source.status === "connected" && HIGHLIGHT.brand,
+            source.status === "syncing" && HIGHLIGHT.signal,
+            source.status === "error" && HIGHLIGHT.danger,
+            source.status === "disconnected" && HIGHLIGHT.neutral,
           )}>
             <StatusBeacon 
               status={source.status === "connected" ? "active" : source.status === "syncing" ? "processing" : source.status === "error" ? "error" : "idle"} 

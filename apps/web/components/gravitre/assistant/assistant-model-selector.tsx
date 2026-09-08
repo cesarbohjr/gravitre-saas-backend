@@ -149,7 +149,10 @@ export function AssistantModelSelector({
               <DropdownMenuItem
                 key={m.id}
                 onClick={() => onModeChange(m.id)}
-                className={cn("flex flex-col items-stretch gap-0.5 py-2.5", selected && "bg-emerald-500/10")}
+                className={cn(
+                  "flex flex-col items-stretch gap-0.5 py-2.5",
+                  selected && "bg-[color:var(--g-brand-soft)]",
+                )}
               >
                 <div className="flex items-center gap-2">
                   <ModeIcon className={cn("h-4 w-4 shrink-0", m.color)} />

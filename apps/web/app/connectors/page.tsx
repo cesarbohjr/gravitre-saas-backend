@@ -68,6 +68,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { HIGHLIGHT } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -206,15 +207,13 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
     { label: "Executable", ok: availability.executable },
   ]
   return (
-    <div className="flex flex-wrap gap-1 mb-3">
+    <div className="mb-3 flex flex-wrap gap-1">
       {badges.map(({ label, ok }) => (
         <span
           key={label}
           className={cn(
-            "text-[9px] px-1.5 py-0.5 rounded border font-medium",
-            ok
-              ? "bg-success/10 text-success border-success/20"
-              : "bg-muted text-muted-foreground border-border/70",
+            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+            ok ? HIGHLIGHT.brand : HIGHLIGHT.neutral,
           )}
         >
           {label}
@@ -2797,16 +2796,16 @@ function ConnectorsPageContent() {
                 ) : null}
               </div>
               {/* Status Filter Pills */}
-              <div className="hidden lg:flex items-center gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1">
+              <div className="hidden items-center gap-1 rounded-full border border-divide bg-[color:var(--g-surface-2)] p-1 lg:flex">
                 {statusFilterOptions.map((status) => (
                   <button
                     key={status.value}
                     onClick={() => setStatusFilter(status.value)}
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--np-radius-sm)] text-xs font-medium transition-all",
-                      statusFilter === status.value 
-                        ? "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] text-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
+                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all",
+                      statusFilter === status.value
+                        ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
+                        : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                     )}
                   >
                     {"dot" in status && status.dot ? (

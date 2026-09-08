@@ -539,3 +539,17 @@ Cesar authorized Connectors/rail/logo fixes + sharp sidebar icons + “Start P14
 **Not claimed:** marketing PNG visual PASS (needs re-capture post-Ready) or Playwright fidelity PASS (baselines + filled scorecard).
 
 Deploy READY: `dpl_9Jy5b6yRKQWSMKhfrUYNQkMoUS1L` @ `3bebd6b0`.
+
+---
+
+## Shipped — Highlight chrome (2026-09-07)
+
+Cesar authorized Product Image soft-pill highlight colors/shape/type on all web surfaces. See `docs/delivery/nodus-product-ui-highlight-chrome-shipped-2026-09-07.md`.
+
+| Layer | Delivered |
+|-------|-----------|
+| HIGHLIGHT / CHIP / soft STATUS | Design-system + Badge / StatusChip / StatusBadge / GravitreBadge |
+| Signal soft blue | `--g-signal-soft` for Llama-style chips |
+| Key surfaces | Connectors, Sources, Workflows, chat selectors |
+
+**Not claimed:** authenticated visual fidelity PASS until Ready + spot-check.

@@ -78,7 +78,8 @@ export function PersonaSelector({
             key={option.key}
             className={cn(
               "flex flex-col items-start gap-0.5 text-xs",
-              value === option.key && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+              value === option.key &&
+                "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
             )}
             onClick={() => onChange(option.key)}
           >

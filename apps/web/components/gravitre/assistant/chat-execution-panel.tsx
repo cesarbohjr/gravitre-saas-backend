@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { HIGHLIGHT } from "@/lib/design-system"
 import { PlanApprovalChrome } from "@/components/gravitre/agent-ui/plan-approval-chrome"
 import {
   BusinessOutcomeView,
@@ -262,13 +263,13 @@ function confirmButtonLabel(pendingTask: ChatPendingTask, confirming: boolean): 
 
 function StepBadge({ label, tone }: { label: string; tone: "read" | "write" | "skipped" | "warning" }) {
   const styles = {
-    read: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    write: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    skipped: "border-muted-foreground/20 bg-muted/40 text-muted-foreground",
-    warning: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    read: HIGHLIGHT.brand,
+    write: HIGHLIGHT.warning,
+    skipped: HIGHLIGHT.neutral,
+    warning: HIGHLIGHT.warning,
   }[tone]
   return (
-    <span className={cn("ml-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide", styles)}>
+    <span className={cn("ml-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", styles)}>
       {label}
     </span>
   )

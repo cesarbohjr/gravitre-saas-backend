@@ -26,6 +26,8 @@ import Link from "next/link"
 import { Icon, StatusIcon, type IconName } from "@/lib/icons"
 import { StatusChip } from "@/components/gravitre/visual"
 import { AlertTriangle } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { HIGHLIGHT } from "@/lib/design-system"
 
 interface WorkflowNode {
   id: string
@@ -289,10 +291,12 @@ export function WorkflowCard({
                 {dependencies.slice(0, 4).map((dep, i) => (
                   <Tooltip key={i}>
                     <TooltipTrigger asChild>
-                      <div className={`
-                        flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-medium
-                        ${dep.status === "connected" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"}
-                      `}>
+                      <div
+                        className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold",
+                          dep.status === "connected" ? HIGHLIGHT.brand : HIGHLIGHT.warning,
+                        )}
+                      >
                         {dep.name.charAt(0)}
                       </div>
                     </TooltipTrigger>

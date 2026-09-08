@@ -5,7 +5,7 @@ import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { STATUS } from "@/lib/design-system"
+import { CHIP, STATUS } from "@/lib/design-system"
 
 export type AvailableConnectorEntry = {
   vendorKey: string
@@ -109,9 +109,7 @@ export function AvailableConnectorsStrip({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="truncate text-sm font-medium capitalize text-foreground">{entry.type}</span>
-                <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", STATUS.verified)}>
-                  Available
-                </span>
+                <span className={cn(CHIP.compact, STATUS.verified)}>Available</span>
               </div>
               <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
             </div>
