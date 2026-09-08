@@ -18,7 +18,7 @@ export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent
 
 const BANNER_ROTATE_MS = 7_000
 
-function briefToInsights(brief: AdvisorBrief | null | undefined): MesonInsight[] {
+export function briefToInsights(brief: AdvisorBrief | null | undefined): MesonInsight[] {
   if (!brief) return []
   const items: MesonInsight[] = []
   if (brief.what_changed?.length) {
@@ -48,7 +48,7 @@ function briefToInsights(brief: AdvisorBrief | null | undefined): MesonInsight[]
   return items
 }
 
-function briefToSuggestions(brief: AdvisorBrief | null | undefined): MesonSuggestion[] {
+export function briefToSuggestions(brief: AdvisorBrief | null | undefined): MesonSuggestion[] {
   if (!brief?.recommended_actions?.length) return []
   return brief.recommended_actions
     .map((action, index) => ({

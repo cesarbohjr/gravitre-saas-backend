@@ -14,9 +14,10 @@ import { usePathname, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { AnimatePresence, motion } from "framer-motion"
 import { Blocks, ChevronDown, Sparkles, X } from "lucide-react"
-import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
+import { MesonPagePanel, briefToInsights } from "@/components/gravitre/meson-page-panel"
+import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
-import { mesonApi, type MesonSuggestion } from "@/lib/api"
+import { assistantApi, mesonApi, type MesonSuggestion } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
@@ -47,22 +48,63 @@ const QUICK_LAUNCH_PROMPTS = [
 ] as const
 
 /**
- * Meson as the voice of Gravitre: surfaces the org's real, org-wide GIBE
- * business-intelligence signal (same source as the /intelligence page),
- * independent of whatever page-specific tips are showing below it.
+ * Meson as the voice of Gravitre.
+ *
+ * Sourcing, honestly: the real GIBE/advisor pipeline (AdvisorModeEngine +
+ * BusinessSignalsEngine, via /api/assistant/advisor-brief) is fetched first —
+ * this is the *same* live source that already powers the /ai activity rail,
+ * not a new one. Per the read-only audit of this toolbar
+ * (docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md),
+ * Meson's own /api/meson/insights is a separate, lighter, non-ML heuristic
+ * source — it is used only as a fallback when the advisor brief has nothing
+ * yet, and is labeled "Meson" (not "GIBE") when shown, so the badge always
+ * matches the true source.
  */
-function MesonGibeVoice() {
+function useMesonGibeVoice() {
   const { user } = useAuth()
-  const swrKey = user ? ["meson-gibe-voice"] : null
-  const { data, isLoading } = useSWR(swrKey, () => mesonApi.insights(), {
+  const briefKey = user ? ["meson-toolbar-advisor-brief"] : null
+  const { data: brief, isLoading: briefLoading } = useSWR(
+    briefKey,
+    () => assistantApi.advisorBrief() as Promise<AdvisorBrief>,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 120_000,
+      keepPreviousData: true,
+    },
+  )
+
+  const briefInsight = briefToInsights(brief).find((item) => item.title?.trim() && item.summary?.trim())
+
+  const fallbackKey = !briefInsight && user ? ["meson-toolbar-fallback-insights"] : null
+  const { data: fallbackData, isLoading: fallbackLoading } = useSWR(fallbackKey, () => mesonApi.insights(), {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     dedupingInterval: 120_000,
     keepPreviousData: true,
   })
+  const fallbackInsight = fallbackData?.insights?.find((item) => item.title?.trim() && item.summary?.trim())
 
-  const insight = data?.insights?.find((item) => item.title?.trim() && item.summary?.trim())
+  if (briefInsight) {
+    return { brief, insight: briefInsight, source: "gibe" as const, isLoading: false }
+  }
+  return {
+    brief,
+    insight: fallbackInsight,
+    source: "meson" as const,
+    isLoading: briefLoading || fallbackLoading,
+  }
+}
 
+function MesonGibeVoice({
+  insight,
+  source,
+  isLoading,
+}: {
+  insight: { id: string; title: string; summary: string } | undefined
+  source: "gibe" | "meson"
+  isLoading: boolean
+}) {
   if (isLoading && !insight) {
     return (
       <div className="space-y-1.5 rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
@@ -78,7 +120,7 @@ function MesonGibeVoice() {
     <div className="rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
         <Sparkles className="h-3 w-3" />
-        GIBE · Meson&apos;s take
+        {source === "gibe" ? "GIBE · Meson's take" : "Meson"}
       </div>
       <p className="text-xs font-medium leading-snug text-foreground">{insight.title}</p>
       <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
@@ -253,6 +295,7 @@ export function MesonToolbarPopup() {
   const router = useRouter()
   const { visible, panelOpen, closePanel, togglePanel } = useMesonToolbar()
   const mesonPage = useMemo(() => resolveMesonPageFromPath(pathname), [pathname])
+  const gibeVoice = useMesonGibeVoice()
 
   const handleSuggestionClick = useCallback(
     (suggestion: MesonSuggestion) => {
@@ -303,13 +346,14 @@ export function MesonToolbarPopup() {
             </div>
           </div>
           <div className="max-h-[min(70vh,480px)] overflow-y-auto p-3">
-            <MesonGibeVoice />
+            <MesonGibeVoice insight={gibeVoice.insight} source={gibeVoice.source} isLoading={gibeVoice.isLoading} />
             <div className="mt-3">
               <MesonPagePanel
                 key={`${mesonPage.page}:${mesonPage.entityId ?? ""}`}
                 page={mesonPage.page}
                 entityId={mesonPage.entityId}
                 compact
+                advisorBrief={gibeVoice.brief}
                 onSuggestionClick={handleSuggestionClick}
               />
             </div>
