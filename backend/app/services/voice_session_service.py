@@ -82,13 +82,21 @@ def is_turn_cancelled(turn_id: str) -> bool:
     return False
 
 
-def split_speakable_chunks(buffer: str, *, min_chars: int = 12) -> tuple[list[str], str]:
+def split_speakable_chunks(
+    buffer: str,
+    *,
+    min_chars: int = 12,
+    aggressive: bool = False,
+) -> tuple[list[str], str]:
     """Emit speakable chunks at sentence boundaries; keep remainder provisional.
 
     Short provisional answers (under ~48 chars) flush on a word boundary once
     ``min_chars`` is met so TTFA does not wait for terminal punctuation
     (e.g. "Two plus two" while "equals four." is still generating). Longer
     buffers keep a higher clause floor to avoid a TTS round-trip per phrase.
+
+    When ``aggressive`` is True (Voice 3.0 Phase 4), short-buffer flushes use
+    a lower clause floor and may split on commas earlier for faster first audio.
     """
     parts = _SENTENCE_END.split(buffer)
     if len(parts) <= 1:
@@ -97,12 +105,20 @@ def split_speakable_chunks(buffer: str, *, min_chars: int = 12) -> tuple[list[st
         # (common for short voice answers like "Four.").
         if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
             return [stripped], ""
+        short_threshold = 48
         # Short answers: early word-boundary flush. Longer: higher floor.
-        clause_floor = min_chars if len(buffer) < 48 else max(min_chars * 2, 40)
+        if aggressive:
+            clause_floor = min_chars
+            cut_tail = 1
+            space_tail = 1
+        else:
+            clause_floor = min_chars if len(buffer) < short_threshold else max(min_chars * 2, 40)
+            cut_tail = 2 if len(buffer) < short_threshold else 10
+            space_tail = 1 if len(buffer) < short_threshold else 5
         if len(buffer) >= clause_floor and (" " in buffer):
-            cut_tail = 2 if len(buffer) < 48 else 10
-            space_tail = 1 if len(buffer) < 48 else 5
             idx = buffer.rfind(", ", 0, max(len(buffer) - cut_tail, 0))
+            if aggressive and idx < min_chars and len(buffer) >= min_chars * 2:
+                idx = buffer.rfind(",", 0, max(len(buffer) - 1, min_chars))
             if idx < min_chars:
                 idx = buffer.rfind(" ", 0, max(len(buffer) - space_tail, min_chars))
             if idx >= min_chars:
@@ -154,6 +170,9 @@ async def stream_voice_turn_events(
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
     resolved_voice = voice_id or profile.get("voice_id") or profile.get("voice_key")
     model = tts_model or profile.get("tts_model") or "eleven_flash_v2_5"
+    from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_chunk_tuning
+
+    chunk_tuning = resolve_voice_tts_chunk_tuning(settings)
     resolved_turn_id = (turn_id or "").strip() or str(uuid.uuid4())
     resolved_conversation_id = (conversation_id or "").strip() or None
     _fmt, audio_content_type = normalize_elevenlabs_output_format(tts_output_format)
@@ -361,7 +380,11 @@ async def stream_voice_turn_events(
             yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
         full_text.append(delta)
         text_buffer += delta
-        chunks, text_buffer = split_speakable_chunks(text_buffer)
+        chunks, text_buffer = split_speakable_chunks(
+            text_buffer,
+            min_chars=chunk_tuning.min_chars,
+            aggressive=chunk_tuning.v2_enabled,
+        )
         for chunk in chunks:
             async for audio_ev in _emit_tts(chunk):
                 yield audio_ev

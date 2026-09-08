@@ -39,6 +39,27 @@ export type VoiceStatus = {
     krisp_enabled?: boolean
     krisp_configured?: boolean
   }
+  /** Voice 3.0 Phase 3 contextual STT + Flux turn-mode presets (server-gated). */
+  phase3_turn_stt?: {
+    keyterms_v1?: boolean
+    keyterms_max?: number
+    flux_turn_mode?: string | null
+    flux_turn_mode_valid?: boolean | null
+    flux_eager_eot?: number | null
+    flux_eot?: number | null
+  }
+  /** Voice 3.0 Phase 4 latency tuning (server-gated). */
+  phase4_latency?: {
+    speculative_v2?: boolean
+    speculative_min_chars?: number
+    speculative_prefix_adopt?: boolean
+    speculative_prefix_max_words?: number
+    tts_chunk_v2?: boolean
+    tts_chunk_min_chars?: number
+    tts_ab_v1?: boolean
+    tts_ab_model?: string | null
+    tts_ab_allowed_models?: string[]
+  }
 }
 
 let cachedStatus: VoiceStatus | null = null

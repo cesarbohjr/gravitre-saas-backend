@@ -40,6 +40,10 @@ from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
     start_speculative_run,
 )
+from app.services.pipecat_voice.voice_latency_tuning import (
+    resolve_voice_speculative_tuning,
+    speculative_interim_materially_changed,
+)
 
 logger = get_logger(__name__)
 
@@ -89,7 +93,9 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         self._org_id = org_id
         self._user_id = user_id
         self._agent = agent if isinstance(agent, dict) else {}
-        self._min_chars = min_chars
+        spec_tuning = resolve_voice_speculative_tuning(app_settings)
+        self._spec_tuning = spec_tuning
+        self._min_chars = spec_tuning.min_chars if spec_tuning.v2_enabled else min_chars
         self._last_partial = ""
         self._task: asyncio.Task[None] | None = None
         # Voice-SLO follow-up (2026-09-05): genuine speculative generation —
@@ -115,7 +121,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 # mismatch anyway, but cancelling here frees the compute
                 # immediately instead of at confirmed-EOT).
                 if self._speculative_coordinator is not None and text != self._last_speculative_text:
-                    self._speculative_coordinator.cancel()
+                    if not self._spec_tuning.v2_enabled or speculative_interim_materially_changed(
+                        self._last_speculative_text, text
+                    ):
+                        self._speculative_coordinator.cancel()
         elif isinstance(frame, ProposedUserStoppedSpeakingFrame):
             self._maybe_start_speculative_generation()
         await self.push_frame(frame, direction)

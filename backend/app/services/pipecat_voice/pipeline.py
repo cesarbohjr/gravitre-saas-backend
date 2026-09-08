@@ -35,6 +35,7 @@ from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_e2e_latency_sample
 from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
+from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_ab_eval
 from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, resolve_voice_id
 
 logger = get_logger(__name__)
@@ -108,6 +109,8 @@ def build_pipecat_voice_task(
     stt_provider: str | None = None,
     stt_fallback_from: str | None = None,
     stt_fallback_reason: str | None = None,
+    keyterms: list[str] | None = None,
+    keyterm_meta: dict[str, Any] | None = None,
 ) -> tuple[PipelineTask, dict[str, Any]]:
     """Construct a PipelineTask for one authenticated browser WebSocket session.
 
@@ -119,6 +122,9 @@ def build_pipecat_voice_task(
         raise RuntimeError("ELEVENLABS_API_KEY required for Pipecat voice")
 
     voice_id, model = resolve_voice_and_tts_model(settings, agent=agent, voice_key=voice_key)
+    tts_ab = resolve_voice_tts_ab_eval(settings)
+    if tts_ab.enabled and tts_ab.model:
+        model = tts_ab.model
 
     krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
 
@@ -141,6 +147,7 @@ def build_pipecat_voice_task(
         provider=stt_provider,
         fallback_from=stt_fallback_from,
         fallback_reason=stt_fallback_reason,
+        keyterms=keyterms,
     )
     if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
         raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
@@ -287,6 +294,9 @@ def build_pipecat_voice_task(
         "speculative_generation": "probable_eot_cancelable_adopt_on_match" if use_flux else "disabled_non_flux_stt",
         **stt_info,
         **krisp_meta,
+        **(keyterm_meta or {}),
+        "tts_ab_eval": tts_ab.enabled,
+        "tts_ab_model": tts_ab.model if tts_ab.enabled else None,
     }
 
     @transport.event_handler("on_client_connected")

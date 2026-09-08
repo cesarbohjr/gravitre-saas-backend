@@ -77,8 +77,21 @@ class SpeculativeGenerationRun:
     queue: "asyncio.Queue[Any]" = field(default_factory=asyncio.Queue)
     consumed: bool = False
 
-    def matches(self, final_text: str) -> bool:
-        return bool(final_text) and _normalize_for_match(self.text) == _normalize_for_match(final_text)
+    def matches(self, final_text: str, *, prefix_max_extra_words: int = 0) -> bool:
+        if not final_text:
+            return False
+        norm_final = _normalize_for_match(final_text)
+        norm_spec = _normalize_for_match(self.text)
+        if norm_final == norm_spec:
+            return True
+        if prefix_max_extra_words <= 0 or not norm_spec:
+            return False
+        if not norm_final.startswith(norm_spec):
+            return False
+        extra = norm_final[len(norm_spec) :].strip()
+        if not extra:
+            return True
+        return len(extra.split()) <= prefix_max_extra_words
 
     def cancel(self) -> None:
         if not self.task.done():
@@ -163,17 +176,28 @@ class SpeculativeGenerationCoordinator:
         self.cancel()
         self._run = run
 
-    def adopt(self, final_text: str) -> SpeculativeGenerationRun | None:
+    def adopt(
+        self,
+        final_text: str,
+        *,
+        prefix_max_extra_words: int = 0,
+    ) -> SpeculativeGenerationRun | None:
         """Return the pending run if its text matches `final_text`, else None
         (cancelling a non-matching pending run along the way — it will never
         be consumed now that the turn has been confirmed with different
         text). Idempotent: a run already consumed is never returned twice.
+
+        When ``prefix_max_extra_words`` > 0 (Phase 4), a final transcript
+        that merely extends the speculative partial by a few trailing words
+        still adopts — e.g. probable-EOT on "what is two plus two" and final
+        "what is two plus two please" keeps the head-start instead of
+        restarting the LLM call.
         """
         run = self._run
         self._run = None
         if run is None or run.consumed:
             return None
-        if not run.matches(final_text):
+        if not run.matches(final_text, prefix_max_extra_words=prefix_max_extra_words):
             run.cancel()
             return None
         run.consumed = True

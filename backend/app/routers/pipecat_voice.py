@@ -166,6 +166,41 @@ async def pipecat_voice_ws(
         except Exception:  # noqa: BLE001
             agent = {"id": agent_id}
 
+    keyterms: list[str] = []
+    keyterm_meta: dict[str, Any] = {"keyterms_enabled": False}
+    if bool(getattr(settings, "voice_keyterms_v1", False)):
+        from app.services.connector_snapshot_cache import list_connected_integrations_cached
+        from app.services.pipecat_voice.voice_keyterm_service import build_voice_keyterms
+
+        org_name: str | None = None
+        try:
+            org_rows = (
+                client.table("organizations")
+                .select("name")
+                .eq("id", resolved_org)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if org_rows:
+                org_name = str(org_rows[0].get("name") or "").strip() or None
+        except Exception:  # noqa: BLE001
+            org_name = None
+        try:
+            connected = list_connected_integrations_cached(
+                client, resolved_org, force_live=False
+            )
+        except Exception:  # noqa: BLE001
+            connected = []
+        keyterms, keyterm_meta = build_voice_keyterms(
+            enabled=True,
+            org_name=org_name,
+            agent=agent,
+            connected_integrations=connected,
+            max_terms=int(getattr(settings, "voice_keyterms_max", 50) or 50),
+        )
+
     from pipecat.pipeline.runner import PipelineRunner
 
     from app.services.pipecat_voice.pipeline import build_pipecat_voice_task
@@ -211,6 +246,8 @@ async def pipecat_voice_ws(
                     stt_provider=prov,
                     stt_fallback_from=fb_from,
                     stt_fallback_reason=fb_reason,
+                    keyterms=keyterms or None,
+                    keyterm_meta=keyterm_meta,
                 )
                 runner = PipelineRunner(handle_sigint=False)
                 await runner.run(task)

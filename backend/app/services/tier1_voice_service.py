@@ -247,6 +247,51 @@ def voice_status(settings: Settings) -> dict[str, Any]:
                 (getattr(settings, "krisp_viva_filter_model_path", None) or "").strip()
             ),
         },
+        "phase3_turn_stt": _phase3_turn_stt_status(settings),
+        "phase4_latency": _phase4_latency_status(settings),
+    }
+
+
+def _phase4_latency_status(settings: Settings) -> dict[str, Any]:
+    from app.services.pipecat_voice.voice_latency_tuning import (
+        TTS_AB_EVAL_MODELS,
+        resolve_voice_speculative_tuning,
+        resolve_voice_tts_ab_eval,
+        resolve_voice_tts_chunk_tuning,
+    )
+
+    spec = resolve_voice_speculative_tuning(settings)
+    chunk = resolve_voice_tts_chunk_tuning(settings)
+    ab = resolve_voice_tts_ab_eval(settings)
+    return {
+        "speculative_v2": spec.v2_enabled,
+        "speculative_min_chars": spec.min_chars,
+        "speculative_prefix_adopt": spec.prefix_adopt,
+        "speculative_prefix_max_words": spec.prefix_max_extra_words,
+        "tts_chunk_v2": chunk.v2_enabled,
+        "tts_chunk_min_chars": chunk.min_chars,
+        "tts_ab_v1": ab.enabled,
+        "tts_ab_model": ab.model,
+        "tts_ab_allowed_models": sorted(TTS_AB_EVAL_MODELS),
+    }
+
+
+def _phase3_turn_stt_status(settings: Settings) -> dict[str, Any]:
+    from app.services.pipecat_voice.voice_keyterm_service import (
+        FLUX_TURN_PRESETS,
+        resolve_flux_eot_settings,
+        resolve_flux_turn_mode_label,
+    )
+
+    mode = resolve_flux_turn_mode_label(settings)
+    eager, eot = resolve_flux_eot_settings(settings)
+    return {
+        "keyterms_v1": bool(getattr(settings, "voice_keyterms_v1", False)),
+        "keyterms_max": int(getattr(settings, "voice_keyterms_max", 50) or 50),
+        "flux_turn_mode": mode,
+        "flux_turn_mode_valid": mode in FLUX_TURN_PRESETS if mode else None,
+        "flux_eager_eot": eager,
+        "flux_eot": eot,
     }
 
 

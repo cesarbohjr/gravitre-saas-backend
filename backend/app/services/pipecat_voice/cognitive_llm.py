@@ -26,6 +26,10 @@ from app.services.pipecat_voice.llm_context_utils import messages_from_context a
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_stage_sample
+from app.services.pipecat_voice.voice_latency_tuning import (
+    resolve_voice_speculative_tuning,
+    resolve_voice_tts_chunk_tuning,
+)
 from app.services.pipecat_voice.voice_tool_narration import (
     narrate_tool_completed,
     narrate_tool_started,
@@ -127,6 +131,11 @@ class GravitreCognitiveLLMService(LLMService):
         # GravitreVoiceLatencyObserver (pipeline.py) actually receives a real
         # sample for this processor instead of silence.
         await self.start_ttfb_metrics()
+        spec_tuning = resolve_voice_speculative_tuning(self._app_settings)
+        chunk_tuning = resolve_voice_tts_chunk_tuning(self._app_settings)
+        prefix_extra = (
+            spec_tuning.prefix_max_extra_words if spec_tuning.prefix_adopt else 0
+        )
         # Voice-SLO follow-up (2026-09-05): if a speculative run was started on
         # Deepgram Flux's probable-EOT signal (speculative_prefetch.py) and its
         # text matches this now-confirmed user_text exactly, adopt its
@@ -137,13 +146,20 @@ class GravitreCognitiveLLMService(LLMService):
         # same fresh call as before — zero regression risk on the default
         # path.
         speculative_run = (
-            self._speculative_coordinator.adopt(user_text) if self._speculative_coordinator else None
+            self._speculative_coordinator.adopt(
+                user_text,
+                prefix_max_extra_words=prefix_extra,
+            )
+            if self._speculative_coordinator
+            else None
         )
+        speculative_outcome = "adopted" if speculative_run is not None else "fresh"
         if speculative_run is not None:
             logger.info(
-                "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s",
+                "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s prefix_adopt=%s",
                 self._org_id,
                 len(user_text),
+                prefix_extra > 0,
             )
             events_source = speculative_run.events()
         else:
@@ -237,7 +253,11 @@ class GravitreCognitiveLLMService(LLMService):
                 )
             )
             text_buffer += delta
-            chunks, text_buffer = split_speakable_chunks(text_buffer)
+            chunks, text_buffer = split_speakable_chunks(
+                text_buffer,
+                min_chars=chunk_tuning.min_chars,
+                aggressive=chunk_tuning.v2_enabled,
+            )
             for chunk in chunks:
                 spoken = self._sanitize_for_tts(chunk)
                 if spoken:
@@ -268,6 +288,9 @@ class GravitreCognitiveLLMService(LLMService):
             llm_first_token_ms=_ms(first_delta_at),
             llm_first_speakable_chunk_ms=_ms(first_speakable_chunk_at),
             tts_requested_ms=_ms(tts_requested_at),
+            speculative_outcome=speculative_outcome,
+            speculative_v2=spec_tuning.v2_enabled,
+            tts_chunk_v2=chunk_tuning.v2_enabled,
         )
 
     async def _speak_narration(self, text: str) -> None:

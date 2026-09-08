@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.logging import get_logger
+from app.services.pipecat_voice.voice_keyterm_service import resolve_flux_eot_settings
 
 logger = get_logger(__name__)
 
@@ -63,6 +64,7 @@ def build_pipecat_stt(
     provider: str | None = None,
     fallback_from: str | None = None,
     fallback_reason: str | None = None,
+    keyterms: list[str] | None = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Construct an STT service + honest metadata for session.ready / status."""
     choice = resolve_pipecat_stt_provider(settings, override=provider)
@@ -73,13 +75,14 @@ def build_pipecat_stt(
             raise RuntimeError("DEEPGRAM_API_KEY required for Flux STT")
         from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
 
-        eager = getattr(settings, "voice_pipecat_flux_eager_eot", None)
-        eot = getattr(settings, "voice_pipecat_flux_eot", None)
+        eager, eot = resolve_flux_eot_settings(settings)
         settings_kwargs: dict[str, Any] = {}
         if eager is not None:
             settings_kwargs["eager_eot_threshold"] = float(eager)
         if eot is not None:
             settings_kwargs["eot_threshold"] = float(eot)
+        if keyterms:
+            settings_kwargs["keyterm"] = list(keyterms)
         flux_settings = (
             DeepgramFluxSTTService.Settings(**settings_kwargs) if settings_kwargs else None
         )
@@ -91,6 +94,8 @@ def build_pipecat_stt(
         )
         meta = stt_meta(STT_FLUX, fallback_from=fallback_from, fallback_reason=fallback_reason)
         meta["stt_turn_detection"] = "flux_native_eot"
+        if keyterms:
+            meta["stt_keyterm_count"] = len(keyterms)
         return stt, meta
 
     if choice == STT_OPENAI:

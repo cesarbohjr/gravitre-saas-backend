@@ -91,19 +91,29 @@ def record_voice_llm_stage_sample(
     llm_first_token_ms: int | None,
     llm_first_speakable_chunk_ms: int | None,
     tts_requested_ms: int | None,
+    speculative_outcome: str | None = None,
+    speculative_v2: bool | None = None,
+    tts_chunk_v2: bool | None = None,
 ) -> None:
     """Real, measured LLM-bridge stage timings for one voice turn."""
+    payload: dict[str, Any] = {
+        "llm_first_token_ms": llm_first_token_ms,
+        "llm_first_speakable_chunk_ms": llm_first_speakable_chunk_ms,
+        "tts_requested_ms": tts_requested_ms,
+    }
+    if speculative_outcome:
+        payload["speculative_outcome"] = speculative_outcome
+    if speculative_v2 is not None:
+        payload["speculative_v2"] = speculative_v2
+    if tts_chunk_v2 is not None:
+        payload["tts_chunk_v2"] = tts_chunk_v2
     _write(
         settings,
         org_id=org_id,
         user_id=user_id,
         conversation_id=conversation_id,
         action=LLM_STAGE_ACTION,
-        payload={
-            "llm_first_token_ms": llm_first_token_ms,
-            "llm_first_speakable_chunk_ms": llm_first_speakable_chunk_ms,
-            "tts_requested_ms": tts_requested_ms,
-        },
+        payload=payload,
     )
 
 

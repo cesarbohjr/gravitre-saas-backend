@@ -28,13 +28,15 @@ import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-s
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
-import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
+import { getVoiceStatusDetailed, type VoiceStatus } from "@/lib/tier1-voice-client"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
+import { VoiceMicSettingsPopover } from "@/components/gravitre/assistant/voice-mic-settings-popover"
+import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
@@ -110,6 +112,9 @@ export default function AgentChatPage({
   const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
   const [input, setInput] = useState("")
   const [modality, setModality] = useState<ChatModality>("text")
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null)
+  const [micProfileOverride, setMicProfileOverride] = useState<MicFieldProfile>("auto")
+  const [voiceStatusSnapshot, setVoiceStatusSnapshot] = useState<VoiceStatus | null>(null)
   const modalityRef = useRef<ChatModality>("text")
   const [voiceEntitled, setVoiceEntitled] = useState(true)
   const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | undefined>(undefined)
@@ -196,6 +201,7 @@ export default function AgentChatPage({
         }
         setVoiceEntitled(true)
         setVoiceUnavailableReason(undefined)
+        if (result.status) setVoiceStatusSnapshot(result.status)
       })
       .catch(() => {
         // Network blip: do not permanently hide Voice for plan-included orgs.
@@ -248,6 +254,8 @@ export default function AgentChatPage({
   const voiceDuplex = useVoiceDuplexSession({
     enabled: voiceEntitled,
     agentId,
+    micDeviceId,
+    micProfileOverride,
     getHistory: () =>
       messagesRef.current.slice(-24).map((m) => ({
         role: m.role,
@@ -675,6 +683,17 @@ export default function AgentChatPage({
                 setDuplexVoiceError(message)
                 toast.error(message)
               }}
+              trailingExtras={
+                <VoiceMicSettingsPopover
+                  voiceStatus={voiceDuplex.voiceStatus || voiceStatusSnapshot}
+                  selectedDeviceId={micDeviceId}
+                  onDeviceChange={setMicDeviceId}
+                  profileOverride={micProfileOverride}
+                  onProfileChange={setMicProfileOverride}
+                  liveLevels={voiceDuplex.micLevels}
+                  effectiveSettings={voiceDuplex.micEffective}
+                />
+              }
             />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               {agent.name} uses your organization&apos;s knowledge base and connected systems.

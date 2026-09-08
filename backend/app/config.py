@@ -638,6 +638,58 @@ class Settings(BaseSettings):
             "krisp_viva_filter_model_path",
         ),
     )
+    # Voice 3.0 Phase 3 — contextual Flux keyterms + turn-mode presets (default OFF).
+    voice_keyterms_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_KEYTERMS_V1", "voice_keyterms_v1"),
+    )
+    voice_keyterms_max: int = Field(
+        default=50,
+        validation_alias=AliasChoices("VOICE_KEYTERMS_MAX", "voice_keyterms_max"),
+    )
+    voice_flux_turn_mode: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("VOICE_FLUX_TURN_MODE", "voice_flux_turn_mode"),
+    )
+    # Voice 3.0 Phase 4 — latency tuning (default OFF).
+    voice_speculative_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_SPECULATIVE_V2", "voice_speculative_v2"),
+    )
+    voice_speculative_min_chars: int = Field(
+        default=8,
+        validation_alias=AliasChoices("VOICE_SPECULATIVE_MIN_CHARS", "voice_speculative_min_chars"),
+    )
+    voice_speculative_prefix_adopt: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_PREFIX_ADOPT",
+            "voice_speculative_prefix_adopt",
+        ),
+    )
+    voice_speculative_prefix_max_words: int = Field(
+        default=3,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_PREFIX_MAX_WORDS",
+            "voice_speculative_prefix_max_words",
+        ),
+    )
+    voice_tts_chunk_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_TTS_CHUNK_V2", "voice_tts_chunk_v2"),
+    )
+    voice_tts_chunk_min_chars: int = Field(
+        default=12,
+        validation_alias=AliasChoices("VOICE_TTS_CHUNK_MIN_CHARS", "voice_tts_chunk_min_chars"),
+    )
+    voice_tts_ab_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_TTS_AB_V1", "voice_tts_ab_v1"),
+    )
+    voice_tts_ab_model: str = Field(
+        default="",
+        validation_alias=AliasChoices("VOICE_TTS_AB_MODEL", "voice_tts_ab_model"),
+    )
     # Conversational spoken / reasoning_depth=conversational unified-turn model.
     # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
     # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.
