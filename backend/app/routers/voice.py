@@ -68,6 +68,18 @@ class TurnEventRequest(BaseModel):
     state: dict[str, Any] | None = None
 
 
+class MicDiagnosticsRequest(BaseModel):
+    """Phase 1 mic capture telemetry — RMS/SNR/clipping, not raw audio."""
+
+    session_id: str | None = None
+    orchestration: str | None = Field(default=None, description="pipecat | http")
+    mic_profile: str | None = Field(default=None, description="near_field | far_field | auto")
+    device_label: str | None = None
+    effective_settings: dict[str, Any] | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    event: str | None = Field(default="periodic", description="session_start | periodic | session_end")
+
+
 class SessionTurnRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=8000)
     conversation_id: str | None = None
@@ -152,6 +164,46 @@ def get_voice_status(
     status_body = voice_status(settings)
     status_body["cogs_report"] = cogs_report()
     return status_body
+
+
+@router.post("/mic-diagnostics")
+def post_mic_diagnostics(
+    body: MicDiagnosticsRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    """Best-effort mic level telemetry for Voice 3.0 Phase 1 (no raw recordings)."""
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if not bool(getattr(settings, "voice_mic_telemetry_v1", False)):
+        return {"status": "disabled"}
+    user_id = str(user.get("sub") or user.get("id") or "").strip()
+    if not user_id:
+        return {"status": "skipped"}
+    try:
+        from app.workflows.audit import write_audit_event
+
+        client = get_supabase_client(settings)
+        write_audit_event(
+            client,
+            org_id,
+            user_id,
+            "voice.mic.diagnostics",
+            "conversation",
+            body.session_id or org_id,
+            {
+                "orchestration": body.orchestration,
+                "mic_profile": body.mic_profile,
+                "device_label": body.device_label,
+                "effective_settings": body.effective_settings or {},
+                "metrics": body.metrics,
+                "event": body.event or "periodic",
+            },
+        )
+    except Exception:
+        pass
+    return {"status": "ok"}
 
 
 @router.get("/library")

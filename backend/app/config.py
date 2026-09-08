@@ -589,6 +589,31 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Voice 3.0 Phase 1 — mic capture (default OFF until explicitly enabled).
+    voice_agc_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_AGC_V2", "voice_agc_v2"),
+    )
+    voice_mic_telemetry_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_MIC_TELEMETRY_V1", "voice_mic_telemetry_v1"),
+    )
+    voice_preroll_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_PREROLL_V2", "voice_preroll_v2"),
+    )
+    voice_preroll_ms: int = Field(
+        default=300,
+        validation_alias=AliasChoices("VOICE_PREROLL_MS", "voice_preroll_ms"),
+    )
+    voice_mic_selector_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_MIC_SELECTOR_V1", "voice_mic_selector_v1"),
+    )
+    voice_near_far_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_NEAR_FAR_V1", "voice_near_far_v1"),
+    )
     # Conversational spoken / reasoning_depth=conversational unified-turn model.
     # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
     # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.

@@ -54,7 +54,9 @@ import { SharedChatComposerControls } from "@/components/gravitre/assistant/shar
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
-import { getVoiceStatusDetailed } from "@/lib/tier1-voice-client"
+import { getVoiceStatusDetailed, type VoiceStatus } from "@/lib/tier1-voice-client"
+import type { MicFieldProfile } from "@/lib/voice-mic-devices"
+import { VoiceMicSettingsPopover } from "@/components/gravitre/assistant/voice-mic-settings-popover"
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
@@ -267,8 +269,11 @@ export function AiWorkspace({
   )
   // Internal staff voice modality (same pipeline as agent chat) — not Twilio/Vapi telephony.
   const [modality, setModality] = useState<ChatModality>("text")
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null)
+  const [micProfileOverride, setMicProfileOverride] = useState<MicFieldProfile>("auto")
   const modalityRef = useRef<ChatModality>("text")
   const [voiceEntitled, setVoiceEntitled] = useState(true)
+  const [voiceStatusSnapshot, setVoiceStatusSnapshot] = useState<VoiceStatus | null>(null)
   const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | undefined>()
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
   const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>()
@@ -439,6 +444,7 @@ export function AiWorkspace({
         }
         setVoiceEntitled(true)
         setVoiceUnavailableReason(undefined)
+        if (result.status) setVoiceStatusSnapshot(result.status)
       })
       .catch(() => {
         if (!cancelled) setVoiceEntitled(true)
@@ -1681,6 +1687,8 @@ export function AiWorkspace({
   const voiceDuplex = useVoiceDuplexSession({
     enabled: voiceEntitled,
     conversationId: activeConversationId,
+    micDeviceId,
+    micProfileOverride,
     agentId:
       voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
         ? selectedVoiceAgent.id
@@ -2511,18 +2519,29 @@ export function AiWorkspace({
                   toast.error(message)
                 }}
                 trailingExtras={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="mb-0.5 hidden h-8 w-8 shrink-0 rounded-full text-[color:var(--chat-surface-muted)] hover:bg-muted/60 hover:text-foreground sm:inline-flex"
-                    disabled={routing || isChatBusy}
-                    title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
-                    aria-label="Browse files"
-                    onClick={() => setConnectedFilePickerOpen(true)}
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <VoiceMicSettingsPopover
+                      voiceStatus={voiceDuplex.voiceStatus || voiceStatusSnapshot}
+                      selectedDeviceId={micDeviceId}
+                      onDeviceChange={setMicDeviceId}
+                      profileOverride={micProfileOverride}
+                      onProfileChange={setMicProfileOverride}
+                      liveLevels={voiceDuplex.micLevels}
+                      effectiveSettings={voiceDuplex.micEffective}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="mb-0.5 hidden h-8 w-8 shrink-0 rounded-full text-[color:var(--chat-surface-muted)] hover:bg-muted/60 hover:text-foreground sm:inline-flex"
+                      disabled={routing || isChatBusy}
+                      title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                      aria-label="Browse files"
+                      onClick={() => setConnectedFilePickerOpen(true)}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  </>
                 }
               />
             </form>

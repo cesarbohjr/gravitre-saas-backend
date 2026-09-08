@@ -24,6 +24,15 @@ export type VoiceStatus = {
   pipecat_ws_hint?: string
   pipecat_ws_clients_accepted?: boolean
   default_orchestration?: "pipecat" | "http_session_turn" | string
+  /** Voice 3.0 Phase 1 mic capture flags (server-gated). */
+  phase1_mic_capture?: {
+    agc_v2?: boolean
+    mic_telemetry_v1?: boolean
+    preroll_v2?: boolean
+    preroll_ms?: number
+    mic_selector_v1?: boolean
+    near_far_v1?: boolean
+  }
 }
 
 let cachedStatus: VoiceStatus | null = null

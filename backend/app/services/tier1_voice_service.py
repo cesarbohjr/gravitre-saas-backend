@@ -231,6 +231,14 @@ def voice_status(settings: Settings) -> dict[str, Any]:
         },
         "error_classes": ["billing", "auth", "rate_limit", "service_failure"],
         "entitlement_decision_needed": False,
+        "phase1_mic_capture": {
+            "agc_v2": bool(getattr(settings, "voice_agc_v2", False)),
+            "mic_telemetry_v1": bool(getattr(settings, "voice_mic_telemetry_v1", False)),
+            "preroll_v2": bool(getattr(settings, "voice_preroll_v2", False)),
+            "preroll_ms": int(getattr(settings, "voice_preroll_ms", 300) or 300),
+            "mic_selector_v1": bool(getattr(settings, "voice_mic_selector_v1", False)),
+            "near_far_v1": bool(getattr(settings, "voice_near_far_v1", False)),
+        },
     }
 
 

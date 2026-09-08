@@ -148,6 +148,41 @@ def test_voice_status_exposes_pipecat_fields():
     assert on["pipecat_tts"]["transport"] == "websocket"
 
 
+def test_voice_status_exposes_phase1_mic_capture_flags():
+    from app.services.tier1_voice_service import voice_status
+
+    class S:
+        elevenlabs_api_key = ""
+        deepgram_api_key = ""
+        openai_api_key = ""
+        elevenlabs_default_voice = "sarah"
+        elevenlabs_tts_model = "eleven_flash_v2_5"
+        elevenlabs_voice_sarah = ""
+        elevenlabs_voice_rachel = ""
+        elevenlabs_voice_adam = ""
+        elevenlabs_voice_josh = ""
+        elevenlabs_voice_eric = ""
+        voice_pipecat_enabled = False
+        voice_pipecat_stt = "flux"
+        voice_pipecat_stt_fallback_enabled = True
+        voice_pipecat_stt_fallback = "nova3"
+        api_public_url = ""
+        voice_agc_v2 = True
+        voice_mic_telemetry_v1 = True
+        voice_preroll_v2 = True
+        voice_preroll_ms = 350
+        voice_mic_selector_v1 = True
+        voice_near_far_v1 = True
+
+    p1 = voice_status(S())["phase1_mic_capture"]  # type: ignore[arg-type]
+    assert p1["agc_v2"] is True
+    assert p1["mic_telemetry_v1"] is True
+    assert p1["preroll_v2"] is True
+    assert p1["preroll_ms"] == 350
+    assert p1["mic_selector_v1"] is True
+    assert p1["near_far_v1"] is True
+
+
 def test_stt_factory_provider_resolution_and_meta():
     from app.services.pipecat_voice.stt_factory import (
         resolve_pipecat_stt_provider,

@@ -22,12 +22,23 @@ import {
   shouldUsePipecatVoice,
 } from "@/lib/pipecat-voice-client"
 import {
+  acquireVoiceMicrophoneStream,
+  createVoiceMicProcessor,
+  voiceMicPhase1FlagsFromStatus,
+  type MicEffectiveSettings,
+  type MicLevelSnapshot,
+  type VoiceMicPhase1Flags,
+} from "@/lib/voice-mic-capture"
+import type { MicFieldProfile } from "@/lib/voice-mic-devices"
+import { postMicDiagnostics } from "@/lib/voice-mic-telemetry-client"
+import {
   cancelVoiceSessionTurn,
   getVoiceStatus,
   mintDeepgramLiveTokenDetailed,
   postTurnTakingEvent,
   streamVoiceSessionTurn,
   type VoiceSessionEvent,
+  type VoiceStatus,
 } from "@/lib/tier1-voice-client"
 
 export type DuplexLatencyStages = {
@@ -59,6 +70,10 @@ type Options = {
   conversationId?: string | null
   agentId?: string | null
   sensitivity?: string
+  /** Preferred mic device (Phase 1 selector). */
+  micDeviceId?: string | null
+  /** near_field | far_field | auto — Phase 1 near/far tuning. */
+  micProfileOverride?: MicFieldProfile
   /** E2E harness / forced legacy path — skip Pipecat even when the flag is on. */
   forceHttpDuplex?: boolean
   getHistory?: () => Array<{ role: string; content: string }>
@@ -125,9 +140,19 @@ export function useVoiceDuplexSession(options: Options) {
   // surfacing it, so the orb looked normal forever with zero sound.
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const [orchestration, setOrchestration] = useState<"http" | "pipecat">("http")
+  const [micLevels, setMicLevels] = useState<MicLevelSnapshot | null>(null)
+  const [micEffective, setMicEffective] = useState<MicEffectiveSettings | null>(null)
+  const [micProfile, setMicProfile] = useState<string | null>(null)
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
 
   const optsRef = useRef(options)
   optsRef.current = options
+
+  const phase1FlagsRef = useRef<VoiceMicPhase1Flags>(voiceMicPhase1FlagsFromStatus(null))
+  const voiceStatusRef = useRef<VoiceStatus | null>(null)
+  const micSessionIdRef = useRef<string | null>(null)
+  const telemetryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const micProcessorRef = useRef<ReturnType<typeof createVoiceMicProcessor> | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -324,6 +349,56 @@ export function useVoiceDuplexSession(options: Options) {
     }
   }
 
+  const stopMicTelemetry = useCallback(() => {
+    if (telemetryTimerRef.current) {
+      clearInterval(telemetryTimerRef.current)
+      telemetryTimerRef.current = null
+    }
+  }, [])
+
+  const emitMicDiagnostics = useCallback(
+    (event: "session_start" | "periodic" | "session_end") => {
+      const flags = phase1FlagsRef.current
+      if (!flags.micTelemetry) return
+      const levels = micProcessorRef.current?.getLastLevels() || micLevels
+      if (!levels && event === "periodic") return
+      void postMicDiagnostics({
+        session_id: micSessionIdRef.current || undefined,
+        orchestration: orchestrationRef.current,
+        mic_profile: micProfile || undefined,
+        device_label: micEffective?.label,
+        effective_settings: micEffective || undefined,
+        metrics: levels || {},
+        event,
+      })
+    },
+    [micEffective, micLevels, micProfile],
+  )
+
+  const startMicTelemetry = useCallback(() => {
+    stopMicTelemetry()
+    const flags = phase1FlagsRef.current
+    if (!flags.micTelemetry) return
+    emitMicDiagnostics("session_start")
+    telemetryTimerRef.current = setInterval(() => emitMicDiagnostics("periodic"), 5000)
+  }, [emitMicDiagnostics, stopMicTelemetry])
+
+  const setupVoiceMicrophone = useCallback(
+    async (ctx: AudioContext) => {
+      const flags = phase1FlagsRef.current
+      const { stream, effective, tuning, profile } = await acquireVoiceMicrophoneStream({
+        flags,
+        deviceId: optsRef.current.micDeviceId,
+        profileOverride: optsRef.current.micProfileOverride,
+      })
+      streamRef.current = stream
+      setMicEffective(effective)
+      setMicProfile(profile)
+      return { stream, tuning, profile, prerollEnabled: flags.prerollV2 }
+    },
+    [],
+  )
+
   const startRaf = () => {
     stopRaf()
     const tick = () => {
@@ -339,6 +414,10 @@ export function useVoiceDuplexSession(options: Options) {
 
   const teardownMic = useCallback(() => {
     stopRaf()
+    stopMicTelemetry()
+    emitMicDiagnostics("session_end")
+    micProcessorRef.current = null
+    micSessionIdRef.current = null
     try {
       processorRef.current?.disconnect()
     } catch {
@@ -363,7 +442,10 @@ export function useVoiceDuplexSession(options: Options) {
     analyserRef.current = null
     setLevels(null)
     setAmplitude(null)
-  }, [])
+    setMicLevels(null)
+    setMicEffective(null)
+    setMicProfile(null)
+  }, [emitMicDiagnostics, stopMicTelemetry])
 
   const bargeIn = useCallback(async () => {
     const t0 = performance.now()
@@ -721,6 +803,9 @@ export function useVoiceDuplexSession(options: Options) {
     // already wraps the mic/WS setup) now wraps this too, so no path through
     // startPipecat() can throw silently past `void start()`'s caller.
     const status = await getVoiceStatus(true)
+    voiceStatusRef.current = status
+    setVoiceStatus(status)
+    phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
     const built = await buildPipecatVoiceWsUrl({
       status,
       agentId: optsRef.current.agentId,
@@ -733,18 +818,6 @@ export function useVoiceDuplexSession(options: Options) {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      })
-      streamRef.current = stream
-      analyserRef.current = createVoiceAnalyser()
-      analyserRef.current.connectStream(stream)
-      startRaf()
-
       const AC =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -753,9 +826,12 @@ export function useVoiceDuplexSession(options: Options) {
       audioCtxRef.current = ctx
       if (ctx.state === "suspended") await ctx.resume()
       pcmNextTimeRef.current = 0
-      const source = ctx.createMediaStreamSource(stream)
-      const processor = ctx.createScriptProcessor(4096, 1, 1)
-      processorRef.current = processor
+
+      const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+      analyserRef.current = createVoiceAnalyser()
+      analyserRef.current.connectStream(stream)
+      startRaf()
+      startMicTelemetry()
 
       const ws = new WebSocket(built.url)
       wsRef.current = ws
@@ -835,32 +911,26 @@ export function useVoiceDuplexSession(options: Options) {
         }
       }
 
-      let speakingEnergy = 0
-      processor.onaudioprocess = (e) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        const input = e.inputBuffer.getChannelData(0)
-        // Local barge-in while agent audio is playing (server VAD also interrupts).
-        let sum = 0
-        for (let i = 0; i < input.length; i++) sum += Math.abs(input[i] ?? 0)
-        const avg = sum / Math.max(1, input.length)
-        if (agentSpeakingRef.current && avg > 0.04) {
-          speakingEnergy += 1
-          if (speakingEnergy >= 3) {
-            speakingEnergy = 0
-            void bargeIn()
+      micProcessorRef.current = createVoiceMicProcessor({
+        ctx,
+        stream,
+        tuning,
+        prerollEnabled,
+        onPcm: (pcm) => {
+          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+          try {
+            wsRef.current.send(encodePipecatAudioMessage(pcm, 16000, 1))
+          } catch {
+            /* ignore */
           }
-        } else {
-          speakingEnergy = 0
-        }
-        const pcm = downsampleTo16k(input, ctx.sampleRate)
-        try {
-          wsRef.current.send(encodePipecatAudioMessage(pcm, 16000, 1))
-        } catch {
-          /* ignore */
-        }
-      }
-      source.connect(processor)
-      processor.connect(ctx.destination)
+        },
+        onLevels: (snapshot) => {
+          setMicLevels(snapshot)
+        },
+        agentSpeaking: () => agentSpeakingRef.current,
+        onBargeIn: () => void bargeIn(),
+      })
+      processorRef.current = micProcessorRef.current.processor
     } catch (err) {
       teardownMic()
       activeRef.current = false
@@ -870,7 +940,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [bargeIn, enqueuePcm, teardownMic])
+  }, [bargeIn, enqueuePcm, setupVoiceMicrophone, startMicTelemetry, teardownMic])
 
   const start = useCallback(async () => {
     if (activeRef.current) return
@@ -886,8 +956,15 @@ export function useVoiceDuplexSession(options: Options) {
       await unlockVoicePlayback()
       marksRef.current = { mic_open: performance.now() }
       turnStateRef.current = null
+      micSessionIdRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `mic-${Date.now()}`
 
       const status = options.forceHttpDuplex ? null : await getVoiceStatus(true)
+      voiceStatusRef.current = status
+      setVoiceStatus(status)
+      phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
       const usePipecat = !options.forceHttpDuplex && shouldUsePipecatVoice(status)
       orchestrationRef.current = usePipecat ? "pipecat" : "http"
       setOrchestration(orchestrationRef.current)
@@ -906,18 +983,6 @@ export function useVoiceDuplexSession(options: Options) {
       const creds = tokenResult.creds
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        })
-        streamRef.current = stream
-        analyserRef.current = createVoiceAnalyser()
-        analyserRef.current.connectStream(stream)
-        startRaf()
-
         const AC =
           window.AudioContext ||
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -927,9 +992,12 @@ export function useVoiceDuplexSession(options: Options) {
         if (ctx.state === "suspended") {
           await ctx.resume()
         }
-        const source = ctx.createMediaStreamSource(stream)
-        const processor = ctx.createScriptProcessor(4096, 1, 1)
-        processorRef.current = processor
+
+        const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+        analyserRef.current = createVoiceAnalyser()
+        analyserRef.current.connectStream(stream)
+        startRaf()
+        startMicTelemetry()
 
         // Temporary JWT from /v1/auth/grant uses bearer subprotocol (not Token master key).
         const ws = new WebSocket(creds.ws_url, ["bearer", creds.access_token])
@@ -960,14 +1028,18 @@ export function useVoiceDuplexSession(options: Options) {
           if (activeRef.current) setPresence("disconnected")
         }
 
-        processor.onaudioprocess = (e) => {
-          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-          const input = e.inputBuffer.getChannelData(0)
-          const pcm = downsampleTo16k(input, ctx.sampleRate)
-          wsRef.current.send(pcm.buffer)
-        }
-        source.connect(processor)
-        processor.connect(ctx.destination)
+        micProcessorRef.current = createVoiceMicProcessor({
+          ctx,
+          stream,
+          tuning,
+          prerollEnabled,
+          onPcm: (pcm) => {
+            if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+            wsRef.current.send(pcm.buffer)
+          },
+          onLevels: (snapshot) => setMicLevels(snapshot),
+        })
+        processorRef.current = micProcessorRef.current.processor
       } catch (err) {
         teardownMic()
         activeRef.current = false
@@ -986,7 +1058,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Voice session failed to start. Try again.",
       )
     }
-  }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, startPipecat, teardownMic])
+  }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, setupVoiceMicrophone, startMicTelemetry, startPipecat, teardownMic])
 
   const stop = useCallback(() => {
     activeRef.current = false
@@ -1021,6 +1093,10 @@ export function useVoiceDuplexSession(options: Options) {
     isActive,
     playbackBlocked,
     orchestration,
+    micLevels,
+    micEffective,
+    micProfile,
+    voiceStatus,
     start,
     stop,
     toggle,
