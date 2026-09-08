@@ -17,6 +17,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { 
+  ChevronUp,
+  ChevronDown,
   Plus, 
   Search,
   RefreshCw,
@@ -68,7 +70,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { HIGHLIGHT } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -207,15 +208,24 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
     { label: "Executable", ok: availability.executable },
   ]
   return (
-    <div className="mb-3 flex flex-wrap gap-1">
+    <div className="mb-3 flex flex-wrap gap-1.5">
       {badges.map(({ label, ok }) => (
         <span
           key={label}
           className={cn(
-            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-            ok ? HIGHLIGHT.brand : HIGHLIGHT.neutral,
+            "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+            ok
+              ? "border-divide text-[color:var(--g-text-secondary)]"
+              : "border-divide/70 text-[color:var(--g-text-muted)] opacity-70",
           )}
         >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              ok ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-muted)]",
+            )}
+            aria-hidden
+          />
           {label}
         </span>
       ))}
@@ -2435,6 +2445,27 @@ function ConnectorsPageContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
+  const [chromeCollapsed, setChromeCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      setChromeCollapsed(localStorage.getItem("gravitre-connectors-chrome-collapsed") === "true")
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  function toggleChromeCollapsed() {
+    setChromeCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem("gravitre-connectors-chrome-collapsed", String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
 
   const connectorsKey = user && orgId ? `/api/connectors?org=${orgId}` : null
 
@@ -2730,11 +2761,27 @@ function ConnectorsPageContent() {
       <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
         <PageHeader
           title={SURFACE_COPY.pages.connectors.headline}
-          description={SURFACE_COPY.pages.connectors.description}
+          description={chromeCollapsed ? undefined : SURFACE_COPY.pages.connectors.description}
           icon={NucleoConnector}
-          className="w-full min-w-0"
+          className={cn("w-full min-w-0", chromeCollapsed && "py-2 sm:py-2")}
           actions={
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 shrink-0 text-xs text-muted-foreground"
+                onClick={toggleChromeCollapsed}
+                aria-pressed={chromeCollapsed}
+                aria-label={chromeCollapsed ? "Expand connectors header" : "Minimize connectors header"}
+              >
+                {chromeCollapsed ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">{chromeCollapsed ? "Show filters" : "Minimize"}</span>
+              </Button>
               <div className="relative w-full min-w-0 md:w-auto md:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -2744,6 +2791,8 @@ function ConnectorsPageContent() {
                   className="w-full md:w-64 pl-9 bg-secondary"
                 />
               </div>
+              {!chromeCollapsed ? (
+              <>
               {/* Mobile / tablet filters (desktop pills are lg+) */}
               <div className="flex lg:hidden items-center gap-2 w-full overflow-x-auto pb-1">
                 {statusFilterOptions.map((status) => (
@@ -2940,10 +2989,19 @@ function ConnectorsPageContent() {
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
               </Button>
+              </>
+              ) : (
+              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Connector</span>
+              </Button>
+              )}
             </div>
           }
         />
 
+        {!chromeCollapsed ? (
+        <>
         {/* Live Stats Bar */}
         <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2983,6 +3041,8 @@ function ConnectorsPageContent() {
           onSelect={(type) => openAddModal(type)}
           showBrowseAll={false}
         />
+        </>
+        ) : null}
 
         {/* Network Topology View */}
         <div className="min-h-0 min-w-0 w-full flex-1 overflow-auto p-4 md:p-6">

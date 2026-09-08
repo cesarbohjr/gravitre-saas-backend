@@ -5,27 +5,32 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 /**
- * Soft Nodus highlight pills (RADIUS.control + HIGHLIGHT tones).
- * Soft fill + strong text — not solid primary blocks — so badges match
- * Product Image model tags across every surface that uses <Badge />.
+ * Badges are mostly quiet labels. Soft colored fills are reserved for
+ * important status (`status` / `warning` / `destructive`) — not every tag.
+ * Shape stays `rounded-full` (RADIUS.control).
  */
 const badgeVariants = cva(
-  'inline-flex items-center justify-center rounded-full border border-transparent px-2.5 py-1 text-xs font-semibold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1.5 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
+  'inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
   {
     variants: {
       variant: {
+        /** Quiet default — category / meta labels */
         default:
-          'bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)] [a&]:hover:bg-[color:var(--g-brand-soft)]',
+          'border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)] [a&]:hover:bg-[color:var(--g-surface-3)]',
         secondary:
-          'bg-[color:var(--g-signal-soft)] text-[color:var(--g-signal)] [a&]:hover:bg-[color:var(--g-signal-soft)]',
-        destructive:
-          'bg-destructive/10 text-destructive [a&]:hover:bg-destructive/10 focus-visible:ring-destructive/20',
+          'border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-3)]',
+        /** True outline — no soft purple fill */
         outline:
-          'bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)] [a&]:hover:bg-[color:var(--g-intelligence-soft)]',
+          'border-divide bg-transparent text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-2)] [a&]:hover:text-[color:var(--g-text-primary)]',
+        /** Important status only */
+        status:
+          'border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]',
         warning:
-          'bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]',
+          'border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]',
+        destructive:
+          'border-transparent bg-destructive/10 text-destructive [a&]:hover:bg-destructive/10 focus-visible:ring-destructive/20',
         neutral:
-          'bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]',
+          'border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]',
       },
     },
     defaultVariants: {

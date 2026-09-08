@@ -226,8 +226,8 @@ export const STATUS_DOT: Record<StatusTone, string> = {
 }
 
 /**
- * Soft highlight pills (Nodus “Model used” chips + AI eyebrow badge).
- * Prefer these over ad-hoc `bg-emerald-500/10` / blue / purple fills.
+ * Soft highlight pills — use only for important status (Ready / Watch / Error).
+ * Category labels (“Topic knowledge”, “Available”) stay quiet outline/neutral.
  */
 export const HIGHLIGHT = {
   brand:

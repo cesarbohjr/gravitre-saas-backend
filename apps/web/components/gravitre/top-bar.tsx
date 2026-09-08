@@ -51,13 +51,38 @@ interface TopBarProps {
   compact?: boolean
 }
 
+const TOPBAR_MINIMIZED_KEY = "gravitre-topbar-minimized"
+
 export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
+  const [minimized, setMinimized] = useState(false)
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
+
+  useEffect(() => {
+    try {
+      setMinimized(localStorage.getItem(TOPBAR_MINIMIZED_KEY) === "true")
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  function toggleMinimized() {
+    setMinimized((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(TOPBAR_MINIMIZED_KEY, String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
+  const chromeQuiet = compact || minimized
 
   const switchMode = (next: "admin" | "lite") => {
     setMode(next)
@@ -166,7 +191,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
         className={cn(
           // Nodus Phase 8: divide border + aceternity elevation on light chrome
           "flex items-center justify-between border-b border-divide bg-white px-3 shadow-aceternity sm:px-4",
-          compact ? "h-11 sm:h-10" : "h-12 sm:h-12",
+          chromeQuiet ? "h-10 sm:h-9" : "h-12 sm:h-12",
         )}
       >
         {/* Left side - Menu + Org + Environment + Page title */}
@@ -182,7 +207,20 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             <span className="sr-only">Toggle navigation</span>
           </Button>
 
-          {!compact ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden h-8 w-8 shrink-0 md:inline-flex"
+            onClick={toggleMinimized}
+            aria-pressed={minimized}
+            aria-label={minimized ? "Expand top menu" : "Minimize top menu"}
+            title={minimized ? "Expand top menu" : "Minimize top menu"}
+          >
+            <Icon name={minimized ? "chevronDown" : "chevronUp"} size="sm" />
+          </Button>
+
+          {!chromeQuiet ? (
             <>
           {/* Org Selector */}
           <DropdownMenu>
@@ -260,7 +298,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {title && !compact ? (
+          {title && !chromeQuiet ? (
             <>
               <span className="text-muted-foreground/40 hidden md:inline">/</span>
               {/* On phones the org chip collapses to an icon, so the page title
@@ -280,6 +318,13 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </>
           ) : null}
             </>
+          ) : title ? (
+            <span
+              className="max-w-[12rem] truncate text-sm font-semibold text-foreground"
+              aria-current="page"
+            >
+              {title}
+            </span>
           ) : null}
         </div>
 
@@ -289,7 +334,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           <GlobalCommandBar />
 
           {/* Admin/Lite Mode Toggle */}
-          {!compact ? (
+          {!chromeQuiet ? (
           <div className="hidden items-center gap-0.5 rounded-xl border border-divide bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -331,7 +376,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           ) : null}
 
           {/* B1: Meson build chrome is full-seat only — Lite uses assigned workflows, not the builder. */}
-          {!compact && !isLite ? <MesonToolbarTrigger /> : null}
+          {!chromeQuiet && !isLite ? <MesonToolbarTrigger /> : null}
 
           {/* Notifications */}
           <NotificationCenter />

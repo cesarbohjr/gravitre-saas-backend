@@ -23,7 +23,7 @@ import {
 import { Books, CaretDown, CaretUp, Plugs, WarningCircle } from "@phosphor-icons/react"
 import { SectionCard } from "./shared"
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS } from "@/lib/design-system"
+import { RADIUS } from "@/lib/design-system"
 
 type HealthTone = "ready" | "watch" | "thin"
 
@@ -65,18 +65,6 @@ function packHealth(pack: KnowledgeFabricPackQuality): {
   }
 }
 
-const TONE_STYLES: Record<HealthTone, string> = {
-  ready: STATUS.verified,
-  watch: STATUS.pending,
-  thin: STATUS.failed,
-}
-
-const TONE_BADGE: Record<HealthTone, string> = {
-  ready: STATUS.verified,
-  watch: STATUS.pending,
-  thin: STATUS.failed,
-}
-
 function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
   const health = packHealth(pack)
   const gaps = (pack.gaps ?? []).map(humanizeKnowledgeGap).filter(Boolean)
@@ -86,11 +74,16 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
   const department = knowledgePackDepartment(pack.pack_id)
 
   return (
-    <article className={cn("border p-4 shadow-sm", RADIUS.panel, TONE_STYLES[health.tone])}>
+    <article
+      className={cn(
+        "border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]",
+        RADIUS.panel,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-foreground">{name}</h3>
+            <h3 className="font-semibold text-[color:var(--g-text-primary)]">{name}</h3>
             <Badge variant="outline" className="font-normal">
               {isTool ? (
                 <span className="inline-flex items-center gap-1">
@@ -110,31 +103,41 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
           ) : null}
           <p className="mt-1 text-sm text-muted-foreground text-pretty">{health.summary}</p>
         </div>
-        <Badge className={cn("font-normal hover:opacity-100", TONE_BADGE[health.tone])}>{health.label}</Badge>
+        {/* Soft pill only on important status (Ready / Watch / Needs attention) */}
+        <Badge
+          variant={
+            health.tone === "ready" ? "status" : health.tone === "thin" ? "destructive" : "warning"
+          }
+          className="font-semibold hover:opacity-100"
+        >
+          {health.label}
+        </Badge>
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <dt className="text-xs text-muted-foreground">{isTool ? "Practice coverage" : "Topic coverage"}</dt>
-          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
             {pack.topic_coverage_pct != null ? `${Math.round(pack.topic_coverage_pct)}%` : "—"}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Trusted sources</dt>
-          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
             {pack.authoritative_source_count}/{pack.primary_source_count}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">License-checked</dt>
-          <dd className="mt-0.5 text-sm font-semibold tabular-nums">
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
             {pack.license_verified_pct != null ? `${Math.round(pack.license_verified_pct)}%` : "—"}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Knowledge pieces</dt>
-          <dd className="mt-0.5 text-sm font-semibold tabular-nums">{pack.chunk_count}</dd>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
+            {pack.chunk_count}
+          </dd>
         </div>
       </dl>
 
@@ -213,7 +216,7 @@ export function KnowledgeFabricQualityCard() {
       description="Trusted material for agent answers by department topic or connected tool."
       action={
         packs.length > 0 ? (
-          <Badge variant={attention > 0 ? "secondary" : "outline"} className="font-normal">
+          <Badge variant={attention > 0 ? "warning" : "outline"} className="font-normal">
             {attention > 0
               ? `${attention} need${attention === 1 ? "s" : ""} attention`
               : "Looking ready"}
