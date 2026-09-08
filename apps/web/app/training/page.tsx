@@ -23,7 +23,7 @@ import type {
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
-import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { DATASET_TYPE_META, TRAINABLE_BASE_MODELS, datasetTypeMeta } from "@/lib/training-ui-copy"
@@ -531,12 +531,10 @@ function TrainingPageContent() {
         <AgentsHubTabs active="training" />
         <LearningSurfacesCallout current="agent-training" />
 
-        <PageHeader
+        <GravitrePageHeader
           title={SURFACE_COPY.training.title}
           description={SURFACE_COPY.training.description}
-          icon={NucleoIntelligence}
-          iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
-          className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6"
+          icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <Button
               variant="outline"
@@ -628,14 +626,14 @@ function TrainingPageContent() {
           />
         </div>
 
-        <StatsGrid columns={3} className="md:grid-cols-6">
-          <StatCard label="Datasets" value={stats.totalDatasets} />
-          <StatCard label="Ready" value={stats.readyDatasets} variant="success" />
-          <StatCard label="Jobs" value={stats.totalJobs} />
-          <StatCard label="Active jobs" value={stats.activeJobs} variant="info" />
-          <StatCard label="Instructions" value={stats.totalInstructions} />
-          <StatCard label="Active" value={stats.activeInstructions} variant="success" />
-        </StatsGrid>
+        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] md:grid-cols-3 lg:grid-cols-6">
+          <GravitreMetric label="Datasets" value={stats.totalDatasets} />
+          <GravitreMetric label="Ready" value={stats.readyDatasets} />
+          <GravitreMetric label="Jobs" value={stats.totalJobs} />
+          <GravitreMetric label="Active jobs" value={stats.activeJobs} />
+          <GravitreMetric label="Instructions" value={stats.totalInstructions} />
+          <GravitreMetric label="Active" value={stats.activeInstructions} />
+        </section>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <motion.section

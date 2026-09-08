@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { ModelRegistryOverview } from "@/components/gravitre/model-registry-overview"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
@@ -298,11 +298,10 @@ export default function ModelsPage() {
     <AppShell title={SURFACE_COPY.models.title}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
         <LearningSurfacesCallout current="model-registry" />
-        <PageHeader
+        <GravitrePageHeader
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
-          icon={NucleoIntelligence}
-          iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
+          icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
@@ -335,12 +334,16 @@ export default function ModelsPage() {
         />
 
         {models.length > 0 ? (
-          <StatsGrid columns={4}>
-            <StatCard label="Registered" value={models.length} variant="info" />
-            <StatCard label="Deployed" value={stats.deployed} variant="success" />
-            <StatCard label="Ready" value={stats.ready} variant="default" />
-            <StatCard label="In training" value={stats.training} variant="warning" />
-          </StatsGrid>
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric label="Registered" value={models.length} />
+            <GravitreMetric label="Deployed" value={stats.deployed} />
+            <GravitreMetric label="Ready" value={stats.ready} />
+            <GravitreMetric
+              label="In training"
+              value={stats.training}
+              warning={stats.training > 0}
+            />
+          </section>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">

@@ -12,7 +12,7 @@ import { ChevronRight, Network, Plus, RefreshCw } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
-import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { MultiAgentRunOverview } from "@/components/gravitre/multi-agent-run-overview"
 import { agentSwarmApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -135,12 +135,11 @@ function MultiAgentRunContent() {
       <GridPattern className="opacity-[0.35]" />
       <div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <AgentsHubTabs active="multi-agent" />
-        <PageHeader
+        <GravitrePageHeader
           title="Multi-Agent Run"
           description="Coordinate multiple agents on parallel subtasks, then merge their results into one recommendation."
-          icon={Network}
-          iconColor="from-emerald-500/20 to-violet-500/20"
-          className="border-0 p-0"
+          icon={<Network className="h-5 w-5" />}
+          className="border-0 px-0"
           actions={
             <>
               <Button
@@ -166,22 +165,20 @@ function MultiAgentRunContent() {
           totalRuns={stats.total}
         />
 
-        <StatsGrid className="max-w-lg">
-          <StatCard
+        <section className="grid max-w-lg grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+          <GravitreMetric
             label="Active"
             value={<AnimatedCounter value={stats.active} duration={0.6} />}
-            variant="info"
           />
-          <StatCard
+          <GravitreMetric
             label="Completed"
             value={<AnimatedCounter value={stats.completed} duration={0.6} />}
-            variant="success"
           />
-          <StatCard
+          <GravitreMetric
             label="Total runs"
             value={<AnimatedCounter value={stats.total} duration={0.6} />}
           />
-        </StatsGrid>
+        </section>
 
         {error ? (
           <WorkSectionErrorCard
