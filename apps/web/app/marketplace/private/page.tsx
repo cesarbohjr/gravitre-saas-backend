@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -118,27 +119,23 @@ export default function MarketplacePrivatePage() {
 
   return (
     <AppShell title="Private connectors">
-      <div className="mx-auto max-w-4xl p-6 space-y-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Lock className="h-4 w-4" />
-              Enterprise · org-scoped
-            </div>
-            <h1 className="text-2xl font-semibold">Private connector runtime</h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Upload signed connector bundles that run in an isolated worker sandbox. See{" "}
-              <code className="text-xs bg-secondary px-1 rounded">docs/integration/private-connector-runtime.md</code>.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/connectors">
-              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-              Connectors
-            </Link>
-          </Button>
-        </div>
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Enterprise · org-scoped"
+          title="Private connector runtime"
+          description="Upload signed connector bundles that run in an isolated worker sandbox. See docs/integration/private-connector-runtime.md."
+          icon={<Lock className="h-5 w-5" />}
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/connectors">
+                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                Connectors
+              </Link>
+            </Button>
+          }
+        />
 
+        <div className="mx-auto max-w-4xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
         <section className="rounded-lg border border-border bg-card p-5 space-y-4">
           <h2 className="text-sm font-medium">Upload signed bundle</h2>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
@@ -230,6 +227,7 @@ export default function MarketplacePrivatePage() {
             ))}
           </ul>
         </section>
+        </div>
       </div>
     </AppShell>
   )

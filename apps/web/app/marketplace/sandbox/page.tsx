@@ -5,6 +5,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
@@ -86,31 +87,28 @@ export default function MarketplaceSandboxPage() {
 
   return (
     <AppShell title="Partner sandbox">
-      <div className="mx-auto max-w-2xl p-6 space-y-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <FlaskConical className="h-4 w-4" />
-              Marketplace · Sandbox
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Marketplace · Sandbox"
+          title="Partner connector sandbox"
+          description="Isolated org with demo agents, Acme Tools mock connector, and a smoke-test workflow for partner QA."
+          icon={<FlaskConical className="h-5 w-5" />}
+          actions={
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/billing">Billing</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/submit">
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                  Submit
+                </Link>
+              </Button>
             </div>
-            <h1 className="text-2xl font-semibold">Partner connector sandbox</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Isolated org with demo agents, Acme Tools mock connector, and a smoke-test workflow for partner QA.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/marketplace/billing">Billing</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/marketplace/submit">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Submit
-              </Link>
-            </Button>
-          </div>
-        </div>
+          }
+        />
 
+        <div className="mx-auto max-w-2xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -211,6 +209,7 @@ export default function MarketplaceSandboxPage() {
             </Button>
           </div>
         )}
+        </div>
       </div>
     </AppShell>
   )

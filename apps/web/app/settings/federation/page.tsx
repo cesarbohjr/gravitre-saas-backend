@@ -10,7 +10,6 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   Network,
-  Clock,
   Inbox,
   Send,
   Lock,
@@ -18,7 +17,7 @@ import {
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { Button } from "@/components/ui/button"
-import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { federationApi } from "@/lib/api"
 import { formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -202,70 +201,46 @@ function FederationContent() {
   }
 
   const statCards = [
-    { label: "Active partners", value: stats.active, icon: Network, accent: "text-chart-1" },
-    { label: "Pending invites", value: stats.pending, icon: Clock, accent: "text-chart-3" },
-    { label: "Open handoffs", value: stats.openHandoffs, icon: ArrowLeftRight, accent: "text-chart-2" },
-    { label: "Total partnerships", value: stats.total, icon: ShieldCheck, accent: "text-chart-4" },
+    { label: "Active partners", value: stats.active, hint: "Consented partnerships" },
+    { label: "Pending invites", value: stats.pending, hint: "Awaiting consent", warning: stats.pending > 0 },
+    { label: "Open handoffs", value: stats.openHandoffs, hint: "In-flight handoffs" },
+    { label: "Total partnerships", value: stats.total, hint: "All partnership rows" },
   ]
 
   return (
     <SettingsShell activeSection="federation" isAdmin={isAdmin} hideHeader>
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Hero */}
-      <div className="relative mb-8 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-        <GridPattern className="absolute inset-0 opacity-40" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent" />
-        <div className="relative flex flex-col gap-6 p-6 sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-                <Handshake className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-balance text-2xl font-semibold tracking-tight">
-                  Federation &amp; B2B
-                </h1>
-                <p className="mt-1 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground">
-                  Securely connect with partner organizations. Both sides must consent before any
-                  agent handoff, connector grant, or delegated task can flow across org boundaries.
-                </p>
-              </div>
-            </div>
-            {isAdmin ? (
-              <Button onClick={() => setInviteOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Invite partner
-              </Button>
-            ) : !authLoading ? (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Lock className="h-3.5 w-3.5" />
-                Admin access required to invite partners
-              </p>
-            ) : null}
-          </div>
+      <GravitrePageHeader
+        title="Federation & B2B"
+        description="Securely connect with partner organizations. Both sides must consent before any agent handoff, connector grant, or delegated task can flow across org boundaries."
+        icon={<Handshake className="h-5 w-5" aria-hidden />}
+        className="mb-6 !px-0 border-b-0"
+        actions={
+          isAdmin ? (
+            <Button onClick={() => setInviteOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Invite partner
+            </Button>
+          ) : !authLoading ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Lock className="h-3.5 w-3.5" />
+              Admin access required to invite partners
+            </p>
+          ) : null
+        }
+      />
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {statCards.map((s, i) => (
-              <motion.div
-                key={s.label}
-                custom={i}
-                initial="hidden"
-                animate="show"
-                variants={fadeUp}
-                className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]/80 p-4 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <s.icon className={cn("h-4 w-4", s.accent)} />
-                  <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
-                </div>
-                <div className="mt-2 text-2xl font-semibold tabular-nums">
-                  <AnimatedCounter value={s.value} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <section className="mb-8 grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-4">
+        {statCards.map((s) => (
+          <GravitreMetric
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            hint={s.hint}
+            warning={"warning" in s ? Boolean(s.warning) : false}
+          />
+        ))}
+      </section>
 
       {loadError ? (
         <div className="mb-6">

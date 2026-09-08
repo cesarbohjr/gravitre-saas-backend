@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
@@ -97,35 +98,31 @@ export default function MarketplaceSubmitPage() {
 
   return (
     <AppShell title="Submit connector">
-      <div className="mx-auto max-w-3xl p-6 space-y-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Package className="h-4 w-4" />
-              Partner marketplace
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          eyebrow="Partner marketplace"
+          title="Submit connector package"
+          description="Upload your manifest.json and complete the security checklist. Admins review submissions before connectors appear in the catalog."
+          icon={<Package className="h-5 w-5" />}
+          actions={
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/billing">Billing</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/sandbox">Sandbox</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/connectors">
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                  Connectors
+                </Link>
+              </Button>
             </div>
-            <h1 className="text-2xl font-semibold text-foreground">Submit connector package</h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-              Upload your <code className="text-xs bg-secondary px-1 rounded">manifest.json</code> and complete the
-              security checklist. Admins review submissions before connectors appear in the catalog.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/marketplace/billing">Billing</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/marketplace/sandbox">Sandbox</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/connectors">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Connectors
-              </Link>
-            </Button>
-          </div>
-        </div>
+          }
+        />
 
+        <div className="mx-auto max-w-3xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
         <section className="rounded-lg border border-border bg-card p-5 space-y-3">
           <h2 className="text-sm font-medium flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" />
@@ -220,6 +217,7 @@ export default function MarketplaceSubmitPage() {
             </ul>
           </section>
         )}
+        </div>
       </div>
     </AppShell>
   )

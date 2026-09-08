@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { AssetPricingEditor, formatAssetPriceLabel } from "@/components/marketplace/asset-pricing-editor"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
@@ -323,29 +324,27 @@ export default function MarketplacePlatformAdminPage() {
 
   return (
     <AppShell title="Public catalog review">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace/assets">
-            <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
-            Marketplace
-          </Link>
-        </Button>
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          title="Gravitre public review queue"
+          description="Set paid pricing and review community submissions before they appear in the public catalog."
+          icon={<Globe className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {pendingTotal > 0 ? (
+                <Badge variant="secondary">{pendingTotal} pending</Badge>
+              ) : null}
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/assets">
+                  <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
+                  Marketplace
+                </Link>
+              </Button>
+            </div>
+          }
+        />
 
-        <header>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <Globe className="h-5 w-5 text-primary" aria-hidden />
-            Gravitre public review queue
-            {pendingTotal > 0 ? (
-              <Badge variant="secondary" className="ml-1">
-                {pendingTotal} pending
-              </Badge>
-            ) : null}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Set paid pricing and review community submissions before they appear in the public catalog.
-          </p>
-        </header>
-
+        <div className="mx-auto max-w-4xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
         {isLoading && !data ? (
           <div className="h-32 animate-pulse rounded-xl border bg-muted/40" />
         ) : error ? (
@@ -454,6 +453,7 @@ export default function MarketplacePlatformAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </AppShell>
   )
 }

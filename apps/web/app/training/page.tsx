@@ -25,6 +25,8 @@ import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { DATASET_TYPE_META, TRAINABLE_BASE_MODELS, datasetTypeMeta } from "@/lib/training-ui-copy"
 import { RefreshCw } from "lucide-react"
@@ -108,6 +110,7 @@ function TrainingPageContent() {
   const [documentTitle, setDocumentTitle] = useState("")
   const [documentBody, setDocumentBody] = useState("")
   const [importingDatasetId, setImportingDatasetId] = useState<string | null>(null)
+  const [trainingTab, setTrainingTab] = useState("datasets")
 
   useEffect(() => {
     if (!user) return
@@ -206,7 +209,11 @@ function TrainingPageContent() {
 
   const stats = useMemo(() => {
     const readyDatasets = datasets.filter((d) => d.status === "ready").length
-    const activeJobs = jobs.filter((j) => j.status === "queued" || j.status === "training").length
+    const queuedJobs = jobs.filter((j) => j.status === "queued").length
+    const runningJobs = jobs.filter((j) => j.status === "training").length
+    const failedJobs = jobs.filter((j) => j.status === "failed").length
+    const readyJobs = jobs.filter((j) => j.status === "completed").length
+    const activeJobs = queuedJobs + runningJobs
     const activeInstructions = instructions.filter((i) => i.is_active).length
     const scopedInstructions = agentFilterId
       ? instructions.filter((i) => !i.agent_id || i.agent_id === agentFilterId).length
@@ -216,6 +223,10 @@ function TrainingPageContent() {
       readyDatasets,
       totalJobs: jobs.length,
       activeJobs,
+      queuedJobs,
+      runningJobs,
+      failedJobs,
+      readyJobs,
       totalInstructions: scopedInstructions,
       activeInstructions,
     }
@@ -536,18 +547,23 @@ function TrainingPageContent() {
           description={SURFACE_COPY.training.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void mutateDatasets()
-                void mutateJobs()
-                void mutateInstructions()
-              }}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={APP_ROUTES.builtInModels}>Built-in models</Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void mutateDatasets()
+                  void mutateJobs()
+                  void mutateInstructions()
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
           }
         />
 
@@ -635,7 +651,49 @@ function TrainingPageContent() {
           <GravitreMetric label="Active" value={stats.activeInstructions} />
         </section>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section
+          aria-label="Training job monitor"
+          className="sticky top-0 z-10 -mx-1 space-y-2 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]/95 px-3 py-3 shadow-[var(--np-shadow)] backdrop-blur supports-[backdrop-filter]:bg-[color:var(--g-surface-1)]/90 sm:mx-0"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Job monitor
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setTrainingTab("jobs")}
+            >
+              Open jobs
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-4">
+            <GravitreMetric label="Queued" value={stats.queuedJobs} />
+            <GravitreMetric label="Running" value={stats.runningJobs} />
+            <GravitreMetric
+              label="Failed"
+              value={stats.failedJobs}
+              warning={stats.failedJobs > 0}
+            />
+            <GravitreMetric label="Ready" value={stats.readyJobs} hint="Completed jobs" />
+          </div>
+        </section>
+
+        <Tabs value={trainingTab} onValueChange={setTrainingTab} className="space-y-4">
+          <TabsList className="flex w-full flex-wrap justify-start">
+            <TabsTrigger value="datasets">Datasets</TabsTrigger>
+            <TabsTrigger value="jobs">
+              Jobs
+              {stats.activeJobs > 0 ? (
+                <span className="ml-1.5 tabular-nums text-muted-foreground">({stats.activeJobs})</span>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger value="models">Fine-tunes</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="datasets" className="mt-0 space-y-4">
+        <div className="grid grid-cols-1 gap-6">
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -986,17 +1044,20 @@ function TrainingPageContent() {
               )}
             </div>
           </motion.section>
+        </div>
+          </TabsContent>
 
+          <TabsContent value="jobs" className="mt-0 space-y-4">
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.14 }}
+            transition={{ delay: 0.05 }}
             className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
           >
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Training Jobs</h2>
               <p className="text-sm text-muted-foreground">
-                Fine-tune runs started from a dataset. When a job completes, assign the model below.
+                Fine-tune runs started from a dataset. When a job completes, assign the model under Fine-tunes.
               </p>
             </div>
             <div className="space-y-2">
@@ -1088,12 +1149,13 @@ function TrainingPageContent() {
               )}
             </div>
           </motion.section>
-        </div>
+          </TabsContent>
 
+          <TabsContent value="models" className="mt-0 space-y-6">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.05 }}
           className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
         >
           <div className="space-y-1">
@@ -1275,6 +1337,8 @@ function TrainingPageContent() {
             </div>
           )}
         </motion.section>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   )

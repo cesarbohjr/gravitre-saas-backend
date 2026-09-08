@@ -5,7 +5,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
-import { GridPattern } from "@/components/gravitre/premium-effects"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -286,27 +286,19 @@ export default function MarketplaceBillingPage() {
 
   return (
     <AppShell title="Partner billing">
-      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
-        <GridPattern className="opacity-40" />
-        <div className="relative mx-auto max-w-3xl space-y-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          title="Partner revenue & payouts"
+          description="Connect Stripe, sync pending asset payouts, and manage connector pricing."
+          icon={<DollarSign className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace/assets">
                   <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                   Marketplace
                 </Link>
               </Button>
-              <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                <DollarSign className="h-4 w-4" aria-hidden />
-                Partner billing
-              </div>
-              <h1 className="text-2xl font-semibold">Partner revenue & payouts</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Connect Stripe, sync pending asset payouts, and manage connector pricing.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace/publisher/analytics">
                   <TrendingUp className="mr-1.5 h-4 w-4" aria-hidden />
@@ -317,8 +309,10 @@ export default function MarketplaceBillingPage() {
                 <Link href="/marketplace/submit">Partner submissions</Link>
               </Button>
             </div>
-          </div>
+          }
+        />
 
+        <div className="mx-auto max-w-3xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

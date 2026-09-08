@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import { GridPattern } from "@/components/gravitre/premium-effects"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -307,28 +307,23 @@ export default function MarketplacePublisherAnalyticsPage() {
 
   return (
     <AppShell title="Publisher revenue">
-      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
-        <GridPattern className="opacity-40" />
-        <div className="relative mx-auto max-w-5xl space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          title="Publisher revenue analytics"
+          description={
+            publisherName
+              ? `${publisherName} — connector usage and paid unified asset sales.`
+              : "Combined connector usage and paid unified asset sales for your organization."
+          }
+          icon={<TrendingUp className="h-5 w-5" />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace/assets">
                   <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                   Marketplace
                 </Link>
               </Button>
-              <h1 className="flex items-center gap-2 text-xl font-semibold">
-                <TrendingUp className="h-5 w-5 text-primary" aria-hidden />
-                Publisher revenue analytics
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {publisherName
-                  ? `${publisherName} — connector usage and paid unified asset sales.`
-                  : "Combined connector usage and paid unified asset sales for your organization."}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
                 <Link href="/intelligence/reports">{ROI_PAGE_TITLE}</Link>
               </Button>
@@ -340,8 +335,10 @@ export default function MarketplacePublisherAnalyticsPage() {
                 Sync payouts
               </Button>
             </div>
-          </div>
+          }
+        />
 
+        <div className="mx-auto max-w-5xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           {isLoading && !data ? (
             <div className="space-y-4">
               <Skeleton className="h-32 rounded-xl" />

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -106,25 +107,22 @@ export default function MarketplacePublisherPage() {
 
   return (
     <AppShell title="Become a publisher">
-      <div className="mx-auto max-w-xl space-y-6">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace/assets">
-            <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
-            Marketplace
-          </Link>
-        </Button>
+      <div className="bg-[color:var(--g-canvas)]">
+        <GravitrePageHeader
+          title="Creator publisher onboarding"
+          description="Register your organization as a creator on the public Gravitre catalog. Internal org publishing does not require this step."
+          icon={<Sparkles className="h-5 w-5" />}
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/marketplace/assets">
+                <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
+                Marketplace
+              </Link>
+            </Button>
+          }
+        />
 
-        <header>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-            Creator publisher onboarding
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Register your organization as a creator on the public Gravitre catalog. Internal org
-            publishing does not require this step.
-          </p>
-        </header>
-
+        <div className="mx-auto max-w-xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
         {onboarded ? (
           <div className="rounded-xl border border-success/30 bg-success/5 p-5 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -287,6 +285,7 @@ export default function MarketplacePublisherPage() {
             </Button>
           </form>
         )}
+        </div>
       </div>
     </AppShell>
   )
