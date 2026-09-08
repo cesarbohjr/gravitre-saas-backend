@@ -259,3 +259,14 @@ KPI registry seeds **AVAILABLE NOW** only. Overview date range UI includes 1h/24
 | D7 | Vitest pack/normalize; mobile reorder; keyboard-friendly remove/resize |
 
 **Files:** `apps/web/lib/dashboard/*`, `apps/web/components/home/*`, `apps/web/hooks/use-dashboard-layout.ts`, `apps/web/hooks/use-home-dashboard-data.ts`, `supabase/migrations/20260908010000_user_ui_preferences.sql`
+
+---
+
+## Migration applied (2026-09-08)
+
+| Item | Evidence |
+|------|----------|
+| Project | `smyeexlrqdpymwjmgzqu` (supabase-green-flower) |
+| Migration name | `user_ui_preferences` via Supabase MCP `apply_migration` |
+| Table | `public.user_ui_preferences` — RLS enabled, unique `(org_id, user_id)` |
+| Deploy | App already on `main` @ `6f3557e6` (`dpl_B84q9Z8Zgr5zRwNr1zy7AoPbyZff`) — server persist path live after this apply |
