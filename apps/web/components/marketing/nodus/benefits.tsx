@@ -27,7 +27,7 @@ export const Benefits = () => {
     {
       title: "Launch Faster",
       description:
-        "Ship agent workflows from a template or prompt — with connector executability checks before the first production run.",
+        "Ship agent workflows from a template or prompt, with connector executability checks before the first production run.",
       icon: <RocketIcon className="text-brand size-6" />,
     },
     {
@@ -39,7 +39,7 @@ export const Benefits = () => {
     {
       title: "Scale Smarter",
       description:
-        "Add agents and workflows as teams grow — permissions and approval policy scale with them.",
+        "Add agents and workflows as teams grow. Permissions and approval policy scale with them.",
       icon: <GraphIcon className="text-brand size-6" />,
     },
     {
@@ -51,13 +51,13 @@ export const Benefits = () => {
     {
       title: "Prevent Breakdowns",
       description:
-        "Failure predictions from auth expiry, missing scopes, and run history — fix issues before workflows break.",
+        "Failure predictions from auth expiry, missing scopes, and run history help you fix issues before workflows break.",
       icon: <ShieldIcon className="text-brand size-6" />,
     },
     {
       title: "Automate More",
       description:
-        "Expand from chat to scheduled workflows, Marketplace templates, and cross-department handoffs — always with approval gates.",
+        "Expand from chat to scheduled workflows, Marketplace templates, and cross-department handoffs, always with approval gates.",
       icon: <ScreenCogIcon className="text-brand size-6" />,
     },
   ];

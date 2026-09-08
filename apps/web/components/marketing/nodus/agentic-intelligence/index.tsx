@@ -36,7 +36,7 @@ export const AgenticIntelligence = () => {
         </SectionHeading>
 
         <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
-          Build, connect, and govern AI agents from one visual workspace —
+          Build, connect, and govern AI agents from one visual workspace,
           scoped to your org with approval gates on every write.
         </SubHeading>
         <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x">
@@ -46,8 +46,8 @@ export const AgenticIntelligence = () => {
               <CardTitle>LLM Model Selector</CardTitle>
             </div>
             <CardDescription>
-              Route each step to the right model — OpenAI, Anthropic, Llama,
-              and more — with org-level defaults and per-workflow overrides.
+              Route each step to the right model (OpenAI, Anthropic, Llama,
+              and more) with org-level defaults and per-workflow overrides.
             </CardDescription>
             <LLMModelSelectorSkeleton />
           </Card>
@@ -72,7 +72,7 @@ export const AgenticIntelligence = () => {
             </div>
             <CardDescription className="relative z-10">
               Agents call HubSpot, Slack, Salesforce, and your stack through
-              verified connectors — not mock APIs or placeholder integrations.
+              verified connectors, not mock APIs or placeholder integrations.
             </CardDescription>
             <div className="relative z-10 min-w-0">
               <NativeToolsIntegrationSkeleton />
@@ -96,7 +96,7 @@ export const AgenticIntelligence = () => {
               <CardTitle>Realtime Sync</CardTitle>
             </div>
             <CardDescription>
-              Agents share context and hand off tasks in real time — coordinated
+              Agents share context and hand off tasks in real time, coordinated
               through one business brain, not isolated chatbots.
             </CardDescription>
           </Card>

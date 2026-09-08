@@ -20,7 +20,7 @@ export const UseCases = () => {
     {
       title: "DevOps",
       description:
-        "Automate deployments, incident response, and infrastructure checks — with approval gates before anything hits production.",
+        "Automate deployments, incident response, and infrastructure checks, with approval gates before anything hits production.",
       icon: <DevopsIcon className="text-brand size-6" />,
     },
     {
@@ -32,7 +32,7 @@ export const UseCases = () => {
     {
       title: "Marketing Ops",
       description:
-        "Orchestrate campaigns, route inbound leads, and sync performance data from your marketing stack — with human approval on sends and spend.",
+        "Orchestrate campaigns, route inbound leads, and sync performance data from your marketing stack, with human approval on sends and spend.",
       icon: <SparklesIcon className="text-brand size-6" />,
     },
     {
@@ -65,7 +65,7 @@ export const UseCases = () => {
 
         <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
           One shared brain coordinates agents, workflows, and people across
-          departments — with governance and audit trails on every action.
+          departments, with governance and audit trails on every action.
         </SubHeading>
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">

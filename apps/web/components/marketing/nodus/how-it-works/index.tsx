@@ -25,7 +25,7 @@ export const HowItWorks = () => {
     {
       title: "Design your Workflow",
       description:
-        "Map agents, tools, and approval steps in a visual builder — describe outcomes, not boilerplate glue code.",
+        "Map agents, tools, and approval steps in a visual builder. Describe outcomes, not boilerplate glue code.",
       icon: FirstIcon,
       id: "workflow",
       skeleton: <DesignYourWorkflowSkeleton />,
@@ -41,7 +41,7 @@ export const HowItWorks = () => {
     {
       title: "Deploy & Scale",
       description:
-        "Test in sandbox, simulate runs, then promote to production — every action logged with audit trails.",
+        "Test in sandbox, simulate runs, then promote to production. Every action is logged with audit trails.",
       icon: ThirdIcon,
       id: "deploy",
       skeleton: <DeployAndScaleSkeleton />,
