@@ -6,7 +6,7 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -105,11 +105,10 @@ export default function IntelligenceModelsPage() {
   return (
     <AppShell title={copy.title}>
       <div className="space-y-2">
-        <PageHeader
+        <GravitrePageHeader
           title={copy.title}
           description={copy.intro}
-          icon={NucleoIntelligence}
-          iconColor="from-primary/25 to-[oklch(0.55_0.16_250)]/20"
+          icon={<NucleoIntelligence className="h-5 w-5" />}
         />
 
         <div className="px-4 pb-8 md:px-6">

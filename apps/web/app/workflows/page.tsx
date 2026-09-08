@@ -4,7 +4,10 @@ import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
+import {
+  GravitreMetric,
+  GravitrePageHeader,
+} from "@/components/gravitre/nodus-product"
 import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
 import { ErrorState, EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
@@ -321,11 +324,11 @@ export default function WorkflowsPage() {
       <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]">
         {/* Header */}
         <div className="relative z-10">
-          <PageHeader
+          <GravitrePageHeader
             eyebrow="Automation"
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
-            icon={NucleoWorkflow}
+            icon={<NucleoWorkflow className="h-5 w-5" />}
             actions={
             <>
               <DropdownMenu>
@@ -445,14 +448,34 @@ export default function WorkflowsPage() {
               </Button>
             </>
           }
-        >
-          <StatsGrid columns={4}>
-            <StatCard label="Total" value={workflows.length} />
-            <StatCard label="Active" value={activeCount} variant="success" />
-            <StatCard label="Paused" value={pausedCount} variant="warning" />
-            <StatCard label="Running" value={runningCount} variant="info" />
-          </StatsGrid>
-        </PageHeader>
+          />
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)] lg:grid-cols-4">
+            <GravitreMetric
+              label="Total"
+              value={<AnimatedCounter value={workflows.length} duration={0.8} />}
+              hint="In workspace"
+              icon={<NucleoWorkflow className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Active"
+              value={<AnimatedCounter value={activeCount} duration={0.8} />}
+              hint={activeCount > 0 ? "Live" : "None active"}
+              icon={<Zap className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Paused"
+              value={<AnimatedCounter value={pausedCount} duration={0.8} />}
+              hint={pausedCount > 0 ? "On hold" : "None paused"}
+              warning={pausedCount > 0}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
+            <GravitreMetric
+              label="Running"
+              value={<AnimatedCounter value={runningCount} duration={0.8} />}
+              hint={runningCount > 0 ? "In flight" : "None running"}
+              icon={<Edit className="h-4 w-4" />}
+            />
+          </section>
         </div>
 
         {/* Live activity banner */}

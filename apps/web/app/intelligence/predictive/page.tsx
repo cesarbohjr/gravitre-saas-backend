@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -25,7 +26,11 @@ export default function PredictiveOpsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <PageHeader title={copy.title} description={copy.description} />
+      <GravitrePageHeader
+        title={copy.title}
+        description={copy.description}
+        icon={<NucleoIntelligence className="h-5 w-5" />}
+      />
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">Domain pack</span>
         <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>

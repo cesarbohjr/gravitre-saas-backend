@@ -9,7 +9,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -947,7 +947,7 @@ function ApprovalsContent() {
         )}>
           {/* Header */}
           <div className="flex-shrink-0 border-b border-divide">
-            <PageHeader
+            <GravitrePageHeader
               className="border-0"
               eyebrow="Governance"
               title="Decision Queue"
@@ -956,7 +956,7 @@ function ApprovalsContent() {
                   ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
                   : `${historyApprovals.length} past decision${historyApprovals.length !== 1 ? "s" : ""}`
               }
-              icon={NucleoApproval}
+              icon={<NucleoApproval className="h-5 w-5" />}
               actions={
                 <DataFreshness
                   updatedAt={data ? Date.now() : null}

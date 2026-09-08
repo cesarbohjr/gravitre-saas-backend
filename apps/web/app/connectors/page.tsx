@@ -7,7 +7,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
@@ -2759,10 +2759,10 @@ function ConnectorsPageContent() {
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-        <PageHeader
+        <GravitrePageHeader
           title={SURFACE_COPY.pages.connectors.headline}
           description={chromeCollapsed ? undefined : SURFACE_COPY.pages.connectors.description}
-          icon={NucleoConnector}
+          icon={<NucleoConnector className="h-5 w-5" />}
           className={cn("w-full min-w-0", chromeCollapsed && "py-2 sm:py-2")}
           actions={
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">

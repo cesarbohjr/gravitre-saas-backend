@@ -6,7 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import {
+  GravitreMetric,
+  GravitrePageHeader,
+} from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -159,12 +162,12 @@ function IntelligenceCenterInner() {
           <LivingMineralField intensity="section" className="opacity-80" />
         </div>
         <IntelligenceSectionRedirect />
-        <PageHeader
+        <GravitrePageHeader
           className="relative border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/80 backdrop-blur-sm"
           eyebrow="GIBE"
           title={copy.title}
           description={copy.description}
-          icon={NucleoIntelligence}
+          icon={<NucleoIntelligence className="h-5 w-5" />}
         />
 
         {/* Always show Module C strip — empty state is honest when catalog has no rows */}
@@ -182,9 +185,14 @@ function IntelligenceCenterInner() {
             description={copy.emptyDescription}
           />
         ) : (
-          <StatsGrid columns={4}>
-            <StatCard label={SURFACE_COPY.stats.outcomeEvents} value={totalEvents} variant="info" />
-            <StatCard
+          <section className="relative grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric
+              label={SURFACE_COPY.stats.outcomeEvents}
+              value={totalEvents}
+              hint="Business outcomes"
+              icon={<NucleoIntelligence className="h-4 w-4" />}
+            />
+            <GravitreMetric
               label={
                 confidenceIsEstimate
                   ? ESTIMATED_CONFIDENCE_LABEL
@@ -192,7 +200,7 @@ function IntelligenceCenterInner() {
               }
               value={
                 avgConfidence != null ? (
-                  <span className="inline-flex flex-col items-center gap-1">
+                  <span className="inline-flex flex-col gap-1">
                     <span>{formatPercent(avgConfidence)}</span>
                     <ConfidenceBadge
                       score={avgConfidence}
@@ -205,18 +213,21 @@ function IntelligenceCenterInner() {
                   "—"
                 )
               }
-              variant={confidenceIsEstimate ? "warning" : "success"}
+              hint={confidenceIsEstimate ? "Estimate" : "Trust period"}
+              warning={confidenceIsEstimate}
             />
-            <StatCard
+            <GravitreMetric
               label={SURFACE_COPY.stats.recommendationsCreated}
               value={readNumber(byEvent.recommendation_created, 0)}
+              hint="Created"
             />
-            <StatCard
+            <GravitreMetric
               label={SURFACE_COPY.stats.recommendationsRejected}
               value={readNumber(byEvent.recommendation_rejected, 0)}
-              variant="warning"
+              hint="Rejected"
+              warning={readNumber(byEvent.recommendation_rejected, 0) > 0}
             />
-          </StatsGrid>
+          </section>
         )}
 
         {avgConfidence == null && !isLoading ? (
