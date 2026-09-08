@@ -11,8 +11,9 @@ export type MicDiagnosticsPayload = {
   mic_profile?: string
   device_label?: string
   effective_settings?: MicEffectiveSettings
-  metrics: MicLevelSnapshot & Record<string, unknown>
-  event?: "session_start" | "periodic" | "session_end"
+  /** Levels may be absent at session_start/end before the first capture tick. */
+  metrics: Partial<MicLevelSnapshot> & Record<string, unknown>
+  event?: "session_start" | "periodic" | "session_end" | "echo_test"
 }
 
 export async function postMicDiagnostics(body: MicDiagnosticsPayload): Promise<boolean> {
