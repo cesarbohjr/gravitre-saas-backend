@@ -553,3 +553,5 @@ Cesar authorized Product Image soft-pill highlight colors/shape/type on all web 
 | Key surfaces | Connectors, Sources, Workflows, chat selectors |
 
 **Not claimed:** authenticated visual fidelity PASS until Ready + spot-check.
+
+Deploy READY: `dpl_FwsKxrYh3SgngCFeZ6vsxSJ4oSjP` @ `d549511c`.

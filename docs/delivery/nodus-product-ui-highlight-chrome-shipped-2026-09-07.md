@@ -1,6 +1,6 @@
 # Nodus soft highlight chrome — shipped (2026-09-07)
 
-**Status:** Shipped to `main` (await Vercel Ready)  
+**Status:** Shipped to `main` — Vercel Ready (web)  
 **Gate:** Cesar — apply Product Image highlight colors, pill shape, and type across web app surfaces
 
 ## What landed
@@ -25,3 +25,7 @@ No new prices, claims, badges, or Enable entitlement toggles — visual system o
 ## Not claimed
 
 Authenticated visual PASS until Ready + spot-check on `/connectors`, `/agents`, `/approvals`.
+
+## Evidence
+
+- Deploy READY: `dpl_FwsKxrYh3SgngCFeZ6vsxSJ4oSjP` @ tip `d549511c` (production alias `gravitre.app`)
