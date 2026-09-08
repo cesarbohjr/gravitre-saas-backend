@@ -22,6 +22,7 @@ import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-su
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
+import { TrainingReadinessStrip } from "@/components/intelligence/training-readiness-strip"
 import { LivingMineralField } from "@/components/gravitre/visual"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
@@ -123,6 +124,11 @@ function IntelligenceCenterInner() {
   const { data: modelCatalog } = useSWR(user ? "intelligence/model-catalog" : null, () =>
     intelligenceApi.modelCatalog(),
   )
+  const { data: readiness, isLoading: readinessLoading } = useSWR(
+    user ? "intelligence/training-readiness" : null,
+    () => intelligenceApi.trainingReadiness(),
+    { revalidateOnFocus: false },
+  )
 
   if (!user) {
     return (
@@ -173,6 +179,10 @@ function IntelligenceCenterInner() {
         {/* Always show Module C strip — empty state is honest when catalog has no rows */}
         <div className="relative">
           <GibeHonestyStrip orgTraining={hasRuntimeRows ? orgTraining : null} />
+        </div>
+
+        <div className="relative">
+          <TrainingReadinessStrip readiness={readiness} loading={readinessLoading} />
         </div>
 
         {isLoading && !outcomes ? (
