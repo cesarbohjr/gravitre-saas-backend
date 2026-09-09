@@ -1,10 +1,10 @@
 "use client"
 
 /**
- * GravitreDepartmentNetwork — signature "departments converge" animation.
- * Primary runtime: custom SVG + Motion. Configuration-driven scenarios.
- * GSAP scroll variant kept optional (see department-network-scroll.tsx) —
- * Motion autoplay won the Nodus calmness / performance comparison for About.
+ * GravitreDepartmentNetwork — signature converge animation.
+ * HTML stage for nodes/core (fits the page) + SVG Bézier paths/packets.
+ * Motion elements borrowed from Nodus (sweeping path gradients, hub conic rings)
+ * — not a clone of the homepage layout.
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -14,7 +14,7 @@ import { GravitreDepartmentNode, type NodeVisualState } from "./department-node"
 import { GravitreIntelligenceCore } from "./intelligence-core"
 import { GravitreSignalPath } from "./signal-path"
 import { GravitreSignalPacket } from "./signal-packet"
-import { DEPARTMENT_EDGE_KEYS, departmentPoint } from "./paths"
+import { DEPARTMENT_EDGE_KEYS } from "./paths"
 import { edgeKey, useNetworkStory } from "./use-network-story"
 import { DEPARTMENT_META, NETWORK_VB, type DepartmentId } from "./types"
 import { DepartmentNetworkMobile } from "./department-network-mobile"
@@ -44,7 +44,7 @@ export function GravitreDepartmentNetwork({
   const reduced = mounted && !!reducePreference
 
   const rootRef = useRef<HTMLDivElement>(null)
-  const inView = useInView(rootRef, { amount: 0.35, once: false })
+  const inView = useInView(rootRef, { amount: 0.3, once: false })
   const startedRef = useRef(false)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -56,7 +56,7 @@ export function GravitreDepartmentNetwork({
       startedRef.current = true
       const t = setTimeout(() => {
         void playNextAuto()
-      }, 700)
+      }, 500)
       return () => clearTimeout(t)
     }
   }, [autoplay, inView, playNextAuto, reduced])
@@ -70,97 +70,73 @@ export function GravitreDepartmentNetwork({
     if (!startedRef.current) return
     idleTimer.current = setTimeout(() => {
       void playNextAuto()
-    }, 10000)
+    }, 9000)
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current)
     }
   }, [autoplay, inView, playNextAuto, reduced, state.running, state.scenarioId])
 
+  const depts = Object.keys(DEPARTMENT_META) as DepartmentId[]
+
   return (
-    <div ref={rootRef} className={cn("relative mx-auto w-full max-w-3xl", className)}>
+    <div ref={rootRef} className={cn("relative mx-auto w-full max-w-2xl", className)}>
       <div className="md:hidden">
         <DepartmentNetworkMobile reduced={reduced} />
       </div>
 
       <div className="relative hidden md:block">
-        <svg
-          viewBox={`0 0 ${NETWORK_VB.w} ${NETWORK_VB.h}`}
-          className="h-auto w-full"
-          role="img"
-          aria-label="Departments create signals that flow through Gravitre intelligence so other teams can act, then outcomes return and shared intelligence learns"
+        {/* Fixed aspect stage — nodes stay inside via % positions */}
+        <div
+          className="relative w-full overflow-hidden rounded-xl bg-white"
+          style={{ aspectRatio: `${NETWORK_VB.w} / ${NETWORK_VB.h}` }}
         >
-          <defs>
-            <radialGradient id="gv-dept-core-field" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="color-mix(in oklch, var(--g-intelligence) 14%, transparent)" />
-              <stop offset="100%" stopColor="transparent" />
-            </radialGradient>
-            <pattern id="gv-dept-dot-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.7" fill="var(--color-dots, #eaedf1)" />
-            </pattern>
-          </defs>
-
-          <rect width={NETWORK_VB.w} height={NETWORK_VB.h} fill="#fff" />
-          <rect
-            width={NETWORK_VB.w}
-            height={NETWORK_VB.h}
-            fill="url(#gv-dept-dot-grid)"
-            opacity={0.9}
-            style={{
-              maskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 15%, transparent 75%)",
-              WebkitMaskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 15%, transparent 75%)",
-            }}
+          {/* Dot field */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-dots,#eaedf1)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
           />
 
-          {DEPARTMENT_EDGE_KEYS.map(({ dept, d }) => {
-            const ek = edgeKey(dept, "core")
-            const kind = state.activeEdges.get(ek) ?? null
-            const muted = state.mutedDepts.has(dept) && !kind
-            return (
-              <GravitreSignalPath key={dept} d={d} activeKind={kind} muted={muted} reduced={reduced} />
-            )
-          })}
-
-          {DEPARTMENT_EDGE_KEYS.map(({ dept }) => {
-            const pt = departmentPoint(dept)
-            const ax = NETWORK_VB.cx + (pt.x - NETWORK_VB.cx) * 0.28
-            const ay = NETWORK_VB.cy + (pt.y - NETWORK_VB.cy) * 0.28
-            const active = state.activeEdges.has(edgeKey(dept, "core"))
-            return (
-              <circle
-                key={`anchor-${dept}`}
-                cx={ax}
-                cy={ay}
-                r={2.25}
-                fill={active ? "var(--color-brand, #16a374)" : "var(--color-line, #eaedf1)"}
-              />
-            )
-          })}
+          {/* SVG paths + packets only */}
+          <svg
+            viewBox={`0 0 ${NETWORK_VB.w} ${NETWORK_VB.h}`}
+            className="absolute inset-0 h-full w-full"
+            aria-hidden
+          >
+            {DEPARTMENT_EDGE_KEYS.map(({ dept, d }) => {
+              const ek = edgeKey(dept, "core")
+              const kind = state.activeEdges.get(ek) ?? null
+              const muted = state.mutedDepts.has(dept) && !kind
+              return (
+                <GravitreSignalPath
+                  key={dept}
+                  d={d}
+                  activeKind={kind}
+                  muted={muted}
+                  reduced={reduced}
+                />
+              )
+            })}
+            {!reduced
+              ? state.packets.map((pkt) => (
+                  <GravitreSignalPacket key={pkt.key} d={pkt.d} kind={pkt.kind} progress={pkt.progress} />
+                ))
+              : null}
+          </svg>
 
           <GravitreIntelligenceCore state={state.coreState} reduced={reduced} />
 
-          {(Object.keys(DEPARTMENT_META) as DepartmentId[]).map((id) => {
-            const pt = departmentPoint(id)
-            return (
-              <GravitreDepartmentNode
-                key={id}
-                id={id}
-                x={pt.x}
-                y={pt.y}
-                state={nodeState(id, state.activeDepts, state.resolvedDepts, state.mutedDepts)}
-                interactive={!reduced}
-                onHover={() => setHoverFocus(id)}
-                onLeave={() => setHoverFocus(null)}
-                onClick={() => playFromDepartment(id)}
-              />
-            )
-          })}
-
-          {!reduced
-            ? state.packets.map((pkt) => (
-                <GravitreSignalPacket key={pkt.key} d={pkt.d} kind={pkt.kind} progress={pkt.progress} />
-              ))
-            : null}
-        </svg>
+          {depts.map((id) => (
+            <GravitreDepartmentNode
+              key={id}
+              id={id}
+              state={nodeState(id, state.activeDepts, state.resolvedDepts, state.mutedDepts)}
+              interactive={!reduced}
+              onHover={() => setHoverFocus(id)}
+              onLeave={() => setHoverFocus(null)}
+              onClick={() => playFromDepartment(id)}
+            />
+          ))}
+        </div>
 
         <AnimatePresence mode="wait">
           {state.caption ? (
@@ -169,21 +145,16 @@ export function GravitreDepartmentNetwork({
               initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={reduced ? undefined : { opacity: 0 }}
-              className="mt-4 text-center text-sm font-medium text-[color:var(--g-text-secondary)]"
+              className="mt-3 text-center text-sm font-medium text-[color:var(--g-text-secondary)]"
             >
               {state.caption}
             </motion.p>
           ) : (
-            <motion.p
-              key="hint"
-              initial={false}
-              animate={{ opacity: 0.7 }}
-              className="mt-4 text-center text-xs text-[color:var(--g-text-muted)]"
-            >
+            <p className="mt-3 text-center text-xs text-[color:var(--g-text-muted)]">
               {reduced
                 ? "Departments share one governed intelligence layer."
                 : "Hover a department, or click to run a short story."}
-            </motion.p>
+            </p>
           )}
         </AnimatePresence>
       </div>

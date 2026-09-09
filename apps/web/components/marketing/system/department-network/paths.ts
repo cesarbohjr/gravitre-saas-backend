@@ -1,13 +1,9 @@
-import { DEPARTMENT_META, NETWORK_VB, NODE_RADIUS, type DepartmentId, type PathEndpoint } from "./types"
+import { DEPARTMENT_XY, NETWORK_VB, type DepartmentId, type PathEndpoint } from "./types"
 
 export type Pt = { x: number; y: number }
 
 export function departmentPoint(id: DepartmentId): Pt {
-  const rad = (DEPARTMENT_META[id].angle * Math.PI) / 180
-  return {
-    x: NETWORK_VB.cx + Math.cos(rad) * NODE_RADIUS,
-    y: NETWORK_VB.cy + Math.sin(rad) * NODE_RADIUS,
-  }
+  return DEPARTMENT_XY[id]
 }
 
 export function endpointPoint(ep: PathEndpoint): Pt {
@@ -16,8 +12,7 @@ export function endpointPoint(ep: PathEndpoint): Pt {
 }
 
 /**
- * Elegant cubic Bézier from department ↔ core.
- * Control points pull slightly perpendicular so paths fan instead of radiating as straight spokes.
+ * Cubic Bézier from department ↔ core — restrained curve (not a straight spoke).
  */
 export function bezierPath(from: PathEndpoint, to: PathEndpoint): string {
   const a = endpointPoint(from)
@@ -25,9 +20,8 @@ export function bezierPath(from: PathEndpoint, to: PathEndpoint): string {
   const dx = b.x - a.x
   const dy = b.y - a.y
   const len = Math.hypot(dx, dy) || 1
-  // Perpendicular offset (~14% of span) for a restrained mineral curve
-  const ox = (-dy / len) * len * 0.14
-  const oy = (dx / len) * len * 0.14
+  const ox = (-dy / len) * len * 0.12
+  const oy = (dx / len) * len * 0.12
   const c1x = a.x + dx * 0.35 + ox
   const c1y = a.y + dy * 0.35 + oy
   const c2x = a.x + dx * 0.65 + ox
@@ -36,11 +30,9 @@ export function bezierPath(from: PathEndpoint, to: PathEndpoint): string {
 }
 
 export function pathKey(from: PathEndpoint, to: PathEndpoint): string {
-  const pair = [from, to].sort().join("--")
-  return pair
+  return [from, to].sort().join("--")
 }
 
-/** Canonical undirected edge keys for the four departments ↔ core */
 export const DEPARTMENT_EDGE_KEYS: { dept: DepartmentId; d: string }[] = (
   ["sales", "support", "operations", "finance"] as DepartmentId[]
 ).map((dept) => ({

@@ -16,10 +16,9 @@ const ICONS: Record<DepartmentId, ComponentType<SVGProps<SVGSVGElement>>> = {
 
 export type NodeVisualState = "idle" | "active" | "muted" | "resolved" | "focus"
 
+/** HTML department card — positioned with CSS so Motion never fights SVG transforms. */
 export function GravitreDepartmentNode({
   id,
-  x,
-  y,
   state = "idle",
   onHover,
   onLeave,
@@ -27,8 +26,6 @@ export function GravitreDepartmentNode({
   interactive,
 }: {
   id: DepartmentId
-  x: number
-  y: number
   state?: NodeVisualState
   onHover?: () => void
   onLeave?: () => void
@@ -42,102 +39,60 @@ export function GravitreDepartmentNode({
   const isMuted = state === "muted"
 
   return (
-    <motion.g
-      transform={`translate(${x} ${y})`}
-      initial={false}
-      animate={{
-        opacity: isMuted ? 0.35 : 1,
-        scale: isActive ? 1.04 : isResolved ? 1.02 : 1,
-      }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      style={{ cursor: interactive ? "pointer" : "default" }}
+    <motion.button
+      type="button"
+      disabled={!interactive}
+      aria-label={`${meta.label} department`}
       onMouseEnter={interactive ? onHover : undefined}
       onMouseLeave={interactive ? onLeave : undefined}
       onClick={interactive ? onClick : undefined}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onKeyDown={
-        interactive
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                onClick?.()
-              }
-            }
-          : undefined
-      }
-      aria-label={`${meta.label} department`}
+      className={cn(
+        "absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition-shadow",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand,#16a374)]/40",
+        isActive && "border-[color:var(--color-brand,#16a374)] shadow-md",
+        isResolved && "border-[color:var(--color-blue-500)]",
+        !isActive && !isResolved && "border-[color:var(--color-line,#eaedf1)]",
+        isMuted && "opacity-40",
+        !interactive && "cursor-default",
+      )}
+      style={{ left: meta.left, top: meta.top }}
+      initial={false}
+      animate={{ scale: isActive ? 1.04 : isResolved ? 1.02 : 1 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Soft elevation disc */}
-      <motion.circle
-        r={36}
-        fill="color-mix(in oklch, var(--g-intelligence) 8%, transparent)"
-        initial={false}
-        animate={{ opacity: isActive || isResolved ? 1 : 0 }}
-        transition={{ duration: 0.4 }}
-      />
-      <rect
-        x={-40}
-        y={-28}
-        width={80}
-        height={56}
-        rx={12}
-        fill="#fff"
-        stroke={
+      <span
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--g-surface-2,#f5f6f8)] text-[color:var(--g-text-secondary)]",
+          isActive && "text-[color:var(--color-brand,#16a374)]",
+          isResolved && "text-[color:var(--color-blue-500)]",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="pr-1">
+        <span className="block text-sm font-semibold text-[color:var(--g-text-secondary)]">{meta.label}</span>
+        <span className="block text-[10px] text-[color:var(--g-text-muted)]">
+          {isActive ? "Active" : isResolved ? "Resolved" : "Ready"}
+        </span>
+      </span>
+      <span
+        className={cn(
+          "absolute right-2 top-2 h-1.5 w-1.5 rounded-full",
           isActive
-            ? "color-mix(in oklch, var(--color-brand, #16a374) 55%, #eaedf1)"
+            ? "bg-[color:var(--color-brand,#16a374)]"
             : isResolved
-              ? "color-mix(in oklch, var(--color-blue-500) 45%, #eaedf1)"
-              : "var(--color-line, #eaedf1)"
-        }
-        strokeWidth={1.25}
-        className={cn(isActive && "drop-shadow-sm")}
-      />
-      {/* State indicator */}
-      <circle
-        cx={28}
-        cy={-18}
-        r={3.5}
-        fill={
-          isActive
-            ? "var(--color-brand, #16a374)"
-            : isResolved
-              ? "var(--color-blue-500)"
-              : "color-mix(in oklch, var(--g-text-muted) 35%, transparent)"
-        }
+              ? "bg-[color:var(--color-blue-500)]"
+              : "bg-[color:var(--color-line,#eaedf1)]",
+        )}
       />
       {isActive ? (
-        <motion.circle
-          cx={28}
-          cy={-18}
-          r={3.5}
-          fill="none"
-          stroke="var(--color-brand, #16a374)"
-          strokeWidth={1}
-          initial={{ scale: 1, opacity: 0.7 }}
-          animate={{ scale: 2.2, opacity: 0 }}
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--color-brand,#16a374)]"
+          animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
           transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
         />
       ) : null}
-      <foreignObject x={-12} y={-20} width={24} height={24}>
-        <div className="flex h-6 w-6 items-center justify-center text-[color:var(--g-text-secondary)]">
-          <Icon
-            className={cn(
-              "h-4 w-4",
-              isActive && "text-[color:var(--color-brand,#16a374)]",
-              isResolved && "text-[color:var(--color-blue-500)]",
-            )}
-          />
-        </div>
-      </foreignObject>
-      <text
-        y={22}
-        textAnchor="middle"
-        style={{ fontSize: 11, fontWeight: 600 }}
-        className="fill-[color:var(--g-text-secondary)]"
-      >
-        {meta.label}
-      </text>
-    </motion.g>
+    </motion.button>
   )
 }
