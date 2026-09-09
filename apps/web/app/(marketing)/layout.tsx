@@ -4,6 +4,7 @@ import { MarketingConsentBanner } from "@/components/marketing/marketing-consent
 import { MarketingChrome } from "@/components/marketing/marketing-chrome"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { getMarketingVisitorCountry } from "@/lib/marketing-geo"
+import { interDisplayMarketing } from "@/fonts/inter-display/inter-marketing"
 
 export const metadata: Metadata = {
   title: {
@@ -31,10 +32,10 @@ export default async function MarketingLayout({ children }: { children: React.Re
   const country = await getMarketingVisitorCountry()
 
   return (
-    <>
+    <div className={interDisplayMarketing.className}>
       <GoogleTagManager />
       <MarketingChrome>{children}</MarketingChrome>
       <MarketingConsentBanner country={country} />
-    </>
+    </div>
   )
 }
