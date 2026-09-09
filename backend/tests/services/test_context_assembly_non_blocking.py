@@ -46,13 +46,17 @@ def _unthreaded_blocking_calls(fn: ast.AST) -> list[str]:
     """Blocking calls that are neither awaited nor handed to a thread."""
     offenders: list[str] = []
 
-    # Names passed as the first arg to asyncio.to_thread are safe.
+    # Names handed to an off-loop runner are safe. `run_io` uses a dedicated,
+    # explicitly sized pool; `to_thread` shares the small default executor.
     threaded: set[str] = set()
     for node in ast.walk(fn):
         if not isinstance(node, ast.Call):
             continue
         target = node.func
-        if getattr(target, "attr", "") == "to_thread" and node.args:
+        if getattr(target, "attr", getattr(target, "id", "")) in {
+            "to_thread",
+            "run_io",
+        } and node.args:
             first = node.args[0]
             threaded.add(getattr(first, "attr", getattr(first, "id", "")))
 
@@ -83,6 +87,18 @@ class TestUnifiedRetrieve:
             "blocking I/O on the event loop in retrieve, which runs inside "
             "prepare_assistant_turn's gather: " + "; ".join(offenders)
         )
+
+    def test_blocking_reads_use_the_dedicated_pool_not_the_default_executor(self) -> None:
+        # to_thread's default executor is min(32, cpu+4) -- about 6 workers on a
+        # small container -- and is shared process-wide, which turned the
+        # loop-blocking fix into thread-pool queueing (gather median 3.1s -> 5.0s,
+        # one 18.6s sample).
+        for module in (orch_mod, retrieval_mod):
+            src = Path(inspect.getfile(module)).read_text(encoding="utf-8")
+            assert "asyncio.to_thread(" not in src, (
+                f"{module.__name__} should route blocking reads through run_io"
+            )
+            assert "from app.core.io_pool import run_io" in src
 
     def test_gather_can_actually_overlap(self) -> None:
         # The point of the fix: retrieve is gathered with four other coroutines,

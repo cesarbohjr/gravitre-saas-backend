@@ -38,7 +38,9 @@ class TestCallerSuppliedConnectorsWin:
         src = _ORCHESTRATOR_SRC
         live_call = src.index("self._registry.list_connected_integrations")
         window = src[max(0, live_call - 200) : live_call]
-        assert "asyncio.to_thread" in window, (
+        # run_io replaced to_thread here: the default executor is ~6 workers on a
+        # small container and shared process-wide, so it queued these reads.
+        assert "run_io" in window, (
             "a synchronous per-connector HTTP walk must not run on the event loop"
         )
 

@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.org_context_service import get_org_context_service
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
@@ -110,7 +111,7 @@ class UnifiedRetrievalService:
         # timeout and failed the turn.
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:
-            org_context = await asyncio.to_thread(
+            org_context = await run_io(
                 get_org_context_service().get_snapshot,
                 client,
                 org_id,
@@ -122,7 +123,7 @@ class UnifiedRetrievalService:
         memory_context: dict[str, Any] = {}
         memory_section = ""
         if active_scopes.agent_memory:
-            memory_context = await asyncio.to_thread(
+            memory_context = await run_io(
                 build_task_retrieval_context,
                 self.settings,
                 client,

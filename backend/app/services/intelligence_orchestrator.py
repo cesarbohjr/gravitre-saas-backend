@@ -8,6 +8,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.operators.agent_intelligence import resolve_agent_record
 from app.operators.agent_prompts import build_synthetic_agent_for_task
@@ -159,7 +160,7 @@ class IntelligenceOrchestrator:
         if connected_integrations is not None:
             connected = list(connected_integrations)
         else:
-            connected = await asyncio.to_thread(
+            connected = await run_io(
                 self._registry.list_connected_integrations,
                 client,
                 org_id,
@@ -216,7 +217,7 @@ class IntelligenceOrchestrator:
         if agent_id:
             # Sync Supabase read; see the connected_integrations note above for why
             # blocking the loop here is worse than just slow on a voice server.
-            agent = await asyncio.to_thread(
+            agent = await run_io(
                 resolve_agent_record, client, org_id, agent_id, environment_name=environment_name
             )
             if not agent:
@@ -232,7 +233,7 @@ class IntelligenceOrchestrator:
         resolved_agent_id = str(agent.get("id") or agent_id or "")
         if resolved_agent_id and resolved_agent_id not in {"assistant"}:
             try:
-                knowledge_assignments = await asyncio.to_thread(
+                knowledge_assignments = await run_io(
                     self._knowledge.list_assignments, client, org_id, resolved_agent_id
                 )
             except Exception as exc:  # noqa: BLE001
@@ -268,7 +269,7 @@ class IntelligenceOrchestrator:
             try:
                 from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
 
-                fabric = await asyncio.to_thread(
+                fabric = await run_io(
                     retrieve_knowledge_fabric,
                     client,
                     query,
@@ -324,7 +325,7 @@ class IntelligenceOrchestrator:
                     enabled_slices=frozenset(set(registry_plan.enabled_slices) | {"pack_state"}),
                 )
             if registry_plan.slice_enabled("pack_state"):
-                pack_state_section = await asyncio.to_thread(
+                pack_state_section = await run_io(
                     build_pack_operational_section,
                     client,
                     org_id=org_id,
@@ -359,7 +360,7 @@ class IntelligenceOrchestrator:
                 environment_name=environment_name,
                 user_id=user_id,
             ),
-            asyncio.to_thread(
+            run_io(
                 get_org_context_service().get_context_bundle,
                 client,
                 org_id,
