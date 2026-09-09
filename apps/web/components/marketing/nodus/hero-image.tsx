@@ -1,7 +1,10 @@
 import React from "react"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Container } from "./container"
+
+/** Intrinsic size of dashboard-hero.* (1280×719, from dashboard@3x.png 3312×1860). */
+const HERO_IMG_WIDTH = 1280
+const HERO_IMG_HEIGHT = 719
 
 /** Static corner markers — avoids client Dot (mousemove + framer-motion) on LCP path. */
 function CornerDot({ className }: { className?: string }) {
@@ -14,8 +17,8 @@ function CornerDot({ className }: { className?: string }) {
 }
 
 /**
- * Hero product screenshot — server-rendered for Lighthouse LCP.
- * Parallax / interactive dots removed from the critical path (see bfd7a000).
+ * Hero product screenshot — pre-optimized AVIF/WebP (~52–60 KiB vs 573 KiB PNG).
+ * Native `<picture>` on the LCP path (next/image is unoptimized globally).
  */
 export const HeroImage = () => {
   return (
@@ -26,18 +29,21 @@ export const HeroImage = () => {
       <CornerDot className="bottom-0 right-0 xl:-bottom-1 xl:-right-2" />
       <div className="relative w-full">
         <div className="relative z-10 h-full w-full">
-          <Image
-            src="/nodus/dashboard@3x.png"
-            alt="Gravitre product preview"
-            className="w-full"
-            priority
-            fetchPriority="high"
-            quality={75}
-            sizes="(max-width: 1024px) 100vw, min(100vw, 1280px)"
-            width={960}
-            height={720}
-            draggable={false}
-          />
+          <picture>
+            <source srcSet="/nodus/dashboard-hero.avif" type="image/avif" />
+            <source srcSet="/nodus/dashboard-hero.webp" type="image/webp" />
+            <img
+              src="/nodus/dashboard-hero.webp"
+              alt="Gravitre product preview"
+              className="w-full"
+              width={HERO_IMG_WIDTH}
+              height={HERO_IMG_HEIGHT}
+              fetchPriority="high"
+              loading="eager"
+              decoding="sync"
+              draggable={false}
+            />
+          </picture>
         </div>
         <div className="absolute inset-0 z-0 m-auto h-[90%] w-[95%] rounded-lg border border-(--pattern-fg) bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed" />
       </div>

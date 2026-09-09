@@ -1,7 +1,11 @@
 import dynamic from "next/dynamic"
+import { preload } from "react-dom"
 import { Hero } from "@/components/marketing/nodus/hero"
 import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { DivideX } from "@/components/marketing/nodus/divide"
+
+/** LCP hero screenshot — AVIF ~52 KiB (was 573 KiB PNG @3x). */
+preload("/nodus/dashboard-hero.avif", { as: "image", fetchPriority: "high" })
 
 /**
  * Below-fold marketing sections — code-split so framer-motion / tab skeletons
