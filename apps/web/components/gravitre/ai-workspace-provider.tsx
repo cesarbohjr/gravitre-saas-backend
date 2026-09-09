@@ -42,13 +42,16 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react"
 import { usePathname, useParams } from "next/navigation"
+import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import type { UIMessage } from "ai"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
@@ -112,18 +115,22 @@ export interface GravitreAIWorkspaceContextValue {
    * rendering consequence yet.
    *
    * Phase 3 gives `"expanded"`/`"fullscreen"` a real rendering consequence
-   * for the first time (`GravitreAIWorkspaceShell`). Reusing the bare
-   * `presentationMode === "expanded"` check for that would silently change
-   * `/ai`'s default rendering the moment the flag is ever turned on, for
-   * every visit — resolving architecture doc Part B's "Open decision #4"
-   * ("do direct `/ai` visits open the floating workspace in Expanded mode?")
-   * unilaterally and silently. That decision was explicitly left open, not
-   * decided. `floatWorkspaceOpen` is the disclosed fix: it is a separate,
-   * explicit "is the floating workspace currently active" flag, false by
-   * default. `GravitreAIWorkspaceShell` (and the Float bridge) only render
-   * when this is true — i.e. only once the user explicitly opened the
-   * Helper/Float, never as `/ai`'s resting state. See the Phase 3 delivery
-   * report for the full reasoning.
+   * for the first time (`GravitreAIWorkspaceShell`). `floatWorkspaceOpen` is
+   * a separate, explicit "is the floating workspace currently active" flag
+   * so `GravitreAIWorkspaceShell` (and the Float bridge) can render on top
+   * of the normal full-page layout without conflating that with
+   * `presentationMode`'s own "expanded" default.
+   *
+   * Architecture doc Part B's "Open decision #4" ("do direct `/ai` visits
+   * open the floating workspace in Expanded mode?") was explicitly left open
+   * through Phase 3–5 (Phase 5 shipped with the answer "no, keep `/ai` as a
+   * plain full-page embed"). Cesar revisited that call on 2026-09-09 after
+   * seeing Phase 5 live — see this file's `useEffect` below — and chose
+   * "yes": a direct `/ai` visit now auto-opens the Expanded shell, the same
+   * chrome reached from any other page's Helper → Float → Expand. This is
+   * still not the *only* way to reach `/ai`'s content — closing the shell
+   * (or navigating there with the shell already explicitly closed this
+   * session) falls back to the pre-Phase-5 full-page embed, unchanged.
    */
   floatWorkspaceOpen: boolean
   setFloatWorkspaceOpen: (open: boolean) => void
@@ -150,10 +157,24 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
   if (!instanceIdRef.current) instanceIdRef.current = createInstanceId()
 
   const [presentationMode, setPresentationMode] = useState<GravitrePresentationMode>("expanded")
-  const [floatWorkspaceOpen, setFloatWorkspaceOpen] = useState(false)
+  const [floatWorkspaceOpen, setFloatWorkspaceOpenState] = useState(false)
   const [conversation, setConversation] = useState<GravitreAIConversationSnapshot | null>(null)
   const [approval, setApproval] = useState<GravitreAIApprovalSnapshot | null>(null)
   const [voice, setVoice] = useState<GravitreAIVoiceSnapshot | null>(null)
+
+  // Tracks whether the user has explicitly closed the floating workspace at
+  // least once this session (via `setFloatWorkspaceOpen(false)` — the shell
+  // bridges' "Close to helper" control is the only caller of that today).
+  // The auto-open effect below checks this so closing the shell on `/ai`
+  // sticks for the rest of the session instead of immediately reopening on
+  // the next render/navigation. A fresh page load resets it, which is the
+  // intended "default experience" behavior, not a bug.
+  const explicitlyClosedRef = useRef(false)
+
+  const setFloatWorkspaceOpen = useCallback((open: boolean) => {
+    explicitlyClosedRef.current = !open
+    setFloatWorkspaceOpenState(open)
+  }, [])
 
   // usePathname/useParams are safe this high in the tree — OnboardingChecklist
   // (also mounted directly in app/layout.tsx) already relies on the same
@@ -164,6 +185,24 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     () => ({ pathname, params: (rawParams ?? {}) as Record<string, string | string[] | undefined> }),
     [pathname, rawParams],
   )
+
+  const onAiRoute = pathname === "/ai" || pathname.startsWith("/ai/")
+
+  // Cesar's 2026-09-09 decision (resolving architecture doc Open decision
+  // #4): a direct `/ai` visit auto-opens the same Expanded shell reached
+  // from every other page's Helper → Float → Expand, instead of staying a
+  // plain full-page embed. Gated on the flag for consistency with every
+  // other float-workspace behavior in this file's tree, and on
+  // `explicitlyClosedRef` so an explicit close sticks for the session (see
+  // that ref's comment above).
+  useEffect(() => {
+    if (!GRAVITRE_AI_FLOAT_ENABLED) return
+    if (!onAiRoute) return
+    if (floatWorkspaceOpen) return
+    if (explicitlyClosedRef.current) return
+    setFloatWorkspaceOpenState(true)
+    setPresentationMode("expanded")
+  }, [onAiRoute, floatWorkspaceOpen])
 
   const value = useMemo<GravitreAIWorkspaceContextValue>(
     () => ({
@@ -180,7 +219,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       voice,
       setVoice,
     }),
-    [presentationMode, floatWorkspaceOpen, pageContext, conversation, approval, voice],
+    [presentationMode, floatWorkspaceOpen, setFloatWorkspaceOpen, pageContext, conversation, approval, voice],
   )
 
   return (

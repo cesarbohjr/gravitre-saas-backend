@@ -110,12 +110,44 @@ describe("useGravitreAIWorkspace", () => {
   })
 
   it(
-    "defaults floatWorkspaceOpen to false — Phase 3 addition; keeps /ai's " +
-      "resting render distinct from the new Expanded/Fullscreen shell " +
-      "even though presentationMode's own default is 'expanded'",
+    "auto-opens floatWorkspaceOpen on a direct /ai visit — Cesar's " +
+      "2026-09-09 decision resolving architecture doc Open decision #4 " +
+      "(a direct /ai visit now opens the same Expanded shell reached from " +
+      "any other page's Helper \u2192 Float \u2192 Expand)",
+    () => {
+      pathnameState.value = "/ai"
+      const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+      mount(sink)
+      expect(sink.value?.floatWorkspaceOpen).toBe(true)
+      expect(sink.value?.presentationMode).toBe("expanded")
+    },
+  )
+
+  it("does NOT auto-open floatWorkspaceOpen on a non-/ai route", () => {
+    pathnameState.value = "/dashboard"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    expect(sink.value?.floatWorkspaceOpen).toBe(false)
+  })
+
+  it(
+    "an explicit close sticks for the rest of the session — does not " +
+      "immediately reopen on re-render while still on /ai",
     () => {
       const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
       mount(sink)
+      expect(sink.value?.floatWorkspaceOpen).toBe(true) // auto-opened
+
+      act(() => {
+        sink.value!.setFloatWorkspaceOpen(false)
+      })
+      expect(sink.value?.floatWorkspaceOpen).toBe(false)
+
+      // Force a re-render (e.g. an unrelated state publish) while still on
+      // /ai — the auto-open effect must not fire again.
+      act(() => {
+        sink.value!.setPresentationMode("expanded")
+      })
       expect(sink.value?.floatWorkspaceOpen).toBe(false)
     },
   )

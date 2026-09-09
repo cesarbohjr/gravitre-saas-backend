@@ -440,3 +440,31 @@ Run: `pnpm --filter @gravitre/web exec vitest run __tests__/gravitre/ai-workspac
 - Drag FPS / memory vs Phase 0 baseline
 - `/agents/[id]/chat` unification
 - Mobile bottom-nav Chat → sheet (explicit product call still available)
+
+---
+
+## Open decision #4 resolved (2026-09-09) — direct `/ai` visits
+
+Cesar reported the live `/ai` page still looked like the pre-redesign
+full-page embed. That was Phase 5's disclosed, intentional behavior (see
+"Decisions applied" above: `/ai` direct visit = full-page embed via portal
+slot when float closed), not a bug — but re-presented as a choice once Cesar
+saw it live, since Open decision #4 above was explicitly never resolved
+unilaterally.
+
+**Choice made:** a direct `/ai` visit now auto-opens the Expanded shell —
+the same window chrome reached from any other page's Helper → Float →
+Expand — instead of staying a plain full-page embed. Explicitly closing the
+shell (or navigating there after an explicit close, this session) still
+falls back to the pre-Phase-5 full-page embed.
+
+**Code:** `components/gravitre/ai-workspace-provider.tsx` — a `useEffect`,
+gated on `GRAVITRE_AI_FLOAT_ENABLED` and an `explicitlyClosedRef` (so an
+explicit close sticks for the session), auto-sets `floatWorkspaceOpen=true` /
+`presentationMode="expanded"` on a direct `/ai` (or `/ai/*`) visit.
+
+**Evidence (unit):** `pnpm --filter @gravitre/web exec vitest run __tests__/gravitre/ai-workspace-provider.test.ts __tests__/gravitre/use-gravitre-ai-shortcut.test.ts` — 11 + 5 tests passing, including the new "auto-opens on direct /ai visit", "does NOT auto-open on non-/ai route", and "explicit close sticks for the session" cases.
+
+**Not yet PASS in prod:** requires merge → Railway/Vercel redeploy → live
+`/ai` reload in an authenticated session before this can be marked done per
+the evidence-linked PASS bar.

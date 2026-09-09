@@ -102,19 +102,34 @@ describe("useGravitreAIShortcut", () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it("opens Float from /ai without navigation", async () => {
-    process.env[ENV_KEY] = "true"
-    vi.resetModules()
-    pathnameState.value = "/ai"
-    const sink = await renderListener()
+  it(
+    "a direct /ai visit auto-opens Float (Cesar's 2026-09-09 decision) — " +
+      "pressing the shortcut there toggles it closed without navigating",
+    async () => {
+      process.env[ENV_KEY] = "true"
+      vi.resetModules()
+      pathnameState.value = "/ai"
+      const sink = await renderListener()
 
-    act(() => {
-      dispatchShortcut()
-    })
+      // The provider's own auto-open effect (ai-workspace-provider.tsx),
+      // not the shortcut, opens it on a direct /ai visit.
+      expect(sink.value?.floatWorkspaceOpen).toBe(true)
 
-    expect(sink.value?.floatWorkspaceOpen).toBe(true)
-    expect(routerPush).not.toHaveBeenCalled()
-  })
+      act(() => {
+        dispatchShortcut()
+      })
+
+      expect(sink.value?.floatWorkspaceOpen).toBe(false)
+      expect(routerPush).not.toHaveBeenCalled()
+
+      act(() => {
+        dispatchShortcut()
+      })
+
+      expect(sink.value?.floatWorkspaceOpen).toBe(true)
+      expect(routerPush).not.toHaveBeenCalled()
+    },
+  )
 
   it("toggles the workspace closed (fast hide/minimize) when pressed again while open", async () => {
     process.env[ENV_KEY] = "true"
