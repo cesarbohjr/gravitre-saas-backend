@@ -33,15 +33,11 @@ export type NetworkScenario = {
   beats: StoryBeat[]
 }
 
-/** CSS percentage positions inside the stage (keeps nodes fully in-frame). */
-export const DEPARTMENT_META: Record<
-  DepartmentId,
-  { label: string; short: string; left: string; top: string }
-> = {
-  sales: { label: "Sales", short: "Sales", left: "8%", top: "10%" },
-  support: { label: "Support", short: "Support", left: "92%", top: "10%" },
-  operations: { label: "Operations", short: "Ops", left: "8%", top: "88%" },
-  finance: { label: "Finance", short: "Finance", left: "92%", top: "88%" },
+export const DEPARTMENT_META: Record<DepartmentId, { label: string; short: string }> = {
+  sales: { label: "Sales", short: "Sales" },
+  support: { label: "Support", short: "Support" },
+  operations: { label: "Operations", short: "Ops" },
+  finance: { label: "Finance", short: "Finance" },
 }
 
 export const CORE_STATE_LABEL: Partial<Record<CoreState, string>> = {
@@ -55,13 +51,15 @@ export const CORE_STATE_LABEL: Partial<Record<CoreState, string>> = {
   learned: "Learned",
 }
 
-/** SVG viewBox — paths use the same percentage→pixel mapping */
-export const NETWORK_VB = { w: 600, h: 420, cx: 300, cy: 210 } as const
+/**
+ * SVG viewBox geometry.
+ * Node anchors sit inset (~18%/82%) so cards never kiss the clip edge.
+ */
+export const NETWORK_VB = { w: 640, h: 480, cx: 320, cy: 240 } as const
 
-/** Pixel anchors matching DEPARTMENT_META percentages */
 export const DEPARTMENT_XY: Record<DepartmentId, { x: number; y: number }> = {
-  sales: { x: 600 * 0.08, y: 420 * 0.1 },
-  support: { x: 600 * 0.92, y: 420 * 0.1 },
-  operations: { x: 600 * 0.08, y: 420 * 0.88 },
-  finance: { x: 600 * 0.92, y: 420 * 0.88 },
+  sales: { x: 640 * 0.2, y: 480 * 0.2 },
+  support: { x: 640 * 0.8, y: 480 * 0.2 },
+  operations: { x: 640 * 0.2, y: 480 * 0.8 },
+  finance: { x: 640 * 0.8, y: 480 * 0.8 },
 }

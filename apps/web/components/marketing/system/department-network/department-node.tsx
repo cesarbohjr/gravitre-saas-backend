@@ -16,7 +16,7 @@ const ICONS: Record<DepartmentId, ComponentType<SVGProps<SVGSVGElement>>> = {
 
 export type NodeVisualState = "idle" | "active" | "muted" | "resolved" | "focus"
 
-/** HTML department card — positioned with CSS so Motion never fights SVG transforms. */
+/** HTML department card — used inside a grid cell (no absolute corner overflow). */
 export function GravitreDepartmentNode({
   id,
   state = "idle",
@@ -24,6 +24,7 @@ export function GravitreDepartmentNode({
   onLeave,
   onClick,
   interactive,
+  align = "start",
 }: {
   id: DepartmentId
   state?: NodeVisualState
@@ -31,6 +32,7 @@ export function GravitreDepartmentNode({
   onLeave?: () => void
   onClick?: () => void
   interactive?: boolean
+  align?: "start" | "end"
 }) {
   const meta = DEPARTMENT_META[id]
   const Icon = ICONS[id]
@@ -47,17 +49,17 @@ export function GravitreDepartmentNode({
       onMouseLeave={interactive ? onLeave : undefined}
       onClick={interactive ? onClick : undefined}
       className={cn(
-        "absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition-shadow",
+        "relative z-20 flex max-w-[11.5rem] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand,#16a374)]/40",
+        align === "end" ? "ml-auto" : "mr-auto",
         isActive && "border-[color:var(--color-brand,#16a374)] shadow-md",
         isResolved && "border-[color:var(--color-blue-500)]",
         !isActive && !isResolved && "border-[color:var(--color-line,#eaedf1)]",
         isMuted && "opacity-40",
         !interactive && "cursor-default",
       )}
-      style={{ left: meta.left, top: meta.top }}
       initial={false}
-      animate={{ scale: isActive ? 1.04 : isResolved ? 1.02 : 1 }}
+      animate={{ scale: isActive ? 1.03 : isResolved ? 1.01 : 1 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
     >
       <span
@@ -69,8 +71,10 @@ export function GravitreDepartmentNode({
       >
         <Icon className="h-4 w-4" />
       </span>
-      <span className="pr-1">
-        <span className="block text-sm font-semibold text-[color:var(--g-text-secondary)]">{meta.label}</span>
+      <span className="min-w-0 pr-1">
+        <span className="block truncate text-sm font-semibold text-[color:var(--g-text-secondary)]">
+          {meta.label}
+        </span>
         <span className="block text-[10px] text-[color:var(--g-text-muted)]">
           {isActive ? "Active" : isResolved ? "Resolved" : "Ready"}
         </span>

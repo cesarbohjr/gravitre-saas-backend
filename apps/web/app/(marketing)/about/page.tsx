@@ -66,7 +66,7 @@ export default function AboutPage() {
           className="mb-6"
         />
         <GravitreTrace>
-          <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-divide bg-white p-3 sm:p-5 md:p-6">
+          <div className="mx-auto w-full max-w-2xl rounded-2xl border border-divide bg-white p-3 sm:p-4 md:p-5">
             <ConvergeNodesVisual />
           </div>
         </GravitreTrace>

@@ -6,7 +6,8 @@ import { CORE_STATE_LABEL, type CoreState } from "./types"
 import { cn } from "@/lib/utils"
 
 /**
- * Intelligence core — Nodus hub language (conic spin rings + mark), not a plain circle.
+ * Intelligence core — Nodus hub language (conic spin rings + mark).
+ * In-flow (not absolute) so the 3×3 grid owns layout.
  */
 export function GravitreIntelligenceCore({
   state = "idle",
@@ -20,8 +21,7 @@ export function GravitreIntelligenceCore({
   const resolved = state === "verified" || state === "learned"
 
   return (
-    <div className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
-      {/* Concentric field rings */}
+    <div className="relative flex flex-col items-center gap-2">
       <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
         {[88, 112, 136].map((size) => (
           <div

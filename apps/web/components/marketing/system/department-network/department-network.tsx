@@ -2,9 +2,8 @@
 
 /**
  * GravitreDepartmentNetwork — signature converge animation.
- * HTML stage for nodes/core (fits the page) + SVG Bézier paths/packets.
- * Motion elements borrowed from Nodus (sweeping path gradients, hub conic rings)
- * — not a clone of the homepage layout.
+ * 3×3 CSS grid keeps every department card fully in-bounds.
+ * SVG paths/packets overlay the same geometry; Nodus motion = sweeping gradients + hub rings.
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -16,7 +15,7 @@ import { GravitreSignalPath } from "./signal-path"
 import { GravitreSignalPacket } from "./signal-packet"
 import { DEPARTMENT_EDGE_KEYS } from "./paths"
 import { edgeKey, useNetworkStory } from "./use-network-story"
-import { DEPARTMENT_META, NETWORK_VB, type DepartmentId } from "./types"
+import { NETWORK_VB, type DepartmentId } from "./types"
 import { DepartmentNetworkMobile } from "./department-network-mobile"
 
 function nodeState(
@@ -76,8 +75,6 @@ export function GravitreDepartmentNetwork({
     }
   }, [autoplay, inView, playNextAuto, reduced, state.running, state.scenarioId])
 
-  const depts = Object.keys(DEPARTMENT_META) as DepartmentId[]
-
   return (
     <div ref={rootRef} className={cn("relative mx-auto w-full max-w-2xl", className)}>
       <div className="md:hidden">
@@ -85,22 +82,21 @@ export function GravitreDepartmentNetwork({
       </div>
 
       <div className="relative hidden md:block">
-        {/* Fixed aspect stage — nodes stay inside via % positions */}
         <div
-          className="relative w-full overflow-hidden rounded-xl bg-white"
+          className="relative w-full rounded-xl bg-white p-4 sm:p-5"
           style={{ aspectRatio: `${NETWORK_VB.w} / ${NETWORK_VB.h}` }}
         >
-          {/* Dot field */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-dots,#eaedf1)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
+            className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(var(--color-dots,#eaedf1)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
           />
 
-          {/* SVG paths + packets only */}
+          {/* Paths behind the grid */}
           <svg
             viewBox={`0 0 ${NETWORK_VB.w} ${NETWORK_VB.h}`}
-            className="absolute inset-0 h-full w-full"
+            className="pointer-events-none absolute inset-4 sm:inset-5 h-[calc(100%-2rem)] w-[calc(100%-2rem)] sm:h-[calc(100%-2.5rem)] sm:w-[calc(100%-2.5rem)]"
             aria-hidden
+            preserveAspectRatio="xMidYMid meet"
           >
             {DEPARTMENT_EDGE_KEYS.map(({ dept, d }) => {
               const ek = edgeKey(dept, "core")
@@ -123,19 +119,62 @@ export function GravitreDepartmentNetwork({
               : null}
           </svg>
 
-          <GravitreIntelligenceCore state={state.coreState} reduced={reduced} />
+          {/* In-flow 3×3 grid — cards never escape the padded stage */}
+          <div className="relative z-10 grid h-full w-full grid-cols-[1fr_auto_1fr] grid-rows-[auto_1fr_auto] gap-x-3 gap-y-4">
+            <div className="flex items-start justify-start">
+              <GravitreDepartmentNode
+                id="sales"
+                state={nodeState("sales", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
+                interactive={!reduced}
+                align="start"
+                onHover={() => setHoverFocus("sales")}
+                onLeave={() => setHoverFocus(null)}
+                onClick={() => playFromDepartment("sales")}
+              />
+            </div>
+            <div />
+            <div className="flex items-start justify-end">
+              <GravitreDepartmentNode
+                id="support"
+                state={nodeState("support", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
+                interactive={!reduced}
+                align="end"
+                onHover={() => setHoverFocus("support")}
+                onLeave={() => setHoverFocus(null)}
+                onClick={() => playFromDepartment("support")}
+              />
+            </div>
 
-          {depts.map((id) => (
-            <GravitreDepartmentNode
-              key={id}
-              id={id}
-              state={nodeState(id, state.activeDepts, state.resolvedDepts, state.mutedDepts)}
-              interactive={!reduced}
-              onHover={() => setHoverFocus(id)}
-              onLeave={() => setHoverFocus(null)}
-              onClick={() => playFromDepartment(id)}
-            />
-          ))}
+            <div />
+            <div className="relative flex min-h-[7.5rem] items-center justify-center self-center">
+              <GravitreIntelligenceCore state={state.coreState} reduced={reduced} />
+            </div>
+            <div />
+
+            <div className="flex items-end justify-start">
+              <GravitreDepartmentNode
+                id="operations"
+                state={nodeState("operations", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
+                interactive={!reduced}
+                align="start"
+                onHover={() => setHoverFocus("operations")}
+                onLeave={() => setHoverFocus(null)}
+                onClick={() => playFromDepartment("operations")}
+              />
+            </div>
+            <div />
+            <div className="flex items-end justify-end">
+              <GravitreDepartmentNode
+                id="finance"
+                state={nodeState("finance", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
+                interactive={!reduced}
+                align="end"
+                onHover={() => setHoverFocus("finance")}
+                onLeave={() => setHoverFocus(null)}
+                onClick={() => playFromDepartment("finance")}
+              />
+            </div>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
