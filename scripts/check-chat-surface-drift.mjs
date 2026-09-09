@@ -238,8 +238,12 @@ for (const rel of requiredImporters) {
     failures.push(`${rel}: missing required chat surface`)
     continue
   }
-  if (!src.includes("SharedChatComposerControls")) {
-    failures.push(`${rel}: must import/use SharedChatComposerControls`)
+  const usesSharedComposer =
+    src.includes("SharedChatComposerControls") || src.includes("GravitreAIConversationComposer")
+  if (!usesSharedComposer) {
+    failures.push(
+      `${rel}: must import/use SharedChatComposerControls (or GravitreAIConversationComposer wrapper)`,
+    )
   }
   if (!src.includes("duplex={{")) {
     failures.push(`${rel}: must wire full-duplex voice via duplex={{ ... }} on SharedChatComposerControls`)

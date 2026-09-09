@@ -670,10 +670,12 @@ async def test_connected_integrations_mcp_tools_and_engine_settings_run_concurre
         ):
             events.append(event)
 
-    assert set(starts) == {"connected_integrations", "mcp_tools", "engine_settings"}
+    # Spoken non-write defers MCP catalog off the critical path — only connected +
+    # engine_settings run concurrently (see execute_task_streaming spoken branch).
+    assert set(starts) == {"connected_integrations", "engine_settings"}
     spread = max(starts.values()) - min(starts.values())
     # Sequential would space these delay apart (~200ms between each start).
-    # Real concurrency starts all three within one scheduler tick.
+    # Real concurrency starts both within one scheduler tick.
     assert spread < delay / 2, f"pre-kernel calls started {spread:.3f}s apart — not running concurrently"
 
 
