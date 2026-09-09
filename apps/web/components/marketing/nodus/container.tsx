@@ -5,14 +5,16 @@ export const Container = <T extends React.ElementType = "div">({
   children,
   className,
   as,
+  id,
 }: {
   children: React.ReactNode;
   className?: string;
   as?: T;
+  id?: string;
 }) => {
   const Component = as || "div";
   return (
-    <Component className={cn("max-w-7xl mx-auto", className)}>
+    <Component id={id} className={cn("max-w-7xl mx-auto", className)}>
       {children}
     </Component>
   );

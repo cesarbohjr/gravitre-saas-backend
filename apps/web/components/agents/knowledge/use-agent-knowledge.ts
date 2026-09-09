@@ -83,7 +83,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         }),
       )
       if (cancelled) return
-      setSyncHistoryById(new Map(entries))
+      setSyncHistoryById(new Map(entries as Array<[string, SourceSyncHistoryItem[]]>))
       await mutateOrgSources()
     }
 

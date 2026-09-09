@@ -12,10 +12,9 @@ import { cn } from "@/lib/utils"
 
 type MotionKind = "reveal" | "flow" | "trace" | "pulse" | "resolve" | "focus"
 
-const ENTER: Record<
-  MotionKind,
-  { hidden: Record<string, number>; show: Record<string, number | number[]> }
-> = {
+type EnterFrame = Record<string, number | string | number[]>
+
+const ENTER: Record<MotionKind, { hidden: EnterFrame; show: EnterFrame }> = {
   reveal: {
     hidden: { opacity: 0, y: 12 },
     show: { opacity: 1, y: 0 },

@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { cn } from "@/lib/utils"
-import type { AgentKnowledgeAssignment } from "@/lib/api"
-import { packAvailabilityLabel } from "@/lib/agent-knowledge-assign"
+import type { AgentCapabilityProfile, AgentKnowledgeAssignment } from "@/lib/api"
+import { packAvailabilityLabel, type PackAssignInput } from "@/lib/agent-knowledge-assign"
+import type { Source } from "@/types/api"
 import { ExpertPackCard } from "./agent-knowledge-card"
 import { AgentKnowledgeSourcesTab } from "./agent-knowledge-sources-tab"
 import type { AgentKnowledgeState } from "./use-agent-knowledge"
@@ -31,7 +32,7 @@ const SHOT_PACKS = [
   },
 ]
 
-const SHOT_SOURCES = [
+const SHOT_SOURCES: Source[] = [
   {
     id: "src_northwind_kb",
     name: "Northwind product FAQ",
@@ -48,7 +49,6 @@ const SHOT_SOURCES = [
     type: "file",
     status: "syncing",
     document_count: 42,
-    last_sync_at: null,
   },
 ]
 
@@ -93,13 +93,26 @@ export function AgentKnowledgeShotHarness() {
     return map
   }, [])
 
+  const capabilities: AgentCapabilityProfile = {
+    agentId: SHOT_AGENT_ID,
+    connectedKnowledgeSources: assignments.map((a) => ({
+      label: a.label,
+      sourceType: a.sourceType,
+      freshnessStatus: a.freshnessStatus,
+    })),
+    availableReadActions: [],
+    availableWriteActions: [],
+    approvalRequiredActions: [],
+    learningSources: [],
+    memoryCount: 0,
+    freshnessStatus: "fresh",
+    confidenceScore: 0.92,
+  }
+
   const workspace = {
     assignments,
     orgSources: SHOT_SOURCES,
-    capabilities: {
-      connectedKnowledgeSources: assignments.map((a) => a.label),
-      freshnessStatus: "fresh",
-    },
+    capabilities,
     summary: {
       sourceCount: assignments.length,
       indexedLabel: String(assignments.length),
@@ -113,7 +126,7 @@ export function AgentKnowledgeShotHarness() {
     loading: false,
     orgSourcesLoading: false,
     agentDepartment: "Sales",
-    assignPack: async (pack: { id: string; name: string; department: string }) => {
+    assignPack: async (pack: PackAssignInput) => {
       setAssigningKey(`pack:${pack.id}`)
       await new Promise((r) => setTimeout(r, 120))
       setAssignments((prev) => [
@@ -155,7 +168,7 @@ export function AgentKnowledgeShotHarness() {
       setRemovingId(null)
       return true
     },
-    mutateAssignments: async () => {},
+    mutateAssignments: (async () => ({ assignments })) as AgentKnowledgeState["mutateAssignments"],
     sourceIngestionById,
   } satisfies AgentKnowledgeState
 
