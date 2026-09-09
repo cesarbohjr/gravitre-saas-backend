@@ -40,7 +40,14 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self._draft = ""
+        # Two independent renderings of the SAME assistant turn arrive here: raw
+        # token frames from the LLM, and the `assistant_text` deltas the Cognitive
+        # LLM bridge emits for the browser (Phase 4 speakable chunks). Summing them
+        # into one buffer doubles and interleaves the draft
+        # ("Gravitre isGravitre.  the operator layer thatis the operator. …"),
+        # which corrupts word alignment. Keep them apart and pick one.
+        self._draft_llm = ""
+        self._draft_client = ""
         self._spoken_aligned = ""
         self._last_playback_offset_ms: float | None = None
         self._reconcile_enabled = bool(reconcile_played_audio_enabled)
@@ -56,17 +63,18 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, LLMFullResponseStartFrame):
-            self._draft = ""
+            self._draft_llm = ""
+            self._draft_client = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
         elif isinstance(frame, LLMTextFrame):
-            self._draft += str(getattr(frame, "text", None) or "")
+            self._draft_llm += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, OutputTransportMessageUrgentFrame):
             msg = frame.message if isinstance(frame.message, dict) else {}
             if str(msg.get("type") or "") == "assistant_text":
-                self._draft += str(msg.get("delta") or "")
+                self._draft_client += str(msg.get("delta") or "")
         elif isinstance(frame, TTSTextFrame):
             self._spoken_aligned += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, LLMFullResponseEndFrame):
@@ -90,12 +98,16 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             ledger_spoken: str | None = None
             if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
                 ledger_spoken = self._spoken_ledger.snapshot()
+            # Prefer the client-delta rendering: it is byte-for-byte what the
+            # browser displayed and stores as history, so truncating against it
+            # keeps backend and frontend agreeing on what was heard.
+            draft = (self._draft_client or self._draft_llm or "").strip()
             spoken = (
                 ledger_spoken
                 if ledger_spoken is not None
-                else (self._spoken_aligned or self._draft or "")
+                else (self._spoken_aligned or draft or "")
             ).strip()
-            full = (self._draft or self._spoken_aligned or spoken).strip()
+            full = (draft or self._spoken_aligned or spoken).strip()
             payload = {
                 "type": "speech.interrupted",
                 "tts_provider": "elevenlabs",
@@ -127,6 +139,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     if ledger_spoken is not None
                     else ("tts_text_frames" if self._spoken_aligned else "draft_fallback")
                 )
+                reconcile_meta["draft_source"] = (
+                    "client_deltas" if self._draft_client else "llm_frames"
+                )
                 payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
@@ -155,7 +170,8 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 direction,
             )
             # Clear so a follow-up turn starts clean.
-            self._draft = ""
+            self._draft_llm = ""
+            self._draft_client = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
             if self._spoken_ledger is not None:

@@ -176,6 +176,55 @@ async def test_empty_ledger_after_proven_liveness_reports_nothing_spoken():
 
 
 @pytest.mark.asyncio
+async def test_draft_is_not_doubled_when_both_renderings_arrive():
+    """REGRESSION (found in live prod trace 2026-09-08): the same assistant turn
+    arrives twice — as raw LLMTextFrame tokens and as `assistant_text` client
+    deltas (Phase 4 speakable chunks). Summing both produced an interleaved draft
+    like "Gravitre isGravitre.  the operator layer thatis the operator." which
+    collapsed word alignment to matched_words=1. Only one rendering may count.
+    """
+    ledger = SpokenTextLedger()
+    ledger.append("Gravitre is")
+
+    payloads = await _drive(
+        [
+            LLMFullResponseStartFrame(),
+            LLMTextFrame(text="Gravitre is "),
+            OutputTransportMessageUrgentFrame(
+                message={"type": "assistant_text", "delta": "Gravitre."}
+            ),
+            LLMTextFrame(text="the operator layer."),
+            OutputTransportMessageUrgentFrame(
+                message={"type": "assistant_text", "delta": " is the operator layer."}
+            ),
+            InterruptionFrame(),
+        ],
+        reconcile_played_audio_enabled=True,
+        spoken_ledger=ledger,
+    )
+    payload = payloads[0]
+    # Client deltas win; the LLM token stream must not be concatenated on top.
+    assert payload["full_draft_text"] == "Gravitre. is the operator layer."
+    assert "isGravitre" not in payload["full_draft_text"]
+    assert payload["draft_source"] == "client_deltas"
+
+
+@pytest.mark.asyncio
+async def test_llm_frames_are_used_when_no_client_deltas_arrive():
+    payloads = await _drive(
+        [
+            LLMFullResponseStartFrame(),
+            LLMTextFrame(text="Only the token stream."),
+            InterruptionFrame(),
+        ],
+        reconcile_played_audio_enabled=True,
+    )
+    payload = payloads[0]
+    assert payload["full_draft_text"] == "Only the token stream."
+    assert payload["draft_source"] == "llm_frames"
+
+
+@pytest.mark.asyncio
 async def test_reporter_resets_ledger_between_turns():
     ledger = SpokenTextLedger()
     ledger.append("stale text from the previous turn")
