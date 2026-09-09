@@ -14,6 +14,7 @@ from app.services.pipecat_voice.voice_conversational_polish import (
     response_length_directive,
     spoken_prompt_v2_section,
 )
+from app.services.pipecat_voice.voice_tool_narration import narrate_tool_started
 from app.services.tier1_voice_service import voice_status
 
 
@@ -263,6 +264,35 @@ class TestUnifiedPromptComposition:
         )
         assert "Register 5b" not in prompt
         assert "Spoken length target" not in prompt
+
+
+class TestRegister5bDoesNotContradictRuntimeNarration:
+    """Register 5b once banned a phrase the runtime itself speaks.
+
+    Measured 2026-09-08: production voice turns said "Let me check your knowledge
+    base. Found 5." — emitted by ``voice_tool_narration``, entirely outside the
+    model, where no prompt directive can reach it. Register 5b nonetheless
+    instructed the model `no "let me check"`, so the shipped prompt forbade
+    behavior the product deliberately performs. The directive must describe the
+    division of labour instead of contradicting it.
+    """
+
+    def test_directive_does_not_ban_the_phrase_the_runtime_speaks(self):
+        section = spoken_prompt_v2_section().lower()
+        runtime_phrase = narrate_tool_started("searchKnowledgeBase").lower()
+        assert "let me check" in runtime_phrase, "runtime phrasing changed; revisit 5b"
+        assert 'no "let me check"' not in section
+
+    def test_directive_still_forbids_model_authored_step_narration(self):
+        """Relaxing the contradiction must not license filler from the model."""
+        section = spoken_prompt_v2_section().lower()
+        assert "one moment" in section
+        assert "i'm going to" in section
+        assert "never write your own" in section
+
+    def test_directive_names_the_runtime_as_the_narration_owner(self):
+        section = spoken_prompt_v2_section().lower()
+        assert "runtime" in section
 
 
 class TestResponseLengthIsNotTokenCapped:

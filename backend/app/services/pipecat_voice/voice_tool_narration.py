@@ -38,6 +38,16 @@ success phrase could be spoken from ``tool-input-available`` or from the
 model's own free-form text before the real observation arrives) is exactly
 the regression ``test_cognitive_llm_tool_narration.py``'s mutation-proof
 tests are written to catch.
+
+Relationship to the spoken prompt (resolved 2026-09-08). Register 5b in
+``voice_conversational_polish.py`` originally forbade the model from saying "let
+me check" — a directive this module then violated from outside the model, where
+no prompt can reach it. Production voice turns audibly said "Let me check your
+knowledge base. Found 5." while the prompt banned exactly that phrase. The split
+is now explicit: **the runtime owns progress narration for real tool calls (this
+module); the model owns the answer and must not narrate steps at all.** Register
+5b states that division instead of contradicting it — if the phrasing here
+changes, update that directive too.
 """
 from __future__ import annotations
 
@@ -99,6 +109,25 @@ _LIST_RESULT_KEYS = (
 )
 _COUNT_KEYS = ("total", "totalResults", "totalCount", "count")
 
+# Read verbs stripped from an unmapped tool name before it is spoken. Without
+# this, "getWorkflowRuns" humanized to "get workflow runs" and the narration
+# said "Let me check get workflow runs." — heard in production 2026-09-08. The
+# verb is redundant once "Let me check" already supplies one.
+_READ_VERB_PREFIXES = (
+    "get",
+    "list",
+    "search",
+    "fetch",
+    "find",
+    "lookup",
+    "retrieve",
+    "read",
+    "load",
+    "query",
+    "check",
+    "view",
+)
+
 
 def _humanize_tool_name(tool_name: str) -> str:
     key = re.sub(r"[^a-z0-9]", "", (tool_name or "").lower())
@@ -107,6 +136,10 @@ def _humanize_tool_name(tool_name: str) -> str:
         return friendly
     spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", tool_name or "").replace("_", " ").replace("-", " ")
     words = [w for w in spaced.split() if w]
+    # Only strip the verb when something nameable is left, so a tool literally
+    # called "get" still says "get" rather than collapsing to "that".
+    if len(words) > 1 and words[0].lower() in _READ_VERB_PREFIXES:
+        words = words[1:]
     return " ".join(w.lower() for w in words) or "that"
 
 

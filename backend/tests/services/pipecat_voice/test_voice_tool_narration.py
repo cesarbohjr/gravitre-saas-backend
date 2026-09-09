@@ -17,13 +17,36 @@ class TestNarrateToolStarted:
         assert narrate_tool_started("getPipelineHealth") == "Let me check your pipeline."
 
     def test_unknown_camel_case_tool_falls_back_to_generic_humanizer(self) -> None:
-        assert narrate_tool_started("checkInvoiceStatus") == "Let me check check invoice status."
+        assert narrate_tool_started("checkInvoiceStatus") == "Let me check invoice status."
 
     def test_unknown_snake_case_tool_falls_back_to_generic_humanizer(self) -> None:
-        assert narrate_tool_started("check_invoice_status") == "Let me check check invoice status."
+        assert narrate_tool_started("check_invoice_status") == "Let me check invoice status."
 
     def test_empty_tool_name_still_returns_a_safe_generic_phrase(self) -> None:
         assert narrate_tool_started("") == "Let me check that."
+
+    def test_read_verb_is_not_doubled_in_spoken_output(self) -> None:
+        """Heard in production 2026-09-08: "Let me check get workflow runs."
+
+        "Let me check" already supplies the verb, so repeating the tool name's own
+        read verb produced ungrammatical speech.
+        """
+        assert narrate_tool_started("getWorkflowRuns") == "Let me check workflow runs."
+        assert narrate_tool_started("listOpenTickets") == "Let me check open tickets."
+        assert narrate_tool_started("fetch_account_owner") == "Let me check account owner."
+
+    def test_verb_only_tool_name_is_not_stripped_to_nothing(self) -> None:
+        """Stripping the sole word would collapse a real name to "that"."""
+        assert narrate_tool_started("get") == "Let me check get."
+        assert narrate_tool_started("search") == "Let me check search."
+
+    def test_write_shaped_tools_are_unaffected_by_verb_stripping(self) -> None:
+        assert narrate_tool_started("updateDealStage") == "I'm updating that now."
+
+    def test_non_verb_first_word_is_preserved(self) -> None:
+        assert narrate_tool_started("invoiceStatusReport") == (
+            "Let me check invoice status report."
+        )
 
 
 class TestNarrateToolCompleted:
