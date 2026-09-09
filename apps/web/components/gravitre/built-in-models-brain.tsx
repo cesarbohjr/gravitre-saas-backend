@@ -292,7 +292,7 @@ export function BuiltInModelsBrain({
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1.5 font-medium text-primary">
               <Brain className="h-3.5 w-3.5" />
-              {health.trained} trained
+              {health.trained + health.learning} active
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-md border border-[oklch(0.7_0.08_250)]/40 bg-[oklch(0.95_0.02_250)] px-2.5 py-1.5 font-medium text-[oklch(0.42_0.14_250)] dark:bg-[oklch(0.2_0.03_250)] dark:text-[oklch(0.85_0.06_250)]">
               <Sparkles className="h-3.5 w-3.5" />
@@ -301,6 +301,10 @@ export function BuiltInModelsBrain({
             <span className="inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background/80 px-2.5 py-1.5 font-medium text-muted-foreground">
               <Database className="h-3.5 w-3.5" />
               {health.collecting} need data
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background/80 px-2.5 py-1.5 font-medium text-muted-foreground">
+              <CircleHelp className="h-3.5 w-3.5" />
+              {health.planned} roadmap
             </span>
           </div>
         </div>

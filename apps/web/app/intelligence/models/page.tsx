@@ -6,7 +6,7 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -14,8 +14,10 @@ import { readNumber, readString } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   getBuiltInModelGuide,
+  statusTone,
   type BuiltInModelListItem,
 } from "@/lib/built-in-model-catalog"
+import { CircleDashed, Database, Pulse, Sparkles } from "@phosphor-icons/react"
 
 type FilterKey = "all" | "active" | "needs_data" | "roadmap"
 
@@ -82,6 +84,30 @@ export default function IntelligenceModelsPage() {
       })
   }, [data, readiness])
 
+  const metrics = useMemo(() => {
+    let active = 0
+    let needsData = 0
+    let roadmap = 0
+    let withSignal = 0
+    for (const row of items) {
+      const tone = statusTone(row.status)
+      if (tone === "ready" || tone === "learning") active += 1
+      if (
+        (tone === "ready" || tone === "learning") &&
+        row.sufficiency.value != null &&
+        row.sufficiency.value < 100
+      ) {
+        needsData += 1
+      }
+      if (tone === "planned" || tone === "off") roadmap += 1
+      // Readiness API has started counting examples for this model (not a TRAINED claim).
+      if (row.sufficiency.available > 0 || row.sufficiency.required > 0) {
+        withSignal += 1
+      }
+    }
+    return { active, needsData, roadmap, withSignal }
+  }, [items])
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
@@ -111,13 +137,45 @@ export default function IntelligenceModelsPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
 
-        <div className="px-4 pb-8 md:px-6">
+        <div className="px-4 pb-8 md:px-6 space-y-5">
           {isLoading && !data ? (
             <p className="text-sm text-muted-foreground">Loading your org ML brain…</p>
           ) : items.length === 0 ? (
             <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
           ) : (
-            <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />
+            <>
+              <section
+                className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4"
+                aria-label="Built-in model counts"
+              >
+                <GravitreMetric
+                  label="Active"
+                  value={metrics.active}
+                  hint="In use (artifact or heuristic)"
+                  icon={<Pulse className="h-4 w-4" weight="duotone" aria-hidden />}
+                />
+                <GravitreMetric
+                  label="Needs data"
+                  value={metrics.needsData}
+                  hint="Below example threshold"
+                  warning={metrics.needsData > 0}
+                  icon={<Database className="h-4 w-4" weight="duotone" aria-hidden />}
+                />
+                <GravitreMetric
+                  label="Roadmap"
+                  value={metrics.roadmap}
+                  hint="Planned or unavailable"
+                  icon={<CircleDashed className="h-4 w-4" weight="duotone" aria-hidden />}
+                />
+                <GravitreMetric
+                  label="With signals"
+                  value={metrics.withSignal}
+                  hint="Readiness tracking started"
+                  icon={<Sparkles className="h-4 w-4" weight="duotone" aria-hidden />}
+                />
+              </section>
+              <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />
+            </>
           )}
         </div>
       </div>
