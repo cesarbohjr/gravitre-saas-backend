@@ -90,6 +90,7 @@ class TestPlayedAudioReconciliation:
         )
         assert result.reconciled_text == "The sync finished."
         assert result.truncated is True
+        assert result.match_strategy == "exact_prefix"
         assert result.dropped_chars == len("The sync finished. Three records were skipped.") - len(
             "The sync finished."
         )
@@ -98,26 +99,106 @@ class TestPlayedAudioReconciliation:
         result = reconcile_played_audio(spoken_text="", full_draft_text="Never heard this.")
         assert result.reconciled_text == ""
         assert result.truncated is True
+        assert result.match_strategy == "nothing_spoken"
         assert result.dropped_chars == len("Never heard this.")
 
     def test_full_match_is_not_truncated(self):
         result = reconcile_played_audio(spoken_text="All of it.", full_draft_text="All of it.")
         assert result.reconciled_text == "All of it."
         assert result.truncated is False
+        assert result.match_strategy == "full_match"
         assert result.dropped_chars == 0
 
-    def test_diverged_alignment_falls_back_to_draft_without_inventing_boundary(self):
+    def test_no_shared_words_falls_back_to_draft_without_inventing_boundary(self):
         result = reconcile_played_audio(
             spoken_text="totally different words",
             full_draft_text="The sync finished.",
         )
         assert result.reconciled_text == "The sync finished."
         assert result.truncated is False
+        assert result.match_strategy == "no_overlap_fallback_draft"
 
     def test_empty_draft_is_safe(self):
         result = reconcile_played_audio(spoken_text="", full_draft_text="")
         assert result.reconciled_text == ""
         assert result.truncated is False
+        assert result.match_strategy == "empty_draft"
+
+
+class TestPlayedAudioReconciliationAlignmentDrift:
+    """REGRESSION: a strict ``draft.startswith(spoken)`` check silently dropped
+    nothing whenever the TTS-aligned text differed from the LLM draft by
+    whitespace, capitalisation, or punctuation — which is the common case, not the
+    edge case. Each of these would have reported success while truncating zero
+    characters.
+    """
+
+    def test_extra_whitespace_in_aligned_text_still_truncates(self):
+        result = reconcile_played_audio(
+            spoken_text="The  sync   finished.",
+            full_draft_text="The sync finished. Three records were skipped.",
+        )
+        assert result.reconciled_text == "The sync finished."
+        assert result.truncated is True
+        assert result.match_strategy == "word_prefix"
+
+    def test_newlines_in_aligned_text_still_truncates(self):
+        result = reconcile_played_audio(
+            spoken_text="The sync\nfinished.",
+            full_draft_text="The sync finished. Three records were skipped.",
+        )
+        assert result.reconciled_text == "The sync finished."
+        assert result.truncated is True
+
+    def test_missing_punctuation_in_aligned_text_still_truncates(self):
+        result = reconcile_played_audio(
+            spoken_text="The sync finished",
+            full_draft_text="The sync finished. Three records were skipped.",
+        )
+        assert result.reconciled_text == "The sync finished."
+        assert result.truncated is True
+
+    def test_case_difference_in_aligned_text_still_truncates(self):
+        result = reconcile_played_audio(
+            spoken_text="the sync finished.",
+            full_draft_text="The sync finished. Three records were skipped.",
+        )
+        assert result.reconciled_text == "The sync finished."
+        assert result.truncated is True
+
+    def test_partial_divergence_cuts_at_last_confirmed_word(self):
+        result = reconcile_played_audio(
+            spoken_text="The sync wobbled sideways",
+            full_draft_text="The sync finished. Three records were skipped.",
+        )
+        assert result.reconciled_text == "The sync"
+        assert result.truncated is True
+        assert result.match_strategy == "diverged_word_prefix"
+        assert result.matched_words == 2
+
+    def test_reconciled_text_never_exceeds_draft(self):
+        result = reconcile_played_audio(
+            spoken_text="The sync finished completely and totally",
+            full_draft_text="The sync finished.",
+        )
+        assert len(result.reconciled_text) <= len("The sync finished.")
+
+    def test_meta_exposes_strategy_for_live_traces(self):
+        meta = reconcile_played_audio(
+            spoken_text="The  sync   finished.",
+            full_draft_text="The sync finished. Three records were skipped.",
+        ).as_meta()
+        assert meta["match_strategy"] == "word_prefix"
+        assert meta["dropped_chars"] > 0
+        assert meta["matched_words"] == 3
+
+    def test_meta_carries_no_transcript_text(self):
+        """The audit payload is counts + strategy only — no spoken content."""
+        meta = reconcile_played_audio(
+            spoken_text="The sync finished.",
+            full_draft_text="The sync finished. Three records were skipped.",
+        ).as_meta()
+        assert not any(isinstance(v, str) and " " in v for v in meta.values())
 
 
 class TestPolishFlagResolution:

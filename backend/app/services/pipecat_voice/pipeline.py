@@ -198,6 +198,10 @@ def build_pipecat_voice_task(
     polish_flags = resolve_conversational_polish_flags(settings)
     interrupt_reporter = ElevenLabsInterruptReporter(
         reconcile_played_audio_enabled=polish_flags["played_audio_reconcile_v1"],
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
     )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.

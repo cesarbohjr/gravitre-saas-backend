@@ -153,6 +153,8 @@ class PlayedAudioReconciliation:
     full_draft_text: str
     dropped_chars: int
     truncated: bool
+    match_strategy: str
+    matched_words: int
 
     def as_meta(self) -> dict[str, Any]:
         return {
@@ -160,7 +162,37 @@ class PlayedAudioReconciliation:
             "draft_chars": len(self.full_draft_text),
             "dropped_chars": self.dropped_chars,
             "truncated": self.truncated,
+            "match_strategy": self.match_strategy,
+            "matched_words": self.matched_words,
         }
+
+
+# Punctuation that belongs to the word it follows, so a cut at a word boundary
+# keeps "finished." rather than stranding the period into the dropped tail.
+_TRAILING_PUNCT = set(".,!?;:…\"')]}")
+
+
+def _leading_matched_words(draft: str, spoken: str) -> tuple[int, int, int]:
+    """Count leading words shared by draft and spoken; return (n, cut, spoken_n).
+
+    Comparison is on word tokens (case-folded, punctuation excluded), so the two
+    strings can differ in whitespace, capitalisation, or punctuation and still
+    align. ``cut`` is an index into ``draft`` just past the n-th matched word.
+    """
+    draft_tokens = [(m.group(0).casefold(), m.end()) for m in _WORD_RE.finditer(draft)]
+    spoken_tokens = [m.group(0).casefold() for m in _WORD_RE.finditer(spoken)]
+
+    matched = 0
+    cut = 0
+    for (draft_word, draft_end), spoken_word in zip(draft_tokens, spoken_tokens):
+        if draft_word != spoken_word:
+            break
+        matched += 1
+        cut = draft_end
+    # Absorb punctuation that immediately trails the last matched word.
+    while cut < len(draft) and draft[cut] in _TRAILING_PUNCT:
+        cut += 1
+    return matched, cut, len(spoken_tokens)
 
 
 def reconcile_played_audio(
@@ -171,10 +203,24 @@ def reconcile_played_audio(
     """Trim a barge-in draft to the portion that was actually spoken aloud.
 
     ``spoken_text`` comes from TTS-aligned text frames, so it is the closest
-    available proxy for played audio. When it is a prefix of the draft we keep it
-    verbatim and report the dropped tail. When alignment is unusable (empty, or
-    diverged from the draft) we fall back to the draft and report no truncation
-    rather than inventing a boundary.
+    available proxy for played audio. Alignment is done on word tokens rather than
+    raw characters: the TTS provider routinely returns the same words with
+    different whitespace or punctuation than the LLM draft, and a strict
+    ``startswith`` check would silently fall through to "no truncation" on those
+    turns — reporting success while dropping nothing.
+
+    ``match_strategy`` records how the boundary was found so a live trace can
+    distinguish a real truncation from a fallback:
+
+    * ``exact_prefix`` — spoken text is a literal prefix of the draft.
+    * ``word_prefix`` — all spoken words matched; whitespace/punctuation differed.
+    * ``diverged_word_prefix`` — alignment diverged partway; cut at the last
+      word known to have been spoken (conservative, never over-claims).
+    * ``full_match`` — the whole draft was spoken; nothing to drop.
+    * ``nothing_spoken`` — interrupted before any audio was aligned.
+    * ``no_overlap_fallback_draft`` — zero shared leading words; keep the draft
+      rather than invent a boundary.
+    * ``empty_draft`` — no draft to reconcile against.
     """
     spoken = (spoken_text or "").strip()
     draft = (full_draft_text or "").strip()
@@ -185,6 +231,8 @@ def reconcile_played_audio(
             full_draft_text=spoken,
             dropped_chars=0,
             truncated=False,
+            match_strategy="empty_draft",
+            matched_words=0,
         )
     if not spoken:
         # Interrupted before any audio was aligned — nothing was heard.
@@ -193,20 +241,49 @@ def reconcile_played_audio(
             full_draft_text=draft,
             dropped_chars=len(draft),
             truncated=True,
+            match_strategy="nothing_spoken",
+            matched_words=0,
         )
-    if not draft.startswith(spoken):
+
+    matched, cut, spoken_word_count = _leading_matched_words(draft, spoken)
+
+    if matched == 0:
         return PlayedAudioReconciliation(
             reconciled_text=draft,
             full_draft_text=draft,
             dropped_chars=0,
             truncated=False,
+            match_strategy="no_overlap_fallback_draft",
+            matched_words=0,
         )
-    dropped = len(draft) - len(spoken)
+
+    reconciled = draft[:cut].rstrip()
+    dropped = len(draft) - len(reconciled)
+
+    if dropped <= 0:
+        return PlayedAudioReconciliation(
+            reconciled_text=draft,
+            full_draft_text=draft,
+            dropped_chars=0,
+            truncated=False,
+            match_strategy="full_match",
+            matched_words=matched,
+        )
+
+    if matched < spoken_word_count:
+        strategy = "diverged_word_prefix"
+    elif draft.startswith(spoken):
+        strategy = "exact_prefix"
+    else:
+        strategy = "word_prefix"
+
     return PlayedAudioReconciliation(
-        reconciled_text=spoken,
+        reconciled_text=reconciled,
         full_draft_text=draft,
         dropped_chars=dropped,
-        truncated=dropped > 0,
+        truncated=True,
+        match_strategy=strategy,
+        matched_words=matched,
     )
 
 

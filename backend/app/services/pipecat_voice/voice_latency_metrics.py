@@ -36,6 +36,10 @@ logger = get_logger(__name__)
 
 LLM_STAGE_ACTION = "voice.turn_latency.llm_stage"
 E2E_ACTION = "voice.turn_latency.e2e"
+# Phase 5 (conversational polish): durable evidence that a barge-in actually
+# truncated drafted-but-unheard text, and by which alignment strategy. A log
+# line alone cannot distinguish a real truncation from a silent fallback.
+BARGE_IN_RECONCILE_ACTION = "voice.barge_in.reconciled"
 
 
 def _write(
@@ -139,4 +143,30 @@ def record_voice_e2e_latency_sample(
             "user_turn_finalization_ms": user_turn_finalization_ms,
             "ttfb_by_processor_ms": ttfb_by_processor_ms,
         },
+    )
+
+
+def record_voice_barge_in_reconciliation(
+    settings: Any,
+    *,
+    org_id: str,
+    user_id: str | None,
+    conversation_id: str | None,
+    reconcile_meta: dict[str, Any],
+    playback_offset_ms: float | None,
+) -> None:
+    """One barge-in reconciliation outcome.
+
+    Carries ``match_strategy`` so a live trace proves whether unheard text was
+    genuinely dropped (``dropped_chars > 0`` with an ``*_prefix`` strategy) or
+    whether alignment fell back to the untruncated draft. No transcript text is
+    written — only counts and the strategy label.
+    """
+    _write(
+        settings,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        action=BARGE_IN_RECONCILE_ACTION,
+        payload={**reconcile_meta, "playback_offset_ms": playback_offset_ms},
     )

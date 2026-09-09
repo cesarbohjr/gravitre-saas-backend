@@ -28,12 +28,25 @@ logger = get_logger(__name__)
 class ElevenLabsInterruptReporter(FrameProcessor):
     """Accumulate draft/spoken text; on interrupt publish speech.interrupted."""
 
-    def __init__(self, *, reconcile_played_audio_enabled: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        reconcile_played_audio_enabled: bool = False,
+        settings: Any | None = None,
+        org_id: str | None = None,
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self._draft = ""
         self._spoken_aligned = ""
         self._last_playback_offset_ms: float | None = None
         self._reconcile_enabled = bool(reconcile_played_audio_enabled)
+        self._settings = settings
+        self._org_id = org_id
+        self._user_id = user_id
+        self._conversation_id = conversation_id
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -88,6 +101,19 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
+                if self._settings is not None and self._org_id:
+                    from app.services.pipecat_voice.voice_latency_metrics import (
+                        record_voice_barge_in_reconciliation,
+                    )
+
+                    record_voice_barge_in_reconciliation(
+                        self._settings,
+                        org_id=self._org_id,
+                        user_id=self._user_id,
+                        conversation_id=self._conversation_id,
+                        reconcile_meta=reconcile_meta,
+                        playback_offset_ms=self._last_playback_offset_ms,
+                    )
             logger.info(
                 "pipecat_speech_interrupted spoken_chars=%s draft_chars=%s offset_ms=%s reconcile=%s",
                 len(spoken),
