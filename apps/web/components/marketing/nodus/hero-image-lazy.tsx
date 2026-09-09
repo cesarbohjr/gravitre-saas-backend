@@ -8,18 +8,9 @@ const HeroImage = dynamic(
   { ssr: false },
 )
 
-function HeroImagePlaceholder() {
-  return (
-    <div
-      className="border-divide aspect-[1024/575] w-full border-x bg-gray-100 dark:bg-neutral-800"
-      aria-hidden
-    />
-  )
-}
-
 /**
- * Loads the dashboard screenshot only when scrolled into view — keeps it off
- * the Lighthouse LCP path while the full-viewport hero text paints first.
+ * Loads the dashboard screenshot only when scrolled into view — no sized
+ * placeholder (a full-width aspect box was becoming the LCP element on CI).
  */
 export function HeroImageLazy() {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -42,5 +33,5 @@ export function HeroImageLazy() {
     return () => observer.disconnect()
   }, [])
 
-  return <div ref={hostRef}>{visible ? <HeroImage /> : <HeroImagePlaceholder />}</div>
+  return <div ref={hostRef}>{visible ? <HeroImage /> : null}</div>
 }
