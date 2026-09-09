@@ -76,7 +76,7 @@ export function GravitreDepartmentNetwork({
   }, [autoplay, inView, playNextAuto, reduced, state.running, state.scenarioId])
 
   return (
-    <div ref={rootRef} className={cn("relative mx-auto w-full max-w-2xl", className)}>
+    <div ref={rootRef} className={cn("relative mx-auto w-full", className)}>
       <div className="md:hidden">
         <DepartmentNetworkMobile reduced={reduced} />
       </div>
@@ -126,6 +126,7 @@ export function GravitreDepartmentNetwork({
                 id="sales"
                 state={nodeState("sales", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
                 interactive={!reduced}
+                reduced={reduced}
                 align="start"
                 onHover={() => setHoverFocus("sales")}
                 onLeave={() => setHoverFocus(null)}
@@ -138,6 +139,7 @@ export function GravitreDepartmentNetwork({
                 id="support"
                 state={nodeState("support", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
                 interactive={!reduced}
+                reduced={reduced}
                 align="end"
                 onHover={() => setHoverFocus("support")}
                 onLeave={() => setHoverFocus(null)}
@@ -156,6 +158,7 @@ export function GravitreDepartmentNetwork({
                 id="operations"
                 state={nodeState("operations", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
                 interactive={!reduced}
+                reduced={reduced}
                 align="start"
                 onHover={() => setHoverFocus("operations")}
                 onLeave={() => setHoverFocus(null)}
@@ -168,6 +171,7 @@ export function GravitreDepartmentNetwork({
                 id="finance"
                 state={nodeState("finance", state.activeDepts, state.resolvedDepts, state.mutedDepts)}
                 interactive={!reduced}
+                reduced={reduced}
                 align="end"
                 onHover={() => setHoverFocus("finance")}
                 onLeave={() => setHoverFocus(null)}

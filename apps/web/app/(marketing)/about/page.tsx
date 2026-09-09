@@ -66,8 +66,30 @@ export default function AboutPage() {
           className="mb-6"
         />
         <GravitreTrace>
-          <div className="mx-auto w-full max-w-2xl rounded-2xl border border-divide bg-white p-3 sm:p-4 md:p-5">
-            <ConvergeNodesVisual />
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
+            <div className="w-full overflow-hidden rounded-2xl border border-divide bg-white p-3 sm:p-4 md:p-5">
+              <ConvergeNodesVisual />
+            </div>
+            {/* Real product screenshot (same asset as the homepage hero) —
+                fills the space next to the network visual once it stretches
+                to the section width; hidden below lg to avoid squeezing the
+                network stage on tablet. */}
+            <div className="relative hidden overflow-hidden rounded-2xl border border-divide bg-gray-100 p-2 lg:block">
+              <picture>
+                <source srcSet="/nodus/dashboard-hero.avif" type="image/avif" />
+                <source srcSet="/nodus/dashboard-hero.webp" type="image/webp" />
+                <img
+                  src="/nodus/dashboard-hero.webp"
+                  alt="Gravitre dashboard showing departments' work converged into one view"
+                  className="w-full rounded-lg"
+                  width={1024}
+                  height={575}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              </picture>
+            </div>
           </div>
         </GravitreTrace>
       </GravitreSection>

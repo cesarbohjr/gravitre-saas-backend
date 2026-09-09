@@ -16,6 +16,14 @@ const ICONS: Record<DepartmentId, ComponentType<SVGProps<SVGSVGElement>>> = {
 
 export type NodeVisualState = "idle" | "active" | "muted" | "resolved" | "focus"
 
+/** Per-department stagger so idle float never reads as one synced group. */
+const FLOAT_OFFSET: Record<DepartmentId, { delay: number; duration: number; distance: number }> = {
+  sales: { delay: 0, duration: 3.6, distance: 4 },
+  support: { delay: 0.45, duration: 4.1, distance: 3.5 },
+  operations: { delay: 0.9, duration: 3.9, distance: 4.5 },
+  finance: { delay: 1.35, duration: 3.4, distance: 3.5 },
+}
+
 /** HTML department card — used inside a grid cell (no absolute corner overflow). */
 export function GravitreDepartmentNode({
   id,
@@ -24,6 +32,7 @@ export function GravitreDepartmentNode({
   onLeave,
   onClick,
   interactive,
+  reduced = false,
   align = "start",
 }: {
   id: DepartmentId
@@ -32,6 +41,7 @@ export function GravitreDepartmentNode({
   onLeave?: () => void
   onClick?: () => void
   interactive?: boolean
+  reduced?: boolean
   align?: "start" | "end"
 }) {
   const meta = DEPARTMENT_META[id]
@@ -39,64 +49,79 @@ export function GravitreDepartmentNode({
   const isActive = state === "active" || state === "focus"
   const isResolved = state === "resolved"
   const isMuted = state === "muted"
+  const float = FLOAT_OFFSET[id]
 
   return (
-    <motion.button
-      type="button"
-      disabled={!interactive}
-      aria-label={`${meta.label} department`}
-      onMouseEnter={interactive ? onHover : undefined}
-      onMouseLeave={interactive ? onLeave : undefined}
-      onClick={interactive ? onClick : undefined}
-      className={cn(
-        "relative z-20 flex max-w-[11.5rem] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand,#16a374)]/40",
-        align === "end" ? "ml-auto" : "mr-auto",
-        isActive && "border-[color:var(--color-brand,#16a374)] shadow-md",
-        isResolved && "border-[color:var(--color-blue-500)]",
-        !isActive && !isResolved && "border-[color:var(--color-line,#eaedf1)]",
-        isMuted && "opacity-40",
-        !interactive && "cursor-default",
-      )}
-      initial={false}
-      animate={{ scale: isActive ? 1.03 : isResolved ? 1.01 : 1 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    <motion.div
+      className={cn(align === "end" ? "ml-auto" : "mr-auto")}
+      animate={!reduced ? { y: [0, -float.distance, 0] } : { y: 0 }}
+      transition={
+        !reduced
+          ? {
+              duration: float.duration,
+              delay: float.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }
+          : undefined
+      }
     >
-      <span
+      <motion.button
+        type="button"
+        disabled={!interactive}
+        aria-label={`${meta.label} department`}
+        onMouseEnter={interactive ? onHover : undefined}
+        onMouseLeave={interactive ? onLeave : undefined}
+        onClick={interactive ? onClick : undefined}
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--g-surface-2,#f5f6f8)] text-[color:var(--g-text-secondary)]",
-          isActive && "text-[color:var(--color-brand,#16a374)]",
-          isResolved && "text-[color:var(--color-blue-500)]",
+          "relative z-20 flex max-w-[11.5rem] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand,#16a374)]/40",
+          isActive && "border-[color:var(--color-brand,#16a374)] shadow-md",
+          isResolved && "border-[color:var(--color-blue-500)]",
+          !isActive && !isResolved && "border-[color:var(--color-line,#eaedf1)]",
+          isMuted && "opacity-40",
+          !interactive && "cursor-default",
         )}
+        initial={false}
+        animate={{ scale: isActive ? 1.03 : isResolved ? 1.01 : 1 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 pr-1">
-        <span className="block truncate text-sm font-semibold text-[color:var(--g-text-secondary)]">
-          {meta.label}
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--g-surface-2,#f5f6f8)] text-[color:var(--g-text-secondary)]",
+            isActive && "text-[color:var(--color-brand,#16a374)]",
+            isResolved && "text-[color:var(--color-blue-500)]",
+          )}
+        >
+          <Icon className="h-4 w-4" />
         </span>
-        <span className="block text-[10px] text-[color:var(--g-text-muted)]">
-          {isActive ? "Active" : isResolved ? "Resolved" : "Ready"}
+        <span className="min-w-0 pr-1">
+          <span className="block truncate text-sm font-semibold text-[color:var(--g-text-secondary)]">
+            {meta.label}
+          </span>
+          <span className="block text-[10px] text-[color:var(--g-text-muted)]">
+            {isActive ? "Active" : isResolved ? "Resolved" : "Ready"}
+          </span>
         </span>
-      </span>
-      <span
-        className={cn(
-          "absolute right-2 top-2 h-1.5 w-1.5 rounded-full",
-          isActive
-            ? "bg-[color:var(--color-brand,#16a374)]"
-            : isResolved
-              ? "bg-[color:var(--color-blue-500)]"
-              : "bg-[color:var(--color-line,#eaedf1)]",
-        )}
-      />
-      {isActive ? (
-        <motion.span
-          aria-hidden
-          className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--color-brand,#16a374)]"
-          animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+        <span
+          className={cn(
+            "absolute right-2 top-2 h-1.5 w-1.5 rounded-full",
+            isActive
+              ? "bg-[color:var(--color-brand,#16a374)]"
+              : isResolved
+                ? "bg-[color:var(--color-blue-500)]"
+                : "bg-[color:var(--color-line,#eaedf1)]",
+          )}
         />
-      ) : null}
-    </motion.button>
+        {isActive ? (
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--color-brand,#16a374)]"
+            animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+          />
+        ) : null}
+      </motion.button>
+    </motion.div>
   )
 }
