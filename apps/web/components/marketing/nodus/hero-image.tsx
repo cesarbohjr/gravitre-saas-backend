@@ -32,9 +32,10 @@ export const HeroImage = () => {
             className="w-full"
             priority
             fetchPriority="high"
+            quality={75}
             sizes="(max-width: 1024px) 100vw, min(100vw, 1280px)"
-            width={1000}
-            height={1000}
+            width={960}
+            height={720}
             draggable={false}
           />
         </div>
