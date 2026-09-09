@@ -2139,6 +2139,10 @@ export function AiWorkspace({
   // tests that pin this down for Float and Expanded/Fullscreen
   // respectively. Zero effect when the flag is off or floatWorkspaceOpen is
   // false (today's default), since this branch is simply never taken.
+  if (GRAVITRE_AI_FLOAT_ENABLED && !floatWorkspaceOpen && !onAiRoute) {
+    return null
+  }
+
   if (GRAVITRE_AI_FLOAT_ENABLED && floatWorkspaceOpen) {
     const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
     const closeToHelper = () => {
@@ -2876,15 +2880,9 @@ export function AiWorkspace({
     </div>
   )
 
-  // Phase 5 — when the float flag is on, AiWorkspace is root-hosted. Full-page
-  // chrome portals into `/ai`'s AppShell slot; off `/ai` with float closed we
-  // keep hooks alive but render nothing (Helper remains the entry).
-  if (GRAVITRE_AI_FLOAT_ENABLED) {
-    if (!floatWorkspaceOpen && !onAiRoute) return null
-    if (!floatWorkspaceOpen && onAiRoute) {
-      if (slotElement) return createPortal(fullPageLayout, slotElement)
-      return null
-    }
+  if (GRAVITRE_AI_FLOAT_ENABLED && !floatWorkspaceOpen && onAiRoute) {
+    return slotElement ? createPortal(fullPageLayout, slotElement) : null
   }
+
   return fullPageLayout
 }
