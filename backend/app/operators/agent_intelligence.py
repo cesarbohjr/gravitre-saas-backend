@@ -2397,6 +2397,7 @@ class AgentIntelligence:
                 live_turn = await live_task
             else:
                 live_turn = await _run_unified_live()
+            _mark("unified_live_resolved")
 
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state
@@ -2493,6 +2494,7 @@ class AgentIntelligence:
                 client=client,
                 settings=active_settings,
             )
+        _mark("unified_shadow_scheduled")
 
         # Conversational path (additive): only when nothing is pending. Pending-reply
         # classifier remains the owner for awaiting_* / sticky plans.
@@ -2509,6 +2511,7 @@ class AgentIntelligence:
         from app.services.pending_reply_classifier import has_pending_family
 
         pending_family_active = has_pending_family(task_state)
+        _mark("pre_turn_shape")
         turn_shape = await classify_turn_shape(
             task_text,
             settings=active_settings,
