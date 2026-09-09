@@ -12,6 +12,7 @@ import { EnterpriseBrandingProvider } from '@/lib/enterprise-branding-context'
 import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
+import { GravitreAIWorkspaceProvider } from '@/components/gravitre/ai-workspace-provider'
 import { interDisplay } from '@/fonts/inter-display/inter'
 import { dmMono } from '@/fonts/dm-mono'
 import './globals.css'
@@ -100,7 +101,16 @@ export default function RootLayout({
                   <NotificationProvider>
                     <OnboardingProvider>
                       <ViewModeProvider>
-                        {children}
+                        {/*
+                          Mounted once, above every per-page <AppShell> — see
+                          docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
+                          Finding A5 / Part B1. Must never move inside a
+                          per-page tree, or it loses the one property Phase 2+
+                          depends on: surviving route navigation unremounted.
+                        */}
+                        <GravitreAIWorkspaceProvider>
+                          {children}
+                        </GravitreAIWorkspaceProvider>
                       </ViewModeProvider>
                       <OnboardingChecklist />
                     </OnboardingProvider>
