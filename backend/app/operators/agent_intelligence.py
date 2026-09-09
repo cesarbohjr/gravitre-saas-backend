@@ -2323,6 +2323,59 @@ class AgentIntelligence:
                 exc,
             )
 
+        async def _prepare_turn_context(query: str) -> Any:
+            """Context assembly, callable either inline or concurrently with LIVE."""
+            return await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                query=query,
+                classification=pipeline_classification,
+                client=client,
+                agent_id=agent_id,
+                environment_name=environment_name,
+                engine_settings=engine_settings,
+                task_state=task_state,
+                persona=persona,
+                conversation_history=conversation_history,
+                routing_tier=routing_control.tier,
+                mode=requested_mode,
+                research_scope=research_scope,
+                # Already resolved above (off-thread, cache-backed for spoken
+                # non-write turns); re-deriving it here cost a blocking 1.6s.
+                connected_integrations=list(connected_early or []),
+            )
+
+        # LIVE is discarded on ~48% of turns (audit: unified_turn.live.fallthrough,
+        # dominated by read_tool_classical / defer_classical_tool_sse), and on a
+        # measured spoken tool turn its 3.9s sat entirely in front of a 4.5s
+        # prepare_assistant_turn. Nothing in context assembly depends on LIVE's
+        # result, so start it now and await it later.
+        #
+        # Two things can invalidate a prefetch, so both are excluded rather than
+        # handled: a non-fast mode rewrites the query via rewrite_for_retrieval,
+        # and a "mixed" turn shape reassigns task_text after the social ack. Both
+        # would leave the prefetched context answering a different question, so
+        # the guard below only overlaps when the query provably cannot change.
+        _context_task: asyncio.Task | None = None
+        _context_task_query: str | None = None
+        if (
+            bool(getattr(active_settings, "voice_context_overlap_v1", False))
+            and bool(spoken_mode)
+            and mode_key == "fast"
+            and bool(getattr(active_settings, "unified_turn_live_enabled", False))
+        ):
+            from app.services.conversational_turn_gate import heuristic_turn_shape
+
+            _shape_hint = heuristic_turn_shape(task_text)
+            if _shape_hint is None or getattr(_shape_hint, "shape", "") != "mixed":
+                _context_task_query = task_text
+                _context_task = asyncio.create_task(_prepare_turn_context(task_text))
+                # A turn that early-returns (LIVE served, preflight, connector
+                # turn) drops this task; swallow its result so a discarded
+                # prefetch can never surface as "exception never retrieved".
+                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
         # LIVE is an ACT strategy only — never runs before kernel RECALL/KNOWLEDGE.
         # Spoken: stream unified text deltas into SSE as they arrive so TTS can start
@@ -3065,26 +3118,17 @@ class AgentIntelligence:
         )
 
         _mark("context_entry")
-        turn_ctx = await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id or "",
-            query=refined_query,
-            classification=pipeline_classification,
-            client=client,
-            agent_id=agent_id,
-            environment_name=environment_name,
-            engine_settings=engine_settings,
-            task_state=task_state,
-            persona=persona,
-            conversation_history=conversation_history,
-            routing_tier=routing_control.tier,
-            mode=requested_mode,
-            research_scope=research_scope,
-            # Already resolved above (off-thread, cache-backed for spoken
-            # non-write turns); re-deriving it here cost a blocking 1.6s.
-            connected_integrations=list(connected_early or []),
-        )
+        # Only adopt the prefetch if the query it was built for is still the query
+        # being asked; otherwise discard it and assemble for the real one.
+        _context_prefetched = False
+        if _context_task is not None and _context_task_query == refined_query:
+            turn_ctx = await _context_task
+            _context_prefetched = True
+        else:
+            if _context_task is not None:
+                _context_task.cancel()
+            turn_ctx = await _prepare_turn_context(refined_query)
+        _mark("context_prefetch_adopted" if _context_prefetched else "context_inline")
         _mark("assistant_turn_prepared")
         # Classical ACT still consumes kernel RECALL/KNOWLEDGE assembled before LIVE.
         if cognitive_ctx is not None:

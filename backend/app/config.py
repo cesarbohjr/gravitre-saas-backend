@@ -709,6 +709,18 @@ class Settings(BaseSettings):
             "voice_played_audio_reconcile_v1",
         ),
     )
+    # Run context assembly concurrently with the unified-turn LIVE pass instead of
+    # after it. LIVE is discarded on ~48% of turns (read/connector tool defer),
+    # and on a measured spoken tool turn its 3.9s stacked in front of a 4.5s
+    # prepare_assistant_turn. Overlapping trades duplicate work on turns LIVE
+    # does serve for ~3.5s off turns it does not.
+    voice_context_overlap_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_CONTEXT_OVERLAP_V1",
+            "voice_context_overlap_v1",
+        ),
+    )
     # Conversational spoken / reasoning_depth=conversational unified-turn model.
     # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
     # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.
