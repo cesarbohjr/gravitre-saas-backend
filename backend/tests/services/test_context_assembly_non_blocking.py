@@ -69,7 +69,72 @@ def _unthreaded_blocking_calls(fn: ast.AST) -> list[str]:
     return offenders
 
 
+def _client_taking_sync_calls(fn: ast.AST) -> list[str]:
+    """Un-awaited, un-offloaded calls that are handed a Supabase ``client``.
+
+    Generic counterpart to ``_unthreaded_blocking_calls``. That check only knows
+    the names in ``_BLOCKING_CALLS``, and the list is written after the fact:
+    ``get_snapshot`` and ``build_task_retrieval_context`` were absent until they
+    had already starved the LIVE stream in production. Passing a live client to a
+    callable that is neither awaited nor thrown to a thread is the actual shape of
+    the bug, so match on that instead of on a name.
+    """
+    awaited: set[int] = set()
+    offloaded: set[int] = set()
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Await) and isinstance(node.value, ast.Call):
+            awaited.add(id(node.value))
+        if not isinstance(node, ast.Call):
+            continue
+        runner = getattr(node.func, "attr", getattr(node.func, "id", ""))
+        # A coroutine handed to gather/create_task is awaited, just not directly.
+        # prepare_assistant_turn gathers five of them, so without this every one
+        # reads as a bare blocking call.
+        if runner in {"gather", "create_task", "ensure_future", "wait", "wait_for", "as_completed"}:
+            # Descend into each argument rather than only matching a bare Call:
+            # gather members here are written as conditional expressions
+            # (`retrieve(...) if slice_enabled else _empty()`), so the coroutine
+            # sits inside an IfExp. Over-approximating within a gather argument is
+            # the deliberate trade -- a blocking call nested as one of a gather
+            # member's own arguments stays covered by the name list below.
+            for arg in node.args:
+                for inner in ast.walk(arg):
+                    if isinstance(inner, ast.Call):
+                        awaited.add(id(inner))
+        if runner in {"to_thread", "run_io"}:
+            # Everything inside the runner call is off the loop by construction.
+            for inner in ast.walk(node):
+                if isinstance(inner, ast.Call):
+                    offloaded.add(id(inner))
+            offloaded.add(id(node))
+
+    offenders: list[str] = []
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Call):
+            continue
+        if id(node) in awaited or id(node) in offloaded:
+            continue
+        takes_client = any(
+            getattr(kw.value, "id", getattr(kw.value, "attr", "")) == "client"
+            for kw in node.keywords
+            if kw.arg is not None
+        ) or any(getattr(arg, "id", getattr(arg, "attr", "")) == "client" for arg in node.args)
+        if not takes_client:
+            continue
+        name = getattr(node.func, "attr", getattr(node.func, "id", "")) or "<call>"
+        offenders.append(f"{name} at line {node.lineno}")
+    return offenders
+
+
 class TestPrepareAssistantTurn:
+    def test_no_client_taking_sync_call_runs_on_the_loop(self) -> None:
+        fn, _ = _func(orch_mod, "prepare_assistant_turn")
+        offenders = _client_taking_sync_calls(fn)
+        assert not offenders, (
+            "call(s) handed a live Supabase client without await or run_io, so they "
+            "block the event loop: " + "; ".join(offenders)
+        )
+
     def test_no_sync_supabase_calls_on_the_loop(self) -> None:
         fn, _ = _func(orch_mod, "prepare_assistant_turn")
         offenders = _unthreaded_blocking_calls(fn)
@@ -80,6 +145,14 @@ class TestPrepareAssistantTurn:
 
 
 class TestUnifiedRetrieve:
+    def test_no_client_taking_sync_call_runs_on_the_loop(self) -> None:
+        fn, _ = _func(retrieval_mod, "retrieve")
+        offenders = _client_taking_sync_calls(fn)
+        assert not offenders, (
+            "call(s) handed a live Supabase client without await or run_io inside "
+            "retrieve, which runs in prepare_assistant_turn's gather: " + "; ".join(offenders)
+        )
+
     def test_no_sync_supabase_calls_on_the_loop(self) -> None:
         fn, _ = _func(retrieval_mod, "retrieve")
         offenders = _unthreaded_blocking_calls(fn)
