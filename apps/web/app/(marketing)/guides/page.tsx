@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
 import {
   ArrowRight,
   Clock,
@@ -21,6 +20,15 @@ import {
   MarketingPageHero,
   MarketingRails,
 } from "@/components/marketing/nodus/page-shell"
+import {
+  GUIDES_TRACE_STAGES,
+  GravitreFlow,
+  GravitreReveal,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 const categories = [
   { id: "all", label: "All Guides", icon: BookOpen },
@@ -185,6 +193,39 @@ const difficultyColors: Record<string, string> = {
   Advanced: "text-purple-700 bg-purple-100",
 }
 
+const learningPath = [
+  {
+    step: 1,
+    title: "Set up your workspace",
+    desc: "Configure your team, invite members, set permissions",
+    time: "15 min",
+  },
+  {
+    step: 2,
+    title: "Create your first agent",
+    desc: "Build a simple AI agent to understand the basics",
+    time: "10 min",
+  },
+  {
+    step: 3,
+    title: "Connect integrations",
+    desc: "Link your tools like Salesforce, Slack, HubSpot",
+    time: "20 min",
+  },
+  {
+    step: 4,
+    title: "Build a workflow",
+    desc: "Chain agents and actions into automated workflows",
+    time: "25 min",
+  },
+  {
+    step: 5,
+    title: "Monitor and optimize",
+    desc: "Use analytics to improve agent performance",
+    time: "15 min",
+  },
+]
+
 export default function GuidesPage() {
   const [activeCategory, setActiveCategory] = useState("all")
 
@@ -194,7 +235,7 @@ export default function GuidesPage() {
   const featuredGuides = guides.filter((g) => g.featured)
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Learning Resources"
         title="Guides & Tutorials"
@@ -203,50 +244,61 @@ export default function GuidesPage() {
 
       <DivideX />
 
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Learning path"
+          title="Setup → Agent → Connect → Workflow → Optimize"
+          description="One path through the product — follow the stages or jump to the guide you need."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={GUIDES_TRACE_STAGES}
+            gradientId="guides-trace"
+            ariaLabel="Guides path from Setup through Agent, Connect, and Workflow to Optimize"
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
       <MarketingRails>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-8"
-        >
+        <GravitreReveal className="mb-8">
           <h2 className="text-2xl font-bold text-foreground">Featured Guides</h2>
-        </motion.div>
+        </GravitreReveal>
 
         <div className="grid gap-6 md:grid-cols-3">
           {featuredGuides.map((guide, i) => (
-            <motion.a
-              key={guide.title}
-              href={guideHref(guide.title)}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
-            >
-              <div className="aspect-video bg-gradient-to-br from-primary/10 via-white to-muted/50 p-6 flex items-center justify-center">
-                <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play className="h-8 w-8 text-muted-foreground" />
+            <GravitreFlow key={guide.title} delay={i * 0.08}>
+              <a
+                href={guideHref(guide.title)}
+                className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
+              >
+                <div className="aspect-video bg-gradient-to-br from-primary/10 via-white to-muted/50 p-6 flex items-center justify-center">
+                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Play className="h-8 w-8 text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
-                  >
-                    {guide.difficulty}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {guide.time}
-                  </span>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
+                    >
+                      {guide.difficulty}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {guide.time}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
+                    {guide.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
-                  {guide.title}
-                </h3>
-                <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
-              </div>
-            </motion.a>
+              </a>
+            </GravitreFlow>
           ))}
         </div>
       </MarketingRails>
@@ -254,12 +306,7 @@ export default function GuidesPage() {
       <DivideX />
 
       <MarketingRails>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="flex flex-wrap gap-2 mb-8"
-        >
+        <div className="flex flex-wrap gap-2 mb-8">
           {categories.map((cat) => {
             const Icon = cat.icon
             return (
@@ -280,35 +327,32 @@ export default function GuidesPage() {
               </button>
             )
           })}
-        </motion.div>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredGuides.map((guide, i) => (
-            <motion.a
-              key={guide.title}
-              href={guideHref(guide.title)}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="group p-5 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
-                >
-                  {guide.difficulty}
-                </span>
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {guide.time}
-                </span>
-              </div>
-              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
-                {guide.title}
-              </h3>
-              <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
-            </motion.a>
+            <GravitreFlow key={guide.title} delay={i * 0.05}>
+              <a
+                href={guideHref(guide.title)}
+                className="group block p-5 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}
+                  >
+                    {guide.difficulty}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {guide.time}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
+                  {guide.title}
+                </h3>
+                <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
+              </a>
+            </GravitreFlow>
           ))}
         </div>
       </MarketingRails>
@@ -317,60 +361,17 @@ export default function GuidesPage() {
 
       <MarketingRails>
         <div className="mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
+          <GravitreReveal className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">Recommended Learning Path</h2>
             <p className="text-muted-foreground">Follow this path to master Gravitre step by step</p>
-          </motion.div>
+          </GravitreReveal>
 
           <div className="relative">
             <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-primary/100 via-emerald-300 to-transparent hidden sm:block" />
 
             <div className="space-y-6">
-              {[
-                {
-                  step: 1,
-                  title: "Set up your workspace",
-                  desc: "Configure your team, invite members, set permissions",
-                  time: "15 min",
-                },
-                {
-                  step: 2,
-                  title: "Create your first agent",
-                  desc: "Build a simple AI agent to understand the basics",
-                  time: "10 min",
-                },
-                {
-                  step: 3,
-                  title: "Connect integrations",
-                  desc: "Link your tools like Salesforce, Slack, HubSpot",
-                  time: "20 min",
-                },
-                {
-                  step: 4,
-                  title: "Build a workflow",
-                  desc: "Chain agents and actions into automated workflows",
-                  time: "25 min",
-                },
-                {
-                  step: 5,
-                  title: "Monitor and optimize",
-                  desc: "Use analytics to improve agent performance",
-                  time: "15 min",
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.step}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-start gap-6"
-                >
+              {learningPath.map((item, i) => (
+                <GravitreFlow key={item.step} delay={i * 0.08} className="flex items-start gap-6">
                   <div className="h-12 w-12 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 text-primary font-bold">
                     {item.step}
                   </div>
@@ -381,7 +382,7 @@ export default function GuidesPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">{item.desc}</p>
                   </div>
-                </motion.div>
+                </GravitreFlow>
               ))}
             </div>
           </div>
@@ -392,35 +393,27 @@ export default function GuidesPage() {
 
       <MarketingRails>
         <div className="mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="rounded-2xl border border-border bg-muted/50 p-8 lg:p-12"
-          >
+          <GravitreReveal className="rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] p-8 lg:p-12">
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-14 w-14 rounded-xl bg-red-100 flex items-center justify-center">
-                <Play className="h-7 w-7 text-red-600" />
+              <div className="h-14 w-14 rounded-xl bg-muted flex items-center justify-center">
+                <BookOpen className="h-7 w-7 text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Video Tutorials</h2>
-                <p className="text-muted-foreground">Watch and learn from our YouTube channel</p>
+                <h2 className="text-2xl font-bold text-foreground">Prefer docs?</h2>
+                <p className="text-muted-foreground">Written guides live in the documentation hub</p>
               </div>
             </div>
             <p className="text-muted-foreground mb-6">
-              Prefer video content? Our YouTube channel has dozens of tutorials, walkthroughs, and
-              tips from the Gravitre team and community.
+              Most guides link to published docs pages. Start with the quickstart or browse by topic in the docs.
             </p>
-            <a
-              href="https://youtube.com/@gravitre"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white hover:bg-red-500 transition-colors"
+            <Link
+              href="/docs"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
-              Visit YouTube Channel
+              Browse documentation
               <ArrowRight className="h-4 w-4" />
-            </a>
-          </motion.div>
+            </Link>
+          </GravitreReveal>
         </div>
       </MarketingRails>
 
@@ -428,21 +421,17 @@ export default function GuidesPage() {
 
       <MarketingRails>
         <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
+          <GravitreReveal>
             <h2 className="text-3xl font-bold text-foreground mb-4">Ready to get started?</h2>
             <p className="text-muted-foreground mb-8">
-              Create your free account and start building with AI agents today.
+              Create an account and start building with AI agents.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary/100 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
               >
-                Start Free Trial
+                Get started
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
@@ -453,7 +442,7 @@ export default function GuidesPage() {
                 Documentation
               </Link>
             </div>
-          </motion.div>
+          </GravitreReveal>
         </div>
       </MarketingRails>
 

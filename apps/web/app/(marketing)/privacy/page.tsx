@@ -1,7 +1,7 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { GravitreReveal } from "@/components/marketing/system"
 
 const sections = [
   {
@@ -94,7 +94,7 @@ To exercise these rights, contact us at privacy@gravitre.app.`,
 
 export default function PrivacyPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Legal"
         title="Privacy Policy"
@@ -113,13 +113,7 @@ export default function PrivacyPage() {
       <MarketingRails>
         <div className="mx-auto max-w-3xl space-y-12">
           {sections.map((section, i) => (
-            <motion.div
-              key={section.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-            >
+            <GravitreReveal key={section.title} kind="focus" delay={i * 0.03}>
               <h2 className="text-xl font-semibold text-charcoal mb-4">{section.title}</h2>
               <div className="prose prose-zinc max-w-none">
                 {section.content.split('\n\n').map((paragraph, j) => (
@@ -128,7 +122,7 @@ export default function PrivacyPage() {
                   </p>
                 ))}
               </div>
-            </motion.div>
+            </GravitreReveal>
           ))}
         </div>
       </MarketingRails>

@@ -13,15 +13,20 @@ export const metadata: Metadata = {
 const META_CARDS = [
   { icon: Globe, label: "Base URL", value: "https://gravitre.app/api" },
   { icon: KeyRound, label: "Auth", value: "Bearer API key" },
-  { icon: Gauge, label: "Rate limit", value: "600 req / min" },
+  {
+    icon: Gauge,
+    label: "Rate limit",
+    value: "Plan-specific — see API docs",
+    href: "/docs/api",
+  },
 ]
 
 export default function ApiSwaggerPage() {
   const specUrl = "/docs/api/openapi.json"
 
   return (
-    <div className="min-h-screen bg-card">
-      <section className="border-b border-border bg-gradient-to-b from-muted/50 to-white px-6 py-10">
+    <div className="min-h-screen bg-[color:var(--g-marketing-canvas)]">
+      <section className="border-b border-divide bg-[color:var(--g-marketing-surface)] px-6 py-10">
         <div className="mx-auto max-w-6xl">
           <Link
             href="/docs/api/quickstart"
@@ -43,14 +48,23 @@ export default function ApiSwaggerPage() {
               return (
                 <div
                   key={card.label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-divide bg-[color:var(--g-marketing-canvas)] px-4 py-3"
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{card.label}</p>
-                    <p className="truncate font-mono text-sm text-foreground">{card.value}</p>
+                    {"href" in card && card.href ? (
+                      <Link
+                        href={card.href}
+                        className="truncate font-mono text-sm text-primary hover:underline"
+                      >
+                        {card.value}
+                      </Link>
+                    ) : (
+                      <p className="truncate font-mono text-sm text-foreground">{card.value}</p>
+                    )}
                   </div>
                 </div>
               )

@@ -2,10 +2,20 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { Clock } from "lucide-react"
 import type { BlogPost } from "./types"
+import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
+import {
+  BLOG_TRACE_STAGES,
+  GravitreFlow,
+  GravitreReveal,
+  GravitreResolve,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 export type BlogCard = Pick<
   BlogPost,
@@ -33,11 +43,7 @@ function authorInitials(name: string): string {
 
 function PostCard({ post, index }: { post: BlogCard; index: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.35 }}
-    >
+    <GravitreFlow delay={index * 0.06}>
       <Link
         href={`/blog/${post.slug}`}
         className="group flex flex-col p-6 transition-colors hover:bg-gray-50"
@@ -59,7 +65,7 @@ function PostCard({ post, index }: { post: BlogCard; index: number }) {
           </span>
         </div>
       </Link>
-    </motion.div>
+    </GravitreFlow>
   )
 }
 
@@ -78,7 +84,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
   }, [activeCategory, listingPosts])
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Blog"
         title="Writing from the field"
@@ -105,13 +111,29 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
         </div>
       </MarketingPageHero>
 
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Field evidence"
+          title="Field → Evidence → Outcome"
+          description="How we write — from what we see in production, through evidence you can verify, to outcomes teams can act on."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={BLOG_TRACE_STAGES}
+            gradientId="blog-trace"
+            ariaLabel="Blog path from Field through Evidence to Outcome"
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
       <MarketingRails>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-16"
-        >
+        <GravitreResolve className="mb-16">
           <Link
             href={`/blog/${featuredPost.slug}`}
             className="group block overflow-hidden border border-border divide-y hover:bg-gray-50 transition-colors"
@@ -163,17 +185,12 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
               </div>
             </div>
           </Link>
-        </motion.div>
+        </GravitreResolve>
 
         <div className="border-t border-border pt-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-8"
-          >
+          <GravitreReveal className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground">All Posts</h2>
-          </motion.div>
+          </GravitreReveal>
           <div className="grid gap-4 border border-border divide-y">
             {filteredPosts.map((post, i) => (
               <PostCard key={post.slug} post={post} index={i} />

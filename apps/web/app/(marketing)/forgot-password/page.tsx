@@ -10,6 +10,7 @@ import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
+import { GravitrePulse, GravitreResolve } from "@/components/marketing/system"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -19,6 +20,7 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    // Demo reset flow — wire to auth provider when live.
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setIsLoading(false)
     setIsSubmitted(true)
@@ -53,21 +55,18 @@ export default function ForgotPasswordPage() {
                       </SubHeading>
                     </>
                   ) : (
-                    <>
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                        className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10"
-                      >
+                    <GravitreResolve>
+                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                         <CheckCircle2 className="h-8 w-8 text-primary" />
-                      </motion.div>
-                      <Heading className="text-left text-2xl lg:text-3xl">Check your email</Heading>
+                      </div>
+                      <Heading className="text-left text-2xl lg:text-3xl">Request recorded</Heading>
                       <SubHeading as="p" className="mt-2 text-left">
-                        We sent a password reset link to{" "}
-                        <span className="text-foreground font-medium">{email}</span>
+                        Demo reset flow — no email is sent from this page. When wired, a reset link
+                        would go to{" "}
+                        <span className="text-foreground font-medium">{email}</span>.
                       </SubHeading>
-                    </>
+                      <p className="mt-3 text-left text-xs text-muted-foreground">Demo reset flow</p>
+                    </GravitreResolve>
                   )}
                 </div>
 
@@ -100,7 +99,9 @@ export default function ForgotPasswordPage() {
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90 disabled:opacity-50"
                     >
                       {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <GravitrePulse className="flex items-center justify-center">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </GravitrePulse>
                       ) : (
                         <>
                           Send reset link
@@ -111,9 +112,6 @@ export default function ForgotPasswordPage() {
                   </form>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Didn&apos;t receive the email? Check your spam folder or
-                    </p>
                     <button
                       onClick={() => setIsSubmitted(false)}
                       className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted/50"

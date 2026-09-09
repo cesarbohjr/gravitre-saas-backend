@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
 import {
   Search,
   BookOpen,
@@ -21,48 +20,52 @@ import {
   MarketingPageHero,
   MarketingRails,
 } from "@/components/marketing/nodus/page-shell"
+import {
+  GravitreFlow,
+  GravitreReveal,
+  GravitreResolve,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  SUPPORT_TRACE_STAGES,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 const categories = [
   {
     icon: Zap,
     title: "Getting Started",
     description: "Setup guides and quickstarts",
-    articles: 12,
     href: SUPPORT_CATEGORY_LINKS["Getting Started"],
   },
   {
     icon: Users,
     title: "Account & Billing",
     description: "Manage your subscription and team",
-    articles: 8,
     href: SUPPORT_CATEGORY_LINKS["Account & Billing"],
   },
   {
     icon: Database,
     title: "Integrations",
     description: "Connect your tools and data",
-    articles: 24,
     href: SUPPORT_CATEGORY_LINKS.Integrations,
   },
   {
     icon: Shield,
     title: "Security & Compliance",
     description: "Privacy, security, and compliance",
-    articles: 10,
     href: SUPPORT_CATEGORY_LINKS["Security & Compliance"],
   },
   {
     icon: HelpCircle,
     title: "Troubleshooting",
     description: "Common issues and solutions",
-    articles: 18,
     href: SUPPORT_CATEGORY_LINKS.Troubleshooting,
   },
   {
     icon: CreditCard,
     title: "API & Developers",
     description: "Technical documentation",
-    articles: 15,
     href: SUPPORT_CATEGORY_LINKS["API & Developers"],
   },
 ]
@@ -78,12 +81,12 @@ const faqs = [
   {
     question: "How do I get started?",
     answer:
-      "Sign up for a free 7-day trial, complete the onboarding wizard, and you'll be guided through creating your first agent and workflow.",
+      "Create an account, complete the onboarding wizard, and follow the getting-started guides to create your first agent and workflow.",
   },
   {
     question: "What integrations are supported?",
     answer:
-      "We support 50+ integrations including Salesforce, HubSpot, Slack, Google Workspace, Microsoft 365, Notion, and many more. View our full integrations list.",
+      "Browse the integrations catalog in our docs for connectors we support today — including Salesforce, HubSpot, Slack, and more.",
   },
   {
     question: "Is my data secure?",
@@ -99,7 +102,7 @@ const faqs = [
 
 export default function SupportPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Support"
         title="How can we help?"
@@ -119,30 +122,46 @@ export default function SupportPage() {
 
       <DivideX />
 
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Support path"
+          title="Find → Guide → Escalate → Resolve"
+          description="Start self-service, follow the docs, then reach us when you need a human."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={SUPPORT_TRACE_STAGES}
+            gradientId="support-trace"
+            ariaLabel="Support path from Find through Guide and Escalate to Resolve"
+            caption="Calm escalation — docs first, then email or contact when guides aren't enough."
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
       <MarketingRails>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category, i) => {
             const Icon = category.icon
             return (
-              <motion.a
+              <GravitreFlow
                 key={category.title}
-                href={category.href}
-                initial={false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="group rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-md"
+                delay={i * 0.08}
+                className="group block rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-md"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
-                  {category.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
-                <span className="text-xs text-muted-foreground mt-2 block">
-                  {category.articles} articles
-                </span>
-              </motion.a>
+                <a href={category.href} className="block">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                    {category.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
+                </a>
+              </GravitreFlow>
             )
           })}
         </div>
@@ -152,28 +171,21 @@ export default function SupportPage() {
 
       <MarketingRails>
         <div className="mx-auto max-w-3xl">
-          <motion.div
-            initial={false}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            className="mb-8"
-          >
-            <h2 className="text-2xl font-semibold text-foreground">Popular Articles</h2>
-          </motion.div>
+          <GravitreReveal className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground">Popular articles</h2>
+          </GravitreReveal>
           <div className="space-y-2">
             {popularArticles.map((article, i) => (
-              <motion.a
+              <GravitreFlow
                 key={article.title}
-                href={article.href}
-                initial={false}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.15 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-all hover:border-border hover:shadow-sm"
+                delay={i * 0.05}
+                className="block rounded-lg border border-border bg-card p-4 transition-all hover:border-border hover:shadow-sm"
               >
-                <span className="text-sm text-foreground">{article.title}</span>
-                <span className="text-xs text-muted-foreground">{article.views} views</span>
-              </motion.a>
+                <a href={article.href} className="flex items-center justify-between">
+                  <span className="text-sm text-foreground">{article.title}</span>
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                </a>
+              </GravitreFlow>
             ))}
           </div>
         </div>
@@ -183,29 +195,19 @@ export default function SupportPage() {
 
       <MarketingRails>
         <div className="mx-auto max-w-3xl">
-          <motion.div
-            initial={false}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            className="text-center mb-12"
-          >
+          <GravitreReveal className="text-center mb-12">
             <h2 className="text-2xl font-semibold text-foreground mb-4">
-              Frequently Asked Questions
+              Frequently asked questions
             </h2>
-          </motion.div>
+          </GravitreReveal>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
-              <motion.div
-                key={faq.question}
-                initial={false}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.15 }}
-                transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-border bg-card p-5 shadow-sm"
-              >
-                <h3 className="font-medium text-foreground mb-2">{faq.question}</h3>
-                <p className="text-sm text-muted-foreground">{faq.answer}</p>
-              </motion.div>
+              <GravitreReveal key={faq.question} kind="focus" delay={i * 0.05}>
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="font-medium text-foreground mb-2">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                </div>
+              </GravitreReveal>
             ))}
           </div>
         </div>
@@ -213,62 +215,50 @@ export default function SupportPage() {
 
       <DivideX />
 
-      <MarketingRails>
-        <div className="mx-auto max-w-4xl">
-          <motion.div
-            initial={false}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-4">Still need help?</h2>
-            <p className="text-muted-foreground">Our team is ready to assist you.</p>
-          </motion.div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <motion.a
-              href="/contact"
-              initial={false}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.15 }}
-              className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
-            >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-medium text-foreground mb-1">Email Support</h3>
-              <p className="text-sm text-muted-foreground">Response within 24 hours</p>
-            </motion.a>
-            <motion.a
-              href="/contact"
-              initial={false}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ delay: 0.1 }}
-              className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
-            >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-medium text-foreground mb-1">Live Chat</h3>
-              <p className="text-sm text-muted-foreground">Available 9am-6pm PT</p>
-            </motion.a>
-            <motion.a
-              href="/docs"
-              initial={false}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.15 }}
-              transition={{ delay: 0.2 }}
-              className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
-            >
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Escalation path"
+          title="Docs → Email → Chat"
+          description="When self-service isn't enough, reach us through the channel that fits."
+          className="mb-8"
+        />
+        <div className="grid gap-6 sm:grid-cols-3">
+          <GravitreFlow className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
+            <a href="/docs" className="block">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-medium text-foreground mb-1">Documentation</h3>
-              <p className="text-sm text-muted-foreground">Technical guides & API docs</p>
-            </motion.a>
-          </div>
+              <p className="text-sm text-muted-foreground">Guides, concepts, and API reference</p>
+            </a>
+          </GravitreFlow>
+          <GravitreFlow
+            delay={0.1}
+            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+          >
+            <a href="mailto:support@gravitre.app" className="block">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">Email support</h3>
+              <p className="text-sm text-muted-foreground">support@gravitre.app</p>
+            </a>
+          </GravitreFlow>
+          <GravitreResolve
+            delay={0.2}
+            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+          >
+            <Link href="/contact" className="block">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
+                <MessageSquare className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">Contact</h3>
+              <p className="text-sm text-muted-foreground">Send a message through our contact form</p>
+            </Link>
+          </GravitreResolve>
         </div>
-      </MarketingRails>
+      </GravitreSection>
 
       <MarketingPageEndCta />
     </div>

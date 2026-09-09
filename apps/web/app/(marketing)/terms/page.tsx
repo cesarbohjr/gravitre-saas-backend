@@ -1,7 +1,7 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { GravitreReveal } from "@/components/marketing/system"
 
 const sections = [
   {
@@ -136,7 +136,7 @@ Upon termination, your right to use our services ceases immediately. We will pro
 
 export default function TermsPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Legal"
         title="Terms of Service"
@@ -154,18 +154,12 @@ export default function TermsPage() {
       <MarketingRails>
         <div className="mx-auto max-w-3xl space-y-10">
           {sections.map((section, i) => (
-            <motion.div
-              key={section.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.03 }}
-            >
+            <GravitreReveal key={section.title} kind="focus" delay={i * 0.03}>
               <h2 className="text-xl font-semibold text-charcoal mb-4">{section.title}</h2>
               <div className="text-gray-600 whitespace-pre-line">
                 {section.content}
               </div>
-            </motion.div>
+            </GravitreReveal>
           ))}
         </div>
       </MarketingRails>

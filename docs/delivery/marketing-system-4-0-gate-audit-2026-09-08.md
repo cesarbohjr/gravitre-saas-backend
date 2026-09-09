@@ -216,3 +216,15 @@ Extended System 4.0 across all audit P1 routes (no GSAP/Lottie/extra WebGL; auth
 
 Still gated: auth chrome slim, GSAP, custom Lottie, P2 routes, Playwright goldens.
 
+---
+
+## P2 shipped (2026-09-09) — after Cesar “move to p3”
+
+Audit has no priority P3; next remaining rollout tier was **P2**. Extended System 4.0 (framer only, no GSAP):
+
+1. **Stage constants** — careers / blog / changelog / roadmap / guides / support TRACE spines
+2. **Pages** — `/careers`, `/blog`, `/blog/[slug]`, `/changelog`, `/guides`, `/roadmap`, `/support`, `/privacy`, `/terms`, `/forgot-password`, `/docs/[...slug]` motion, `/docs/api/swagger`
+3. **Scaffold cleanup** — stripped fake roadmap votes/progress, changelog metrics, support view counts, swagger `600 req/min`, guides YouTube/trial theater; forgot-password success labeled as demo reset
+
+Still gated: auth footer slim, GSAP/Lottie, P0 inner upgrades (`/pricing`, `/features` distinct story), Playwright goldens.
+

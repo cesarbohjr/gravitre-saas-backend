@@ -155,3 +155,52 @@ export const DOCS_TRACE_STAGES = [
   { id: "govern", label: "Govern" },
   { id: "learn", label: "Learn" },
 ] as const
+
+/** Careers: ownership timeline */
+export const CAREERS_TRACE_STAGES = [
+  { id: "own", label: "Own" },
+  { id: "ship", label: "Ship" },
+  { id: "learn", label: "Learn" },
+  { id: "impact", label: "Impact" },
+] as const
+
+/** Blog: field evidence outcome */
+export const BLOG_TRACE_STAGES = [
+  { id: "field", label: "Field" },
+  { id: "evidence", label: "Evidence" },
+  { id: "outcome", label: "Outcome" },
+] as const
+
+/** Changelog: ship → measure → learn */
+export const CHANGELOG_TRACE_STAGES = [
+  { id: "ship", label: "Ship" },
+  { id: "measure", label: "Measure" },
+  { id: "learn", label: "Learn" },
+] as const
+
+/** Roadmap: site story spine (framer sticky — not GSAP) */
+export const ROADMAP_TRACE_STAGES = [
+  { id: "connect", label: "Connect" },
+  { id: "understand", label: "Understand" },
+  { id: "coordinate", label: "Coordinate" },
+  { id: "act", label: "Act" },
+  { id: "verify", label: "Verify" },
+  { id: "learn", label: "Learn" },
+] as const
+
+/** Guides: learning path FLOW */
+export const GUIDES_TRACE_STAGES = [
+  { id: "setup", label: "Setup" },
+  { id: "agent", label: "Agent" },
+  { id: "connect", label: "Connect" },
+  { id: "workflow", label: "Workflow" },
+  { id: "optimize", label: "Optimize" },
+] as const
+
+/** Support: calm escalation */
+export const SUPPORT_TRACE_STAGES = [
+  { id: "find", label: "Find" },
+  { id: "guide", label: "Guide" },
+  { id: "escalate", label: "Escalate" },
+  { id: "resolve", label: "Resolve" },
+] as const

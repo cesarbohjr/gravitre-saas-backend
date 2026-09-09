@@ -6,6 +6,7 @@ import { SITE_URL, getAllBlogSlugs, getBlogPost, type BlogPost } from "../posts"
 import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { GravitreResolve } from "@/components/marketing/system"
 
 export const dynamicParams = false
 
@@ -149,7 +150,7 @@ export default async function BlogPostPage({
   const { Content } = post
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <ArticleJsonLd post={post} />
 
       <Container className="border-divide border-x">
@@ -219,20 +220,22 @@ export default async function BlogPostPage({
           </figure>
 
           {/* Key takeaways: extractable summary for answer engines (AEO) */}
-          <aside
-            aria-label="Key takeaways"
-            className="mt-10 rounded-2xl border border-emerald-100 bg-primary/10/60 p-6"
-          >
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Key takeaways</h2>
-            <ul className="mt-4 flex flex-col gap-3">
-              {post.takeaways.map((point) => (
-                <li key={point} className="flex gap-3 text-sm leading-relaxed text-foreground">
-                  <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/100" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
+          <GravitreResolve>
+            <aside
+              aria-label="Key takeaways"
+              className="mt-10 rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-6"
+            >
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Key takeaways</h2>
+              <ul className="mt-4 flex flex-col gap-3">
+                {post.takeaways.map((point) => (
+                  <li key={point} className="flex gap-3 text-sm leading-relaxed text-foreground">
+                    <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </GravitreResolve>
 
           {/* Body */}
           <div
@@ -248,7 +251,7 @@ export default async function BlogPostPage({
             </h2>
             <dl className="mt-6 flex flex-col gap-6">
               {post.faqs.map((faq) => (
-                <div key={faq.question} className="rounded-xl border border-border p-5">
+                <div key={faq.question} className="rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-5">
                   <dt className="font-medium text-foreground">{faq.question}</dt>
                   <dd className="mt-2 text-muted-foreground">{faq.answer}</dd>
                 </div>
@@ -257,7 +260,7 @@ export default async function BlogPostPage({
           </section>
 
           {/* Subtle conversion close */}
-          <section className="mt-16 rounded-2xl border border-border bg-muted/50 p-8 text-center">
+          <section className="mt-16 rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] p-8 text-center">
             <h2 className="text-pretty text-xl font-semibold text-foreground">
               Give your team the time back to do the work only they can do.
             </h2>
@@ -267,9 +270,9 @@ export default async function BlogPostPage({
             </p>
             <Link
               href="/get-started"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/100"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
             >
-              Try Gravitre for free
+              Get started
               <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
