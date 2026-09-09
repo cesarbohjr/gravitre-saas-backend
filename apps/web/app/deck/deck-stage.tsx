@@ -145,11 +145,61 @@ export function DeckStage() {
         inset: 0,
         overflow: "hidden",
         background:
-          "radial-gradient(120% 120% at 50% 0%, #0f2c20 0%, #081712 45%, #050d0a 100%)",
+          "radial-gradient(130% 120% at 50% -10%, #17392a 0%, #0d2419 40%, #071510 72%, #040b08 100%)",
         cursor: chromeVisible ? "default" : "none",
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: DECK_CSS }} />
+
+      {/* Slow-drifting ambient brand-green orbs behind the stage */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "-14%",
+          left: "-8%",
+          width: "46vw",
+          height: "46vw",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(22,163,116,0.34), transparent 68%)",
+          filter: "blur(60px)",
+          animation: "deck-orb-a 22s ease-in-out infinite",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          bottom: "-18%",
+          right: "-10%",
+          width: "52vw",
+          height: "52vw",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(15,81,50,0.5), transparent 66%)",
+          filter: "blur(70px)",
+          animation: "deck-orb-b 27s ease-in-out infinite",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "38%",
+          right: "22%",
+          width: "26vw",
+          height: "26vw",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(94,196,154,0.22), transparent 70%)",
+          filter: "blur(64px)",
+          animation: "deck-orb-c 31s ease-in-out infinite",
+          pointerEvents: "none",
+        }}
+      />
 
       {/* Faint dot-grid echo of the gravitre.app surface */}
       <div
@@ -256,23 +306,18 @@ export function DeckStage() {
           pointerEvents: chromeVisible ? "auto" : "none",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/deck-assets/e7fdc3ca-256f-4b57-96f7-6e86792c52bf.png"
+            src="/deck-assets/gravitre-logo-green.png"
             alt="Gravitre"
-            style={{ width: 26, height: 26 }}
-          />
-          <span
             style={{
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 700,
-              fontSize: 17,
-              letterSpacing: "-0.3px",
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              boxShadow: "0 6px 20px -8px rgba(0,0,0,0.6)",
             }}
-          >
-            Gravitre
-          </span>
+          />
           <span
             style={{
               color: "rgba(94,196,154,0.9)",
@@ -280,9 +325,6 @@ export function DeckStage() {
               letterSpacing: "2.5px",
               textTransform: "uppercase",
               fontWeight: 600,
-              paddingLeft: 12,
-              marginLeft: 4,
-              borderLeft: "1px solid rgba(255,255,255,0.16)",
             }}
           >
             Seed Deck
