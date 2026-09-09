@@ -15,7 +15,7 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 export const Hero = () => {
   const h = MARKETING_COPY.hero
   return (
-    <Container className="border-divide flex flex-col items-center justify-center border-x px-4 pt-10 pb-10 md:pt-32 md:pb-20">
+    <Container className="border-divide flex flex-col items-center justify-center border-x px-4 pt-10 pb-10 md:min-h-[calc(100vh-5rem)] md:pt-32 md:pb-20">
       <span className="text-sm font-normal text-brand">One AI brain for your entire business</span>
       <Heading className="mt-4 max-w-full px-1 text-balance">
         Manage agents, workflows, and{" "}

@@ -2,9 +2,9 @@ import React from "react"
 import { cn } from "@/lib/utils"
 import { Container } from "./container"
 
-/** Intrinsic size of dashboard-hero.* (1280×719, from dashboard@3x.png 3312×1860). */
-const HERO_IMG_WIDTH = 1280
-const HERO_IMG_HEIGHT = 719
+/** Intrinsic size of dashboard-hero.* (1024×575, from dashboard@3x.png 3312×1860). */
+const HERO_IMG_WIDTH = 1024
+const HERO_IMG_HEIGHT = 575
 
 /** Static corner markers — avoids client Dot (mousemove + framer-motion) on LCP path. */
 function CornerDot({ className }: { className?: string }) {
@@ -17,8 +17,8 @@ function CornerDot({ className }: { className?: string }) {
 }
 
 /**
- * Hero product screenshot — pre-optimized AVIF/WebP (~52–60 KiB vs 573 KiB PNG).
- * Native `<picture>` on the LCP path (next/image is unoptimized globally).
+ * Hero product screenshot — pre-optimized AVIF/WebP (~28 KiB vs 573 KiB PNG).
+ * Below the Lighthouse desktop fold (hero min-h); lazy-loaded so h1 is LCP.
  */
 export const HeroImage = () => {
   return (
@@ -38,9 +38,8 @@ export const HeroImage = () => {
               className="w-full"
               width={HERO_IMG_WIDTH}
               height={HERO_IMG_HEIGHT}
-              fetchPriority="high"
-              loading="eager"
-              decoding="sync"
+              loading="lazy"
+              decoding="async"
               draggable={false}
             />
           </picture>
