@@ -362,3 +362,81 @@ This added `apps/web/components/gravitre/floating-ai-workspace.tsx` (116 lines) 
 ---
 
 **This document makes no production changes.** Awaiting approval to proceed to Phase 0 (isolated, unlinked prototypes only) as the next concrete step.
+
+---
+
+## Reassessment (2026-09-09) — Cesar re-ran the governing redesign prompt
+
+**GSAP / marketing visual goldens (separate track):** done — `fd06a3b4` on `main`, Vercel production READY. Not part of this AI workspace redesign.
+
+**Is the AI floating redesign “done”?** **No** as a live default UX. **Yes** as Phases 0–4 code in tree behind an opt-in flag.
+
+### What shipped since the original STOP gate
+
+| Phase | Outcome |
+|---|---|
+| **0** | `/dev/ai-workspace-preview` mock Helper/Float/Expanded/Fullscreen/mobile + transitions |
+| **1–4** | Production components: `GravitreAIWorkspaceProvider`, `GravitreAIHelper`, `GravitreFloatingWorkspace`, `GravitreAIWorkspaceShell`, `GravitreAIMobileSheet`, bridges from `AiWorkspace`, shortcut Ctrl/Cmd+Shift+L, presence announcer, unit tests |
+| **Flag** | `NEXT_PUBLIC_AI_FLOAT_ENABLED === "true"` — **default OFF**; embedded `/ai` remains the user-visible experience |
+| **Part D** | Concurrent `floating-ai-workspace.tsx` bottom-right sheet — **removed** from tree (collision retired) |
+
+### Remaining gaps vs governing prompt (Phase 5 / decisions)
+
+1. **Cross-route continuity:** Helper still `router.push("/ai")` because live `useChat` is page-local — not overlay-any-route with one in-memory session.
+2. **No session persistence** of float position/size/`presentationMode` (with viewport clamp on restore).
+3. **Helper chrome** uses NucleoAgent + presence dot, not compact `GravitreOrb`.
+4. **Window-width content tiers** (`useElementWidth` Small/Medium/Large Float) not implemented.
+5. **Right panel** LiveActivityRail remains a fixed overlay compromise inside Expanded.
+6. **`/agents/[id]/chat`** still outside the float/expanded/fullscreen path.
+7. **Phase 5 rollout:** flag enable + prod human verification + performance measurement vs Phase 0 baseline — **not done**.
+
+### Spec §53 items — status map
+
+| Items | Status |
+|---|---|
+| 1–15 architecture / references / tokens / icons | Covered in this doc + reassessment; implementation largely matches proposal |
+| 16–20 prototypes | Phase 0 route live for review |
+| 21–22 continuity / underlying-app proofs | Partial on `/ai` + Float non-modal; full cross-route §50 unmet until hoist |
+| 23–24 a11y / performance plans | Shells implement core a11y; measurement gated on Phase 5 |
+| 25 phases | 0–4 code complete (flagged); **5 open** |
+
+### STOP FOR APPROVAL (2026-09-09)
+
+No further production AI-chat rewrite from the re-run of this prompt until Cesar chooses Phase 5 scope. Approval canvas: Cursor canvas `ai-float-workspace-approval`. Review prototypes at `/dev/ai-workspace-preview`.
+
+**Open decisions (updated):** (1) when/where to enable the flag; (2) hoist `useChat` for true cross-route overlay; (3) `/ai` direct visit = embed vs auto-Expanded; (4) mobile nav Chat → `/ai` vs sheet; (5) agent-chat approvals/files parity; (6) persist window geometry; (7) Helper = NucleoAgent vs GravitreOrb.
+
+---
+
+## Phase 5 shipped (2026-09-09) — Cesar approved Phase 5
+
+### Decisions applied
+
+| Decision | Choice |
+|---|---|
+| Flag | **Default ON** (`NEXT_PUBLIC_AI_FLOAT_ENABLED !== "false"`); kill-switch `=false` |
+| Cross-route overlay | Root-mounted `GravitreAIWorkspaceHost` (lazy-armed) — Helper/shortcut **no longer** `router.push("/ai")` |
+| `/ai` direct visit | Full-page embed via portal slot when float closed; navigating **onto** `/ai` while float open collapses to full-page of same runtime |
+| Mobile nav Chat | Unchanged → `/ai` (sheet still used when float opened from Helper on mobile) |
+| Agent chat parity | Deferred — `/agents/[id]/chat` still separate `useChat` |
+| Window geometry | **sessionStorage** persist size + drag translate with viewport clamp |
+| Helper visual | Compact **GravitreOrb** when active (listening/thinking/executing/working); NucleoAgent when idle |
+
+### Code
+
+- `components/gravitre/ai-workspace-host.tsx` — lazy-armed single `AiWorkspace`
+- `components/gravitre/ai-full-page-slot.tsx` — portal target on `/ai`
+- `lib/ai-float-geometry.ts` + Float shell persistence
+- `hooks/use-element-width.ts` — Float content tiers (small/medium/large)
+- Helper/shortcut updated; flag polarity flipped for rollout
+
+### Evidence (unit)
+
+Run: `pnpm --filter @gravitre/web exec vitest run __tests__/gravitre/ai-workspace-flags.test.ts __tests__/gravitre/ai-helper.test.ts __tests__/gravitre/use-gravitre-ai-shortcut.test.ts __tests__/gravitre/ai-float-geometry.test.ts`
+
+### Still open / not claimed PASS in prod
+
+- Human verify Helper → Float on `/dashboard` without route change, mid-stream navigate, reopen
+- Drag FPS / memory vs Phase 0 baseline
+- `/agents/[id]/chat` unification
+- Mobile bottom-nav Chat → sheet (explicit product call still available)

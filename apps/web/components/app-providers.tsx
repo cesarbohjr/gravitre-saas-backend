@@ -14,6 +14,8 @@ import { EntitlementsProvider } from "@/lib/entitlements-context"
 import { UserProfileProvider } from "@/lib/user-profile-context"
 import { AccountProfileSync } from "@/components/gravitre/account-profile-sync"
 import { GravitreAIWorkspaceProvider } from "@/components/gravitre/ai-workspace-provider"
+import { AiFullPageSlotProvider } from "@/components/gravitre/ai-full-page-slot"
+import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host"
 import { GravitreAIHelper } from "@/components/gravitre/ai-helper"
 import { GravitreAIShortcutListener } from "@/components/gravitre/ai-shortcut-listener"
 import { GravitreAIPresenceAnnouncer } from "@/components/gravitre/ai-presence-announcer"
@@ -48,10 +50,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
                         depends on: surviving route navigation unremounted.
                       */}
                       <GravitreAIWorkspaceProvider>
-                        {children}
-                        <GravitreAIHelper />
-                        <GravitreAIShortcutListener />
-                        <GravitreAIPresenceAnnouncer />
+                        <AiFullPageSlotProvider>
+                          {children}
+                          <GravitreAIWorkspaceHost />
+                          <GravitreAIHelper />
+                          <GravitreAIShortcutListener />
+                          <GravitreAIPresenceAnnouncer />
+                        </AiFullPageSlotProvider>
                       </GravitreAIWorkspaceProvider>
                     </ViewModeProvider>
                     <OnboardingChecklist />

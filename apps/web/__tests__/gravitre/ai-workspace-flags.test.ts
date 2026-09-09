@@ -1,11 +1,7 @@
 /**
- * GRAVITRE_AI_FLOAT_ENABLED — Phase 2 feature flag. See
- * lib/ai-workspace-flags.ts.
+ * GRAVITRE_AI_FLOAT_ENABLED — Phase 5 feature flag.
  *
- * The flag is read once at module scope (`process.env...` evaluated at
- * import time, same pattern as lib/marketing-flags.ts), so each case here
- * resets the module registry and re-imports after setting/clearing the env
- * var, rather than mutating the already-imported constant.
+ * Phase 5 default ON (`!== "false"`). Kill-switch: set env to exact `"false"`.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -22,26 +18,26 @@ afterEach(() => {
 })
 
 describe("GRAVITRE_AI_FLOAT_ENABLED", () => {
-  it("defaults to disabled (false) when the env var is unset — this is the safety-critical case", async () => {
+  it("defaults to enabled (true) when the env var is unset — Phase 5 rollout", async () => {
     delete process.env[ENV_KEY]
+    vi.resetModules()
+    const { GRAVITRE_AI_FLOAT_ENABLED } = await import("@/lib/ai-workspace-flags")
+    expect(GRAVITRE_AI_FLOAT_ENABLED).toBe(true)
+  })
+
+  it("disables only when explicitly set to the exact string 'false'", async () => {
+    process.env[ENV_KEY] = "false"
     vi.resetModules()
     const { GRAVITRE_AI_FLOAT_ENABLED } = await import("@/lib/ai-workspace-flags")
     expect(GRAVITRE_AI_FLOAT_ENABLED).toBe(false)
   })
 
-  it("stays disabled for any value other than the exact string 'true'", async () => {
-    for (const value of ["false", "1", "TRUE", "yes", ""]) {
+  it("stays enabled for other truthy-ish values including 'true'", async () => {
+    for (const value of ["true", "1", "TRUE", "yes", ""]) {
       process.env[ENV_KEY] = value
       vi.resetModules()
       const { GRAVITRE_AI_FLOAT_ENABLED } = await import("@/lib/ai-workspace-flags")
-      expect(GRAVITRE_AI_FLOAT_ENABLED).toBe(false)
+      expect(GRAVITRE_AI_FLOAT_ENABLED).toBe(true)
     }
-  })
-
-  it("enables only when explicitly set to 'true'", async () => {
-    process.env[ENV_KEY] = "true"
-    vi.resetModules()
-    const { GRAVITRE_AI_FLOAT_ENABLED } = await import("@/lib/ai-workspace-flags")
-    expect(GRAVITRE_AI_FLOAT_ENABLED).toBe(true)
   })
 })

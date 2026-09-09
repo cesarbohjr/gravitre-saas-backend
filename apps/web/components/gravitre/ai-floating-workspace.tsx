@@ -50,7 +50,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren } from "react"
 import { createPortal } from "react-dom"
-import { motion, useDragControls, useReducedMotion } from "framer-motion"
+import { motion, useDragControls, useMotionValue, useReducedMotion } from "framer-motion"
 // GripVertical is the ONE approved Lucide exception for the drag-handle/
 // resize-handle affordance (Phase 3) — do not replace it (see the
 // architecture doc's C1 audit and this phase's own instructions).
@@ -64,22 +64,18 @@ import {
   type GravitreHelperPresence,
 } from "@/lib/gravitre-ai-presence"
 import { useWindowResize, type WindowSize } from "@/hooks/use-window-resize"
+import {
+  clampFloatSize,
+  clampFloatTranslate,
+  GRAVITRE_FLOAT_DEFAULT_SIZE,
+  GRAVITRE_FLOAT_MAX_SIZE,
+  GRAVITRE_FLOAT_MIN_SIZE,
+  readStoredFloatGeometry,
+  writeStoredFloatGeometry,
+} from "@/lib/ai-float-geometry"
 
-/** Reuses the Phase 0 prototype's exact default Float size. */
-export const GRAVITRE_FLOAT_DEFAULT_SIZE: WindowSize = { width: 520, height: 560 }
-
-/**
- * Phase 3 resize clamps (B5). Min matches the Phase 0 prototype's own
- * `FLOAT_MIN` constant verbatim (400x420 — inside this task's requested
- * "~380-420px width, ~420px height" range). Max is a deliberately-chosen,
- * viewport-independent ceiling well short of Expanded territory (Expanded
- * is ~80-90% of viewport, typically 1000px+ wide on a laptop) — 720x760 —
- * so growing Float by hand never visually collides with what "Expand"
- * already does explicitly. The render below additionally clamps against
- * the live viewport so the window can never be dragged/resized off-screen.
- */
-export const GRAVITRE_FLOAT_MIN_SIZE: WindowSize = { width: 400, height: 420 }
-export const GRAVITRE_FLOAT_MAX_SIZE: WindowSize = { width: 720, height: 760 }
+/** Re-export size constants for tests / callers (canonical: lib/ai-float-geometry). */
+export { GRAVITRE_FLOAT_DEFAULT_SIZE, GRAVITRE_FLOAT_MIN_SIZE, GRAVITRE_FLOAT_MAX_SIZE }
 
 export type GravitreFloatingWorkspaceProps = PropsWithChildren<{
   presence: GravitreHelperPresence
@@ -95,6 +91,9 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
   const reduceMotion = useReducedMotion()
   const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null)
   const [size, setSize] = useState<WindowSize>(GRAVITRE_FLOAT_DEFAULT_SIZE)
+  const dragX = useMotionValue(0)
+  const dragY = useMotionValue(0)
+  const [geometryHydrated, setGeometryHydrated] = useState(false)
 
   useEffect(() => {
     const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
@@ -102,6 +101,34 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
   }, [])
+
+  // Phase 5 — restore session geometry once viewport is known; clamp if stale.
+  useEffect(() => {
+    if (!viewport || geometryHydrated) return
+    const stored = readStoredFloatGeometry(viewport)
+    if (stored) {
+      setSize(clampFloatSize({ width: stored.width, height: stored.height }, viewport))
+      dragX.set(stored.x)
+      dragY.set(stored.y)
+    }
+    setGeometryHydrated(true)
+  }, [viewport, geometryHydrated, dragX, dragY])
+
+  const persistGeometry = useCallback(
+    (nextSize: WindowSize) => {
+      if (!viewport) return
+      const pos = clampFloatTranslate({ x: dragX.get(), y: dragY.get() }, viewport)
+      dragX.set(pos.x)
+      dragY.set(pos.y)
+      writeStoredFloatGeometry({
+        width: nextSize.width,
+        height: nextSize.height,
+        x: pos.x,
+        y: pos.y,
+      })
+    },
+    [dragX, dragY, viewport],
+  )
 
   const maxSize = useMemo<WindowSize>(() => {
     if (!viewport) return GRAVITRE_FLOAT_MAX_SIZE
@@ -115,7 +142,10 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
     size,
     min: GRAVITRE_FLOAT_MIN_SIZE,
     max: maxSize,
-    onResize: setSize,
+    onResize: (next) => {
+      setSize(next)
+      persistGeometry(next)
+    },
   })
 
   const onHeaderPointerDown = useCallback(
@@ -140,18 +170,19 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
       dragControls={dragControls}
       dragMomentum={false}
       dragElastic={0}
+      style={{ x: dragX, y: dragY, width: size.width, height: size.height }}
       dragConstraints={{
         left: 8,
         right: Math.max(8, viewport.width - size.width - 8),
         top: 8,
         bottom: Math.max(8, viewport.height - size.height - 8),
       }}
+      onDragEnd={() => persistGeometry(size)}
       initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
       transition={{ duration: reduceMotion ? 0.01 : 0.18, ease: [0.22, 1, 0.36, 1] }}
       className="pointer-events-auto fixed bottom-5 left-5 z-[85] flex flex-col overflow-hidden rounded-[var(--g-radius-panel)] border border-divide bg-[color:var(--g-surface-1)] shadow-2xl"
-      style={{ width: size.width, height: size.height }}
       data-gravitre-float-workspace=""
       role="region"
       aria-label="Gravitre AI"

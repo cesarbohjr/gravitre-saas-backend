@@ -67,7 +67,7 @@ async function renderAnnouncer() {
 
 describe("GravitreAIPresenceAnnouncer", () => {
   it("renders nothing when the flag is off", async () => {
-    delete process.env[ENV_KEY]
+    process.env[ENV_KEY] = "false"
     vi.resetModules()
     await renderAnnouncer()
     expect(container.querySelector("[data-gravitre-ai-announcer]")).toBeNull()

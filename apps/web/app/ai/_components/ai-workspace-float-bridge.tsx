@@ -31,6 +31,7 @@
  */
 
 import type { KeyboardEvent, ReactNode, RefObject } from "react"
+import { useRef } from "react"
 import { GravitreFloatingWorkspace } from "@/components/gravitre/ai-floating-workspace"
 import {
   GravitreAIConversationComposer,
@@ -39,6 +40,8 @@ import {
 import type { UIMessage } from "ai"
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
+import { floatContentTiers, useElementWidth } from "@/hooks/use-element-width"
+import { cn } from "@/lib/utils"
 
 export interface GravitreAIFloatBridgeProps {
   presence: GravitreHelperPresence
@@ -119,49 +122,70 @@ export function GravitreAIFloatBridge({
   inputRef,
   onKeyDown,
 }: GravitreAIFloatBridgeProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const width = useElementWidth(bodyRef)
+  const tier = floatContentTier(width)
+
   return (
     <GravitreFloatingWorkspace presence={presence} onClose={onClose} onExpand={onExpand}>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        <GravitreAIConversationTranscript
-          routeKey="/ai"
-          messages={messages}
-          showWaiting={showWaiting}
-          isStreaming={isStreaming}
-          status={status}
-          isBusy={isBusy}
-          agentStatusLabel={agentStatusLabel}
-          dialogueMode={dialogueMode}
-          executionResult={executionResult}
-          pendingTask={pendingTask}
-          confirmExecuting={confirmExecuting}
-          onConfirmExecution={onConfirmExecution}
-          onRejectExecution={onRejectExecution}
-          onModifyExecution={onModifyExecution}
-          canApprove={canApprove}
-          conversationId={conversationId}
-          conversationTitle={conversationTitle}
-          onRegenerate={onRegenerate}
-          assistantLabel={assistantLabel}
-          waitingLabel={waitingLabel}
-        />
-      </div>
-      <div className="shrink-0 border-t border-divide p-2.5">
-        <GravitreAIConversationComposer
-          input={input}
-          onInputChange={onInputChange}
-          onSubmit={onSubmit}
-          canSubmit={canSubmit}
-          showSubmit
-          disabled={disabled}
-          isStreaming={composerIsStreaming}
-          onStop={onStop}
-          voiceEntitled={voiceEntitled}
-          placeholder={placeholder}
-          agentLabel={assistantLabel}
-          inputRef={inputRef}
-          onKeyDown={onKeyDown}
-          bordered={false}
-        />
+      <div
+        ref={bodyRef}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        data-float-content-tier={tier}
+      >
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto",
+            tier === "small" ? "px-2.5 py-2.5" : "px-3 py-3",
+          )}
+        >
+          <GravitreAIConversationTranscript
+            routeKey="/ai"
+            messages={messages}
+            showWaiting={showWaiting}
+            isStreaming={isStreaming}
+            status={status}
+            isBusy={isBusy}
+            agentStatusLabel={agentStatusLabel}
+            dialogueMode={dialogueMode}
+            executionResult={executionResult}
+            pendingTask={pendingTask}
+            confirmExecuting={confirmExecuting}
+            onConfirmExecution={onConfirmExecution}
+            onRejectExecution={onRejectExecution}
+            onModifyExecution={onModifyExecution}
+            canApprove={canApprove}
+            conversationId={conversationId}
+            conversationTitle={conversationTitle}
+            onRegenerate={onRegenerate}
+            assistantLabel={assistantLabel}
+            waitingLabel={waitingLabel}
+          />
+        </div>
+        <div
+          className={cn(
+            "shrink-0 border-t border-divide",
+            tier === "small" ? "p-2" : "p-2.5",
+            tier === "large" && "shadow-[inset_0_1px_0_0_color-mix(in_oklab,var(--g-text-muted)_8%,transparent)]",
+          )}
+        >
+          <GravitreAIConversationComposer
+            input={input}
+            onInputChange={onInputChange}
+            onSubmit={onSubmit}
+            canSubmit={canSubmit}
+            showSubmit
+            disabled={disabled}
+            isStreaming={composerIsStreaming}
+            onStop={onStop}
+            voiceEntitled={voiceEntitled}
+            placeholder={placeholder}
+            agentLabel={assistantLabel}
+            inputRef={inputRef}
+            onKeyDown={onKeyDown}
+            bordered={false}
+          />
+        </div>
       </div>
     </GravitreFloatingWorkspace>
   )

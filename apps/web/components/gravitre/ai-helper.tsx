@@ -1,77 +1,14 @@
 "use client"
 
 /**
- * GravitreAIHelper — Phase 2 of the "Gravitre AI Agent Workspace" redesign.
+ * GravitreAIHelper — Phase 2–5 of the "Gravitre AI Agent Workspace" redesign.
  *
- * See docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
- * Part C6, phase row 2 ("Mount + Float, behind a flag") and Part C3's Phase 0
- * prototype (`apps/web/app/dev/ai-workspace-preview/_components/
- * ai-workspace-prototype.tsx`), whose visual pattern this reuses — but wired
- * to real state instead of mock state.
- *
- * Mounted exactly once, in `app/layout.tsx`, inside `GravitreAIWorkspaceProvider`
- * and gated by `GRAVITRE_AI_FLOAT_ENABLED` (default OFF — see
- * `lib/ai-workspace-flags.ts`). Renders nothing when the flag is off, so this
- * component being mounted is not itself a visible behavior change.
- *
- * Suppressed on `/ai` itself — mirrors the existing precedent in
- * `lib/meson-page-context.ts`'s `shouldShowMesonToolbar`, which already hides
- * the Meson toolbar on `/ai` for the same reason: `/ai` already IS the full
- * chat surface, so a second "open AI chat" entry point on that exact page
- * would be redundant, not a new capability.
- *
- * Product decision made here (Phase 2, safe default, not permanent — see the
- * architecture doc's open decision #4 and this task's own instructions):
- * clicking the Helper from any route OTHER than `/ai` sets `presentationMode`
- * to "float" AND navigates to `/ai`. This is a deliberate, disclosed
- * deviation from "Float floats visually over whatever page you were on" —
- * see `ai-workspace-float-bridge.tsx`'s file-level comment for the full
- * rationale (the real live `useChat` instance backing `/ai` only exists
- * while `/ai`'s page component is mounted; Phase 1 explicitly kept it there
- * rather than hoisting it into the provider, and hoisting it now would be a
- * large, high-risk refactor of a 2,500+ line, heavily-concurrently-edited
- * file — out of scope for this phase). Once `/ai` mounts with
- * `presentationMode === "float"` already set, it renders the SAME live
- * conversation inside the floating shell instead of its normal full-page
- * layout — so the user still ends up looking at their real, live
- * conversation, just reached via a navigation rather than an in-place
- * overlay.
- *
- * Phase 3 reassessment (per this phase's own task instructions): now that
- * Expanded/Fullscreen also need the live `/ai` conversation, the
- * "navigate to /ai first, then present in the target mode" pattern is kept
- * unchanged for Phase 3 too — full cross-route `useChat` hoisting is NOT
- * undertaken here. Reasoning: Expanded/Fullscreen are reached exclusively
- * via controls inside Float (`GravitreFloatingWorkspace`'s "Expand" button)
- * and inside the Expanded shell (its "Fullscreen" button) — see
- * `ai-workspace-shell-bridge.tsx`. Both of those controls only exist while
- * already rendering on `/ai` in Float/Expanded mode, which itself only
- * happens after this Helper's `handleOpen()` navigation below. So by
- * construction, nothing in Phase 3 needs `useChat` to be reachable from any
- * OTHER route than `/ai` — the same constraint Phase 2 already accepted.
- * Hoisting the 2,700+-line, heavily-concurrently-edited `AiWorkspace`'s
- * `useChat` instance into the root provider remains a large, separate,
- * higher-risk refactor whose cost is still disproportionate to what this
- * phase's UI work requires. See the Phase 3 delivery report for the full
- * disclosed decision.
- *
- * Phase 4 addendum (B7 mobile collision — see architecture doc Part B7):
- * `MobileBottomNav` is `fixed inset-x-0 bottom-0 z-30 h-14` (56px) with
- * `pb-[env(safe-area-inset-bottom)]` (confirmed unchanged by re-reading
- * `mobile-bottom-nav.tsx` fresh). Below the `md` breakpoint (768px — the
- * same cutover already governing `MobileBottomNav`/`ConversationSidebar`'s
- * drawer mode/`LiveActivityRail`), this bubble now sits at
- * `bottom: calc(56px + env(safe-area-inset-bottom) + 12px)` instead of the
- * desktop `bottom-5` (20px), so it never collides with the nav bar. This is
- * a max-width media-query class (`max-md:bottom-[...]`), not a JS viewport
- * check, so it degrades safely (slightly higher than strictly necessary,
- * never overlapping) on the one mobile route where `MobileBottomNav`
- * itself is suppressed (`/builder`) — see `__tests__/gravitre/
- * ai-helper-mobile-offset.test.ts` for the class-assertion proof.
+ * Phase 5: opens Float in place (no `router.push("/ai")`). The root-mounted
+ * AiWorkspace host owns the live useChat instance across routes.
  */
 
-import { useRouter } from "next/navigation"
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { GravitreOrb } from "@/components/gravitre/assistant/voice-presentation"
 import { cn } from "@/lib/utils"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
@@ -79,6 +16,7 @@ import {
   deriveGravitreHelperPresence,
   GRAVITRE_HELPER_PRESENCE_COPY,
   GRAVITRE_HELPER_PRESENCE_DOT,
+  type GravitreHelperPresence,
 } from "@/lib/gravitre-ai-presence"
 
 /**
@@ -91,11 +29,14 @@ export function shouldShowGravitreAIHelper(pathname: string): boolean {
   return path !== "/ai" && !path.startsWith("/ai/")
 }
 
+function helperOrbSpeaker(presence: GravitreHelperPresence): "user" | "agent" {
+  if (presence === "listening") return "user"
+  return "agent"
+}
+
 export function GravitreAIHelper() {
-  const router = useRouter()
   const {
     pageContext,
-    presentationMode,
     setPresentationMode,
     floatWorkspaceOpen,
     setFloatWorkspaceOpen,
@@ -106,22 +47,19 @@ export function GravitreAIHelper() {
 
   if (!GRAVITRE_AI_FLOAT_ENABLED) return null
   if (!shouldShowGravitreAIHelper(pageContext.pathname)) return null
-  // Already floating/expanded/fullscreen — don't show a redundant second
-  // launcher on top of the window it would open. Phase 3: this used to
-  // check `presentationMode === "float"` only; it now checks
-  // `floatWorkspaceOpen` so it also hides while Expanded/Fullscreen are
-  // active (see ai-workspace-provider.tsx's file comment on
-  // `floatWorkspaceOpen` for why that's a distinct flag from
-  // `presentationMode`).
   if (floatWorkspaceOpen) return null
 
   const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
   const copy = GRAVITRE_HELPER_PRESENCE_COPY[presence]
+  const orbActive =
+    presence === "listening" ||
+    presence === "thinking" ||
+    presence === "executing" ||
+    presence === "working"
 
   const handleOpen = () => {
     setPresentationMode("float")
     setFloatWorkspaceOpen(true)
-    router.push("/ai")
   }
 
   return (
@@ -131,17 +69,24 @@ export function GravitreAIHelper() {
       data-gravitre-ai-helper=""
       className={cn(
         "fixed left-5 z-[85] flex items-center gap-2.5 rounded-full border border-divide",
-        // Mobile (below `md`, 768px): clear MobileBottomNav's 56px fixed bar
-        // + its safe-area inset + a 12px gap (B7). Desktop keeps the
-        // original bottom-5 (20px) offset, unchanged.
         "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
         "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[var(--np-shadow)] transition-colors",
         "hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
       )}
       aria-label={`Open Gravitre AI — ${copy.label}`}
     >
-      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white">
-        <NucleoAgent className="h-4 w-4" />
+      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+        {orbActive ? (
+          <GravitreOrb
+            speaker={helperOrbSpeaker(presence)}
+            className="!h-9 !w-9"
+            amplitude={presence === "listening" ? 0.55 : 0.35}
+          />
+        ) : (
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white">
+            <NucleoAgent className="h-4 w-4" />
+          </span>
+        )}
         <span
           className={cn(
             "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[color:var(--g-surface-1)]",

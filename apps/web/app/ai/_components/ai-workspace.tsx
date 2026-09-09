@@ -8,6 +8,8 @@ import {
   useRef,
   useState,
 } from "react"
+import { createPortal } from "react-dom"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import useSWR from "swr"
@@ -55,6 +57,7 @@ import {
   GravitreAIConversationTranscript,
 } from "@/components/gravitre/ai-conversation-core"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { useAiFullPageSlot } from "@/components/gravitre/ai-full-page-slot"
 import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
 import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
 import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
@@ -188,6 +191,18 @@ function normalizeChatText(message: UIMessage): string {
   return uiMessageText(message)
 }
 
+function parseWorkspaceMode(value: string | null): ModeId {
+  if (value === "auto" || value === "execute" || value === "chat" || value === "find") {
+    return value
+  }
+  return "auto"
+}
+
+function isAiWorkspacePath(pathname: string): boolean {
+  const path = pathname.split("?")[0] ?? ""
+  return path === "/ai" || path.startsWith("/ai/")
+}
+
 export function AiWorkspace({
   initialMode = "auto",
   initialPrompt = "",
@@ -195,6 +210,9 @@ export function AiWorkspace({
   initialMessageId = null,
 }: AiWorkspaceProps) {
   const { user } = useAuth()
+  const pathname = usePathname() ?? ""
+  const searchParams = useSearchParams()
+  const { slotElement } = useAiFullPageSlot()
   // Phase 2/3 (Gravitre AI Agent Workspace redesign) — see the early-return
   // Float/Expanded/Fullscreen branch below, right before this component's
   // main `return`. Reading this context here has no effect on rendering by
@@ -218,6 +236,37 @@ export function AiWorkspace({
   // server and until the first client measurement, matching this hook's
   // own SSR-safe default.
   const isMobileWorkspaceViewport = useGravitreMobileViewport()
+
+  // Phase 5 — when the host mounts AiWorkspace off `/ai`, deep links still
+  // apply once the user lands on `/ai` (query beats empty host defaults).
+  const onAiRoute = isAiWorkspacePath(pathname)
+  const resolvedInitialMode = onAiRoute
+    ? parseWorkspaceMode(searchParams.get("mode")) || initialMode
+    : initialMode
+  const resolvedInitialPrompt = onAiRoute
+    ? searchParams.get("prompt")?.trim() || searchParams.get("q")?.trim() || initialPrompt
+    : initialPrompt
+  const resolvedInitialConversationId = onAiRoute
+    ? searchParams.get("c")?.trim() || searchParams.get("conversation")?.trim() || initialConversationId
+    : initialConversationId
+  const resolvedInitialMessageId = onAiRoute
+    ? searchParams.get("m")?.trim() || initialMessageId
+    : initialMessageId
+
+  // Phase 5 — navigating onto `/ai` while Float is open collapses into the
+  // full-page surface of the SAME runtime (no second useChat). Opening Float
+  // while already on `/ai` (shortcut) is intentionally left alone.
+  const prevPathnameRef = useRef(pathname)
+  useEffect(() => {
+    if (!GRAVITRE_AI_FLOAT_ENABLED) return
+    const wasAi = isAiWorkspacePath(prevPathnameRef.current)
+    const nowAi = isAiWorkspacePath(pathname)
+    prevPathnameRef.current = pathname
+    if (!wasAi && nowAi && floatWorkspaceOpen) {
+      setFloatWorkspaceOpen(false)
+      setPresentationMode("expanded")
+    }
+  }, [pathname, floatWorkspaceOpen, setFloatWorkspaceOpen, setPresentationMode])
   // Phase 3 — local UI state for the Expanded/Fullscreen shell's panel
   // collapse toggles. Deliberately local (not lifted into the provider):
   // nothing outside this component needs to read/persist it, and both
@@ -245,7 +294,7 @@ export function AiWorkspace({
   const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
   })
-  const [mode, setMode] = useState<ModeId>(initialMode)
+  const [mode, setMode] = useState<ModeId>(resolvedInitialMode)
   const [input, setInput] = useState("")
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<AiEngine | null>(null)
@@ -296,7 +345,7 @@ export function AiWorkspace({
   const [messagesHydrated, setMessagesHydrated] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
-    return initialConversationId || readStoredConversationId()
+    return resolvedInitialConversationId || readStoredConversationId()
   })
   const cachePaintedForRef = useRef<string | null>(null)
   const apiRefreshNeededRef = useRef(false)
@@ -1555,10 +1604,10 @@ export function AiWorkspace({
   )
 
   useEffect(() => {
-    if (initialPromptSentRef.current || !initialPrompt.trim()) return
+    if (initialPromptSentRef.current || !resolvedInitialPrompt.trim()) return
     initialPromptSentRef.current = true
-    void submitPrompt(initialPrompt)
-  }, [initialPrompt, submitPrompt])
+    void submitPrompt(resolvedInitialPrompt)
+  }, [resolvedInitialPrompt, submitPrompt])
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
@@ -1917,25 +1966,25 @@ export function AiWorkspace({
   }, [status])
 
   useEffect(() => {
-    if (!initialConversationId || initialConversationHandledRef.current || !user || !orgReady) return
+    if (!resolvedInitialConversationId || initialConversationHandledRef.current || !user || !orgReady) return
     if (
       conversations.length > 0 &&
-      !conversations.some((conversation) => conversation.id === initialConversationId)
+      !conversations.some((conversation) => conversation.id === resolvedInitialConversationId)
     ) {
       return
     }
     initialConversationHandledRef.current = true
-    void handleSelectConversation(initialConversationId)
-  }, [initialConversationId, user, orgReady, conversations, handleSelectConversation])
+    void handleSelectConversation(resolvedInitialConversationId)
+  }, [resolvedInitialConversationId, user, orgReady, conversations, handleSelectConversation])
 
   const deepLinkMessageHandledRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!initialMessageId || !messagesHydrated || conversationLoading) return
-    if (deepLinkMessageHandledRef.current === initialMessageId) return
-    if (!messages.some((message) => message.id === initialMessageId)) return
-    deepLinkMessageHandledRef.current = initialMessageId
+    if (!resolvedInitialMessageId || !messagesHydrated || conversationLoading) return
+    if (deepLinkMessageHandledRef.current === resolvedInitialMessageId) return
+    if (!messages.some((message) => message.id === resolvedInitialMessageId)) return
+    deepLinkMessageHandledRef.current = resolvedInitialMessageId
     const frame = window.requestAnimationFrame(() => {
-      const el = document.getElementById(`msg-${initialMessageId}`)
+      const el = document.getElementById(`msg-${resolvedInitialMessageId}`)
       if (!el) return
       el.scrollIntoView({ behavior: "smooth", block: "center" })
       el.classList.add("ai-message-deep-link-target")
@@ -1944,7 +1993,7 @@ export function AiWorkspace({
       }, 2200)
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [initialMessageId, messages, messagesHydrated, conversationLoading])
+  }, [resolvedInitialMessageId, messages, messagesHydrated, conversationLoading])
 
   useEffect(() => {
     if (!orgReady || !user || !activeConversationId || sessionBusy || isChatBusy || conversationLoading) {
@@ -2001,7 +2050,7 @@ export function AiWorkspace({
     inlineTurns.length === 0 &&
     !isChatBusy &&
     !routing &&
-    !initialPrompt.trim() &&
+    !resolvedInitialPrompt.trim() &&
     !conversationLoading
 
   const showEmptyThreadHint =
@@ -2285,7 +2334,9 @@ export function AiWorkspace({
     )
   }
 
-  return (
+  }
+
+  const fullPageLayout = (
     <div className="flex h-full min-h-0 flex-1">
       <ConversationSidebar
         conversations={conversations}
@@ -2826,4 +2877,16 @@ export function AiWorkspace({
       />
     </div>
   )
+
+  // Phase 5 — when the float flag is on, AiWorkspace is root-hosted. Full-page
+  // chrome portals into `/ai`'s AppShell slot; off `/ai` with float closed we
+  // keep hooks alive but render nothing (Helper remains the entry).
+  if (GRAVITRE_AI_FLOAT_ENABLED) {
+    if (!floatWorkspaceOpen && !onAiRoute) return null
+    if (!floatWorkspaceOpen && onAiRoute) {
+      if (slotElement) return createPortal(fullPageLayout, slotElement)
+      return null
+    }
+  }
+  return fullPageLayout
 }

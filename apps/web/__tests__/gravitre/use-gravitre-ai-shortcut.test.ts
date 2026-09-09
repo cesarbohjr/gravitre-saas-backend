@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 /**
- * useGravitreAIShortcut — Phase 3 global keyboard shortcut
- * (Ctrl/Cmd+Shift+L). See the hook's own file header for the shortcut
- * audit. `GRAVITRE_AI_FLOAT_ENABLED` is read at module-import time (same
- * pattern as lib/marketing-flags.ts and ai-helper.test.ts), so flag cases
- * set the env var and `vi.resetModules()` before dynamically re-importing.
+ * useGravitreAIShortcut — Phase 5: Ctrl/Cmd+Shift+L opens Float without /ai navigation.
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -79,8 +75,8 @@ function dispatchShortcut(target: EventTarget = window) {
 }
 
 describe("useGravitreAIShortcut", () => {
-  it("does NOT attach a listener when the flag is off — dispatching the combo changes nothing", async () => {
-    delete process.env[ENV_KEY]
+  it("does NOT attach a listener when the flag is explicitly off", async () => {
+    process.env[ENV_KEY] = "false"
     vi.resetModules()
     const sink = await renderListener()
     act(() => {
@@ -91,7 +87,7 @@ describe("useGravitreAIShortcut", () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it("opens Float and navigates to /ai when the flag is on and the workspace is closed", async () => {
+  it("opens Float without navigating when the workspace is closed", async () => {
     process.env[ENV_KEY] = "true"
     vi.resetModules()
     pathnameState.value = "/dashboard"
@@ -103,19 +99,20 @@ describe("useGravitreAIShortcut", () => {
 
     expect(sink.value?.presentationMode).toBe("float")
     expect(sink.value?.floatWorkspaceOpen).toBe(true)
-    expect(routerPush).toHaveBeenCalledWith("/ai")
+    expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it("does not navigate again if already on /ai", async () => {
+  it("opens Float from /ai without navigation", async () => {
     process.env[ENV_KEY] = "true"
     vi.resetModules()
     pathnameState.value = "/ai"
-    await renderListener()
+    const sink = await renderListener()
 
     act(() => {
       dispatchShortcut()
     })
 
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
     expect(routerPush).not.toHaveBeenCalled()
   })
 

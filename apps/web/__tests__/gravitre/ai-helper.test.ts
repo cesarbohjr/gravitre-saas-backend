@@ -94,8 +94,8 @@ describe("shouldShowGravitreAIHelper", () => {
 })
 
 describe("GravitreAIHelper", () => {
-  it("renders nothing when the flag is off (default) — this is the zero-visible-change safety proof", async () => {
-    delete process.env[ENV_KEY]
+  it("renders nothing when the flag is explicitly off — kill-switch proof", async () => {
+    process.env[ENV_KEY] = "false"
     vi.resetModules()
     await renderHelper()
     expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
@@ -118,7 +118,7 @@ describe("GravitreAIHelper", () => {
     expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
   })
 
-  it("clicking the bubble sets presentationMode to 'float' and navigates to /ai", async () => {
+  it("clicking the bubble sets presentationMode to 'float' without navigating to /ai", async () => {
     process.env[ENV_KEY] = "true"
     vi.resetModules()
     pathnameState.value = "/dashboard"
@@ -130,7 +130,8 @@ describe("GravitreAIHelper", () => {
     act(() => {
       button.click()
     })
-    expect(routerPush).toHaveBeenCalledWith("/ai")
+    expect(routerPush).not.toHaveBeenCalled()
     expect(sink.value?.presentationMode).toBe("float")
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
   })
 })
