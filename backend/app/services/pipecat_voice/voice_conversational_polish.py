@@ -62,37 +62,32 @@ def spoken_prompt_v2_section() -> str:
 
 @dataclass(frozen=True)
 class ResponseLengthBand:
-    """Target spoken-reply size derived from the user's own utterance."""
+    """Target spoken-reply size derived from the user's own utterance.
+
+    Known limitation, measured in production 2026-09-08 with
+    ``VOICE_RESPONSE_LENGTH_ADAPT_V1`` on: the band reaches the model correctly
+    (verified in the composed prompt) but is not reliably obeyed. A *brief* turn
+    (2 sentences / 35 words) came back at 9 sentences / 81 words; a *standard*
+    turn (3 / 55) at 17 sentences / 331 words.
+
+    Enforcing it with ``max_completion_tokens`` was tried and reverted the same
+    day — it bounded length but cut replies mid-sentence, which TTS speaks aloud
+    and cannot un-say. The overruns also correlated with replies that were not in
+    spoken register at all (markdown asterisks, table names, "Let me check…" tool
+    narration), so length looks like a symptom of tool-using voice turns taking a
+    text-chat formatting path rather than a problem to solve with a ceiling.
+    """
 
     band: str
     max_sentences: int
     soft_word_cap: int
     reason: str
 
-    @property
-    def max_output_tokens(self) -> int:
-        """Hard generation ceiling as a backstop to the prompt directive.
-
-        Measured 2026-09-08 in production with ``VOICE_RESPONSE_LENGTH_ADAPT_V1``
-        on: the prompt-only ceiling was ignored outright — a *brief* turn (2
-        sentences / 35 words) came back at 9 sentences / 81 words, and a
-        *standard* turn (3 / 55) at 17 sentences / 331 words. The directive
-        reaches the model correctly, so this is an adherence problem that prompt
-        wording alone does not solve.
-
-        Sized with roughly 2x headroom over ``soft_word_cap`` so it never
-        guillotines a reply that merely runs a little long — it only stops the
-        3-6x runaways. At ~1.35 tokens per spoken English word, 2.2 tokens per
-        word plus a 16-token floor leaves room to finish the sentence in flight.
-        """
-        return int(self.soft_word_cap * 2.2) + 16
-
     def as_meta(self) -> dict[str, Any]:
         return {
             "band": self.band,
             "max_sentences": self.max_sentences,
             "soft_word_cap": self.soft_word_cap,
-            "max_output_tokens": self.max_output_tokens,
             "reason": self.reason,
         }
 

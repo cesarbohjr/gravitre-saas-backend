@@ -265,62 +265,30 @@ class TestUnifiedPromptComposition:
         assert "Spoken length target" not in prompt
 
 
-class TestResponseLengthTokenCap:
-    """The prompt ceiling alone was measurably ignored in production.
+class TestResponseLengthIsNotTokenCapped:
+    """Regression guard: the length band must not be enforced via a token cap.
 
-    2026-09-08, flags on: a *brief* turn (2 sentences / 35 words) returned 9
-    sentences / 81 words and a *standard* turn (3 / 55) returned 17 / 331. The cap
-    is the deterministic backstop.
+    Tried in production 2026-09-08 and reverted the same day. A band-derived
+    ``max_completion_tokens`` did bound length (an expansive turn fell from 331 to
+    108 words) but it landed inside normal replies instead of only clipping
+    extremes, ending turns mid-sentence ("...typically goes through the"). TTS
+    speaks text as it streams, so that cut is audible and unrecoverable.
     """
 
-    def test_cap_scales_with_the_band(self):
-        caps = {
-            band: resolve_response_length_band(text).max_output_tokens
-            for band, text in (
-                ("terse", "Status?"),
-                ("brief", "Did the HubSpot sync finish today?"),
-                ("standard", "explain how the operator decides what needs approval"),
-            )
-        }
-        assert caps["terse"] < caps["brief"] < caps["standard"]
+    def test_band_exposes_no_token_ceiling(self):
+        band = resolve_response_length_band("Status?")
+        assert not hasattr(band, "max_output_tokens")
+        assert "max_output_tokens" not in band.as_meta()
 
-    def test_cap_leaves_headroom_over_the_stated_word_cap(self):
-        """A slightly-long reply must not be guillotined mid-sentence."""
-        for text in ("Status?", "Did the HubSpot sync finish today?"):
-            band = resolve_response_length_band(text)
-            # ~1.35 tokens per spoken word, so the cap should permit clearly more
-            # than the soft word cap before it ever bites.
-            assert band.max_output_tokens > band.soft_word_cap * 1.35 * 1.4
-
-    def test_cap_would_have_stopped_the_observed_runaway(self):
-        """331 words is ~450 tokens; the standard cap must be far below that."""
-        band = resolve_response_length_band(
-            "explain how the operator decides what needs approval"
-        )
-        assert band.band == "standard"
-        assert band.max_output_tokens < 300
-
-    def test_cap_exposed_in_meta_for_telemetry(self):
-        meta = resolve_response_length_band("Status?").as_meta()
-        assert meta["max_output_tokens"] == resolve_response_length_band(
-            "Status?"
-        ).max_output_tokens
-
-    def test_cap_only_applied_when_reasoning_is_off(self):
-        """max_completion_tokens also covers reasoning tokens.
-
-        Applying a tight cap to a reasoning turn risks spending the whole budget
-        before any user-visible text, converting a too-long reply into an empty
-        one. The guard must therefore check reasoning_effort.
-        """
+    def test_unified_turn_does_not_cap_completion_tokens(self):
         import inspect
 
         from app.services import unified_turn_reasoning_service
 
         source = inspect.getsource(unified_turn_reasoning_service.run_unified_turn_shadow)
-        assert 'kwargs["max_completion_tokens"] = _length_band.max_output_tokens' in source
-        guard = '_length_band is not None and kwargs.get("reasoning_effort") == "none"'
-        assert guard in source
+        assert "max_completion_tokens" not in source.replace(
+            "# Do NOT add max_completion_tokens here", ""
+        )
 
 
 class TestVoiceStatusPhase5Block:

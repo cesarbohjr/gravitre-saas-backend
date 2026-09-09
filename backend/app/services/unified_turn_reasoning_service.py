@@ -42,6 +42,8 @@ def _log_unified_turn_breakdown(
     *,
     outcome: str,
     model: str | None = None,
+    settings: Settings | None = None,
+    message_id: str | None = None,
 ) -> None:
     """Voice latency Phase-6 root-cause evidence (2026-09-04): breakdown was already
     computed here on every turn but never logged, leaving the 8-13s pre-first-token
@@ -87,6 +89,20 @@ def _log_unified_turn_breakdown(
             json.dumps(breakdown.get("context_size_breakdown") or {}, separators=(",", ":")),
         )
     except Exception:  # noqa: BLE001 — logging must never break the turn.
+        pass
+
+    try:
+        from app.services.unified_turn_pipeline_bridge import bridge_unified_turn_breakdown_to_pipeline
+
+        active = settings or get_settings()
+        bridge_unified_turn_breakdown_to_pipeline(
+            active,
+            org_id=org_id,
+            breakdown=breakdown,
+            message_id=message_id,
+            model_used=model,
+        )
+    except Exception:  # noqa: BLE001 — bridge must never break the turn.
         pass
 
 
@@ -1185,16 +1201,13 @@ async def run_unified_turn_shadow(
                 and "nano" in str(model).lower()
             ):
                 kwargs["reasoning_effort"] = "none"
-            # Phase 5 backstop: the prompt-only length ceiling is measurably
-            # ignored (see ResponseLengthBand.max_output_tokens), so cap
-            # generation too. Gated on reasoning being off because
-            # max_completion_tokens also covers reasoning tokens — applying it to
-            # a reasoning turn risks burning the budget before any user-visible
-            # text, turning a long reply into an empty one. The observed runaways
-            # were all on this reasoning-off conversational voice pin.
-            if _length_band is not None and kwargs.get("reasoning_effort") == "none":
-                kwargs["max_completion_tokens"] = _length_band.max_output_tokens
-                breakdown["spoken_length_band"] = _length_band.as_meta()
+            # Do NOT add max_completion_tokens here to enforce the spoken length
+            # band. Tried and reverted on 2026-09-08: it did bound length (an
+            # expansive turn fell from 331 to 108 words) but landed inside normal
+            # replies rather than only clipping extremes, so turns ended
+            # mid-sentence ("...typically goes through the"). TTS speaks text as it
+            # streams, so a mid-sentence cut cannot be trimmed after the fact and
+            # is audible to the user. See ResponseLengthBand for the measurement.
             if conversational_no_tools:
                 breakdown["conversational_no_tools"] = True
                 breakdown["voice_conversational_model"] = model
@@ -1270,7 +1283,9 @@ async def run_unified_turn_shadow(
         breakdown["error"] = str(exc)[:200]
         if "unified_turn_stream_timeout" in str(exc):
             breakdown["stream_timed_out"] = True
-        _log_unified_turn_breakdown(org_id, breakdown, outcome="error_model_call")
+        _log_unified_turn_breakdown(
+            org_id, breakdown, outcome="error_model_call", settings=active, message_id=None
+        )
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error=str(exc)[:500],
@@ -1281,7 +1296,9 @@ async def run_unified_turn_shadow(
         )
 
     if completion is None:
-        _log_unified_turn_breakdown(org_id, breakdown, outcome="error_no_completion")
+        _log_unified_turn_breakdown(
+            org_id, breakdown, outcome="error_no_completion", settings=active, message_id=None
+        )
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error="no_model_completion",
@@ -1308,7 +1325,9 @@ async def run_unified_turn_shadow(
         breakdown["pre_first_token_overhead_ms"] = max(
             0, int(completion.first_token_ms) - int(completion.model_ttft_ms)
         )
-    _log_unified_turn_breakdown(org_id, breakdown, outcome="ok", model=model)
+    _log_unified_turn_breakdown(
+        org_id, breakdown, outcome="ok", model=model, settings=active, message_id=None
+    )
 
     result = UnifiedTurnShadowResult(
         latency_ms=latency_ms,
