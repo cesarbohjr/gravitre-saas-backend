@@ -225,13 +225,13 @@ export default function SupportPage() {
         />
         <div className="grid gap-6 sm:grid-cols-3">
           <GravitreFlow className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
-            <a href="/docs" className="block">
+            <Link href="/docs" className="block">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-medium text-foreground mb-1">Documentation</h3>
               <p className="text-sm text-muted-foreground">Guides, concepts, and API reference</p>
-            </a>
+            </Link>
           </GravitreFlow>
           <GravitreFlow
             delay={0.1}
