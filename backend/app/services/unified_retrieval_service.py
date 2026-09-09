@@ -1,6 +1,7 @@
 """UnifiedRetrievalService — single internal+org retrieval path for intelligence runs."""
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -100,9 +101,17 @@ class UnifiedRetrievalService:
                     default_retrieval_key=f"retrieval:{retrieval_plan.policy_version if retrieval_plan.active else 'legacy'}",
                 )
 
+        # These two are synchronous, blocking Supabase calls. `retrieve` is the
+        # slowest member of the caller's asyncio.gather, so running them on the
+        # event loop meant that gather never actually ran in parallel — and on a
+        # voice server it stalled audio frames for every live session. It also
+        # made concurrent context assembly impossible: overlapping it with the
+        # unified-turn LIVE pass starved LIVE's stream until it hit its 20s
+        # timeout and failed the turn.
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:
-            org_context = get_org_context_service().get_snapshot(
+            org_context = await asyncio.to_thread(
+                get_org_context_service().get_snapshot,
                 client,
                 org_id,
                 environment_name=environment_name,
@@ -113,7 +122,8 @@ class UnifiedRetrievalService:
         memory_context: dict[str, Any] = {}
         memory_section = ""
         if active_scopes.agent_memory:
-            memory_context = build_task_retrieval_context(
+            memory_context = await asyncio.to_thread(
+                build_task_retrieval_context,
                 self.settings,
                 client,
                 org_id=org_id,

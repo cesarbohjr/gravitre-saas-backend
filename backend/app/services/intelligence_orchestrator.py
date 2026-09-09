@@ -214,7 +214,11 @@ class IntelligenceOrchestrator:
         _mark("workflow_outcomes")
 
         if agent_id:
-            agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
+            # Sync Supabase read; see the connected_integrations note above for why
+            # blocking the loop here is worse than just slow on a voice server.
+            agent = await asyncio.to_thread(
+                resolve_agent_record, client, org_id, agent_id, environment_name=environment_name
+            )
             if not agent:
                 agent = build_synthetic_agent_for_task(query, context={"agent_id": agent_id})
                 agent["id"] = agent_id
@@ -228,7 +232,9 @@ class IntelligenceOrchestrator:
         resolved_agent_id = str(agent.get("id") or agent_id or "")
         if resolved_agent_id and resolved_agent_id not in {"assistant"}:
             try:
-                knowledge_assignments = self._knowledge.list_assignments(client, org_id, resolved_agent_id)
+                knowledge_assignments = await asyncio.to_thread(
+                    self._knowledge.list_assignments, client, org_id, resolved_agent_id
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator knowledge assignments skipped agent_id=%s error=%s", resolved_agent_id, exc)
                 knowledge_assignments = self._knowledge.resolve_assignments(agent)
@@ -318,7 +324,8 @@ class IntelligenceOrchestrator:
                     enabled_slices=frozenset(set(registry_plan.enabled_slices) | {"pack_state"}),
                 )
             if registry_plan.slice_enabled("pack_state"):
-                pack_state_section = build_pack_operational_section(
+                pack_state_section = await asyncio.to_thread(
+                    build_pack_operational_section,
                     client,
                     org_id=org_id,
                     knowledge_assignments=knowledge_assignments,
