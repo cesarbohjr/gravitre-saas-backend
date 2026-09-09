@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
@@ -491,36 +492,40 @@ function ConnectorNode({
           connector.status === "connected" && "shadow-[var(--g-brand-glow)]",
           connector.status === "error" && "border-destructive/30"
         )}>
-          {/* Status indicator */}
-          <div className={cn(
-            "absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center ring-4 ring-[color:var(--g-surface-1)]",
-            config.bg
-          )}>
+          {/* Status indicator — inset (not corner-overhang) so it cannot read as window chrome */}
+          <div
+            className={cn(
+              "absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full",
+              config.bg,
+            )}
+            title={config.label}
+            aria-hidden
+          >
             {isSyncing ? (
               <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
             ) : (
-              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+              <StatusIcon className="h-2.5 w-2.5 text-white" />
             )}
           </div>
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
+          <div className="mb-3 flex items-start justify-between gap-2 pr-8">
+            <div className="flex min-w-0 items-center gap-3">
               <ConnectorIcon 
                 vendor={connector.type} 
                 status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
                 size="sm"
                 showStatusIndicator={false}
               />
-              <div>
-                <h3 className="text-sm font-medium text-foreground">{connector.name}</h3>
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-medium text-foreground">{connector.name}</h3>
                 <p className="text-[10px] text-muted-foreground">{connector.type}</p>
               </div>
             </div>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100" aria-label={`${connector.name} options`}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100" aria-label={`${connector.name} options`}>
                   <MoreVertical className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -2765,7 +2770,7 @@ function ConnectorsPageContent() {
           icon={<NucleoConnector className="h-5 w-5" />}
           className={cn("w-full min-w-0", chromeCollapsed && "py-2 sm:py-2")}
           actions={
-            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <Button
                 type="button"
                 variant="ghost"
@@ -2782,42 +2787,153 @@ function ConnectorsPageContent() {
                 )}
                 <span className="hidden sm:inline">{chromeCollapsed ? "Show filters" : "Minimize"}</span>
               </Button>
-              <div className="relative w-full min-w-0 md:w-auto md:flex-none">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search connectors..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full md:w-64 pl-9 bg-secondary"
-                />
-              </div>
               {!chromeCollapsed ? (
-              <>
-              {/* Mobile / tablet filters (desktop pills are lg+) */}
-              <div className="flex lg:hidden items-center gap-2 w-full overflow-x-auto pb-1">
-                {statusFilterOptions.map((status) => (
-                  <button
-                    key={status.value}
-                    onClick={() => setStatusFilter(status.value)}
-                    className={cn(
-                      // rounded-full to match the lg+ desktop pills above: this is the
-                      // same filter control at a smaller breakpoint, so it must not
-                      // change shape.
-                      "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
-                      statusFilter === status.value
-                        ? "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] text-foreground border-divide"
-                        : "text-muted-foreground border-transparent hover:text-foreground",
-                    )}
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" aria-label="More options">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link href="/marketplace/billing" className="gap-2">
+                          <Receipt className="h-4 w-4 text-muted-foreground" />
+                          Partner billing
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/marketplace/submit" className="gap-2">
+                          <Code2 className="h-4 w-4 text-muted-foreground" />
+                          Partner SDK
+                        </Link>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href="/marketplace/admin" className="gap-2">
+                              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                              Review submissions
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 shrink-0"
+                    onClick={() => openAddModal()}
                   >
-                    {"dot" in status && status.dot ? (
-                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                    ) : null}
-                    {status.label}
-                  </button>
-                ))}
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Browse all</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 shrink-0"
+                    disabled={isLiveRefreshing || isValidating || !orgId}
+                    onClick={() => void refreshLiveStatus()}
+                  >
+                    <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
+                    <span className="hidden sm:inline">Check live status</span>
+                  </Button>
+                </>
+              ) : null}
+              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Connector</span>
+              </Button>
+            </div>
+          }
+        >
+          {/* Toolbar row — search/filters never share the title flex line (avoids overlap) */}
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search connectors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-secondary pl-9"
+                aria-label="Search connectors"
+              />
+            </div>
+            {!chromeCollapsed ? (
+              <>
+                <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:hidden">
+                  {statusFilterOptions.map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      onClick={() => setStatusFilter(status.value)}
+                      className={cn(
+                        "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
+                        statusFilter === status.value
+                          ? "border-divide bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {"dot" in status && status.dot ? (
+                        <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                      ) : null}
+                      {status.label}
+                    </button>
+                  ))}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+                        <Filter className="h-3.5 w-3.5" />
+                        {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
+                        <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                        All Categories
+                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {Object.entries(connectorCategories).map(([cat, data]) => (
+                        <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
+                          <span className="flex-1">{cat}</span>
+                          <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
+                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {hasActiveFilters ? (
+                    <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" onClick={clearFilters}>
+                      Clear
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="hidden items-center gap-1 rounded-full border border-divide bg-[color:var(--g-surface-2)] p-1 lg:flex">
+                  {statusFilterOptions.map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      onClick={() => setStatusFilter(status.value)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all",
+                        statusFilter === status.value
+                          ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
+                          : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                      )}
+                    >
+                      {"dot" in status && status.dot ? (
+                        <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                      ) : null}
+                      {status.label}
+                    </button>
+                  ))}
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+                    <Button variant="outline" size="sm" className="hidden h-9 gap-2 md:flex">
                       <Filter className="h-3.5 w-3.5" />
                       {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
                     </Button>
@@ -2831,6 +2947,7 @@ function ConnectorsPageContent() {
                     <DropdownMenuSeparator />
                     {Object.entries(connectorCategories).map(([cat, data]) => (
                       <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
+                        <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
                         <span className="flex-1">{cat}</span>
                         <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
                         {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
@@ -2838,167 +2955,32 @@ function ConnectorsPageContent() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {hasActiveFilters ? (
-                  <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" onClick={clearFilters}>
-                    Clear
-                  </Button>
-                ) : null}
-              </div>
-              {/* Status Filter Pills */}
-              <div className="hidden items-center gap-1 rounded-full border border-divide bg-[color:var(--g-surface-2)] p-1 lg:flex">
-                {statusFilterOptions.map((status) => (
-                  <button
-                    key={status.value}
-                    onClick={() => setStatusFilter(status.value)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all",
-                      statusFilter === status.value
-                        ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
-                        : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                    )}
+                <div className="hidden border rounded-md md:flex" role="group" aria-label="Connector view mode">
+                  <Button
+                    variant={viewMode === "topology" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-9 w-9 rounded-r-none p-0"
+                    onClick={() => setViewMode("topology")}
+                    aria-label="Network topology view"
+                    aria-pressed={viewMode === "topology"}
                   >
-                    {"dot" in status && status.dot ? (
-                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                    ) : null}
-                    {status.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Category Dropdown - Now cleaner */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-2 hidden md:flex">
-                    <Filter className="h-3.5 w-3.5" />
-                    {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
+                    <Cable className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem 
-                    onClick={() => setCategoryFilter("all")}
-                    className="gap-2"
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-9 w-9 rounded-l-none p-0"
+                    onClick={() => setViewMode("grid")}
+                    aria-label="Grid view"
+                    aria-pressed={viewMode === "grid"}
                   >
-                    <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                    All Categories
-                    {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {Object.entries(connectorCategories).map(([cat, data]) => {
-                    const colorMap: Record<string, string> = {
-                      emerald: "text-success",
-                      blue: "text-blue-400",
-                      violet: "text-[color:var(--g-signal)]",
-                      amber: "text-warning",
-                      pink: "text-pink-400",
-                      cyan: "text-cyan-400",
-                      orange: "text-orange-400",
-                      indigo: "text-indigo-400",
-                    }
-                    return (
-                      <DropdownMenuItem 
-                        key={cat} 
-                        onClick={() => setCategoryFilter(cat)}
-                        className="gap-2"
-                      >
-                        <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
-                        <span className="flex-1">{cat}</span>
-                        <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
-                      </DropdownMenuItem>
-                    )
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="hidden md:flex border rounded-md" role="group" aria-label="Connector view mode">
-                <Button 
-                  variant={viewMode === "topology" ? "secondary" : "ghost"} 
-                  size="sm" 
-                  className="h-9 w-9 p-0 rounded-r-none"
-                  onClick={() => setViewMode("topology")}
-                  aria-label="Network topology view"
-                  aria-pressed={viewMode === "topology"}
-                >
-                  <Cable className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant={viewMode === "grid" ? "secondary" : "ghost"} 
-                  size="sm" 
-                  className="h-9 w-9 p-0 rounded-l-none"
-                  onClick={() => setViewMode("grid")}
-                  aria-label="Grid view"
-                  aria-pressed={viewMode === "grid"}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-              </div>
-              {/* Secondary actions collapsed into an overflow menu to keep the
-                  toolbar from overflowing. These are navigation links, so a
-                  dropdown is the natural home for them. */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" aria-label="More options">
-                    <MoreVertical className="h-4 w-4" />
+                    <LayoutGrid className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href="/marketplace/billing" className="gap-2">
-                      <Receipt className="h-4 w-4 text-muted-foreground" />
-                      Partner billing
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/marketplace/submit" className="gap-2">
-                      <Code2 className="h-4 w-4 text-muted-foreground" />
-                      Partner SDK
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/marketplace/admin" className="gap-2">
-                          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                          Review submissions
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 shrink-0"
-                onClick={() => openAddModal()}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Browse all</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 shrink-0"
-                disabled={isLiveRefreshing || isValidating || !orgId}
-                onClick={() => void refreshLiveStatus()}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
-                <span className="hidden sm:inline">Check live status</span>
-              </Button>
-              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Connector</span>
-              </Button>
+                </div>
               </>
-              ) : (
-              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Connector</span>
-              </Button>
-              )}
-            </div>
-          }
-        />
+            ) : null}
+          </div>
+        </GravitrePageHeader>
 
         {!chromeCollapsed ? (
         <>
@@ -3045,7 +3027,9 @@ function ConnectorsPageContent() {
         ) : null}
 
         {/* Network Topology View */}
-        <div className="min-h-0 min-w-0 w-full flex-1 overflow-auto p-4 md:p-6">
+        <div className="relative min-h-0 min-w-0 w-full flex-1">
+          <ConnectorsAtmosphere className="z-0" />
+          <div className="relative z-[1] h-full min-h-0 overflow-auto p-4 pb-28 md:p-6 md:pb-28">
           {connectors.length > 0 && (
             <div className="mb-4 flex justify-end">
               <DataFreshness
@@ -3218,6 +3202,7 @@ function ConnectorsPageContent() {
           )}
           </>
           )}
+          </div>
         </div>
 
         {/* Modals */}
