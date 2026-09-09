@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic"
 import { Hero } from "@/components/marketing/nodus/hero"
-import { HeroImage } from "@/components/marketing/nodus/hero-image"
+import { HeroImageLazy } from "@/components/marketing/nodus/hero-image-lazy"
 import { DivideX } from "@/components/marketing/nodus/divide"
 
 /**
@@ -63,7 +63,7 @@ export default function HomePage() {
     <main>
       <Hero />
       <DivideX />
-      <HeroImage />
+      <HeroImageLazy />
       <DivideX />
       <HomeLogoCloudNote />
       <DivideX />
