@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
+import { isMarketingContentRoute } from "@/lib/is-marketing-route"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
+
+function withRouteKind(response: NextResponse, pathname: string): NextResponse {
+  if (isMarketingContentRoute(pathname)) {
+    response.headers.set("x-gravitre-marketing", "1")
+  }
+  return response
+}
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
@@ -60,7 +68,7 @@ export async function proxy(request: NextRequest) {
   const isApiRoute = pathname.startsWith("/api/")
 
   if (isPublicPath || isApiRoute) {
-    return supabaseResponse
+    return withRouteKind(supabaseResponse, pathname)
   }
 
   if (!user) {
@@ -70,7 +78,7 @@ export async function proxy(request: NextRequest) {
     return redirectToLogin(request, { staleSession: hadSupabaseSession })
   }
 
-  return supabaseResponse
+  return withRouteKind(supabaseResponse, pathname)
 }
 
 export const config = {

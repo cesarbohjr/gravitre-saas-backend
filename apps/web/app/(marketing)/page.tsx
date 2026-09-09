@@ -60,9 +60,6 @@ const CTA = dynamic(() =>
  */
 export default function HomePage() {
   return (
-    <>
-      {/* Hoisted by Next — warms LCP image before client bundles hydrate. */}
-      <link rel="preload" as="image" href="/nodus/dashboard@3x.png" fetchPriority="high" />
     <main>
       <Hero />
       <DivideX />
@@ -87,6 +84,5 @@ export default function HomePage() {
       <DivideX />
       <CTA />
     </main>
-    </>
   )
 }
