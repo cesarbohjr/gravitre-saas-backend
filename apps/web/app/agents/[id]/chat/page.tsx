@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
-import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { ensureSelectedOrg, buildChatOrgPayload, getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { motion } from "framer-motion"
@@ -16,6 +16,7 @@ import {
   Database,
   ChevronDown,
   ChevronUp,
+  FolderOpen,
 } from "lucide-react"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
@@ -27,21 +28,29 @@ import { toast } from "sonner"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import type { SpeechRecognitionStatus } from "@/lib/speech-recognition"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
-import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
 import { getVoiceStatusDetailed, type VoiceStatus } from "@/lib/tier1-voice-client"
 import type { Agent } from "@/types/api"
-import { agentsApi } from "@/lib/api"
+import { agentsApi, assistantApi, authApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
 import { VoiceMicSettingsPopover } from "@/components/gravitre/assistant/voice-mic-settings-popover"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
-import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
+import {
+  GravitreAIConversationComposer,
+  GravitreAIConversationTranscript,
+} from "@/components/gravitre/ai-conversation-core"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
 import { uiMessageText } from "@/lib/chat-messages"
 import { deriveAgentStatusLabel } from "@/lib/chat-agent-status"
+import {
+  type ChatExecutionResult,
+  type ChatPendingTask,
+} from "@/components/gravitre/assistant/chat-execution-panel"
+import { ConnectedFilePickerDialog } from "@/app/ai/_components/connected-file-picker-dialog"
+import type { ConnectedFileAttachment } from "@/lib/connected-files-api"
 
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
 const AGENT_CHAT_HEADER_COLLAPSED_KEY = "gravitre:agent-chat-header-collapsed"
@@ -106,6 +115,26 @@ export default function AgentChatPage({
   // QA-only: ?qaForceVoiceError=billing — backend ignores unless QA hooks enabled.
   const qaForceVoiceError = (searchParams.get("qaForceVoiceError") || "").trim() || null
   const { user } = useAuth()
+  const { data: authMe } = useSWR(user ? "auth-me-agent-chat-approver" : null, () => authApi.me())
+  // Same admin/owner-role gate ChatExecutionPanel uses on /ai (approval-batch-panel.tsx
+  // pattern) — parity fix, not new capability: reuses the existing role check verbatim.
+  const canApproveWrites = (() => {
+    const selectedId = getSelectedOrgFromStorage()?.id
+    const orgs = (authMe as { organizations?: Array<{ id?: string; role?: string }> } | undefined)
+      ?.organizations
+    const matched = selectedId
+      ? orgs?.find((org) => org.id === selectedId)?.role
+      : undefined
+    const role = (
+      matched ||
+      (authMe as { role?: string } | undefined)?.role ||
+      authMe?.user?.role ||
+      ""
+    )
+      .toString()
+      .toLowerCase()
+    return role === "admin" || role === "owner"
+  })()
   const { preferredPersona, handlePersonaChange, syncPersona } = usePreferredPersona({
     enabled: Boolean(user),
   })
@@ -122,6 +151,22 @@ export default function AgentChatPage({
   // state. Presentation only — the button remains the owner of the session.
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
   const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>(undefined)
+  // Parity fix (approved Phase 1 scope — see docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
+  // Part B2 open decision #1): agent chat previously wired NO approval/execution-panel/
+  // file-picker props at all (confirmed absent before this change — no onData handler,
+  // no ChatExecutionPanel props, no ConnectedFilePickerDialog). This conversation id is
+  // generated client-side and only used to let the existing, shared /api/chat +
+  // /api/assistant/conversation/{id}/execute endpoints (already used by /ai, unchanged
+  // here) track a pending task for this session — no backend contract change.
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const activeConversationIdRef = useRef<string | null>(null)
+  const [dialogueMode, setDialogueMode] = useState<string | null>(null)
+  const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
+  const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
+  const [confirmExecuting, setConfirmExecuting] = useState(false)
+  const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
+  const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
+  const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(AGENT_CHAT_HEADER_COLLAPSED_KEY) === "1"
@@ -232,6 +277,13 @@ export default function AgentChatPage({
           // Same conversation + Module B memory; spoken_mode stacks SPOKEN register.
           spoken_mode: modalityRef.current === "voice",
           surface: modalityRef.current === "voice" ? "voice" : "agent_chat",
+          // Parity fix: conversation_id + connected_file_refs are the same,
+          // already-generic /api/chat fields /ai sends (assistant.py's
+          // AssistantChatRequest treats conversation_id and agent_id as
+          // independent optional fields) — enables approvals/execution here too.
+          conversation_id: activeConversationIdRef.current,
+          connected_file_refs:
+            connectedFileRefsRef.current.length > 0 ? connectedFileRefsRef.current : undefined,
         }),
       }),
     [agentId, preferredPersona, agent?.responseStyle],
@@ -242,9 +294,87 @@ export default function AgentChatPage({
     messages: initialMessages,
     onError: (error) => {
       console.error("[v0] Agent chat error:", error)
+      connectedFileRefsRef.current = []
       toast.error(parseChatError(error))
     },
+    onFinish: () => {
+      connectedFileRefsRef.current = []
+    },
+    onData: (dataPart) => {
+      if (dataPart.type !== "data-intelligence" || !dataPart.data || typeof dataPart.data !== "object") {
+        return
+      }
+      const payload = dataPart.data as {
+        dialogueMode?: string
+        executionResult?: ChatExecutionResult
+        pendingTask?: ChatPendingTask
+      }
+      if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
+      if (payload.pendingTask) setPendingTask(payload.pendingTask)
+      if (payload.executionResult) setExecutionResult(payload.executionResult)
+    },
   })
+
+  const ensureAgentConversation = useCallback(() => {
+    if (activeConversationIdRef.current) return activeConversationIdRef.current
+    const newId = crypto.randomUUID()
+    activeConversationIdRef.current = newId
+    setActiveConversationId(newId)
+    return newId
+  }, [])
+
+  const handleConfirmExecution = useCallback(async () => {
+    const conversationId = activeConversationIdRef.current
+    if (!conversationId || confirmExecuting) return
+    setConfirmExecuting(true)
+    try {
+      const result = await assistantApi.executeConversationTask(conversationId)
+      if (result.execution_result) {
+        setExecutionResult(result.execution_result)
+        setDialogueMode("answer")
+        setPendingTask(null)
+        const userText = result.persisted_user_text || "Approved"
+        const assistantText =
+          result.persisted_assistant_text || result.execution_result.body || result.message || "Done."
+        const stamp = Date.now()
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `approve-user-${stamp}`,
+            role: "user",
+            parts: [{ type: "text", text: userText }],
+            createdAt: new Date(stamp),
+          } as (typeof prev)[number],
+          {
+            id: `approve-assistant-${stamp + 1}`,
+            role: "assistant",
+            parts: [{ type: "text", text: assistantText }],
+            createdAt: new Date(stamp + 1),
+          } as (typeof prev)[number],
+        ])
+      }
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+    } finally {
+      setConfirmExecuting(false)
+    }
+  }, [confirmExecuting, setMessages])
+
+  const handleRejectExecution = useCallback(() => {
+    setDialogueMode(null)
+    setPendingTask(null)
+    sendMessage({ text: "no" })
+  }, [sendMessage])
+
+  const handleModifyExecution = useCallback(() => {
+    setInput("I'd like to change: ")
+    toast.message("Tell me what to change in the composer, then send.")
+  }, [])
 
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
@@ -411,6 +541,12 @@ export default function AgentChatPage({
   const handleNewConversation = useCallback(() => {
     setMessages([])
     localStorage.removeItem(getStorageKey(agentId))
+    activeConversationIdRef.current = null
+    setActiveConversationId(null)
+    setDialogueMode(null)
+    setPendingTask(null)
+    setExecutionResult(null)
+    setConnectedFileAttachments([])
     inputRef.current?.focus()
   }, [setMessages, agentId])
 
@@ -429,8 +565,15 @@ export default function AgentChatPage({
 
   const submitText = (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || isLoading) return
-    sendMessage({ text: trimmed })
+    if ((!trimmed && connectedFileAttachments.length === 0) || isLoading) return
+    ensureAgentConversation()
+    connectedFileRefsRef.current = connectedFileAttachments
+    setConnectedFileAttachments([])
+    sendMessage({
+      text:
+        trimmed ||
+        "Please read the attached connected file(s) and summarize the key points I should know.",
+    })
     setInput("")
   }
 
@@ -596,13 +739,25 @@ export default function AgentChatPage({
             </motion.div>
           ) : (
             <>
-              <ChatTranscript
+              <GravitreAIConversationTranscript
+                routeKey="/agents/[id]/chat"
                 messages={messages}
                 showWaiting={showWaitingForReply}
                 isStreaming={isLoading}
+                status={status}
+                isBusy={isLoading}
                 agentStatusLabel={agentStatusLabel}
                 assistantLabel={agent.name}
                 waitingLabel={`${agent.name} is thinking…`}
+                dialogueMode={dialogueMode}
+                executionResult={executionResult}
+                pendingTask={pendingTask}
+                confirmExecuting={confirmExecuting}
+                onConfirmExecution={() => void handleConfirmExecution()}
+                onRejectExecution={handleRejectExecution}
+                onModifyExecution={handleModifyExecution}
+                canApprove={canApproveWrites}
+                conversationId={activeConversationId}
                 onRegenerate={handleRegenerate}
                 onCopyText={(text) => {
                   void navigator.clipboard.writeText(text)
@@ -617,7 +772,37 @@ export default function AgentChatPage({
 
         <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface)] px-3 py-2 md:px-5 md:py-3">
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-[920px]">
-            <SharedChatComposerControls
+            {connectedFileAttachments.length > 0 ? (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {connectedFileAttachments.map((file) => (
+                  <span
+                    key={`${file.vendor}-${file.file_id}`}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] px-2.5 py-1 text-xs shadow-[var(--np-shadow)]"
+                    title={
+                      file.web_link
+                        ? `${file.name} — stays in your connected account (read-only for this chat)`
+                        : file.name
+                    }
+                  >
+                    <FolderOpen className="h-3 w-3 shrink-0 text-[color:var(--g-brand)]" />
+                    <span className="truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      className="text-[color:var(--chat-surface-muted)] hover:text-foreground"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() =>
+                        setConnectedFileAttachments((prev) =>
+                          prev.filter((f) => !(f.vendor === file.vendor && f.file_id === file.file_id)),
+                        )
+                      }
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <GravitreAIConversationComposer
               modality={modality}
               onModalityChange={(next) => {
                 setModality(next)
@@ -652,7 +837,9 @@ export default function AgentChatPage({
                 stopAgentVoice()
                 setDuplexVoiceError(undefined)
               }}
-              canSubmit={Boolean(user && input.trim() && !isLoading)}
+              canSubmit={Boolean(
+                user && (input.trim() || connectedFileAttachments.length > 0) && !isLoading,
+              )}
               showSubmit
               onMicStatusChange={setMicStatus}
               voicePresence={voicePresence}
@@ -684,15 +871,30 @@ export default function AgentChatPage({
                 toast.error(message)
               }}
               trailingExtras={
-                <VoiceMicSettingsPopover
-                  voiceStatus={voiceDuplex.voiceStatus || voiceStatusSnapshot}
-                  selectedDeviceId={micDeviceId}
-                  onDeviceChange={setMicDeviceId}
-                  profileOverride={micProfileOverride}
-                  onProfileChange={setMicProfileOverride}
-                  liveLevels={voiceDuplex.micLevels}
-                  effectiveSettings={voiceDuplex.micEffective}
-                />
+                <>
+                  <VoiceMicSettingsPopover
+                    voiceStatus={voiceDuplex.voiceStatus || voiceStatusSnapshot}
+                    selectedDeviceId={micDeviceId}
+                    onDeviceChange={setMicDeviceId}
+                    profileOverride={micProfileOverride}
+                    onProfileChange={setMicProfileOverride}
+                    liveLevels={voiceDuplex.micLevels}
+                    effectiveSettings={voiceDuplex.micEffective}
+                  />
+                  {/* Parity fix: /ai's connected-file browse button, added here too. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="mb-0.5 hidden h-8 w-8 shrink-0 rounded-full text-[color:var(--chat-surface-muted)] hover:bg-muted/60 hover:text-foreground sm:inline-flex"
+                    disabled={isLoading}
+                    title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                    aria-label="Browse files"
+                    onClick={() => setConnectedFilePickerOpen(true)}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </>
               }
             />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
@@ -704,6 +906,12 @@ export default function AgentChatPage({
           </form>
         </div>
       </div>
+      <ConnectedFilePickerDialog
+        open={connectedFilePickerOpen}
+        onOpenChange={setConnectedFilePickerOpen}
+        selected={connectedFileAttachments}
+        onConfirm={(files) => setConnectedFileAttachments(files)}
+      />
     </AppShell>
   )
 }
