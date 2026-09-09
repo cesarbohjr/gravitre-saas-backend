@@ -239,3 +239,14 @@ Still gated: auth footer slim, GSAP/Lottie, P0 inner upgrades (`/pricing`, `/fea
 
 Gate complete for Marketing System 4.0 rollout phases 1–4 + phase-5 smoke. Optional later: GSAP sticky narrative, visual screenshot baselines for marketing if motion is frozen.
 
+---
+
+## GSAP + marketing visual goldens (2026-09-09) — Cesar “do this now”
+
+1. **GSAP pinned sticky** — `GsapSiteStorySticky` (ScrollTrigger pin) on `/roadmap` Connect→Learn; reduced-motion → static grid (post-mount to avoid SSR hydration mismatch). Dependency: `gsap` in `apps/web`.
+2. **Screenshot baselines** — `e2e/visual/marketing-system-fidelity.spec.ts` with `prefers-reduced-motion` + CSS animation freeze; first-viewport shots for home/pricing/features/technology/security/roadmap @ 1440/1280/390. Artifacts under `e2e/visual/marketing-system-fidelity.spec.ts-snapshots/*-chromium-win32.png`. Refresh: `pnpm exec playwright test -c playwright.visual.config.ts e2e/visual/marketing-system-fidelity.spec.ts --update-snapshots`.
+
+**Evidence:** `pnpm exec playwright test -c playwright.visual.config.ts e2e/visual/marketing-system-fidelity.spec.ts --update-snapshots` → **18 passed** (3.5m) on 2026-09-09 — baselines written for all 6 surfaces × 3 viewports.
+
+No new prices/claims.
+

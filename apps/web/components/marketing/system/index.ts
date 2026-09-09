@@ -21,3 +21,4 @@ export {
 export { ConnectorHubVisual } from "./connector-hub-visual"
 export { ConvergeNodesVisual } from "./converge-nodes-visual"
 export { SignalFieldVisual } from "./signal-field-visual"
+export { GsapSiteStorySticky, SITE_STORY_STAGES } from "./gsap-site-story-sticky"
