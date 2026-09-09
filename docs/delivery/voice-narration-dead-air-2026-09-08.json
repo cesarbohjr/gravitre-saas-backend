@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "runs": 3,
+    "n_ok": 3,
+    "dead_air_covered_ms": [
+      6256.8,
+      6630.3,
+      6968.2
+    ],
+    "first_answer_ms": [
+      13348.2,
+      14339.6,
+      18093.3
+    ],
+    "narration_word_counts": [
+      15,
+      15,
+      15
+    ]
+  },
+  "runs": [
+    {
+      "ok": true,
+      "utterance": "Did the HubSpot sync finish today?",
+      "first_delta_ms": 11836.5,
+      "narration_deltas": [
+        {
+          "ms": 11836.5,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 11836.6,
+          "text": "Found 5."
+        },
+        {
+          "ms": 14402.2,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 14402.2,
+          "text": "Found 20."
+        }
+      ],
+      "first_answer_ms": 18093.3,
+      "narration_word_count": 15,
+      "dead_air_covered_ms": 6256.8,
+      "max_gap_ms": 3691.1
+    },
+    {
+      "ok": true,
+      "utterance": "Did the HubSpot sync finish today?",
+      "first_delta_ms": 7371.4,
+      "narration_deltas": [
+        {
+          "ms": 7371.4,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 7371.4,
+          "text": "Found 5."
+        },
+        {
+          "ms": 11330.1,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 11330.1,
+          "text": "Found 20."
+        }
+      ],
+      "first_answer_ms": 14339.6,
+      "narration_word_count": 15,
+      "dead_air_covered_ms": 6968.2,
+      "max_gap_ms": 3958.6
+    },
+    {
+      "ok": true,
+      "utterance": "Did the HubSpot sync finish today?",
+      "first_delta_ms": 6717.9,
+      "narration_deltas": [
+        {
+          "ms": 6717.9,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 6718.0,
+          "text": "Found 5."
+        },
+        {
+          "ms": 9875.6,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 9875.7,
+          "text": "Found 20."
+        }
+      ],
+      "first_answer_ms": 13348.2,
+      "narration_word_count": 15,
+      "dead_air_covered_ms": 6630.3,
+      "max_gap_ms": 3472.6
+    }
+  ]
+}

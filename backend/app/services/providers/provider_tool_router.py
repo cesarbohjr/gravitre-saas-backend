@@ -436,8 +436,31 @@ async def _complete_openai_with_tools(
         tool_calls=tool_calls,
         prompt_tokens=pt,
         completion_tokens=ct,
+        cached_tokens=_openai_cached_tokens(usage),
         raw_response=resp,
     )
+
+
+def _openai_cached_tokens(usage: Any) -> int | None:
+    """Prefix-cache hit size from ``usage.prompt_tokens_details.cached_tokens``.
+
+    Returns None when the field is absent so a missing value stays
+    distinguishable from a real zero-reuse call.
+    """
+    if usage is None:
+        return None
+    details = getattr(usage, "prompt_tokens_details", None)
+    if details is None:
+        return None
+    raw = getattr(details, "cached_tokens", None)
+    if raw is None and isinstance(details, dict):
+        raw = details.get("cached_tokens")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 async def complete_with_tools(

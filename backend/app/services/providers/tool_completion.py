@@ -21,6 +21,10 @@ class ToolCompletionResult:
     tool_calls: list[ToolCallSpec] = field(default_factory=list)
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    # OpenAI reports automatic prefix-cache reuse here. Providers that do not
+    # report it leave this None, which is distinct from a measured 0 (prefix
+    # present but not reused).
+    cached_tokens: int | None = None
     raw_response: Any = field(default=None, repr=False)
 
 
@@ -44,7 +48,14 @@ def make_openai_compatible_response(result: ToolCompletionResult) -> Any:
         content=result.content,
         tool_calls=fn_calls or None,
     )
-    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+    # Usage is carried through so callers can attribute prefix-cache reuse per
+    # LLM round trip; the ReAct loop had no visibility into it otherwise.
+    usage = SimpleNamespace(
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        prompt_tokens_details=SimpleNamespace(cached_tokens=result.cached_tokens),
+    )
+    return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
 
 
 def parse_json_args(raw: str | dict | None) -> dict[str, Any]:

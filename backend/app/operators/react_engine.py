@@ -57,6 +57,52 @@ _NEEDS_HUMAN_PREFIX = "NEEDS_HUMAN_INPUT:"
 _OBSERVATION_MAX_CHARS = 8000
 
 
+def _log_react_llm_round(
+    *,
+    org_id: Any,
+    iteration: int,
+    phase: str,
+    model: str,
+    n_tools: int,
+    elapsed_ms: int,
+    response: Any,
+) -> None:
+    """Per-round-trip latency and prefix-cache reuse for the tool loop.
+
+    A tool-using voice turn costs one of these per iteration and they run
+    sequentially, so the aggregate ``generation`` stage hid which round trip was
+    slow and whether the prompt prefix was being reused. ``cached_tokens`` is
+    None when the provider does not report it, which is not the same as a
+    measured zero.
+    """
+    prompt_tokens: int | None = None
+    cached_tokens: int | None = None
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        raw_prompt = getattr(usage, "prompt_tokens", None)
+        prompt_tokens = int(raw_prompt) if raw_prompt is not None else None
+        details = getattr(usage, "prompt_tokens_details", None)
+        if details is not None:
+            raw_cached = getattr(details, "cached_tokens", None)
+            cached_tokens = int(raw_cached) if raw_cached is not None else None
+    ratio: float | None = None
+    if prompt_tokens and cached_tokens is not None:
+        ratio = round(cached_tokens / prompt_tokens, 4)
+    logger.info(
+        "react_llm_round org_id=%s iteration=%s phase=%s model=%s n_tools=%s "
+        "elapsed_ms=%s prompt_tokens=%s cached_tokens=%s cached_ratio=%s",
+        org_id,
+        iteration,
+        phase,
+        model,
+        n_tools,
+        elapsed_ms,
+        prompt_tokens,
+        cached_tokens,
+        ratio,
+    )
+
+
 class ReActStatus(StrEnum):
     COMPLETED = "completed"
     NEEDS_HUMAN_INPUT = "needs_human_input"
@@ -370,7 +416,17 @@ class ReActEngine:
                 routing_tier=routing_tier,
             )
             try:
+                _llm_started = time.perf_counter()
                 response = await self._chat_with_tools(messages, tools, resolved_model)
+                _log_react_llm_round(
+                    org_id=getattr(ctx, "org_id", None),
+                    iteration=iteration,
+                    phase=phase,
+                    model=resolved_model,
+                    n_tools=len(tools),
+                    elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
+                    response=response,
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("react_model_call_failed iteration=%s error=%s", iteration, exc)
                 yield ReActStreamEvent(
