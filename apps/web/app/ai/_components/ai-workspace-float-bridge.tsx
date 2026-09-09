@@ -124,7 +124,7 @@ export function GravitreAIFloatBridge({
 }: GravitreAIFloatBridgeProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(bodyRef)
-  const tier = floatContentTier(width)
+  const tier = floatContentTiers(width)
 
   return (
     <GravitreFloatingWorkspace presence={presence} onClose={onClose} onExpand={onExpand}>

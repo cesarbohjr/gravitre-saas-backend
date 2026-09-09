@@ -54,8 +54,7 @@ export function GravitreAIHelper() {
   const orbActive =
     presence === "listening" ||
     presence === "thinking" ||
-    presence === "executing" ||
-    presence === "working"
+    presence === "executing"
 
   const handleOpen = () => {
     setPresentationMode("float")

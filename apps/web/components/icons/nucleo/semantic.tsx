@@ -21,11 +21,19 @@ import { MagnifierOutline24 } from "./MagnifierOutline24"
 import { NavActivity } from "@/components/icons/nodus-nav/outline"
 // Phase 4 (Gravitre AI Agent Workspace redesign, Part C1 icon-gap closure —
 // see docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md).
-// These 14 files are Nucleo-STYLE constructions built to visually match the
-// stroke/viewBox/corner conventions of the icons imported above — they are
-// NOT purchased/licensed Nucleo-brand assets (this program has no access to
-// nucleoapp.com's paid asset pack). Disclosed honestly in the Phase 4
-// delivery report; do not represent these as genuine Nucleo assets.
+// These 14 files were originally Nucleo-STYLE constructions (visual
+// approximations, not licensed assets — disclosed as such in the Phase 4
+// report). On 2026-09-09, Cesar provided direct local access to his paid
+// Nucleo desktop-app library (C:\Users\Cesar\AppData\Roaming\Nucleo\icons,
+// "Nucleo Sharp" family / group_id=4, 24px grid — confirmed as the exact
+// family already used by every other file in this folder, e.g. the two-line
+// XmarkOutline24 with strokeMiterlimit=10 + data-color="color-2" matches
+// Sharp Essential icon id 1304 path-for-path). All 14 were re-sourced from
+// that real, licensed library and are now genuine Nucleo assets. See each
+// file's header comment for its specific source icon name. Two files
+// (MinimizeOutline24, MicrophoneOutline24) combine a real Nucleo path with a
+// small generic accent line (not a distinct Nucleo glyph) to preserve the
+// original compound reading; disclosed in those files' comments.
 import { ExpandOutline24 } from "./ExpandOutline24"
 import { CollapseOutline24 } from "./CollapseOutline24"
 import { MinimizeOutline24 } from "./MinimizeOutline24"
