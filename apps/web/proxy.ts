@@ -112,6 +112,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
+    // NOTE: `avif` was missing here — any .avif asset (e.g. the homepage/about
+    // dashboard screenshot) was falling through to auth-gating and 307'ing
+    // anonymous visitors to /login instead of serving the static image.
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js)$).*)",
   ],
 }
