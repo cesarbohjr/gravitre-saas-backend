@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { GravitreSurface } from "@/components/gravitre/nodus-product/metric"
 import { RELATIONSHIPS_GUIDE } from "@/lib/learning-ui-copy"
 import { Info, Plus } from "@phosphor-icons/react"
@@ -33,6 +34,8 @@ export function RelationshipsWorkspace({
     selection,
     setSelection,
     setAddNodeOpen,
+    inspectorOpen,
+    setInspectorOpen,
   } = workspace
 
   const showSeedBanner =
@@ -88,7 +91,7 @@ export function RelationshipsWorkspace({
                 <RelationshipTableView workspace={workspace} />
               )}
             </div>
-            <aside className="hidden w-full shrink-0 border-t border-divide lg:block lg:w-80 lg:border-l lg:border-t-0">
+            <aside className="hidden min-h-[480px] w-full shrink-0 border-t border-divide lg:block lg:w-80 lg:border-l lg:border-t-0">
               <RelationshipInspector workspace={workspace} />
             </aside>
           </div>
@@ -96,9 +99,23 @@ export function RelationshipsWorkspace({
       </GravitreSurface>
 
       {selection ? (
-        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] lg:hidden">
-          <RelationshipInspector workspace={workspace} onClose={() => setSelection(null)} />
-        </div>
+        <Sheet
+          open={inspectorOpen}
+          onOpenChange={(open) => {
+            setInspectorOpen(open)
+            if (!open) setSelection(null)
+          }}
+        >
+          <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md lg:hidden">
+            <RelationshipInspector
+              workspace={workspace}
+              onClose={() => {
+                setSelection(null)
+                setInspectorOpen(false)
+              }}
+            />
+          </SheetContent>
+        </Sheet>
       ) : null}
 
       {!loading && filtered.length === 0 && relationships.length === 0 && nodes.length === 0 ? (

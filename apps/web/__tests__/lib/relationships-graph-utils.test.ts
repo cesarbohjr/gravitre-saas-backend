@@ -8,6 +8,7 @@ import {
   makeLabelFor,
   readNumber,
 } from "@/lib/relationships-graph/utils"
+import { findRelationshipPaths } from "@/lib/relationships-graph/pathfinding"
 
 describe("relationships-graph utils", () => {
   const labelFor = makeLabelFor({ term_a: "Acme Term" })
@@ -67,5 +68,31 @@ describe("relationships-graph utils", () => {
   it("readNumber coerces safely", () => {
     expect(readNumber("0.82")).toBe(0.82)
     expect(readNumber(undefined, 3)).toBe(3)
+  })
+})
+
+describe("relationships-graph pathfinding", () => {
+  it("finds multi-hop paths between entities", () => {
+    const rows = [
+      {
+        id: "a",
+        source_entity_type: "glossary_term",
+        source_entity_id: "t1",
+        target_entity_type: "agent",
+        target_entity_id: "ag1",
+        relationship_type: "used_by",
+      },
+      {
+        id: "b",
+        source_entity_type: "agent",
+        source_entity_id: "ag1",
+        target_entity_type: "department",
+        target_entity_id: "d1",
+        relationship_type: "associated_with",
+      },
+    ]
+    const paths = findRelationshipPaths(rows, "glossary_term", "t1", "department", "d1", 3)
+    expect(paths.length).toBeGreaterThan(0)
+    expect(paths[0]).toHaveLength(2)
   })
 })

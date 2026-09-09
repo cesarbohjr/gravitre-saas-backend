@@ -2217,6 +2217,27 @@ export const intelligenceApi = {
       entity_types: string[]
       relationship_types: string[]
     }>(apiUrl("/api/admin/intelligence/knowledge-graph")),
+  knowledgeGraphTraverse: (params: { entityType: string; entityId: string; maxHops?: number }) => {
+    const query = new URLSearchParams()
+    query.set("entityType", params.entityType)
+    query.set("entityId", params.entityId)
+    if (params.maxHops != null) query.set("maxHops", String(params.maxHops))
+    return fetcher<{
+      startEntityType: string
+      startEntityId: string
+      maxHopsRequested: number
+      maxHopsCap: number
+      paths: Array<{
+        entityType: string
+        entityId: string
+        hopDepth: number
+        confidence: number
+        relationshipType: string
+        pathSummary: string
+      }>
+      scope_note?: string
+    }>(apiUrl(`/api/admin/intelligence/knowledge-graph/traverse?${query.toString()}`))
+  },
   outcomes: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))

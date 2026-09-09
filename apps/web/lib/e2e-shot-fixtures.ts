@@ -1015,4 +1015,21 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     scope_note: "Fixture scope for visual capture only.",
     advisory_only: true,
   },
+  "/api/admin/intelligence/knowledge-graph/traverse": {
+    startEntityType: "glossary_term",
+    startEntityId: "term_northwind",
+    maxHopsRequested: 2,
+    maxHopsCap: 3,
+    paths: [
+      {
+        entityType: "agent",
+        entityId: "agent_lead_triage",
+        hopDepth: 1,
+        confidence: 0.71,
+        relationshipType: "used_by",
+        pathSummary: "glossary_term:term_northwind -[integrates_with]-> glossary_term:term_northwind",
+      },
+    ],
+    scope_note: "Fixture scope for visual capture only.",
+  },
 }

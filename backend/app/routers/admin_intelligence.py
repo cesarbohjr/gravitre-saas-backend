@@ -742,6 +742,26 @@ async def get_knowledge_graph_admin(
     return await get_knowledge_graph_service().get_admin_summary(org_id, settings=settings)
 
 
+@router.get("/knowledge-graph/traverse")
+async def traverse_knowledge_graph_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    entity_type: str = Query(..., alias="entityType"),
+    entity_id: str = Query(..., alias="entityId"),
+    max_hops: int = Query(default=2, ge=1, le=3, alias="maxHops"),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.knowledge_graph_service import get_knowledge_graph_service
+
+    return await get_knowledge_graph_service().traverse_multi_hop(
+        org_id,
+        entity_type.strip(),
+        entity_id.strip(),
+        max_hops=max_hops,
+        settings=settings,
+    )
+
+
 @router.get("/process-mining")
 async def get_process_mining_admin(
     org_id: Annotated[str, Depends(get_org_context)],

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
@@ -35,6 +35,18 @@ export function useRelationshipsWorkspace({
   const [viewMode, setViewMode] = useState<ViewMode>("graph")
   const [selection, setSelection] = useState<Selection>(null)
   const [addNodeOpen, setAddNodeOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setViewMode("table")
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selection) setInspectorOpen(true)
+  }, [selection])
 
   const glossary = (data?.glossary ?? []) as RelationshipRow[]
   const glossaryById = useMemo(
@@ -156,13 +168,34 @@ export function useRelationshipsWorkspace({
     try {
       await intelligenceApi.deleteKnowledgeNode(id)
       toast.success("Knowledge node removed")
-      if (selection?.kind === "node" && selection.nodeId === `seed::${id}`) {
-        setSelection(null)
+      if (selection?.kind === "node") {
+        const nodeId = selection.nodeId
+        if (nodeId === `seed::${id}` || nodeId.endsWith(`::${id}`)) {
+          setSelection(null)
+          setInspectorOpen(false)
+        }
       }
       await mutateNodes()
       return true
     } catch {
       toast.error("Could not delete knowledge node")
+      return false
+    }
+  }
+
+  async function updateNode(id: string, nodeType: string, nodeName: string) {
+    const name = nodeName.trim()
+    if (!name) {
+      toast.error("Name is required")
+      return false
+    }
+    try {
+      await intelligenceApi.updateKnowledgeNode(id, { nodeType, name })
+      toast.success("Knowledge node updated")
+      await mutateNodes()
+      return true
+    } catch {
+      toast.error("Could not update knowledge node")
       return false
     }
   }
@@ -201,12 +234,16 @@ export function useRelationshipsWorkspace({
     setSelection,
     addNodeOpen,
     setAddNodeOpen,
+    inspectorOpen,
+    setInspectorOpen,
     loading,
     nodesLoading,
     graphSummaryLoading,
+    enabled,
     setArchived,
     createNode,
     removeNode,
+    updateNode,
   }
 }
 
