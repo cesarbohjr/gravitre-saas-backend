@@ -20,8 +20,11 @@ def _reset_pool():
 
 
 class TestSizing:
-    def test_defaults_above_the_shared_executor_size(self) -> None:
-        # The whole point: a small container's default executor is ~6 workers.
+    def test_default_width(self) -> None:
+        # Deliberately the same width as the default executor on the deploy target
+        # (cpu_count=48 -> min(32, 52) = 32). This pool is for isolation from
+        # other to_thread callers, not for extra capacity; an earlier rationale
+        # claiming the default was ~6 workers was disproved in production.
         assert io_pool._DEFAULT_SIZE == 32
         assert io_pool.get_io_pool()._max_workers == 32
 

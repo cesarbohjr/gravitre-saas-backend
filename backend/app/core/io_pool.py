@@ -1,21 +1,25 @@
 """Dedicated thread pool for synchronous, blocking client I/O.
 
-``asyncio.to_thread`` submits to the loop's *default* executor, which is sized
-``min(32, cpu_count + 4)`` -- roughly 6 workers on a small container -- and is
-shared with every other ``to_thread`` caller in the process.
+This pool exists for **isolation**, not for extra capacity. Be precise about why,
+because the original justification for it was wrong.
 
-Context assembly wants several blocking Supabase reads at once (org snapshot,
-agent record, knowledge assignments, pack state, knowledge fabric, org bundle),
-and one of them, ``org_context_service.get_snapshot``, spawns its own 5-thread
-pool internally. Moving those reads off the event loop with ``to_thread`` fixed
-the loop-blocking but moved the contention into that small shared pool:
-``retrieval_gather`` went from a ~3.1s median to a ~5.0s median with samples as
-high as 18.6s.
+``asyncio.to_thread`` submits to the loop's default executor, sized
+``min(32, cpu_count + 4)``. This pool was introduced on the assumption that a
+small container made that ~6 workers, and that moving context assembly's blocking
+Supabase reads off the event loop had merely relocated the contention there --
+``retrieval_gather`` had gone from a ~3.1s median to ~5.0s with an 18.6s sample.
 
-Giving these reads their own explicitly sized pool separates "not blocking the
-event loop" from "competing for six shared workers". Size via
-``IO_THREAD_POOL_SIZE``; the calls are network-bound and spend nearly all their
-time blocked on a socket, so worker count is not bounded by CPU.
+Measured on the deploy target: ``cpu_count=48``, so the default executor was
+already 32 workers -- the same width as this pool. Starvation was never the
+cause, and after this pool shipped the median was ~4.1s with samples from 1.9s to
+49.3s. That spread is environmental load, not pool width. The gather has not been
+shown to improve.
+
+What this pool does still buy: context reads cannot queue behind unrelated
+``to_thread`` callers elsewhere in the process, and the width is explicit and
+tunable via ``IO_THREAD_POOL_SIZE`` rather than derived from the host's CPU count.
+The calls are network-bound and sit blocked on a socket, so worker count is not
+bounded by CPU.
 """
 from __future__ import annotations
 
@@ -48,8 +52,8 @@ def get_io_pool() -> ThreadPoolExecutor:
         size = _resolve_size()
         _POOL = ThreadPoolExecutor(max_workers=size, thread_name_prefix="gravitre-io")
         cpus = os.cpu_count() or 1
-        # The container's real worker budget could not be read over SSH (no key
-        # on the deploy host), so record it here where it is observable.
+        # Kept because this log is what disproved the sizing rationale above:
+        # it reported cpu_count=48 / default_executor_would_be=32 in production.
         logger.info(
             "io_thread_pool_initialized max_workers=%s cpu_count=%s "
             "default_executor_would_be=%s",

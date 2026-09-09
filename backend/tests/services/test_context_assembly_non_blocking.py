@@ -89,10 +89,9 @@ class TestUnifiedRetrieve:
         )
 
     def test_blocking_reads_use_the_dedicated_pool_not_the_default_executor(self) -> None:
-        # to_thread's default executor is min(32, cpu+4) -- about 6 workers on a
-        # small container -- and is shared process-wide, which turned the
-        # loop-blocking fix into thread-pool queueing (gather median 3.1s -> 5.0s,
-        # one 18.6s sample).
+        # Isolation from unrelated to_thread callers. Note this was NOT shown to
+        # improve gather latency: the deploy target reports cpu_count=48, so the
+        # default executor was already the same 32 workers.
         for module in (orch_mod, retrieval_mod):
             src = Path(inspect.getfile(module)).read_text(encoding="utf-8")
             assert "asyncio.to_thread(" not in src, (
