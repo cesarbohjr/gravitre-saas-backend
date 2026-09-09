@@ -1,0 +1,771 @@
+{
+  "label": "offload-on",
+  "utterance": "Did the HubSpot sync finish today?",
+  "captured_at": "2026-09-09T22:11:37.829234+00:00",
+  "runs_attempted": 10,
+  "runs_ok": 10,
+  "client": {
+    "first_delta_ms": {
+      "n": 10,
+      "min": 2623.9,
+      "p50": 6678.9,
+      "p90": 10303.3,
+      "max": 11704.4,
+      "spread_ratio": 4.5,
+      "median": 6678.9,
+      "ci95": [
+        5249.8,
+        9715.2
+      ],
+      "ci95_width": 4465.4
+    },
+    "first_answer_ms": {
+      "n": 6,
+      "min": 2623.9,
+      "p50": 10368.6,
+      "p90": 19145.5,
+      "max": 19145.5,
+      "spread_ratio": 7.3,
+      "median": 10368.6,
+      "ci95": [
+        2623.9,
+        16803.9
+      ],
+      "ci95_width": 14180.0
+    },
+    "dead_air_covered_ms": {
+      "n": 4,
+      "min": 4315.4,
+      "p50": 4593.6,
+      "p90": 8842.2,
+      "max": 8842.2,
+      "spread_ratio": 2.0,
+      "median": 4593.6,
+      "ci95": [
+        4315.4,
+        8842.2
+      ],
+      "ci95_width": 4526.8
+    }
+  },
+  "server": {
+    "prepare_assistant_turn": {
+      "n_turns_matched": 7,
+      "stages": {
+        "connected_integrations": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "registry_plan": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "memory_context": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 26.0,
+          "p90": 62.0,
+          "max": 62.0,
+          "spread_ratio": null,
+          "median": 26.0,
+          "ci95": [
+            23.0,
+            32.0
+          ],
+          "ci95_width": 9.0
+        },
+        "workflow_outcomes": {
+          "n": 7,
+          "min": 64.0,
+          "p50": 82.0,
+          "p90": 220.0,
+          "max": 220.0,
+          "spread_ratio": 3.4,
+          "median": 82.0,
+          "ci95": [
+            73.0,
+            111.0
+          ],
+          "ci95_width": 38.0
+        },
+        "agent_resolved": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "knowledge_assignments": {
+          "n": 7,
+          "min": 22.0,
+          "p50": 47.0,
+          "p90": 1739.0,
+          "max": 1739.0,
+          "spread_ratio": 79.0,
+          "median": 47.0,
+          "ci95": [
+            23.0,
+            761.0
+          ],
+          "ci95_width": 738.0
+        },
+        "knowledge_fabric": {
+          "n": 7,
+          "min": 328.0,
+          "p50": 366.0,
+          "p90": 501.0,
+          "max": 501.0,
+          "spread_ratio": 1.5,
+          "median": 366.0,
+          "ci95": [
+            343.0,
+            429.0
+          ],
+          "ci95_width": 86.0
+        },
+        "retrieval_gather": {
+          "n": 7,
+          "min": 1341.0,
+          "p50": 2188.0,
+          "p90": 4354.0,
+          "max": 4354.0,
+          "spread_ratio": 3.2,
+          "median": 2188.0,
+          "ci95": [
+            1653.0,
+            3455.0
+          ],
+          "ci95_width": 1802.0
+        },
+        "explainability": {
+          "n": 7,
+          "min": 1.0,
+          "p50": 1.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": 1.0,
+          "median": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ],
+          "ci95_width": 0.0
+        },
+        "advisor_brief": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "assembled": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        }
+      }
+    },
+    "agent_intelligence_context": {
+      "n_turns_matched": 7,
+      "stages": {
+        "client_ready": {
+          "n": 7,
+          "min": 14.0,
+          "p50": 17.0,
+          "p90": 24.0,
+          "max": 24.0,
+          "spread_ratio": 1.7,
+          "median": 17.0,
+          "ci95": [
+            14.0,
+            20.0
+          ],
+          "ci95_width": 6.0
+        },
+        "connected_integrations": {
+          "n": 7,
+          "min": 55.0,
+          "p50": 97.0,
+          "p90": 547.0,
+          "max": 547.0,
+          "spread_ratio": 9.9,
+          "median": 97.0,
+          "ci95": [
+            81.0,
+            115.0
+          ],
+          "ci95_width": 34.0
+        },
+        "mcp_tools": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "engine_settings": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "routing_classified": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "ci95_width": 1.0
+        },
+        "spoken_lite_decided": {
+          "n": 7,
+          "min": 43.0,
+          "p50": 46.0,
+          "p90": 82.0,
+          "max": 82.0,
+          "spread_ratio": 1.9,
+          "median": 46.0,
+          "ci95": [
+            45.0,
+            66.0
+          ],
+          "ci95_width": 21.0
+        },
+        "dialogue_settings_lite": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "task_state_initial": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "voice_expression_bound": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "parameter_ledger": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "ci95_width": 1.0
+        },
+        "persona_resolved": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "pre_kernel_entry": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "kernel_pre_act": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "ci95_width": 1.0
+        },
+        "unified_live_resolved": {
+          "n": 7,
+          "min": 1988.0,
+          "p50": 2286.0,
+          "p90": 4978.0,
+          "max": 4978.0,
+          "spread_ratio": 2.5,
+          "median": 2286.0,
+          "ci95": [
+            2059.0,
+            3498.0
+          ],
+          "ci95_width": 1439.0
+        },
+        "unified_shadow_scheduled": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "pre_turn_shape": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "turn_shape_classified": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "conversational_execution": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "query_rewrite": {
+          "n": 7,
+          "min": 22.0,
+          "p50": 26.0,
+          "p90": 36.0,
+          "max": 36.0,
+          "spread_ratio": 1.6,
+          "median": 26.0,
+          "ci95": [
+            23.0,
+            32.0
+          ],
+          "ci95_width": 9.0
+        },
+        "context_entry": {
+          "n": 7,
+          "min": 56.0,
+          "p50": 63.0,
+          "p90": 81.0,
+          "max": 81.0,
+          "spread_ratio": 1.4,
+          "median": 63.0,
+          "ci95": [
+            61.0,
+            75.0
+          ],
+          "ci95_width": 14.0
+        },
+        "context_inline": {
+          "n": 7,
+          "min": 2239.0,
+          "p50": 2976.0,
+          "p90": 5739.0,
+          "max": 5739.0,
+          "spread_ratio": 2.6,
+          "median": 2976.0,
+          "ci95": [
+            2317.0,
+            5657.0
+          ],
+          "ci95_width": 3340.0
+        },
+        "assistant_turn_prepared": {
+          "n": 7,
+          "min": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "spread_ratio": null,
+          "median": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci95_width": 0.0
+        },
+        "system_prompt_built": {
+          "n": 7,
+          "min": 159.0,
+          "p50": 220.0,
+          "p90": 922.0,
+          "max": 922.0,
+          "spread_ratio": 5.8,
+          "median": 220.0,
+          "ci95": [
+            199.0,
+            414.0
+          ],
+          "ci95_width": 215.0
+        },
+        "knowledge_base_emitted": {
+          "n": 7,
+          "min": 66.0,
+          "p50": 84.0,
+          "p90": 124.0,
+          "max": 124.0,
+          "spread_ratio": 1.9,
+          "median": 84.0,
+          "ci95": [
+            70.0,
+            111.0
+          ],
+          "ci95_width": 41.0
+        },
+        "react_entry": {
+          "n": 7,
+          "min": 192.0,
+          "p50": 248.0,
+          "p90": 453.0,
+          "max": 453.0,
+          "spread_ratio": 2.4,
+          "median": 248.0,
+          "ci95": [
+            210.0,
+            285.0
+          ],
+          "ci95_width": 75.0
+        }
+      }
+    }
+  },
+  "raw_client_runs": [
+    {
+      "ok": true,
+      "first_delta_ms": 6678.9,
+      "first_answer_ms": 6678.9,
+      "narration_word_count": 0,
+      "narration_deltas": []
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 10303.3,
+      "first_answer_ms": 19145.5,
+      "narration_word_count": 15,
+      "narration_deltas": [
+        {
+          "ms": 10303.3,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 10303.4,
+          "text": "Found 5."
+        },
+        {
+          "ms": 15863.5,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 15863.5,
+          "text": "Found 20."
+        }
+      ],
+      "dead_air_covered_ms": 8842.2,
+      "max_gap_ms": 5560.1
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 7930.2,
+      "first_answer_ms": null,
+      "narration_word_count": 15,
+      "narration_deltas": [
+        {
+          "ms": 7930.2,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 7930.2,
+          "text": "Found 5."
+        },
+        {
+          "ms": 10722.5,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 10722.5,
+          "text": "Found 20."
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 5249.8,
+      "first_answer_ms": null,
+      "narration_word_count": 15,
+      "narration_deltas": [
+        {
+          "ms": 5249.8,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 5249.9,
+          "text": "Found 5."
+        },
+        {
+          "ms": 8511.9,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 8511.9,
+          "text": "Found 20."
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 6213.1,
+      "first_answer_ms": 10528.5,
+      "narration_word_count": 15,
+      "narration_deltas": [
+        {
+          "ms": 6213.1,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 6213.2,
+          "text": "Found 5."
+        },
+        {
+          "ms": 8388.7,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 8388.7,
+          "text": "Found 20."
+        }
+      ],
+      "dead_air_covered_ms": 4315.4,
+      "max_gap_ms": 2175.5
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 11704.4,
+      "first_answer_ms": 16803.9,
+      "narration_word_count": 15,
+      "narration_deltas": [
+        {
+          "ms": 11704.4,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 11704.4,
+          "text": "Found 5."
+        },
+        {
+          "ms": 13763.7,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 13763.8,
+          "text": "Found 20."
+        }
+      ],
+      "dead_air_covered_ms": 5099.5,
+      "max_gap_ms": 3040.1
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 9194.3,
+      "first_answer_ms": null,
+      "narration_word_count": 8,
+      "narration_deltas": [
+        {
+          "ms": 9194.3,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 9194.3,
+          "text": "Found 5."
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 9715.2,
+      "first_answer_ms": null,
+      "narration_word_count": 8,
+      "narration_deltas": [
+        {
+          "ms": 9715.2,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 9715.3,
+          "text": "Found 5."
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 5775.0,
+      "first_answer_ms": 10368.6,
+      "narration_word_count": 20,
+      "narration_deltas": [
+        {
+          "ms": 5775.0,
+          "text": "Let me check your knowledge base."
+        },
+        {
+          "ms": 5775.1,
+          "text": "Found 5."
+        },
+        {
+          "ms": 7598.6,
+          "text": "Let me check workflow runs."
+        },
+        {
+          "ms": 7598.6,
+          "text": "Found 20."
+        },
+        {
+          "ms": 10368.8,
+          "text": "let me check connector h"
+        }
+      ],
+      "dead_air_covered_ms": 4593.6,
+      "max_gap_ms": 2770.0
+    },
+    {
+      "ok": true,
+      "first_delta_ms": 2623.9,
+      "first_answer_ms": 2623.9,
+      "narration_word_count": 0,
+      "narration_deltas": []
+    }
+  ]
+}
