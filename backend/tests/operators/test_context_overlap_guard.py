@@ -75,6 +75,104 @@ class TestAdoptionIsQueryChecked:
         assert "add_done_callback" in _overlap_guard_block()
 
 
+class TestPrefetchDoesNotDependOnACallerLocalImport:
+    """Regression: enabling the flag in production raised NameError on every turn.
+
+    `intelligence_orchestrator` imports back from this module, so
+    `get_intelligence_orchestrator` can only be bound by a function-local import.
+    The closure originally relied on the caller's import, which runs *after* the
+    prefetch task starts -- making it an unset closure cell:
+    "cannot access free variable 'get_intelligence_orchestrator' where it is not
+    associated with a value in enclosing scope". Every source-level guard test
+    passed while the flag-on path was broken, because none of them ran it.
+    """
+
+    def test_closure_imports_the_orchestrator_itself(self) -> None:
+        start = _SRC.index("async def _prepare_turn_context(")
+        end = _SRC.index("prepare_assistant_turn(", start)
+        body = _SRC[start:end]
+        assert "from app.services.intelligence_orchestrator import" in body
+
+    def test_closure_does_not_read_the_callers_binding(self) -> None:
+        start = _SRC.index("async def _prepare_turn_context(")
+        end = _SRC.index("_context_task: asyncio.Task | None = None", start)
+        body = _SRC[start:end]
+        # Must call through its own alias, not the name the caller binds later.
+        assert "await get_intelligence_orchestrator(" not in body
+
+    def test_prefetch_body_is_importable_before_the_caller_import(self) -> None:
+        # The prefetch is created well before the caller's local import line, so
+        # ordering alone must not be what makes the closure work.
+        closure_at = _SRC.index("async def _prepare_turn_context(")
+        create_at = _SRC.index("asyncio.create_task(_prepare_turn_context(")
+        caller_import_at = _SRC.index(
+            "from app.services.intelligence_orchestrator import get_intelligence_orchestrator",
+            closure_at,
+        )
+        assert create_at < caller_import_at
+
+
+class TestNoNestedFunctionReadsALaterLocalImport:
+    """Class-level guard for the NameError above, not just the one instance.
+
+    A name bound by a function-local `import` is local to that whole function, so
+    any nested function defined *before* the import runs sees an unset closure
+    cell. That fails at call time, not import time, which is why unit tests and a
+    flag-off deploy both stayed green. This walks the AST instead of trusting
+    review.
+    """
+
+    def test_execute_task_streaming_has_no_such_capture(self) -> None:
+        import ast
+
+        tree = ast.parse(_SRC)
+        target = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+            and node.name == "execute_task_streaming"
+        )
+
+        # name -> earliest line a local import binds it
+        local_imports: dict[str, int] = {}
+        for node in ast.walk(target):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                for alias in node.names:
+                    bound = (alias.asname or alias.name).split(".")[0]
+                    local_imports.setdefault(bound, node.lineno)
+                    local_imports[bound] = min(local_imports[bound], node.lineno)
+
+        violations: list[str] = []
+        for nested in ast.walk(target):
+            if nested is target:
+                continue
+            if not isinstance(nested, (ast.AsyncFunctionDef, ast.FunctionDef)):
+                continue
+            # Names this nested function imports for itself are safe.
+            self_imported = {
+                (alias.asname or alias.name).split(".")[0]
+                for sub in ast.walk(nested)
+                if isinstance(sub, (ast.Import, ast.ImportFrom))
+                for alias in sub.names
+            }
+            for sub in ast.walk(nested):
+                if not isinstance(sub, ast.Name) or not isinstance(sub.ctx, ast.Load):
+                    continue
+                bind_line = local_imports.get(sub.id)
+                if bind_line is None or sub.id in self_imported:
+                    continue
+                # Defined before the import that binds the name -> unset cell.
+                if nested.lineno < bind_line:
+                    violations.append(
+                        f"{nested.name}() at line {nested.lineno} reads {sub.id!r}, "
+                        f"which a local import only binds at line {bind_line}"
+                    )
+
+        assert not violations, "unset-closure-cell capture(s): " + "; ".join(
+            sorted(set(violations))
+        )
+
+
 class TestSingleSourceOfTruth:
     def test_context_assembly_has_one_call_site(self) -> None:
         # Both the prefetch and the inline path must go through the same closure,
@@ -84,5 +182,5 @@ class TestSingleSourceOfTruth:
 
     def test_closure_forwards_the_reused_connector_list(self) -> None:
         start = _SRC.index("async def _prepare_turn_context(")
-        window = _SRC[start : start + 1400]
-        assert "connected_integrations=list(connected_early or [])" in window
+        end = _SRC.index("_context_task: asyncio.Task | None = None", start)
+        assert "connected_integrations=list(connected_early or [])" in _SRC[start:end]

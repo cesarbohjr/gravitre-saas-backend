@@ -2324,8 +2324,19 @@ class AgentIntelligence:
             )
 
         async def _prepare_turn_context(query: str) -> Any:
-            """Context assembly, callable either inline or concurrently with LIVE."""
-            return await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
+            """Context assembly, callable either inline or concurrently with LIVE.
+
+            The import is repeated here deliberately. `intelligence_orchestrator`
+            imports `resolve_agent_record` back from this module, so the name can
+            only be bound inside a function. Relying on the caller's later local
+            import made it a closure cell that is still unset when the prefetch
+            task starts, which raised NameError and failed the whole voice turn.
+            """
+            from app.services.intelligence_orchestrator import (
+                get_intelligence_orchestrator as _get_orchestrator,
+            )
+
+            return await _get_orchestrator(active_settings).prepare_assistant_turn(
                 org_id=org_id,
                 user_id=user_id,
                 conversation_id=conversation_id or "",
