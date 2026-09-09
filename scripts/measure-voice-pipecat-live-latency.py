@@ -369,7 +369,16 @@ def main() -> int:
             "runs": runs_out,
         }
 
-    out_path = OUT_SPECULATIVE if os.environ.get("VOICE_PROBE_SPECULATIVE_OUT") else OUT
+    # VOICE_PROBE_OUT lets a new measurement write its own dated file instead of
+    # silently overwriting an earlier baseline (the 2026-09-04 and -09-05 files
+    # below are historical references and must stay intact).
+    explicit_out = (os.environ.get("VOICE_PROBE_OUT") or "").strip()
+    if explicit_out:
+        out_path = Path(explicit_out)
+        if not out_path.is_absolute():
+            out_path = REPO / out_path
+    else:
+        out_path = OUT_SPECULATIVE if os.environ.get("VOICE_PROBE_SPECULATIVE_OUT") else OUT
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     summary = {

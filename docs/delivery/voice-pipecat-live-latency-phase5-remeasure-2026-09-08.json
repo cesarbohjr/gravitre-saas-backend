@@ -1,0 +1,382 @@
+{
+  "generated_at": "2026-09-09T03:36:04.210828+00:00",
+  "backend_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "git_sha": "1ba8434c8da4275275a85a2b442232477580c365",
+  "methodology": "Real synthesized-speech PCM16 fed into the live production Pipecat WS as simulated mic input; real Deepgram STT, real CognitiveTurnKernel, real ElevenLabs TTS WS. NOT a human speaking through a real browser mic -> excludes browser capture/encode overhead. This is an infra-latency floor, not a substitute for Cesar's own perceptual (naturalness/barge-in) verification.",
+  "scenarios": {
+    "simple_conversational": {
+      "text": "What is two plus two?",
+      "n_runs": 8,
+      "n_ok": 8,
+      "end_to_end_ttfa_ms": {
+        "p50": 2147.5,
+        "p95": 2824.3,
+        "p99": 2841.66,
+        "raw": [
+          2846,
+          2062,
+          1892,
+          2233,
+          2784,
+          1982,
+          1790,
+          2506
+        ]
+      },
+      "stt_and_turn_detection_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "llm_ttft_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "tts_ttfa_ms": {
+        "p50": 254.5,
+        "p95": 314.9,
+        "p99": 316.58,
+        "raw": [
+          311,
+          288,
+          233,
+          192,
+          317,
+          252,
+          207,
+          257
+        ]
+      },
+      "sub_500ms_p95_met": false,
+      "runs": [
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two equals four.",
+          "tts_ttfa_ms": 311,
+          "end_to_end_ttfa_ms": 2846
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two equals four.",
+          "tts_ttfa_ms": 288,
+          "end_to_end_ttfa_ms": 2062
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two is four.",
+          "tts_ttfa_ms": 233,
+          "end_to_end_ttfa_ms": 1892
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two equals four.",
+          "tts_ttfa_ms": 192,
+          "end_to_end_ttfa_ms": 2233
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two is four.",
+          "tts_ttfa_ms": 317,
+          "end_to_end_ttfa_ms": 2784
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two is four.",
+          "tts_ttfa_ms": 252,
+          "end_to_end_ttfa_ms": 1982
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two is four.",
+          "tts_ttfa_ms": 207,
+          "end_to_end_ttfa_ms": 1790
+        },
+        {
+          "label": "simple_conversational",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Two plus two is four.",
+          "tts_ttfa_ms": 257,
+          "end_to_end_ttfa_ms": 2506
+        }
+      ]
+    },
+    "knowledge_lookup": {
+      "text": "What integrations do I have connected right now?",
+      "n_runs": 5,
+      "n_ok": 5,
+      "end_to_end_ttfa_ms": {
+        "p50": 2657.0,
+        "p95": 3638.6,
+        "p99": 3732.52,
+        "raw": [
+          3756,
+          2657,
+          3169,
+          2487,
+          2402
+        ]
+      },
+      "stt_and_turn_detection_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "llm_ttft_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "tts_ttfa_ms": {
+        "p50": 276.0,
+        "p95": 311.4,
+        "p99": 318.28,
+        "raw": [
+          320,
+          257,
+          276,
+          277,
+          120
+        ]
+      },
+      "sub_500ms_p95_met": false,
+      "runs": [
+        {
+          "label": "knowledge_lookup",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "You\u2019ve got Apollo, HubSpot, and Platform connected right now.",
+          "tts_ttfa_ms": 320,
+          "end_to_end_ttfa_ms": 3756
+        },
+        {
+          "label": "knowledge_lookup",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Apollo, HubSpot, and Platform are connected right now for this org.",
+          "tts_ttfa_ms": 257,
+          "end_to_end_ttfa_ms": 2657
+        },
+        {
+          "label": "knowledge_lookup",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Apollo, HubSpot, and Platform are connected right now for this org.",
+          "tts_ttfa_ms": 276,
+          "end_to_end_ttfa_ms": 3169
+        },
+        {
+          "label": "knowledge_lookup",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "You currently have Apollo, Hubspot, and Platform connected for this org.",
+          "tts_ttfa_ms": 277,
+          "end_to_end_ttfa_ms": 2487
+        },
+        {
+          "label": "knowledge_lookup",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Right now you have Apollo, HubSpot, and Platform connected.",
+          "tts_ttfa_ms": 120,
+          "end_to_end_ttfa_ms": 2402
+        }
+      ]
+    },
+    "consequential_write_shaped": {
+      "text": "Email Sarah that the campaign moved to Monday.",
+      "n_runs": 3,
+      "n_ok": 3,
+      "end_to_end_ttfa_ms": {
+        "p50": 2520.0,
+        "p95": 3574.8,
+        "p99": 3668.56,
+        "raw": [
+          3692,
+          2257,
+          2520
+        ]
+      },
+      "stt_and_turn_detection_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "llm_ttft_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "raw": []
+      },
+      "tts_ttfa_ms": {
+        "p50": 140.0,
+        "p95": 140.0,
+        "p99": 140.0,
+        "raw": [
+          140,
+          140,
+          134
+        ]
+      },
+      "sub_500ms_p95_met": false,
+      "runs": [
+        {
+          "label": "consequential_write_shaped",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "I can do that, but I need one missing detail: what\u2019s Sarah\u2019s email address (or her contact in HubSpot/A",
+          "tts_ttfa_ms": 140,
+          "end_to_end_ttfa_ms": 3692
+        },
+        {
+          "label": "consequential_write_shaped",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Who\u2019s Sarah exactly in your system\u2014what email address should I send to?",
+          "tts_ttfa_ms": 140,
+          "end_to_end_ttfa_ms": 2257
+        },
+        {
+          "label": "consequential_write_shaped",
+          "ok": true,
+          "session_ready": true,
+          "stt_provider": "deepgram_flux",
+          "stt_model": "flux-general-en",
+          "stt_turn_detection": "flux_native_eot",
+          "tts_model": "eleven_flash_v2_5",
+          "tts_transport": "websocket",
+          "cognitive_path": "CognitiveTurnKernel",
+          "write_confirm_policy": "nl_yes_same_path_as_text",
+          "assistant_text": "Who\u2019s Sarah (name/email address), and what should the email say (subject + message body)? Once I have those,",
+          "tts_ttfa_ms": 134,
+          "end_to_end_ttfa_ms": 2520
+        }
+      ]
+    }
+  }
+}
