@@ -109,6 +109,27 @@ describe("useGravitreAIWorkspace", () => {
     expect(sink.value?.conversation).toBeNull()
   })
 
+  it(
+    "defaults floatWorkspaceOpen to false — Phase 3 addition; keeps /ai's " +
+      "resting render distinct from the new Expanded/Fullscreen shell " +
+      "even though presentationMode's own default is 'expanded'",
+    () => {
+      const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+      mount(sink)
+      expect(sink.value?.floatWorkspaceOpen).toBe(false)
+    },
+  )
+
+  it("setFloatWorkspaceOpen updates state independently of presentationMode", () => {
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.setFloatWorkspaceOpen(true)
+    })
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
+    expect(sink.value?.presentationMode).toBe("expanded")
+  })
+
   it("setPresentationMode updates state without disturbing pageContext or conversation", () => {
     const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
     mount(sink)
