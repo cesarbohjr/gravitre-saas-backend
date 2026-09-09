@@ -1,7 +1,7 @@
 # Learning → Relationships graph-first redesign — Phase 0 audit
 
 **Date:** 2026-09-08  
-**Status:** AUDIT ONLY — **STOP FOR CESAR APPROVAL** before production implementation  
+**Status:** SHIPPED (2026-09-08) — prod sign-in verification **NOT RUN**  
 **Canvas:** `.cursor/projects/c-Users-Cesar-Downloads-Gravitre-Operator-AI/canvases/learning-relationships-graph-audit.canvas.tsx`
 
 ## Objective
@@ -83,11 +83,11 @@ When **0 seeded nodes** but **N > 0 learned relationships**: render learned grap
 
 ## Approval checklist
 
-- [ ] Graph library choice (`@xyflow/react` + dagre)
-- [ ] Page structure (graph + inspector)
-- [ ] Terminology (Organization knowledge / Learned relationships)
-- [ ] Phase plan
-- [ ] Proceed to Phase 1 prototypes
+- [x] Graph library choice (`@xyflow/react` + dagre)
+- [x] Page structure (graph + inspector)
+- [x] Terminology (Organization knowledge / Learned relationships)
+- [x] Phase plan
+- [x] Proceed to Phase 1 prototypes
 
 **No production code modified in Phase 0.**
 
@@ -100,3 +100,25 @@ Graph-first Relationships workspace on Learning → Relationships tab:
 - Terminology: Organization knowledge / Learned relationships
 
 **Evidence:** `pnpm exec playwright test -c playwright.visual.config.ts e2e/visual/relationships-workspace.spec.ts e2e/visual/nodus-product-fidelity.spec.ts -g relationships` — 6 passed (local, 2026-09-08).
+
+**Commits:** `9c5d6502` (workspace) · `629d7708` (CI test alignment)
+
+## Prod verification (NOT RUN)
+
+After Vercel deploy, signed-in check at `/intelligence/learning` → **Relationships**:
+
+1. Metric strip reflects live org counts
+2. Graph renders learned + seeded nodes; Graph | Table toggle works
+3. Inspector on node/edge select; archive/restore works
+4. Add knowledge drawer creates a node
+5. Ask Gravitre AI opens `/ai` with prefilled prompt
+
+## Open follow-ups
+
+| Item | Status |
+|------|--------|
+| Prod UI verify (above) | NOT RUN |
+| Multi-hop path focus in inspector | Future — backend API exists |
+| Evidence event timeline | REQUIRES TELEMETRY |
+| Confirm relationship action | REQUIRES TELEMETRY / product decision |
+| Edit seeded node (PATCH) in inspector | Future |
