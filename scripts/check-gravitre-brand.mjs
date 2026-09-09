@@ -21,7 +21,8 @@ import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
-const PATTERN = /gravitree/i
+// Word boundaries avoid false positives on canonical Gravitre* identifiers (e.g. GravitreEmpty).
+const PATTERN = /\bgravitree\b/i
 
 /** Exact relative paths (posix) always allowed. */
 const ALLOWED_EXACT = new Set([
@@ -114,7 +115,7 @@ function findViaRg() {
   for (const g of globs) {
     args.push("-g", g)
   }
-  args.push("gravitree", ".")
+  args.push("-e", "\\bgravitree\\b", ".")
   const result = spawnSync("rg", args, { cwd: ROOT, encoding: "utf8" })
   if (result.error || result.status === 2) return null
   const out = String(result.stdout || "").trim()
@@ -169,10 +170,21 @@ function findViaWalk() {
   return offenders
 }
 
+function fileContainsOffender(rel) {
+  if (isAllowed(rel)) return false
+  const full = join(ROOT, rel)
+  try {
+    const src = readFileSync(full, "utf8")
+    return PATTERN.test(src) || PATTERN.test(rel)
+  } catch {
+    return false
+  }
+}
+
 export function findOffendingFiles() {
   const viaRg = findViaRg()
   const hits = viaRg === null ? findViaWalk() : viaRg
-  return [...new Set(hits.filter((rel) => !isAllowed(rel)))].sort()
+  return [...new Set(hits.filter((rel) => fileContainsOffender(rel)))].sort()
 }
 
 function runCheck() {
