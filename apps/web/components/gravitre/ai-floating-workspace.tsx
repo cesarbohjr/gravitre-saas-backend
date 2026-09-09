@@ -39,13 +39,23 @@
  * not `role="dialog"` — matches architecture doc Part B1/B9 (Float has no
  * modal semantics; only Fullscreen mode does — verified unchanged by
  * `__tests__/gravitre/ai-floating-workspace.test.ts`).
+ *
+ * Phase 4 addendum (C1 icon-gap closure): the header's "Expand"/"Minimize
+ * to helper" controls now use `NucleoExpand`/`NucleoMinimize` (Nucleo-STYLE
+ * constructions, see `components/icons/nucleo/semantic.tsx`'s file header)
+ * instead of Lucide `Expand`/`Minimize2`, matching `ai-workspace-shell.tsx`'s
+ * equivalent controls. `GripVertical` (drag handle + resize handle) is
+ * unchanged — the one already-approved Lucide exception.
  */
 
 import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren } from "react"
 import { createPortal } from "react-dom"
 import { motion, useDragControls, useReducedMotion } from "framer-motion"
-import { Expand, GripVertical, Minimize2 } from "lucide-react"
-import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+// GripVertical is the ONE approved Lucide exception for the drag-handle/
+// resize-handle affordance (Phase 3) — do not replace it (see the
+// architecture doc's C1 audit and this phase's own instructions).
+import { GripVertical } from "lucide-react"
+import { NucleoAgent, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -177,7 +187,7 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
               aria-label="Expand"
               onClick={onExpand}
             >
-              <Expand className="h-3.5 w-3.5" />
+              <NucleoExpand className="h-3.5 w-3.5" />
             </Button>
           ) : null}
           <Button
@@ -188,7 +198,7 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
             aria-label="Minimize to helper"
             onClick={onClose}
           >
-            <Minimize2 className="h-3.5 w-3.5" />
+            <NucleoMinimize className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

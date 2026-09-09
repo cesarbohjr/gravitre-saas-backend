@@ -36,46 +36,86 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
  * true. On activation, focuses the first focusable descendant (falling back
  * to the container itself, which must be focusable — e.g. `tabIndex={-1}`).
  * On deactivation, restores focus to whatever had it before activation.
+ *
+ * Phase 4 addendum: `containerRef.current` is not guaranteed to be non-null
+ * on the SAME render pass this effect first fires. Phase 3's only caller
+ * (`ai-workspace-shell.tsx`) attaches its ref via React's own `createPortal`,
+ * which is synchronous, so `containerRef.current` is already set by the time
+ * this effect runs. Phase 4's `ai-mobile-sheet.tsx` caller renders through
+ * `vaul`'s `Drawer.Portal` (built on Radix `Portal`), which — confirmed by
+ * direct instrumentation while building this phase — resolves its
+ * SSR-safety "mounted" gate one extra render pass AFTER the pass this
+ * effect's `useEffect` callback runs on, so `containerRef.current` reads
+ * `null` on the first check even though the dialog element exists moments
+ * later in the SAME commit flush. This is a real, disclosed timing gap this
+ * phase found and fixed here (a shared hook, so this fixes it for every
+ * caller, not just the mobile sheet) rather than a test-only workaround:
+ * `tryActivate` retries via `requestAnimationFrame` (bounded implicitly by
+ * the effect's own cleanup / `active` flipping false) until the container
+ * actually appears, then proceeds exactly as before. For Phase 3's
+ * synchronous-ref caller this resolves on the very first check, so its
+ * behavior and existing tests are unaffected.
  */
 export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active: boolean): void {
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (!active) return
-    const container = containerRef.current
-    if (!container) return
+    let disposed = false
+    let rafId: number | null = null
+    let removeKeyDown: (() => void) | null = null
 
-    previouslyFocused.current = document.activeElement as HTMLElement | null
+    const activate = (container: HTMLElement) => {
+      previouslyFocused.current = document.activeElement as HTMLElement | null
 
-    const initial = getFocusable(container)[0] ?? container
-    initial.focus()
+      const initial = getFocusable(container)[0] ?? container
+      initial.focus()
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return
-      const items = getFocusable(container)
-      if (items.length === 0) {
-        event.preventDefault()
-        container.focus()
-        return
-      }
-      const first = items[0]
-      const last = items[items.length - 1]
-      const activeEl = document.activeElement
-
-      if (event.shiftKey) {
-        if (activeEl === first || !container.contains(activeEl)) {
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== "Tab") return
+        const items = getFocusable(container)
+        if (items.length === 0) {
           event.preventDefault()
-          last.focus()
+          container.focus()
+          return
         }
-      } else if (activeEl === last || !container.contains(activeEl)) {
-        event.preventDefault()
-        first.focus()
+        const first = items[0]
+        const last = items[items.length - 1]
+        const activeEl = document.activeElement
+
+        if (event.shiftKey) {
+          if (activeEl === first || !container.contains(activeEl)) {
+            event.preventDefault()
+            last.focus()
+          }
+        } else if (activeEl === last || !container.contains(activeEl)) {
+          event.preventDefault()
+          first.focus()
+        }
       }
+
+      container.addEventListener("keydown", onKeyDown)
+      removeKeyDown = () => container.removeEventListener("keydown", onKeyDown)
     }
 
-    container.addEventListener("keydown", onKeyDown)
+    const tryActivate = () => {
+      if (disposed) return
+      const container = containerRef.current
+      if (container) {
+        activate(container)
+        return
+      }
+      // See file header: retry until the ref attaches (bounded by
+      // `disposed`/cleanup below — this never outlives the effect).
+      rafId = requestAnimationFrame(tryActivate)
+    }
+
+    tryActivate()
+
     return () => {
-      container.removeEventListener("keydown", onKeyDown)
+      disposed = true
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      removeKeyDown?.()
       const toRestore = previouslyFocused.current
       if (toRestore && typeof toRestore.focus === "function") {
         toRestore.focus()

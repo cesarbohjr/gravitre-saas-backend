@@ -86,7 +86,7 @@ describe("MobileBottomNav 'Chat' item — unchanged regardless of NEXT_PUBLIC_AI
 
   it("renders all 5 expected destinations unchanged (Home, Chat, Agents, Activity, Approvals)", () => {
     render()
-    const labels = Array.from(container.querySelectorAll("a")).map((a) => a.textContent)
+    const labels = Array.from(container.querySelectorAll("a")).map((a) => a.textContent?.trim())
     expect(labels).toEqual(["Home", "Chat", "Agents", "Activity", "Approvals"])
   })
 

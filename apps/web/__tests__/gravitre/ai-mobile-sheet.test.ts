@@ -168,8 +168,20 @@ describe("GravitreAIMobileSheet — fullscreen (modal snap point)", () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it("engages a real focus trap on mount (useFocusTrap, `active=isFullscreen`) — focus lands inside the sheet", () => {
+  it("engages a real focus trap on mount (useFocusTrap, `active=isFullscreen`) — focus lands inside the sheet", async () => {
+    // `vaul`'s Drawer.Portal (built on Radix's Portal) resolves its mount
+    // gate one render pass after useFocusTrap's mount effect first checks
+    // for a container — see the file header on `useFocusTrap` in
+    // hooks/use-focus-trap.ts for the full explanation (a real timing gap
+    // this phase found and fixed in the shared hook, not a test-only
+    // workaround). useFocusTrap retries via `requestAnimationFrame` until
+    // the ref attaches, so this test awaits a couple of real animation
+    // frames to observe that retry resolve, mirroring a real browser paint
+    // cycle rather than asserting synchronously.
     render({ mode: "fullscreen" })
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    })
     const sheet = document.body.querySelector("[data-gravitre-mobile-sheet]") as HTMLElement
     expect(sheet.contains(document.activeElement)).toBe(true)
   })
