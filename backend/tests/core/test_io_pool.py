@@ -44,6 +44,47 @@ class TestSizing:
         assert io_pool.get_io_pool() is io_pool.get_io_pool()
 
 
+class TestOffloadSwitch:
+    def test_defaults_on(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("VOICE_CONTEXT_IO_OFFLOAD", raising=False)
+        assert io_pool.offload_enabled() is True
+
+    @pytest.mark.parametrize("value", ["false", "FALSE", "0", "no", "off", " off "])
+    def test_falsey_values_disable(
+        self, monkeypatch: pytest.MonkeyPatch, value: str
+    ) -> None:
+        monkeypatch.setenv("VOICE_CONTEXT_IO_OFFLOAD", value)
+        assert io_pool.offload_enabled() is False
+
+    @pytest.mark.parametrize("value", ["true", "1", "yes", "anything-else"])
+    def test_other_values_keep_it_on(
+        self, monkeypatch: pytest.MonkeyPatch, value: str
+    ) -> None:
+        monkeypatch.setenv("VOICE_CONTEXT_IO_OFFLOAD", value)
+        assert io_pool.offload_enabled() is True
+
+    @pytest.mark.asyncio
+    async def test_disabled_runs_inline_on_the_loop(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("VOICE_CONTEXT_IO_OFFLOAD", "false")
+        here = threading.get_ident()
+        assert await io_pool.run_io(threading.get_ident) == here
+
+    @pytest.mark.asyncio
+    async def test_disabled_still_forwards_args_and_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("VOICE_CONTEXT_IO_OFFLOAD", "false")
+        assert await io_pool.run_io(lambda a, *, b: (a, b), 1, b=2) == (1, 2)
+
+        def _boom():
+            raise ValueError("boom")
+
+        with pytest.raises(ValueError, match="boom"):
+            await io_pool.run_io(_boom)
+
+
 class TestRunIo:
     @pytest.mark.asyncio
     async def test_runs_off_the_calling_thread(self) -> None:

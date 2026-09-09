@@ -64,11 +64,31 @@ def get_io_pool() -> ThreadPoolExecutor:
     return _POOL
 
 
+def offload_enabled() -> bool:
+    """Whether blocking calls are moved off the event loop.
+
+    A/B switch, not a feature flag. Offloading was shipped on the strength of an
+    argument rather than a measurement, and the latency claims made for it were
+    later shown to rest on single samples. Setting
+    ``VOICE_CONTEXT_IO_OFFLOAD=false`` restores the previous inline behaviour so
+    the two can be compared with ``measure-voice-latency-harness.py --compare``.
+
+    Defaults to on: not blocking the event loop is the correct behaviour on a
+    voice server regardless of what the latency comparison says, because a
+    blocked loop stalls audio frames for every concurrent session.
+    """
+    raw = (os.environ.get("VOICE_CONTEXT_IO_OFFLOAD") or "true").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
 async def run_io(fn: Callable[..., _T], /, *args: Any, **kwargs: Any) -> _T:
     """Run a blocking callable off the event loop on the dedicated I/O pool.
 
     Drop-in for ``asyncio.to_thread`` that does not compete with the default
     executor.
     """
+    if not offload_enabled():
+        # Deliberately blocks the loop; the measurement baseline only.
+        return fn(*args, **kwargs)
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(get_io_pool(), partial(fn, *args, **kwargs))
