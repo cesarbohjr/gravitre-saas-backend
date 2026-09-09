@@ -13,6 +13,7 @@ import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
 import { GravitreAIWorkspaceProvider } from '@/components/gravitre/ai-workspace-provider'
+import { GravitreAIHelper } from '@/components/gravitre/ai-helper'
 import { interDisplay } from '@/fonts/inter-display/inter'
 import { dmMono } from '@/fonts/dm-mono'
 import './globals.css'
@@ -110,6 +111,15 @@ export default function RootLayout({
                         */}
                         <GravitreAIWorkspaceProvider>
                           {children}
+                          {/*
+                            Phase 2 — bottom-left persistent presence bubble.
+                            Gated by NEXT_PUBLIC_AI_FLOAT_ENABLED (default
+                            off) inside the component itself; renders null
+                            when the flag is off, so this line is not itself
+                            a visible behavior change. See
+                            components/gravitre/ai-helper.tsx.
+                          */}
+                          <GravitreAIHelper />
                         </GravitreAIWorkspaceProvider>
                       </ViewModeProvider>
                       <OnboardingChecklist />

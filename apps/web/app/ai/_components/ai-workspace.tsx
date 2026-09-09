@@ -54,6 +54,10 @@ import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
 } from "@/components/gravitre/ai-conversation-core"
+import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
+import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
+import { deriveGravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
@@ -187,6 +191,11 @@ export function AiWorkspace({
   initialMessageId = null,
 }: AiWorkspaceProps) {
   const { user } = useAuth()
+  // Phase 2 (Gravitre AI Agent Workspace redesign) — see the early-return
+  // Float branch below, right before this component's main `return`. Reading
+  // this context here has no effect on rendering by itself; only the
+  // explicit `presentationMode === "float"` check later changes anything.
+  const { presentationMode, setPresentationMode, conversation, approval, voice } = useGravitreAIWorkspace()
   const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
   const canApproveWrites = (() => {
     const selectedId = getSelectedOrgFromStorage()?.id
@@ -2036,6 +2045,63 @@ export function AiWorkspace({
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
     event.preventDefault()
     void submitPrompt(input)
+  }
+
+  // --- Phase 2 (Gravitre AI Agent Workspace redesign, behind
+  // NEXT_PUBLIC_AI_FLOAT_ENABLED, default off) ------------------------------
+  // When Float mode is active, render the SAME live useChat state
+  // (messages/input/submitPrompt/stop, all already computed above) inside
+  // the floating shell instead of the normal full-page layout below. This is
+  // a swap between two renderings of identical state, not a second
+  // conversation — see ai-workspace-float-bridge.tsx's file header for the
+  // mutation-proof test that pins this down. Zero effect when the flag is
+  // off or presentationMode isn't "float" (today's default), since this
+  // branch is simply never taken.
+  if (GRAVITRE_AI_FLOAT_ENABLED && presentationMode === "float") {
+    return (
+      <GravitreAIFloatBridge
+        presence={deriveGravitreHelperPresence({ conversation, approval, voice })}
+        onClose={() => setPresentationMode("expanded")}
+        messages={messages}
+        showWaiting={showWaitingForReply && !conversationLoading}
+        isStreaming={isStreaming || isChatBusy}
+        status={status}
+        isBusy={sessionBusy || isChatBusy}
+        agentStatusLabel={agentStatusLabel}
+        dialogueMode={dialogueMode}
+        executionResult={executionResult}
+        pendingTask={pendingTask}
+        confirmExecuting={confirmExecuting}
+        onConfirmExecution={() => void handleConfirmExecution()}
+        onRejectExecution={handleRejectExecution}
+        onModifyExecution={handleModifyExecution}
+        canApprove={canApproveWrites}
+        conversationId={activeConversationId}
+        conversationTitle={conversationTitle}
+        onRegenerate={handleRegenerateAssistant}
+        assistantLabel={assistantLabel}
+        waitingLabel={`${assistantLabel} is thinking…`}
+        input={input}
+        onInputChange={setInput}
+        onSubmit={() => void submitPrompt(input)}
+        canSubmit={Boolean(input.trim()) && !routing && !isChatBusy}
+        disabled={routing || isChatBusy}
+        composerIsStreaming={isStreaming || ttsSpeaking || voiceDuplex.presence === "thinking"}
+        onStop={() => {
+          void voiceDuplex.bargeIn()
+          voiceDuplex.stop()
+          stop()
+          stopAgentVoice()
+          setDuplexVoiceError(undefined)
+        }}
+        voiceEntitled={voiceEntitled}
+        placeholder={
+          modality === "voice" ? "Voice mode active — speak to Gravitre…" : "Ask, delegate, or search…"
+        }
+        inputRef={inputRef}
+        onKeyDown={onKeyDown}
+      />
+    )
   }
 
   return (
