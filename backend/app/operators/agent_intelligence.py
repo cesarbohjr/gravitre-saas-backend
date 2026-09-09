@@ -3053,6 +3053,7 @@ class AgentIntelligence:
             ),
         )
 
+        _mark("context_entry")
         turn_ctx = await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
             org_id=org_id,
             user_id=user_id,
@@ -3070,6 +3071,7 @@ class AgentIntelligence:
             mode=requested_mode,
             research_scope=research_scope,
         )
+        _mark("assistant_turn_prepared")
         # Classical ACT still consumes kernel RECALL/KNOWLEDGE assembled before LIVE.
         if cognitive_ctx is not None:
             try:
@@ -3367,6 +3369,7 @@ class AgentIntelligence:
             spoken_user_text=query,
             spoken_settings=active_settings,
         )
+        _mark("system_prompt_built")
 
         prepared_context = await maybe_summarize_history(
             history=conversation_history or [],
@@ -3485,6 +3488,7 @@ class AgentIntelligence:
                     "output": kb_output,
                 }
             )
+            _mark("knowledge_base_emitted")
 
         if should_short_circuit_before_generation(
             query=task_text,
@@ -3627,6 +3631,24 @@ class AgentIntelligence:
         # Preserve Phase-5 correction_ack prefix already streamed above.
         react_result = None
         generation_started = time.monotonic()
+
+        _mark("react_entry")
+        if spoken_mode:
+            # The window between pre_kernel_entry and here was ~4.7s of a 12.3s
+            # spoken tool turn and had no instrumentation at all, so the head
+            # silence the caller hears was unattributable. Log-only.
+            try:
+                logger.info(
+                    "agent_intelligence_context_breakdown_ms org_id=%s spoken_lite_path=%s "
+                    "n_rag_sources=%s system_prompt_chars=%s checkpoints=%s",
+                    org_id,
+                    spoken_lite_path,
+                    len(rag_sources or []),
+                    len(system_prompt or ""),
+                    _pre_kernel_checkpoints,
+                )
+            except Exception:  # noqa: BLE001 — logging must never break the turn.
+                pass
 
         async for event in self.react_engine.run_streaming(
             ctx=ctx,

@@ -57,6 +57,9 @@ import {
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
 import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
+import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
+import type { GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
+import { useGravitreMobileViewport } from "@/hooks/use-gravitre-mobile-viewport"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { deriveGravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
@@ -207,6 +210,14 @@ export function AiWorkspace({
     approval,
     voice,
   } = useGravitreAIWorkspace()
+  // Phase 4 — reuses the existing `md` (768px) breakpoint already governing
+  // MobileBottomNav/ConversationSidebar's drawer mode/LiveActivityRail (see
+  // ai-mobile-sheet.tsx's file header). Determines whether the
+  // Float/Expanded/Fullscreen branch below renders the desktop shells or
+  // GravitreAIMobileSheetBridge. Defaults to `false` (desktop) on the
+  // server and until the first client measurement, matching this hook's
+  // own SSR-safe default.
+  const isMobileWorkspaceViewport = useGravitreMobileViewport()
   // Phase 3 — local UI state for the Expanded/Fullscreen shell's panel
   // collapse toggles. Deliberately local (not lifted into the provider):
   // nothing outside this component needs to read/persist it, and both
@@ -2084,6 +2095,62 @@ export function AiWorkspace({
     const closeToHelper = () => {
       setPresentationMode("expanded")
       setFloatWorkspaceOpen(false)
+    }
+
+    // Phase 4 — mobile gets the vaul-based sheet instead of the desktop
+    // drag-window/3-panel shells, at every presentationMode value (float/
+    // expanded/fullscreen all map onto sheet snap points — see
+    // ai-mobile-sheet.tsx's file header). Checked first, ahead of the
+    // desktop expanded/fullscreen branch below, so resizing across the
+    // `md` breakpoint while the workspace is open swaps shells live.
+    if (isMobileWorkspaceViewport) {
+      const mobileMode: GravitreAIMobileSheetMode = presentationMode === "helper" ? "float" : presentationMode
+      return (
+        <GravitreAIMobileSheetBridge
+          mode={mobileMode}
+          presence={presence}
+          onModeChange={(mode) => setPresentationMode(mode)}
+          onClose={closeToHelper}
+          messages={messages}
+          showWaiting={showWaitingForReply && !conversationLoading}
+          isStreaming={isStreaming || isChatBusy}
+          status={status}
+          isBusy={sessionBusy || isChatBusy}
+          agentStatusLabel={agentStatusLabel}
+          dialogueMode={dialogueMode}
+          executionResult={executionResult}
+          pendingTask={pendingTask}
+          confirmExecuting={confirmExecuting}
+          onConfirmExecution={() => void handleConfirmExecution()}
+          onRejectExecution={handleRejectExecution}
+          onModifyExecution={handleModifyExecution}
+          canApprove={canApproveWrites}
+          conversationId={activeConversationId}
+          conversationTitle={conversationTitle}
+          onRegenerate={handleRegenerateAssistant}
+          assistantLabel={assistantLabel}
+          waitingLabel={`${assistantLabel} is thinking…`}
+          input={input}
+          onInputChange={setInput}
+          onSubmit={() => void submitPrompt(input)}
+          canSubmit={Boolean(input.trim()) && !routing && !isChatBusy}
+          disabled={routing || isChatBusy}
+          composerIsStreaming={isStreaming || ttsSpeaking || voiceDuplex.presence === "thinking"}
+          onStop={() => {
+            void voiceDuplex.bargeIn()
+            voiceDuplex.stop()
+            stop()
+            stopAgentVoice()
+            setDuplexVoiceError(undefined)
+          }}
+          voiceEntitled={voiceEntitled}
+          placeholder={
+            modality === "voice" ? "Voice mode active — speak to Gravitre…" : "Ask, delegate, or search…"
+          }
+          inputRef={inputRef}
+          onKeyDown={onKeyDown}
+        />
+      )
     }
 
     if (presentationMode === "expanded" || presentationMode === "fullscreen") {

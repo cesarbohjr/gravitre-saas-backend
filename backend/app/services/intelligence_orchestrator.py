@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import time
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -136,7 +137,17 @@ class IntelligenceOrchestrator:
         research_scope: str | None = None,
     ) -> AssistantTurnContext:
         _ = conversation_history, persona
+        # This function was the single largest unattributed block on a spoken
+        # tool turn (~4.7s of 12.3s) and is a long chain of sequential I/O, so
+        # each boundary is timed. Log-only, zero behavior change.
+        _t0 = time.perf_counter()
+        _marks: dict[str, int] = {}
+
+        def _mark(name: str) -> None:
+            _marks[name] = int((time.perf_counter() - _t0) * 1000)
+
         connected = self._registry.list_connected_integrations(client, org_id, environment_name=environment_name)
+        _mark("connected_integrations")
         registry_plan = plan_context_registry(
             query=query,
             classification=classification,
@@ -157,6 +168,7 @@ class IntelligenceOrchestrator:
             if focused:
                 connected_labels = ", ".join(sorted(focused))
 
+        _mark("registry_plan")
         memory_ctx = await self._memory_engine.build_context_profile(
             org_id=org_id,
             user_id=user_id,
@@ -164,6 +176,7 @@ class IntelligenceOrchestrator:
             query=query,
             client=client,
         )
+        _mark("memory_context")
         # Phase 3 — shared Module A outcomes across chat + canvas (no parallel store).
         try:
             from app.services.execution_memory_service import get_execution_memory_service
@@ -180,6 +193,7 @@ class IntelligenceOrchestrator:
                 memory_ctx["recent_workflow_outcomes"] = recent_outcomes
         except Exception as exc:  # noqa: BLE001
             logger.debug("orchestrator workflow outcome recall skipped error=%s", exc)
+        _mark("workflow_outcomes")
 
         if agent_id:
             agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
@@ -190,6 +204,7 @@ class IntelligenceOrchestrator:
             agent = build_synthetic_agent_for_task(query, context={"surface": "assistant"})
             agent.setdefault("id", "assistant")
 
+        _mark("agent_resolved")
         classification = self._specialist.enrich_classification(classification, agent)
         suppression_keys = list(memory_ctx.get("suppressed_suggestion_keys") or [])
         resolved_agent_id = str(agent.get("id") or agent_id or "")
@@ -201,6 +216,7 @@ class IntelligenceOrchestrator:
                 knowledge_assignments = self._knowledge.resolve_assignments(agent)
         else:
             knowledge_assignments = self._knowledge.resolve_assignments(agent)
+        _mark("knowledge_assignments")
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
@@ -293,6 +309,8 @@ class IntelligenceOrchestrator:
         async def _empty_org_bundle() -> tuple[Any, str]:
             return None, ""
 
+        _mark("knowledge_fabric")
+
         async def _empty_text() -> str:
             return ""
 
@@ -341,6 +359,7 @@ class IntelligenceOrchestrator:
             if registry_plan.slice_enabled("signals")
             else _empty_signals(),
         )
+        _mark("retrieval_gather")
         try:
             _, org_context_block = org_bundle
         except Exception:  # noqa: BLE001
@@ -477,6 +496,7 @@ class IntelligenceOrchestrator:
             context_profile=profile.to_explanation_dict(),
             confidence={"score": pre_confidence.get("confidence"), "missing_context": pre_confidence.get("missing_context")},
         )
+        _mark("explainability")
         context_explanation = generated.get("summary") or explanation
         # Module C: fabric provenance (incl. content_mode / fetch_status) must reach citation UI
         if fabric_provenance:
@@ -503,6 +523,7 @@ class IntelligenceOrchestrator:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator advisor brief skipped org_id=%s error=%s", org_id, exc)
 
+        _mark("advisor_brief")
         execution_gate = self._confidence_engine.assess_execution_gate(
             pre_confidence=pre_confidence,
             risk_evaluation={"requires_approval": bool(classification.get("requires_action"))},
@@ -564,6 +585,23 @@ class IntelligenceOrchestrator:
         )
         if research_actions:
             research_cascade = attach_research_actions_to_cascade(research_cascade, research_actions)
+
+        _mark("assembled")
+        try:
+            # Deltas between adjacent checkpoints name the slow stage; the final
+            # `rank_recommendations` await sits inside the return expression and
+            # is therefore excluded from `assembled`.
+            logger.info(
+                "prepare_assistant_turn_breakdown_ms org_id=%s mode=%s routing_tier=%s "
+                "n_rag_sources=%s checkpoints=%s",
+                org_id,
+                mode,
+                routing_tier,
+                len(getattr(retrieval, "sources", None) or []),
+                _marks,
+            )
+        except Exception:  # noqa: BLE001 — logging must never break the turn.
+            pass
 
         return AssistantTurnContext(
             retrieval=retrieval,

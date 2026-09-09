@@ -3,17 +3,16 @@
     "runs": 3,
     "n_ok": 3,
     "dead_air_covered_ms": [
-      6256.8,
-      6630.3,
-      6968.2
+      5527.6,
+      5533.7
     ],
     "first_answer_ms": [
-      13348.2,
-      14339.6,
-      18093.3
+      5910.2,
+      12796.1,
+      14604.4
     ],
     "narration_word_counts": [
-      15,
+      0,
       15,
       15
     ]
@@ -22,83 +21,64 @@
     {
       "ok": true,
       "utterance": "Did the HubSpot sync finish today?",
-      "first_delta_ms": 11836.5,
-      "narration_deltas": [
-        {
-          "ms": 11836.5,
-          "text": "Let me check your knowledge base."
-        },
-        {
-          "ms": 11836.6,
-          "text": "Found 5."
-        },
-        {
-          "ms": 14402.2,
-          "text": "Let me check workflow runs."
-        },
-        {
-          "ms": 14402.2,
-          "text": "Found 20."
-        }
-      ],
-      "first_answer_ms": 18093.3,
-      "narration_word_count": 15,
-      "dead_air_covered_ms": 6256.8,
-      "max_gap_ms": 3691.1
+      "first_delta_ms": 5910.2,
+      "narration_deltas": [],
+      "first_answer_ms": 5910.2,
+      "narration_word_count": 0
     },
     {
       "ok": true,
       "utterance": "Did the HubSpot sync finish today?",
-      "first_delta_ms": 7371.4,
+      "first_delta_ms": 9070.7,
       "narration_deltas": [
         {
-          "ms": 7371.4,
+          "ms": 9070.7,
           "text": "Let me check your knowledge base."
         },
         {
-          "ms": 7371.4,
+          "ms": 9070.7,
           "text": "Found 5."
         },
         {
-          "ms": 11330.1,
+          "ms": 12435.5,
           "text": "Let me check workflow runs."
         },
         {
-          "ms": 11330.1,
+          "ms": 12435.5,
           "text": "Found 20."
         }
       ],
-      "first_answer_ms": 14339.6,
+      "first_answer_ms": 14604.4,
       "narration_word_count": 15,
-      "dead_air_covered_ms": 6968.2,
-      "max_gap_ms": 3958.6
+      "dead_air_covered_ms": 5533.7,
+      "max_gap_ms": 3364.7
     },
     {
       "ok": true,
       "utterance": "Did the HubSpot sync finish today?",
-      "first_delta_ms": 6717.9,
+      "first_delta_ms": 7268.5,
       "narration_deltas": [
         {
-          "ms": 6717.9,
+          "ms": 7268.5,
           "text": "Let me check your knowledge base."
         },
         {
-          "ms": 6718.0,
+          "ms": 7268.6,
           "text": "Found 5."
         },
         {
-          "ms": 9875.6,
+          "ms": 10524.9,
           "text": "Let me check workflow runs."
         },
         {
-          "ms": 9875.7,
+          "ms": 10524.9,
           "text": "Found 20."
         }
       ],
-      "first_answer_ms": 13348.2,
+      "first_answer_ms": 12796.1,
       "narration_word_count": 15,
-      "dead_air_covered_ms": 6630.3,
-      "max_gap_ms": 3472.6
+      "dead_air_covered_ms": 5527.6,
+      "max_gap_ms": 3256.3
     }
   ]
 }

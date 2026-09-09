@@ -54,6 +54,20 @@
  * higher-risk refactor whose cost is still disproportionate to what this
  * phase's UI work requires. See the Phase 3 delivery report for the full
  * disclosed decision.
+ *
+ * Phase 4 addendum (B7 mobile collision — see architecture doc Part B7):
+ * `MobileBottomNav` is `fixed inset-x-0 bottom-0 z-30 h-14` (56px) with
+ * `pb-[env(safe-area-inset-bottom)]` (confirmed unchanged by re-reading
+ * `mobile-bottom-nav.tsx` fresh). Below the `md` breakpoint (768px — the
+ * same cutover already governing `MobileBottomNav`/`ConversationSidebar`'s
+ * drawer mode/`LiveActivityRail`), this bubble now sits at
+ * `bottom: calc(56px + env(safe-area-inset-bottom) + 12px)` instead of the
+ * desktop `bottom-5` (20px), so it never collides with the nav bar. This is
+ * a max-width media-query class (`max-md:bottom-[...]`), not a JS viewport
+ * check, so it degrades safely (slightly higher than strictly necessary,
+ * never overlapping) on the one mobile route where `MobileBottomNav`
+ * itself is suppressed (`/builder`) — see `__tests__/gravitre/
+ * ai-helper-mobile-offset.test.ts` for the class-assertion proof.
  */
 
 import { useRouter } from "next/navigation"
@@ -116,7 +130,11 @@ export function GravitreAIHelper() {
       onClick={handleOpen}
       data-gravitre-ai-helper=""
       className={cn(
-        "fixed bottom-5 left-5 z-[85] flex items-center gap-2.5 rounded-full border border-divide",
+        "fixed left-5 z-[85] flex items-center gap-2.5 rounded-full border border-divide",
+        // Mobile (below `md`, 768px): clear MobileBottomNav's 56px fixed bar
+        // + its safe-area inset + a 12px gap (B7). Desktop keeps the
+        // original bottom-5 (20px) offset, unchanged.
+        "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
         "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[var(--np-shadow)] transition-colors",
         "hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
       )}

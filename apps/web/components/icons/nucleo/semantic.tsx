@@ -19,6 +19,27 @@ import { BellOutline24 } from "./BellOutline24"
 import { CommandOutline24 } from "./CommandOutline24"
 import { MagnifierOutline24 } from "./MagnifierOutline24"
 import { NavActivity } from "@/components/icons/nodus-nav/outline"
+// Phase 4 (Gravitre AI Agent Workspace redesign, Part C1 icon-gap closure —
+// see docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md).
+// These 14 files are Nucleo-STYLE constructions built to visually match the
+// stroke/viewBox/corner conventions of the icons imported above — they are
+// NOT purchased/licensed Nucleo-brand assets (this program has no access to
+// nucleoapp.com's paid asset pack). Disclosed honestly in the Phase 4
+// delivery report; do not represent these as genuine Nucleo assets.
+import { ExpandOutline24 } from "./ExpandOutline24"
+import { CollapseOutline24 } from "./CollapseOutline24"
+import { MinimizeOutline24 } from "./MinimizeOutline24"
+import { FullscreenOutline24 } from "./FullscreenOutline24"
+import { MicrophoneOutline24 } from "./MicrophoneOutline24"
+import { PaperclipOutline24 } from "./PaperclipOutline24"
+import { SendOutline24 } from "./SendOutline24"
+import { PlayOutline24 } from "./PlayOutline24"
+import { CheckCircleOutline24 } from "./CheckCircleOutline24"
+import { XCircleOutline24 } from "./XCircleOutline24"
+import { SettingsOutline24 } from "./SettingsOutline24"
+import { HistoryOutline24 } from "./HistoryOutline24"
+import { NewChatOutline24 } from "./NewChatOutline24"
+import { PanelToggleOutline24 } from "./PanelToggleOutline24"
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string
@@ -61,6 +82,34 @@ export const NucleoBell = withSize(BellOutline24)
 export const NucleoCommand = withSize(CommandOutline24)
 /** Search / magnifier */
 export const NucleoSearch = withSize(MagnifierOutline24)
+/** Expand a window/panel outward (Float → Expanded) */
+export const NucleoExpand = withSize(ExpandOutline24)
+/** Collapse a window/panel inward (Fullscreen → Expanded) */
+export const NucleoCollapse = withSize(CollapseOutline24)
+/** Minimize / dock down to the Helper bubble */
+export const NucleoMinimize = withSize(MinimizeOutline24)
+/** Enter fullscreen (4-corner frame) */
+export const NucleoFullscreen = withSize(FullscreenOutline24)
+/** Voice input / microphone */
+export const NucleoMic = withSize(MicrophoneOutline24)
+/** Attach a file */
+export const NucleoAttach = withSize(PaperclipOutline24)
+/** Send a message */
+export const NucleoSend = withSize(SendOutline24)
+/** Run / execute an action */
+export const NucleoRun = withSize(PlayOutline24)
+/** Success / completed */
+export const NucleoSuccess = withSize(CheckCircleOutline24)
+/** Error / failed */
+export const NucleoError = withSize(XCircleOutline24)
+/** Settings / preferences */
+export const NucleoSettings = withSize(SettingsOutline24)
+/** History / past conversations */
+export const NucleoHistory = withSize(HistoryOutline24)
+/** Start a new chat/conversation */
+export const NucleoNewChat = withSize(NewChatOutline24)
+/** Toggle a side panel open/closed */
+export const NucleoPanelToggle = withSize(PanelToggleOutline24)
 /** Activity / execution log */
 export const NucleoActivity = ({
   className,
@@ -88,4 +137,18 @@ export const SEMANTIC_NUCLEO = {
   bell: NucleoBell,
   command: NucleoCommand,
   search: NucleoSearch,
+  expand: NucleoExpand,
+  collapse: NucleoCollapse,
+  minimize: NucleoMinimize,
+  fullscreen: NucleoFullscreen,
+  mic: NucleoMic,
+  attach: NucleoAttach,
+  send: NucleoSend,
+  run: NucleoRun,
+  success: NucleoSuccess,
+  error: NucleoError,
+  settings: NucleoSettings,
+  history: NucleoHistory,
+  newChat: NucleoNewChat,
+  panelToggle: NucleoPanelToggle,
 } as const

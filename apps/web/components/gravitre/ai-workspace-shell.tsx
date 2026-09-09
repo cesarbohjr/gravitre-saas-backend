@@ -39,8 +39,14 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
-import { Expand, Minimize2, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose } from "lucide-react"
-import { NucleoAgent, NucleoClose } from "@/components/icons/nucleo/semantic"
+import {
+  NucleoAgent,
+  NucleoClose,
+  NucleoCollapse,
+  NucleoFullscreen,
+  NucleoMinimize,
+  NucleoPanelToggle,
+} from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useMotionPrefs } from "@/lib/animations"
@@ -160,7 +166,7 @@ export function GravitreAIWorkspaceShell({
             aria-pressed={!leftCollapsed}
             onClick={onToggleLeft}
           >
-            {leftCollapsed ? <PanelLeft className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+            <NucleoPanelToggle className="h-3.5 w-3.5" />
           </Button>
           <Button
             type="button"
@@ -171,7 +177,7 @@ export function GravitreAIWorkspaceShell({
             aria-pressed={!rightCollapsed}
             onClick={onToggleRight}
           >
-            {rightCollapsed ? <PanelRight className="h-3.5 w-3.5" /> : <PanelRightClose className="h-3.5 w-3.5" />}
+            <NucleoPanelToggle className="h-3.5 w-3.5 scale-x-[-1]" />
           </Button>
           {!isFullscreen ? (
             <Button
@@ -182,7 +188,7 @@ export function GravitreAIWorkspaceShell({
               aria-label="Fullscreen"
               onClick={onEnterFullscreen}
             >
-              <Expand className="h-3.5 w-3.5" />
+              <NucleoFullscreen className="h-3.5 w-3.5" />
             </Button>
           ) : (
             <Button
@@ -193,7 +199,7 @@ export function GravitreAIWorkspaceShell({
               aria-label="Exit fullscreen"
               onClick={onExitFullscreen}
             >
-              <Minimize2 className="h-3.5 w-3.5" />
+              <NucleoCollapse className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
@@ -204,7 +210,7 @@ export function GravitreAIWorkspaceShell({
             aria-label="Collapse to floating window"
             onClick={onMinimizeToFloat}
           >
-            <Minimize2 className="h-3.5 w-3.5 rotate-90" />
+            <NucleoMinimize className="h-3.5 w-3.5" />
           </Button>
           <Button
             type="button"

@@ -37,13 +37,20 @@
  * data-fetching. This preserves "reused as-is" for both components; it
  * does not force LiveActivityRail into a column shape it was never built
  * for.
+ *
+ * Phase 4 addendum: the "Live activity" toggle button below used Lucide's
+ * `Activity` even though a Nucleo equivalent (`NucleoActivity`, the Phase 9
+ * UI 2.0 registry) already existed — swapped here. This file only renders
+ * behind `GRAVITRE_AI_FLOAT_ENABLED` (via `GravitreAIWorkspaceShellBridge`,
+ * itself only reached when `floatWorkspaceOpen`), so this is a
+ * zero-visible-change-when-off icon fix, not new UI.
  */
 
 import dynamic from "next/dynamic"
-import { Activity } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
+import { NucleoActivity } from "@/components/icons/nucleo/semantic"
 import {
   shouldShowTaskSidePanel,
   TaskSidePanel,
@@ -95,7 +102,7 @@ export function GravitreAIRightPanel({
           aria-pressed={liveActivityOpen}
           onClick={onToggleLiveActivity}
         >
-          <Activity className="h-3 w-3" aria-hidden />
+          <NucleoActivity className="h-3 w-3" aria-hidden />
           Live activity
         </Button>
       </div>
