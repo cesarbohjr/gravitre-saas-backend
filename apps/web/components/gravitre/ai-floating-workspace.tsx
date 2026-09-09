@@ -41,7 +41,7 @@
  * `__tests__/gravitre/ai-floating-workspace.test.ts`).
  */
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren } from "react"
 import { createPortal } from "react-dom"
 import { motion, useDragControls, useReducedMotion } from "framer-motion"
 import { Expand, GripVertical, Minimize2 } from "lucide-react"
@@ -71,15 +71,14 @@ export const GRAVITRE_FLOAT_DEFAULT_SIZE: WindowSize = { width: 520, height: 560
 export const GRAVITRE_FLOAT_MIN_SIZE: WindowSize = { width: 400, height: 420 }
 export const GRAVITRE_FLOAT_MAX_SIZE: WindowSize = { width: 720, height: 760 }
 
-export interface GravitreFloatingWorkspaceProps {
+export type GravitreFloatingWorkspaceProps = PropsWithChildren<{
   presence: GravitreHelperPresence
   /** Returns the workspace to Helper presentation mode. */
   onClose: () => void
   /** Transitions to Expanded mode (GravitreAIWorkspaceShell). Omitted →
    * no Expand button renders (keeps this shell usable standalone in tests). */
   onExpand?: () => void
-  children: ReactNode
-}
+}>
 
 export function GravitreFloatingWorkspace({ presence, onClose, onExpand, children }: GravitreFloatingWorkspaceProps) {
   const dragControls = useDragControls()
