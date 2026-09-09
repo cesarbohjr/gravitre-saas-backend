@@ -6,7 +6,12 @@ import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 function withRouteKind(response: NextResponse, pathname: string): NextResponse {
   response.headers.set("x-pathname", pathname)
-  if (isMarketingContentRoute(pathname)) {
+  // The unlisted /deck presentation is a standalone surface: route it through
+  // the lighter marketing provider tree so the operator AI helper / app shell
+  // is not mounted over the slides. Kept out of isMarketingContentRoute so it
+  // stays absent from the sitemap and remains noindex.
+  const isDeck = pathname === "/deck" || pathname.startsWith("/deck/")
+  if (isMarketingContentRoute(pathname) || isDeck) {
     response.headers.set("x-gravitre-marketing", "1")
   }
   return response
@@ -43,6 +48,8 @@ export async function proxy(request: NextRequest) {
     // Desktop companion marketing + release manifest (anonymous downloads)
     "/download",
     "/desktop",
+    // Unlisted seed pitch deck — link-shared, not in nav, reachable anonymously
+    "/deck",
     "/api",
     "/forgot-password",
     "/privacy",
