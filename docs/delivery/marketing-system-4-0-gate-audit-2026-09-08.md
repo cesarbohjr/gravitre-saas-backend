@@ -1,7 +1,7 @@
 # GRAVITRE MARKETING SYSTEM 4.0 — GATE AUDIT
 
 **Date:** 2026-09-08  
-**Status:** **AUDIT ONLY — STOP BEFORE PRODUCTION** (await Cesar approval)  
+**Status:** **APPROVED** (Cesar, 2026-09-08) — Phase 1–3 pilot in progress / shipping  
 **Canvas:** `canvases/marketing-system-4-0-gate-audit.canvas.tsx`  
 **Method:** Static inventory of `apps/web/app/(marketing)` + `components/marketing`. Not a live Aceternity pixel PASS.
 
@@ -190,3 +190,17 @@ Approve before any production marketing implementation:
 5. Whether GSAP / custom Lottie / extra WebGL are in budget for Phase 3  
 
 **No invented prices, logos, testimonials, or TRAINED badges in marketing graphics.**
+
+---
+
+## Pilot shipped (2026-09-08) — after approval
+
+Cesar approved the gate. Implemented Phase 1–3 pilot (no GSAP/Lottie/extra WebGL; auth footer unchanged pending separate decision):
+
+1. **Tokens** — `--g-marketing-*`, motion aliases, `--g-graphic-*` in `globals.css`
+2. **Primitives** — `components/marketing/system/` (`GravitreReveal`/`Flow`/`Trace`/`Pulse`/`Resolve`, `GravitreSection`, `FooterClosingField`, `GibeTraceVisual`)
+3. **Footer** — denser Product / Enterprise / Resources / Company / Legal + calm TRACE closing field + site-story line
+4. **Technology** — Lucide orbit replaced with GIBE TRACE SVG + Nucleo pills; legacy intelligence/governance content retained
+
+Still gated: auth chrome slim, GSAP narratives, Lottie, site-wide P1/P2 rollout, Playwright goldens.
+

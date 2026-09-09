@@ -5,6 +5,7 @@ import { Button } from "./button"
 import { Container } from "./container"
 import { Logo } from "./logo"
 import { SubHeading } from "./subheading"
+import { FooterClosingField } from "@/components/marketing/system/footer-closing-field"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
 
 const product = [
@@ -13,84 +14,115 @@ const product = [
   { title: "Extension", href: "/features/extension" },
   { title: "Download", href: "/download" },
   { title: "Pricing", href: "/pricing" },
+  { title: "Marketplace", href: "/features/marketplace" },
+]
+
+const enterprise = [
+  { title: "Security", href: "/security" },
   { title: "Docs", href: "/docs" },
+  { title: "API", href: "/api" },
+  { title: "Support", href: "/support" },
+]
+
+const resources = [
+  { title: "Guides", href: "/guides" },
+  { title: "Blog", href: "/blog" },
+  { title: "Changelog", href: "/changelog" },
+  { title: "Roadmap", href: "/roadmap" },
+  { title: "Contact", href: "/contact" },
 ]
 
 const company = [
-  { title: "Log in", href: "/login" },
   { title: "About", href: "/about" },
-  { title: "Contact", href: "/contact" },
   { title: "Careers", href: "/careers" },
-  { title: "Blog", href: "/blog" },
-  { title: "Changelog", href: "/changelog" },
+  { title: "Log in", href: "/login" },
+  { title: "Get started", href: "/get-started" },
 ]
 
 const legal = [
   { title: "Privacy", href: "/privacy" },
   { title: "Terms", href: "/terms" },
-  { title: "Security", href: "/security" },
 ]
 
+function FooterColumn({
+  title,
+  items,
+  className = "",
+}: {
+  title: string
+  items: Array<{ title: string; href: string }>
+  className?: string
+}) {
+  return (
+    <div className={`col-span-1 mb-6 flex flex-col gap-1 md:mb-0 ${className}`}>
+      <p className="mb-2 text-sm font-medium text-gray-600">{title}</p>
+      {items.map((item) => (
+        <Link
+          href={item.href}
+          key={item.title}
+          className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+        >
+          {item.title}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Marketing System 4.0 footer — Nodus column language + calm TRACE closing field.
+ */
 export const Footer = () => {
   return (
-    <Container>
-      <div className="grid grid-cols-1 px-4 py-20 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-        <div className="mb-6 sm:col-span-2 md:col-span-4 lg:col-span-2">
-          <Logo />
-          <SubHeading as="p" className="mt-4 max-w-lg text-left">
-            One AI brain for your entire business.
-          </SubHeading>
-          <Button as={Link} href="/get-started" className="mt-4 mb-8 lg:mb-0">
-            Put Gravitre to work
-          </Button>
-        </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0">
-          <p className="mb-2 text-sm font-medium text-gray-600">Product</p>
-          {product.map((item) => (
-            <Link
-              href={item.href}
-              key={item.title}
-              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+    <footer className="relative isolate overflow-hidden bg-[color:var(--g-marketing-canvas)]">
+      <FooterClosingField />
+      <Container className="relative">
+        <div className="grid grid-cols-1 gap-y-2 px-4 pt-16 pb-10 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 lg:gap-x-4 lg:pt-20">
+          <div className="mb-8 sm:col-span-2 md:col-span-4 lg:col-span-2 lg:mb-0">
+            <Logo />
+            <SubHeading as="p" className="mt-4 max-w-sm text-left">
+              One AI brain for your entire business.
+            </SubHeading>
+            <Button as={Link} href="/get-started" className="mt-5">
+              Put Gravitre to work
+            </Button>
+          </div>
+
+          <FooterColumn title="Product" items={product} />
+          <FooterColumn title="Enterprise" items={enterprise} />
+          <FooterColumn title="Resources" items={resources} />
+          <FooterColumn title="Company" items={company} />
+          <div className="col-span-1 mb-6 flex flex-col gap-1 md:mb-0 lg:col-span-1">
+            <p className="mb-2 text-sm font-medium text-gray-600">Legal</p>
+            {legal.map((item) => (
+              <Link
+                href={item.href}
+                key={item.title}
+                className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
+              >
+                {item.title}
+              </Link>
+            ))}
+            <button
+              type="button"
+              onClick={() => openMarketingConsentSettings()}
+              className="text-footer-link my-1.5 text-left text-sm font-medium transition-colors hover:text-charcoal-700"
             >
-              {item.title}
-            </Link>
-          ))}
+              Cookie settings
+            </button>
+          </div>
         </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0">
-          <p className="mb-2 text-sm font-medium text-gray-600">Company</p>
-          {company.map((item) => (
-            <Link
-              href={item.href}
-              key={item.title}
-              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
-            >
-              {item.title}
-            </Link>
-          ))}
+
+        <div className="mx-4 border-t border-divide" />
+        <div className="flex flex-col items-center justify-between gap-3 px-4 py-6 md:flex-row">
+          <p className="text-footer-link text-sm">
+            © {new Date().getFullYear()} Gravitre. All rights reserved.
+          </p>
+          <p className="text-footer-link text-xs tracking-wide uppercase">
+            Connect · Understand · Coordinate · Act · Verify · Learn
+          </p>
         </div>
-        <div className="col-span-1 mb-4 flex flex-col gap-1 md:mb-0 lg:col-span-2">
-          <p className="mb-2 text-sm font-medium text-gray-600">Legal</p>
-          {legal.map((item) => (
-            <Link
-              href={item.href}
-              key={item.title}
-              className="text-footer-link my-1.5 text-sm font-medium transition-colors hover:text-charcoal-700"
-            >
-              {item.title}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={() => openMarketingConsentSettings()}
-            className="text-footer-link my-1.5 text-left text-sm font-medium transition-colors hover:text-charcoal-700"
-          >
-            Cookie settings
-          </button>
-        </div>
-      </div>
-      <div className="my-4 flex flex-col items-center justify-between px-4 pt-8 md:flex-row">
-        <p className="text-footer-link text-sm">© {new Date().getFullYear()} Gravitre. All rights reserved.</p>
-      </div>
-    </Container>
+      </Container>
+    </footer>
   )
 }

@@ -518,6 +518,30 @@
   --g-ease-trace: var(--g-ease-standard);
   --g-ease-transfer: var(--g-ease-signal);
   --g-ease-focus: var(--g-ease-intelligence);
+
+  /* Marketing System 4.0 — canvas aliases (Nodus daylight) */
+  --g-marketing-canvas: #ffffff;
+  --g-marketing-surface: #f9f9f9;
+  --g-marketing-text: var(--g-text-primary);
+  --g-marketing-muted: var(--g-text-muted);
+  --g-marketing-border: var(--divide);
+  --g-marketing-shadow: var(--g-shadow-surface);
+  --g-marketing-radius: 1rem;
+  --g-motion-micro: var(--g-duration-micro);
+  --g-motion-enter: var(--g-duration-state);
+  --g-motion-exit: var(--g-duration-micro);
+  --g-motion-narrative: var(--g-duration-flow);
+  --g-motion-ambient: var(--g-duration-ambient);
+  --g-ease-emphasized: var(--g-ease-intelligence);
+  /* Shared illustration language */
+  --g-graphic-line: 1.25px;
+  --g-graphic-node: 5px;
+  --g-graphic-glow: 0 0 24px -6px color-mix(in srgb, var(--primary) 28%, transparent);
+  --g-graphic-dot: 2.5px;
+  --g-graphic-grid: 24px;
+  --g-graphic-blur: 28px;
+  --g-graphic-opacity: 0.4;
+  --g-graphic-signal-ms: 2400ms;
 }
 
 @theme inline {
