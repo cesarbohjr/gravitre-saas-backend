@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DivideX } from "../divide";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
 import { Card } from "../tech-card";
 import { Scale } from "../scale";
 import { LogoSVG } from "../logo";
@@ -350,49 +350,14 @@ export const DeployAndScaleSkeleton = () => {
         style={{ y }}
       >
         {extendedCards.map((card, index) => (
-          <motion.div
+          <DeployScrollCard
             key={`${index}-${card.title}`}
-            className="mx-auto mt-4 w-full max-w-sm shrink-0 rounded-2xl shadow-xl"
-            style={{
-              scale: useTransform(
-                y,
-                [
-                  offset + (index - 2) * -itemHeight,
-                  offset + (index - 1) * -itemHeight,
-                  offset + index * -itemHeight,
-                  offset + (index + 1) * -itemHeight,
-                  offset + (index + 2) * -itemHeight,
-                ],
-                [0.85, 0.95, 1.1, 0.95, 0.85],
-              ),
-
-              background: useTransform(
-                y,
-                [
-                  offset + (index - 1) * -itemHeight,
-                  offset + index * -itemHeight,
-                  offset + (index + 1) * -itemHeight,
-                ],
-                ["#FFFFFF", "#16a374", "#FFFFFF"],
-              ),
-              borderColor: useTransform(
-                y,
-                [
-                  offset + (index - 1) * -itemHeight,
-                  offset + index * -itemHeight,
-                  offset + (index + 1) * -itemHeight,
-                ],
-                ["#FFFFFF", "#16a374", "#FFFFFF"],
-              ),
-            }}
-          >
-            <DeployCard
-              variant={card.variant}
-              title={card.title}
-              subtitle={card.subtitle}
-              branch={card.branch}
-            />
-          </motion.div>
+            card={card}
+            index={index}
+            y={y}
+            offset={offset}
+            itemHeight={itemHeight}
+          />
         ))}
       </motion.div>
     </div>
@@ -446,6 +411,69 @@ const DeployCard = ({
     </div>
   );
 };
+
+function DeployScrollCard({
+  card,
+  index,
+  y,
+  offset,
+  itemHeight,
+}: {
+  card: {
+    title: string;
+    subtitle: string;
+    branch: string;
+    variant?: "default" | "danger" | "success" | "warning";
+  };
+  index: number;
+  y: MotionValue<number>;
+  offset: number;
+  itemHeight: number;
+}) {
+  const scale = useTransform(
+    y,
+    [
+      offset + (index - 2) * -itemHeight,
+      offset + (index - 1) * -itemHeight,
+      offset + index * -itemHeight,
+      offset + (index + 1) * -itemHeight,
+      offset + (index + 2) * -itemHeight,
+    ],
+    [0.85, 0.95, 1.1, 0.95, 0.85],
+  );
+  const background = useTransform(
+    y,
+    [
+      offset + (index - 1) * -itemHeight,
+      offset + index * -itemHeight,
+      offset + (index + 1) * -itemHeight,
+    ],
+    ["#FFFFFF", "#16a374", "#FFFFFF"],
+  );
+  const borderColor = useTransform(
+    y,
+    [
+      offset + (index - 1) * -itemHeight,
+      offset + index * -itemHeight,
+      offset + (index + 1) * -itemHeight,
+    ],
+    ["#FFFFFF", "#16a374", "#FFFFFF"],
+  );
+
+  return (
+    <motion.div
+      className="mx-auto mt-4 w-full max-w-sm shrink-0 rounded-2xl shadow-xl"
+      style={{ scale, background, borderColor }}
+    >
+      <DeployCard
+        variant={card.variant}
+        title={card.title}
+        subtitle={card.subtitle}
+        branch={card.branch}
+      />
+    </motion.div>
+  );
+}
 
 const LeftSVG = (props: React.SVGProps<SVGSVGElement>) => {
   const path = `M127.457 0.0891113L127.576 95.9138L127.457 0.0891113ZM-0.0609919 96.0731L-0.160632 16.2484C-0.172351 6.85959 7.4293 -0.761068 16.8181 -0.772787L16.8206 1.22721C8.53637 1.23755 1.82903 7.96166 1.83937 16.2459L1.93901 96.0706L-0.0609919 96.0731ZM-0.160632 16.2484C-0.172351 6.85959 7.4293 -0.761068 16.8181 -0.772787L127.455 -0.910888L127.458 1.08911L16.8206 1.22721C8.53637 1.23755 1.82903 7.96166 1.83937 16.2459L-0.160632 16.2484ZM127.576 95.9138L0.939007 96.0718L127.576 95.9138Z`;

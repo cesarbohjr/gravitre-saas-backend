@@ -62,7 +62,8 @@ async function renderHelper(sink?: { value: GravitreAIWorkspaceContextValue | nu
   )
   const { GravitreAIHelper } = await import("@/components/gravitre/ai-helper")
   function Probe() {
-    if (sink) sink.value = useGravitreAIWorkspace()
+    const ctx = useGravitreAIWorkspace()
+    if (sink) sink.value = ctx
     return null
   }
   root = createRoot(container)

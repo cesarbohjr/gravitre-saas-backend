@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import {
   AnthropicLogo,
@@ -120,11 +120,13 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
           "absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full",
           reverse ? "animate-counter-orbit" : "animate-orbit",
         )}
-        style={{
-          width: diameter,
-          height: diameter,
-          ["--duration" as any]: `${duration}s`,
-        }}
+        style={
+          {
+            width: diameter,
+            height: diameter,
+            "--duration": `${duration}s`,
+          } as CSSProperties
+        }
       >
         <div className="relative h-full w-full">
           {ringLogos.map((Logo, idx) => {
@@ -144,9 +146,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
                       "shadow-aceternity flex size-14 items-center justify-center rounded-md bg-white dark:bg-neutral-950",
                       reverse ? "animate-orbit" : "animate-counter-orbit",
                     )}
-                    style={{
-                      ["--duration" as any]: `${duration}s`,
-                    }}
+                    style={{ "--duration": `${duration}s` } as CSSProperties}
                   >
                     <Logo className="size-8 shrink-0" />
                   </div>

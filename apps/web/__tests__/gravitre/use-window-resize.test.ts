@@ -33,11 +33,11 @@ const DEFAULT: WindowSize = { width: 520, height: 560 }
 
 let container: HTMLDivElement
 let root: Root | null = null
-let lastSize: WindowSize = DEFAULT
+const lastSize = { current: DEFAULT as WindowSize }
 
 function Harness() {
   const [size, setSize] = useState<WindowSize>(DEFAULT)
-  lastSize = size
+  lastSize.current = size
   const { onPointerDown, onKeyDown } = useWindowResize({
     size,
     min: MIN,
@@ -55,7 +55,7 @@ function Harness() {
 beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
-  lastSize = DEFAULT
+  lastSize.current = DEFAULT
 })
 
 afterEach(() => {
@@ -82,8 +82,8 @@ describe("useWindowResize — keyboard", () => {
     act(() => {
       handle.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }))
     })
-    expect(lastSize.width).toBe(DEFAULT.width + 16)
-    expect(lastSize.height).toBe(DEFAULT.height)
+    expect(lastSize.current.width).toBe(DEFAULT.width + 16)
+    expect(lastSize.current.height).toBe(DEFAULT.height)
   })
 
   it("ArrowUp shrinks height by the default step", () => {
@@ -92,7 +92,7 @@ describe("useWindowResize — keyboard", () => {
     act(() => {
       handle.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }))
     })
-    expect(lastSize.height).toBe(DEFAULT.height - 16)
+    expect(lastSize.current.height).toBe(DEFAULT.height - 16)
   })
 
   it("Shift+ArrowRight uses the coarser step (3x)", () => {
@@ -103,7 +103,7 @@ describe("useWindowResize — keyboard", () => {
         new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true, cancelable: true }),
       )
     })
-    expect(lastSize.width).toBe(DEFAULT.width + 16 * 3)
+    expect(lastSize.current.width).toBe(DEFAULT.width + 16 * 3)
   })
 
   it("clamps at the minimum width — repeated ArrowLeft never goes below min.width", () => {
@@ -116,7 +116,7 @@ describe("useWindowResize — keyboard", () => {
         )
       })
     }
-    expect(lastSize.width).toBe(MIN.width)
+    expect(lastSize.current.width).toBe(MIN.width)
   })
 
   it("clamps at the maximum height — repeated ArrowDown never exceeds max.height", () => {
@@ -129,7 +129,7 @@ describe("useWindowResize — keyboard", () => {
         )
       })
     }
-    expect(lastSize.height).toBe(MAX.height)
+    expect(lastSize.current.height).toBe(MAX.height)
   })
 
   it("ignores unrelated keys", () => {
@@ -138,7 +138,7 @@ describe("useWindowResize — keyboard", () => {
     act(() => {
       handle.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))
     })
-    expect(lastSize).toEqual(DEFAULT)
+    expect(lastSize.current).toEqual(DEFAULT)
   })
 })
 
@@ -165,8 +165,8 @@ describe("useWindowResize — pointer drag", () => {
 
     // pointerup cancels the pending rAF and flushes synchronously — the
     // final size reflects the full drag delta, not zero.
-    expect(lastSize.width).toBe(DEFAULT.width + 60)
-    expect(lastSize.height).toBe(DEFAULT.height + 30)
+    expect(lastSize.current.width).toBe(DEFAULT.width + 60)
+    expect(lastSize.current.height).toBe(DEFAULT.height + 30)
     rafSpy.mockRestore()
   })
 
@@ -184,7 +184,7 @@ describe("useWindowResize — pointer drag", () => {
     act(() => {
       window.dispatchEvent(new PointerEventCtor("pointerup", { clientX: 100 + 5000, clientY: 100 + 5000 }))
     })
-    expect(lastSize.width).toBe(MAX.width)
-    expect(lastSize.height).toBe(MAX.height)
+    expect(lastSize.current.width).toBe(MAX.width)
+    expect(lastSize.current.height).toBe(MAX.height)
   })
 })

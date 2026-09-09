@@ -14,10 +14,11 @@ import { Database, DotsThreeVertical, Plugs, Sparkle } from "@phosphor-icons/rea
 import type { AgentKnowledgeAssignment } from "@/lib/api"
 import { SourceIngestionIndicator, type SourceIngestionSnapshot } from "./source-ingestion-indicator"
 
-function sourceIcon(sourceType: string) {
-  if (sourceType === "knowledge_pack") return Sparkle
-  if (sourceType === "rag_source") return Database
-  return Plugs
+function SourceTypeIcon({ sourceType, className }: { sourceType: string; className?: string }) {
+  const props = { className, weight: "duotone" as const, "aria-hidden": true as const }
+  if (sourceType === "knowledge_pack") return <Sparkle {...props} />
+  if (sourceType === "rag_source") return <Database {...props} />
+  return <Plugs {...props} />
 }
 
 function statusBadge(status?: string) {
@@ -59,7 +60,6 @@ export function AgentKnowledgeCard({
   onRemove?: () => void
   onSync?: () => void
 }) {
-  const Icon = sourceIcon(sourceType)
   return (
     <article
       className={cn(
@@ -78,7 +78,7 @@ export function AgentKnowledgeCard({
             assigned ? "bg-emerald-500/10 text-emerald-600" : "bg-[color:var(--g-surface-2)] text-[color:var(--g-brand)]",
           )}
         >
-          <Icon className="h-5 w-5" weight="duotone" aria-hidden />
+          <SourceTypeIcon sourceType={sourceType} className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

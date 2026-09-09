@@ -41,11 +41,11 @@ describe("GravitreFloatingWorkspace", () => {
     root = createRoot(container)
     act(() => {
       root!.render(
-        createElement(GravitreFloatingWorkspace, {
-          presence: "ready",
-          onClose,
-          children: createElement("div", { "data-testid": "float-body" }, "hello from float"),
-        }),
+        createElement(
+          GravitreFloatingWorkspace,
+          { presence: "ready", onClose },
+          createElement("div", { "data-testid": "float-body" }, "hello from float"),
+        ),
       )
     })
 
@@ -59,9 +59,7 @@ describe("GravitreFloatingWorkspace", () => {
   it("shows the given presence label in the header", () => {
     root = createRoot(container)
     act(() => {
-      root!.render(
-        createElement(GravitreFloatingWorkspace, { presence: "needs_approval", onClose: vi.fn(), children: "x" }),
-      )
+      root!.render(createElement(GravitreFloatingWorkspace, { presence: "needs_approval", onClose: vi.fn() }, "x"))
     })
     const portaled = document.body.querySelector("[data-gravitre-float-workspace]")
     expect(portaled?.textContent).toContain("Needs approval")
@@ -71,7 +69,7 @@ describe("GravitreFloatingWorkspace", () => {
     const onClose = vi.fn()
     root = createRoot(container)
     act(() => {
-      root!.render(createElement(GravitreFloatingWorkspace, { presence: "ready", onClose, children: "x" }))
+      root!.render(createElement(GravitreFloatingWorkspace, { presence: "ready", onClose }, "x"))
     })
     const button = document.body.querySelector(
       "[data-gravitre-float-workspace] button[aria-label='Minimize to helper']",
@@ -86,7 +84,7 @@ describe("GravitreFloatingWorkspace", () => {
   it("marks the drag handle region, not the whole window, as the drag start zone", () => {
     root = createRoot(container)
     act(() => {
-      root!.render(createElement(GravitreFloatingWorkspace, { presence: "ready", onClose: vi.fn(), children: "x" }))
+      root!.render(createElement(GravitreFloatingWorkspace, { presence: "ready", onClose: vi.fn() }, "x"))
     })
     const dragHandle = document.body.querySelector("[data-gravitre-float-workspace] [data-window-drag-handle]")
     expect(dragHandle).not.toBeNull()
