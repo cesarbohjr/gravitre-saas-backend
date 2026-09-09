@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -411,33 +411,103 @@ const statusConfig = {
   },
 }
 
-// Animated Data Flow Line
-function DataFlowLine({ active, direction = "right" }: { active: boolean; direction?: "right" | "left" }) {
+/**
+ * Topology edge — same Nodus homepage connection-line language as
+ * HorizontalLine / RightSideSVG (base --color-line + sweeping blue gradient).
+ */
+function TopologyConnectionLine({
+  active,
+  direction = "right",
+  className,
+}: {
+  active: boolean
+  direction?: "right" | "left"
+  className?: string
+}) {
+  const reactId = useId()
+  const gradientId = `gv-conn-edge-${reactId.replace(/:/g, "")}`
+  const sweepFromLeft = direction === "right"
+
   return (
-    <div className="relative h-0.5 flex-1 bg-border/30 overflow-hidden">
-      {active && (
-        <motion.div
-          className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-[color:var(--g-signal)] to-transparent"
-          animate={{ x: direction === "right" ? ["-100%", "400%"] : ["400%", "-100%"] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        />
-      )}
-    </div>
+    <svg
+      aria-hidden
+      viewBox="0 0 314 2"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="none"
+      className={cn("h-[2px] w-full min-w-[4rem] flex-1", className)}
+    >
+      <line
+        x1="0.5"
+        y1="1"
+        x2="313.5"
+        y2="1"
+        stroke="var(--color-line, #eaedf1)"
+        strokeLinecap="round"
+      />
+      {active ? (
+        <>
+          <line
+            x1="0.5"
+            y1="1"
+            x2="313.5"
+            y2="1"
+            stroke={`url(#${gradientId})`}
+            strokeLinecap="round"
+          />
+          <defs>
+            <motion.linearGradient
+              id={gradientId}
+              gradientUnits="userSpaceOnUse"
+              initial={{
+                y1: 0,
+                y2: 1,
+                x1: sweepFromLeft ? "-10%" : "110%",
+                x2: sweepFromLeft ? "0%" : "120%",
+              }}
+              animate={{
+                y1: 0,
+                y2: 1,
+                x1: sweepFromLeft ? "110%" : "-10%",
+                x2: sweepFromLeft ? "120%" : "0%",
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "loop",
+                ease: "easeInOut",
+                repeatDelay: 1,
+              }}
+            >
+              <stop stopColor="var(--color-line, #EAEDF1)" />
+              <stop offset="0.5" stopColor="var(--color-blue-500)" />
+              <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+            </motion.linearGradient>
+          </defs>
+        </>
+      ) : null}
+    </svg>
   )
 }
 
-// Central Hub Node
+/** Central hub — Nodus NativeToolsHubLogo rings + count, with Connected badge. */
 function CentralHub({ connectedCount, totalCount }: { connectedCount: number; totalCount: number }) {
   return (
-    <div className="relative">
-      {/* Main hub */}
-      <div className="relative flex h-32 w-32 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-elevated)]">
-        <div className="text-center">
-          <Cable className="h-8 w-8 text-[color:var(--g-signal)] mx-auto mb-1" />
-          <div className="text-2xl font-bold text-foreground">{connectedCount}</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">of {totalCount} Active</div>
+    <div className="relative flex flex-col items-center gap-3">
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24">
+        <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
+        <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)]" />
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white p-2 text-black dark:bg-neutral-900 dark:text-white">
+          <Cable className="mb-0.5 h-5 w-5 text-[color:var(--color-brand)] sm:h-6 sm:w-6" />
+          <div className="text-lg font-bold leading-none sm:text-xl">{connectedCount}</div>
+          <div className="text-[8px] uppercase tracking-wider text-muted-foreground sm:text-[9px]">
+            of {totalCount}
+          </div>
         </div>
       </div>
+      <span className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500 dark:bg-blue-900 dark:text-white">
+        Connected
+      </span>
     </div>
   )
 }
@@ -474,7 +544,7 @@ function ConnectorNode({
       initial={{ opacity: 0, x: position === "left" ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       className={cn(
-        "relative group",
+        "group relative w-full max-w-md",
         position === "left" ? "flex-row-reverse" : "flex-row"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -482,12 +552,12 @@ function ConnectorNode({
     >
       {/* Connection line */}
       <div className={cn(
-        "flex items-center gap-2",
+        "flex w-full items-center gap-2",
         position === "left" ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Node */}
         <div className={cn(
-          "relative rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 md:p-4 transition-all duration-300 w-full md:min-w-[240px] shadow-[var(--np-shadow)]",
+          "relative w-full shrink-0 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-all duration-300 md:max-w-[280px] md:min-w-[240px] md:p-4",
           isHovered ? "border-[color:var(--g-border-active)]" : "border-divide",
           connector.status === "connected" && "shadow-[var(--g-brand-glow)]",
           connector.status === "error" && "border-destructive/30"
@@ -651,9 +721,12 @@ function ConnectorNode({
           </div>
         </div>
 
-        {/* Data flow line - hidden on mobile */}
-        <div className="hidden md:flex w-16 items-center">
-          <DataFlowLine active={connectorIsExecutable(connector)} direction={position === "left" ? "right" : "left"} />
+        {/* Nodus-style connection line — hidden on mobile */}
+        <div className="hidden min-w-[6rem] flex-1 items-center md:flex md:max-w-[12rem] lg:min-w-[8rem] lg:max-w-[16rem]">
+          <TopologyConnectionLine
+            active={connectorIsExecutable(connector)}
+            direction={position === "left" ? "right" : "left"}
+          />
         </div>
       </div>
     </motion.div>
@@ -3108,20 +3181,9 @@ function ConnectorsPageContent() {
           <>
           {/* Mobile: Card list view */}
           <div className="md:hidden space-y-4">
-            {/* Mobile Hub Summary */}
+            {/* Mobile Hub Summary — same hub language as desktop / homepage */}
             <div className="flex items-center justify-center py-4">
-              <div className="relative">
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-elevated)]">
-                  <div className="text-center">
-                    <Cable className="h-5 w-5 text-[color:var(--g-signal)] mx-auto mb-0.5" />
-                    <div className="text-lg font-bold text-foreground">{hubConnectedCount}</div>
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
-                      of {hubTotalCount}
-                      {hasActiveFilters ? " shown" : ""}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
             </div>
             
             {/* Mobile connector cards */}
@@ -3143,10 +3205,10 @@ function ConnectorsPageContent() {
 
           {/* Desktop: Network topology view */}
           {viewMode === "topology" && (
-            <div className="hidden md:block relative min-h-[600px]">
-              <div className="flex items-center justify-center">
-                {/* Left column */}
-                <div className="flex flex-col gap-4 mr-8">
+            <div className="relative hidden min-h-[600px] md:block">
+              <div className="flex items-center justify-center gap-0">
+                {/* Left column — lines extend toward hub */}
+                <div className="mr-2 flex flex-1 flex-col items-end gap-6">
                   {leftConnectors.map((connector) => (
                     <ConnectorNode
                       key={connector.id}
@@ -3155,7 +3217,7 @@ function ConnectorsPageContent() {
                       onConfigure={() => setConfigureModal(connector)}
                       onSync={handleSync}
                       onTestConnection={handleTestConnection}
-                  onReconnect={handleReconnectOAuth}
+                      onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
@@ -3164,8 +3226,8 @@ function ConnectorsPageContent() {
                 {/* Central Hub */}
                 <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
 
-                {/* Right column */}
-                <div className="flex flex-col gap-4 ml-8">
+                {/* Right column — lines extend toward hub */}
+                <div className="ml-2 flex flex-1 flex-col items-start gap-6">
                   {rightConnectors.map((connector) => (
                     <ConnectorNode
                       key={connector.id}
@@ -3174,7 +3236,7 @@ function ConnectorsPageContent() {
                       onConfigure={() => setConfigureModal(connector)}
                       onSync={handleSync}
                       onTestConnection={handleTestConnection}
-                  onReconnect={handleReconnectOAuth}
+                      onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
