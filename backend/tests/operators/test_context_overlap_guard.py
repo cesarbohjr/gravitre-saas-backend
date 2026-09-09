@@ -9,12 +9,26 @@ the user did not ask, which is worse than being slow.
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 import re
+import time
+from contextlib import ExitStack
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 import app.operators.agent_intelligence as ai
 from app.config import Settings
+from app.core.io_pool import run_io
+from app.operators.agent_intelligence import AgentIntelligence
+from app.operators.react_engine import ReActResult, ReActStatus
+from app.operators.stream_events import AssistantStreamComplete
+from app.services.intelligence_orchestrator import AssistantTurnContext
+from app.services.unified_retrieval_service import UnifiedRetrievalBundle
+from tests.conftest import patch_agent_streaming_dialogue_pipeline
 
 _SRC = Path(inspect.getfile(ai)).read_text(encoding="utf-8")
 
@@ -170,6 +184,266 @@ class TestNoNestedFunctionReadsALaterLocalImport:
 
         assert not violations, "unset-closure-cell capture(s): " + "; ".join(
             sorted(set(violations))
+        )
+
+
+_ANSWER = "overlap-path-ok"
+# LIVE streams for longer than context assembly costs, so context assembly always
+# finishes while LIVE is still emitting. That is what makes the delta-gap
+# assertion below able to see a stalled loop.
+_DELTA_GAP = 0.05
+_N_DELTAS = 10
+_LIVE_COST = _DELTA_GAP * _N_DELTAS
+_CTX_COST = 0.30
+_BEAT = 0.01
+
+
+def _make_intelligence(*, overlap: bool) -> AgentIntelligence:
+    settings = SimpleNamespace(
+        disable_ai=False,
+        rag_top_k=5,
+        unified_turn_live_enabled=True,
+        voice_context_overlap_v1=overlap,
+    )
+    rag = MagicMock()
+    rag.query = AsyncMock(return_value=SimpleNamespace(chunks=[]))
+    unified = MagicMock()
+    unified.retrieve = AsyncMock(return_value=UnifiedRetrievalBundle())
+
+    intel = AgentIntelligence(
+        settings=settings,
+        react_engine=MagicMock(),
+        rag_service=rag,
+        unified_retrieval=unified,
+    )
+    intel.tool_registry = MagicMock()
+    intel.tool_registry.list_connected_integrations.return_value = ["hubspot"]
+    intel.tool_registry.enrich_connected_integrations = AsyncMock(
+        side_effect=lambda _client, _org_id, connected: connected
+    )
+    intel.tool_registry.get_available_tools = AsyncMock(return_value=[])
+    intel.tool_registry.get_tools_for_agent.return_value = []
+
+    async def fake_react(**_kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer=_ANSWER),
+        )
+
+    intel.react_engine.run_streaming = fake_react
+    return intel
+
+
+async def _run_overlap_turn(*, overlap: bool) -> dict[str, object]:
+    """Drive a real spoken fast turn where LIVE streams then falls through.
+
+    Returns the event list plus a timeline of when LIVE and context assembly
+    each started, so a caller can assert on ordering rather than wall time.
+    """
+    intel = _make_intelligence(overlap=overlap)
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+
+    live_starts: list[float] = []
+    delta_times: list[float] = []
+    ctx_starts: list[float] = []
+    ctx_calls = 0
+
+    # Independent heartbeat: the only thing that reliably sees a blocked loop.
+    # Measuring gaps between LIVE's own deltas does not, because the block lands
+    # before LIVE's first delta rather than between two of them.
+    beats: list[float] = []
+
+    async def _heartbeat() -> None:
+        while True:
+            beats.append(time.perf_counter())
+            await asyncio.sleep(_BEAT)
+
+    async def fake_live(**kwargs):
+        """LIVE emits text, then declines -- the ~48% fallthrough case."""
+        live_starts.append(time.perf_counter())
+        on_delta = kwargs.get("on_text_delta")
+        for _ in range(_N_DELTAS):
+            await asyncio.sleep(_DELTA_GAP)
+            if on_delta is not None:
+                await on_delta("word ")
+            delta_times.append(time.perf_counter())
+        return None
+
+    async def fake_prepare(**_kwargs) -> AssistantTurnContext:
+        nonlocal ctx_calls
+        ctx_calls += 1
+        ctx_starts.append(time.perf_counter())
+        # A real blocking Supabase read, offloaded exactly as production does.
+        # Calling time.sleep directly here is the regression this models.
+        await run_io(time.sleep, _CTX_COST)
+        return AssistantTurnContext(
+            retrieval=UnifiedRetrievalBundle(org_context={"connectedIntegrations": ["hubspot"]}),
+            agent={"id": "assistant", "name": "Assistant"},
+            connected_integrations=["hubspot"],
+            context_explanation="ctx",
+        )
+
+    orchestrator = MagicMock()
+    orchestrator.prepare_assistant_turn = fake_prepare
+    orchestrator.finalize_confidence = MagicMock(
+        return_value={"score": 0.8, "band": "high", "needs_clarification": False}
+    )
+
+    company = MagicMock()
+    company.get_context_for_prompt = AsyncMock(return_value="")
+
+    events: list[object] = []
+    started = time.perf_counter()
+    beat_task = asyncio.create_task(_heartbeat())
+    try:
+        with ExitStack() as stack:
+            # Base stubs first; the overrides below must win, so they go on after.
+            stack.enter_context(patch_agent_streaming_dialogue_pipeline())
+            mcp = stack.enter_context(patch("app.services.mcp_client_service.get_mcp_client_service"))
+            mcp.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+            stack.enter_context(
+                patch(
+                    "app.operators.agent_intelligence.get_company_intelligence_orchestrator",
+                    return_value=company,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.operators.agent_intelligence.build_entity_context_section",
+                    AsyncMock(return_value=""),
+                )
+            )
+            org_service = stack.enter_context(
+                patch("app.operators.agent_intelligence.get_org_context_service")
+            )
+            org_service.return_value.get_context_bundle.return_value = (
+                {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
+                "Org block",
+            )
+            stack.enter_context(
+                patch(
+                    "app.operators.agent_intelligence.maybe_summarize_history",
+                    AsyncMock(
+                        return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.intelligence_orchestrator.get_intelligence_orchestrator",
+                    return_value=orchestrator,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.unified_turn_reasoning_service.apply_unified_turn_live",
+                    fake_live,
+                )
+            )
+            async for event in intel.execute_task_streaming(
+                org_id="org-1",
+                user_id="user-1",
+                # Must reach classical ReAct: a connector-named query ("the HubSpot
+                # deals") takes the connector-turn early return instead, which drops
+                # the prefetch and measures nothing.
+                query=f"Say {_ANSWER} in one word.",
+                mode="fast",
+                requested_tools=["agent_status"],
+                client=client,
+                spoken_mode=True,
+            ):
+                events.append(event)
+    finally:
+        beat_task.cancel()
+
+    gaps = [b - a for a, b in zip(beats, beats[1:])]
+    return {
+        "events": events,
+        "live_start": live_starts[0] if live_starts else None,
+        "delta_times": delta_times,
+        "ctx_start": ctx_starts[0] if ctx_starts else None,
+        "ctx_calls": ctx_calls,
+        "worst_beat_gap": max(gaps) if gaps else 0.0,
+        "elapsed": time.perf_counter() - started,
+    }
+
+
+class TestFlagOnPathActuallyRuns:
+    """Executing coverage for the flag-on path -- the gap that let it break twice.
+
+    Every guard above reads source text. Both production failures of
+    VOICE_CONTEXT_OVERLAP_V1 shipped with this file green: first a NameError from
+    an unset closure cell, then a 20s unified_turn_stream_timeout when context
+    assembly's blocking reads starved the LIVE stream. Neither is visible to a
+    source-level assertion, because nothing here ran the branch.
+    """
+
+    @pytest.mark.asyncio
+    async def test_turn_completes_and_the_prefetch_is_adopted(self) -> None:
+        result = await _run_overlap_turn(overlap=True)
+
+        complete = next(e for e in result["events"] if isinstance(e, AssistantStreamComplete))
+        assert complete.full_content == _ANSWER
+        # Exactly one assembly: a raised prefetch would re-raise on await and fail
+        # the turn; a discarded one would assemble a second time inline.
+        assert result["ctx_calls"] == 1
+
+    @pytest.mark.asyncio
+    async def test_context_assembly_starts_before_live_finishes(self) -> None:
+        result = await _run_overlap_turn(overlap=True)
+
+        assert result["ctx_start"] is not None, "context assembly never ran"
+        assert result["delta_times"], "LIVE never streamed"
+        assert result["ctx_start"] < result["delta_times"][-1], (
+            "context assembly started only after LIVE finished -- not overlapping"
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_event_loop_is_not_blocked_by_context_assembly(self) -> None:
+        """The unified_turn_stream_timeout class.
+
+        Context assembly blocks for _CTX_COST. Done on the event loop, nothing
+        else on that loop -- including LIVE's stream, and on a real server every
+        other session's audio -- is serviced for that whole window.
+
+        Measured with an independent heartbeat rather than gaps between LIVE's own
+        deltas: the block lands *before* LIVE's first delta, so inter-delta gaps
+        stay clean even when the loop is stalled. That earlier assertion passed
+        under mutation, which is why it is not the one used here.
+
+        Scope: this pins the contract for the concurrent path. That the *real*
+        prepare_assistant_turn contains no un-offloaded sync reads is a separate,
+        AST-level property -- see tests/services/test_context_assembly_non_blocking.py.
+        """
+        result = await _run_overlap_turn(overlap=True)
+
+        worst = result["worst_beat_gap"]
+        assert worst < _CTX_COST * 0.5, (
+            f"event loop stalled for {worst:.3f}s against a {_CTX_COST:.2f}s "
+            "context-assembly cost -- the blocking read was not offloaded"
+        )
+
+
+class TestFlagOffPathIsStillSerial:
+    """Control for the tests above: proves they can tell overlap from serial.
+
+    Without this, a bug that silently skipped the prefetch would leave
+    TestFlagOnPathActuallyRuns green on the inline path.
+    """
+
+    @pytest.mark.asyncio
+    async def test_context_assembly_waits_for_live(self) -> None:
+        result = await _run_overlap_turn(overlap=False)
+
+        complete = next(e for e in result["events"] if isinstance(e, AssistantStreamComplete))
+        assert complete.full_content == _ANSWER
+        assert result["ctx_start"] is not None
+        assert result["delta_times"]
+        assert result["ctx_start"] > result["delta_times"][-1], (
+            "flag off should assemble context only after LIVE resolves"
         )
 
 
