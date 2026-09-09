@@ -3070,6 +3070,9 @@ class AgentIntelligence:
             routing_tier=routing_control.tier,
             mode=requested_mode,
             research_scope=research_scope,
+            # Already resolved above (off-thread, cache-backed for spoken
+            # non-write turns); re-deriving it here cost a blocking 1.6s.
+            connected_integrations=list(connected_early or []),
         )
         _mark("assistant_turn_prepared")
         # Classical ACT still consumes kernel RECALL/KNOWLEDGE assembled before LIVE.

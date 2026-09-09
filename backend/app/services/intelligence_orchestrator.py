@@ -135,6 +135,7 @@ class IntelligenceOrchestrator:
         routing_tier: str | None = None,
         mode: str | None = None,
         research_scope: str | None = None,
+        connected_integrations: list[str] | None = None,
     ) -> AssistantTurnContext:
         _ = conversation_history, persona
         # This function was the single largest unattributed block on a spoken
@@ -146,7 +147,24 @@ class IntelligenceOrchestrator:
         def _mark(name: str) -> None:
             _marks[name] = int((time.perf_counter() - _t0) * 1000)
 
-        connected = self._registry.list_connected_integrations(client, org_id, environment_name=environment_name)
+        # `list_connected_integrations` defaults to force_live=True, which skips
+        # the connector snapshot cache and does one HTTP round trip per connected
+        # connector. Called synchronously from a coroutine it blocked the event
+        # loop for 1,630ms on a measured spoken turn — and on a voice server that
+        # stalls audio frames for every other live session, not just this turn.
+        # agent_intelligence already resolves this list early (off-thread, and
+        # with force_live=False for spoken non-write turns), so prefer the value
+        # the caller already paid for. The fallback stays for callers that have
+        # none, but off-thread so it can no longer block the loop.
+        if connected_integrations is not None:
+            connected = list(connected_integrations)
+        else:
+            connected = await asyncio.to_thread(
+                self._registry.list_connected_integrations,
+                client,
+                org_id,
+                environment_name=environment_name,
+            )
         _mark("connected_integrations")
         registry_plan = plan_context_registry(
             query=query,
