@@ -4,7 +4,6 @@ import { Navbar } from "@/components/marketing/nodus/navbar"
 import { Footer } from "@/components/marketing/nodus/footer"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingThemeLock } from "@/components/marketing/marketing-theme-lock"
-import { interDisplayMarketing } from "@/fonts/inter-display/inter-marketing"
 
 const AUTH_FOOTER_SLIM_PATHS = new Set(["/login", "/get-started", "/forgot-password"])
 
@@ -17,10 +16,7 @@ export async function MarketingChrome({ children }: { children: ReactNode }) {
   const slimFooter = AUTH_FOOTER_SLIM_PATHS.has(pathname)
 
   return (
-    <div
-      className={`${interDisplayMarketing.className} min-h-screen overflow-x-hidden bg-white text-charcoal-900`}
-      data-marketing-canvas="daylight"
-    >
+    <div className="min-h-screen overflow-x-hidden bg-white text-charcoal-900" data-marketing-canvas="daylight">
       <MarketingThemeLock />
       <Navbar />
       <DivideX />

@@ -6,6 +6,7 @@ export const interDisplayMarketing = localFont({
     { path: "./InterDisplay-Regular.ttf", weight: "400", style: "normal" },
     { path: "./InterDisplay-Medium.ttf", weight: "500", style: "normal" },
   ],
-  display: "swap",
+  variable: "--font-inter-display",
+  display: "optional",
   preload: true,
 })

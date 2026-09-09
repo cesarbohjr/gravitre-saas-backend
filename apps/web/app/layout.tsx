@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
 import { RootProviders } from '@/components/root-providers'
 import { interDisplay } from '@/fonts/inter-display/inter'
+import { interDisplayMarketing } from '@/fonts/inter-display/inter-marketing'
 import { dmMono } from '@/fonts/dm-mono'
 import './globals.css'
 
@@ -65,12 +67,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const isMarketing = (await headers()).get('x-gravitre-marketing') === '1'
+  const htmlClassName = isMarketing
+    ? interDisplayMarketing.variable
+    : `${interDisplay.variable} ${dmMono.variable}`
+
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${interDisplay.variable} ${dmMono.variable}`}
-    >
+    <html lang="en" suppressHydrationWarning className={htmlClassName}>
       <body className="font-sans antialiased">
         <RootProviders>{children}</RootProviders>
         <Analytics />
