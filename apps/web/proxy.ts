@@ -4,17 +4,38 @@ import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
 import { isMarketingContentRoute } from "@/lib/is-marketing-route"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
-function withRouteKind(response: NextResponse, pathname: string): NextResponse {
-  response.headers.set("x-pathname", pathname)
+function withRouteKind(
+  response: NextResponse,
+  request: NextRequest,
+  pathname: string,
+): NextResponse {
   // The unlisted /deck presentation is a standalone surface: route it through
   // the lighter marketing provider tree so the operator AI helper / app shell
   // is not mounted over the slides. Kept out of isMarketingContentRoute so it
   // stays absent from the sitemap and remains noindex.
   const isDeck = pathname === "/deck" || pathname.startsWith("/deck/")
-  if (isMarketingContentRoute(pathname) || isDeck) {
-    response.headers.set("x-gravitre-marketing", "1")
+  const isMarketing = isMarketingContentRoute(pathname) || isDeck
+
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-pathname", pathname)
+  if (isMarketing) {
+    requestHeaders.set("x-gravitre-marketing", "1")
   }
-  return response
+
+  const enriched = NextResponse.next({
+    request: { headers: requestHeaders },
+  })
+
+  response.cookies.getAll().forEach((cookie) => {
+    enriched.cookies.set(cookie.name, cookie.value, cookie)
+  })
+
+  enriched.headers.set("x-pathname", pathname)
+  if (isMarketing) {
+    enriched.headers.set("x-gravitre-marketing", "1")
+  }
+
+  return enriched
 }
 
 export async function proxy(request: NextRequest) {
@@ -76,7 +97,7 @@ export async function proxy(request: NextRequest) {
   const isApiRoute = pathname.startsWith("/api/")
 
   if (isPublicPath || isApiRoute) {
-    return withRouteKind(supabaseResponse, pathname)
+    return withRouteKind(supabaseResponse, request, pathname)
   }
 
   if (!user) {
@@ -86,7 +107,7 @@ export async function proxy(request: NextRequest) {
     return redirectToLogin(request, { staleSession: hadSupabaseSession })
   }
 
-  return withRouteKind(supabaseResponse, pathname)
+  return withRouteKind(supabaseResponse, request, pathname)
 }
 
 export const config = {
