@@ -212,6 +212,18 @@ async def _run(token: str, org_id: str, speech: bytes, label: str) -> dict:
             "final_transcript_text": finals[-1]["text"] if finals else None,
             "interim_transcript_sample": [t["text"] for t in transcripts if not t["final"]][:3],
             "assistant_reply": reply,
+            # Spoken-register check: any of these in the client transcript means
+            # markdown leaked into a voice turn (measured failure 2026-09-08).
+            "markdown_markers": {
+                "asterisk": reply.count("*"),
+                "backtick": reply.count("`"),
+                "heading_or_bullet_line": sum(
+                    1
+                    for line in reply.split("\n")
+                    if line.strip().startswith(("#", "- ", "* ", "+ "))
+                ),
+            },
+            "markdown_clean": "*" not in reply and "`" not in reply,
             "assistant_word_count": len(WORD_RE.findall(reply)),
             "assistant_sentence_count": len([s for s in re.split(r"[.!?]+", reply) if s.strip()]),
             "spoken_prompt_v2_flag": (ready or {}).get("spoken_prompt_v2"),
@@ -238,7 +250,9 @@ def main() -> int:
         print(
             f"[phase5] {label}: words={res.get('assistant_word_count')} "
             f"sentences={res.get('assistant_sentence_count')} "
-            f"final_transcripts={res.get('n_transcript_final')}",
+            f"final_transcripts={res.get('n_transcript_final')} "
+            f"markdown_clean={res.get('markdown_clean')} "
+            f"markers={res.get('markdown_markers')}",
             flush=True,
         )
 

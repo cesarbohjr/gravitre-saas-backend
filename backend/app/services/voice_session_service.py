@@ -33,6 +33,19 @@ _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 _MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _LEADING_FORMAT = re.compile(r"^\s*(?:#{1,6}\s+|[-*]\s+|\d+\.\s+)")
 
+# Single-marker emphasis. Only the ``**``/``__``/backtick forms were stripped
+# before, so production voice turns still carried "*skipped*" into TTS
+# (measured 2026-09-08). Bounded to marker pairs at word boundaries so an
+# identifier keeps its inner punctuation: "assistant_workflow_runs" must not
+# collapse to "assistantworkflowruns", which is markdown's own rule for
+# intra-word underscores.
+_ITALIC_ASTERISK = re.compile(r"(?<![A-Za-z0-9*])\*([^*\n]+)\*(?![A-Za-z0-9*])")
+_ITALIC_UNDERSCORE = re.compile(r"(?<![A-Za-z0-9_])_([^_\n]+)_(?![A-Za-z0-9_])")
+_STRIKETHROUGH = re.compile(r"~~([^~\n]+)~~")
+# Any asterisk still standing after paired forms are resolved is a stray
+# marker, never speakable content.
+_STRAY_ASTERISK = re.compile(r"\*+")
+
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
 # Prefer Redis so cancel works across Railway replicas; memory is local fallback.
 _CANCELLED_TURNS: dict[str, float] = {}
@@ -128,6 +141,25 @@ def split_speakable_chunks(
     return ready, parts[-1]
 
 
+def strip_markdown_inline(text: str) -> str:
+    """Remove markdown markers from one line, preserving the words themselves.
+
+    Shared by ``normalize_spoken_text`` (TTS) and the client-facing delta filter
+    in ``pipecat_voice/spoken_stream_filter.py`` so the two can never disagree
+    about what counts as a marker.
+
+    Deliberately does NOT touch leading list/heading markers or whitespace — the
+    callers own those, because a streaming caller cannot always tell whether it
+    is positioned at the start of a line.
+    """
+    out = (text or "").replace("**", "").replace("__", "").replace("`", "")
+    out = _MARKDOWN_LINK.sub(r"\1", out)
+    out = _STRIKETHROUGH.sub(r"\1", out)
+    out = _ITALIC_ASTERISK.sub(r"\1", out)
+    out = _ITALIC_UNDERSCORE.sub(r"\1", out)
+    return _STRAY_ASTERISK.sub("", out)
+
+
 def normalize_spoken_text(text: str) -> str:
     """Strip visual markdown/list formatting for natural spoken delivery."""
     lines: list[str] = []
@@ -137,7 +169,7 @@ def normalize_spoken_text(text: str) -> str:
             continue
         line = _MARKDOWN_LINK.sub(r"\1", line)
         line = _LEADING_FORMAT.sub("", line)
-        line = line.replace("**", "").replace("__", "").replace("`", "").strip()
+        line = strip_markdown_inline(line).strip()
         line = re.sub(r"\s{2,}", " ", line).strip()
         if not line:
             continue

@@ -24,6 +24,7 @@ from app.core.logging import get_logger
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
+from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_stage_sample
 from app.services.pipecat_voice.voice_latency_tuning import (
@@ -131,6 +132,11 @@ class GravitreCognitiveLLMService(LLMService):
         # GravitreVoiceLatencyObserver (pipeline.py) actually receives a real
         # sample for this processor instead of silence.
         await self.start_ttfb_metrics()
+        # Client-facing deltas were pushed raw, so markdown the model emitted
+        # reached the browser verbatim (measured 2026-09-08). TTS was already
+        # protected because it receives whole sentences; this protects the
+        # transcript the user reads.
+        client_text_filter = SpokenMarkdownStreamFilter()
         spec_tuning = resolve_voice_speculative_tuning(self._app_settings)
         chunk_tuning = resolve_voice_tts_chunk_tuning(self._app_settings)
         prefix_extra = (
@@ -214,6 +220,7 @@ class GravitreCognitiveLLMService(LLMService):
                     tool_call_started_at[call_id] = time.perf_counter()
                 if tool_name and tool_name not in narrated_tool_starts:
                     narrated_tool_starts.add(tool_name)
+                    await self._flush_client_text(client_text_filter)
                     await self._speak_narration(narrate_tool_started(tool_name))
                 continue
             if event.sse_type == "tool-output-available":
@@ -231,6 +238,7 @@ class GravitreCognitiveLLMService(LLMService):
                     )
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
                 if narration:
+                    await self._flush_client_text(client_text_filter)
                     await self._speak_narration(narration)
                 continue
             if event.sse_type != "text-delta":
@@ -247,11 +255,13 @@ class GravitreCognitiveLLMService(LLMService):
             delta = str(payload.get("delta") or payload.get("textDelta") or "")
             if not delta:
                 continue
-            await self.push_frame(
-                OutputTransportMessageUrgentFrame(
-                    message={"type": "assistant_text", "delta": delta}
+            client_delta = client_text_filter.feed(delta)
+            if client_delta:
+                await self.push_frame(
+                    OutputTransportMessageUrgentFrame(
+                        message={"type": "assistant_text", "delta": client_delta}
+                    )
                 )
-            )
             text_buffer += delta
             chunks, text_buffer = split_speakable_chunks(
                 text_buffer,
@@ -266,6 +276,9 @@ class GravitreCognitiveLLMService(LLMService):
                     await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
+        # A construct the model never closed (e.g. a stray "*") is still held in
+        # the filter; emit it so the transcript is not truncated.
+        await self._flush_client_text(client_text_filter)
         # Flush any trailing clause that never hit a sentence boundary (e.g.
         # a short answer with no terminal punctuation) so the tail of the
         # reply is not silently dropped from speech.
@@ -292,6 +305,21 @@ class GravitreCognitiveLLMService(LLMService):
             speculative_v2=spec_tuning.v2_enabled,
             tts_chunk_v2=chunk_tuning.v2_enabled,
         )
+
+    async def _flush_client_text(self, filt: SpokenMarkdownStreamFilter) -> None:
+        """Release withheld transcript text before another writer emits.
+
+        Narration pushes its own ``assistant_text`` frame, so anything the filter
+        is still holding must go out first or the transcript would show the two
+        out of order.
+        """
+        pending = filt.flush()
+        if pending:
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={"type": "assistant_text", "delta": pending}
+                )
+            )
 
     async def _speak_narration(self, text: str) -> None:
         """Phase 2 (conversational-realism): speak one real milestone sentence.
