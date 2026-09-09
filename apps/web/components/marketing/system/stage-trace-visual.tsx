@@ -204,3 +204,18 @@ export const SUPPORT_TRACE_STAGES = [
   { id: "escalate", label: "Escalate" },
   { id: "resolve", label: "Resolve" },
 ] as const
+
+/** Pricing: plan → role → outcome (prices stay PLAN_CATALOG-only) */
+export const PRICING_TRACE_STAGES = [
+  { id: "plan", label: "Plan" },
+  { id: "role", label: "Role" },
+  { id: "outcome", label: "Outcome" },
+] as const
+
+/** Features: agents coordinate → resolve (not a home clone) */
+export const FEATURES_TRACE_STAGES = [
+  { id: "coordinate", label: "Coordinate" },
+  { id: "act", label: "Act" },
+  { id: "approve", label: "Approve" },
+  { id: "resolve", label: "Resolve" },
+] as const

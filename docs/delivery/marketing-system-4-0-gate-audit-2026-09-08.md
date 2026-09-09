@@ -228,3 +228,14 @@ Audit has no priority P3; next remaining rollout tier was **P2**. Extended Syste
 
 Still gated: auth footer slim, GSAP/Lottie, P0 inner upgrades (`/pricing`, `/features` distinct story), Playwright goldens.
 
+---
+
+## Open items closed (2026-09-09) — after Cesar “complete open items”
+
+1. **P0** — `/pricing` Plan→Role→Outcome TRACE (PLAN_CATALOG dollars unchanged); `/features` Coordinate→Act→Approve→Resolve TRACE (home-clone sections removed)
+2. **Auth footer slim** — `/login`, `/get-started`, `/forgot-password` use `Footer variant="slim"` via path-aware `MarketingChrome`
+3. **Lottie** — removed unused `@lottiefiles/dotlottie-react` and `lottie-web` (never imported). **GSAP** remains intentionally out — roadmap sticky already uses framer; no pinned GSAP narrative budgeted
+4. **Playwright goldens** — `e2e/marketing-system-smoke.spec.ts` DOM smoke (not pixel diffs) + `pnpm test:marketing-smoke`
+
+Gate complete for Marketing System 4.0 rollout phases 1–4 + phase-5 smoke. Optional later: GSAP sticky narrative, visual screenshot baselines for marketing if motion is frozen.
+

@@ -69,12 +69,52 @@ function FooterColumn({
   )
 }
 
-/**
- * Marketing System 4.0 footer — Nodus column language + calm TRACE closing field.
- */
-export const Footer = () => {
+function SlimFooter() {
   return (
-    <footer className="relative isolate overflow-hidden bg-[color:var(--g-marketing-canvas)]">
+    <footer
+      className="relative isolate overflow-hidden border-t border-divide bg-[color:var(--g-marketing-canvas)]"
+      data-marketing-footer="slim"
+    >
+      <Container className="relative">
+        <div className="flex flex-col items-center justify-between gap-4 px-4 py-8 md:flex-row">
+          <Logo />
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2" aria-label="Legal">
+            {legal.map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="text-footer-link text-sm font-medium transition-colors hover:text-charcoal-700"
+              >
+                {item.title}
+              </Link>
+            ))}
+            <button
+              type="button"
+              onClick={() => openMarketingConsentSettings()}
+              className="text-footer-link text-sm font-medium transition-colors hover:text-charcoal-700"
+            >
+              Cookie settings
+            </button>
+          </nav>
+          <p className="text-footer-link text-sm">
+            © {new Date().getFullYear()} Gravitre
+          </p>
+        </div>
+      </Container>
+    </footer>
+  )
+}
+
+/**
+ * Marketing System 4.0 footer — full site columns + TRACE, or slim auth legal bar.
+ */
+export function Footer({ variant = "full" }: { variant?: "full" | "slim" }) {
+  if (variant === "slim") {
+    return <SlimFooter />
+  }
+
+  return (
+    <footer className="relative isolate overflow-hidden bg-[color:var(--g-marketing-canvas)]" data-marketing-footer="full">
       <FooterClosingField />
       <Container className="relative">
         <div className="grid grid-cols-1 gap-y-2 px-4 pt-16 pb-10 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 lg:gap-x-4 lg:pt-20">

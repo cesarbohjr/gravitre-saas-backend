@@ -15,6 +15,8 @@ export {
   ROADMAP_TRACE_STAGES,
   GUIDES_TRACE_STAGES,
   SUPPORT_TRACE_STAGES,
+  PRICING_TRACE_STAGES,
+  FEATURES_TRACE_STAGES,
 } from "./stage-trace-visual"
 export { ConnectorHubVisual } from "./connector-hub-visual"
 export { ConvergeNodesVisual } from "./converge-nodes-visual"

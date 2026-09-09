@@ -20,6 +20,14 @@ import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { Button } from "@/components/marketing/nodus/button"
 import { MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
 import { CheckIcon } from "@/components/marketing/nodus-icons/card-icons"
+import {
+  GravitreFlow,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  PRICING_TRACE_STAGES,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 /**
  * /pricing — Nodus theme chrome + authorized Gravitre plans only.
@@ -28,8 +36,28 @@ import { CheckIcon } from "@/components/marketing/nodus-icons/card-icons"
 export default function PricingPage() {
   return (
     <PricingAnnualProvider>
-      <div className="relative overflow-hidden bg-white dark:bg-neutral-950">
+      <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)] dark:bg-neutral-950">
         <Pricing />
+
+        <DivideX />
+
+        <GravitreSection>
+          <GravitreSectionHeader
+            align="center"
+            badge="Plan path"
+            title="Plan → Role → Outcome"
+            description="Seats and plans map to governed outcomes — the same gates as chat and workflows."
+            className="mb-6"
+          />
+          <GravitreTrace>
+            <StageTraceVisual
+              stages={PRICING_TRACE_STAGES}
+              gradientId="pricing-trace"
+              ariaLabel="Pricing path from plan through role to outcome"
+              caption="Seats and plans map to governed outcomes — no new dollar claims beyond the catalog above."
+            />
+          </GravitreTrace>
+        </GravitreSection>
 
         <DivideX />
 
@@ -61,8 +89,8 @@ export default function PricingPage() {
                 eyebrow: "Included",
                 body: "Full system control, billing management, and organization settings. One per account.",
               },
-            ].map((role) => (
-              <div key={role.title} className="p-4 md:p-6">
+            ].map((role, i) => (
+              <GravitreFlow key={role.title} delay={i * 0.08} className="p-4 md:p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
                     <role.icon className="h-5 w-5" />
@@ -73,7 +101,7 @@ export default function PricingPage() {
                   </div>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-neutral-400">{role.body}</p>
-              </div>
+              </GravitreFlow>
             ))}
           </div>
         </Container>
@@ -194,8 +222,8 @@ export default function PricingPage() {
             <SectionHeading className="mt-4">From request to delivery</SectionHeading>
           </div>
           <div className="divide-divide mt-10 grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4 lg:divide-y-0">
-            {howItWorks.map((item) => (
-              <div key={item.step} className="p-4 md:p-6">
+            {howItWorks.map((item, i) => (
+              <GravitreFlow key={item.step} delay={i * 0.08} className="p-4 md:p-6">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800">
                     <item.icon className="h-4 w-4 text-gray-600 dark:text-neutral-300" />
@@ -204,7 +232,7 @@ export default function PricingPage() {
                 </div>
                 <h3 className="text-charcoal-700 font-medium dark:text-neutral-100">{item.title}</h3>
                 <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">{item.description}</p>
-              </div>
+              </GravitreFlow>
             ))}
           </div>
         </Container>

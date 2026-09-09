@@ -3,8 +3,6 @@
 import Link from "next/link"
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { AgenticIntelligence } from "@/components/marketing/nodus/agentic-intelligence"
-import { Benefits } from "@/components/marketing/nodus/benefits"
 import { Button } from "@/components/marketing/nodus/button"
 import {
   Card,
@@ -13,9 +11,6 @@ import {
 } from "@/components/marketing/nodus/agentic-intelligence/card"
 import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
-import { HeroImage } from "@/components/marketing/nodus/hero-image"
-import { HomeSecurityNote } from "@/components/marketing/nodus/home-security-note"
-import { HowItWorks } from "@/components/marketing/nodus/how-it-works"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -32,6 +27,15 @@ import {
   RealtimeSyncIcon,
   SDKIcon,
 } from "@/components/marketing/nodus-icons/bento-icons"
+import {
+  FEATURES_TRACE_STAGES,
+  GravitreFlow,
+  GravitreReveal,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 const surfaceIcons = [
@@ -45,15 +49,14 @@ const surfaceIcons = [
 ] as const
 
 /**
- * Features page — Nodus homepage chrome (divide rails, hero image, animated
- * how-it-works / agentic skeletons / benefits) with authorized Gravitre copy.
- * Legacy bento / muted-theme FeaturesLegacyContent is not used here.
+ * Features page — Marketing System 4.0.
+ * Distinct from home: Coordinate → Act → Approve → Resolve TRACE, not a homepage clone.
  */
 export function FeaturesPage() {
   const hero = MARKETING_COPY.featuresHero
 
   return (
-    <main>
+    <main className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge={hero.badge}
         title={
@@ -85,21 +88,31 @@ export function FeaturesPage() {
       </MarketingPageHero>
 
       <DivideX />
-      <HeroImage />
-      <DivideX />
-      <HowItWorks />
-      <DivideX />
-      <AgenticIntelligence />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Agent path"
+          title="Coordinate → Act → Approve → Resolve"
+          description="How agents move work through Gravitre — distinct from the homepage story spine."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={FEATURES_TRACE_STAGES}
+            gradientId="features-trace"
+            ariaLabel="Features path from coordinate through act and approve to resolve"
+            caption="Agents coordinate, act, clear approvals, then resolve — same gates as chat and workflows."
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
       <DivideX />
       <ProductSurfaces />
       <DivideX />
       <AuthorizedUseCases />
       <DivideX />
       <HonestReporting />
-      <DivideX />
-      <Benefits />
-      <DivideX />
-      <HomeSecurityNote />
       <MarketingPageEndCta />
     </main>
   )
@@ -111,25 +124,29 @@ function ProductSurfaces() {
   return (
     <Container className="border-divide border-x">
       <div className="flex flex-col items-center py-16">
-        <Badge text="Product surfaces" />
-        <SectionHeading className="mt-4">
-          Everything in the <span className="text-brand">same brain</span>
-        </SectionHeading>
-        <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
-          Real Gravitre surfaces — chat, agents, workflows, connectors, approvals, and GIBE —
-          not another disconnected AI silo.
-        </SubHeading>
+        <GravitreReveal>
+          <Badge text="Surfaces" />
+          <SectionHeading className="mt-4">
+            Everything in the <span className="text-brand">same brain</span>
+          </SectionHeading>
+          <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
+            Real Gravitre surfaces — chat, agents, workflows, connectors, approvals, and GIBE —
+            not another disconnected AI silo.
+          </SubHeading>
+        </GravitreReveal>
         <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x lg:grid-cols-3">
           {surfaces.map((surface, index) => {
             const Icon = surfaceIcons[index % surfaceIcons.length]
             return (
-              <Card key={surface.title} className="min-h-[180px]">
-                <div className="flex items-center gap-2">
-                  <Icon className="text-brand size-5 shrink-0" />
-                  <CardTitle>{surface.title}</CardTitle>
-                </div>
-                <CardDescription>{surface.description}</CardDescription>
-              </Card>
+              <GravitreFlow key={surface.title} delay={index * 0.05}>
+                <Card className="min-h-[180px]">
+                  <div className="flex items-center gap-2">
+                    <Icon className="text-brand size-5 shrink-0" />
+                    <CardTitle>{surface.title}</CardTitle>
+                  </div>
+                  <CardDescription>{surface.description}</CardDescription>
+                </Card>
+              </GravitreFlow>
             )
           })}
         </div>
@@ -145,16 +162,19 @@ function AuthorizedUseCases() {
   return (
     <Container className="border-divide relative overflow-hidden border-x px-4 md:px-8">
       <div className="relative flex flex-col items-center py-20">
-        <Badge text={copy.badge} />
-        <SectionHeading className="mt-4">{copy.title}</SectionHeading>
-        <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
-          {copy.subtitle}
-        </SubHeading>
+        <GravitreReveal>
+          <Badge text={copy.badge} />
+          <SectionHeading className="mt-4">{copy.title}</SectionHeading>
+          <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
+            {copy.subtitle}
+          </SubHeading>
+        </GravitreReveal>
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2">
           {copy.cases.map((useCase, index) => (
-            <div
+            <GravitreFlow
               key={useCase.title}
+              delay={index * 0.06}
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive(null)}
               className="relative"
@@ -187,7 +207,7 @@ function AuthorizedUseCases() {
                   ))}
                 </div>
               </div>
-            </div>
+            </GravitreFlow>
           ))}
         </div>
       </div>
@@ -201,34 +221,40 @@ function HonestReporting() {
   return (
     <Container className="border-divide border-x">
       <div className="flex flex-col items-center px-4 py-16 md:px-8">
-        <Badge text={copy.badge} />
-        <SectionHeading className="mt-4 text-center">{copy.title}</SectionHeading>
-        <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
-          {copy.subtitle}
-        </SubHeading>
+        <GravitreReveal>
+          <Badge text={copy.badge} />
+          <SectionHeading className="mt-4 text-center">{copy.title}</SectionHeading>
+          <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
+            {copy.subtitle}
+          </SubHeading>
+        </GravitreReveal>
 
         <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-3 md:divide-x md:divide-y-0">
-          {copy.tiers.map((tier) => (
-            <Card key={tier.title}>
-              <CardTitle>{tier.title}</CardTitle>
-              <CardDescription>{tier.description}</CardDescription>
-              <ul className="mt-4 space-y-2">
-                {tier.examples.map((example) => (
-                  <li key={example} className="text-sm text-gray-600">
-                    · {example}
-                  </li>
-                ))}
-              </ul>
-            </Card>
+          {copy.tiers.map((tier, i) => (
+            <GravitreFlow key={tier.title} delay={i * 0.08}>
+              <Card>
+                <CardTitle>{tier.title}</CardTitle>
+                <CardDescription>{tier.description}</CardDescription>
+                <ul className="mt-4 space-y-2">
+                  {tier.examples.map((example) => (
+                    <li key={example} className="text-sm text-gray-600">
+                      · {example}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </GravitreFlow>
           ))}
         </div>
 
-        <Link
-          href={copy.blogLink.href}
-          className="mt-10 text-sm font-medium text-brand underline-offset-4 hover:underline"
-        >
-          {copy.blogLink.label} →
-        </Link>
+        <GravitreReveal delay={0.1}>
+          <Link
+            href={copy.blogLink.href}
+            className="mt-10 text-sm font-medium text-brand underline-offset-4 hover:underline"
+          >
+            {copy.blogLink.label} →
+          </Link>
+        </GravitreReveal>
       </div>
     </Container>
   )
