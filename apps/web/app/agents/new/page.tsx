@@ -220,20 +220,11 @@ export default function NewAgentPage() {
 
       for (const pack of knowledgePacks) {
         try {
-          await fetch(`/api/agents/${created.id}/knowledge-assignments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source_type: "knowledge_pack",
-              source_id: pack.id,
-              label: pack.name,
-              department: pack.department,
-              enabled: true,
-              metadata: { fabric_pack: true },
-            }),
-          })
+          const { buildPackAssignmentPayload } = await import("@/lib/agent-knowledge-assign")
+          const { agentKnowledgeApi } = await import("@/lib/api")
+          await agentKnowledgeApi.createAssignment(created.id, buildPackAssignmentPayload(pack))
         } catch {
-          // Config knowledge_packs still resolve via resolve_assignments
+          // Config knowledge_packs still resolve via resolve_assignments when assignment POST fails
         }
       }
 

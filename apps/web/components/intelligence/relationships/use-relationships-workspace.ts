@@ -9,6 +9,7 @@ import {
   collectRelationshipTypes,
   countNeedsReview,
   countNewThisWeek,
+  entityKey,
   filterAndSortRelationships,
   makeLabelFor,
   readNumber,
@@ -176,24 +177,39 @@ export function useRelationshipsWorkspace({
     }
   }
 
-  async function createNode(nodeType: string, nodeName: string) {
+  function focusExistingEntity(entityType: string, entityId: string, _label?: string) {
+    const nodeId = entityId.includes("::") ? entityId : entityKey(entityType, entityId)
+    const seeded = nodes.find((n) => String(n.id) === entityId)
+    setSelection({
+      kind: "node",
+      nodeId: seeded ? `seed::${entityId}` : nodeId,
+    })
+    setInspectorOpen(true)
+    setViewMode("graph")
+  }
+
+  async function createNode(nodeType: string, nodeName: string): Promise<{ ok: boolean; nodeId?: string }> {
     const name = nodeName.trim()
     if (!name) {
       toast.error("Name is required")
-      return false
+      return { ok: false }
     }
     try {
-      await intelligenceApi.createKnowledgeNode({ nodeType, name })
+      const res = await intelligenceApi.createKnowledgeNode({ nodeType, name })
+      const nodeId = String(res?.node?.id ?? "")
       toast.success(
         addNodeMode === "first"
           ? "Entity added. Gravitre will use it as confirmed organization knowledge."
           : "Knowledge node created",
       )
       await mutateNodes()
-      return true
+      if (nodeId) {
+        focusExistingEntity(nodeType, nodeId)
+      }
+      return { ok: true, nodeId: nodeId || undefined }
     } catch {
       toast.error("Could not create knowledge node")
-      return false
+      return { ok: false }
     }
   }
 
@@ -283,6 +299,7 @@ export function useRelationshipsWorkspace({
     enabled,
     setArchived,
     createNode,
+    focusExistingEntity,
     removeNode,
     updateNode,
   }

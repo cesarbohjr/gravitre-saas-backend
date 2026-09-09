@@ -498,10 +498,13 @@ export const agentKnowledgeApi = {
   getMemoryLineage: (agentId: string) =>
     fetcher<{ lineage: Array<Record<string, unknown>> }>(apiUrl(`/api/agents/${agentId}/memory-lineage`)),
   testRetrieval: (agentId: string, query: string) =>
-    postJson<{ matchCount: number; sources: Array<Record<string, unknown>> }>(
-      apiUrl(`/api/agents/${agentId}/knowledge-assignments/test-retrieval`),
-      { query }
-    ),
+    postJson<{
+      query: string
+      matchCount: number
+      sources: Array<Record<string, unknown>>
+      missingAssignments?: string[]
+      usedAssignedOnly?: boolean
+    }>(apiUrl(`/api/agents/${agentId}/knowledge-assignments/test-retrieval`), { query }),
   listDemoWorkflows: () =>
     fetcher<{ workflows: Array<Record<string, unknown>> }>(apiUrl("/api/agents/demo-knowledge-workflows")),
 }
@@ -1576,6 +1579,22 @@ export const sourcesApi = {
   testExisting: (id: string) => postJson<DataSourceTestResponse>(apiUrl(`/api/sources/${id}/test`), {}),
   getSchema: (id: string) => fetcher<{ tables: unknown[]; tableCount: number }>(apiUrl(`/api/sources/${id}/schema`)),
   getSyncHistory: (id: string) => fetcher<{ history: SourceSyncHistoryItem[] }>(apiUrl(`/api/sources/${id}/sync-history`)),
+  listAgentAssignments: (sourceId: string) =>
+    fetcher<{
+      sourceId: string
+      sourceName: string
+      assignedCount: number
+      agents: Array<{
+        agentId: string
+        agentName: string
+        department?: string
+        role?: string
+        assigned: boolean
+        assignmentId?: string | null
+        freshnessStatus?: string | null
+        lastSyncedAt?: string | null
+      }>
+    }>(apiUrl(`/api/sources/${sourceId}/agent-assignments`)),
   query: (id: string, question: string) =>
     postJson<DataSourceQueryResponse>(apiUrl(`/api/sources/${id}/query`), { question }),
 }
@@ -2187,6 +2206,18 @@ export const intelligenceApi = {
       primaryNodeTypes: string[]
     }>(apiUrl(`/api/admin/intelligence/knowledge-nodes${suffix}`))
   },
+  matchKnowledgeNodes: (params: { name: string; nodeType?: string; minScore?: number; limit?: number }) => {
+    const query = new URLSearchParams()
+    query.set("name", params.name)
+    if (params.nodeType) query.set("nodeType", params.nodeType)
+    if (params.minScore != null) query.set("minScore", String(params.minScore))
+    if (params.limit != null) query.set("limit", String(params.limit))
+    return fetcher<{
+      matches: Array<Record<string, unknown>>
+      orgId: string
+      query: string
+    }>(apiUrl(`/api/admin/intelligence/knowledge-nodes/match?${query.toString()}`))
+  },
   createKnowledgeNode: (data: {
     nodeType: string
     name: string
@@ -2397,6 +2428,26 @@ export const intelligenceApi = {
       avgCostPerAnswerUsd: number
       byTier: Record<string, { count: number; avgMs: number; avgCost: number }>
       sampleCount: number
+      pipelineWaterfall?: {
+        unifiedTurn: Array<{
+          stage: string
+          label: string
+          avgMs: number
+          p50Ms: number
+          p95Ms: number
+          count: number
+        }>
+        classical: Array<{
+          stage: string
+          label: string
+          avgMs: number
+          p50Ms: number
+          p95Ms: number
+          count: number
+        }>
+        hasUnifiedTurnData: boolean
+        hasClassicalData: boolean
+      }
     }>(apiUrl(`/api/admin/intelligence/performance${suffix}`))
   },
   goldenSignals: (params?: { period?: "1h" | "24h" | "7d" }) => {

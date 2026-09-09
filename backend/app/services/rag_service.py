@@ -227,7 +227,14 @@ class RAGService:
         retrieval_ms = int((time.monotonic() - retrieval_started) * 1000)
         disable_rerank = bool((filters or {}).get("disable_rerank"))
         rerank_started = time.monotonic()
-        if disable_rerank:
+        rerank_row_ids = tuple(str(r.get("id") or "") for r in merged[: merge_k])
+        rerank_cache_parts = (org_id, query, rerank_row_ids)
+        cached_rerank = cache.get_sync("rerank", *rerank_cache_parts)
+        if isinstance(cached_rerank, list) and cached_rerank:
+            reranked = [normalize_chunk_row(row) for row in cached_rerank[:top_k]]
+            rerank_method = "cached"
+        elif disable_rerank:
+            await cache.record_hit("rerank")
             reranked = merged[:top_k]
             rerank_method = "disabled"
         else:
@@ -236,6 +243,12 @@ class RAGService:
                 merged,
                 top_k=top_k,
                 settings=self.settings,
+            )
+            cache.set_sync(
+                "rerank",
+                reranked,
+                300,
+                *rerank_cache_parts,
             )
         rerank_ms = int((time.monotonic() - rerank_started) * 1000)
         reliability_scores = await fetch_source_reliability_scores(org_id, client)

@@ -28,6 +28,7 @@ import {
 } from "@/lib/relationships-graph/utils"
 import type { RelationshipRow } from "@/lib/relationships-graph/types"
 import { formatTime } from "@/app/admin/intelligence/_components/shared"
+import { TracePath, TRACE_PATH_HYBRID_BEAT } from "@/components/gravitre/visual/trace-path"
 import { Archive, ArrowCounterClockwise, PencilSimple, X } from "@phosphor-icons/react"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
 
@@ -334,7 +335,14 @@ export function RelationshipInspector({
             </div>
             <div>
               <dt className="text-[11px] text-[color:var(--g-text-muted)]">How Gravitre learned this</dt>
-              <dd className="leading-relaxed text-[color:var(--g-text-secondary)]">
+              <dd className="space-y-2 leading-relaxed text-[color:var(--g-text-secondary)]">
+                <TracePath
+                  d={TRACE_PATH_HYBRID_BEAT}
+                  tone="intelligence"
+                  progress={1}
+                  className="max-h-12"
+                  label="Relationship learning path"
+                />
                 {relationshipLearnedCopy(String(rel.relationship_type ?? ""))}
               </dd>
             </div>

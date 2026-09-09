@@ -7,9 +7,33 @@ from typing import Any
 
 from app.services.cache_service import get_cache_service
 from app.services.performance_tier import TIER_0, TIER_1, TIER_2, TIER_3
+from app.services.unified_turn_pipeline_bridge import (
+    CLASSICAL_PIPELINE_STAGES,
+    UNIFIED_TURN_PIPELINE_STAGES,
+)
 from app.workflows.repository import get_supabase_client
 
 PERIOD_HOURS = {"1h": 1, "24h": 24, "7d": 24 * 7}
+
+UNIFIED_STAGE_LABELS: dict[str, str] = {
+    "unified_registry_tools": "Registry tools",
+    "unified_narrow_tools": "Narrow tools",
+    "unified_embed_query": "Embed query",
+    "unified_context_prompt": "Context assembly",
+    "unified_openai_schedule": "Model schedule",
+    "unified_model_ttft": "Model TTFT",
+    "unified_pre_token_overhead": "Pre-token overhead",
+    "unified_model_total": "Model total",
+    "unified_wall_ttft": "Wall TTFT",
+}
+
+CLASSICAL_STAGE_LABELS: dict[str, str] = {
+    "retrieval": "Retrieval",
+    "rerank": "Rerank",
+    "validation": "Validation",
+    "generation": "Generation",
+    "graph_lookup": "Graph lookup",
+}
 
 
 def _percentile(values: list[int], pct: float) -> int:
@@ -144,6 +168,10 @@ def _build_performance_payload(
     all_durations = [value for values in by_stage.values() for value in values]
     total_stats = _latency_stats(all_durations)
     pg_rows = settings_rows
+    by_stage_stats = {
+        stage: _latency_stats(values) for stage, values in by_stage.items()
+    }
+    pipeline_waterfall = _build_pipeline_waterfall(by_stage_stats)
 
     return {
         "period": period,
@@ -157,8 +185,9 @@ def _build_performance_payload(
                 "p95Ms": stats["p95_ms"],
                 "count": stats["count"],
             }
-            for stage, stats in ((stage, _latency_stats(values)) for stage, values in by_stage.items())
+            for stage, stats in by_stage_stats.items()
         },
+        "pipelineWaterfall": pipeline_waterfall,
         "cacheHitRate": {
             "tier_0": _safe_rate(tier0_hits, tier0_total) if tier0_total else cache_stats.get("tier0_answer", 0.0),
             "embedding": cache_stats.get("embedding", 0.0),
@@ -190,6 +219,48 @@ def _build_performance_payload(
             }.items()
         },
         "sampleCount": sample_count,
+    }
+
+
+def _build_pipeline_waterfall(by_stage_stats: dict[str, dict[str, int]]) -> dict[str, Any]:
+    """Ordered TTFT waterfall slices for Performance tab (real telemetry only)."""
+
+    def _row(stage_key: str, label: str) -> dict[str, Any] | None:
+        stats = by_stage_stats.get(stage_key) or {}
+        count = int(stats.get("count") or 0)
+        if count <= 0:
+            return None
+        return {
+            "stage": stage_key,
+            "label": label,
+            "avgMs": int(stats.get("avg_ms") or 0),
+            "p50Ms": int(stats.get("p50_ms") or 0),
+            "p95Ms": int(stats.get("p95_ms") or 0),
+            "count": count,
+        }
+
+    unified: list[dict[str, Any]] = []
+    for _bd_key, stage_name in UNIFIED_TURN_PIPELINE_STAGES:
+        label = UNIFIED_STAGE_LABELS.get(stage_name, stage_name.replace("_", " "))
+        row = _row(stage_name, label)
+        if row:
+            unified.append(row)
+    wall = _row("unified_wall_ttft", UNIFIED_STAGE_LABELS["unified_wall_ttft"])
+    if wall and (not unified or unified[-1]["stage"] != "unified_wall_ttft"):
+        unified.append(wall)
+
+    classical: list[dict[str, Any]] = []
+    for stage_name in CLASSICAL_PIPELINE_STAGES:
+        label = CLASSICAL_STAGE_LABELS.get(stage_name, stage_name.replace("_", " "))
+        row = _row(stage_name, label)
+        if row:
+            classical.append(row)
+
+    return {
+        "unifiedTurn": unified,
+        "classical": classical,
+        "hasUnifiedTurnData": len(unified) > 0,
+        "hasClassicalData": len(classical) > 0,
     }
 
 

@@ -992,6 +992,20 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
   },
+  "/api/admin/intelligence/knowledge-nodes/match": {
+    orgId: DEMO_ORG_ID,
+    query: "Northwind",
+    matches: [
+      {
+        id: "kn_fixture_01",
+        name: "Northwind Logistics",
+        nodeType: "company",
+        entityType: "company",
+        matchScore: 80,
+        source: "confirmed_knowledge",
+      },
+    ],
+  },
   "/api/admin/intelligence/knowledge-nodes": {
     orgId: DEMO_ORG_ID,
     nodes: [

@@ -162,6 +162,32 @@ async def create_entity_relationship(
     return {"relationship": row, "orgId": org_id}
 
 
+@router.get("/knowledge-nodes/match")
+async def match_knowledge_nodes(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    name: str = Query(..., min_length=1, max_length=500),
+    node_type: str | None = Query(default=None, alias="nodeType"),
+    min_score: int = Query(default=60, ge=0, le=100),
+    limit: int = Query(default=5, ge=1, le=10),
+) -> dict[str, Any]:
+    """Fuzzy name matches for create-time duplicate review (no auto-merge)."""
+    from app.services.knowledge_node_matching import find_knowledge_node_matches_for_org
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    matches = find_knowledge_node_matches_for_org(
+        client,
+        org_id,
+        name,
+        node_type=node_type,
+        min_score=min_score,
+        limit=limit,
+    )
+    return {"matches": matches, "orgId": org_id, "query": name.strip()}
+
+
 @router.get("/knowledge-nodes")
 async def list_knowledge_nodes(
     org_id: Annotated[str, Depends(get_org_context)],

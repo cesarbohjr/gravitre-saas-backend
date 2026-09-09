@@ -24,6 +24,7 @@ import {
   assertCanConfigureVoice,
   voiceProfileIsConfigured,
 } from "@/lib/voice-configure-gate"
+import { agentPatchBodyIsHandled } from "@/lib/agent-patch-handled-keys"
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -233,30 +234,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const bodyRecord = body as Record<string, unknown>
   const snakeBody = camelToSnake(bodyRecord)
 
-  const handledKeys = [
-    "name",
-    "icon",
-    "avatarColor",
-    "avatar_color",
-    "avatarUrl",
-    "avatar_url",
-    "personality",
-    "description",
-    "role",
-    "department",
-    "model",
-    "voiceProfile",
-    "voice_profile",
-    "capabilities",
-    "systems",
-    "permissions",
-    "guardrails",
-    "responseStyle",
-    "response_style",
-    "referenceFolders",
-    "reference_folders",
-  ]
-  const hasHandledPatch = handledKeys.some((key) => key in bodyRecord || key in snakeBody)
+  const hasHandledPatch = agentPatchBodyIsHandled(bodyRecord, snakeBody)
   if (!hasHandledPatch) {
     return proxyToFastApi(request, `/api/agents/${id}`)
   }

@@ -562,3 +562,66 @@ async def sync_source_route(
         full_sync=bool(body.full_sync),
     )
     return result
+
+
+@router.get("/{source_id}/agent-assignments")
+async def list_source_agent_assignments(
+    source_id: UUID,
+    org_id: Annotated[str, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Agents in this org and whether each is assigned this rag_source knowledge base."""
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    source = (
+        client.table("rag_sources")
+        .select("id, name, org_id")
+        .eq("org_id", org_id)
+        .eq("id", str(source_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not source.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+
+    agents = (
+        client.table("agents")
+        .select("id, name, department, role")
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    assignments = (
+        client.table("agent_knowledge_assignments")
+        .select("id, agent_id, enabled, label, last_synced_at, freshness_status")
+        .eq("org_id", org_id)
+        .eq("source_id", str(source_id))
+        .eq("source_type", "rag_source")
+        .execute()
+        .data
+        or []
+    )
+    by_agent = {str(row.get("agent_id") or ""): row for row in assignments}
+    rows = []
+    for agent in agents:
+        aid = str(agent.get("id") or "")
+        assignment = by_agent.get(aid)
+        rows.append(
+            {
+                "agentId": aid,
+                "agentName": agent.get("name"),
+                "department": agent.get("department"),
+                "role": agent.get("role"),
+                "assigned": bool(assignment and assignment.get("enabled", True)),
+                "assignmentId": assignment.get("id") if assignment else None,
+                "freshnessStatus": assignment.get("freshness_status") if assignment else None,
+                "lastSyncedAt": assignment.get("last_synced_at") if assignment else None,
+            }
+        )
+    return {
+        "sourceId": str(source_id),
+        "sourceName": source.data[0].get("name"),
+        "agents": rows,
+        "assignedCount": sum(1 for row in rows if row.get("assigned")),
+    }

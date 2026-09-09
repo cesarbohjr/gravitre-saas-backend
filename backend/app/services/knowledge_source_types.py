@@ -26,6 +26,7 @@ KNOWLEDGE_SOURCE_TYPES: frozenset[str] = frozenset(
         "ga4_property",
         "knowledge_pack",
         "manual_rule",
+        "rag_source",
         # Legacy aliases
         "folder",
         "dataset",

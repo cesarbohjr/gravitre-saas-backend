@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { relationshipTypeLabel } from "@/lib/learning-ui-copy"
+import { RELATIONSHIPS_SMOKE_DATA, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import type { SortKey, ViewMode } from "@/lib/relationships-graph/types"
 import { Graph, Plus, Table } from "@phosphor-icons/react"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
@@ -175,6 +175,14 @@ export function RelationshipToolbar({
           {showTestData ? "Including test data" : "Show test data"}
         </Button>
       </div>
+      {showTestData ? (
+        <p
+          className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-[color:var(--g-text-secondary)]"
+          data-testid="smoke-data-callout"
+        >
+          {RELATIONSHIPS_SMOKE_DATA.visibleCallout}
+        </p>
+      ) : null}
     </div>
   )
 }

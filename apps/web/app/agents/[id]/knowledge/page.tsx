@@ -1,34 +1,27 @@
 "use client"
 
-import { useState, use, useMemo, useEffect } from "react"
+import { use, useMemo, useState, useEffect, Suspense } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreEmpty,
-  GravitreMetric,
-  GravitrePageHeader,
-  GravitreSurface,
-} from "@/components/gravitre/nodus-product"
+import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Icon, type IconName } from "@/lib/icons"
+import { Icon } from "@/lib/icons"
 import { NavDatabase } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi, trainingApi } from "@/lib/api"
-import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
-import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
-import { AgentKnowledgeAssignmentsPanel } from "@/components/agents/agent-knowledge-assignments-panel"
-import {
-  AgentKnowledgePacksEditor,
-  type KnowledgePackSelection,
-} from "@/components/agents/agent-knowledge-packs-editor"
-import type { Agent, AgentReferenceFolder, TrainingDataset, CustomInstruction } from "@/types/api"
+import type { Agent, CustomInstruction } from "@/types/api"
+import { useAgentKnowledge, type AgentKnowledgeTab } from "@/components/agents/knowledge/use-agent-knowledge"
+import { AgentKnowledgeSourcesTab } from "@/components/agents/knowledge/agent-knowledge-sources-tab"
+import { AgentKnowledgeExpertPacksTab } from "@/components/agents/knowledge/agent-knowledge-expert-packs-tab"
+import { AgentKnowledgeRetrievalTab } from "@/components/agents/knowledge/agent-knowledge-retrieval-tab"
+import { AgentKnowledgeAddSheet } from "@/components/agents/knowledge/agent-knowledge-add-sheet"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,161 +33,82 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-function statusClasses(status: string): string {
-  if (status === "ready" || status === "completed") {
-    return STATUS.verified
-  }
-  if (status === "training" || status === "processing" || status === "queued") {
-    return STATUS.running
-  }
-  if (status === "failed") {
-    return STATUS.failed
-  }
-  return STATUS.idle
-}
+const TABS: { id: AgentKnowledgeTab; label: string }[] = [
+  { id: "sources", label: "Sources" },
+  { id: "expert-packs", label: "Expert Packs" },
+  { id: "instructions", label: "Instructions" },
+  { id: "retrieval", label: "Retrieval" },
+]
 
-function formatDate(value?: string): string {
-  if (!value) return "N/A"
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "N/A"
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-}
-
-// Mock agent data removed — load via agentsApi.get (STA-163)
-
-export default function AgentKnowledgePage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id: agentId } = use(params)
+function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<"datasets" | "instructions" | "folders" | "sources">("sources")
+  const tabParam = searchParams.get("tab") as AgentKnowledgeTab | null
+  const [activeTab, setActiveTab] = useState<AgentKnowledgeTab>(
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : "sources",
+  )
+  const [addOpen, setAddOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<{ type: "dataset" | "instruction"; id: string; name: string } | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null)
   const [mutatingId, setMutatingId] = useState<string | null>(null)
-  const [folderDraft, setFolderDraft] = useState<AgentReferenceFolder[]>([])
-  const [savingFolders, setSavingFolders] = useState(false)
-  const [packDraft, setPackDraft] = useState<KnowledgePackSelection[]>([])
-  const [savingPacks, setSavingPacks] = useState(false)
 
-  // Fetch agent data
-  const { data: agentData, isLoading: agentLoading, mutate: mutateAgent } = useSWR(
+  useEffect(() => {
+    if (tabParam && TABS.some((t) => t.id === tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
+
+  function selectTab(tab: AgentKnowledgeTab) {
+    setActiveTab(tab)
+    router.replace(`/agents/${agentId}/knowledge?tab=${tab}`, { scroll: false })
+  }
+
+  const { data: agent, isLoading: agentLoading } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
     { revalidateOnFocus: false },
   )
-  const agent = agentData
 
-  useEffect(() => {
-    setFolderDraft(agent?.referenceFolders ?? [])
-  }, [agent?.referenceFolders])
+  const workspace = useAgentKnowledge(agentId, agent?.name ?? "Agent", agent?.department)
 
-  useEffect(() => {
-    const cfg = (agent as Agent & { config?: { knowledge_packs?: KnowledgePackSelection[] } })?.config
-    const packs = cfg?.knowledge_packs
-    if (Array.isArray(packs)) {
-      setPackDraft(
-        packs.map((p) => ({
-          id: String(p.id || ""),
-          name: String(p.name || p.id || "Pack"),
-          department: p.department,
-        })).filter((p) => p.id),
-      )
-    }
-  }, [agent])
-
-  // Fetch datasets
-  const { data: datasetsData, mutate: mutateDatasets } = useSWR(
-    user ? `agent/${agentId}/datasets` : null,
-    () => trainingApi.listDatasets(),
-    { fallbackData: { datasets: [] as TrainingDataset[] } }
-  )
-  // Filter datasets - in a real app, this would filter by agent_id in the API
-  const datasets = datasetsData?.datasets ?? []
-
-  // Fetch instructions
   const { data: instructionsData, mutate: mutateInstructions } = useSWR(
     user ? `agent/${agentId}/instructions` : null,
     () => trainingApi.listInstructions(),
-    { fallbackData: { instructions: [] as CustomInstruction[] } }
+    { fallbackData: { instructions: [] as CustomInstruction[] } },
   )
-  // Filter instructions - in a real app, this would filter by agent_id in the API
   const instructions = instructionsData?.instructions ?? []
 
-  // Stats
-  const stats = useMemo(() => ({
-    totalDatasets: datasets.length,
-    readyDatasets: datasets.filter((d) => d.status === "ready").length,
-    totalInstructions: instructions.length,
-    activeInstructions: instructions.filter((i) => i.is_active).length,
-  }), [datasets, instructions])
+  const kpiTone = useMemo(() => {
+    const health = workspace.summary.healthLabel.toLowerCase()
+    if (health === "fresh" || health === "ready") return "emerald"
+    if (health === "stale") return "amber"
+    if (health === "failed" || health === "expired") return "red"
+    return "neutral"
+  }, [workspace.summary.healthLabel])
 
-  const handleSaveFolders = async () => {
-    if (!agent) return
+  async function handleToggleInstruction(instruction: CustomInstruction) {
     try {
-      setSavingFolders(true)
-      await agentsApi.update(agent.id, { referenceFolders: folderDraft } as Partial<Agent>)
-      toast.success("Reference folders updated")
-      await mutateAgent()
-    } catch (error) {
-      console.error("[knowledge] Save folders failed:", error)
-      toast.error("Failed to save reference folders")
+      setMutatingId(instruction.id)
+      await trainingApi.updateInstruction(instruction.id, { is_active: !instruction.is_active })
+      toast.success(instruction.is_active ? "Instruction deactivated" : "Instruction activated")
+      await mutateInstructions()
+    } catch {
+      toast.error("Failed to update instruction")
     } finally {
-      setSavingFolders(false)
+      setMutatingId(null)
     }
   }
 
-  const handleSavePacks = async () => {
-    if (!agent) return
-    try {
-      setSavingPacks(true)
-      await agentsApi.update(agent.id, { knowledgePacks: packDraft } as Partial<Agent>)
-      for (const pack of packDraft) {
-        await fetch(`/api/agents/${agent.id}/knowledge-assignments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_type: "knowledge_pack",
-            source_id: pack.id,
-            label: pack.name,
-            department: pack.department,
-            enabled: true,
-            metadata: { fabric_pack: true },
-          }),
-        }).catch(() => null)
-      }
-      toast.success("Knowledge packs updated")
-      await mutateAgent()
-    } catch (error) {
-      console.error("[knowledge] Save packs failed:", error)
-      toast.error("Failed to save knowledge packs")
-    } finally {
-      setSavingPacks(false)
-    }
-  }
-
-  // Handle delete
-  const handleDeleteClick = (type: "dataset" | "instruction", id: string, name: string) => {
-    setItemToDelete({ type, id, name })
-    setDeleteDialogOpen(true)
-  }
-
-  const confirmDelete = async () => {
+  async function confirmDelete() {
     if (!itemToDelete) return
     try {
       setMutatingId(itemToDelete.id)
-      if (itemToDelete.type === "dataset") {
-        await trainingApi.deleteDataset(itemToDelete.id)
-        await mutateDatasets()
-      } else {
-        await trainingApi.deleteInstruction(itemToDelete.id)
-        await mutateInstructions()
-      }
-      toast.success(`${itemToDelete.type === "dataset" ? "Dataset" : "Instruction"} deleted`)
-    } catch (error) {
-      console.error("[v0] Delete failed:", error)
-      toast.error(`Failed to delete ${itemToDelete.type}`)
+      await trainingApi.deleteInstruction(itemToDelete.id)
+      toast.success("Instruction deleted")
+      await mutateInstructions()
+    } catch {
+      toast.error("Failed to delete instruction")
     } finally {
       setMutatingId(null)
       setItemToDelete(null)
@@ -202,328 +116,188 @@ export default function AgentKnowledgePage({
     }
   }
 
-  // Toggle instruction active state
-  const handleToggleInstruction = async (instruction: CustomInstruction) => {
-    try {
-      setMutatingId(instruction.id)
-      await trainingApi.updateInstruction(instruction.id, { is_active: !instruction.is_active })
-      toast.success(instruction.is_active ? "Instruction deactivated" : "Instruction activated")
-      await mutateInstructions()
-    } catch (error) {
-      console.error("[v0] Toggle instruction failed:", error)
-      toast.error("Failed to update instruction")
-    } finally {
-      setMutatingId(null)
-    }
-  }
-
   if (agentLoading && !agent) {
     return (
-      <AppShell title="Knowledge Base">
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AppShell>
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
     )
   }
 
   if (!agent) {
     return (
-      <AppShell title="Knowledge Base">
-        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
-          <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
-          <Link href="/agents">
-            <Button variant="outline" size="sm">Back to AI Team</Button>
-          </Link>
-        </div>
-      </AppShell>
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
+        <Link href="/agents">
+          <Button variant="outline" size="sm">
+            Back to AI Team
+          </Button>
+        </Link>
+      </div>
     )
   }
 
   return (
-    <AppShell title={`${agent.name} - Knowledge Base`}>
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
-        <GravitrePageHeader
-          eyebrow="AI Team"
-          title="Knowledge Base"
-          description={`Training data and custom instructions for ${agent.name}`}
-          icon={<NavDatabase className="h-5 w-5" />}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href={`/agents/${agentId}`}>
-                <Button variant="outline" className="gap-2">
-                  Profile
-                </Button>
-              </Link>
-              <Link href={`/agents/${agentId}/capabilities`}>
-                <Button variant="outline" className="gap-2">
-                  Capabilities
-                </Button>
-              </Link>
-              <Link href="/training">
-                <Button variant="outline" className="gap-2">
-                  <Icon name="add" size="sm" />
-                  Add Training Data
-                </Button>
-              </Link>
-            </div>
-          }
-        />
-
-        <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
-          <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric label="Datasets" value={stats.totalDatasets} />
-            <GravitreMetric label="Instructions" value={stats.totalInstructions} />
-            <GravitreMetric label="Ready datasets" value={stats.readyDatasets} />
-            <GravitreMetric
-              label="Last Updated"
-              value={datasets[0]?.updated_at ? formatDate(datasets[0].updated_at) : "—"}
-            />
-          </section>
-
-          {/* Tabs */}
-          <div className="mb-6 flex w-fit flex-wrap items-center gap-1 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-1">            {[
-              { id: "sources", label: "Assigned Sources", icon: "database" },
-              { id: "datasets", label: "Training Datasets", icon: "database" },
-              { id: "instructions", label: "Custom Instructions", icon: "file" },
-              { id: "folders", label: "Reference Folders", icon: "folder" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={cn(
-                  "flex items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
-                  activeTab === tab.id
-                    ? "bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon name={tab.icon as IconName} size="sm" />
-                {tab.label}
-              </button>
-            ))}
+    <>
+      <GravitrePageHeader
+        eyebrow="AI Team"
+        title="Knowledge"
+        description={`Ground and continuously improve ${agent.name} with company knowledge, expert intelligence and connected sources.`}
+        icon={<NavDatabase className="h-5 w-5" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href="/sources">Manage library</Link>
+            </Button>
+            <Button type="button" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+              <Icon name="add" size="sm" />
+              Add knowledge
+            </Button>
           </div>
+        }
+      />
 
-          <AnimatePresence mode="wait">
-            {activeTab === "sources" && (
-              <motion.div
-                key="sources"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <GravitreSurface className="mb-6 space-y-3">
-                  <AgentKnowledgePacksEditor
-                    value={packDraft}
-                    onChange={setPackDraft}
-                    department={agent.department}
-                  />
-                  <Button size="sm" onClick={handleSavePacks} disabled={savingPacks}>
-                    {savingPacks ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Save knowledge packs
-                  </Button>
-                </GravitreSurface>
-                <AgentKnowledgeAssignmentsPanel agentId={agentId} />
-              </motion.div>
-            )}
+      <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+        <GravitreMetric label="Sources" value={workspace.summary.sourceCount} hint="Assigned to this agent" />
+        <GravitreMetric label="Indexed" value={workspace.summary.indexedLabel} hint="Connected knowledge surfaces" />
+        <GravitreMetric
+          label="Knowledge health"
+          value={workspace.summary.healthLabel}
+          className={kpiTone === "emerald" ? "text-emerald-600" : undefined}
+        />
+        <GravitreMetric label="Last sync" value={workspace.summary.lastSyncLabel} />
+      </section>
 
-            {activeTab === "datasets" && (
-              <motion.div
-                key="datasets"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                {datasets.length === 0 ? (
-                  <GravitreEmpty
-                    icon={<Icon name="database" size="sm" />}
-                    title="No Training Data"
-                    hint={`Add training datasets to improve ${agent.name}'s knowledge and capabilities.`}
-                    action={
-                      <Link href="/training">
-                        <Button className="gap-2">
-                          <Icon name="add" size="sm" />
-                          Add Training Data
-                        </Button>
-                      </Link>
-                    }
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {datasets.map((dataset, i) => (
-                      <motion.div
-                        key={dataset.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="group flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)]"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
-                          <Icon name="database" size="sm" className="text-success" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-foreground">{dataset.name}</h4>
-                            <span className={cn(
-                              "px-2 py-0.5 rounded text-[10px] font-medium uppercase border",
-                              statusClasses(dataset.status)
-                            )}>
-                              {dataset.status}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                            <span>{dataset.type}</span>
-                            <span className="text-muted-foreground/50">|</span>
-                            <span>{dataset.record_count ?? 0} records</span>
-                            <span className="text-muted-foreground/50">|</span>
-                            <span>Updated {formatDate(dataset.updated_at)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteClick("dataset", dataset.id, dataset.name)}
-                            disabled={mutatingId === dataset.id}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Icon name="trash" size="sm" />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
+      <div className="relative mb-6 flex w-fit flex-wrap items-center gap-1 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => selectTab(tab.id)}
+            className={cn(
+              "relative z-10 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-colors",
+              activeTab === tab.id ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
-
-            {activeTab === "instructions" && (
-              <motion.div
-                key="instructions"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                {instructions.length === 0 ? (
-                  <GravitreEmpty
-                    icon={<Icon name="file" size="sm" />}
-                    title="No Custom Instructions"
-                    hint={`Add custom instructions to guide ${agent.name}'s behavior and responses.`}
-                    action={
-                      <Link href="/training">
-                        <Button className="gap-2">
-                          <Icon name="add" size="sm" />
-                          Add Instructions
-                        </Button>
-                      </Link>
-                    }
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {instructions.map((instruction, i) => (
-                      <motion.div
-                        key={instruction.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="group flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)]"
-                      >
-                        <div className={cn(
-                          "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-                          instruction.is_active ? "bg-success/10" : "bg-secondary"
-                        )}>
-                          <Icon 
-                            name="file" 
-                            size="sm" 
-                            className={instruction.is_active ? "text-success" : "text-muted-foreground"} 
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-foreground">{instruction.name}</h4>
-                            {instruction.is_active && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-success/10 text-success border border-success/20">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                            {instruction.content}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleInstruction(instruction)}
-                            disabled={mutatingId === instruction.id}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                                                    <Icon name={instruction.is_active ? "close" : "check"} size="sm" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteClick("instruction", instruction.id, instruction.name)}
-                            disabled={mutatingId === instruction.id}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Icon name="trash" size="sm" />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {activeTab === "folders" && (
-              <motion.div
-                key="folders"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
-              >
-                <AgentReferenceFoldersEditor value={folderDraft} onChange={setFolderDraft} />
-                {(agent.referenceFolders ?? []).length > 0 ? (
-                  <AgentReferenceFoldersPanel
-                    folders={agent.referenceFolders ?? []}
-                    title="Currently linked"
-                    description="These folder paths are active for this agent."
-                    compact
-                  />
-                ) : null}
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveFolders} disabled={savingFolders} className="gap-2">
-                    {savingFolders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Save folder references
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          >
+            {activeTab === tab.id ? (
+              <motion.span
+                layoutId="agent-knowledge-tab"
+                className="absolute inset-0 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            ) : null}
+            <span className="relative">{tab.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === "sources" ? (
+            <AgentKnowledgeSourcesTab workspace={workspace} agentId={agentId} agentName={agent.name} />
+          ) : null}
+          {activeTab === "expert-packs" ? (
+            <AgentKnowledgeExpertPacksTab workspace={workspace} agentCapabilities={agent.capabilities} />
+          ) : null}
+          {activeTab === "instructions" ? (
+            <div className="space-y-3">
+              {instructions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No custom instructions yet.{" "}
+                  <Link href="/training" className="underline underline-offset-2">
+                    Add instructions in Training
+                  </Link>
+                  .
+                </p>
+              ) : (
+                instructions.map((instruction) => (
+                  <div
+                    key={instruction.id}
+                    className="flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">{instruction.name}</h4>
+                        {instruction.is_active ? (
+                          <span className={cn("rounded border px-2 py-0.5 text-[10px] uppercase", STATUS.verified)}>
+                            Active
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{instruction.content}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={mutatingId === instruction.id}
+                        onClick={() => void handleToggleInstruction(instruction)}
+                      >
+                        {instruction.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={mutatingId === instruction.id}
+                        onClick={() => {
+                          setItemToDelete({ id: instruction.id, name: instruction.name })
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
+          {activeTab === "retrieval" ? <AgentKnowledgeRetrievalTab agentId={agentId} /> : null}
+        </motion.div>
+      </AnimatePresence>
+
+      <AgentKnowledgeAddSheet
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onBrowseExpertPacks={() => selectTab("expert-packs")}
+      />
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {itemToDelete?.type}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete instruction?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &quot;{itemToDelete?.name}&quot;. This action cannot be undone.
+              This will permanently delete &quot;{itemToDelete?.name}&quot;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => void confirmDelete()}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  )
+}
+
+export default function AgentKnowledgePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: agentId } = use(params)
+
+  return (
+    <AppShell title="Knowledge">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+        <Suspense fallback={<Spinner size="lg" className="mx-auto mt-20" />}>
+          <AgentKnowledgePageBody agentId={agentId} />
+        </Suspense>
+      </div>
     </AppShell>
   )
 }

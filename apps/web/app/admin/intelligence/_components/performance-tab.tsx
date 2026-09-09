@@ -31,6 +31,7 @@ import {
   YAxis,
 } from "recharts"
 import { formatPercent, readNumber } from "./shared"
+import { PerformanceWaterfall } from "./performance-waterfall"
 
 type PerformanceMode = "speed_priority" | "balanced" | "accuracy_priority"
 
@@ -251,6 +252,31 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               label="Timeout rate"
               value={formatPercent(readNumber(dashboard.timeoutRate))}
               delay={0.15}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PerformanceWaterfall
+              title="Unified turn TTFT waterfall"
+              subtitle="Average milliseconds per unified-turn stage in this period"
+              stages={dashboard.pipelineWaterfall?.unifiedTurn ?? []}
+              emptyLabel={
+                dashboard.pipelineWaterfall?.hasUnifiedTurnData
+                  ? "No unified-turn samples in this period."
+                  : "Instrumentation required — unified-turn stages appear after live chat turns."
+              }
+              tone="violet"
+            />
+            <PerformanceWaterfall
+              title="Classical pipeline waterfall"
+              subtitle="Retrieval, rerank, generation, and related RAG stages"
+              stages={dashboard.pipelineWaterfall?.classical ?? []}
+              emptyLabel={
+                dashboard.pipelineWaterfall?.hasClassicalData
+                  ? "No classical pipeline samples in this period."
+                  : "No classical stage telemetry yet for this period."
+              }
+              tone="cyan"
             />
           </div>
 

@@ -296,3 +296,11 @@ export const RELATIONSHIPS_GUIDE = {
   linksEmpty:
     "No learned relationships yet. They appear as Learning runs over indexed sources and glossary terms.",
 } as const
+
+/** Smoke / CI test entities — filter-only in UI; deletion requires explicit admin choice. */
+export const RELATIONSHIPS_SMOKE_DATA = {
+  visibleCallout:
+    "Test entities (smoke-churn-acct-*) are hidden by default. They come from automated smoke runs, not customer records. This view is filter-only — contact an admin to delete or rebuild graph data.",
+  filterOnlyNote:
+    "Smoke test pollution is classified, not deleted, until an operator chooses relabel, archive, or force-rebuild.",
+} as const

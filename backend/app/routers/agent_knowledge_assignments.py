@@ -50,6 +50,7 @@ class KnowledgeAssignmentCreate(BaseModel):
     freshness_status: str = Field(default="unknown", alias="freshnessStatus")
     enabled: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
+    department: str | None = None
 
     model_config = {"populate_by_name": True}
 
