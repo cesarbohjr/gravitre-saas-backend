@@ -1,3 +1,5 @@
+"use client"
+
 import dynamic from "next/dynamic"
 import { Container } from "./container"
 import { DesktopNav, NAV_ITEMS } from "./navbar-desktop"

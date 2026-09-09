@@ -2,7 +2,7 @@
   "ci": {
     "collect": {
       "url": ["http://127.0.0.1:3000/", "http://127.0.0.1:3000/pricing"],
-      "numberOfRuns": 1,
+      "numberOfRuns": 3,
       "startServerCommand": "pnpm start",
       "startServerReadyPattern": "Ready",
       "startServerReadyTimeout": 120000,

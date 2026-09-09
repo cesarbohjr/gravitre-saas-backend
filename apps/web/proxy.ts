@@ -5,6 +5,7 @@ import { isMarketingContentRoute } from "@/lib/is-marketing-route"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 function withRouteKind(response: NextResponse, pathname: string): NextResponse {
+  response.headers.set("x-pathname", pathname)
   if (isMarketingContentRoute(pathname)) {
     response.headers.set("x-gravitre-marketing", "1")
   }
