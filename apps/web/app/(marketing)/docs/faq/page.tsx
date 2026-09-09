@@ -12,6 +12,8 @@ import {
   type FaqClientSection,
 } from "@/components/docs/faq-experience"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
 
 export const metadata = {
   title: "FAQ | Gravitre Docs",
@@ -54,28 +56,24 @@ export default async function FaqPage() {
   )
 
   return (
-    <div className="min-h-screen bg-card">
-      <div className="mx-auto max-w-5xl px-6 py-16">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
+      <MarketingPageHero
+        badge="FAQ"
+        title="Frequently asked questions"
+        description={MARKETING_COPY.docs.faqIntro}
+      >
         <Link
           href="/docs"
-          className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to docs
         </Link>
+      </MarketingPageHero>
 
-        <header className="mb-12">
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            FAQ
-          </span>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl text-balance">
-            Frequently asked questions
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground text-pretty">
-            {MARKETING_COPY.docs.faqIntro}
-          </p>
-        </header>
+      <DivideX />
 
+      <MarketingRails>
         <FaqExperience sections={sections} />
 
         <div className="mt-16 rounded-2xl border border-border bg-muted/50/60 px-6 py-10 text-center">
@@ -99,7 +97,7 @@ export default async function FaqPage() {
             </a>
           </div>
         </div>
-      </div>
+      </MarketingRails>
     </div>
   )
 }

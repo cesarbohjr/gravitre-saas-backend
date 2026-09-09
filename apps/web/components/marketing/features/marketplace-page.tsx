@@ -1,24 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ComponentType } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  ArrowRight,
   Headphones,
   TrendingUp,
-  MessageSquare,
   Megaphone,
-  Bot,
-  Workflow,
   BookOpen,
-  ShieldCheck,
   FileSpreadsheet,
-  Search,
-  PlugZap,
   Download,
   CheckCircle2,
 } from "lucide-react"
+import {
+  NucleoAgent,
+  NucleoApproval,
+  NucleoConnector,
+  NucleoSearch,
+  NucleoWorkflow,
+} from "@/components/icons/nucleo/semantic"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import {
@@ -26,10 +26,18 @@ import {
   MarketingPageHero,
   MarketingRails,
 } from "@/components/marketing/nodus/page-shell"
+import {
+  GravitreReveal,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  MARKETPLACE_TRACE_STAGES,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 const WHY_STATS = [
-  { value: "60+", label: "Installable templates" },
-  { value: "6", label: "Department packs" },
+  { value: "Templates", label: "Installable for your stack" },
+  { value: "Department packs", label: "Bundled by team" },
   { value: "Same gates", label: "As chat & workflows" },
 ]
 
@@ -43,13 +51,15 @@ type Category = "All" | "Agents" | "Workflows" | "Department packs" | "Knowledge
 
 const CATEGORIES: Category[] = ["All", "Agents", "Workflows", "Department packs", "Knowledge"]
 
+type AssetIcon = ComponentType<{ className?: string }>
+
 type Asset = {
   name: string
   category: Exclude<Category, "All">
   subtitle: string
   description: string
-  price: string
-  icon: typeof Bot
+  availability: "Included"
+  icon: AssetIcon
   tone: string
 }
 
@@ -59,7 +69,7 @@ const ASSETS: Asset[] = [
     category: "Department packs",
     subtitle: "3 workflows · CS agent",
     description: "Health monitoring, QBR prep, and account-risk workflows bundled for CSM teams.",
-    price: "Free",
+    availability: "Included",
     icon: Headphones,
     tone: "text-primary bg-primary/15",
   },
@@ -68,7 +78,7 @@ const ASSETS: Asset[] = [
     category: "Department packs",
     subtitle: "RevOps + Sales agents",
     description: "Pipeline review, executive summaries, and CRM-connected RevOps rituals.",
-    price: "Free",
+    availability: "Included",
     icon: TrendingUp,
     tone: "text-blue-600 bg-blue-100",
   },
@@ -77,8 +87,8 @@ const ASSETS: Asset[] = [
     category: "Department packs",
     subtitle: "Zendesk triage agent",
     description: "Ticket triage, support knowledge, and an optional SLA escalation workflow.",
-    price: "$49",
-    icon: MessageSquare,
+    availability: "Included",
+    icon: NucleoAgent,
     tone: "text-violet-600 bg-violet-100",
   },
   {
@@ -86,7 +96,7 @@ const ASSETS: Asset[] = [
     category: "Department packs",
     subtitle: "Campaign production",
     description: "Multi-agent marketing production, attribution analysis, and campaign digests.",
-    price: "Free",
+    availability: "Included",
     icon: Megaphone,
     tone: "text-amber-600 bg-amber-100",
   },
@@ -95,8 +105,8 @@ const ASSETS: Asset[] = [
     category: "Agents",
     subtitle: "Support operations",
     description: "Categorize and route inbound tickets, then hand off to humans with full context.",
-    price: "Free",
-    icon: Bot,
+    availability: "Included",
+    icon: NucleoAgent,
     tone: "text-primary bg-primary/15",
   },
   {
@@ -104,8 +114,8 @@ const ASSETS: Asset[] = [
     category: "Agents",
     subtitle: "Sales operations",
     description: "Enrich records, summarize pipeline, and draft follow-ups from connected CRM data.",
-    price: "$29",
-    icon: Bot,
+    availability: "Included",
+    icon: NucleoAgent,
     tone: "text-blue-600 bg-blue-100",
   },
   {
@@ -113,8 +123,8 @@ const ASSETS: Asset[] = [
     category: "Workflows",
     subtitle: "Approval-gated",
     description: "Route quotes and discounts through the right approvers with a full audit trail.",
-    price: "Free",
-    icon: Workflow,
+    availability: "Included",
+    icon: NucleoWorkflow,
     tone: "text-primary bg-primary/15",
   },
   {
@@ -122,7 +132,7 @@ const ASSETS: Asset[] = [
     category: "Workflows",
     subtitle: "Finance operations",
     description: "Parse invoices, match POs, and queue exceptions for human review before writes.",
-    price: "Free",
+    availability: "Included",
     icon: FileSpreadsheet,
     tone: "text-amber-600 bg-amber-100",
   },
@@ -131,8 +141,8 @@ const ASSETS: Asset[] = [
     category: "Knowledge",
     subtitle: "RAG source",
     description: "Curated threat-intel and policy docs, ready for agents with routing traces.",
-    price: "Free",
-    icon: ShieldCheck,
+    availability: "Included",
+    icon: NucleoApproval,
     tone: "text-rose-600 bg-rose-100",
   },
   {
@@ -140,21 +150,20 @@ const ASSETS: Asset[] = [
     category: "Knowledge",
     subtitle: "HR operations",
     description: "Structured onboarding checklists and request routing for new hires.",
-    price: "Free",
+    availability: "Included",
     icon: BookOpen,
     tone: "text-teal-600 bg-teal-100",
   },
 ]
 
 const STEPS = [
-  { n: 1, icon: Search, title: "Browse", detail: "Filter by department or type" },
-  { n: 2, icon: PlugZap, title: "Connect", detail: "Readiness check runs first" },
+  { n: 1, icon: NucleoSearch, title: "Browse", detail: "Filter by department or type" },
+  { n: 2, icon: NucleoConnector, title: "Connect", detail: "Readiness check runs first" },
   { n: 3, icon: Download, title: "Install", detail: "Deploy in minutes" },
 ] as const
 
 function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
   const Icon = asset.icon
-  const isPaid = asset.price !== "Free"
   return (
     <motion.div
       layout
@@ -171,11 +180,7 @@ function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
       <p className="mt-0.5 text-sm text-muted-foreground">{asset.subtitle}</p>
       <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{asset.description}</p>
       <div className="mt-6 flex items-center justify-between">
-        <span
-          className={`text-sm font-semibold ${isPaid ? "text-muted-foreground" : "text-primary"}`}
-        >
-          {asset.price}
-        </span>
+        <span className="text-sm font-semibold text-primary">{asset.availability}</span>
         <Link
           href="/get-started"
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/100"
@@ -192,7 +197,7 @@ export function MarketplacePage() {
   const filtered = active === "All" ? ASSETS : ASSETS.filter((a) => a.category === active)
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Gravitre Marketplace"
         title={
@@ -220,6 +225,26 @@ export function MarketplacePage() {
           ))}
         </div>
       </MarketingPageHero>
+
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Marketplace path"
+          title="From browse to live under the same gates"
+          description="One signature TRACE — pick a template, pass readiness, clear the approval gate, then run live."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={MARKETPLACE_TRACE_STAGES}
+            gradientId="marketplace-trace"
+            ariaLabel="Marketplace path from browse through readiness and approval gate to live"
+            caption="Browse → readiness → approval gate → live — same governance as chat and workflows."
+          />
+        </GravitreTrace>
+      </GravitreSection>
 
       <DivideX />
 
@@ -261,17 +286,14 @@ export function MarketplacePage() {
       <MarketingRails>
           <div className="grid gap-4 sm:grid-cols-3">
             {WHY_STATS.map((stat, i) => (
-              <motion.div
+              <GravitreReveal
                 key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
+                delay={i * 0.08}
                 className="border-divide rounded-lg border bg-gray-50 p-6 text-center"
               >
                 <div className="text-3xl font-bold text-foreground">{stat.value}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-              </motion.div>
+              </GravitreReveal>
             ))}
           </div>
           <ul className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-3">

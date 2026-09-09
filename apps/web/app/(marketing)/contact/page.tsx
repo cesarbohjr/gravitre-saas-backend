@@ -12,6 +12,11 @@ import { SubHeading } from "@/components/marketing/nodus/subheading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  GravitreAmbientMotion,
+  GravitreResolve,
+  SignalFieldVisual,
+} from "@/components/marketing/system"
 
 const contactOptions = [
   {
@@ -35,7 +40,7 @@ const contactOptions = [
 ]
 
 /**
- * Contact — Nodus form layout · Gravitre routing.
+ * Contact — Nodus form layout · Gravitre routing · Marketing System 4.0 signal field.
  * Form posts via mailto fallback until a live handler is wired.
  */
 export default function ContactPage() {
@@ -60,7 +65,7 @@ export default function ContactPage() {
   }
 
   return (
-    <main>
+    <main className="bg-[color:var(--g-marketing-canvas)]">
       <Container className="border-divide min-h-[calc(100vh-8rem)] border-x py-10 md:py-20">
         <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-20">
           <div>
@@ -72,7 +77,7 @@ export default function ContactPage() {
             </SubHeading>
 
             {isSubmitted ? (
-              <div className="mt-8 rounded-2xl border border-divide bg-gray-50 p-6">
+              <GravitreResolve className="mt-8 rounded-2xl border border-divide bg-gray-50 p-6">
                 <p className="text-charcoal-700 font-medium">Thanks — your mail client should open next.</p>
                 <p className="mt-2 text-sm text-gray-600">
                   If it did not, email{" "}
@@ -81,7 +86,7 @@ export default function ContactPage() {
                   </a>
                   .
                 </p>
-              </div>
+              </GravitreResolve>
             ) : (
               <form className="mt-6 flex flex-col gap-6" onSubmit={handleSubmit}>
                 <div>
@@ -127,6 +132,9 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-4">
+            <GravitreAmbientMotion className="mb-2 flex justify-center md:justify-end">
+              <SignalFieldVisual />
+            </GravitreAmbientMotion>
             <p className="font-mono text-xs tracking-tight text-neutral-500 uppercase">
               Direct lines
             </p>

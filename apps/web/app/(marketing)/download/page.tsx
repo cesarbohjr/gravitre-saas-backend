@@ -15,17 +15,14 @@ export const metadata: Metadata = {
 
 export default function DownloadPage() {
   return (
-    <div className="relative overflow-hidden bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Desktop"
         title="Gravitre for your desktop"
         description="Global-shortcut companion for chat, activity, and approvals — Windows, macOS, and Linux."
       />
       <DivideX />
-      <DesktopDownloadSection
-        initialManifest={DESKTOP_RELEASE_MANIFEST}
-        className="relative overflow-hidden bg-white"
-      />
+      <DesktopDownloadSection initialManifest={DESKTOP_RELEASE_MANIFEST} />
       <MarketingPageEndCta />
     </div>
   )

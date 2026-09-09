@@ -1,14 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { CheckCircle2 } from "lucide-react"
 import {
-  CheckCircle2,
-  ListChecks,
-  MessageSquare,
-  Shield,
-  Workflow,
-} from "lucide-react"
+  NucleoAgent,
+  NucleoApproval,
+  NucleoIntelligence,
+  NucleoWorkflow,
+} from "@/components/icons/nucleo/semantic"
 import {
   extensionInstallCtaLabel,
   extensionInstallHref,
@@ -23,6 +22,16 @@ import {
 import { Button } from "@/components/marketing/nodus/button"
 import { MarketingPageEndCta, MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  EXTENSION_TRACE_STAGES,
+  GravitreFlow,
+  GravitreResolve,
+  GravitreReveal,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 const activationSteps = [
   {
@@ -69,7 +78,7 @@ export function ExtensionPage() {
   const storeListing = installHref.startsWith("http")
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Chrome · Edge · Brave · overlay and approve"
         title={
@@ -116,6 +125,26 @@ export function ExtensionPage() {
 
       <DivideX />
 
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Extension path"
+          title="From overlay to governed outcome"
+          description="One signature TRACE — enrich on the page, approve the write, then see the same Outcomes trail as chat."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={EXTENSION_TRACE_STAGES}
+            gradientId="extension-trace"
+            ariaLabel="Extension path from overlay through enrich and approve to outcome"
+            caption="Overlay → enrich → approve → outcome — same gates as chat, closer to the page."
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
       <MarketingRails>
           <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
             Activation in five steps
@@ -126,20 +155,18 @@ export function ExtensionPage() {
           </p>
           <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {activationSteps.map((step, i) => (
-              <motion.li
-                key={step.n}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="rounded-lg border border-divide bg-gray-50 p-5"
-              >
-                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
-                  {step.n}
-                </div>
-                <h3 className="font-semibold text-foreground">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-              </motion.li>
+              <li key={step.n}>
+                <GravitreFlow
+                  delay={i * 0.05}
+                  className="rounded-lg border border-divide bg-gray-50 p-5"
+                >
+                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
+                    {step.n}
+                  </div>
+                  <h3 className="font-semibold text-foreground">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+                </GravitreFlow>
+              </li>
             ))}
           </ol>
       </MarketingRails>
@@ -155,11 +182,7 @@ export function ExtensionPage() {
             never leave the tab to enrich, and you never leave it to approve.
           </p>
           <div className="mt-12 grid gap-10 lg:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <GravitreReveal>
               <h3 className="font-semibold text-foreground">
                 Step 3 — enrich from page context
               </h3>
@@ -178,13 +201,8 @@ export function ExtensionPage() {
                   height: 1802,
                 }}
               />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.05 }}
-            >
+            </GravitreReveal>
+            <GravitreReveal delay={0.05}>
               <h3 className="font-semibold text-foreground">
                 Step 4 — confirm the write
               </h3>
@@ -206,7 +224,7 @@ export function ExtensionPage() {
                   height: 2358,
                 }}
               />
-            </motion.div>
+            </GravitreReveal>
           </div>
       </MarketingRails>
 
@@ -228,11 +246,7 @@ export function ExtensionPage() {
               half of max-w-5xl the in-app text is too small to read, which turns
               the proof into decoration. */}
           <div className="mt-12 flex flex-col gap-14">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <GravitreResolve>
               <h3 className="text-sm font-semibold text-foreground">
                 Step 4, in the app — the shared Approvals queue
               </h3>
@@ -246,12 +260,8 @@ export function ExtensionPage() {
                 src="/product/app-approvals.png"
                 alt="Approvals queue showing three pending requests, with a HubSpot contact create selected and its recommendation, SLA, and impact detail open."
               />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            </GravitreResolve>
+            <GravitreResolve delay={0.05}>
               <h3 className="text-sm font-semibold text-foreground">
                 Step 5, in the app — see it in Outcomes
               </h3>
@@ -268,7 +278,7 @@ export function ExtensionPage() {
                 src="/product/app-activity.png"
                 alt="Activity feed listing runs with lifecycle state and source, including a created HubSpot contact run sourced from the browser extension."
               />
-            </motion.div>
+            </GravitreResolve>
           </div>
       </MarketingRails>
 
@@ -300,7 +310,7 @@ export function ExtensionPage() {
           </div>
           <div className="space-y-4">
             <div className="rounded-lg border border-divide bg-gray-50 p-5">
-              <Shield className="mb-3 h-6 w-6 text-primary" />
+              <NucleoApproval className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Same governance as chat</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Writes stage awaiting confirmation with a server-issued token.
@@ -309,7 +319,7 @@ export function ExtensionPage() {
               </p>
             </div>
             <div className="rounded-lg border border-divide bg-gray-50 p-5">
-              <ListChecks className="mb-3 h-6 w-6 text-primary" />
+              <NucleoIntelligence className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">What it will not do</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 No InMail spam, no clicking Salesforce/HubSpot UI for you, no
@@ -318,7 +328,7 @@ export function ExtensionPage() {
               </p>
             </div>
             <div className="rounded-lg border border-divide bg-gray-50 p-5">
-              <MessageSquare className="mb-3 h-6 w-6 text-primary" />
+              <NucleoAgent className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Ask a short, page-contextual question in the overlay — same
@@ -337,7 +347,7 @@ export function ExtensionPage() {
               </p>
             </div>
             <div className="rounded-lg border border-divide bg-gray-50 p-5">
-              <Workflow className="mb-3 h-6 w-6 text-primary" />
+              <NucleoWorkflow className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Workflows from the overlay</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Trigger existing typed workflows with the same plan-bar approve

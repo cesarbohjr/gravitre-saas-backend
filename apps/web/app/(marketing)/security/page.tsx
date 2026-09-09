@@ -1,42 +1,66 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { 
-  ArrowRight, 
-  Shield, 
-  Lock, 
-  Eye, 
-  Server,
-  FileCheck,
-  Users,
-  Globe,
-  CheckCircle2
-} from "lucide-react"
-import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import { Lock, Server, FileCheck, Users } from "lucide-react"
+import {
+  NucleoApproval,
+  NucleoActivity,
+  NucleoArrowRight,
+} from "@/components/icons/nucleo/semantic"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import {
+  MarketingPageHero,
+  MarketingRails,
+  MarketingPageEndCta,
+} from "@/components/marketing/nodus/page-shell"
+import {
+  GravitreFlow,
+  GravitreReveal,
+  GravitreResolve,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+  SECURITY_TRACE_STAGES,
+} from "@/components/marketing/system"
 
-const certifications = [
-  { name: "Encryption in transit and at rest", description: "TLS for data in motion; AES-256 at rest on eligible infrastructure" },
-  { name: "Role-based access", description: "RBAC, MFA, and SSO/SAML on eligible plans" },
-  { name: "Audit logging", description: "Connector writes and approvals logged for operator review" },
-  { name: "Responsible disclosure", description: "Security issues reported through our disclosure process" },
+const controls = [
+  {
+    name: "Encryption in transit and at rest",
+    description: "TLS for data in motion; AES-256 at rest on eligible infrastructure",
+  },
+  {
+    name: "Role-based access",
+    description: "RBAC, MFA, and SSO/SAML on eligible plans",
+  },
+  {
+    name: "Audit logging",
+    description: "Connector writes and approvals logged for operator review",
+  },
+  {
+    name: "Responsible disclosure",
+    description: "Security issues reported through our disclosure process",
+  },
 ]
 
 const features = [
   {
     icon: Lock,
     title: "Encryption",
-    description: "All data is encrypted at rest (AES-256) and in transit (TLS 1.3). We use industry-standard cryptographic protocols to protect your information.",
+    description:
+      "All data is encrypted at rest (AES-256) and in transit (TLS 1.3). We use industry-standard cryptographic protocols to protect your information.",
   },
   {
-    icon: Shield,
+    icon: NucleoApproval,
     title: "Access Controls",
-    description: "Role-based access control (RBAC), multi-factor authentication (MFA), and SSO/SAML support ensure only authorized users access your data.",
+    description:
+      "Role-based access control (RBAC), multi-factor authentication (MFA), and SSO/SAML support ensure only authorized users access your data — plan-specific; ask us for details.",
   },
   {
-    icon: Eye,
+    icon: NucleoActivity,
     title: "Audit Logging",
-    description: "Audit trails show connector writes and approvals so operators can see what the AI did — and what it asked before acting. Logs are retained for compliance review.",
+    description:
+      "Audit trails show connector writes and approvals so operators can see what the AI did — and what it asked before acting. Retention is plan-specific.",
   },
   {
     icon: Server,
@@ -73,118 +97,106 @@ const practices = [
 
 export default function SecurityPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Security"
         title="Enterprise-grade security"
         description="Your data security is our priority. Gravitre is built with security-first architecture, human approval on writes, and audit trails you can review — with plan-specific details available on request."
       />
 
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Governance path"
+          title="Identity → Encrypt → Approve → Audit"
+          description="One signature TRACE — how access and writes move through Gravitre before anything lands in your systems."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={SECURITY_TRACE_STAGES}
+            gradientId="security-trace"
+            ariaLabel="Security path from identity through encrypt and approve to audit"
+            caption="Identity → encrypt → approve → audit — plan-specific controls; ask us for the details that match your contract."
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
       <MarketingRails>
-        {/* Certifications */}
         <div className="mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-2xl font-semibold text-foreground mb-4">Security controls</h2>
-          </motion.div>
+          <GravitreReveal className="mb-12 text-center">
+            <h2 className="mb-4 text-2xl font-semibold text-foreground">Security controls</h2>
+          </GravitreReveal>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {certifications.map((cert, i) => (
-              <motion.div
+            {controls.map((cert, i) => (
+              <GravitreFlow
                 key={cert.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-xl border border-border bg-gray-50 p-4 text-center"
+                delay={i * 0.08}
+                className="rounded-xl border border-divide bg-gray-50 p-4 text-center"
               >
-                <div className="text-sm font-medium text-foreground mb-1">{cert.name}</div>
+                <div className="mb-1 text-sm font-medium text-foreground">{cert.name}</div>
                 <div className="text-xs text-muted-foreground">{cert.description}</div>
-              </motion.div>
+              </GravitreFlow>
             ))}
           </div>
         </div>
 
-        {/* Security Features */}
         <div className="mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-semibold text-foreground mb-4">Security Features</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Comprehensive security controls built into every layer of our platform.
+          <GravitreReveal className="mb-12 text-center">
+            <h2 className="mb-4 text-3xl font-semibold text-foreground">Security Features</h2>
+            <p className="mx-auto max-w-2xl text-muted-foreground">
+              Security controls built into every layer of our platform — specifics vary by plan.
             </p>
-          </motion.div>
+          </GravitreReveal>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => {
               const Icon = feature.icon
               return (
-                <motion.div
+                <GravitreFlow
                   key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="rounded-xl border border-border bg-gray-50 p-6"
+                  delay={i * 0.08}
+                  className="rounded-xl border border-divide bg-gray-50 p-6"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 mb-4">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15">
                     <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium text-foreground mb-2">{feature.title}</h3>
+                  <h3 className="mb-2 text-lg font-medium text-foreground">{feature.title}</h3>
                   <p className="text-sm text-gray-600">{feature.description}</p>
-                </motion.div>
+                </GravitreFlow>
               )
             })}
           </div>
         </div>
 
-        {/* Security Practices */}
-        <div className="grid gap-12 lg:grid-cols-2 items-start">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl font-semibold text-foreground mb-6">Our Security Practices</h2>
-            <p className="text-gray-600 mb-6">
-              We implement comprehensive security practices across our organization, from secure 
-              development to operational security.
+        <div className="grid items-start gap-12 lg:grid-cols-2">
+          <GravitreFlow>
+            <h2 className="mb-6 text-3xl font-semibold text-foreground">Our Security Practices</h2>
+            <p className="mb-6 text-gray-600">
+              We implement security practices across our organization, from secure development to
+              operational security. Ask us for plan-specific details.
             </p>
             <Link
               href="/docs/security"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary transition-colors"
+              className="inline-flex items-center gap-2 text-primary transition-colors hover:text-primary"
             >
               View security documentation
-              <ArrowRight className="h-4 w-4" />
+              <NucleoArrowRight className="h-4 w-4" />
             </Link>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
+          </GravitreFlow>
+          <GravitreResolve>
             <ul className="space-y-3">
               {practices.map((practice, i) => (
-                <motion.li
-                  key={practice}
-                  initial={{ opacity: 0, x: 10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex items-center gap-3"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                <GravitreFlow key={practice} delay={i * 0.04} className="flex items-center gap-3">
+                  <NucleoApproval className="h-4 w-4 shrink-0 text-primary" />
                   <span className="text-sm text-foreground">{practice}</span>
-                </motion.li>
+                </GravitreFlow>
               ))}
             </ul>
-          </motion.div>
+          </GravitreResolve>
         </div>
       </MarketingRails>
 

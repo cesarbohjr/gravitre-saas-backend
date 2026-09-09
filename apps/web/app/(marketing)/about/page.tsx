@@ -7,17 +7,24 @@ import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
+import {
+  ConvergeNodesVisual,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+} from "@/components/marketing/system"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 /**
- * About — Nodus layout · Gravitre copy.
+ * About — Nodus layout · Gravitre copy · Marketing System 4.0 converge signature.
  * No press logos, invented metrics, or placeholder founders.
+ * Server component: ConvergeNodesVisual / GravitreTrace are client islands.
  */
 export default function AboutPage() {
   const principles = MARKETING_COPY.about.principles
 
   return (
-    <main>
+    <main className="bg-[color:var(--g-marketing-canvas)]">
       <Container className="border-divide flex flex-col items-center justify-center border-x px-4 pt-10 pb-10 md:px-8 md:pt-32 md:pb-20">
         <div className="grid w-full grid-cols-1 gap-12 md:grid-cols-2 md:gap-20">
           <div className="flex flex-col items-start justify-start">
@@ -50,7 +57,22 @@ export default function AboutPage() {
 
       <DivideX />
 
-      <Container className="border-divide border-x p-4 py-16 md:px-8 md:py-24">
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="One brain"
+          title="Departments converge"
+          description="Sales, support, ops, and finance feed the same governed intelligence — not four disconnected copilots."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <ConvergeNodesVisual />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
+      <GravitreSection>
         <Badge text="Principles" />
         <SectionHeading className="mt-4 text-left md:text-center">
           How we build
@@ -69,7 +91,7 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
-      </Container>
+      </GravitreSection>
 
       <DivideX />
 

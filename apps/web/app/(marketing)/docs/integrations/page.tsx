@@ -1,10 +1,18 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft, Mail, Plug } from "lucide-react"
+import { ArrowLeft, Mail } from "lucide-react"
 
 import { getPublishedPublicDocs } from "@/lib/docs/load-docs"
 import { PlanBadge } from "@/components/docs/plan-badge"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
+import {
+  ConnectorHubVisual,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+} from "@/components/marketing/system"
 
 export const metadata: Metadata = {
   title: "Integrations · Gravitre Docs",
@@ -30,29 +38,39 @@ export default function IntegrationsIndexPage() {
     .sort((a, b) => a.frontmatter.title.localeCompare(b.frontmatter.title))
 
   return (
-    <div className="min-h-screen bg-card">
-      <section className="border-b border-border bg-gradient-to-b from-muted/50 to-white px-6 py-12">
-        <div className="mx-auto max-w-5xl">
-          <Link
-            href="/docs"
-            className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Docs
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Plug className="h-5 w-5" />
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Integrations</h1>
-          </div>
-          <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-            {MARKETING_COPY.docs.integrationsIntro}
-          </p>
-        </div>
-      </section>
+    <div className="bg-[color:var(--g-marketing-canvas)]">
+      <MarketingPageHero
+        badge="Integrations"
+        title="Integrations"
+        description={MARKETING_COPY.docs.integrationsIntro}
+      >
+        <Link
+          href="/docs"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to docs
+        </Link>
+      </MarketingPageHero>
 
-      <section className="mx-auto max-w-5xl px-6 py-12">
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Connector hub"
+          title="Your stack into one governed center"
+          description="Auth, scopes, and executability checked before agents or workflows act — not a logo wall of claims."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <ConnectorHubVisual />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
+      <MarketingRails>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {integrations.map((doc) => {
             const logo = LOGO_BY_SLUG[doc.slug]
@@ -93,7 +111,7 @@ export default function IntegrationsIndexPage() {
             )
           })}
         </div>
-      </section>
+      </MarketingRails>
     </div>
   )
 }

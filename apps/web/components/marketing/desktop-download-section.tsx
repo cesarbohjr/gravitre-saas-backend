@@ -1,15 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { motion } from "framer-motion"
-import {
-  AlertTriangle,
-  Download,
-  Keyboard,
-  MessageSquare,
-  Shield,
-  Sparkles,
-} from "lucide-react"
+import { AlertTriangle, Download } from "lucide-react"
 import {
   DESKTOP_RELEASE_FALLBACK,
   detectDesktopPlatform,
@@ -21,9 +13,12 @@ import {
   LinuxVendorIcon,
   WindowsVendorIcon,
 } from "@/components/marketing/os-vendor-icons"
-import { GridBackground } from "@/components/marketing/home/grid-background"
 import { DesktopCompanionPreview } from "@/components/marketing/desktop-companion-preview"
-import { IntelligenceField } from "@/components/gravitre/visual"
+import {
+  GravitrePulse,
+  GravitreResolve,
+  GravitreSection,
+} from "@/components/marketing/system"
 
 const RELEASE_PAGE =
   "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.1.0"
@@ -68,20 +63,14 @@ const PLATFORM_META: Record<DesktopPlatformKey, PlatformMeta> = {
   },
 }
 
-const FLOATING_ICONS = [
-  { Icon: Keyboard, className: "left-[6%] top-[18%]", delay: 0 },
-  { Icon: MessageSquare, className: "right-[8%] top-[22%]", delay: 0.6 },
-  { Icon: Shield, className: "left-[10%] top-[58%]", delay: 1.1 },
-  { Icon: Sparkles, className: "right-[6%] top-[52%]", delay: 1.7 },
-] as const
-
 type Props = {
   initialManifest?: DesktopReleaseManifest
   className?: string
 }
 
 /**
- * Marketing download — light hero (shared with home), effects, companion mock, OS cards.
+ * Download product stage — companion preview + OS cards.
+ * Page hero lives on `/download`; this section does not duplicate it.
  */
 export function DesktopDownloadSection({
   initialManifest = DESKTOP_RELEASE_FALLBACK,
@@ -114,8 +103,7 @@ export function DesktopDownloadSection({
       key,
       ...PLATFORM_META[key],
       href: manifest.downloads[key]?.url || "#",
-      footerHref:
-        key === "macos" ? intelUrl : PLATFORM_META[key].footerHref,
+      footerHref: key === "macos" ? intelUrl : PLATFORM_META[key].footerHref,
     }))
   }, [manifest])
 
@@ -130,91 +118,34 @@ export function DesktopDownloadSection({
     : null
 
   return (
-    <section
-      className={
-        className ?? "relative overflow-hidden border-t border-border bg-background"
-      }
-      data-field-atmosphere="systems"
-    >
-      <IntelligenceField variant="section" atmosphere="systems" className="opacity-45" />
-      {/* Same atmosphere language as home / extension — not the darker cream+green wash */}
-      <GridBackground />
-
-      {/* Floating accent icons (no Lottie logo marks) */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        {FLOATING_ICONS.map(({ Icon, className: pos, delay }) => (
-          <motion.div
-            key={pos}
-            className={`absolute hidden h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-primary shadow-sm shadow-foreground/5 backdrop-blur-sm lg:flex ${pos}`}
-            animate={{ y: [0, -12, 0], opacity: [0.45, 0.85, 0.45] }}
-            transition={{ duration: 5.5, delay, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Icon className="h-5 w-5" strokeWidth={1.5} />
-          </motion.div>
-        ))}
+    <GravitreSection className={className}>
+      <div className="mb-8 flex flex-wrap items-center justify-center gap-2.5">
+        <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
+          v{manifest.version}
+        </span>
+        {publishedLabel ? (
+          <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
+            {publishedLabel}
+          </span>
+        ) : null}
+        {isUnsigned ? (
+          <span className="inline-flex items-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
+            Unsigned early build
+          </span>
+        ) : null}
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pb-28 sm:pt-32">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto max-w-3xl text-center"
-        >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 shadow-sm shadow-foreground/5 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary/100" />
-            <span className="text-sm font-medium text-primary">
-              Desktop companion · Alt+Space
-            </span>
-          </div>
+      <DesktopCompanionPreview />
 
-          <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            Gravitre,{" "}
-            <span className="bg-gradient-to-r from-primary via-primary/80 to-[color:var(--g-intelligence)] bg-clip-text text-transparent">
-              one shortcut away.
-            </span>
-          </h1>
-
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            A lightweight companion for chat, activity, and approvals — summon it from anywhere with
-            a global shortcut. Settings, Meson, Agents, and Billing stay on the web.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-            <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
-              v{manifest.version}
-            </span>
-            {publishedLabel ? (
-              <span className="inline-flex items-center rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm shadow-foreground/5">
-                {publishedLabel}
-              </span>
-            ) : null}
-            {isUnsigned ? (
-              <span className="inline-flex items-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
-                Unsigned early build
-              </span>
-            ) : null}
-          </div>
-        </motion.div>
-
-        <div className="mt-14 sm:mt-16">
-          <DesktopCompanionPreview />
-        </div>
-
-        {/* OS cards */}
-        <div className="mt-16 grid gap-5 sm:grid-cols-3 sm:gap-6">
-          {platforms.map((platform, index) => {
-            const highlighted = detected === platform.key
-            const Icon = platform.Icon
-            return (
-              <motion.div
-                key={platform.key}
-                initial={{ opacity: 0, y: 22 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: 0.08 + index * 0.07, duration: 0.45 }}
+      <div className="mt-16 grid gap-5 sm:grid-cols-3 sm:gap-6">
+        {platforms.map((platform, index) => {
+          const highlighted = detected === platform.key
+          const Icon = platform.Icon
+          return (
+            <GravitrePulse key={platform.key} delay={0.06 + index * 0.07}>
+              <div
                 className={[
-                  "relative flex flex-col rounded-[1.35rem] border bg-card/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
+                  "relative flex h-full flex-col rounded-[1.35rem] border bg-card/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
                   highlighted
                     ? "border-primary/30 ring-2 ring-emerald-400/35"
                     : "border-border/80",
@@ -266,20 +197,18 @@ export function DesktopDownloadSection({
                     {platform.footer}
                   </p>
                 )}
-              </motion.div>
-            )
-          })}
-        </div>
+              </div>
+            </GravitrePulse>
+          )
+        })}
+      </div>
 
-        {isUnsigned ? (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-20px" }}
-            transition={{ duration: 0.45, delay: 0.1 }}
+      {isUnsigned ? (
+        <GravitreResolve className="mt-10" delay={0.08}>
+          <div
             role="note"
             aria-label="Unsigned build security warnings"
-            className="mt-10 rounded-[1.35rem] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 sm:p-8 shadow-[var(--g-shadow-elevated)]"
+            className="rounded-[1.35rem] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-6 shadow-[var(--g-shadow-elevated)] sm:p-8"
           >
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] text-muted-foreground">
@@ -315,10 +244,11 @@ export function DesktopDownloadSection({
                   macOS — “Apple could not verify…” / cannot be opened
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  In Finder, <strong className="text-foreground">right-click</strong> (or Control-click)
-                  the app → <strong className="text-foreground">Open</strong> → confirm{" "}
-                  <strong className="text-foreground">Open</strong> again. Or: System Settings → Privacy
-                  &amp; Security → <strong className="text-foreground">Open Anyway</strong>.
+                  In Finder, <strong className="text-foreground">right-click</strong> (or
+                  Control-click) the app → <strong className="text-foreground">Open</strong> →
+                  confirm <strong className="text-foreground">Open</strong> again. Or: System
+                  Settings → Privacy &amp; Security →{" "}
+                  <strong className="text-foreground">Open Anyway</strong>.
                 </p>
               </div>
             </div>
@@ -335,14 +265,14 @@ export function DesktopDownloadSection({
               </a>
               .
             </p>
-          </motion.div>
-        ) : null}
+          </div>
+        </GravitreResolve>
+      ) : null}
 
-        <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-muted-foreground">
-          Browser enrichment stays in the Chrome extension — not in Desktop. Full Settings, Meson,
-          Agents, and Billing open in the browser from the companion.
-        </p>
-      </div>
-    </section>
+      <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-muted-foreground">
+        Browser enrichment stays in the Chrome extension — not in Desktop. Full Settings, Meson,
+        Agents, and Billing open in the browser from the companion.
+      </p>
+    </GravitreSection>
   )
 }

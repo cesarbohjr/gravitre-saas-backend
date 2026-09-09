@@ -20,7 +20,15 @@ import { getDocsNavSections, getPublishedPublicDocs, getDocsSearchIndex } from "
 import { DocsSearch } from "@/components/docs/docs-search"
 import { categoryIcon, categoryDescription, categoryLanding } from "@/components/docs/category-meta"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageHero, MarketingRails, MarketingPageEndCta } from "@/components/marketing/nodus/page-shell"
+import {
+  DOCS_TRACE_STAGES,
+  GravitreSection,
+  GravitreSectionHeader,
+  GravitreTrace,
+  StageTraceVisual,
+} from "@/components/marketing/system"
 
 const DOC_ICON_MAP = {
   Zap,
@@ -82,7 +90,7 @@ export default function DocsPage() {
   )
 
   return (
-    <div className="bg-white">
+    <div className="bg-[color:var(--g-marketing-canvas)]">
       <MarketingPageHero
         badge="Documentation"
         title="Documentation"
@@ -112,6 +120,27 @@ export default function DocsPage() {
           </Link>
         </div>
       </MarketingPageHero>
+
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="System map"
+          title="How the docs fit together"
+          description="Start → Connect → Build → Govern → Learn — one path through the product, not a pile of orphan pages."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <StageTraceVisual
+            stages={DOCS_TRACE_STAGES}
+            gradientId="docs-trace"
+            ariaLabel="Documentation path from Start through Connect, Build, Govern, to Learn"
+          />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
 
       <MarketingRails>
         <div className="mb-16">

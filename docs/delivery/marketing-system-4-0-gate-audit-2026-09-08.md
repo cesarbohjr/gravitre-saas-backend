@@ -204,3 +204,15 @@ Cesar approved the gate. Implemented Phase 1–3 pilot (no GSAP/Lottie/extra Web
 
 Still gated: auth chrome slim, GSAP narratives, Lottie, site-wide P1/P2 rollout, Playwright goldens.
 
+---
+
+## P1 shipped (2026-09-09) — after Cesar “move to P1”
+
+Extended System 4.0 across all audit P1 routes (no GSAP/Lottie/extra WebGL; auth footer unchanged):
+
+1. **Shared visuals** — `StageTraceVisual` (+ page stage constants), `ConnectorHubVisual`, `ConvergeNodesVisual`, `SignalFieldVisual`
+2. **Pages** — `/features/extension`, `/features/marketplace`, `/about`, `/contact`, `/security`, `/docs`, `/docs/faq`, `/docs/integrations`, `/api`, `/download`
+3. **Scaffold cleanup (authorized by no-invented-surfaces rule while touching these pages)** — stripped marketplace `$49`/`$29` prices; removed API Starter/Growth/Enterprise invented req/min tiers; download retired parallel IntelligenceField/Grid/floating Lucide dual-hero
+
+Still gated: auth chrome slim, GSAP, custom Lottie, P2 routes, Playwright goldens.
+
