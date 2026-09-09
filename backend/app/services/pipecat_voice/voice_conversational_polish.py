@@ -69,11 +69,30 @@ class ResponseLengthBand:
     soft_word_cap: int
     reason: str
 
+    @property
+    def max_output_tokens(self) -> int:
+        """Hard generation ceiling as a backstop to the prompt directive.
+
+        Measured 2026-09-08 in production with ``VOICE_RESPONSE_LENGTH_ADAPT_V1``
+        on: the prompt-only ceiling was ignored outright — a *brief* turn (2
+        sentences / 35 words) came back at 9 sentences / 81 words, and a
+        *standard* turn (3 / 55) at 17 sentences / 331 words. The directive
+        reaches the model correctly, so this is an adherence problem that prompt
+        wording alone does not solve.
+
+        Sized with roughly 2x headroom over ``soft_word_cap`` so it never
+        guillotines a reply that merely runs a little long — it only stops the
+        3-6x runaways. At ~1.35 tokens per spoken English word, 2.2 tokens per
+        word plus a 16-token floor leaves room to finish the sentence in flight.
+        """
+        return int(self.soft_word_cap * 2.2) + 16
+
     def as_meta(self) -> dict[str, Any]:
         return {
             "band": self.band,
             "max_sentences": self.max_sentences,
             "soft_word_cap": self.soft_word_cap,
+            "max_output_tokens": self.max_output_tokens,
             "reason": self.reason,
         }
 

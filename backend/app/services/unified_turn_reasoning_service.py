@@ -1185,6 +1185,16 @@ async def run_unified_turn_shadow(
                 and "nano" in str(model).lower()
             ):
                 kwargs["reasoning_effort"] = "none"
+            # Phase 5 backstop: the prompt-only length ceiling is measurably
+            # ignored (see ResponseLengthBand.max_output_tokens), so cap
+            # generation too. Gated on reasoning being off because
+            # max_completion_tokens also covers reasoning tokens — applying it to
+            # a reasoning turn risks burning the budget before any user-visible
+            # text, turning a long reply into an empty one. The observed runaways
+            # were all on this reasoning-off conversational voice pin.
+            if _length_band is not None and kwargs.get("reasoning_effort") == "none":
+                kwargs["max_completion_tokens"] = _length_band.max_output_tokens
+                breakdown["spoken_length_band"] = _length_band.as_meta()
             if conversational_no_tools:
                 breakdown["conversational_no_tools"] = True
                 breakdown["voice_conversational_model"] = model
