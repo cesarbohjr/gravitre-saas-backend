@@ -53,18 +53,6 @@ export const HeroImage = () => {
           className="relative z-10 h-full w-full cursor-pointer"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: 1,
-          }}
-          transition={{
-            opacity: {
-              duration: 0.3,
-              delay: 1,
-            },
-          }}
           style={{
             translateX,
             translateY,
@@ -75,6 +63,8 @@ export const HeroImage = () => {
             alt="Gravitre product preview"
             className="w-full"
             priority
+            fetchPriority="high"
+            sizes="(max-width: 1024px) 100vw, min(100vw, 1280px)"
             width={1000}
             height={1000}
             draggable={false}
