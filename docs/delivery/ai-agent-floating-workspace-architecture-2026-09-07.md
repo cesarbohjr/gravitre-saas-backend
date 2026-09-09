@@ -468,3 +468,12 @@ explicit close sticks for the session), auto-sets `floatWorkspaceOpen=true` /
 **Not yet PASS in prod:** requires merge → Railway/Vercel redeploy → live
 `/ai` reload in an authenticated session before this can be marked done per
 the evidence-linked PASS bar.
+
+### PASS (2026-09-09, ~15:40 PT)
+
+Cesar reloaded `https://gravitre.app/ai` in his own authenticated session
+post-deploy and confirmed: "it works." Deployed commit: `fd4042f1`
+(merge of `f58ecb3d`), Vercel deployment `dpl_J5Z3krgKRDGNDkrAunv3MMYKr6UX`,
+state `READY`, target `production`. This closes the "Not yet PASS in prod"
+gap above — direct `/ai` visits now open the Expanded shell, verified live
+by the product owner, not just unit-tested.
