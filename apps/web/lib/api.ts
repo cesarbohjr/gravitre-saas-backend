@@ -2208,6 +2208,15 @@ export const intelligenceApi = {
     deleteJson<{ ok: boolean; id: string; orgId: string }>(
       apiUrl(`/api/admin/intelligence/knowledge-nodes/${encodeURIComponent(nodeId)}`),
     ),
+  knowledgeGraph: () =>
+    fetcher<{
+      entity_count: number
+      relationship_count: number
+      max_traversal_hops: number
+      avg_relationship_confidence: number
+      entity_types: string[]
+      relationship_types: string[]
+    }>(apiUrl("/api/admin/intelligence/knowledge-graph")),
   outcomes: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))

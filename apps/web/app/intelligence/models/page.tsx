@@ -17,7 +17,8 @@ import {
   statusTone,
   type BuiltInModelListItem,
 } from "@/lib/built-in-model-catalog"
-import { CircleDashed, Database, Pulse, Sparkles } from "@phosphor-icons/react"
+import { CircleDashed } from "lucide-react"
+import { Database, Pulse, Sparkle } from "@phosphor-icons/react"
 
 type FilterKey = "all" | "active" | "needs_data" | "roadmap"
 
@@ -165,13 +166,13 @@ export default function IntelligenceModelsPage() {
                   label="Roadmap"
                   value={metrics.roadmap}
                   hint="Planned or unavailable"
-                  icon={<CircleDashed className="h-4 w-4" weight="duotone" aria-hidden />}
+                  icon={<CircleDashed className="h-4 w-4" aria-hidden />}
                 />
                 <GravitreMetric
                   label="With signals"
                   value={metrics.withSignal}
                   hint="Readiness tracking started"
-                  icon={<Sparkles className="h-4 w-4" weight="duotone" aria-hidden />}
+                  icon={<Sparkle className="h-4 w-4" weight="duotone" aria-hidden />}
                 />
               </section>
               <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />

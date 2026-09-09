@@ -21,6 +21,7 @@ const SURFACES = [
   { name: "activity", path: "/e2e/shots/activity" },
   { name: "builder", path: "/e2e/shots/builder" },
   { name: "ai", path: "/e2e/shots/ai" },
+  { name: "relationships", path: "/e2e/shots/relationships" },
 ] as const
 
 const VIEWPORTS = [

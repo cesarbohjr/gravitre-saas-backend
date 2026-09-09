@@ -931,4 +931,88 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
   },
+
+  // Learning → Relationships graph workspace (/e2e/shots/relationships).
+  // Fictional Northwind entities only — visual capture harness, not live tenant data.
+  "/api/admin/intelligence/snapshot": {
+    queryVolume: { totalLogged: 42, distinctNormalized: 38, failedSearchCount: 2 },
+    recentFailedSearches: [],
+    clusters: [],
+    glossary: [
+      { id: "term_northwind", term: "Northwind Logistics" },
+      { id: "term_revops", term: "RevOps playbook" },
+    ],
+    knowledgeGaps: [],
+    entityRelationships: [],
+  },
+  "/api/admin/intelligence/relationships": {
+    orgId: DEMO_ORG_ID,
+    relationships: [
+      {
+        id: "rel_fixture_01",
+        source_entity_type: "glossary_term",
+        source_entity_id: "term_northwind",
+        relationship_type: "associated_with",
+        target_entity_type: "department",
+        target_entity_id: "dept_ops",
+        confidence: 0.82,
+        evidence_count: 4,
+        last_observed_at: T(120),
+        created_at: T(2000),
+      },
+      {
+        id: "rel_fixture_02",
+        source_entity_type: "glossary_term",
+        source_entity_id: "term_revops",
+        relationship_type: "used_by",
+        target_entity_type: "agent",
+        target_entity_id: "agent_lead_triage",
+        confidence: 0.71,
+        evidence_count: 3,
+        last_observed_at: T(240),
+        created_at: T(1500),
+      },
+      {
+        id: "rel_fixture_03",
+        source_entity_type: "agent",
+        source_entity_id: "agent_lead_triage",
+        relationship_type: "integrates_with",
+        target_entity_type: "glossary_term",
+        target_entity_id: "term_northwind",
+        confidence: 0.88,
+        evidence_count: 6,
+        last_observed_at: T(60),
+        created_at: T(800),
+      },
+    ],
+  },
+  "/api/admin/intelligence/knowledge-nodes": {
+    orgId: DEMO_ORG_ID,
+    nodes: [
+      {
+        id: "kn_fixture_01",
+        node_type: "company",
+        name: "Northwind Logistics",
+        created_at: T(5000),
+      },
+      {
+        id: "kn_fixture_02",
+        node_type: "employee",
+        name: "Dana Whitfield",
+        created_at: T(4800),
+      },
+    ],
+    validNodeTypes: ["company", "employee", "customer", "vendor", "product"],
+    primaryNodeTypes: ["company", "employee", "customer", "vendor", "product"],
+  },
+  "/api/admin/intelligence/knowledge-graph": {
+    entity_count: 6,
+    relationship_count: 3,
+    max_traversal_hops: 3,
+    avg_relationship_confidence: 0.8033,
+    entity_types: ["agent", "department", "glossary_term"],
+    relationship_types: ["associated_with", "integrates_with", "used_by"],
+    scope_note: "Fixture scope for visual capture only.",
+    advisory_only: true,
+  },
 }
