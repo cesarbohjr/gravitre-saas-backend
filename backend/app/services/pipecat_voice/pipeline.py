@@ -30,6 +30,10 @@ from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSe
 from app.services.pipecat_voice.krisp_factory import build_krisp_viva_input_filter
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
+from app.services.pipecat_voice.spoken_text_tap import (
+    SpokenTextLedger,
+    SpokenTextTapProcessor,
+)
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
@@ -196,12 +200,16 @@ def build_pipecat_voice_task(
         ),
     )
     polish_flags = resolve_conversational_polish_flags(settings)
+    # The reporter sits upstream of tts (it needs LLMTextFrame), so it cannot see
+    # TTSTextFrame. The tap below transport.output() feeds it real spoken text.
+    spoken_ledger = SpokenTextLedger()
     interrupt_reporter = ElevenLabsInterruptReporter(
         reconcile_played_audio_enabled=polish_flags["played_audio_reconcile_v1"],
         settings=settings,
         org_id=org_id,
         user_id=user_id,
         conversation_id=conversation_id,
+        spoken_ledger=spoken_ledger,
     )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
@@ -237,6 +245,10 @@ def build_pipecat_voice_task(
             interrupt_reporter,
             tts,
             transport.output(),
+            # After the output transport: word-level TTSTextFrames ride the
+            # transport clock queue, so this position tracks real playback rather
+            # than queued-but-unplayed text.
+            SpokenTextTapProcessor(spoken_ledger),
             assistant_agg,
         ]
     )

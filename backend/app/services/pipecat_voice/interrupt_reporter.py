@@ -36,6 +36,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         org_id: str | None = None,
         user_id: str | None = None,
         conversation_id: str | None = None,
+        spoken_ledger: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -43,6 +44,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._spoken_aligned = ""
         self._last_playback_offset_ms: float | None = None
         self._reconcile_enabled = bool(reconcile_played_audio_enabled)
+        # Populated by SpokenTextTapProcessor downstream of transport.output();
+        # this processor cannot see TTSTextFrame itself (it sits upstream of tts).
+        self._spoken_ledger = spoken_ledger
         self._settings = settings
         self._org_id = org_id
         self._user_id = user_id
@@ -55,6 +59,8 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._draft = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
+            if self._spoken_ledger is not None:
+                self._spoken_ledger.reset()
         elif isinstance(frame, LLMTextFrame):
             self._draft += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, OutputTransportMessageUrgentFrame):
@@ -72,8 +78,24 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     self._last_playback_offset_ms = float(offset)
                 except (TypeError, ValueError):
                     self._last_playback_offset_ms = None
-            spoken = (self._spoken_aligned or self._draft or "").strip()
-            full = (self._draft or spoken).strip()
+            # Spoken-text signal, in order of fidelity:
+            #   1. the downstream tap's ledger (real playback-ordered TTS text),
+            #   2. TTSTextFrames seen directly (only possible if this processor is
+            #      ever moved downstream of tts),
+            #   3. the draft — which means "assume all of it was heard", i.e. no
+            #      truncation. That is the safe degradation, never an empty string.
+            # An empty ledger only counts as genuine silence once the tap has
+            # proven it receives frames (`ever_recorded`); otherwise a routing
+            # regression would truncate every turn to nothing.
+            ledger_spoken: str | None = None
+            if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
+                ledger_spoken = self._spoken_ledger.snapshot()
+            spoken = (
+                ledger_spoken
+                if ledger_spoken is not None
+                else (self._spoken_aligned or self._draft or "")
+            ).strip()
+            full = (self._draft or self._spoken_aligned or spoken).strip()
             payload = {
                 "type": "speech.interrupted",
                 "tts_provider": "elevenlabs",
@@ -98,6 +120,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     full_draft_text=full,
                 )
                 reconcile_meta = reconciliation.as_meta()
+                # Which signal produced `spoken` — the difference between a real
+                # reconciliation and a safe degradation is otherwise invisible.
+                reconcile_meta["spoken_source"] = (
+                    "tap_ledger"
+                    if ledger_spoken is not None
+                    else ("tts_text_frames" if self._spoken_aligned else "draft_fallback")
+                )
                 payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
@@ -129,5 +158,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._draft = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
+            if self._spoken_ledger is not None:
+                self._spoken_ledger.reset()
 
         await self.push_frame(frame, direction)
