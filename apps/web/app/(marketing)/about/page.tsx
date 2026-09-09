@@ -62,11 +62,13 @@ export default function AboutPage() {
           align="center"
           badge="One brain"
           title="Departments converge"
-          description="Sales, support, ops, and finance feed the same governed intelligence — not four disconnected copilots."
+          description="Work starts anywhere. Gravitre connects the context. The right teams act. Results come back. The business learns."
           className="mb-6"
         />
         <GravitreTrace>
-          <ConvergeNodesVisual />
+          <div className="mx-auto w-full max-w-3xl rounded-2xl border border-divide bg-white p-4 md:p-8">
+            <ConvergeNodesVisual />
+          </div>
         </GravitreTrace>
       </GravitreSection>
 
