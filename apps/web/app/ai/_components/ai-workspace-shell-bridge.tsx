@@ -1,37 +1,36 @@
 "use client"
 
 /**
- * GravitreAIFloatBridge — Phase 2 of the "Gravitre AI Agent Workspace"
- * redesign. `/ai`-specific glue between `AiWorkspace`'s real, live
- * `useChat` state and the generic `GravitreFloatingWorkspace` shell.
+ * GravitreAIWorkspaceShellBridge — Phase 3 of the "Gravitre AI Agent
+ * Workspace" redesign. `/ai`-specific glue between `AiWorkspace`'s real,
+ * live `useChat`/conversation-sidebar/task-panel/live-activity state and
+ * the generic `GravitreAIWorkspaceShell` (Expanded/Fullscreen).
  *
- * See docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
- * Part C6 phase row 2, and the file-level comment in
- * `apps/web/components/gravitre/ai-helper.tsx` for the full rationale of why
- * Float, in this phase, is reached via `/ai` rather than a hoisted
- * cross-route `useChat` instance.
+ * Mirrors `ai-workspace-float-bridge.tsx`'s exact pattern and rationale —
+ * see that file's header for the full explanation of why this is safe:
+ * this file owns NO conversation, sidebar, or task-panel state of its own.
+ * Every value it renders is a prop supplied by `AiWorkspace`, which is the
+ * one place all of that state (`useChat`, `conversations` SWR list,
+ * `researchProgressSteps`, `advisorBrief`, etc.) is actually computed.
+ * `GravitreAILeftPanel` / `GravitreAIConversationTranscript` /
+ * `GravitreAIConversationComposer` / `GravitreAIRightPanel` are reused
+ * unmodified — this is a new *arrangement* of them, not a fork.
  *
- * THIS FILE OWNS NO CONVERSATION STATE OF ITS OWN — it has no `useChat`
- * call, no local message array, nothing. Every value it renders is passed
- * in as a prop by `AiWorkspace`, which is the ONE place `useChat()` is
- * called for `/ai`. That is the entire proof that Float is "the same
- * conversation, not a lookalike": there is structurally nowhere in this
- * file a second, independent conversation could come from. See
- * `apps/web/__tests__/gravitre/ai-workspace-float-bridge.test.ts` for the
- * mutation-proof test — it asserts this bridge forwards the exact same
- * `messages` array reference and the exact same `onSubmit` function
- * identity it was given, so it would fail if a future edit accidentally
- * wired Float to a second mock/instance instead of forwarding through.
- *
- * `GravitreAIConversationTranscript` / `GravitreAIConversationComposer`
- * (the Phase 1 extraction) are reused unmodified — this is a new, smaller
- * *arrangement* of them (no landing page, no research panels, no task side
- * panel, no conversation sidebar — Float is deliberately just the
- * conversation, per the architecture doc's Float-mode scope), not a fork.
+ * See `__tests__/gravitre/ai-workspace-shell-bridge.test.ts` for the
+ * mutation-proof test pinning down that this forwards the exact same
+ * `messages` array / `onSubmit` identity Float's bridge does, and that
+ * `GravitreAILeftPanel` receives the exact same `conversations` reference
+ * — i.e. Expanded/Fullscreen render the SAME conversation and the SAME
+ * conversation-sidebar data as Float/`/ai`, not a lookalike copy.
  */
 
 import type { KeyboardEvent, ReactNode, RefObject } from "react"
-import { GravitreFloatingWorkspace } from "@/components/gravitre/ai-floating-workspace"
+import {
+  GravitreAIWorkspaceShell,
+  type GravitreAIWorkspaceShellMode,
+} from "@/components/gravitre/ai-workspace-shell"
+import { GravitreAILeftPanel, type GravitreAILeftPanelProps } from "@/components/gravitre/ai-left-panel"
+import { GravitreAIRightPanel, type GravitreAIRightPanelProps } from "@/components/gravitre/ai-right-panel"
 import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
@@ -40,14 +39,27 @@ import type { UIMessage } from "ai"
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 
-export interface GravitreAIFloatBridgeProps {
+export interface GravitreAIWorkspaceShellBridgeProps {
+  mode: GravitreAIWorkspaceShellMode
   presence: GravitreHelperPresence
+  onMinimizeToFloat: () => void
+  onEnterFullscreen: () => void
+  onExitFullscreen: () => void
   onClose: () => void
-  /** Phase 3: transitions to Expanded mode. Omitted → no Expand control
-   * renders (see `GravitreFloatingWorkspace`'s `onExpand` prop). */
-  onExpand?: () => void
 
-  // Transcript — same values AiWorkspace's inline transcript already uses.
+  // Left panel (GravitreAILeftPanel = ConversationSidebar reused as-is).
+  leftPanelProps: GravitreAILeftPanelProps
+  leftCollapsed: boolean
+  onToggleLeft: () => void
+
+  // Right panel (GravitreAIRightPanel = TaskSidePanel + LiveActivityRail toggle).
+  rightPanelProps: Omit<GravitreAIRightPanelProps, "liveActivityOpen" | "onToggleLiveActivity">
+  rightCollapsed: boolean
+  onToggleRight: () => void
+  liveActivityOpen: boolean
+  onToggleLiveActivity: () => void
+
+  // Center — same values AiWorkspace's inline transcript/composer already use.
   messages: UIMessage[]
   showWaiting?: boolean
   isStreaming?: boolean
@@ -68,7 +80,6 @@ export interface GravitreAIFloatBridgeProps {
   assistantLabel?: string
   waitingLabel?: string
 
-  // Composer — same values AiWorkspace's inline composer already uses.
   input: string
   onInputChange: (value: string) => void
   onSubmit: () => void
@@ -84,10 +95,21 @@ export interface GravitreAIFloatBridgeProps {
   children?: ReactNode
 }
 
-export function GravitreAIFloatBridge({
+export function GravitreAIWorkspaceShellBridge({
+  mode,
   presence,
+  onMinimizeToFloat,
+  onEnterFullscreen,
+  onExitFullscreen,
   onClose,
-  onExpand,
+  leftPanelProps,
+  leftCollapsed,
+  onToggleLeft,
+  rightPanelProps,
+  rightCollapsed,
+  onToggleRight,
+  liveActivityOpen,
+  onToggleLiveActivity,
   messages,
   showWaiting,
   isStreaming,
@@ -118,9 +140,28 @@ export function GravitreAIFloatBridge({
   placeholder,
   inputRef,
   onKeyDown,
-}: GravitreAIFloatBridgeProps) {
+}: GravitreAIWorkspaceShellBridgeProps) {
   return (
-    <GravitreFloatingWorkspace presence={presence} onClose={onClose} onExpand={onExpand}>
+    <GravitreAIWorkspaceShell
+      mode={mode}
+      presence={presence}
+      leftCollapsed={leftCollapsed}
+      onToggleLeft={onToggleLeft}
+      rightCollapsed={rightCollapsed}
+      onToggleRight={onToggleRight}
+      onMinimizeToFloat={onMinimizeToFloat}
+      onEnterFullscreen={onEnterFullscreen}
+      onExitFullscreen={onExitFullscreen}
+      onClose={onClose}
+      leftPanel={<GravitreAILeftPanel {...leftPanelProps} />}
+      rightPanel={
+        <GravitreAIRightPanel
+          {...rightPanelProps}
+          liveActivityOpen={liveActivityOpen}
+          onToggleLiveActivity={onToggleLiveActivity}
+        />
+      }
+    >
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <GravitreAIConversationTranscript
           routeKey="/ai"
@@ -163,6 +204,6 @@ export function GravitreAIFloatBridge({
           bordered={false}
         />
       </div>
-    </GravitreFloatingWorkspace>
+    </GravitreAIWorkspaceShell>
   )
 }

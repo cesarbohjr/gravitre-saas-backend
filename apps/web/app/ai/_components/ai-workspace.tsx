@@ -56,6 +56,7 @@ import {
 } from "@/components/gravitre/ai-conversation-core"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
+import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { deriveGravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
@@ -191,11 +192,27 @@ export function AiWorkspace({
   initialMessageId = null,
 }: AiWorkspaceProps) {
   const { user } = useAuth()
-  // Phase 2 (Gravitre AI Agent Workspace redesign) — see the early-return
-  // Float branch below, right before this component's main `return`. Reading
-  // this context here has no effect on rendering by itself; only the
-  // explicit `presentationMode === "float"` check later changes anything.
-  const { presentationMode, setPresentationMode, conversation, approval, voice } = useGravitreAIWorkspace()
+  // Phase 2/3 (Gravitre AI Agent Workspace redesign) — see the early-return
+  // Float/Expanded/Fullscreen branch below, right before this component's
+  // main `return`. Reading this context here has no effect on rendering by
+  // itself; only the explicit `floatWorkspaceOpen` check later (Phase 3 —
+  // see ai-workspace-provider.tsx's comment on that field for why it's a
+  // separate flag from `presentationMode`) changes anything.
+  const {
+    presentationMode,
+    setPresentationMode,
+    floatWorkspaceOpen,
+    setFloatWorkspaceOpen,
+    conversation,
+    approval,
+    voice,
+  } = useGravitreAIWorkspace()
+  // Phase 3 — local UI state for the Expanded/Fullscreen shell's panel
+  // collapse toggles. Deliberately local (not lifted into the provider):
+  // nothing outside this component needs to read/persist it, and both
+  // panels default open, matching today's page's own defaults.
+  const [shellLeftCollapsed, setShellLeftCollapsed] = useState(false)
+  const [shellRightCollapsed, setShellRightCollapsed] = useState(false)
   const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
   const canApproveWrites = (() => {
     const selectedId = getSelectedOrgFromStorage()?.id
@@ -2047,21 +2064,118 @@ export function AiWorkspace({
     void submitPrompt(input)
   }
 
-  // --- Phase 2 (Gravitre AI Agent Workspace redesign, behind
+  // --- Phase 2/3 (Gravitre AI Agent Workspace redesign, behind
   // NEXT_PUBLIC_AI_FLOAT_ENABLED, default off) ------------------------------
-  // When Float mode is active, render the SAME live useChat state
+  // When the floating workspace is active (Float/Expanded/Fullscreen —
+  // gated on `floatWorkspaceOpen`, NOT the bare `presentationMode` value;
+  // see ai-workspace-provider.tsx's comment on `floatWorkspaceOpen` for why
+  // that distinction matters — `presentationMode`'s default is literally
+  // "expanded"), render the SAME live useChat state
   // (messages/input/submitPrompt/stop, all already computed above) inside
-  // the floating shell instead of the normal full-page layout below. This is
-  // a swap between two renderings of identical state, not a second
-  // conversation — see ai-workspace-float-bridge.tsx's file header for the
-  // mutation-proof test that pins this down. Zero effect when the flag is
-  // off or presentationMode isn't "float" (today's default), since this
-  // branch is simply never taken.
-  if (GRAVITRE_AI_FLOAT_ENABLED && presentationMode === "float") {
+  // whichever shell matches the current mode, instead of the normal
+  // full-page layout below. This is a swap between renderings of identical
+  // state, not a second conversation — see ai-workspace-float-bridge.tsx's
+  // and ai-workspace-shell-bridge.tsx's file headers for the mutation-proof
+  // tests that pin this down for Float and Expanded/Fullscreen
+  // respectively. Zero effect when the flag is off or floatWorkspaceOpen is
+  // false (today's default), since this branch is simply never taken.
+  if (GRAVITRE_AI_FLOAT_ENABLED && floatWorkspaceOpen) {
+    const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
+    const closeToHelper = () => {
+      setPresentationMode("expanded")
+      setFloatWorkspaceOpen(false)
+    }
+
+    if (presentationMode === "expanded" || presentationMode === "fullscreen") {
+      return (
+        <GravitreAIWorkspaceShellBridge
+          mode={presentationMode}
+          presence={presence}
+          onMinimizeToFloat={() => setPresentationMode("float")}
+          onEnterFullscreen={() => setPresentationMode("fullscreen")}
+          onExitFullscreen={() => setPresentationMode("expanded")}
+          onClose={closeToHelper}
+          leftCollapsed={shellLeftCollapsed}
+          onToggleLeft={() => setShellLeftCollapsed((v) => !v)}
+          leftPanelProps={{
+            conversations,
+            activeConversationId,
+            onSelect: (id) => void handleSelectConversation(id),
+            onNew: handleNewConversation,
+            onDelete: (id) => void handleDeleteConversation(id),
+            onArchive: (id) => void handleArchiveConversation(id),
+            onUnarchive: (id) => void handleUnarchiveConversation(id),
+            onPin: (id) => void handlePinConversation(id),
+            onUnpin: (id) => void handleUnpinConversation(id),
+            onRename: (id, title) => void handleRenameConversation(id, title),
+            onBulkDelete: (ids) => void handleBulkDeleteConversations(ids),
+            isOpen: !shellLeftCollapsed,
+            onToggle: () => setShellLeftCollapsed((v) => !v),
+            isLoading: showConversationsSkeleton,
+            loadError: showConversationsError ? conversationsError : undefined,
+            onRetry: () => void mutateConversations(),
+            searchQuery: historySearch,
+            onSearchQueryChange: setHistorySearch,
+          }}
+          rightCollapsed={shellRightCollapsed}
+          onToggleRight={() => setShellRightCollapsed((v) => !v)}
+          rightPanelProps={{
+            conversationId: activeConversationId,
+            progressSteps: researchProgressSteps,
+            pendingTask,
+            contextExplanation,
+            hostedFiles: taskPanelHostedFiles,
+            advisorBrief,
+          }}
+          liveActivityOpen={activityRailOpen}
+          onToggleLiveActivity={() => setActivityRailOpen((v) => !v)}
+          messages={messages}
+          showWaiting={showWaitingForReply && !conversationLoading}
+          isStreaming={isStreaming || isChatBusy}
+          status={status}
+          isBusy={sessionBusy || isChatBusy}
+          agentStatusLabel={agentStatusLabel}
+          dialogueMode={dialogueMode}
+          executionResult={executionResult}
+          pendingTask={pendingTask}
+          confirmExecuting={confirmExecuting}
+          onConfirmExecution={() => void handleConfirmExecution()}
+          onRejectExecution={handleRejectExecution}
+          onModifyExecution={handleModifyExecution}
+          canApprove={canApproveWrites}
+          conversationId={activeConversationId}
+          conversationTitle={conversationTitle}
+          onRegenerate={handleRegenerateAssistant}
+          assistantLabel={assistantLabel}
+          waitingLabel={`${assistantLabel} is thinking…`}
+          input={input}
+          onInputChange={setInput}
+          onSubmit={() => void submitPrompt(input)}
+          canSubmit={Boolean(input.trim()) && !routing && !isChatBusy}
+          disabled={routing || isChatBusy}
+          composerIsStreaming={isStreaming || ttsSpeaking || voiceDuplex.presence === "thinking"}
+          onStop={() => {
+            void voiceDuplex.bargeIn()
+            voiceDuplex.stop()
+            stop()
+            stopAgentVoice()
+            setDuplexVoiceError(undefined)
+          }}
+          voiceEntitled={voiceEntitled}
+          placeholder={
+            modality === "voice" ? "Voice mode active — speak to Gravitre…" : "Ask, delegate, or search…"
+          }
+          inputRef={inputRef}
+          onKeyDown={onKeyDown}
+        />
+      )
+    }
+
     return (
       <GravitreAIFloatBridge
-        presence={deriveGravitreHelperPresence({ conversation, approval, voice })}
-        onClose={() => setPresentationMode("expanded")}
+        presence={presence}
+        onClose={closeToHelper}
+        onExpand={() => setPresentationMode("expanded")}
         messages={messages}
         showWaiting={showWaitingForReply && !conversationLoading}
         isStreaming={isStreaming || isChatBusy}

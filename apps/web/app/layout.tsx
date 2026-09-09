@@ -14,6 +14,8 @@ import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
 import { GravitreAIWorkspaceProvider } from '@/components/gravitre/ai-workspace-provider'
 import { GravitreAIHelper } from '@/components/gravitre/ai-helper'
+import { GravitreAIShortcutListener } from '@/components/gravitre/ai-shortcut-listener'
+import { GravitreAIPresenceAnnouncer } from '@/components/gravitre/ai-presence-announcer'
 import { interDisplay } from '@/fonts/inter-display/inter'
 import { dmMono } from '@/fonts/dm-mono'
 import './globals.css'
@@ -120,6 +122,18 @@ export default function RootLayout({
                             components/gravitre/ai-helper.tsx.
                           */}
                           <GravitreAIHelper />
+                          {/*
+                            Phase 3 — global keyboard shortcut listener
+                            (Ctrl/Cmd+Shift+L) and aria-live presentation-
+                            mode announcer. Both render nothing and are
+                            internally gated by NEXT_PUBLIC_AI_FLOAT_ENABLED
+                            (default off), so mounting them is not itself a
+                            visible behavior change. See
+                            components/gravitre/ai-shortcut-listener.tsx and
+                            components/gravitre/ai-presence-announcer.tsx.
+                          */}
+                          <GravitreAIShortcutListener />
+                          <GravitreAIPresenceAnnouncer />
                         </GravitreAIWorkspaceProvider>
                       </ViewModeProvider>
                       <OnboardingChecklist />

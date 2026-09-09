@@ -102,6 +102,31 @@ export interface GravitreAIWorkspaceContextValue {
   instanceId: string
   presentationMode: GravitrePresentationMode
   setPresentationMode: (mode: GravitrePresentationMode) => void
+  /**
+   * Phase 3 addition. `presentationMode`'s default value is the literal
+   * string `"expanded"` (see the file header above and
+   * `__tests__/gravitre/ai-workspace-provider.test.ts`'s
+   * "defaults presentationMode to 'expanded'" test) — that value has meant
+   * "today's normal full-page `/ai` (or `/agents/[id]/chat`), no special
+   * chrome" since Phase 1, when no `presentationMode` value had any
+   * rendering consequence yet.
+   *
+   * Phase 3 gives `"expanded"`/`"fullscreen"` a real rendering consequence
+   * for the first time (`GravitreAIWorkspaceShell`). Reusing the bare
+   * `presentationMode === "expanded"` check for that would silently change
+   * `/ai`'s default rendering the moment the flag is ever turned on, for
+   * every visit — resolving architecture doc Part B's "Open decision #4"
+   * ("do direct `/ai` visits open the floating workspace in Expanded mode?")
+   * unilaterally and silently. That decision was explicitly left open, not
+   * decided. `floatWorkspaceOpen` is the disclosed fix: it is a separate,
+   * explicit "is the floating workspace currently active" flag, false by
+   * default. `GravitreAIWorkspaceShell` (and the Float bridge) only render
+   * when this is true — i.e. only once the user explicitly opened the
+   * Helper/Float, never as `/ai`'s resting state. See the Phase 3 delivery
+   * report for the full reasoning.
+   */
+  floatWorkspaceOpen: boolean
+  setFloatWorkspaceOpen: (open: boolean) => void
   pageContext: GravitreAIPageContext
   conversation: GravitreAIConversationSnapshot | null
   setConversation: (snapshot: GravitreAIConversationSnapshot | null) => void
@@ -125,6 +150,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
   if (!instanceIdRef.current) instanceIdRef.current = createInstanceId()
 
   const [presentationMode, setPresentationMode] = useState<GravitrePresentationMode>("expanded")
+  const [floatWorkspaceOpen, setFloatWorkspaceOpen] = useState(false)
   const [conversation, setConversation] = useState<GravitreAIConversationSnapshot | null>(null)
   const [approval, setApproval] = useState<GravitreAIApprovalSnapshot | null>(null)
   const [voice, setVoice] = useState<GravitreAIVoiceSnapshot | null>(null)
@@ -144,6 +170,8 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       instanceId: instanceIdRef.current as string,
       presentationMode,
       setPresentationMode,
+      floatWorkspaceOpen,
+      setFloatWorkspaceOpen,
       pageContext,
       conversation,
       setConversation,
@@ -152,7 +180,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       voice,
       setVoice,
     }),
-    [presentationMode, pageContext, conversation, approval, voice],
+    [presentationMode, floatWorkspaceOpen, pageContext, conversation, approval, voice],
   )
 
   return (

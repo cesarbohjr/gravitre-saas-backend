@@ -35,7 +35,25 @@
  * conversation inside the floating shell instead of its normal full-page
  * layout — so the user still ends up looking at their real, live
  * conversation, just reached via a navigation rather than an in-place
- * overlay. This is reassessed as part of Phase 3 (Expanded/Fullscreen).
+ * overlay.
+ *
+ * Phase 3 reassessment (per this phase's own task instructions): now that
+ * Expanded/Fullscreen also need the live `/ai` conversation, the
+ * "navigate to /ai first, then present in the target mode" pattern is kept
+ * unchanged for Phase 3 too — full cross-route `useChat` hoisting is NOT
+ * undertaken here. Reasoning: Expanded/Fullscreen are reached exclusively
+ * via controls inside Float (`GravitreFloatingWorkspace`'s "Expand" button)
+ * and inside the Expanded shell (its "Fullscreen" button) — see
+ * `ai-workspace-shell-bridge.tsx`. Both of those controls only exist while
+ * already rendering on `/ai` in Float/Expanded mode, which itself only
+ * happens after this Helper's `handleOpen()` navigation below. So by
+ * construction, nothing in Phase 3 needs `useChat` to be reachable from any
+ * OTHER route than `/ai` — the same constraint Phase 2 already accepted.
+ * Hoisting the 2,700+-line, heavily-concurrently-edited `AiWorkspace`'s
+ * `useChat` instance into the root provider remains a large, separate,
+ * higher-risk refactor whose cost is still disproportionate to what this
+ * phase's UI work requires. See the Phase 3 delivery report for the full
+ * disclosed decision.
  */
 
 import { useRouter } from "next/navigation"
@@ -61,20 +79,34 @@ export function shouldShowGravitreAIHelper(pathname: string): boolean {
 
 export function GravitreAIHelper() {
   const router = useRouter()
-  const { pageContext, presentationMode, setPresentationMode, conversation, approval, voice } =
-    useGravitreAIWorkspace()
+  const {
+    pageContext,
+    presentationMode,
+    setPresentationMode,
+    floatWorkspaceOpen,
+    setFloatWorkspaceOpen,
+    conversation,
+    approval,
+    voice,
+  } = useGravitreAIWorkspace()
 
   if (!GRAVITRE_AI_FLOAT_ENABLED) return null
   if (!shouldShowGravitreAIHelper(pageContext.pathname)) return null
-  // Already floating/open — don't show a redundant second launcher on top
-  // of the window it would open.
-  if (presentationMode === "float") return null
+  // Already floating/expanded/fullscreen — don't show a redundant second
+  // launcher on top of the window it would open. Phase 3: this used to
+  // check `presentationMode === "float"` only; it now checks
+  // `floatWorkspaceOpen` so it also hides while Expanded/Fullscreen are
+  // active (see ai-workspace-provider.tsx's file comment on
+  // `floatWorkspaceOpen` for why that's a distinct flag from
+  // `presentationMode`).
+  if (floatWorkspaceOpen) return null
 
   const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
   const copy = GRAVITRE_HELPER_PRESENCE_COPY[presence]
 
   const handleOpen = () => {
     setPresentationMode("float")
+    setFloatWorkspaceOpen(true)
     router.push("/ai")
   }
 
