@@ -2282,6 +2282,7 @@ class AgentIntelligence:
                     connected_integrations=list(connected_early or []),
                 )
             )
+            _mark("kernel_pre_act")
             if isinstance(task_state, dict):
                 task_state = {
                     **task_state,
@@ -2519,6 +2520,7 @@ class AgentIntelligence:
             client=client,
             call_site="agent_intelligence_classical",
         )
+        _mark("turn_shape_classified")
         if (
             not live_enabled
             and should_offer_conversational_path(turn_shape, has_pending=pending_family_active)
@@ -2584,6 +2586,7 @@ class AgentIntelligence:
                 org_id=org_id,
                 settings=active_settings,
             )
+            _mark("social_ack")
             task_text = turn_shape.task_portion.strip()
             # Emit social beat immediately so ReAct / approval / fallback streams
             # (which may not go through _with_social on every text-delta) still
@@ -2676,6 +2679,7 @@ class AgentIntelligence:
                 client=client,
                 environment_name=environment_name,
             )
+            _mark("connector_preview")
             if (
                 preview_turn
                 and preview_turn.get("stop_pipeline")
@@ -2730,6 +2734,7 @@ class AgentIntelligence:
             task_state=task_state,
             client=client,
         )
+        _mark("conversational_execution")
         if conv_turn and conv_turn.get("stop_pipeline"):
             task_state = conv_turn.get("task_state") or task_state
             response_text = _with_social(str(conv_turn.get("message") or ""))
@@ -2817,6 +2822,7 @@ class AgentIntelligence:
                 client=client,
                 environment_name=environment_name,
             )
+            _mark("connector_preflight")
             if orchestration_turn and orchestration_turn.get("stop_pipeline"):
                 task_state = orchestration_turn.get("task_state") or task_state
                 response_text = _with_social(str(orchestration_turn.get("message") or ""))
@@ -2942,6 +2948,7 @@ class AgentIntelligence:
                 source="chat",
                 conversation_turns=conversation_history,
             )
+            _mark("connector_turn")
             if connector_turn and connector_turn.get("stop_pipeline"):
                 task_state = connector_turn.get("task_state") or task_state
                 response_text = _with_social(str(connector_turn.get("message") or ""))
@@ -3010,6 +3017,7 @@ class AgentIntelligence:
                 settings=active_settings,
             )
             refined_query = rewrite.get("refined_query") or task_text
+        _mark("query_rewrite")
         # Emitted unconditionally, OUTSIDE the mode gate. The first version sat
         # inside it and could not distinguish "this region never runs" from "it
         # runs but mode_key is fast", which are different findings with different
