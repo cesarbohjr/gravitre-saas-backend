@@ -4,6 +4,7 @@ import {
   confidenceBandClass,
   plainDecisionReasoning,
 } from "@/lib/intelligence/helpers"
+import { STATUS } from "@/lib/design-system"
 import {
   healthLabelText,
   learningLevelLabel,
@@ -29,10 +30,10 @@ describe("Wave E visibility helpers", () => {
 
 describe("Intelligence helpers", () => {
   it("Confidence badge renders correct color per band", () => {
-    expect(confidenceBandClass(confidenceBand(0.9))).toContain("emerald")
-    expect(confidenceBandClass(confidenceBand(0.6))).toContain("amber")
-    expect(confidenceBandClass(confidenceBand(0.2))).toContain("rose")
-    expect(confidenceBandClass(confidenceBand(null))).toContain("muted")
+    expect(confidenceBandClass(confidenceBand(0.9))).toBe(STATUS.verified)
+    expect(confidenceBandClass(confidenceBand(0.6))).toBe(STATUS.pending)
+    expect(confidenceBandClass(confidenceBand(0.2))).toBe(STATUS.failed)
+    expect(confidenceBandClass(confidenceBand(null))).toBe(STATUS.idle)
   })
 
   it("Memory Explorer shows decision_reasoning in plain English", () => {
