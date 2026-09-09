@@ -68,6 +68,14 @@ export type DuplexTurnResult = {
   latency: DuplexLatencyStages
 }
 
+/** Phase 5: barge-in reconciliation — what the user actually heard. */
+export type SpeechInterruptedInfo = {
+  reconciledText: string
+  draftChars: number
+  droppedChars: number
+  playbackOffsetMs: number | null
+}
+
 type Options = {
   enabled?: boolean
   conversationId?: string | null
@@ -82,6 +90,7 @@ type Options = {
   getHistory?: () => Array<{ role: string; content: string }>
   onUserFinal?: (text: string) => void
   onAssistantDelta?: (text: string) => void
+  onSpeechInterrupted?: (info: SpeechInterruptedInfo) => void
   onTurnComplete?: (result: DuplexTurnResult) => void
   onError?: (message: string, billing?: boolean) => void
   onConversationId?: (id: string) => void
@@ -899,6 +908,24 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           assistantTextRef.current += delta
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
+          return
+        }
+        if (kind === "speech.interrupted") {
+          // Phase 5: reconcile the visible/stored assistant text down to the
+          // portion that was actually spoken aloud. Without this the drafted
+          // tail the user never heard is replayed as history next turn.
+          if (msg.reconcile_played_audio !== true) return
+          const reconciled = String(msg.reconciled_text ?? "")
+          if (reconciled.length >= assistantTextRef.current.length) return
+          assistantTextRef.current = reconciled
+          optsRef.current.onAssistantDelta?.(reconciled)
+          optsRef.current.onSpeechInterrupted?.({
+            reconciledText: reconciled,
+            draftChars: Number(msg.draft_chars) || 0,
+            droppedChars: Number(msg.dropped_chars) || 0,
+            playbackOffsetMs:
+              typeof msg.playback_offset_ms === "number" ? msg.playback_offset_ms : null,
+          })
           return
         }
         if (kind === "audio" && typeof msg.pcm16_b64 === "string") {

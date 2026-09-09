@@ -796,6 +796,8 @@ class AgentIntelligence:
         suppress_unranked_context_fallback: bool = False,
         has_mcp_tools: bool = False,
         spoken_mode: bool = False,
+        spoken_user_text: str | None = None,
+        spoken_settings: Settings | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         from app.services.conversational_behavior import conversational_behavior_section
@@ -859,6 +861,23 @@ class AgentIntelligence:
             # Spoken turns must be generated in Register 5 up front (not repaired
             # after generation), otherwise markdown/list prose leaks into TTS.
             sections.extend([spoken_register_section().strip(), ""])
+            # Phase 5 (conversational polish): Register 5b delivery rules and the
+            # per-turn length ceiling, both flag-gated and additive to Register 5.
+            from app.services.pipecat_voice.voice_conversational_polish import (
+                resolve_conversational_polish_flags,
+                resolve_response_length_band,
+                response_length_directive,
+                spoken_prompt_v2_section,
+            )
+
+            polish_flags = resolve_conversational_polish_flags(
+                spoken_settings or get_settings()
+            )
+            if polish_flags["spoken_prompt_v2"]:
+                sections.extend([spoken_prompt_v2_section().strip(), ""])
+            if polish_flags["response_length_adapt_v1"]:
+                band = resolve_response_length_band(spoken_user_text)
+                sections.extend([response_length_directive(band).strip(), ""])
         if anti_repeat:
             sections.extend([anti_repeat, ""])
 
@@ -3345,6 +3364,8 @@ class AgentIntelligence:
             suppress_unranked_context_fallback=context_engine_applied,
             has_mcp_tools=bool(mcp_tools_early),
             spoken_mode=bool(spoken_mode),
+            spoken_user_text=query,
+            spoken_settings=active_settings,
         )
 
         prepared_context = await maybe_summarize_history(

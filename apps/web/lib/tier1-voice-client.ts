@@ -60,6 +60,11 @@ export type VoiceStatus = {
     tts_ab_model?: string | null
     tts_ab_allowed_models?: string[]
   }
+  phase5_conversational_polish?: {
+    spoken_prompt_v2?: boolean
+    response_length_adapt_v1?: boolean
+    played_audio_reconcile_v1?: boolean
+  }
 }
 
 let cachedStatus: VoiceStatus | null = null

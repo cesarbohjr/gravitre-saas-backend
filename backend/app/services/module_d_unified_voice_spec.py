@@ -284,11 +284,17 @@ def build_module_d_unified_system_prompt(
     spoken_mode: bool = False,
     agent: dict | None = None,
     include_few_shots: bool = True,
+    spoken_prompt_v2: bool = False,
+    spoken_length_band: object | None = None,
 ) -> str:
     """Compose the system prompt for the unified reasoning call.
 
     ``include_few_shots=False`` is for spoken conversational latency only —
     write/full depth must keep the demos (caller gates on reasoning_depth).
+
+    Phase 5 (conversational polish): ``spoken_prompt_v2`` appends Register 5b and
+    ``spoken_length_band`` appends the per-turn spoken length ceiling. Both are
+    additive to Register 5 and only apply when ``spoken_mode`` is true.
     """
     from app.services.conversational_behavior import conversational_behavior_section
     from app.services.expert_dialogue_library import expert_dialogue_prompt_section
@@ -320,6 +326,16 @@ def build_module_d_unified_system_prompt(
             parts.append(expert)
     if spoken_mode:
         parts.append(spoken_register_section())
+        if spoken_prompt_v2 or spoken_length_band is not None:
+            from app.services.pipecat_voice.voice_conversational_polish import (
+                response_length_directive,
+                spoken_prompt_v2_section,
+            )
+
+            if spoken_prompt_v2:
+                parts.append(spoken_prompt_v2_section())
+            if spoken_length_band is not None:
+                parts.append(response_length_directive(spoken_length_band))  # type: ignore[arg-type]
     extra = (extra_operator_rules or "").strip()
     if extra:
         parts.append(extra)

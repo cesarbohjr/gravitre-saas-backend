@@ -690,6 +690,25 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("VOICE_TTS_AB_MODEL", "voice_tts_ab_model"),
     )
+    # Voice 3.0 Phase 5 — conversational polish (default OFF).
+    voice_spoken_prompt_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"),
+    )
+    voice_response_length_adapt_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_RESPONSE_LENGTH_ADAPT_V1",
+            "voice_response_length_adapt_v1",
+        ),
+    )
+    voice_played_audio_reconcile_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_PLAYED_AUDIO_RECONCILE_V1",
+            "voice_played_audio_reconcile_v1",
+        ),
+    )
     # Conversational spoken / reasoning_depth=conversational unified-turn model.
     # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
     # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.

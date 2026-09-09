@@ -249,7 +249,16 @@ def voice_status(settings: Settings) -> dict[str, Any]:
         },
         "phase3_turn_stt": _phase3_turn_stt_status(settings),
         "phase4_latency": _phase4_latency_status(settings),
+        "phase5_conversational_polish": _phase5_polish_status(settings),
     }
+
+
+def _phase5_polish_status(settings: Settings) -> dict[str, Any]:
+    from app.services.pipecat_voice.voice_conversational_polish import (
+        resolve_conversational_polish_flags,
+    )
+
+    return resolve_conversational_polish_flags(settings)
 
 
 def _phase4_latency_status(settings: Settings) -> dict[str, Any]:

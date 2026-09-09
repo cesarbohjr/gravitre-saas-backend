@@ -1,0 +1,223 @@
+"""Voice 3.0 Phase 5 — conversational polish.
+
+Three independent, flag-gated pieces:
+
+* ``VOICE_SPOKEN_PROMPT_V2`` — extra SPOKEN-register directives that stack on top
+  of :func:`app.services.voice_agent_profile.spoken_register_section`. It never
+  replaces Register 5; the v1 section still ships unchanged when the flag is off.
+* ``VOICE_RESPONSE_LENGTH_ADAPT_V1`` — derives a per-turn length band from the
+  user's own utterance so a four-word question does not get a four-sentence
+  answer, and a long multi-part question is allowed room.
+* ``VOICE_PLAYED_AUDIO_RECONCILE_V1`` — after a barge-in, reconcile the drafted
+  assistant text down to what was actually spoken aloud, so the next turn's
+  history matches what the human heard instead of text they never received.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any
+
+_WORD_RE = re.compile(r"[\w'’-]+")
+
+# Question shapes that legitimately need more than a one-liner even when the
+# user's own utterance was short ("why is the sync failing?").
+_EXPLANATORY_PREFIXES = ("why", "how come", "how do", "how does", "how did", "explain", "walk me")
+
+_MULTI_PART_MARKERS = (" and also ", " and then ", "; also", " plus ", " as well as ")
+
+
+def _word_count(text: str) -> int:
+    return len(_WORD_RE.findall(text or ""))
+
+
+def spoken_prompt_v2_section() -> str:
+    """Additional SPOKEN directives — stacks on Register 5, does not replace it."""
+    return """
+## Register 5b — SPOKEN delivery (voice turns only; extends Register 5)
+
+- Write for the ear, not the eye. Read the sentence back in your head; if it
+  would make a person re-listen, shorten it or split it.
+- Use contractions the way people speak: "it's", "you're", "that's", "won't",
+  "I'll". Avoid stiff written forms ("do not", "cannot", "it is") unless you are
+  deliberately stressing the word.
+- One idea per sentence. Do not stack two clauses joined by "which" or "whereas".
+- Numbers, dates, and identifiers should be spoken the way a person says them:
+  "about twelve hundred" not "1,200"; "March fourth" not "03/04"; read long ids
+  in short groups rather than digit-by-digit.
+- Never speak punctuation, formatting, or emoji names aloud, and never emit
+  asterisks, underscores, backticks, or bracketed stage directions.
+- Do not narrate the mechanics of the conversation: no "let me check", "one
+  moment", "I'm going to", "as I mentioned". Say the thing.
+- Vary how you open consecutive turns. If your previous spoken turn opened with
+  a given word, do not open with it again.
+- If the user interrupted you, do not restart the sentence they cut off and do
+  not apologise for being cut off. Answer the new thing they said.
+- When you must hand back a list of facts aloud, cap it at three items and say
+  how many there are first ("three things — first…").
+- End on the substance. Do not close with an offer of further help unless the
+  user is genuinely blocked on a choice.
+""".strip()
+
+
+@dataclass(frozen=True)
+class ResponseLengthBand:
+    """Target spoken-reply size derived from the user's own utterance."""
+
+    band: str
+    max_sentences: int
+    soft_word_cap: int
+    reason: str
+
+    def as_meta(self) -> dict[str, Any]:
+        return {
+            "band": self.band,
+            "max_sentences": self.max_sentences,
+            "soft_word_cap": self.soft_word_cap,
+            "reason": self.reason,
+        }
+
+
+def resolve_response_length_band(user_text: str | None) -> ResponseLengthBand:
+    """Map an utterance to a length band. Pure function — no settings, no I/O."""
+    text = (user_text or "").strip()
+    words = _word_count(text)
+    lowered = text.lower()
+
+    explanatory = lowered.startswith(_EXPLANATORY_PREFIXES)
+    multi_part = any(marker in lowered for marker in _MULTI_PART_MARKERS) or lowered.count("?") > 1
+
+    if multi_part:
+        return ResponseLengthBand(
+            band="expansive",
+            max_sentences=5,
+            soft_word_cap=90,
+            reason="multi_part_question",
+        )
+    if words >= 40:
+        return ResponseLengthBand(
+            band="expansive",
+            max_sentences=5,
+            soft_word_cap=90,
+            reason="long_user_utterance",
+        )
+    if explanatory:
+        return ResponseLengthBand(
+            band="standard",
+            max_sentences=3,
+            soft_word_cap=55,
+            reason="explanatory_question",
+        )
+    if words >= 16:
+        return ResponseLengthBand(
+            band="standard",
+            max_sentences=3,
+            soft_word_cap=55,
+            reason="medium_user_utterance",
+        )
+    if words >= 5:
+        return ResponseLengthBand(
+            band="brief",
+            max_sentences=2,
+            soft_word_cap=35,
+            reason="short_user_utterance",
+        )
+    return ResponseLengthBand(
+        band="terse",
+        max_sentences=1,
+        soft_word_cap=18,
+        reason="very_short_user_utterance",
+    )
+
+
+def response_length_directive(band: ResponseLengthBand) -> str:
+    """Prompt fragment that states the band without inviting padding to reach it."""
+    sentence_word = "sentence" if band.max_sentences == 1 else "sentences"
+    return f"""
+## Spoken length target for THIS turn
+
+The user's message maps to the **{band.band}** band. Answer in at most
+{band.max_sentences} {sentence_word} (roughly {band.soft_word_cap} spoken words or
+fewer). This is a ceiling, not a quota — if one short sentence fully answers the
+question, stop there. Never add filler, restated context, or a closing offer just
+to reach the ceiling. If the facts genuinely cannot fit, give the answer first and
+offer the detail rather than overrunning.
+""".strip()
+
+
+@dataclass(frozen=True)
+class PlayedAudioReconciliation:
+    """What the human actually heard vs. what the model drafted."""
+
+    reconciled_text: str
+    full_draft_text: str
+    dropped_chars: int
+    truncated: bool
+
+    def as_meta(self) -> dict[str, Any]:
+        return {
+            "reconciled_chars": len(self.reconciled_text),
+            "draft_chars": len(self.full_draft_text),
+            "dropped_chars": self.dropped_chars,
+            "truncated": self.truncated,
+        }
+
+
+def reconcile_played_audio(
+    *,
+    spoken_text: str | None,
+    full_draft_text: str | None,
+) -> PlayedAudioReconciliation:
+    """Trim a barge-in draft to the portion that was actually spoken aloud.
+
+    ``spoken_text`` comes from TTS-aligned text frames, so it is the closest
+    available proxy for played audio. When it is a prefix of the draft we keep it
+    verbatim and report the dropped tail. When alignment is unusable (empty, or
+    diverged from the draft) we fall back to the draft and report no truncation
+    rather than inventing a boundary.
+    """
+    spoken = (spoken_text or "").strip()
+    draft = (full_draft_text or "").strip()
+
+    if not draft:
+        return PlayedAudioReconciliation(
+            reconciled_text=spoken,
+            full_draft_text=spoken,
+            dropped_chars=0,
+            truncated=False,
+        )
+    if not spoken:
+        # Interrupted before any audio was aligned — nothing was heard.
+        return PlayedAudioReconciliation(
+            reconciled_text="",
+            full_draft_text=draft,
+            dropped_chars=len(draft),
+            truncated=True,
+        )
+    if not draft.startswith(spoken):
+        return PlayedAudioReconciliation(
+            reconciled_text=draft,
+            full_draft_text=draft,
+            dropped_chars=0,
+            truncated=False,
+        )
+    dropped = len(draft) - len(spoken)
+    return PlayedAudioReconciliation(
+        reconciled_text=spoken,
+        full_draft_text=draft,
+        dropped_chars=dropped,
+        truncated=dropped > 0,
+    )
+
+
+def resolve_conversational_polish_flags(settings: Any) -> dict[str, bool]:
+    """Read the three Phase 5 flags off settings with safe defaults."""
+    return {
+        "spoken_prompt_v2": bool(getattr(settings, "voice_spoken_prompt_v2", False)),
+        "response_length_adapt_v1": bool(
+            getattr(settings, "voice_response_length_adapt_v1", False)
+        ),
+        "played_audio_reconcile_v1": bool(
+            getattr(settings, "voice_played_audio_reconcile_v1", False)
+        ),
+    }

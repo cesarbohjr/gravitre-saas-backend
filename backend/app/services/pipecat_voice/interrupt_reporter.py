@@ -28,11 +28,12 @@ logger = get_logger(__name__)
 class ElevenLabsInterruptReporter(FrameProcessor):
     """Accumulate draft/spoken text; on interrupt publish speech.interrupted."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, *, reconcile_played_audio_enabled: bool = False, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._draft = ""
         self._spoken_aligned = ""
         self._last_playback_offset_ms: float | None = None
+        self._reconcile_enabled = bool(reconcile_played_audio_enabled)
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -70,11 +71,29 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 "interrupted": True,
                 "playback_offset_ms": self._last_playback_offset_ms,
             }
+            # Phase 5 (conversational polish): tell the client which text was
+            # actually heard so the next turn's history is not padded with a tail
+            # the user never received. Flag-gated; off means legacy payload only.
+            reconcile_meta: dict[str, Any] = {}
+            if self._reconcile_enabled:
+                from app.services.pipecat_voice.voice_conversational_polish import (
+                    reconcile_played_audio,
+                )
+
+                reconciliation = reconcile_played_audio(
+                    spoken_text=spoken,
+                    full_draft_text=full,
+                )
+                reconcile_meta = reconciliation.as_meta()
+                payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
+                payload["reconcile_played_audio"] = True
+                payload.update(reconcile_meta)
             logger.info(
-                "pipecat_speech_interrupted spoken_chars=%s draft_chars=%s offset_ms=%s",
+                "pipecat_speech_interrupted spoken_chars=%s draft_chars=%s offset_ms=%s reconcile=%s",
                 len(spoken),
                 len(full),
                 self._last_playback_offset_ms,
+                reconcile_meta or "off",
             )
             await self.push_frame(
                 OutputTransportMessageUrgentFrame(message=payload),

@@ -754,12 +754,28 @@ async def run_unified_turn_shadow(
     # spoken_mode stacks Register 5 (SPOKEN); agent injects self-recognition by name.
     # Spoken conversational omits few-shots (~1k tokens) to cut model TTFT; write/full keep them.
     _omit_few_shots = bool(spoken_mode and _depth_conversational)
+    # Phase 5 (conversational polish): Register 5b + per-turn spoken length band,
+    # both flag-gated and only composed for spoken turns.
+    _polish_v2 = False
+    _length_band = None
+    if spoken_mode:
+        from app.services.pipecat_voice.voice_conversational_polish import (
+            resolve_conversational_polish_flags,
+            resolve_response_length_band,
+        )
+
+        _polish_flags = resolve_conversational_polish_flags(active)
+        _polish_v2 = _polish_flags["spoken_prompt_v2"]
+        if _polish_flags["response_length_adapt_v1"]:
+            _length_band = resolve_response_length_band(message)
     system = apply_voice(
         build_module_d_unified_system_prompt(
             extra_operator_rules=voice_system_prompt_section(),
             spoken_mode=bool(spoken_mode),
             agent=agent,
             include_few_shots=not _omit_few_shots,
+            spoken_prompt_v2=_polish_v2,
+            spoken_length_band=_length_band,
         )
     )
     user_parts = []

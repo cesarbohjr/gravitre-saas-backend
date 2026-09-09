@@ -33,6 +33,9 @@ from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchP
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
+from app.services.pipecat_voice.voice_conversational_polish import (
+    resolve_conversational_polish_flags,
+)
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_e2e_latency_sample
 from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
 from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_ab_eval
@@ -192,7 +195,10 @@ def build_pipecat_voice_task(
             use_speaker_boost=bool(CONVERSATIONAL_VOICE_SETTINGS["use_speaker_boost"]),
         ),
     )
-    interrupt_reporter = ElevenLabsInterruptReporter()
+    polish_flags = resolve_conversational_polish_flags(settings)
+    interrupt_reporter = ElevenLabsInterruptReporter(
+        reconcile_played_audio_enabled=polish_flags["played_audio_reconcile_v1"],
+    )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()
@@ -297,6 +303,9 @@ def build_pipecat_voice_task(
         **(keyterm_meta or {}),
         "tts_ab_eval": tts_ab.enabled,
         "tts_ab_model": tts_ab.model if tts_ab.enabled else None,
+        "spoken_prompt_v2": polish_flags["spoken_prompt_v2"],
+        "response_length_adapt_v1": polish_flags["response_length_adapt_v1"],
+        "played_audio_reconcile_v1": polish_flags["played_audio_reconcile_v1"],
     }
 
     @transport.event_handler("on_client_connected")
