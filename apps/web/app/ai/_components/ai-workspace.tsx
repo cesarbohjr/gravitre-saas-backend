@@ -50,7 +50,10 @@ import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
 import { messageCreatedAt } from "@/lib/chat-message-time"
-import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
+import {
+  GravitreAIConversationComposer,
+  GravitreAIConversationTranscript,
+} from "@/components/gravitre/ai-conversation-core"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
@@ -72,7 +75,6 @@ import {
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
-import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import {
   ResearchScopePrompt,
   type ResearchCascadePayload,
@@ -2301,10 +2303,13 @@ export function AiWorkspace({
                     />
                   ) : null}
                   <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
-                  <ChatTranscript
+                  <GravitreAIConversationTranscript
+                    routeKey="/ai"
                     messages={messages}
                     showWaiting={showWaitingForReply && !conversationLoading}
                     isStreaming={isStreaming || isChatBusy}
+                    status={status}
+                    isBusy={sessionBusy || isChatBusy}
                     agentStatusLabel={agentStatusLabel}
                     explainability={explainability}
                     contextExplanation={contextExplanation}
@@ -2318,6 +2323,7 @@ export function AiWorkspace({
                     canApprove={canApproveWrites}
                     onEditResend={handleEditResend}
                     conversationId={activeConversationId}
+                    conversationTitle={conversationTitle}
                     onCopyText={(text) => void handleCopyMessageText(text)}
                     onCopyLink={(messageId) => void handleCopyMessageLink(messageId)}
                     onRegenerate={handleRegenerateAssistant}
@@ -2461,7 +2467,7 @@ export function AiWorkspace({
                 </div>
               ) : null}
               {/* SHARED_CHAT_COMPOSER_CONTROLS — in-input waveform + Browse + send. */}
-              <SharedChatComposerControls
+              <GravitreAIConversationComposer
                 modality={modality}
                 onModalityChange={handleModalityChange}
                 voiceEntitled={voiceEntitled}
