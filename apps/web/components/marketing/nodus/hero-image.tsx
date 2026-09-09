@@ -1,63 +1,31 @@
-"use client";
-import React, { useRef } from "react";
-import { Container } from "./container";
-import Image from "next/image";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Dot } from "./common/dots";
+import React from "react"
+import Image from "next/image"
+import { cn } from "@/lib/utils"
+import { Container } from "./container"
 
-const springConfig = {
-  stiffness: 300,
-  damping: 30,
-};
+/** Static corner markers — avoids client Dot (mousemove + framer-motion) on LCP path. */
+function CornerDot({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("absolute z-10 h-2 w-2 bg-[color:var(--color-primary)]", className)}
+      aria-hidden
+    />
+  )
+}
 
+/**
+ * Hero product screenshot — server-rendered for Lighthouse LCP.
+ * Parallax / interactive dots removed from the critical path (see bfd7a000).
+ */
 export const HeroImage = () => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const springX = useSpring(mouseX, springConfig);
-  const springY = useSpring(mouseY, springConfig);
-
-  const translateX = useTransform(springX, [-0.5, 0.5], [-40, 40]);
-  const translateY = useTransform(springY, [-0.5, 0.5], [-40, 40]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
-
-    const rect = ref.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    const x = (e.clientX - centerX) / rect.width;
-    const y = (e.clientY - centerY) / rect.height;
-
-    mouseX.set(x);
-    mouseY.set(y);
-  };
-
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-  };
-
   return (
     <Container className="border-divide relative flex items-start justify-start overflow-hidden border-x bg-gray-100 p-2 perspective-distant md:p-4 lg:p-8 dark:bg-neutral-800">
-      <Dot top left />
-      <Dot top right />
-      <Dot bottom left />
-      <Dot bottom right />
+      <CornerDot className="top-0 left-0 xl:-top-1 xl:-left-2" />
+      <CornerDot className="top-0 right-0 xl:-top-1 xl:-right-2" />
+      <CornerDot className="bottom-0 left-0 xl:-bottom-1 xl:-left-2" />
+      <CornerDot className="bottom-0 right-0 xl:-bottom-1 xl:-right-2" />
       <div className="relative w-full">
-        <motion.div
-          ref={ref}
-          className="relative z-10 h-full w-full cursor-pointer"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            translateX,
-            translateY,
-          }}
-        >
+        <div className="relative z-10 h-full w-full">
           <Image
             src="/nodus/dashboard@3x.png"
             alt="Gravitre product preview"
@@ -69,9 +37,9 @@ export const HeroImage = () => {
             height={1000}
             draggable={false}
           />
-        </motion.div>
-        <div className="absolute inset-0 z-0 m-auto h-[90%] w-[95%] rounded-lg border border-(--pattern-fg) bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed"></div>
+        </div>
+        <div className="absolute inset-0 z-0 m-auto h-[90%] w-[95%] rounded-lg border border-(--pattern-fg) bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed" />
       </div>
     </Container>
-  );
-};
+  )
+}
