@@ -16,7 +16,13 @@ import type { SortKey, ViewMode } from "@/lib/relationships-graph/types"
 import { Graph, Plus, Table } from "@phosphor-icons/react"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
 
-export function RelationshipToolbar({ workspace }: { workspace: RelationshipsWorkspaceState }) {
+export function RelationshipToolbar({
+  workspace,
+  hideAddEntity = false,
+}: {
+  workspace: RelationshipsWorkspaceState
+  hideAddEntity?: boolean
+}) {
   const {
     query,
     setQuery,
@@ -32,7 +38,11 @@ export function RelationshipToolbar({ workspace }: { workspace: RelationshipsWor
     relationshipTypes,
     filtered,
     relationships,
-    setAddNodeOpen,
+    openAddNode,
+    showTestData,
+    setShowTestData,
+    perspective,
+    setPerspective,
   } = workspace
 
   return (
@@ -62,10 +72,12 @@ export function RelationshipToolbar({ workspace }: { workspace: RelationshipsWor
             {filtered.length} shown
             {relationships.length !== filtered.length ? ` of ${relationships.length}` : ""}
           </Badge>
-          <Button type="button" size="sm" className="gap-1.5" onClick={() => setAddNodeOpen(true)}>
-            <Plus className="h-4 w-4" weight="bold" aria-hidden />
-            Add knowledge
-          </Button>
+          {!hideAddEntity ? (
+            <Button type="button" size="sm" className="gap-1.5" onClick={() => openAddNode("entity")}>
+              <Plus className="h-4 w-4" weight="bold" aria-hidden />
+              Add entity
+            </Button>
+          ) : null}
         </div>
       </div>
       <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
@@ -83,6 +95,27 @@ export function RelationshipToolbar({ workspace }: { workspace: RelationshipsWor
             placeholder="Search names, types, or IDs…"
             className="max-w-md"
           />
+        </div>
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-[color:var(--g-text-muted)]">Perspective</span>
+          <Select
+            value={perspective}
+            onValueChange={(v) => {
+              setPerspective(v)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All relationships</SelectItem>
+              <SelectItem value="organization">Organization</SelectItem>
+              <SelectItem value="customers">Customers</SelectItem>
+              <SelectItem value="agents">Agents</SelectItem>
+              <SelectItem value="knowledge">Knowledge terms</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-[color:var(--g-text-muted)]">Relationship type</span>
@@ -129,6 +162,17 @@ export function RelationshipToolbar({ workspace }: { workspace: RelationshipsWor
           }}
         >
           {showArchived ? "Showing archived" : "Show archived"}
+        </Button>
+        <Button
+          type="button"
+          variant={showTestData ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowTestData((v) => !v)
+            setPage(0)
+          }}
+        >
+          {showTestData ? "Including test data" : "Show test data"}
         </Button>
       </div>
     </div>

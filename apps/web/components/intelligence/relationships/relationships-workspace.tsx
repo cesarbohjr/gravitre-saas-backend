@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { GravitreSurface } from "@/components/gravitre/nodus-product/metric"
-import { RELATIONSHIPS_GUIDE } from "@/lib/learning-ui-copy"
+import { RELATIONSHIPS_GUIDE, RELATIONSHIPS_ONBOARDING } from "@/lib/learning-ui-copy"
 import { Info, Plus } from "@phosphor-icons/react"
 import { AddKnowledgeNodeSheet } from "./add-knowledge-node-sheet"
 import { RelationshipGraphCanvas } from "./relationship-graph-canvas"
@@ -33,12 +33,12 @@ export function RelationshipsWorkspace({
     viewMode,
     selection,
     setSelection,
-    setAddNodeOpen,
+    openAddNode,
     inspectorOpen,
     setInspectorOpen,
   } = workspace
 
-  const showSeedBanner =
+  const showOnboarding =
     nodes.length === 0 && relationships.filter((r) => !r.archived_at).length > 0 && !nodesLoading
 
   return (
@@ -62,22 +62,26 @@ export function RelationshipsWorkspace({
 
       <RelationshipMetrics workspace={workspace} />
 
-      {showSeedBanner ? (
-        <div className="flex flex-col gap-3 rounded-[var(--np-radius-lg)] border border-amber-300/60 bg-amber-50/50 px-4 py-3 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
-            Gravitre has learned relationships but no organization knowledge is seeded yet. Add a company, person, or
-            product so agents can resolve those names when answering.
-          </p>
-          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => setAddNodeOpen(true)}>
+      {showOnboarding ? (
+        <div className="flex flex-col gap-3 rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand)]/25 bg-[color:var(--g-brand-soft)]/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-[color:var(--g-text-primary)]">
+              {RELATIONSHIPS_ONBOARDING.title}
+            </p>
+            <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
+              {RELATIONSHIPS_ONBOARDING.lead}
+            </p>
+          </div>
+          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => openAddNode("first")}>
             <Plus className="h-4 w-4" weight="bold" aria-hidden />
-            Seed first entity
+            {RELATIONSHIPS_ONBOARDING.cta}
           </Button>
         </div>
       ) : null}
 
       <GravitreSurface padded={false} className="overflow-hidden">
         <div className="border-b border-divide p-4">
-          <RelationshipToolbar workspace={workspace} />
+          <RelationshipToolbar workspace={workspace} hideAddEntity={showOnboarding} />
         </div>
 
         {loading ? (

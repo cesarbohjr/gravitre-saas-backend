@@ -29,12 +29,59 @@ export function readNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-export function makeLabelFor(glossaryById: Record<string, string>) {
+export function isSmokeTestEntityId(entityId: unknown): boolean {
+  const id = String(entityId ?? "").trim().toLowerCase()
+  return id.startsWith("smoke-") || id.includes("smoke-churn") || id.includes("smoke_")
+}
+
+export function relationshipTouchesSmoke(rel: RelationshipRow): boolean {
+  return (
+    isSmokeTestEntityId(rel.source_entity_id) || isSmokeTestEntityId(rel.target_entity_id)
+  )
+}
+
+export function truncateEntityId(entityId: unknown, max = 10): string {
+  const id = String(entityId ?? "").trim()
+  if (id.length <= max) return id
+  return `${id.slice(0, max)}…`
+}
+
+export function buildEntityLabelMap(relationships: RelationshipRow[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const rel of relationships) {
+    const sk = entityKey(rel.source_entity_type, rel.source_entity_id)
+    const tk = entityKey(rel.target_entity_type, rel.target_entity_id)
+    const sl = rel.source_label ?? rel.sourceLabel
+    const tl = rel.target_label ?? rel.targetLabel
+    if (sl) map.set(sk, String(sl))
+    if (tl) map.set(tk, String(tl))
+  }
+  return map
+}
+
+export function makeLabelFor(
+  glossaryById: Record<string, string>,
+  entityLabelMap?: Map<string, string>,
+  knowledgeNodeNames?: Record<string, string>,
+) {
   return function labelFor(entityType: unknown, entityId: unknown): string {
-    if (entityType === "glossary_term") {
-      return glossaryById[String(entityId ?? "")] ?? String(entityId ?? "")
+    const type = String(entityType ?? "")
+    const id = String(entityId ?? "")
+    const key = entityKey(type, id)
+
+    if (entityLabelMap?.has(key)) return entityLabelMap.get(key)!
+    if (knowledgeNodeNames?.[id]) return knowledgeNodeNames[id]
+    if (type === "glossary_term") {
+      return glossaryById[id] ?? id
     }
-    return String(entityId ?? "")
+    if (isSmokeTestEntityId(id)) {
+      const suffix = id.split("-").pop() ?? id.slice(-4)
+      return `Smoke test ${entityTypeLabel(type)} (${suffix})`
+    }
+    if (/^[0-9a-f-]{32,36}$/i.test(id)) {
+      return `${entityTypeLabel(type)} (${truncateEntityId(id, 8)})`
+    }
+    return id
   }
 }
 
@@ -45,10 +92,25 @@ export function filterAndSortRelationships(
     typeFilter: string
     sortKey: SortKey
     labelFor: (entityType: unknown, entityId: unknown) => string
+    showTestData?: boolean
+    perspective?: string
   },
 ): RelationshipRow[] {
   const q = options.query.trim().toLowerCase()
   let rows = relationships.filter((rel) => {
+    if (!options.showTestData && relationshipTouchesSmoke(rel)) return false
+    if (options.perspective && options.perspective !== "all") {
+      const p = options.perspective
+      const st = String(rel.source_entity_type ?? "").toLowerCase()
+      const tt = String(rel.target_entity_type ?? "").toLowerCase()
+      if (p === "agents" && st !== "agent" && tt !== "agent") return false
+      if (p === "customers" && st !== "customer" && tt !== "customer") return false
+      if (p === "knowledge" && st !== "glossary_term" && tt !== "glossary_term") return false
+      if (p === "organization") {
+        const orgTypes = new Set(["company", "employee", "department", "vendor", "product"])
+        if (!orgTypes.has(st) && !orgTypes.has(tt)) return false
+      }
+    }
     if (options.typeFilter !== "all" && String(rel.relationship_type ?? "") !== options.typeFilter) {
       return false
     }
@@ -113,6 +175,7 @@ export function buildGraphNodeData(
   isSeeded: boolean,
   knowledgeNodeId?: string,
 ): GraphNodeData {
+  const showSecondary = label.trim() !== entityId.trim() && entityId.length > 0
   return {
     label,
     entityType,
@@ -120,6 +183,7 @@ export function buildGraphNodeData(
     entityTypeLabel: entityTypeLabel(entityType),
     isSeeded,
     knowledgeNodeId,
+    secondaryId: showSecondary ? entityId : undefined,
   }
 }
 

@@ -17,6 +17,11 @@ export type GraphNodeData = {
   entityTypeLabel: string
   isSeeded: boolean
   knowledgeNodeId?: string
+  secondaryId?: string
+  isCluster?: boolean
+  clusterId?: string
+  clusterCount?: number
+  clusterExpanded?: boolean
 }
 
 export type GraphEdgeData = {
@@ -27,4 +32,9 @@ export type GraphEdgeData = {
   archived: boolean
   relationshipId: string
   raw: RelationshipRow
+  isAggregate?: boolean
+  aggregateCount?: number
+  clusterId?: string
 }
+
+export type AddNodeMode = "first" | "entity"

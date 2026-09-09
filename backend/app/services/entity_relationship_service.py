@@ -187,7 +187,34 @@ async def _resolve_entity_label(
             return str(rows[0].get("cluster_label") or entity_id)
         return entity_id
     if entity_type in BUSINESS_ENTITY_TYPES or entity_type == ENTITY_WORKFLOW_RUN:
-        return f"{entity_type.replace('_', ' ')}:{entity_id}"
+        try:
+            kn_rows = (
+                db.table("org_knowledge_nodes")
+                .select("name")
+                .eq("org_id", org_id)
+                .eq("id", entity_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if kn_rows:
+                return str(kn_rows[0].get("name") or entity_id)
+        except Exception:  # noqa: BLE001
+            logger.debug(
+                "knowledge_node_label_lookup_skipped org_id=%s entity_id=%s",
+                org_id,
+                entity_id,
+            )
+        eid = str(entity_id or "")
+        if eid.startswith("smoke-") or "smoke-" in eid:
+            suffix = eid.split("-")[-1] if "-" in eid else eid[-4:]
+            type_label = entity_type.replace("_", " ").strip().title() or "Entity"
+            return f"Smoke test {type_label} ({suffix})"
+        type_label = entity_type.replace("_", " ").strip().title() or "Entity"
+        if len(eid) > 24:
+            return f"{type_label} ({eid[:8]}…)"
+        return f"{type_label} {eid}".strip()
     return entity_id
 
 
@@ -326,6 +353,20 @@ async def load_entity_relationships_snapshot(
         label_confidence,
     )
 
+    label_cache: dict[tuple[str, str], str] = {}
+
+    async def cached_label(entity_type: str, entity_id: str) -> str:
+        key = (str(entity_type or ""), str(entity_id or ""))
+        if key not in label_cache:
+            label_cache[key] = await _resolve_entity_label(
+                db,
+                org_id,
+                key[0],
+                key[1],
+                glossary_by_id,
+            )
+        return label_cache[key]
+
     labeled_rows: list[dict[str, Any]] = []
     for row in rows:
         raw = row.get("confidence")
@@ -334,7 +375,20 @@ async def load_entity_relationships_snapshot(
             source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
             is_estimate=True,
         )
-        labeled_rows.append({**row, **labeled})
+        source_type = str(row.get("source_entity_type") or "")
+        source_id = str(row.get("source_entity_id") or "")
+        target_type = str(row.get("target_entity_type") or "")
+        target_id = str(row.get("target_entity_id") or "")
+        source_label = await cached_label(source_type, source_id)
+        target_label = await cached_label(target_type, target_id)
+        labeled_rows.append(
+            {
+                **row,
+                **labeled,
+                "source_label": source_label,
+                "target_label": target_label,
+            }
+        )
     return {
         "total": len(labeled_rows),
         "relationships": labeled_rows,

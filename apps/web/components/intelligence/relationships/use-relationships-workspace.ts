@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { toast } from "sonner"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
 import {
+  buildEntityLabelMap,
   collectRelationshipTypes,
   countNeedsReview,
   countNewThisWeek,
@@ -12,7 +13,7 @@ import {
   makeLabelFor,
   readNumber,
 } from "@/lib/relationships-graph/utils"
-import type { RelationshipRow, Selection, SortKey, ViewMode } from "@/lib/relationships-graph/types"
+import type { AddNodeMode, RelationshipRow, Selection, SortKey, ViewMode } from "@/lib/relationships-graph/types"
 
 const PAGE_SIZE = 20
 const PRIMARY_NODE_TYPES = ["company", "employee", "customer", "vendor", "product"] as const
@@ -35,7 +36,11 @@ export function useRelationshipsWorkspace({
   const [viewMode, setViewMode] = useState<ViewMode>("graph")
   const [selection, setSelection] = useState<Selection>(null)
   const [addNodeOpen, setAddNodeOpen] = useState(false)
+  const [addNodeMode, setAddNodeMode] = useState<AddNodeMode>("entity")
   const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [showTestData, setShowTestData] = useState(false)
+  const [perspective, setPerspective] = useState("all")
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -53,8 +58,6 @@ export function useRelationshipsWorkspace({
     () => Object.fromEntries(glossary.map((term) => [String(term.id ?? ""), String(term.term ?? "")])),
     [glossary],
   )
-  const labelFor = useMemo(() => makeLabelFor(glossaryById), [glossaryById])
-
   const listKey = enabled
     ? ["admin/intelligence/relationships-list", showArchived ? "archived" : "active"]
     : null
@@ -94,6 +97,21 @@ export function useRelationshipsWorkspace({
     ? nodesData.primaryNodeTypes
     : [...PRIMARY_NODE_TYPES]
 
+  const entityLabelMap = useMemo(() => buildEntityLabelMap(relationships), [relationships])
+
+  const knowledgeNodeNames = useMemo(
+    () =>
+      Object.fromEntries(
+        nodes.map((n) => [String(n.id ?? ""), String(n.name ?? "")]).filter(([id]) => id),
+      ),
+    [nodes],
+  )
+
+  const labelFor = useMemo(
+    () => makeLabelFor(glossaryById, entityLabelMap, knowledgeNodeNames),
+    [glossaryById, entityLabelMap, knowledgeNodeNames],
+  )
+
   const relationshipTypes = useMemo(() => collectRelationshipTypes(relationships), [relationships])
 
   const filtered = useMemo(
@@ -103,9 +121,20 @@ export function useRelationshipsWorkspace({
         typeFilter,
         sortKey,
         labelFor,
+        showTestData,
+        perspective,
       }),
-    [relationships, query, typeFilter, sortKey, labelFor],
+    [relationships, query, typeFilter, sortKey, labelFor, showTestData, perspective],
   )
+
+  function openAddNode(mode: AddNodeMode) {
+    setAddNodeMode(mode)
+    setAddNodeOpen(true)
+  }
+
+  function expandCluster(clusterId: string) {
+    setExpandedClusters((prev) => new Set(prev).add(clusterId))
+  }
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount - 1)
@@ -155,7 +184,11 @@ export function useRelationshipsWorkspace({
     }
     try {
       await intelligenceApi.createKnowledgeNode({ nodeType, name })
-      toast.success("Knowledge node created")
+      toast.success(
+        addNodeMode === "first"
+          ? "Entity added. Gravitre will use it as confirmed organization knowledge."
+          : "Knowledge node created",
+      )
       await mutateNodes()
       return true
     } catch {
@@ -234,8 +267,16 @@ export function useRelationshipsWorkspace({
     setSelection,
     addNodeOpen,
     setAddNodeOpen,
+    addNodeMode,
+    openAddNode,
     inspectorOpen,
     setInspectorOpen,
+    showTestData,
+    setShowTestData,
+    perspective,
+    setPerspective,
+    expandedClusters,
+    expandCluster,
     loading,
     nodesLoading,
     graphSummaryLoading,

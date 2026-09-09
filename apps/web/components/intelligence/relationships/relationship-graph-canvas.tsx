@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo } from "react"
+import { memo, useCallback, useEffect, useMemo, type CSSProperties } from "react"
 import {
   Background,
   Controls,
@@ -14,6 +14,7 @@ import {
   type OnSelectionChangeParams,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+import { applyEdgeAggregation } from "@/lib/relationships-graph/aggregate-edges"
 import { layoutGraphElements } from "@/lib/relationships-graph/layout"
 import {
   buildGraphNodeData,
@@ -24,9 +25,16 @@ import {
   relationshipTypeDisplay,
   seededNodeKey,
 } from "@/lib/relationships-graph/utils"
-import type { GraphEdgeData, GraphNodeData, RelationshipRow, Selection } from "@/lib/relationships-graph/types"
+import type { GraphEdgeData, GraphNodeData, RelationshipRow } from "@/lib/relationships-graph/types"
 import { relationshipNodeTypes } from "./relationship-graph-node"
+import { RelationshipLegend } from "./relationship-legend"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
+
+function edgeStyle(rel: RelationshipRow, confidence: number): CSSProperties | undefined {
+  if (rel.archived_at) return { opacity: 0.4, strokeDasharray: "5 4" }
+  if (confidence < 0.5) return { strokeDasharray: "4 3", stroke: "var(--g-warning, #d97706)" }
+  return undefined
+}
 
 function buildElements(
   filtered: RelationshipRow[],
@@ -93,22 +101,24 @@ function buildElements(
     }
 
     const edgeId = relationshipEdgeId(rel)
+    const confidence = readNumber(rel.confidence)
     edges.push({
       id: edgeId,
       source: sourceKey,
       target: targetKey,
       label: relationshipTypeDisplay(rel.relationship_type),
+      markerEnd: { type: "arrowclosed" as const, width: 16, height: 16 },
       data: {
         relationshipType: String(rel.relationship_type ?? ""),
         relationshipTypeLabel: relationshipTypeDisplay(rel.relationship_type),
-        confidence: readNumber(rel.confidence),
+        confidence,
         evidenceCount: readNumber(rel.evidence_count),
         archived: Boolean(rel.archived_at),
         relationshipId: String(rel.id ?? ""),
         raw: rel,
       },
-      animated: readNumber(rel.confidence) >= 0.75,
-      style: rel.archived_at ? { opacity: 0.45, strokeDasharray: "4 4" } : undefined,
+      animated: confidence >= 0.75 && !rel.archived_at,
+      style: edgeStyle(rel, confidence),
     })
   }
 
@@ -117,12 +127,19 @@ function buildElements(
 }
 
 function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsWorkspaceState }) {
-  const { filtered, nodes, labelFor, selection, setSelection } = workspace
+  const { filtered, nodes, labelFor, selection, setSelection, expandedClusters } = workspace
 
-  const elements = useMemo(
-    () => buildElements(filtered, nodes, labelFor),
-    [filtered, nodes, labelFor],
-  )
+  const elements = useMemo(() => {
+    const built = buildElements(filtered, nodes, labelFor)
+    const aggregated = applyEdgeAggregation(
+      built.nodes,
+      built.edges,
+      filtered,
+      expandedClusters,
+      labelFor,
+    )
+    return layoutGraphElements(aggregated.nodes, aggregated.edges)
+  }, [filtered, nodes, labelFor, expandedClusters])
 
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(elements.nodes)
   const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState(elements.edges)
@@ -174,29 +191,32 @@ function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsW
   }
 
   return (
-    <ReactFlow
-      nodes={flowNodes}
-      edges={flowEdges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onSelectionChange={onSelectionChange}
-      nodeTypes={relationshipNodeTypes}
-      fitView
-      fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
-      minZoom={0.2}
-      maxZoom={1.5}
-      proOptions={{ hideAttribution: true }}
-      className="bg-[color:var(--g-surface-2)]/40"
-    >
-      <Background gap={20} size={1} color="var(--divide)" />
-      <Controls showInteractive={false} className="!shadow-[var(--np-shadow)]" />
-      <MiniMap
-        pannable
-        zoomable
-        className="!rounded-[var(--np-radius-md)] !border-divide !bg-[color:var(--g-surface-1)] !shadow-[var(--np-shadow)]"
-        maskColor="rgba(0,0,0,0.08)"
-      />
-    </ReactFlow>
+    <div className="relative h-full min-h-[420px] w-full">
+      <ReactFlow
+        nodes={flowNodes}
+        edges={flowEdges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onSelectionChange={onSelectionChange}
+        nodeTypes={relationshipNodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
+        minZoom={0.2}
+        maxZoom={1.5}
+        proOptions={{ hideAttribution: true }}
+        className="bg-[color:var(--g-surface-2)]/30"
+      >
+        <Background gap={22} size={1} color="var(--divide)" />
+        <Controls showInteractive={false} className="!shadow-[var(--np-shadow)]" />
+        <MiniMap
+          pannable
+          zoomable
+          className="!rounded-[var(--np-radius-md)] !border-divide !bg-[color:var(--g-surface-1)]/95 !shadow-[var(--np-shadow)]"
+          maskColor="rgba(0,0,0,0.06)"
+        />
+      </ReactFlow>
+      <RelationshipLegend />
+    </div>
   )
 }
 
@@ -207,9 +227,7 @@ export const RelationshipGraphCanvas = memo(function RelationshipGraphCanvas({
 }) {
   return (
     <ReactFlowProvider>
-      <div className="h-full min-h-[420px] w-full">
-        <RelationshipGraphCanvasInner workspace={workspace} />
-      </div>
+      <RelationshipGraphCanvasInner workspace={workspace} />
     </ReactFlowProvider>
   )
 })

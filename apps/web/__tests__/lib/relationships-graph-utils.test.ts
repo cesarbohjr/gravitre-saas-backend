@@ -5,9 +5,12 @@ import {
   countNewThisWeek,
   entityKey,
   filterAndSortRelationships,
+  isSmokeTestEntityId,
   makeLabelFor,
   readNumber,
+  relationshipTouchesSmoke,
 } from "@/lib/relationships-graph/utils"
+import { relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import { findRelationshipPaths } from "@/lib/relationships-graph/pathfinding"
 
 describe("relationships-graph utils", () => {
@@ -68,6 +71,53 @@ describe("relationships-graph utils", () => {
   it("readNumber coerces safely", () => {
     expect(readNumber("0.82")).toBe(0.82)
     expect(readNumber(undefined, 3)).toBe(3)
+  })
+
+  it("uses API labels when present", () => {
+    const labelFor = makeLabelFor(
+      {},
+      new Map([["agent::agent_1", "Churn Monitoring Agent"]]),
+    )
+    expect(labelFor("agent", "agent_1")).toBe("Churn Monitoring Agent")
+  })
+
+  it("filters smoke test relationships by default", () => {
+    const rows = [
+      {
+        id: "1",
+        source_entity_type: "customer",
+        source_entity_id: "smoke-churn-acct-001",
+        target_entity_type: "agent",
+        target_entity_id: "agent_1",
+        relationship_type: "tracked-by",
+      },
+      {
+        id: "2",
+        source_entity_type: "glossary_term",
+        source_entity_id: "term_a",
+        target_entity_type: "agent",
+        target_entity_id: "agent_1",
+        relationship_type: "used_by",
+      },
+    ]
+    const labelFor = makeLabelFor({ term_a: "Acme Term" })
+    const hidden = filterAndSortRelationships(rows, {
+      query: "",
+      typeFilter: "all",
+      sortKey: "recent",
+      labelFor,
+      showTestData: false,
+    })
+    expect(hidden).toHaveLength(1)
+    expect(relationshipTouchesSmoke(rows[0])).toBe(true)
+    expect(isSmokeTestEntityId("smoke-churn-acct-001")).toBe(true)
+  })
+})
+
+describe("relationship presentation labels", () => {
+  it("maps tracked-by to business language", () => {
+    expect(relationshipTypeLabel("tracked-by")).toBe("Tracked by")
+    expect(relationshipTypeLabel("used_by")).toBe("Used by")
   })
 })
 

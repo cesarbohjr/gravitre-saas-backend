@@ -63,8 +63,8 @@ test.describe("Relationships graph workspace", () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto("/e2e/shots/relationships", { waitUntil: "networkidle" })
 
-    await page.getByRole("button", { name: "Add knowledge" }).click()
-    await expect(page.getByRole("heading", { name: "Add organization knowledge" })).toBeVisible()
+    await page.getByRole("button", { name: "Add entity" }).click()
+    await expect(page.getByRole("heading", { name: "Add organization entity" })).toBeVisible()
   })
 
   test("mobile layout opens inspector sheet on selection", async ({ page }) => {
@@ -85,12 +85,12 @@ test.describe("Relationships graph workspace", () => {
     const seededNode = page
       .locator(".react-flow__node")
       .filter({ hasText: "Northwind Logistics" })
-      .filter({ hasText: "Organization knowledge" })
+      .filter({ hasText: "Confirmed knowledge" })
     await expect(seededNode).toBeVisible()
     await seededNode.click()
 
     const aside = page.locator("aside")
-    await expect(aside.getByText("Organization knowledge").first()).toBeVisible({ timeout: 10_000 })
+    await expect(aside.getByText("Confirmed organization knowledge").first()).toBeVisible({ timeout: 10_000 })
     await expect(aside.getByTestId("seeded-node-edit")).toBeVisible()
   })
 })

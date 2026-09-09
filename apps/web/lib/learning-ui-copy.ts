@@ -125,12 +125,37 @@ export function humanizeKnowledgeGap(gap: string): string {
   return pack ? `${pack}: ${rest}` : rest
 }
 
+const RELATIONSHIP_TYPE_LABELS: Record<string, string> = {
+  "tracked-by": "Tracked by",
+  "referenced-by-agent": "Referenced by agent",
+  "co-occurs-with": "Co-occurs with",
+  "associated-department": "Associated with department",
+  "observed-in": "Observed in",
+  "belongs-to": "Belongs to",
+  "influenced-by": "Influenced by",
+  reports_to: "Reports to",
+  blocked_by: "Blocked by",
+  contributes_to: "Contributes to",
+  impacts: "Impacts",
+  references: "References",
+  used_by: "Used by",
+  "used-by": "Used by",
+  associated_with: "Associated with",
+  "associated-with": "Associated with",
+  integrates_with: "Integrates with",
+  "integrates-with": "Integrates with",
+}
+
 export function relationshipTypeLabel(value: unknown): string {
-  const raw = String(value ?? "")
-    .trim()
-    .replace(/_/g, " ")
-  if (!raw) return "related to"
+  const raw = String(value ?? "").trim()
+  if (!raw) return "Related to"
+  const normalized = raw.replace(/_/g, "-").toLowerCase()
+  if (RELATIONSHIP_TYPE_LABELS[normalized]) return RELATIONSHIP_TYPE_LABELS[normalized]
+  if (RELATIONSHIP_TYPE_LABELS[raw]) return RELATIONSHIP_TYPE_LABELS[raw]
   return raw
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export function entityTypeLabel(value: unknown): string {
@@ -140,13 +165,42 @@ export function entityTypeLabel(value: unknown): string {
   const map: Record<string, string> = {
     glossary_term: "Term",
     agent: "Agent",
-    workflow_run: "Workflow run",
+    workflow_run: "Workflow",
     department: "Department",
     query_cluster: "Topic cluster",
     company: "Company",
+    customer: "Customer",
+    employee: "Person",
+    person: "Person",
     contact: "Contact",
+    vendor: "Vendor",
+    product: "Product",
+    lead: "Lead",
+    deal: "Deal",
+    prospect: "Prospect",
   }
-  return map[raw] ?? (raw ? raw.replace(/_/g, " ") : "Item")
+  return map[raw] ?? (raw ? raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Item")
+}
+
+export const KNOWLEDGE_NODE_TYPE_LABELS: Record<string, string> = {
+  company: "Company",
+  employee: "Person",
+  customer: "Customer",
+  prospect: "Prospect",
+  vendor: "Vendor",
+  product: "Product",
+  competitor: "Competitor",
+  project: "Project",
+  campaign: "Campaign",
+  contract: "Contract",
+  kpi: "KPI",
+  system: "System",
+  decision: "Decision",
+}
+
+export function knowledgeNodeTypeLabel(value: unknown): string {
+  const raw = String(value ?? "").trim().toLowerCase()
+  return KNOWLEDGE_NODE_TYPE_LABELS[raw] ?? entityTypeLabel(raw)
 }
 
 export function surfaceLabel(value: unknown): string {
@@ -210,14 +264,25 @@ export function memoryCategoryLabel(value: unknown): string {
 }
 
 /** Operator explainer for Learning → Relationships (plain language, no product claims). */
+export const RELATIONSHIPS_ONBOARDING = {
+  title: "Give Gravitre a few certain facts",
+  lead:
+    "Gravitre can learn relationships automatically, but adding the people, companies, customers, and products you already know gives it trusted anchors for resolving names and grounding future answers.",
+  cta: "Add first entity",
+  sheetTitle: "Add your first organization entity",
+  sheetLead:
+    "This gives Gravitre a confirmed reference point it can use to recognize names and connect learned relationships.",
+  successToast: "Entity added. Gravitre will use it as confirmed organization knowledge.",
+} as const
+
 export const RELATIONSHIPS_GUIDE = {
   title: "Organization knowledge graph",
   lead:
-    "See who and what exists in your org and how Gravitre connects them when agents answer questions. Seed organization knowledge; review learned relationships.",
+    "See who and what exists in your org and how Gravitre connects them when agents answer questions. Add confirmed entities; review learned relationships.",
   nodesTitle: "Organization knowledge",
   nodesBody:
     "Entities you add by hand: companies, people, customers, vendors, products. Agents use them to recognize names in your org instead of guessing.",
-  nodesHint: "Start here if the graph is empty: add a few real names your team already uses.",
+  nodesHint: "Add a few real names your team already uses so agents can resolve them in answers.",
   linksTitle: "Learned relationships",
   linksBody:
     "Connections Gravitre infers over time between terms, agents, and work. Review them; archive ones that are noise so answers stay consistent.",

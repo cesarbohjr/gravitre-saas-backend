@@ -14,8 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
-import { entityTypeLabel, relationshipTypeLabel } from "@/lib/learning-ui-copy"
+import { entityTypeLabel, knowledgeNodeTypeLabel, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import { intelligenceApi } from "@/lib/api"
+import { CLUSTER_PREFIX, detectAggregateClusters } from "@/lib/relationships-graph/aggregate-edges"
 import { findRelationshipPaths } from "@/lib/relationships-graph/pathfinding"
 import {
   confidenceLabel,
@@ -23,6 +24,7 @@ import {
   entityKey,
   readNumber,
   relationshipEdgeId,
+  truncateEntityId,
 } from "@/lib/relationships-graph/utils"
 import type { RelationshipRow } from "@/lib/relationships-graph/types"
 import { formatTime } from "@/app/admin/intelligence/_components/shared"
@@ -37,7 +39,36 @@ function findRelationship(workspace: RelationshipsWorkspaceState, edgeId: string
   return workspace.filtered.find((rel) => relationshipEdgeId(rel) === edgeId)
 }
 
+function relationshipLearnedCopy(relationshipType: string): string {
+  const t = String(relationshipType ?? "").toLowerCase()
+  if (t === "tracked-by") {
+    return "Gravitre observed an agent act on this entity in account-monitoring or outcome records. Each observation increases evidence count."
+  }
+  if (t === "referenced-by-agent") {
+    return "An agent memory mentioned this glossary term or entity while working."
+  }
+  if (t === "co-occurs-with") {
+    return "Queries or topics that appeared together in your organization's search patterns."
+  }
+  return "Inferred from indexed sources, glossary terms, and agent activity. Confidence is a heuristic estimate, not an ML score."
+}
+
 function findNodeContext(workspace: RelationshipsWorkspaceState, nodeId: string) {
+  if (nodeId.startsWith(CLUSTER_PREFIX)) {
+    const cluster = detectAggregateClusters(workspace.filtered).find((c) => c.id === nodeId)
+    if (cluster) {
+      const typeLabel = entityTypeLabel(cluster.sourceEntityType)
+      return {
+        label: `${cluster.memberKeys.length} ${typeLabel}s`,
+        entityType: cluster.sourceEntityType,
+        entityId: nodeId,
+        isSeeded: false,
+        isCluster: true,
+        clusterId: nodeId,
+        clusterCount: cluster.memberKeys.length,
+      }
+    }
+  }
   if (nodeId.startsWith("seed::")) {
     const knId = nodeId.slice("seed::".length)
     const node = workspace.nodes.find((n) => String(n.id) === knId)
@@ -104,10 +135,11 @@ function SeededNodeEditor({
   const [busy, setBusy] = useState(false)
 
   if (!ctx.isSeeded || !node || !knId) return null
+  const resolvedKnId = knId
 
   async function save() {
     setBusy(true)
-    const ok = await workspace.updateNode(knId, nodeType, name)
+    const ok = await workspace.updateNode(resolvedKnId, nodeType, name)
     setBusy(false)
     if (ok) setEditing(false)
   }
@@ -138,7 +170,7 @@ function SeededNodeEditor({
         <SelectContent>
           {workspace.nodeTypes.map((t) => (
             <SelectItem key={t} value={t}>
-              {t}
+              {knowledgeNodeTypeLabel(t)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -303,7 +335,7 @@ export function RelationshipInspector({
             <div>
               <dt className="text-[11px] text-[color:var(--g-text-muted)]">How Gravitre learned this</dt>
               <dd className="leading-relaxed text-[color:var(--g-text-secondary)]">
-                Inferred from indexed sources and glossary terms. Confidence is a heuristic estimate, not an ML score.
+                {relationshipLearnedCopy(String(rel.relationship_type ?? ""))}
               </dd>
             </div>
           </dl>
@@ -342,7 +374,11 @@ export function RelationshipInspector({
     )
   }
 
-  const ctx = findNodeContext(workspace, selection.nodeId)
+  const ctx = findNodeContext(workspace, selection.nodeId) as ReturnType<typeof findNodeContext> & {
+    isCluster?: boolean
+    clusterId?: string
+    clusterCount?: number
+  }
   const related = connectedRelationships(workspace, selection.nodeId)
   const askHref = `/ai?prompt=${encodeURIComponent(
     buildAskPrompt("node", `${entityTypeLabel(ctx.entityType)} ${ctx.label}`),
@@ -353,9 +389,14 @@ export function RelationshipInspector({
       <div className="flex items-start justify-between gap-2 border-b border-divide px-4 py-3">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
-            {ctx.isSeeded ? "Organization knowledge" : entityTypeLabel(ctx.entityType)}
+            {ctx.isSeeded ? "Confirmed organization knowledge" : ctx.isCluster ? "Grouped entities" : entityTypeLabel(ctx.entityType)}
           </p>
           <p className="mt-0.5 truncate text-sm font-semibold text-[color:var(--g-text-primary)]">{ctx.label}</p>
+          {!ctx.isSeeded && !ctx.isCluster && ctx.entityId ? (
+            <p className="mt-0.5 font-mono text-[10px] text-[color:var(--g-text-muted)]">
+              {truncateEntityId(ctx.entityId, 18)}
+            </p>
+          ) : null}
         </div>
         {onClose ? (
           <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
@@ -364,18 +405,29 @@ export function RelationshipInspector({
         ) : null}
       </div>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {ctx.isCluster && ctx.clusterId ? (
+          <>
+            <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
+              {ctx.clusterCount} similar {entityTypeLabel(ctx.entityType).toLowerCase()} entities share the same learned
+              relationship pattern. Expand to inspect individuals.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => workspace.expandCluster(ctx.clusterId!)}>
+              Expand group
+            </Button>
+          </>
+        ) : null}
         {ctx.isSeeded ? (
           <>
             <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
-              Seeded entity your team added. Agents use it to resolve names in your org.
+              An entity your organization explicitly added. Gravitre uses it as a trusted anchor when resolving names.
             </p>
             <SeededNodeEditor workspace={workspace} nodeId={selection.nodeId} />
           </>
-        ) : (
+        ) : !ctx.isCluster ? (
           <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
-            Appears in learned relationships from indexed sources and glossary terms.
+            Appears in learned relationships from agent activity, indexed sources, and glossary terms.
           </p>
-        )}
+        ) : null}
         {related.length > 0 ? (
           <div>
             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
@@ -403,7 +455,7 @@ export function RelationshipInspector({
             </ul>
           </div>
         ) : null}
-        {ctx.entityType && ctx.entityId ? (
+        {ctx.entityType && ctx.entityId && !ctx.isCluster ? (
           <MultiHopPaths workspace={workspace} entityType={ctx.entityType} entityId={ctx.entityId} />
         ) : null}
       </div>
