@@ -267,7 +267,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updatePayload.role = snakeBody.role
   }
   if (typeof snakeBody.department === "string") {
-    updatePayload.department = snakeBody.department
+    updatePayload.department = normalizeAgentDepartment(snakeBody.department)
   }
   if (typeof snakeBody.model === "string" && snakeBody.model.trim()) {
     updatePayload.model = snakeBody.model.trim()

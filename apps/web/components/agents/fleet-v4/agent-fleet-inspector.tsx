@@ -5,6 +5,7 @@ import { Brain, Database, MessageSquare, Pause, Play, RefreshCw, Settings } from
 import { Button } from "@/components/ui/button"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { StatusChip } from "@/components/gravitre/visual"
+import { AGENT_DEPARTMENT_OPTIONS, normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { normalizeAgentStatus, presentAgentStatus } from "@/lib/agent-runtime-status"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
@@ -49,6 +50,7 @@ export function AgentFleetInspectorBody({
   layout = "sheet",
   onStart,
   onStop,
+  onDepartmentChange,
   isMutating,
   successRateDisplay,
 }: {
@@ -56,6 +58,7 @@ export function AgentFleetInspectorBody({
   layout?: "sheet" | "panel"
   onStart?: (agent: AgentFleetInspectorAgent) => Promise<void>
   onStop?: (agent: AgentFleetInspectorAgent) => Promise<void>
+  onDepartmentChange?: (agentId: string, department: AgentDepartment) => void
   isMutating?: boolean
   successRateDisplay: number | null
 }) {
@@ -64,6 +67,13 @@ export function AgentFleetInspectorBody({
   const systems =
     (agent.connectedSystems?.length ? agent.connectedSystems : agent.permissions) ?? []
   const dense = layout === "sheet"
+  const departmentValue = (() => {
+    const normalizedDept = normalizeAgentDepartment(agent.department)
+    if (AGENT_DEPARTMENT_OPTIONS.includes(normalizedDept)) return normalizedDept
+    if (normalizedDept === "Support") return "Customer Success"
+    if (normalizedDept === "HR") return "General"
+    return "Operations"
+  })()
 
   return (
     <div className="flex h-full flex-col">
@@ -74,9 +84,27 @@ export function AgentFleetInspectorBody({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className={cn(TYPE.sectionTitle, "truncate")}>{agent.name}</h2>
-                <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
-                  {agent.department}
-                </span>
+                {onDepartmentChange ? (
+                  <select
+                    aria-label={`Department for ${agent.name}`}
+                    value={departmentValue}
+                    disabled={isMutating}
+                    onChange={(event) => {
+                      onDepartmentChange(agent.id, event.target.value as AgentDepartment)
+                    }}
+                    className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
+                    {agent.department}
+                  </span>
+                )}
                 <StatusChip status={normalized} pulse={status.pulse}>
                   {status.label}
                 </StatusChip>

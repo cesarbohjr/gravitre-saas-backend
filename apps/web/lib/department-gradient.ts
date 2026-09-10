@@ -36,6 +36,8 @@ const GRADIENTS: Record<string, DepartmentGradient> = {
   marketing: VIOLET,
   legal: SLATE,
   engineering: BLUE,
+  security: SLATE,
+  general: BLUE,
 }
 
 // Normalizes the many department strings the backend can emit (e.g. "Customer

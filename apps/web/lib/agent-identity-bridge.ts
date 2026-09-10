@@ -76,7 +76,22 @@ export function mapApiDepartmentToFleet(
   department: string | null | undefined,
 ): { id: AgentDepartmentId; label: string } {
   const raw = String(department ?? "").trim()
-  const key = raw.toLowerCase()
+  const key = raw.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim()
+
+  // Exact fleet / API labels first so DnD persistence round-trips cleanly.
+  if (key === "sales") return { id: "sales", label: raw || "Sales" }
+  if (key === "customer success" || key === "support") {
+    return { id: "customer_success", label: key === "support" ? "Customer Success" : raw || "Customer Success" }
+  }
+  if (key === "finance") return { id: "finance", label: raw || "Finance" }
+  if (key === "operations") return { id: "operations", label: raw || "Operations" }
+  if (key === "engineering") return { id: "engineering", label: raw || "Engineering" }
+  if (key === "marketing") return { id: "marketing", label: raw || "Marketing" }
+  if (key === "security") return { id: "security", label: raw || "Security" }
+  if (key === "general" || key === "hr") {
+    return { id: "general", label: key === "hr" ? "General" : raw || "General" }
+  }
+
   if (key.includes("sale") || key.includes("revenue")) return { id: "sales", label: raw || "Sales" }
   if (key.includes("support") || key.includes("success") || key.includes("customer")) {
     return { id: "customer_success", label: raw || "Customer Success" }
@@ -88,9 +103,8 @@ export function mapApiDepartmentToFleet(
     return { id: "engineering", label: raw || "Engineering" }
   }
   if (key.includes("hr") || key.includes("people") || key.includes("talent") || key.includes("recruit")) {
-    return { id: "general", label: raw || "HR" }
+    return { id: "general", label: raw || "General" }
   }
-  if (key === "general") return { id: "general", label: raw || "General" }
   if (key.includes("ops") || key.includes("operation")) return { id: "operations", label: raw || "Operations" }
   return { id: "operations", label: raw || "Operations" }
 }

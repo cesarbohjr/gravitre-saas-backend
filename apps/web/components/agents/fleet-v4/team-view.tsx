@@ -162,7 +162,7 @@ export function TeamView({
                     key={department}
                     department={department}
                     onDropAgent={onDepartmentChange}
-                    className="min-w-[14rem] border border-dashed border-divide bg-white/90 px-3 py-3"
+                    className="min-h-[5.5rem] min-w-[16rem] flex-1 border border-dashed border-divide bg-white/90 px-4 py-4 sm:flex-none"
                   >
                     <div className="flex items-center gap-3">
                       <NodusDepartmentLabel department={department} label={label} count={0} />

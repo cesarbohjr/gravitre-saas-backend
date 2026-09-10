@@ -67,7 +67,8 @@ import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmospher
 import { FleetControls, FleetControlsCollapsed, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
-import { mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
+import { mapApiDepartmentToFleet, mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
+import { normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
 import { isAgentsFleetView } from "@/lib/agents-fleet-prefs"
@@ -135,19 +136,12 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
   const personality = (input.personality ?? {}) as Record<string, unknown>
   const stats = (input.stats ?? {}) as Record<string, unknown>
   const status = normalizeAgentStatus(input.status)
-  const department = String(input.department ?? "Operations")
+  const department = normalizeAgentDepartment(String(input.department ?? "Operations"))
   return {
     id: String(input.id ?? ""),
     name: String(input.name ?? "Agent"),
     role: String(input.role ?? "Operator"),
-    department:
-      department === "Marketing" ||
-      department === "Sales" ||
-      department === "Finance" ||
-      department === "Support" ||
-      department === "HR"
-        ? department
-        : "Operations",
+    department,
     description: String(input.description ?? ""),
     status,
     icon: typeof input.icon === "string" ? input.icon : null,
@@ -362,11 +356,13 @@ function AgentDetailPanel({
   agent,
   onStart,
   onStop,
+  onDepartmentChange,
   isMutating,
 }: {
   agent: Agent
   onStart: (agent: Agent) => Promise<void>
   onStop: (agent: Agent) => Promise<void>
+  onDepartmentChange: (agentId: string, department: AgentDepartment) => Promise<void>
   isMutating: boolean
 }) {
   return (
@@ -381,6 +377,9 @@ function AgentDetailPanel({
         layout="panel"
         onStart={(a) => onStart(a as Agent)}
         onStop={(a) => onStop(a as Agent)}
+        onDepartmentChange={(agentId, department) => {
+          void onDepartmentChange(agentId, department)
+        }}
         isMutating={isMutating}
         successRateDisplay={getDisplaySuccessRate(agent)}
       />
@@ -392,11 +391,13 @@ function AgentPreviewSheet({
   agent,
   open,
   onOpenChange,
+  onDepartmentChange,
 }: {
   agent: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenProfile?: () => void
+  onDepartmentChange?: (agentId: string, department: AgentDepartment) => Promise<void>
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -408,6 +409,13 @@ function AgentPreviewSheet({
         <AgentFleetInspectorBody
           agent={agent}
           layout="sheet"
+          onDepartmentChange={
+            onDepartmentChange
+              ? (agentId, department) => {
+                  void onDepartmentChange(agentId, department)
+                }
+              : undefined
+          }
           successRateDisplay={getDisplaySuccessRate(agent)}
         />
       </SheetContent>
@@ -582,7 +590,8 @@ export default function AgentsPage() {
     const agent = agents.find((a) => a.id === agentId)
     if (!agent) return
     const label = mapFleetDepartmentToApi(department)
-    if (String(agent.department ?? "").trim().toLowerCase() === label.toLowerCase()) return
+    const currentFleetId = toFleetAgent(agent).department
+    if (currentFleetId === department) return
     try {
       setIsMutatingAgent(agentId)
       await agentsApi.update(agentId, { department: label as Agent["department"] })
@@ -597,6 +606,11 @@ export default function AgentsPage() {
     } finally {
       setIsMutatingAgent((current) => (current === agentId ? null : current))
     }
+  }
+
+  const handleDepartmentLabelChange = async (agentId: string, department: AgentDepartment) => {
+    const fleetId = mapApiDepartmentToFleet(department).id
+    await handleDepartmentChange(agentId, fleetId)
   }
   
   const filteredAgents = useMemo(() => {
@@ -1014,6 +1028,7 @@ export default function AgentsPage() {
             agent={visibleSelectedAgent}
             open={previewOpen}
             onOpenChange={setPreviewOpen}
+            onDepartmentChange={handleDepartmentLabelChange}
           />
         ) : null}
 
@@ -1044,6 +1059,7 @@ export default function AgentsPage() {
                     agent={visibleSelectedAgent}
                     onStart={handleStartAgent}
                     onStop={handleStopAgent}
+                    onDepartmentChange={handleDepartmentLabelChange}
                     isMutating={isMutatingAgent === visibleSelectedAgent.id}
                   />
                 </TooltipProvider>

@@ -41,7 +41,7 @@ export function ListView({
               key={department}
               department={department}
               onDropAgent={onDepartmentChange}
-              className="min-w-[7.5rem] flex-1 border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)] sm:flex-none"
+              className="min-h-[3.25rem] min-w-[8.5rem] flex-1 border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)] sm:flex-none"
               highlightClassName="border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35"
             >
               <p
@@ -90,6 +90,7 @@ export function ListView({
                 agent={agent}
                 selected={selectedId === agent.id}
                 onSelect={onSelect}
+                onDepartmentChange={onDepartmentChange}
                 draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
               />
             ))}

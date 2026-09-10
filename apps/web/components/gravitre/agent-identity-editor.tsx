@@ -22,6 +22,11 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
+import {
+  AGENT_DEPARTMENT_OPTIONS,
+  normalizeAgentDepartment,
+  type AgentDepartment,
+} from "@/lib/agent-display"
 import { agentsApi } from "@/lib/api"
 import type { Agent } from "@/types/api"
 import { LoadingIndicator } from "@/components/gravitre/gravitre-loader"
@@ -32,11 +37,21 @@ interface AgentIdentityEditorProps {
   agent: Agent
 }
 
+function departmentSelectValue(department: AgentDepartment): AgentDepartment {
+  if (AGENT_DEPARTMENT_OPTIONS.includes(department)) return department
+  if (department === "Support") return "Customer Success"
+  if (department === "HR") return "General"
+  return "Operations"
+}
+
 export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [name, setName] = useState(agent.name)
+  const [department, setDepartment] = useState<AgentDepartment>(
+    departmentSelectValue(normalizeAgentDepartment(agent.department)),
+  )
   const [icon, setIcon] = useState<AgentIconId>(coerceAgentIcon(agent.icon, "bot"))
   const [avatarColor, setAvatarColor] = useState<AgentAvatarColorId>(
     coerceAgentColor(agent.avatarColor, "bg-emerald-500"),
@@ -47,6 +62,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
   useEffect(() => {
     if (!open) return
     setName(agent.name)
+    setDepartment(departmentSelectValue(normalizeAgentDepartment(agent.department)))
     setIcon(coerceAgentIcon(agent.icon, "bot"))
     setAvatarColor(coerceAgentColor(agent.avatarColor, "bg-emerald-500"))
     setAvatarUrl(agent.avatarUrl ?? null)
@@ -98,6 +114,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
       const personality = personalityFromAvatarColor(avatarColor)
       await agentsApi.update(agent.id, {
         name: trimmedName,
+        department,
         icon,
         avatarColor,
         personality,
@@ -124,7 +141,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
         <DialogHeader>
           <DialogTitle>Edit agent identity</DialogTitle>
           <DialogDescription>
-            Name, icon, color, and optional photo are shared everywhere this agent appears.
+            Name, department, icon, color, and optional photo are shared everywhere this agent appears.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,6 +156,27 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
               onChange={(event) => setName(event.target.value)}
               placeholder="Agent name"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="agent-identity-department" className="text-sm font-medium text-foreground">
+              Department
+            </label>
+            <select
+              id="agent-identity-department"
+              value={department}
+              onChange={(event) => setDepartment(event.target.value as AgentDepartment)}
+              className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Controls which TEAM lane this agent belongs to on the Agents roster.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border p-4">

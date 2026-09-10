@@ -122,7 +122,17 @@ export interface OperatorSessionDetail {
 
 // ============ Agents ============
 export type AgentStatus = "active" | "idle" | "processing" | "error"
-export type AgentDepartment = "Marketing" | "Sales" | "Operations" | "Finance" | "Support" | "HR"
+export type AgentDepartment =
+  | "Marketing"
+  | "Sales"
+  | "Operations"
+  | "Finance"
+  | "Support"
+  | "HR"
+  | "Customer Success"
+  | "Engineering"
+  | "Security"
+  | "General"
 
 export interface AgentPersonality {
   color: string

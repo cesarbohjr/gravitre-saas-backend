@@ -1,23 +1,26 @@
 "use client"
 
-import type { DragEvent } from "react"
+import type { DragEvent, MouseEvent } from "react"
 import { cn } from "@/lib/utils"
-import { setFleetAgentDragData } from "./fleet-department-dnd"
+import { DEPARTMENT_ACCENT } from "./identity-tokens"
+import { FLEET_DEPARTMENT_ORDER, setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
-import type { FleetAgent } from "./types"
+import type { AgentDepartmentId, FleetAgent } from "./types"
 
 export function GravitreAgentRow({
   agent,
   selected,
   onSelect,
+  onDepartmentChange,
   draggable = false,
   className,
 }: {
   agent: FleetAgent
   selected?: boolean
   onSelect?: (id: string) => void
+  onDepartmentChange?: (agentId: string, department: AgentDepartmentId) => void
   draggable?: boolean
   className?: string
 }) {
@@ -58,7 +61,28 @@ export function GravitreAgentRow({
         </div>
       </td>
       <td className="h-12 border-b border-divide/70 px-4 text-sm text-[color:var(--g-text-muted)]">
-        {agent.departmentLabel}
+        {onDepartmentChange ? (
+          <select
+            aria-label={`Department for ${agent.name}`}
+            value={agent.department}
+            onClick={(event: MouseEvent) => event.stopPropagation()}
+            onChange={(event) => {
+              event.stopPropagation()
+              const next = event.target.value as AgentDepartmentId
+              if (next === agent.department) return
+              onDepartmentChange(agent.id, next)
+            }}
+            className="max-w-[11rem] rounded-md border border-divide bg-white px-2 py-1 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--g-brand)]"
+          >
+            {FLEET_DEPARTMENT_ORDER.map((department) => (
+              <option key={department} value={department}>
+                {DEPARTMENT_ACCENT[department].label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          agent.departmentLabel
+        )}
       </td>
       <td className="h-12 border-b border-divide/70 px-4">
         <GravitreAgentStatus runtimeState={agent.runtimeState} configState={agent.configState} showConfig />

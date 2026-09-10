@@ -411,9 +411,12 @@ export async function POST(request: NextRequest) {
     }
     const purpose = (snake.purpose as string | undefined) ?? null
     const role = (snake.role as string | undefined) ?? name
-    const department =
-      (snake.department as string | undefined) ??
-      inferAgentDepartment(name, purpose, role)
+    const department = normalizeAgentDepartment(
+      String(
+        (snake.department as string | undefined) ??
+          inferAgentDepartment(name, purpose, role),
+      ),
+    )
     const voiceProfile =
       (body.voiceProfile && typeof body.voiceProfile === "object"
         ? body.voiceProfile

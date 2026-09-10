@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+/** Canonical API / UI department labels — aligned with fleet TEAM lanes. */
 export type AgentDepartment =
   | "Marketing"
   | "Sales"
@@ -26,6 +27,22 @@ export type AgentDepartment =
   | "Support"
   | "HR"
   | "Operations"
+  | "Customer Success"
+  | "Engineering"
+  | "Security"
+  | "General"
+
+/** Select options for create / edit — matches fleet department order. */
+export const AGENT_DEPARTMENT_OPTIONS: AgentDepartment[] = [
+  "Sales",
+  "Customer Success",
+  "Finance",
+  "Operations",
+  "Engineering",
+  "Marketing",
+  "Security",
+  "General",
+]
 
 const PERSONALITY_BY_DEPARTMENT: Record<
   AgentDepartment,
@@ -37,6 +54,29 @@ const PERSONALITY_BY_DEPARTMENT: Record<
   Support: { color: "cyan", gradient: "from-cyan-500 to-blue-500", glow: "shadow-cyan-500/30" },
   HR: { color: "amber", gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/30" },
   Operations: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
+  "Customer Success": {
+    color: "cyan",
+    gradient: "from-cyan-500 to-teal-500",
+    glow: "shadow-cyan-500/30",
+  },
+  Engineering: { color: "teal", gradient: "from-teal-500 to-cyan-600", glow: "shadow-teal-500/30" },
+  Security: { color: "slate", gradient: "from-slate-500 to-zinc-600", glow: "shadow-slate-500/30" },
+  General: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
+}
+
+const EXACT_DEPARTMENT: Record<string, AgentDepartment> = {
+  marketing: "Marketing",
+  sales: "Sales",
+  finance: "Finance",
+  support: "Support",
+  hr: "HR",
+  operations: "Operations",
+  "customer success": "Customer Success",
+  customersuccess: "Customer Success",
+  customer_success: "Customer Success",
+  engineering: "Engineering",
+  security: "Security",
+  general: "General",
 }
 
 export function inferAgentDepartment(
@@ -48,7 +88,20 @@ export function inferAgentDepartment(
   if (text.includes("marketing")) return "Marketing"
   if (text.includes("sales")) return "Sales"
   if (text.includes("finance") || text.includes("accounting")) return "Finance"
-  if (text.includes("support") || text.includes("customer")) return "Support"
+  if (text.includes("engineer") || text.includes("platform") || text.includes("sre")) {
+    return "Engineering"
+  }
+  if (text.includes("secur") || text.includes("compliance") || text.includes("risk")) {
+    return "Security"
+  }
+  if (
+    text.includes("customer success") ||
+    text.includes("success") ||
+    text.includes("support") ||
+    text.includes("customer")
+  ) {
+    return "Customer Success"
+  }
   if (
     text.includes("hr") ||
     text.includes("human resource") ||
@@ -61,19 +114,52 @@ export function inferAgentDepartment(
 }
 
 export function inferAgentPersonality(department: AgentDepartment) {
-  return PERSONALITY_BY_DEPARTMENT[department]
+  return PERSONALITY_BY_DEPARTMENT[department] ?? PERSONALITY_BY_DEPARTMENT.Operations
 }
 
+/**
+ * Preserve fleet-aligned department labels. Legacy Support/HR remain valid;
+ * unknown values fall back to Operations only after alias matching fails.
+ */
 export function normalizeAgentDepartment(value: string): AgentDepartment {
-  if (
-    value === "Marketing" ||
-    value === "Sales" ||
-    value === "Finance" ||
-    value === "Support" ||
-    value === "HR"
-  ) {
-    return value
+  const trimmed = String(value ?? "").trim()
+  if (!trimmed) return "Operations"
+
+  const lower = trimmed.toLowerCase()
+  const spaced = lower.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim()
+  const compact = spaced.replace(/\s+/g, "")
+
+  if (EXACT_DEPARTMENT[lower]) return EXACT_DEPARTMENT[lower]
+  if (EXACT_DEPARTMENT[spaced]) return EXACT_DEPARTMENT[spaced]
+  if (EXACT_DEPARTMENT[compact]) return EXACT_DEPARTMENT[compact]
+
+  if (spaced.includes("sale") || spaced.includes("revenue")) return "Sales"
+  if (spaced.includes("market")) return "Marketing"
+  if (spaced.includes("finance") || spaced.includes("account")) return "Finance"
+  if (spaced.includes("engineer") || spaced.includes("platform") || spaced.includes("sre")) {
+    return "Engineering"
   }
+  if (spaced.includes("secur") || spaced.includes("compliance")) return "Security"
+  if (
+    spaced.includes("customer success") ||
+    spaced.includes("success") ||
+    spaced.includes("support") ||
+    spaced.includes("customer")
+  ) {
+    return "Customer Success"
+  }
+  if (
+    spaced.includes("human resource") ||
+    spaced === "hr" ||
+    spaced.includes("people") ||
+    spaced.includes("talent") ||
+    spaced.includes("recruit")
+  ) {
+    return "HR"
+  }
+  if (spaced.includes("ops") || spaced.includes("operation")) return "Operations"
+  if (spaced === "general") return "General"
+
   return "Operations"
 }
 

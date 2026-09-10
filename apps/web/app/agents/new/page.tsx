@@ -35,7 +35,11 @@ import {
 import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
 import { agentsApi } from "@/lib/api"
-import { inferAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
+import {
+  AGENT_DEPARTMENT_OPTIONS,
+  inferAgentDepartment,
+  type AgentDepartment,
+} from "@/lib/agent-display"
 import {
   AgentIdentityPicker,
   useSuggestedAgentIdentity,
@@ -102,15 +106,6 @@ function getAgentIcon(agentName: string): LucideIcon {
   if (lowerName.includes("support") || lowerName.includes("customer")) return Headphones
   return agentIconMap[agentName] || Bot
 }
-
-const DEPARTMENT_OPTIONS: AgentDepartment[] = [
-  "Marketing",
-  "Sales",
-  "Finance",
-  "Support",
-  "HR",
-  "Operations",
-]
 
 export default function NewAgentPage() {
   const router = useRouter()
@@ -325,14 +320,14 @@ export default function NewAgentPage() {
                       onChange={(e) => setSelectedDepartment(e.target.value as AgentDepartment)}
                       className="mt-1.5 w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     >
-                      {DEPARTMENT_OPTIONS.map((dept) => (
+                      {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
                         <option key={dept} value={dept}>
                           {dept}
                         </option>
                       ))}
                     </select>
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Organize agents by team — used in filters, Meson, and reporting.
+                      Assign this agent to a team lane on the Agents roster (TEAM / LIST / GRAPH).
                     </p>
                   </div>
 
