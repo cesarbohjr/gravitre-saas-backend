@@ -55,7 +55,7 @@ import { motion, useDragControls, useMotionValue, useReducedMotion } from "frame
 // resize-handle affordance (Phase 3) — do not replace it (see the
 // architecture doc's C1 audit and this phase's own instructions).
 import { GripVertical } from "lucide-react"
-import { NucleoAgent, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
+import { NucleoChat, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -195,7 +195,7 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
         <div className="flex min-w-0 items-center gap-2">
           <GripVertical className="h-3.5 w-3.5 text-[color:var(--g-text-muted)]" aria-hidden />
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-            <NucleoAgent className="h-3.5 w-3.5" />
+            <NucleoChat className="h-3.5 w-3.5" />
           </span>
           <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
           <span

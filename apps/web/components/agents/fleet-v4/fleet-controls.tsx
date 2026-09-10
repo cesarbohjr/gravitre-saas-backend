@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { ChevronDown } from "lucide-react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { cn } from "@/lib/utils"
 import type {
@@ -47,7 +48,6 @@ export function FleetControls({
   roles,
   models,
   searchSlot,
-  toolbarEnd,
   className,
 }: {
   view: AgentsFleetViewPref
@@ -64,8 +64,6 @@ export function FleetControls({
   models: string[]
   /** Search field — rendered on the same row as department/status/role/model. */
   searchSlot?: ReactNode
-  /** Right-side actions on the view/sort row (e.g. Minimize). */
-  toolbarEnd?: ReactNode
   className?: string
 }) {
   const hasFilters = Boolean(
@@ -114,12 +112,9 @@ export function FleetControls({
             Clear filters
           </button>
         ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="hidden text-[11px] text-[color:var(--g-text-muted)] lg:inline">
-            Edges: parent · swarm · connectors
-          </span>
-          {toolbarEnd}
-        </div>
+        <span className="ml-auto hidden text-[11px] text-[color:var(--g-text-muted)] xl:inline">
+          Edges: parent · swarm · connectors
+        </span>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -154,20 +149,20 @@ export function FleetControls({
   )
 }
 
-/** Slim strip when filters chrome is minimized — view switch only. */
+/** Slim strip when roster chrome is minimized — view switch + Expand. */
 export function FleetControlsCollapsed({
   view,
   onViewChange,
-  onShowFilters,
+  onExpand,
   className,
 }: {
   view: AgentsFleetViewPref
   onViewChange: (view: AgentsFleetViewPref) => void
-  onShowFilters: () => void
+  onExpand: () => void
   className?: string
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-2", className)}>
       <SegmentedControl
         ariaLabel="Fleet view"
         options={VIEW_OPTIONS}
@@ -176,11 +171,13 @@ export function FleetControlsCollapsed({
       />
       <button
         type="button"
-        onClick={onShowFilters}
-        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
-        aria-label="Show filters"
+        onClick={onExpand}
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-divide px-2.5 text-xs font-medium text-[color:var(--g-text-primary)] transition-colors hover:bg-[color:var(--g-surface-active)]"
+        aria-label="Expand header and filters"
+        title="Expand"
       >
-        <span className="text-[11px]">Show filters</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        Expand
       </button>
     </div>
   )

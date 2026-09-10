@@ -57,7 +57,7 @@
 
 import { useCallback, useRef, type ReactNode } from "react"
 import { Drawer } from "vaul"
-import { NucleoAgent, NucleoCollapse, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
+import { NucleoChat, NucleoCollapse, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
@@ -184,7 +184,7 @@ export function GravitreAIMobileSheet({
           <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-                <NucleoAgent className="h-3.5 w-3.5" />
+                <NucleoChat className="h-3.5 w-3.5" />
               </span>
               <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
               <span

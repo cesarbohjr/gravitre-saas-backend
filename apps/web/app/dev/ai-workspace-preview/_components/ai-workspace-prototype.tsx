@@ -31,7 +31,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import {
-  NucleoAgent,
+  NucleoChat,
   NucleoApproval,
   NucleoClose,
   NucleoVoice,
@@ -166,7 +166,7 @@ function GravitreAIHelper({
       aria-label={`Open Gravitre AI — ${copy.label}`}
     >
       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white">
-        <NucleoAgent className="h-4 w-4" />
+        <NucleoChat className="h-4 w-4" />
         <span
           className={cn(
             "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[color:var(--g-surface-1)]",
@@ -222,7 +222,7 @@ function WindowHeader({
           aria-hidden
         />
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-          <NucleoAgent className="h-3.5 w-3.5" />
+          <NucleoChat className="h-3.5 w-3.5" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>

@@ -40,7 +40,7 @@ import { useEffect, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
 import {
-  NucleoAgent,
+  NucleoChat,
   NucleoClose,
   NucleoCollapse,
   NucleoFullscreen,
@@ -143,7 +143,7 @@ export function GravitreAIWorkspaceShell({
       <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-            <NucleoAgent className="h-3.5 w-3.5" />
+            <NucleoChat className="h-3.5 w-3.5" />
           </span>
           <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI workspace</p>
           <span
