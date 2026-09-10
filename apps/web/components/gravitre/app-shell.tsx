@@ -18,7 +18,6 @@ import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre-loader"
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
-import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { OnboardingProgress } from "@/types/api"
@@ -87,16 +86,17 @@ function daysLeft(isoDate: string): number {
 const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 
 function readNavExpandedPreference(): boolean {
-  if (typeof window === "undefined") return true
-  // Nodus Product Image shows a labeled sidebar; default expanded when unset.
+  if (typeof window === "undefined") return false
+  // Default to the minimized icon-only rail when unset; users who explicitly
+  // expand it keep that choice via localStorage.
   const stored = localStorage.getItem(NAV_EXPANDED_STORAGE_KEY)
-  if (stored === null) return true
+  if (stored === null) return false
   return stored === "true"
 }
 
 export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [navExpanded, setNavExpanded] = useState(true)
+  const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
     () =>
