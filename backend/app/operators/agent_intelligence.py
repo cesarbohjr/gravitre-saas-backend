@@ -1621,12 +1621,18 @@ class AgentIntelligence:
         task_text = query.strip()
         # Spoken non-write: use connector snapshot cache (force_live=False) to avoid
         # ~0.6–1.2s live auth round-trips on every simple Talk turn. Write-shaped
-        # intents still force live so ACT sees current auth. Clarify/tool paths that
-        # need freshness already call find_integration_availability(force_live=True).
+        # intents and operator tasks still force live so ACT sees current auth.
         from app.services.conversational_planning_engine import is_direct_connector_write_intent
+        from app.services.operator_task_intent import (
+            should_keep_full_reasoning_for_spoken,
+            use_spoken_lite_path,
+        )
 
+        _spoken_keep_full = bool(spoken_mode) and should_keep_full_reasoning_for_spoken(task_text)
         _connectors_force_live = not (
-            bool(spoken_mode) and not is_direct_connector_write_intent(task_text)
+            bool(spoken_mode)
+            and not is_direct_connector_write_intent(task_text)
+            and not _spoken_keep_full
         )
         # Speed/latency-standard follow-up (2026-09-05): these three calls were
         # three sequential awaits (list_connected_integrations is itself a
@@ -1640,10 +1646,13 @@ class AgentIntelligence:
         # own parallelization for the larger sibling fix).
         from app.services.mcp_client_service import get_mcp_client_service
 
-        # Spoken non-write: defer MCP catalog off the critical path — mode
-        # resolution only needs has_mcp_tools for bumping FAST→standard, and
-        # spoken lite stays on fast without MCP tools.
-        if bool(spoken_mode) and not is_direct_connector_write_intent(task_text):
+        # Spoken non-write chitchat: defer MCP catalog off the critical path.
+        # Operator tasks keep the typed path (live catalog).
+        if (
+            bool(spoken_mode)
+            and not is_direct_connector_write_intent(task_text)
+            and not _spoken_keep_full
+        ):
             connected_early, engine_settings = await asyncio.gather(
                 asyncio.to_thread(
                     self.tool_registry.list_connected_integrations,
@@ -2001,10 +2010,10 @@ class AgentIntelligence:
         from app.services.chat_intelligence_facade import get_chat_intelligence_facade
 
         chat_facade = get_chat_intelligence_facade(active_settings)
-        spoken_lite_path = bool(
-            spoken_mode
-            and routing_control.tier == "simple"
-            and not is_direct_connector_write_intent(task_text)
+        spoken_lite_path = use_spoken_lite_path(
+            spoken_mode=bool(spoken_mode),
+            routing_tier=str(routing_control.tier or ""),
+            message=task_text,
         )
         _mark("spoken_lite_decided")
 
@@ -2266,6 +2275,10 @@ class AgentIntelligence:
                         "maxToolRounds": routing_control.max_iterations,
                         "spokenConsequentialEscalation": True,
                     }
+            elif _spoken_keep_full:
+                # Typed operator tasks already use full depth on Fast. Spoken must
+                # match that — never conversational lite — without escalating mode.
+                reasoning_depth = "full"
             elif routing_control.tier == "simple" or requested_mode == "fast":
                 reasoning_depth = "conversational"
 

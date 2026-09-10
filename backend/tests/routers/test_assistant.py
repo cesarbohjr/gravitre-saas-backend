@@ -444,7 +444,8 @@ async def test_assistant_org_context_returns_production_connectors(async_client,
 
 def test_response_cache_skips_confirmations_and_scopes_by_conversation():
     """Claim 4: org-scoped 'yes' cache must not skip pending connector confirm."""
-    assert assistant_module._response_cache_eligible("In Apollo, create a contact list.")
+    assert assistant_module._response_cache_eligible("hey, how's it going")
+    assert not assistant_module._response_cache_eligible("In Apollo, create a contact list.")
     assert not assistant_module._response_cache_eligible("yes")
     assert not assistant_module._response_cache_eligible("no")
     assert not assistant_module._response_cache_eligible("confirm")

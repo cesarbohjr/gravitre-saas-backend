@@ -1814,14 +1814,17 @@ async def apply_unified_turn_live(
     )
     from app.services.pending_reply_classifier import has_pending_family
 
+    from app.services.operator_task_intent import should_skip_unified_live_guards
+
     _guard_t0 = time.perf_counter()
     # Spoken conversational with no pending write/plan: skip sequential channel /
-    # meta / pending resolvers (~100–400ms). Write-shaped + pending family keep
-    # the full guard chain.
-    _skip_live_guards = (
-        bool(spoken_mode)
-        and str(reasoning_depth or "").strip().lower() == "conversational"
-        and not has_pending_family(task_state)
+    # meta / pending resolvers (~100–400ms). Operator tasks and pending family
+    # keep the full guard chain (same as typed).
+    _skip_live_guards = should_skip_unified_live_guards(
+        spoken_mode=bool(spoken_mode),
+        reasoning_depth=str(reasoning_depth or ""),
+        has_pending=has_pending_family(task_state),
+        message=message or "",
     )
     if _skip_live_guards:
         _guard_t1 = _guard_t0
@@ -1947,11 +1950,12 @@ async def apply_unified_turn_live(
     # ambiguous clarify). Runs before shadow + orch so classical never invents
     # steps when a retrieved plan exists.
     # Spoken conversational with no pending: skip — pure chat never needs pack
-    # plan retrieval on the critical path (~10–40ms DB).
-    _skip_retrieve_plan = (
-        bool(spoken_mode)
-        and str(reasoning_depth or "").strip().lower() == "conversational"
-        and not has_pending_family(task_state)
+    # plan retrieval on the critical path (~10–40ms DB). Operator tasks keep it.
+    _skip_retrieve_plan = should_skip_unified_live_guards(
+        spoken_mode=bool(spoken_mode),
+        reasoning_depth=str(reasoning_depth or ""),
+        has_pending=has_pending_family(task_state),
+        message=message or "",
     )
     if conversation_id and not _skip_retrieve_plan:
         from app.services.retrieve_plan_gate import (

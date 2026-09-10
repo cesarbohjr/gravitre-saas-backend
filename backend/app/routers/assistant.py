@@ -328,13 +328,16 @@ def _response_cache_key(org_id: str, question: str, conversation_id: str | None 
 
 
 def _response_cache_eligible(question: str) -> bool:
-    """Confirm/decline turns are conversation-state dependent — never cache them."""
+    """Confirm/decline and real operator tasks must never skip live reasoning."""
     from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
+    from app.services.operator_task_intent import looks_like_operator_task
 
     text = (question or "").strip()
     if not text:
         return False
     if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
+        return False
+    if looks_like_operator_task(text):
         return False
     return True
 
@@ -761,11 +764,11 @@ def _build_stream(
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
-        if suggestions:
-            yield assistant_event_to_sse_line(sse_suggestions(suggestions))
-            if _response_cache_eligible(user_text):
-                cache_key = _response_cache_key(org_id, user_text, conversation_id)
-                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+            if suggestions:
+                yield assistant_event_to_sse_line(sse_suggestions(suggestions))
+                if not spoken_mode and _response_cache_eligible(user_text):
+                    cache_key = _response_cache_key(org_id, user_text, conversation_id)
+                    _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
 
         yield sse_done()
 
@@ -905,7 +908,8 @@ async def assistant_chat(
     cache_key = _response_cache_key(org_id, last_user, conversation_id=(body.conversation_id or "").strip() or None)
     cached = _RESPONSE_CACHE.get(cache_key)
     if (
-        _response_cache_eligible(last_user)
+        not bool(getattr(body, "spoken_mode", False))
+        and _response_cache_eligible(last_user)
         and cached
         and time.time() - cached[0] < _RESPONSE_CACHE_TTL
     ):

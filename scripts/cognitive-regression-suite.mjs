@@ -199,6 +199,10 @@ mustContain(
       "tests/services/test_council_service.py",
       "tests/services/test_cognitive_turn_kernel.py",
       "tests/services/test_cognitive_evidence_envelope.py",
+      "tests/services/test_frontend_ia_nav_faq.py",
+      "tests/services/test_operator_task_intent.py",
+      "tests/services/test_text_voice_task_execution_parity.py",
+      "tests/services/test_conversational_turn_gate.py",
     ]
     const env = {
       ...process.env,

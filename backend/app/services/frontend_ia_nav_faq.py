@@ -12,19 +12,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.operator_task_intent import looks_like_operator_task
+
 # Long connector/setup prompts are never sidebar FAQs unless they name the nav.
 _MAX_FAQ_CHARS_WITHOUT_NAV = 800
-_OPERATOR_TASK_HINTS = (
-    "google ads",
-    "googleads",
-    "don't execute",
-    "do not execute",
-    "without my approval",
-    "once i approve",
-    "set it up in",
-    "create four campaigns",
-    "campaign strategy",
-)
 
 _ACTIVITY_HINTS = (
     "completed work",
@@ -105,7 +96,7 @@ def match_frontend_ia_nav_faq(message: str) -> dict[str, Any] | None:
         return None
     if len(text) > _MAX_FAQ_CHARS_WITHOUT_NAV and not _has_any(text, _STRONG_NAV):
         return None
-    if _has_any(text, _OPERATOR_TASK_HINTS) and not _has_any(text, _STRONG_NAV):
+    if looks_like_operator_task(text) and not _has_any(text, _STRONG_NAV):
         return None
     # Prefer specific hubs before generic "sidebar" chatter.
     if _has_any(text, _ACTIVITY_HINTS) and _has_any(text, _NAV_INTENT):

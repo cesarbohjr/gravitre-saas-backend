@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Live chat IA battery — novice path questions across four domains.
+"""Live typed vs spoken task-execution parity.
 
-Domains: Activity, Agents, Settings, Intelligence.
-PASS requires assistant text to mention the consolidated destination (not retired peers).
+Posts the same operator requests twice to /api/assistant/chat (spoken_mode
+false vs true) on the isolated conversation org. Native Pipecat STT is not
+required: in-app voice already uses this spoken_mode flag, and Pipecat uses
+execute_task_streaming(spoken_mode=True) with the same kernel.
 
-Uses isolated conversation test org. Exit 0 = all cases ok; 1 = fail; 2 = tip mismatch.
+Exit 0 = gates match (no FAQ/SEO canned hijack; both reach plan/approval or
+clarify). Exit 1 = fail. Exit 2 = tip mismatch.
 """
 from __future__ import annotations
 
@@ -31,51 +34,21 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
-OUT = ROOT / "docs" / "delivery" / "frontend-ia-chat-battery-live.json"
-CHAT_TIMEOUT = 120.0
+OUT = ROOT / "docs" / "delivery" / "text-voice-task-execution-parity-live.json"
+CHAT_TIMEOUT = 180.0
 EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
+
+FAQ_HIJACK = [
+    "enterprise, federation, and environments",
+    "not separate primary sidebar items",
+    "settings → admin",
+]
+SEO_CANNED = "organic traffic growth, fixing a ranking drop"
 
 CASES: list[dict[str, Any]] = [
     {
-        "id": "activity",
-        "message": (
-            "I'm new here. Where do I look up completed workflow work and failure alerts "
-            "in the app navigation? Name the primary page."
-        ),
-        "must_include_any": ["activity", "/activity"],
-        "must_not_include_any": ["/outcomes", "multi-agent run as top", "failure alerts as a separate top"],
-    },
-    {
-        "id": "agents",
-        "message": (
-            "Where should I go to manage my AI agents, multi-agent runs, and agent training? "
-            "Name the primary navigation destination."
-        ),
-        "must_include_any": ["agents", "/agents"],
-        "must_not_include_any": ["/intelligence/agents", "agent intelligence"],
-    },
-    {
-        "id": "settings",
-        "message": (
-            "Product UI question only (no tools): In the Gravitre sidebar, which "
-            "primary nav item holds Enterprise, Federation, and Environments? "
-            "Reply with the hub name and that they are under Admin."
-        ),
-        "must_include_any": ["settings", "/settings"],
-        "must_not_include_any": [],
-    },
-    {
-        "id": "intelligence",
-        "message": (
-            "Product UI question only (no tools): In the Gravitre sidebar, which "
-            "primary hub holds operational metrics, ROI reports, and learning "
-            "signals? Reply with one hub name."
-        ),
-        "must_include_any": ["intelligence", "/intelligence"],
-        "must_not_include_any": [],
-    },
-    {
-        "id": "google_ads_not_settings_faq",
+        "id": "google_ads_campaign_brief",
+        "kind": "multi_param_write",
         "message": (
             "I have a Google Ads campaign strategy ready to go live. Set it up in "
             "Google Ads exactly as specified below, and don't execute anything "
@@ -86,32 +59,23 @@ CASES: list[dict[str, Any]] = [
             "and once it's live, show me where I can verify each campaign actually "
             "exists in my real Google Ads account, not just that Gravitre says it worked."
         ),
-        "must_include_any": [],
-        "must_not_include_any": [
-            "Enterprise, Federation, and Environments",
-            "not separate primary sidebar items",
-            "Settings → Admin",
-        ],
+        "must_not": FAQ_HIJACK + [SEO_CANNED],
+        "task_needles": ["plan", "approv", "connect", "google ads", "campaign"],
     },
     {
-        "id": "google_ads_not_settings_faq_spoken",
-        "spoken_mode": True,
-        "message": (
-            "I have a Google Ads campaign strategy ready to go live. Set it up in "
-            "Google Ads exactly as specified below, and don't execute anything "
-            "without my approval first. Create four campaigns including IT / "
-            "Security Ops for shadow AI in the enterprise and an enterprise AI agent "
-            "management platform. Before you create anything, check that my Google Ads "
-            "account is connected, show me the complete plan campaign by campaign, "
-            "and once it's live, show me where I can verify each campaign actually "
-            "exists in my real Google Ads account, not just that Gravitre says it worked."
-        ),
-        "must_include_any": [],
-        "must_not_include_any": [
-            "Enterprise, Federation, and Environments",
-            "not separate primary sidebar items",
-            "Settings → Admin",
-        ],
+        "id": "connector_lookup",
+        "kind": "connector_lookup",
+        "message": "Is my Google Ads account connected, and what access does it currently have?",
+        "must_not": FAQ_HIJACK + [SEO_CANNED],
+        "task_needles": ["connect", "google ads", "account", "access", "not connected"],
+    },
+    {
+        "id": "ambiguous_seo_open",
+        "kind": "clarifying_question",
+        "message": "help me improve our SEO",
+        "must_not": FAQ_HIJACK,
+        "task_needles": ["?"],
+        "allow_canned_clarify": True,
     },
 ]
 
@@ -144,6 +108,9 @@ def load_env() -> dict[str, str]:
 def parse_sse(raw: str) -> dict[str, Any]:
     texts: list[str] = []
     errors: list[str] = []
+    tools: list[str] = []
+    reasoning_depth = None
+    spoken_mode = None
     for block in re.split(r"\n\n+", raw):
         data_lines = [ln[5:].lstrip() for ln in block.splitlines() if ln.startswith("data:")]
         if not data_lines:
@@ -155,31 +122,44 @@ def parse_sse(raw: str) -> dict[str, Any]:
             o = json.loads(payload)
         except json.JSONDecodeError:
             continue
-        if o.get("type") == "text-delta":
+        typ = o.get("type")
+        if typ == "text-delta":
             texts.append(str(o.get("delta") or ""))
-        if o.get("type") == "error":
+        if typ == "error":
             errors.append(str(o.get("errorText") or o.get("error") or "error"))
-    return {"assistant": "".join(texts).strip(), "errors": errors}
-
-
-def score_case(case: dict[str, Any], assistant: str) -> dict[str, Any]:
-    text = assistant.lower()
-    include = list(case.get("must_include_any") or [])
-    ok_any = True if not include else any(tok.lower() in text for tok in include)
-    forbidden = list(case.get("must_not_include_any") or [])
-    forbidden_hits = [tok for tok in forbidden if tok.lower() in text]
-    # Soften must_not — only fail on hard path tokens unless this is a negative case.
-    hard_bad = [b for b in forbidden_hits if b.startswith("/")]
-    if not include:
-        hard_bad = forbidden_hits
-    passed = ok_any and not hard_bad
+        if typ == "tool-input-available":
+            name = str(o.get("toolName") or o.get("toolCallId") or "")
+            if name:
+                tools.append(name)
+        if typ in {"data-intelligence", "data-routing"} or (
+            isinstance(o.get("data"), dict) and "reasoningDepth" in str(o.get("data"))
+        ):
+            data = o.get("data") if isinstance(o.get("data"), dict) else o
+            if isinstance(data, dict):
+                if data.get("reasoningDepth") is not None:
+                    reasoning_depth = data.get("reasoningDepth")
+                routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
+                if routing.get("reasoningDepth") is not None:
+                    reasoning_depth = routing.get("reasoningDepth")
+                if data.get("spokenMode") is not None:
+                    spoken_mode = data.get("spokenMode")
     return {
-        "passed": passed,
-        "matched_include": ok_any,
-        "hard_bad_hits": hard_bad,
-        "forbidden_hits": forbidden_hits,
-        "verdict": "PASS" if passed else "FAIL",
+        "assistant": "".join(texts).strip(),
+        "errors": errors,
+        "tools": tools,
+        "reasoning_depth": reasoning_depth,
+        "spoken_mode": spoken_mode,
     }
+
+
+def hijacked(text: str, must_not: list[str]) -> list[str]:
+    lowered = (text or "").lower()
+    return [tok for tok in must_not if tok.lower() in lowered]
+
+
+def taskish(text: str, needles: list[str]) -> bool:
+    lowered = (text or "").lower()
+    return any(tok.lower() in lowered for tok in needles)
 
 
 async def run_turn(
@@ -188,12 +168,12 @@ async def run_turn(
     org_id: str,
     message: str,
     *,
-    spoken_mode: bool = False,
+    spoken_mode: bool,
 ) -> dict[str, Any]:
     cr = await client.post(
         f"{BASE}/api/conversations",
         headers={k: v for k, v in headers.items() if k != "Accept"},
-        json={"title": f"ia-battery-{uuid.uuid4().hex[:8]}"},
+        json={"title": f"tv-parity-{uuid.uuid4().hex[:8]}"},
         timeout=60,
     )
     cr.raise_for_status()
@@ -221,8 +201,51 @@ async def run_turn(
     return {
         "conversation_id": conv_id,
         "http_status": status,
+        "spoken_mode": spoken_mode,
         "assistant": parsed.get("assistant") or "",
         "stream_errors": parsed.get("errors") or [],
+        "tools": parsed.get("tools") or [],
+        "reasoning_depth": parsed.get("reasoning_depth"),
+    }
+
+
+def compare_pair(case: dict[str, Any], typed: dict[str, Any], spoken: dict[str, Any]) -> dict[str, Any]:
+    must_not = list(case.get("must_not") or [])
+    needles = list(case.get("task_needles") or [])
+    typed_text = typed.get("assistant") or ""
+    spoken_text = spoken.get("assistant") or ""
+    typed_hijack = hijacked(typed_text, must_not)
+    spoken_hijack = hijacked(spoken_text, must_not)
+    typed_ok = bool(typed_text) and not typed_hijack and taskish(typed_text, needles)
+    spoken_ok = bool(spoken_text) and not spoken_hijack and taskish(spoken_text, needles)
+    typed_tools = sorted({str(t) for t in typed.get("tools") or []})
+    spoken_tools = sorted({str(t) for t in spoken.get("tools") or []})
+    tools_match = typed_tools == spoken_tools
+    both_reached = typed_ok and spoken_ok
+    # Tools may be empty on plan-first turns; that is still parity if both empty.
+    passed = both_reached and (tools_match or (not typed_tools and not spoken_tools) or tools_match)
+    divergences: list[str] = []
+    if typed_hijack:
+        divergences.append(f"typed_hijack={typed_hijack}")
+    if spoken_hijack:
+        divergences.append(f"spoken_hijack={spoken_hijack}")
+    if not typed_ok:
+        divergences.append("typed_did_not_reach_task_language")
+    if not spoken_ok:
+        divergences.append("spoken_did_not_reach_task_language")
+    if typed_tools != spoken_tools:
+        divergences.append(f"tools typed={typed_tools} spoken={spoken_tools}")
+    return {
+        "passed": both_reached and not typed_hijack and not spoken_hijack,
+        "typed_ok": typed_ok,
+        "spoken_ok": spoken_ok,
+        "typed_hijack": typed_hijack,
+        "spoken_hijack": spoken_hijack,
+        "typed_tools": typed_tools,
+        "spoken_tools": spoken_tools,
+        "tools_match": typed_tools == spoken_tools,
+        "divergences": divergences,
+        "verdict": "PASS" if both_reached and not typed_hijack and not spoken_hijack else "FAIL",
     }
 
 
@@ -256,12 +279,17 @@ async def main() -> int:
     }
 
     report: dict[str, Any] = {
-        "probe": "frontend_ia_chat_battery_live",
+        "probe": "text_voice_task_execution_parity_live",
         "started_at": utcnow(),
         "base": BASE,
         "org_id": org_id,
         "expect_sha": EXPECT_SHA or None,
         "cases": [],
+        "note": (
+            "spoken_mode=true on /api/assistant/chat is the in-app voice path. "
+            "Native Pipecat also calls execute_task_streaming(spoken_mode=True); "
+            "it never hits assistant.py FAQ/cache."
+        ),
     }
 
     async with httpx.AsyncClient() as client:
@@ -278,16 +306,18 @@ async def main() -> int:
             return 2
 
         for case in CASES:
-            turn = await run_turn(
-                client,
-                headers,
-                org_id,
-                case["message"],
-                spoken_mode=bool(case.get("spoken_mode")),
+            typed = await run_turn(client, headers, org_id, case["message"], spoken_mode=False)
+            spoken = await run_turn(client, headers, org_id, case["message"], spoken_mode=True)
+            scored = compare_pair(case, typed, spoken)
+            report["cases"].append(
+                {
+                    "id": case["id"],
+                    "kind": case["kind"],
+                    "typed": typed,
+                    "spoken": spoken,
+                    **scored,
+                }
             )
-            scored = score_case(case, turn.get("assistant") or "")
-            row = {**case, **turn, **scored}
-            report["cases"].append(row)
 
     passed = sum(1 for c in report["cases"] if c.get("passed"))
     total = len(report["cases"])
@@ -295,14 +325,12 @@ async def main() -> int:
     report["total"] = total
     report["finished_at"] = utcnow()
     if passed == total:
-        report["verdict"] = (
-            f"PASS — {passed}/{total} IA nav answers plus Google Ads operator task "
-            "typed and spoken did not hit the Settings FAQ canned reply"
-        )
+        report["verdict"] = f"PASS — {passed}/{total} typed vs spoken task-execution pairs matched gates"
     else:
         failed_ids = [c["id"] for c in report["cases"] if not c.get("passed")]
         report["verdict"] = f"FAIL — {passed}/{total}; failed={failed_ids}"
 
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps({"verdict": report["verdict"], "passed": passed, "total": total}, indent=2))
     return 0 if passed == total else 1

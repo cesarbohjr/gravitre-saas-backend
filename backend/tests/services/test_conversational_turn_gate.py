@@ -151,6 +151,19 @@ def test_long_operator_task_is_not_ambiguous_open_or_venting_canned():
     assert is_human_moment_venting_no_ask(message) is False
 
 
+def test_short_seo_plus_google_ads_falls_through_to_reasoning():
+    """FAQ-class mutation: under the 280-char cap, extra task language must not canned-clarify."""
+    from app.services.conversational_turn_gate import (
+        ambiguous_open_clarify_reply,
+        is_human_moment_venting_no_ask,
+    )
+
+    message = "help me improve our SEO for the Google Ads campaigns we're about to launch"
+    assert len(message) <= 280
+    assert ambiguous_open_clarify_reply(message) is None
+    assert is_human_moment_venting_no_ask(message) is False
+
+
 @pytest.mark.parametrize(
     "message,needle",
     [

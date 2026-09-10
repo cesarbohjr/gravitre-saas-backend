@@ -82,6 +82,7 @@ _DATA_TASK_RE = re.compile(
     r"how\s+are\s+the\s+\w+|how(?:'s|\s+is)\s+(?:our|the|my)\s+\w+|"
     r"show\s+me|look\s+up|search|find|list|create|send|post|update|"
     r"hubspot|apollo|slack|gmail|salesforce|asana|notion|"
+    r"google\s*ads|adwords|campaigns?|"
     r"workflow|run\s+history|connector|approve|execute|"
     r"how\s+many|status\s+of|pull\s+(?:the\s+)?|"
     r"check\s+on|draft|enrich"
@@ -133,11 +134,14 @@ def heuristic_turn_shape(message: str) -> ConversationalGateDecision | None:
     # Rule 10: frustration/urgency with no explicit ask → conversational first.
     # Do not treat problem-description words (pipeline, traffic, deals) as a tool
     # request when the user is venting without "show me / pull / please / check…".
+    from app.services.operator_task_intent import looks_like_operator_task
+
     if (
         is_vent
         and not asks_for_help
         and not _looks_mixed(text)
         and len(text) <= _MAX_CANNED_REPLY_CHARS
+        and not looks_like_operator_task(text)
     ):
         return ConversationalGateDecision(
             shape="conversational",
@@ -293,8 +297,12 @@ def _declined_to_task_shaped(message: str) -> ConversationalGateDecision:
 
 def is_human_moment_venting_no_ask(message: str) -> bool:
     """True when the message is frustration/urgency without an explicit tool ask."""
+    from app.services.operator_task_intent import looks_like_operator_task
+
     text = (message or "").strip()
     if not text or len(text) > _MAX_CANNED_REPLY_CHARS:
+        return False
+    if looks_like_operator_task(text):
         return False
     return bool(_VENTING_RE.search(text)) and not bool(_EXPLICIT_TASK_ASK_RE.search(text))
 
@@ -338,12 +346,23 @@ _AMBIGUOUS_OPEN_CLARIFY: tuple[tuple[re.Pattern[str], str], ...] = (
 
 def ambiguous_open_clarify_reply(message: str) -> str | None:
     """Deterministic clarify for known ambiguous opens (rule 1). None if not matched."""
+    from app.services.operator_task_intent import looks_like_operator_task
+
     text = (message or "").strip()
     if not text or len(text) > _MAX_CANNED_REPLY_CHARS:
         return None
+    if looks_like_operator_task(text):
+        return None
     for pattern, reply in _AMBIGUOUS_OPEN_CLARIFY:
-        if pattern.search(text):
-            return reply
+        match = pattern.search(text)
+        if not match:
+            continue
+        remainder = text[match.end() :].strip(" .?!,;:")
+        # Short tails like "process" are part of the known open. Extra clauses
+        # (the FAQ-class Google Ads continuation) fall through to reasoning.
+        if remainder and (looks_like_operator_task(remainder) or len(remainder) > 48):
+            return None
+        return reply
     return None
 
 
@@ -384,8 +403,12 @@ _DEFINITION_BRIEF: tuple[tuple[re.Pattern[str], str], ...] = (
 
 def definition_brief_reply(message: str) -> str | None:
     """Deterministic brief definition for simple what's-X asks (rule 9)."""
+    from app.services.operator_task_intent import looks_like_operator_task
+
     text = (message or "").strip()
     if not text:
+        return None
+    if looks_like_operator_task(text):
         return None
     for pattern, reply in _DEFINITION_BRIEF:
         if pattern.search(text):

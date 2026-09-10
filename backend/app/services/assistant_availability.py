@@ -126,6 +126,10 @@ def should_short_circuit_before_generation(
     settings: Settings,
     permitted_registry: set[str] | frozenset[str] | list[str] | None,
 ) -> bool:
+    from app.services.operator_task_intent import looks_like_operator_task
+
+    if looks_like_operator_task(query):
+        return False
     if len((query or "").strip()) > 400:
         return False
     if not is_external_or_general_question(query):
