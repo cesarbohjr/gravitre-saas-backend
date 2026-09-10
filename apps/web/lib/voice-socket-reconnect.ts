@@ -93,6 +93,28 @@ export function decideSocketFailure(ctx: SocketFailureContext): ReconnectDecisio
  * token, no seat, org disabled, pipecat off. Retrying cannot change the answer and
  * only delays telling the user, so these bypass the reconnect ladder entirely.
  */
+/** Shown only when the socket died without the server telling us anything. */
+export const VOICE_GENERIC_FAILURE_MESSAGE = "Voice connection interrupted"
+
+/**
+ * What to tell the user once the reconnect ladder is spent.
+ *
+ * Retryable server refusals (notably `service_failure` — every STT provider
+ * failed to start) arrive as an error frame carrying a real explanation, and are
+ * then followed by a clean close. The old code surfaced the generic string at the
+ * end of the ladder, which overwrote that explanation with strictly less
+ * information: the user watched an accurate message be replaced by
+ * "Voice connection interrupted" three retries later.
+ *
+ * Prefer whatever the server actually said. Fall back to the generic text only
+ * when the socket died without explaining itself, which is the one case where
+ * "interrupted" is the honest description.
+ */
+export function resolveFailureMessage(lastServerError?: string | null): string {
+  const trimmed = (lastServerError ?? "").trim()
+  return trimmed || VOICE_GENERIC_FAILURE_MESSAGE
+}
+
 export function isTerminalServerErrorClass(errorClass: unknown): boolean {
   return (
     typeof errorClass === "string" &&

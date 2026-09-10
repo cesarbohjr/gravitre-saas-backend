@@ -16,6 +16,7 @@ import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
 import {
   decideSocketFailure,
   isTerminalServerErrorClass,
+  resolveFailureMessage,
 } from "@/lib/voice-socket-reconnect"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
@@ -213,6 +214,11 @@ export function useVoiceDuplexSession(options: Options) {
   const teardownMicRef = useRef<(() => void) | null>(null)
   // Mute survives a reconnect: it is the user's standing choice, not session state.
   const pendingMuteRestoreRef = useRef(false)
+  // Retryable refusals (service_failure) explain themselves in an error frame and
+  // are then followed by a close. Hold that explanation so the end of the ladder
+  // can repeat it instead of replacing it with the generic string.
+  const lastServerErrorRef = useRef<string | null>(null)
+  const lastServerErrorBillingRef = useRef(false)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmNextTimeRef = useRef(0)
@@ -531,7 +537,10 @@ export function useVoiceDuplexSession(options: Options) {
     }
 
     setPresence("disconnected")
-    optsRef.current.onError?.("Voice connection interrupted")
+    optsRef.current.onError?.(
+      resolveFailureMessage(lastServerErrorRef.current),
+      lastServerErrorBillingRef.current,
+    )
   }, [cancelReconnect])
 
   const teardownMic = useCallback(() => {
@@ -985,6 +994,10 @@ export function useVoiceDuplexSession(options: Options) {
         // A clean open retires the retry ladder, so a later unrelated blip gets its
         // own full budget instead of inheriting a spent one.
         reconnectAttemptRef.current = 0
+        // A live socket also retires the previous attempt's explanation; keeping
+        // it would let a stale reason surface after an unrelated later failure.
+        lastServerErrorRef.current = null
+        lastServerErrorBillingRef.current = false
         setIsActive(true)
         setPresence("listening")
       }
@@ -1011,6 +1024,12 @@ export function useVoiceDuplexSession(options: Options) {
           if (isTerminalServerErrorClass(msg.error_class)) {
             sessionWantedRef.current = false
             cancelReconnect()
+          } else {
+            // Retryable, so a close is coming and the ladder will run. Keep the
+            // reason so the final toast repeats it rather than degrading to
+            // "Voice connection interrupted".
+            lastServerErrorRef.current = err
+            lastServerErrorBillingRef.current = billing
           }
           optsRef.current.onError?.(err, billing)
           setPresence("error")

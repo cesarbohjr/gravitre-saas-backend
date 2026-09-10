@@ -74,7 +74,14 @@ async function renderHelper() {
   })
 }
 
-describe("GravitreAIHelper — mobile offset does not collide with MobileBottomNav (B7)", () => {
+/**
+ * Timeout raised from the 5s default. The first case pays for jsdom setup plus a
+ * `vi.resetModules()` dynamic re-import: ~2.5s alone, but observed failing twice
+ * in four full-suite runs when competing with the other 75 files. That was a
+ * timeout, never an assertion failure, so the fix is a realistic budget rather
+ * than a weaker assertion.
+ */
+describe("GravitreAIHelper — mobile offset does not collide with MobileBottomNav (B7)", { timeout: 20_000 }, () => {
   it("carries a max-md offset that clears MobileBottomNav's 56px bar + safe-area inset + a gap", async () => {
     await renderHelper()
     const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement

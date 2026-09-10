@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { WebSocket, WebSocketServer } from "ws"
 import {
+  VOICE_GENERIC_FAILURE_MESSAGE,
   VOICE_RECONNECT_MAX_ATTEMPTS,
   decideSocketFailure,
   isTerminalServerErrorClass,
   reconnectDelayMs,
+  resolveFailureMessage,
 } from "@/lib/voice-socket-reconnect"
 
 /**
@@ -277,5 +279,31 @@ describe("reconnect against real sockets", () => {
     })
 
     expect(surfaced).toEqual([])
+  })
+})
+
+describe("resolveFailureMessage", () => {
+  it("repeats what the server said rather than the generic string", () => {
+    // The defect this pins: `service_failure` (every STT provider failed to start)
+    // is retryable, so the server's explanation arrived, the ladder ran, and the
+    // final toast replaced an accurate message with strictly less information.
+    expect(resolveFailureMessage("Deepgram flux failed to start")).toBe(
+      "Deepgram flux failed to start",
+    )
+  })
+
+  it("falls back to the generic string when the socket died silently", () => {
+    expect(resolveFailureMessage(null)).toBe(VOICE_GENERIC_FAILURE_MESSAGE)
+    expect(resolveFailureMessage(undefined)).toBe(VOICE_GENERIC_FAILURE_MESSAGE)
+  })
+
+  it("treats a blank or whitespace-only server message as no message", () => {
+    expect(resolveFailureMessage("")).toBe(VOICE_GENERIC_FAILURE_MESSAGE)
+    expect(resolveFailureMessage("   \n")).toBe(VOICE_GENERIC_FAILURE_MESSAGE)
+  })
+
+  it("keeps service_failure retryable, which is why the ladder runs at all", () => {
+    expect(isTerminalServerErrorClass("service_failure")).toBe(false)
+    expect(isTerminalServerErrorClass("auth")).toBe(true)
   })
 })
