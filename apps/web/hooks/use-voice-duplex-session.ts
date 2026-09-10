@@ -13,6 +13,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analyser"
 import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
+import {
+  decideSocketFailure,
+  isTerminalServerErrorClass,
+} from "@/lib/voice-socket-reconnect"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
   buildPipecatVoiceWsUrl,
@@ -190,6 +194,25 @@ export function useVoiceDuplexSession(options: Options) {
   const marksRef = useRef<Record<string, number>>({})
   const activeRef = useRef(false)
   const micMutedRef = useRef(false)
+  // Set before any deliberate ws.close(). Closing a CONNECTING socket fires
+  // `onerror` (measured -- see scripts/probe-ws-error-conditions.mjs), which is how
+  // a user-requested hangup surfaced as "Voice connection interrupted".
+  const intentionalCloseRef = useRef(false)
+  const reconnectAttemptRef = useRef(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const socketOpenedRef = useRef(false)
+  // One failure can raise both `error` and `close`; this collapses them to a single
+  // decision so a retry is not scheduled twice.
+  const failureHandledRef = useRef(false)
+  // The user wants a session. Distinct from activeRef, which only turns true once
+  // the socket opens -- so a refused first connect would otherwise look like nobody
+  // was waiting and be silently swallowed.
+  const sessionWantedRef = useRef(false)
+  // Re-entry points for a retry, assigned once the callbacks below exist.
+  const startPipecatRef = useRef<(() => Promise<void>) | null>(null)
+  const teardownMicRef = useRef<(() => void) | null>(null)
+  // Mute survives a reconnect: it is the user's standing choice, not session state.
+  const pendingMuteRestoreRef = useRef(false)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmNextTimeRef = useRef(0)
@@ -461,7 +484,61 @@ export function useVoiceDuplexSession(options: Options) {
     applyMicMuted(!micMutedRef.current)
   }, [applyMicMuted])
 
+  const cancelReconnect = useCallback(() => {
+    if (reconnectTimerRef.current != null) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+  }, [])
+
+  /**
+   * Single decision point for a socket that errored or closed.
+   *
+   * A deliberate hangup is ignored outright -- that is the "Voice connection
+   * interrupted" fix. A genuine fault is retried a bounded number of times before
+   * the user is told anything.
+   */
+  const handlePipecatSocketFailure = useCallback(() => {
+    if (failureHandledRef.current) return
+    failureHandledRef.current = true
+
+    const decision = decideSocketFailure({
+      intentional: intentionalCloseRef.current,
+      sessionActive: sessionWantedRef.current,
+      attempt: reconnectAttemptRef.current,
+      everOpened: socketOpenedRef.current,
+    })
+
+    if (decision.action === "ignore") return
+
+    if (decision.action === "reconnect") {
+      reconnectAttemptRef.current = decision.attempt
+      // Presence is left alone here on purpose: retries are sub-second, and
+      // flashing "disconnected" for a blip the user never notices is its own bug.
+      cancelReconnect()
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null
+        if (!sessionWantedRef.current) return
+        // Release the dead socket, mic and AudioContext first: startPipecat
+        // allocates fresh ones and would otherwise leak the old set every retry.
+        // Mute is the user's standing choice, so it survives the reconnect.
+        const wasMuted = micMutedRef.current
+        teardownMicRef.current?.()
+        pendingMuteRestoreRef.current = wasMuted
+        void startPipecatRef.current?.()
+      }, decision.delayMs)
+      return
+    }
+
+    setPresence("disconnected")
+    optsRef.current.onError?.("Voice connection interrupted")
+  }, [cancelReconnect])
+
   const teardownMic = useCallback(() => {
+    // Everything below is a deliberate teardown, so mark intent before closing the
+    // socket. Without this the close() below re-enters the failure handler.
+    intentionalCloseRef.current = true
+    cancelReconnect()
     stopRaf()
     stopMicTelemetry()
     emitMicDiagnostics("session_end")
@@ -497,7 +574,7 @@ export function useVoiceDuplexSession(options: Options) {
     // A new session must never start silently muted.
     micMutedRef.current = false
     setMicMuted(false)
-  }, [emitMicDiagnostics, stopMicTelemetry])
+  }, [cancelReconnect, emitMicDiagnostics, stopMicTelemetry])
 
   const bargeIn = useCallback(async () => {
     const t0 = performance.now()
@@ -881,6 +958,11 @@ export function useVoiceDuplexSession(options: Options) {
       pcmNextTimeRef.current = 0
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+      // Re-apply a mute the user set before a reconnect dropped the old track.
+      if (pendingMuteRestoreRef.current) {
+        pendingMuteRestoreRef.current = false
+        applyMicMuted(true)
+      }
       analyserRef.current = createVoiceAnalyser()
       analyserRef.current.connectStream(stream)
       startRaf()
@@ -888,11 +970,21 @@ export function useVoiceDuplexSession(options: Options) {
 
       const ws = new WebSocket(built.url)
       wsRef.current = ws
+      // Per-attempt state. `intentionalCloseRef` must be cleared here: a previous
+      // teardown (including the one a reconnect performs) leaves it set, which would
+      // make the next genuine fault look deliberate and be silently ignored.
+      intentionalCloseRef.current = false
+      failureHandledRef.current = false
+      socketOpenedRef.current = false
       assistantTextRef.current = ""
       lastUserFinalRef.current = ""
 
       ws.onopen = () => {
         activeRef.current = true
+        socketOpenedRef.current = true
+        // A clean open retires the retry ladder, so a later unrelated blip gets its
+        // own full budget instead of inheriting a spent one.
+        reconnectAttemptRef.current = 0
         setIsActive(true)
         setPresence("listening")
       }
@@ -913,6 +1005,13 @@ export function useVoiceDuplexSession(options: Options) {
         if (kind === "error") {
           const err = String(msg.error || "Voice session failed")
           const billing = String(msg.error_class || "") === "billing"
+          // A refusal (bad token, no seat, voice off) is settled: the close that
+          // follows must not be retried, or the user waits out the whole ladder
+          // before seeing an answer that will not change.
+          if (isTerminalServerErrorClass(msg.error_class)) {
+            sessionWantedRef.current = false
+            cancelReconnect()
+          }
           optsRef.current.onError?.(err, billing)
           setPresence("error")
           return
@@ -963,13 +1062,19 @@ export function useVoiceDuplexSession(options: Options) {
         }
       }
 
-      ws.onerror = () => {
-        setPresence("disconnected")
-        optsRef.current.onError?.("Voice connection interrupted")
-      }
+      // error and close share one handler because which of them fires is not a
+      // reliable signal (Node's ws and browsers disagree on unclean teardown), and
+      // both can fire for a single failure. Intent decides, and this runs once.
+      ws.onerror = () => handlePipecatSocketFailure()
       ws.onclose = () => {
-        if (activeRef.current) setPresence("disconnected")
-        if (lastUserFinalRef.current || assistantTextRef.current) {
+        const wasIntentional = intentionalCloseRef.current
+        handlePipecatSocketFailure()
+        // A completed turn is still worth reporting when the user hung up; on a
+        // failure being retried it would end the turn mid-reconnect.
+        if (
+          (wasIntentional || reconnectTimerRef.current == null) &&
+          (lastUserFinalRef.current || assistantTextRef.current)
+        ) {
           optsRef.current.onTurnComplete?.({
             userText: lastUserFinalRef.current,
             assistantText: assistantTextRef.current.trim(),
@@ -1008,6 +1113,9 @@ export function useVoiceDuplexSession(options: Options) {
       })
       processorRef.current = micProcessorRef.current.processor
     } catch (err) {
+      // A throw here is a local setup failure (mic permission, AudioContext), not a
+      // transport fault, so it is reported directly and never retried.
+      sessionWantedRef.current = false
       teardownMic()
       activeRef.current = false
       setIsActive(false)
@@ -1016,7 +1124,12 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [bargeIn, enqueuePcm, setupVoiceMicrophone, startMicTelemetry, teardownMic])
+  }, [applyMicMuted, bargeIn, cancelReconnect, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, teardownMic])
+
+  // Assigned after definition so handlePipecatSocketFailure can re-enter these
+  // without a circular useCallback dependency.
+  startPipecatRef.current = startPipecat
+  teardownMicRef.current = teardownMic
 
   const start = useCallback(async () => {
     if (activeRef.current) return
@@ -1029,6 +1142,12 @@ export function useVoiceDuplexSession(options: Options) {
     // nothing. This is the single top-level safety net; the inner try below (mic +
     // WebSocket setup) still owns its own specific error messaging and is unchanged.
     try {
+      // The user has asked for a session. Set before any await so a connect that
+      // fails before the socket opens is still recognised as wanted, and retried,
+      // rather than read as an orphaned failure and dropped in silence.
+      sessionWantedRef.current = true
+      reconnectAttemptRef.current = 0
+      pendingMuteRestoreRef.current = false
       await unlockVoicePlayback()
       marksRef.current = { mic_open: performance.now() }
       turnStateRef.current = null
@@ -1098,6 +1217,15 @@ export function useVoiceDuplexSession(options: Options) {
           })
         }
         ws.onerror = () => {
+          // Same intent guard as the Pipecat path: closing this socket while it is
+          // still CONNECTING raises `error`, and a hangup the user asked for must
+          // not be reported as a fault.
+          //
+          // No reconnect ladder here on purpose. This leg talks straight to Deepgram
+          // with a short-lived minted token, so a retry needs a fresh mint through
+          // start() rather than a socket re-dial. Pipecat is the production path
+          // (VOICE_PIPECAT_ENABLED=true); this is the legacy fallback.
+          if (intentionalCloseRef.current || !sessionWantedRef.current) return
           setPresence("disconnected")
           optsRef.current.onError?.("Voice connection interrupted")
         }
@@ -1145,6 +1273,11 @@ export function useVoiceDuplexSession(options: Options) {
   }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, setupVoiceMicrophone, startMicTelemetry, startPipecat, teardownMic])
 
   const stop = useCallback(() => {
+    // Clearing intent first is what makes the resulting ws.close() silent: the
+    // failure handler sees a session nobody is waiting on and neither retries nor
+    // toasts. This is the user-initiated half of the interrupted-toast fix.
+    sessionWantedRef.current = false
+    reconnectAttemptRef.current = 0
     activeRef.current = false
     setIsActive(false)
     abortRef.current?.abort()
@@ -1161,6 +1294,8 @@ export function useVoiceDuplexSession(options: Options) {
 
   useEffect(() => {
     return () => {
+      // Unmount is deliberate: no retry, no toast on the way out.
+      sessionWantedRef.current = false
       activeRef.current = false
       abortRef.current?.abort()
       stopPlayback()

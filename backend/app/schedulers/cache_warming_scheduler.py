@@ -23,9 +23,12 @@ async def _warm_org(org_id: str, settings: Settings) -> int:
     db = get_supabase_client(settings)
     clusters = (
         db.table("org_query_clusters")
-        .select("representative_queries, query_count")
+        # The column is member_query_count; there is no `query_count`. This select
+        # and order failed with 42703 on every scheduler tick, so cache warming has
+        # been a no-op the whole time it has been running.
+        .select("representative_queries, member_query_count")
         .eq("org_id", org_id)
-        .order("query_count", desc=True)
+        .order("member_query_count", desc=True)
         .limit(10)
         .execute()
         .data

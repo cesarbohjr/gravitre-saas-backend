@@ -54,7 +54,9 @@ class AIArchitectureStatusService:
             client.table("agent_memory_promotion_audit")
             .select("id", count="exact")
             .eq("org_id", org_id)
-            .eq("status", "pending")
+            # The column is status_at_decision; `status` does not exist, so this
+            # count raised 42703 rather than returning a number.
+            .eq("status_at_decision", "pending")
             .execute()
         )
         last_run = runs[0].get("completed_at") or runs[0].get("started_at") if runs else None
@@ -100,8 +102,17 @@ class AIArchitectureStatusService:
             client.table("agent_memory_promotion_audit")
             .select("id", count="exact")
             .eq("org_id", org_id)
-            .gte("created_at", since_7d)
-            .eq("status", "approved")
+            # decided_at / status_at_decision are the real column names.
+            #
+            # These are faithful renames of what the code asked for, chosen so this
+            # stops erroring without quietly changing what the dashboard counts. The
+            # value vocabulary is a separate, open question: `action` is the column
+            # constrained to promote/reject/rollback/expire, so "approved" here may
+            # be intended as action='promote'. The table is empty in production, so
+            # both readings currently count 0 -- flagged for product confirmation
+            # rather than guessed at.
+            .gte("decided_at", since_7d)
+            .eq("status_at_decision", "approved")
             .execute()
         )
         intel_runs = (

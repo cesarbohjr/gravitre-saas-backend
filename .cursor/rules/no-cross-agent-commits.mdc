@@ -1,0 +1,38 @@
+# Never commit files you did not change
+
+Multiple agents work this repo concurrently in the **same worktree**, sharing one
+index. Two real collisions were observed in a single session on 2026-09-10:
+
+1. An uncommitted edit to `apps/web/app/agents/[id]/chat/page.tsx` was clobbered
+   mid-session and had to be re-applied.
+2. Commit `7debe9c0` ("Stop leaking internal chat status labels to users") swept in
+   ten files from a different agent's voice/schema work, because the index already
+   held them when `git commit` ran.
+
+Nobody is at fault for a race. Committing files you never touched is avoidable.
+
+## Rules
+
+1. **Never** run `git add -A`, `git add .`, `git commit -a`, or `git commit` with no
+   pathspec. The index is shared; it is not a record of your work.
+2. Commit with explicit paths every time:
+   `git commit -F <msgfile> -- <path1> <path2> ...`
+   This commits those paths from the working tree and leaves the rest of the index
+   untouched, so a concurrent agent's staging survives.
+3. Use `git commit -F <file>` for multi-line messages. On PowerShell, a multi-line
+   `-m` string is split into pathspecs and the commit fails confusingly.
+4. **Never** `git reset`, `git checkout -- .`, `git stash`, or `git restore` across
+   paths you do not own. That silently destroys another agent's uncommitted work.
+5. Before editing, `git status --short` and note files already modified. If a file
+   you need is already dirty and not yours, say so in your report rather than
+   overwriting it or "fixing" its failing test to match your guess at intent.
+6. After committing, re-verify your own files landed
+   (`git show HEAD:<path>`) — and, if a concurrent commit carried them, report the
+   attribution plainly instead of silently accepting the wrong commit message.
+
+## PowerShell path gotcha
+
+`[id]` is a wildcard character class in PowerShell, so
+`Select-String -Path "app/agents/[id]/chat/page.tsx"` silently matches nothing and
+reads as "the file is missing". Use `-LiteralPath`, or the Grep tool. A false
+"my change was reverted" report was traced to exactly this.

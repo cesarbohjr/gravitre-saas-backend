@@ -113,7 +113,14 @@ def load_user_organizations(client: Client, user_id: str) -> list[dict[str, Any]
     try:
         orgs = (
             client.table("organizations")
-            .select("id, name, slug, logo_url, plan, created_at")
+            # `plan` is deliberately absent: no migration has ever defined it, so
+            # asking for it made PostgREST reject the entire select (42703). The
+            # except below swallowed that, which is why every org rendered as the
+            # literal string "Organization" instead of its name.
+            #
+            # logo_url is real as of 20260910000000; settings is still selected
+            # because enterprise branding writes a logo there too.
+            .select("id, name, slug, logo_url, settings, created_at")
             .in_("id", org_ids)
             .execute()
         )
@@ -124,13 +131,23 @@ def load_user_organizations(client: Client, user_id: str) -> list[dict[str, Any]
     rows: list[dict[str, Any]] = []
     for row in orgs.data or []:
         org_id = str(row.get("id"))
+        settings = row.get("settings") or {}
+        if not isinstance(settings, dict):
+            settings = {}
+        # Two writers, two homes: the settings logo route writes organizations.logo_url,
+        # enterprise branding writes settings.enterprise.branding.logoUrl. Prefer the
+        # column, fall back to branding, and report absence rather than a stand-in.
+        enterprise = settings.get("enterprise") if isinstance(settings.get("enterprise"), dict) else {}
+        branding = enterprise.get("branding") if isinstance(enterprise.get("branding"), dict) else {}
         rows.append(
             {
                 "id": org_id,
                 "name": row.get("name"),
                 "slug": row.get("slug"),
-                "logo_url": row.get("logo_url"),
-                "plan": row.get("plan"),
+                "logo_url": row.get("logo_url") or branding.get("logoUrl"),
+                # No `plan` anywhere in the schema or settings. Left as None rather
+                # than inventing a tier a customer could mistake for real.
+                "plan": settings.get("plan"),
                 "created_at": row.get("created_at"),
                 "role": roles_by_org.get(org_id, "member"),
             }
