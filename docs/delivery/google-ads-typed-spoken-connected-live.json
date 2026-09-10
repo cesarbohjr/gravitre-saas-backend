@@ -1,0 +1,75 @@
+{
+  "probe": "google_ads_typed_spoken_connected_live",
+  "started_at": "2026-09-10T18:36:50.330062+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "git_sha": "5da2fba96b15b383642722b9af298f8df9d69b09",
+  "google_ads_connected": true,
+  "google_ads_connectors": [
+    {
+      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+      "type": "google_ads",
+      "status": "healthy"
+    }
+  ],
+  "typed": {
+    "http_status": 200,
+    "assistant": "I'll create a draft workflow for **Problem Aware**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+    "pending_task": null,
+    "path": "assistant_chat_typed_agent",
+    "conversation_id": "8d65bb37-ff8a-44db-b49d-d53d2e944c3f",
+    "class": {
+      "safety_refuse": false,
+      "orchestration": false,
+      "step_count": null,
+      "approval": true,
+      "not_connected": false,
+      "faq": [],
+      "mentions_google_ads": false
+    },
+    "head": "I'll create a draft workflow for **Problem Aware**.\n\nReply **yes** to create it now, or tell me what to adjust."
+  },
+  "spoken": {
+    "http_status": 200,
+    "assistant": "I'll create a draft workflow for Problem Aware. Reply yes to create it now, or tell me what to adjust.",
+    "event_types": [
+      "voice.session.accepted",
+      "voice.session.started",
+      "voice.intelligence",
+      "voice.intelligence",
+      "voice.intelligence",
+      "voice.sse.text-start",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.sse.text-end",
+      "voice.intelligence",
+      "voice.turn.complete",
+      "voice.audio.delta",
+      "voice.agent_speech.end",
+      "voice.session.ended"
+    ],
+    "path": "voice_session_turn",
+    "used_complete_text": true,
+    "conversation_id": "eb3aeb53-e5ac-4f2e-8b56-3139d3840400",
+    "class": {
+      "safety_refuse": false,
+      "orchestration": false,
+      "step_count": null,
+      "approval": true,
+      "not_connected": false,
+      "faq": [],
+      "mentions_google_ads": false
+    },
+    "head": "I'll create a draft workflow for Problem Aware. Reply yes to create it now, or tell me what to adjust."
+  },
+  "compare": {
+    "same_plan_steps_approval": false,
+    "divergences": [],
+    "verdict": "FAIL"
+  },
+  "note": "Connected Google Ads OAuth clone in isolated org. No campaign create was approved. Skip-LIVE intercept fix is local until deployed; this run measures production git_sha.",
+  "verdict": "FAIL"
+}

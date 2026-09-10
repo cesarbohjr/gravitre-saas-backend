@@ -197,6 +197,7 @@ async def stream_voice_turn_events(
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     from app.operators.agent_intelligence import get_agent_intelligence
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+    from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
     from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
@@ -328,7 +329,7 @@ async def stream_voice_turn_events(
         conversation_history=conversation_history,
         conversation_id=resolved_conversation_id,
         spoken_mode=True,
-        mode="fast",
+        mode=resolve_voice_session_intelligence_mode(text),
     ):
         if _cancelled():
             cancelled = True
@@ -442,8 +443,16 @@ async def stream_voice_turn_events(
         }
         return
     # Emit turn completion as soon as model text is complete so chat text does not
-    # wait on downstream TTS transport.
-    spoken_full_text = normalize_spoken_text("".join(full_text)) or "".join(full_text)
+    # wait on downstream TTS transport. Prefer the kernel's final payload when LIVE
+    # streamed Register-5 prose and orchestration later replaced it.
+    streamed_joined = "".join(full_text)
+    complete_text = (
+        str(pending_complete.full_content or "").strip()
+        if pending_complete is not None
+        else ""
+    )
+    canonical = complete_text if complete_text else streamed_joined
+    spoken_full_text = normalize_spoken_text(canonical) or canonical
     if pending_complete is not None:
         yield {
             "type": "voice.turn.complete",

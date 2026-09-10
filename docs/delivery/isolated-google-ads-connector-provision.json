@@ -1,0 +1,28 @@
+{
+  "isolated_org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "operator_org_read_only": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "clone": {
+    "action": "created",
+    "connector_id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+    "source_connector_id": "a726bcae-9710-45fd-bec2-5667c4f22686",
+    "secret_keys": [
+      "oauth_tokens"
+    ],
+    "status": "healthy",
+    "customer_id_linked": true
+  },
+  "live_list_proof": {
+    "ok": true,
+    "customer_id_linked": true,
+    "campaign_count_sample": 3,
+    "sample_names": [
+      "Acceso temprano a Skeuomo",
+      "STA337 direct",
+      "Skeuomo - Optimized 2021"
+    ]
+  },
+  "developer_token_configured": true,
+  "pass": true,
+  "verified_at": "2026-09-10T18:34:10.199602+00:00",
+  "note": "Disposable Google Ads OAuth clone for isolated typed/spoken smoke; tokens shared with operator install. Read-only list proof only."
+}

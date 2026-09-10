@@ -1713,6 +1713,55 @@ def _unified_live_turn_payload(
     return out
 
 
+def _live_orchestration_stop_payload(
+    orch_turn: dict[str, Any],
+    *,
+    model: str,
+) -> dict[str, Any]:
+    """Same stop_pipeline shape typed and spoken use after connector orchestration."""
+    message = str(orch_turn.get("message") or "")
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": str(orch_turn.get("dialogue_mode") or "confirm"),
+        "message": finalize_user_facing_message(
+            message,
+            context="unified_turn_live_orchestration_before_defer",
+        ),
+        "task_state": orch_turn.get("task_state"),
+        "pending_task": orch_turn.get("pending_task"),
+        "workflow_status": orch_turn.get("workflow_status"),
+        "answer_explanation": str(
+            orch_turn.get("answer_explanation")
+            or "Unified turn live (orchestration before defer)"
+        ),
+        "model": model,
+        "unified_outcome_kind": "confirmation_request",
+        "execution_result": orch_turn.get("execution_result"),
+    }
+
+
+def _pack_common_intents_match(
+    message: str,
+    connected_integrations: list[str] | None,
+) -> bool:
+    from app.services.pack_common_intent_defaults import (
+        try_pack_common_list_create_plan,
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+
+    if try_pack_common_list_create_plan(
+        message or "",
+        connected_integrations=list(connected_integrations or []),
+    ) is not None:
+        return True
+    if try_pack_common_msp_enrich_workflow_plan(
+        message or "",
+        connected_integrations=list(connected_integrations or []),
+    ) is not None:
+        return True
+    return False
+
+
 async def _maybe_prepend_mixed_social_ack(
     *,
     message: str,
@@ -2141,6 +2190,58 @@ async def apply_unified_turn_live(
         )
         return _unified_live_turn_payload(result, task_state)
 
+    # Spoken Register 5 is a knowledge-boundary generator: if no tool ran this
+    # turn, it refuses. Typed then replaces that prose with ChatOrchestration.
+    # Voice streamed the refusal as the user-visible answer. Skip the LIVE model
+    # for operator jobs so both modalities enter orchestration first.
+    from app.services.operator_task_intent import should_force_live_connector_pipeline
+
+    if (
+        conversation_id
+        and should_force_live_connector_pipeline(message or "")
+        and not is_human_moment_venting_no_ask(message or "")
+        and not _pack_common_intents_match(message or "", connected_integrations)
+    ):
+        from app.services.chat_orchestration_service import (
+            get_chat_orchestration_service,
+        )
+
+        orch_turn = await get_chat_orchestration_service(active).process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message=message or "",
+            classification=classification or {},
+            task_state=task_state or {},
+            connected_integrations=list(connected_integrations or []),
+            client=client,
+            environment_name=environment_name,
+        )
+        if orch_turn and orch_turn.get("stop_pipeline"):
+            orch_result = UnifiedTurnShadowResult(
+                outcome_kind="confirmation_request",
+                user_message=str(orch_turn.get("message") or ""),
+                live_served=True,
+                model="unified_turn+operator_task_orchestration_skip_live",
+                connected_integrations=list(connected_integrations or []),
+                needs_tool_sse=True,
+            )
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=orch_result,
+            )
+            payload = _live_orchestration_stop_payload(
+                orch_turn,
+                model=orch_result.model or "unified_turn_live",
+            )
+            payload["answer_explanation"] = (
+                "Unified turn live (operator task orchestration; skipped spoken LIVE)"
+            )
+            return payload
+
     result = await run_unified_turn_shadow(
         org_id=org_id,
         user_id=user_id,
@@ -2376,7 +2477,10 @@ async def apply_unified_turn_live(
     # Class rule: never bare-defer a multi-step orchestration intent. Stage the
     # plan on LIVE first (HubSpot+Slack TRY chip, etc.) — same structural order
     # as pack-common intents. Bare fallthrough lets classical invent wrong steps.
-    if would_defer and conversation_id:
+    # Operator tasks also orch when LIVE proposed create_workflow (connected
+    # Google Ads briefs were stolen into "Problem Aware" draft-workflow cards
+    # because connector_tool_proposal does not would_defer).
+    if conversation_id and (would_defer or (operator_task and not human_moment)):
         from app.services.chat_orchestration_service import (
             ChatOrchestrationService,
             get_chat_orchestration_service,
@@ -2412,24 +2516,10 @@ async def apply_unified_turn_live(
                     conversation_id=conversation_id,
                     result=result,
                 )
-                return {
-                    "stop_pipeline": True,
-                    "dialogue_mode": str(orch_turn.get("dialogue_mode") or "confirm"),
-                    "message": finalize_user_facing_message(
-                        result.user_message,
-                        context="unified_turn_live_orchestration_before_defer",
-                    ),
-                    "task_state": orch_turn.get("task_state"),
-                    "pending_task": orch_turn.get("pending_task"),
-                    "workflow_status": orch_turn.get("workflow_status"),
-                    "answer_explanation": str(
-                        orch_turn.get("answer_explanation")
-                        or "Unified turn live (orchestration before defer)"
-                    ),
-                    "model": result.model or "unified_turn_live",
-                    "unified_outcome_kind": "confirmation_request",
-                    "execution_result": orch_turn.get("execution_result"),
-                }
+                return _live_orchestration_stop_payload(
+                    orch_turn,
+                    model=result.model or "unified_turn_live",
+                )
 
     if would_defer:
         defer_reason = (

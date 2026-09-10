@@ -145,3 +145,10 @@ def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool
     if should_force_live_connector_pipeline(message):
         return False
     return True
+
+
+def resolve_voice_session_intelligence_mode(message: str) -> str:
+    """Native /voice/session/turn has no mode picker; operator jobs match agent chat."""
+    if should_keep_full_reasoning_for_spoken(message):
+        return "agent"
+    return "fast"

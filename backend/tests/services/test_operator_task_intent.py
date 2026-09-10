@@ -92,3 +92,11 @@ def test_spoken_live_guards_stay_on_for_operator_tasks() -> None:
         message="hey, how's it going",
     )
     assert looks_like_operator_task(VENTING_PLUS_GOOGLE_ADS)
+
+
+def test_voice_session_mode_is_agent_for_operator_tasks() -> None:
+    from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+
+    assert resolve_voice_session_intelligence_mode(GOOGLE_ADS_CAMPAIGN_BRIEF) == "agent"
+    assert resolve_voice_session_intelligence_mode(CONNECTOR_LOOKUP) == "agent"
+    assert resolve_voice_session_intelligence_mode("hey, how's it going") == "fast"
