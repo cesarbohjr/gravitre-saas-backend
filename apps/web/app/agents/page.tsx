@@ -66,6 +66,7 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { FleetControls, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
+import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import { toFleetAgent } from "@/lib/agent-identity-bridge"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
@@ -364,270 +365,21 @@ function AgentDetailPanel({
   onStop: (agent: Agent) => Promise<void>
   isMutating: boolean
 }) {
-  const router = useRouter()
-  const status = presentAgentStatus(agent.status)
-
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="h-full flex flex-col"
+      className="flex h-full flex-col overflow-y-auto"
     >
-      {/* Header */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <AgentIdentityAvatar agent={agent} size="lg" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className={TYPE.sectionTitle}>{agent.name}</h2>
-                <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
-                  {agent.department}
-                </span>
-                <StatusChip status={agent.status} pulse={status.pulse}>
-                  {status.label}
-                </StatusChip>
-              </div>
-              <p className="text-sm text-muted-foreground">{agent.role}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {agent.status === "active" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => void onStop(agent)}
-                disabled={isMutating}
-              >
-                <Pause className="h-3.5 w-3.5" />
-                Pause
-              </Button>
-            ) : agent.status !== "error" ? (
-              <Button
-                size="sm"
-                className="gap-2"
-                onClick={() => void onStart(agent)}
-                disabled={isMutating}
-              >
-                <Play className="h-3.5 w-3.5" />
-                Activate
-              </Button>
-            ) : (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-2"
-                onClick={() => void onStart(agent)}
-                disabled={isMutating}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Retry
-              </Button>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => router.push(`/agents/${agent.id}`)}
-              aria-label={`Configure ${agent.name}`}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <p className="mt-3 text-sm text-muted-foreground">{agent.description}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {(() => {
-            const rate = getDisplaySuccessRate(agent)
-            return (
-          <span className={cn(
-            "rounded-md px-2 py-1 text-xs font-medium",
-            rate != null
-              ? successRateBadgeClass(rate)
-              : "bg-secondary text-muted-foreground",
-          )}>
-            {rate != null ? `${rate}% success` : "No tasks yet"}
-          </span>
-            )
-          })()}
-          <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
-            {agent.stats.tasksToday} tasks
-          </span>
-          <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
-            {agent.stats.avgResponseTime} avg
-          </span>
-          {agent.model ? (
-            <AgentModelBadge
-              model={agent.model}
-              variant="panel"
-              className="max-w-[140px] truncate rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
-            />
-          ) : null}
-          {(agent.knowledgeDocCount ?? 0) > 0 ? (
-            <a
-              href={`/training?agentId=${agent.id}`}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <BookOpen className="h-3 w-3" />
-              {agent.knowledgeDocCount} docs
-            </a>
-          ) : (
-            <a
-              href={`/training?agentId=${agent.id}`}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <BookOpen className="h-3 w-3" />
-              Add training
-            </a>
-          )}
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-px bg-divide sm:grid-cols-4">
-        <div className="bg-[color:var(--g-surface-1)] p-3 text-center sm:p-4">
-          <div className="text-xl font-semibold text-foreground sm:text-2xl">{agent.stats.tasksToday}</div>
-          <div className={TYPE.metricLabel}>Tasks Today</div>
-        </div>
-        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
-          {(() => {
-            const rate = getDisplaySuccessRate(agent)
-            return (
-          <div className={cn(
-            "text-2xl font-semibold",
-            rate != null
-              ? successRateColorClass(rate)
-              : "text-muted-foreground",
-          )}>
-            {rate != null ? `${rate}%` : "—"}
-          </div>
-            )
-          })()}
-          <div className={TYPE.metricLabel}>Success Rate</div>
-        </div>
-        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
-          <div className="text-2xl font-semibold text-foreground">{agent.stats.avgResponseTime}</div>
-          <div className={TYPE.metricLabel}>Avg Response</div>
-        </div>
-        <div className="bg-[color:var(--g-surface-1)] p-4 text-center">
-          <div className="text-2xl font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
-          <div className={TYPE.metricLabel}>Workflows</div>
-        </div>
-      </div>
-
-      {/* Capabilities */}
-      <GravitreSurface className="rounded-none border-x-0 border-t-0 shadow-none" padded={false}>
-        <div className="p-6">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
-          Capabilities
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {agent.capabilities.map((cap, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex cursor-default items-center gap-2 rounded-lg border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 transition-colors hover:border-muted-foreground/50 hover:shadow-sm"
-            >
-              <Sparkles className="h-3 w-3 text-muted-foreground" />
-              <span className="text-sm text-foreground">{cap}</span>
-            </motion.div>
-          ))}
-        </div>
-        </div>
-      </GravitreSurface>
-
-      {/* Connected Systems */}
-      <GravitreSurface className="rounded-none border-x-0 border-t-0 shadow-none" padded={false}>
-        <div className="p-6">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
-          Connected Systems
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {agent.permissions.map((perm, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-              whileHover={{ scale: 1.05 }}
-              // `text-blue-400` on a 10% tint was tuned for dark mode and
-              // failed contrast in light mode; --info adapts per theme.
-              className="cursor-default rounded-md border border-info/20 bg-info/10 px-2.5 py-1 transition-colors hover:border-info/30 hover:bg-info/15"
-            >
-              <span className="text-xs text-info">{perm}</span>
-            </motion.div>
-          ))}
-        </div>
-        </div>
-      </GravitreSurface>
-
-      {/* Last Activity */}
-      <div className="flex-1 p-6">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
-          Recent Activity
-        </h3>
-        <GravitreSurface
-          className={cn(
-            "p-4",
-            agent.status === "error" ? "border-destructive/30 bg-destructive/5" : undefined,
-          )}
-          padded={false}
-        >
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-full",
-              agent.status === "error" ? "bg-destructive/10" : "bg-info/10"
-            )}>
-              {agent.status === "processing" ? (
-                <Activity className="h-4 w-4 animate-pulse text-info" />
-              ) : agent.status === "error" ? (
-                <Shield className="h-4 w-4 text-destructive" />
-              ) : (
-                <Zap className="h-4 w-4 text-info" />
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-foreground">{agent.lastAction}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{agent.lastActionTime}</p>
-            </div>
-          </div>
-        </GravitreSurface>
-      </div>
-
-      {/* Footer Actions - Train Agent, Assign Work, View Memory */}
-      <div className="p-6 border-t border-border bg-secondary/30 space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <a href={`/agents/${agent.id}?tab=training`}>
-              <Brain className="h-3.5 w-3.5" />
-              Train
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <a href={`/lite/assign?agent=${agent.id}`}>
-              <Play className="h-3.5 w-3.5" />
-              Assign
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <a href={`/agents/${agent.id}/memory`}>
-              <Database className="h-3.5 w-3.5" />
-              Memory
-            </a>
-          </Button>
-        </div>
-        <Button variant="outline" className="w-full justify-between" asChild>
-          <a href={`/agents/${agent.id}`}>
-            View/ Edit Profile
-            <ChevronRight className="h-4 w-4" />
-          </a>
-        </Button>
-      </div>
+      <AgentFleetInspectorBody
+        agent={agent}
+        layout="panel"
+        onStart={(a) => onStart(a as Agent)}
+        onStop={(a) => onStop(a as Agent)}
+        isMutating={isMutating}
+        successRateDisplay={getDisplaySuccessRate(agent)}
+      />
     </motion.div>
   )
 }
@@ -636,99 +388,24 @@ function AgentPreviewSheet({
   agent,
   open,
   onOpenChange,
-  onOpenProfile,
 }: {
   agent: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
-  onOpenProfile: () => void
+  onOpenProfile?: () => void
 }) {
-  const recentTasks = getAgentRecentTasks(agent)
-  const status = presentAgentStatus(agent.status)
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
-        <SheetHeader className="space-y-3 border-b border-border px-5 py-5 text-left">
-          <div className="flex items-start gap-3">
-            <AgentIdentityAvatar agent={agent} size="md" />
-            <div className="min-w-0 flex-1">
-              <SheetTitle className="truncate text-base">{agent.name}</SheetTitle>
-              <SheetDescription className="truncate">{agent.role}</SheetDescription>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip status={agent.status} pulse={status.pulse}>
-              {status.label}
-            </StatusChip>
-            {agent.model ? (
-              <AgentModelBadge
-                model={agent.model}
-                variant="panel"
-                className="max-w-[140px] truncate rounded-md border border-border px-2 py-0.5 text-[10px] text-muted-foreground"
-              />
-            ) : null}
-          </div>
+        <SheetHeader className="sr-only">
+          <SheetTitle>{agent.name}</SheetTitle>
+          <SheetDescription>{agent.role}</SheetDescription>
         </SheetHeader>
-
-        <div className="space-y-4 px-5 py-4">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
-              <div className="text-lg font-semibold text-foreground">{agent.stats.tasksToday}</div>
-              <div className={TYPE.metricLabel}>Tasks</div>
-            </div>
-            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
-              <div className="text-lg font-semibold text-foreground">
-                {(() => {
-                  const rate = getDisplaySuccessRate(agent)
-                  return rate != null ? `${rate}%` : "—"
-                })()}
-              </div>
-              <div className={TYPE.metricLabel}>Success</div>
-            </div>
-            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
-              <div className="text-lg font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
-              <div className={TYPE.metricLabel}>Flows</div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <p className={TYPE.eyebrow}>Recent activity</p>
-            {recentTasks.length > 0 ? (
-              <ul className="mt-2 space-y-2">
-                {recentTasks.slice(0, 3).map((task) => (
-                  <li key={task.id} className="flex items-center gap-2 text-xs">
-                    <Sparkles className="h-3 w-3 shrink-0 text-info/80" />
-                    <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
-                    <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", taskRuntimeBadgeClass(task.status))}>
-                      {taskRuntimeLabel(task.status)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">No recent tasks for this agent yet.</p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Button variant="outline" className="w-full gap-1.5" asChild>
-              <a href={`/agents/${agent.id}/chat`}>
-                <MessageSquare className="h-3.5 w-3.5" />
-                Chat
-              </a>
-            </Button>
-            <Button className="w-full gap-1.5" asChild>
-              <a href={`/lite/assign?agent=${agent.id}`}>
-                <Play className="h-3.5 w-3.5" />
-                Assign Task
-              </a>
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={onOpenProfile}>
-              View/ Edit Profile
-            </Button>
-          </div>
-        </div>
+        <AgentFleetInspectorBody
+          agent={agent}
+          layout="sheet"
+          successRateDisplay={getDisplaySuccessRate(agent)}
+        />
       </SheetContent>
     </Sheet>
   )
@@ -1288,7 +965,6 @@ export default function AgentsPage() {
             agent={visibleSelectedAgent}
             open={previewOpen}
             onOpenChange={setPreviewOpen}
-            onOpenProfile={() => router.push(`/agents/${visibleSelectedAgent.id}`)}
           />
         ) : null}
 

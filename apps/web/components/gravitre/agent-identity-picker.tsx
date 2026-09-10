@@ -54,7 +54,8 @@ export function AgentIdentityPicker({
         <div>
           <p className="text-sm font-medium text-foreground">Agent appearance</p>
           <p className="text-xs text-muted-foreground">
-            Compact tile used everywhere this agent appears. Status is separate.
+            Soft curated tiles only — no glow orbs, gradients, or freeform colors. Status stays a
+            separate corner dot.
           </p>
         </div>
       </div>

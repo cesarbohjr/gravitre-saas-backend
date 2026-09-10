@@ -31,10 +31,11 @@ export function AgentAppearancePicker({
         <h3 className="text-sm font-semibold text-[color:var(--g-text-primary)]">
           Agent appearance
         </h3>
-        <p className="mt-1 text-xs text-[color:var(--g-text-muted)]">
-          Curated icons + soft identity colors. Status stays separate. Suggested for “{roleHint}”:{" "}
-          {ROLE_ICON_REGISTRY[suggested].label}.
-        </p>
+          <p className="mt-1 text-xs text-[color:var(--g-text-muted)]">
+            Soft curated icons + soft identity colors only — no glow discs, gradients, or freeform
+            hex. Status stays separate. Suggested for “{roleHint}”:{" "}
+            {ROLE_ICON_REGISTRY[suggested].label}.
+          </p>
       </div>
 
       <div className="flex items-center gap-4">
