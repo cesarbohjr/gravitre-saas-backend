@@ -26,6 +26,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
 }))
 
+// The Helper now reads the real session, so it cannot be mounted outside an
+// AuthProvider at all. Mocking the hook keeps the flag/route cases below focused,
+// and lets the auth cases drive session state directly.
+const authState: { userId: string | null; loading: boolean } = { userId: "user-1", loading: false }
+
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({
+    user: authState.userId ? { id: authState.userId } : null,
+    session: authState.userId ? {} : null,
+    loading: authState.loading,
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+  }),
+}))
+
 // Static import is safe — this is a pure function, independent of the flag.
 import { shouldShowGravitreAIHelper } from "@/components/gravitre/ai-helper"
 import type { GravitreAIWorkspaceContextValue } from "@/components/gravitre/ai-workspace-provider"
@@ -38,6 +53,8 @@ let root: Root | null = null
 
 beforeEach(() => {
   pathnameState.value = "/dashboard"
+  authState.userId = "user-1"
+  authState.loading = false
   routerPush.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -108,6 +125,70 @@ describe("GravitreAIHelper", () => {
     pathnameState.value = "/dashboard"
     await renderHelper()
     expect(container.querySelector("[data-gravitre-ai-helper]")).not.toBeNull()
+  })
+
+  it("renders nothing for a logged-out visitor, even on a route it would otherwise show on", async () => {
+    // The §2 regression. Before the auth gate, the only thing keeping the
+    // authenticated launcher off public routes was `RootProviders` reading the
+    // `x-gravitre-marketing` request header — a routing decision, not an auth
+    // check. Any route where that header was absent rendered this to anyone.
+    process.env[ENV_KEY] = "true"
+    vi.resetModules()
+    pathnameState.value = "/dashboard"
+    authState.userId = null
+    await renderHelper()
+    expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
+    expect(container.innerHTML).toBe("")
+  })
+
+  it("renders nothing for a logged-out visitor on the marketing homepage", async () => {
+    process.env[ENV_KEY] = "true"
+    vi.resetModules()
+    pathnameState.value = "/"
+    authState.userId = null
+    await renderHelper()
+    expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
+  })
+
+  it("renders nothing while the session is still resolving", async () => {
+    // Not merely cosmetic: rendering during `loading` is what flashes the
+    // authenticated launcher at logged-out visitors on a cold load.
+    process.env[ENV_KEY] = "true"
+    vi.resetModules()
+    pathnameState.value = "/dashboard"
+    authState.userId = null
+    authState.loading = true
+    await renderHelper()
+    expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
+  })
+
+  it("removes the launcher when the session goes away mid-session (logout while mounted)", async () => {
+    process.env[ENV_KEY] = "true"
+    vi.resetModules()
+    pathnameState.value = "/dashboard"
+    await renderHelper()
+    expect(container.querySelector("[data-gravitre-ai-helper]")).not.toBeNull()
+
+    const { GravitreAIWorkspaceProvider } = await import("@/components/gravitre/ai-workspace-provider")
+    const { GravitreAIHelper } = await import("@/components/gravitre/ai-helper")
+    authState.userId = null
+    act(() => {
+      root!.render(
+        createElement(GravitreAIWorkspaceProvider, null, createElement(GravitreAIHelper, null)),
+      )
+    })
+    expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
+  })
+
+  it("exposes the required accessible name and a real button element", async () => {
+    process.env[ENV_KEY] = "true"
+    vi.resetModules()
+    pathnameState.value = "/dashboard"
+    await renderHelper()
+    const el = container.querySelector("[data-gravitre-ai-helper]")
+    expect(el?.tagName).toBe("BUTTON")
+    expect(el?.getAttribute("aria-label")).toContain("Open AI Chat")
+    expect(el?.getAttribute("aria-expanded")).toBe("false")
   })
 
   it("still renders nothing on /ai even when the flag is on", async () => {

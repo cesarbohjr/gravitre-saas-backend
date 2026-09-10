@@ -26,6 +26,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+// The Helper reads the real session now, so it cannot mount outside an
+// AuthProvider. This case is about the mobile offset class, so hand it a session.
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({
+    user: { id: "user-1" },
+    session: {},
+    loading: false,
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+  }),
+}))
+
 const ENV_KEY = "NEXT_PUBLIC_AI_FLOAT_ENABLED"
 const originalValue = process.env[ENV_KEY]
 

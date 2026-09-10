@@ -19,6 +19,7 @@ import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host
 import { GravitreAIHelper } from "@/components/gravitre/ai-helper"
 import { GravitreAIShortcutListener } from "@/components/gravitre/ai-shortcut-listener"
 import { GravitreAIPresenceAnnouncer } from "@/components/gravitre/ai-presence-announcer"
+import { GravitreAIAuthGate } from "@/components/gravitre/ai-auth-gate"
 
 /**
  * Full signed-in operator shell — mounted only on non-marketing routes.
@@ -52,10 +53,18 @@ export function AppProviders({ children }: { children: ReactNode }) {
                       <GravitreAIWorkspaceProvider>
                         <AiFullPageSlotProvider>
                           {children}
-                          <GravitreAIWorkspaceHost />
-                          <GravitreAIHelper />
-                          <GravitreAIShortcutListener />
-                          <GravitreAIPresenceAnnouncer />
+                          {/*
+                            One auth boundary for the whole assistant. The
+                            provider stays above it so float state survives
+                            route changes; everything that renders or opens
+                            authenticated AI UI sits below it.
+                          */}
+                          <GravitreAIAuthGate>
+                            <GravitreAIWorkspaceHost />
+                            <GravitreAIHelper />
+                            <GravitreAIShortcutListener />
+                            <GravitreAIPresenceAnnouncer />
+                          </GravitreAIAuthGate>
                         </AiFullPageSlotProvider>
                       </GravitreAIWorkspaceProvider>
                     </ViewModeProvider>
