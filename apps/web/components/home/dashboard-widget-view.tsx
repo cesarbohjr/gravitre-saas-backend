@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Link from "next/link"
 import {
   Bar,
@@ -23,9 +24,16 @@ import { cn } from "@/lib/utils"
 import { KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { PlacedWidget } from "@/lib/dashboard/place-widgets"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
+import { formatModelLabel } from "@/hooks/use-home-dashboard-data"
 import { relativeTime } from "@/lib/agent-job-result"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
+import {
+  NucleoAgent,
+  NucleoArrowRight,
+  NucleoHistory,
+  NucleoIntelligence,
+  NucleoSuccess,
+} from "@/components/icons/nucleo/semantic"
 
 const BRAND = "#16a374"
 const BRAND_SOFT = "#5ec49a"
@@ -46,19 +54,41 @@ function emptyLabel(kind: "runs" | "agents" | "generic"): string {
   return "No data yet"
 }
 
+const KPI_ICON_STYLES: Record<string, { icon: ReactNode; iconClassName: string }> = {
+  "agents.active": {
+    icon: <NucleoAgent className="h-[18px] w-[18px]" aria-hidden />,
+    iconClassName: "bg-blue-100 text-blue-600",
+  },
+  "runs.success_rate": {
+    icon: <NucleoSuccess className="h-[18px] w-[18px]" aria-hidden />,
+    iconClassName: "bg-emerald-100 text-emerald-600",
+  },
+  "runs.avg_duration": {
+    icon: <NucleoHistory className="h-[18px] w-[18px]" aria-hidden />,
+    iconClassName: "bg-amber-100 text-amber-700",
+  },
+  "models.most_used": {
+    icon: <NucleoIntelligence className="h-[18px] w-[18px]" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+  },
+}
+
 function MetricNumber({
+  metricId,
   label,
   value,
   hint,
   href,
   warning,
 }: {
+  metricId?: string
   label: string
   value: string
   hint?: string
   href?: string
   warning?: boolean
 }) {
+  const iconStyle = metricId ? KPI_ICON_STYLES[metricId] : undefined
   return (
     <GravitreMetric
       label={label}
@@ -66,6 +96,8 @@ function MetricNumber({
       hint={hint}
       href={href}
       warning={warning}
+      icon={iconStyle?.icon}
+      iconClassName={iconStyle?.iconClassName}
       className="h-full"
     />
   )
@@ -378,9 +410,21 @@ function resolveKpiValue(
     case "runs.avg_duration":
       return {
         value: formatDuration(data.metrics.avgDuration),
-        hint: data.metrics.avgDuration != null ? "Mean run duration →" : "Waiting for runs",
+        hint:
+          data.metrics.avgDuration != null
+            ? data.metrics.changes.avgLatency != null
+              ? `${data.metrics.changes.avgLatency >= 0 ? "+" : ""}${Math.abs(data.metrics.changes.avgLatency)}% vs prior →`
+              : "Mean run duration →"
+            : "Waiting for runs",
         href,
         empty: data.metrics.avgDuration == null,
+      }
+    case "models.most_used":
+      return {
+        value: data.mostUsedModel ? formatModelLabel(data.mostUsedModel) : "—",
+        hint: data.mostUsedModel ? "Across active agents →" : "Assign models to agents",
+        href,
+        empty: !data.mostUsedModel,
       }
     case "runs.total":
       return {
@@ -626,6 +670,7 @@ export function DashboardWidgetView({
 
   return (
     <MetricNumber
+      metricId={widget.metricId}
       label={title}
       value={resolved.empty && resolved.value === "—" ? "—" : resolved.value}
       hint={

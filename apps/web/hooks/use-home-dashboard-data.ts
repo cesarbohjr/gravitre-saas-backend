@@ -39,7 +39,38 @@ export type HomeDashboardData = {
   predictiveSummary: string | null
   readyModelCount: number | null
   learningVelocity: string | null
+  mostUsedModel: string | null
 }
+
+function computeMostUsedModel(agents: Agent[]): string | null {
+  const counts = new Map<string, number>()
+  for (const agent of agents) {
+    const model = agent.model?.trim()
+    if (!model) continue
+    counts.set(model, (counts.get(model) ?? 0) + 1)
+  }
+  if (counts.size === 0) return null
+  let best = ""
+  let bestCount = 0
+  for (const [model, count] of counts) {
+    if (count > bestCount) {
+      best = model
+      bestCount = count
+    }
+  }
+  return best || null
+}
+
+function formatModelLabel(model: string): string {
+  const normalized = model.trim()
+  if (!normalized) return "—"
+  if (/^gpt-4o$/i.test(normalized)) return "GPT-4o"
+  if (/^gpt-4o-mini$/i.test(normalized)) return "GPT-4o mini"
+  if (/^gpt-4/i.test(normalized)) return normalized.replace(/^gpt-/i, "GPT-")
+  return normalized
+}
+
+export { formatModelLabel }
 
 function rangeToApi(range: DashboardRange): string {
   // Overview endpoint accepts 7d | 30d | 90d only.
@@ -153,6 +184,7 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
       typeof learningStatus?.learning_velocity === "string"
         ? learningStatus.learning_velocity
         : null,
+    mostUsedModel: agents.length > 0 ? computeMostUsedModel(agents) : null,
   }
 
   return data

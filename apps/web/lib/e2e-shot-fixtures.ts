@@ -181,6 +181,7 @@ const agents = [
     description:
       "Watches inbound form fills, enriches the company, and prepares the CRM write for review.",
     status: "active",
+    model: "gpt-4o",
     avatarColor: "#2563eb",
     personality: {
       color: "blue",
@@ -207,6 +208,7 @@ const agents = [
     description:
       "Reconciles opportunity stages against meeting notes and support threads, then proposes stage changes.",
     status: "processing",
+    model: "gpt-4o",
     avatarColor: "#7c3aed",
     personality: {
       color: "violet",
@@ -233,6 +235,7 @@ const agents = [
     description:
       "Triages inbound tickets, attaches account context, and escalates anything touching a paying account.",
     status: "active",
+    model: "gpt-4o-mini",
     avatarColor: "#0d9488",
     personality: {
       color: "teal",
@@ -259,6 +262,7 @@ const agents = [
     description:
       "Matches paid invoices against closed-won deals and flags the ones that disagree.",
     status: "idle",
+    model: "gpt-4o-mini",
     avatarColor: "#c2410c",
     personality: {
       color: "orange",
@@ -770,6 +774,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
   "/api/settings/dashboard-layout": {
     layout: null,
+  },
+  "/api/settings/agents-fleet": {
+    prefs: null,
   },
 
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
