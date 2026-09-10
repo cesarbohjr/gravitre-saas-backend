@@ -17,7 +17,9 @@ from app.services.factual_claim_honesty import _tool_name, _tool_payload
 
 _ACTION_MISSING_CLAIM = re.compile(
     r"(?:"
-    r"i (?:don't|do not|can't|cannot) have (?:a |an |the )?.{0,120}action"
+    r"i (?:don't|do not|can't|cannot) have (?:a |an |the )?.{0,160}action"
+    r"|"
+    r"i (?:don't|do not) have enough evidence.{0,160}action"
     r"|"
     r"(?:needed|required) .{0,80}action.{0,120}(?:aren't|are not|isn't|is not) provided"
     r"|"
@@ -26,6 +28,10 @@ _ACTION_MISSING_CLAIM = re.compile(
     r"(?:don't|do not) have .{0,80}(?:list-creation|list creation) action"
     r"|"
     r"i don't have a .{0,80}(?:list-creation|list creation)"
+    r"|"
+    r"the action is (?:not |un)substantiated"
+    r"|"
+    r"not substantiated by the sources"
     r")",
     re.I,
 )
@@ -33,8 +39,18 @@ _ACTION_MISSING_CLAIM = re.compile(
 _MAX_RECENT = 8
 
 
+def _fold_quotes(text: str) -> str:
+    return (
+        (text or "")
+        .replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+
+
 def answer_claims_action_missing(answer: str) -> bool:
-    text = (answer or "").strip()
+    text = _fold_quotes(answer or "").strip()
     if not text:
         return False
     return bool(_ACTION_MISSING_CLAIM.search(text))
@@ -229,7 +245,7 @@ def apply_action_availability_honesty_gate(
     task_state: dict[str, Any] | None = None,
 ) -> str:
     """Rewrite 'I don't have that action' when recent history invoked it."""
-    text = (answer or "").strip()
+    text = _fold_quotes(answer or "").strip()
     if not text or not answer_claims_action_missing(text):
         return answer
     invoked = extract_recent_connector_invocations(

@@ -22,6 +22,31 @@ def test_detects_screenshot_capability_denial():
     assert not answer_claims_action_missing("HubSpot Create list is ready — I'll retry with defaults.")
 
 
+def test_rewrites_curly_apostrophe_evidence_denial_after_success():
+    live = (
+        "I don’t have enough evidence to verify a HubSpot **list-creation** "
+        "action or its required fields.\n\nSo the action is **not substantiated** "
+        "by the sources I have."
+    )
+    assert answer_claims_action_missing(live)
+    gated = apply_action_availability_honesty_gate(
+        live,
+        task_state={
+            "recent_connector_invocations": [
+                {
+                    "vendor": "hubspot",
+                    "action": "hubspot.lists.create",
+                    "error_code": "",
+                }
+            ]
+        },
+    )
+    assert gated != live
+    assert "don't have" not in gated.lower().replace("\u2019", "'")
+    assert "not substantiated" not in gated.lower()
+    assert "hubspot" in gated.lower()
+
+
 def test_rewrites_hubspot_list_create_denial_after_validation_error():
     gated = apply_action_availability_honesty_gate(
         SCREENSHOT_3_DENIAL,
