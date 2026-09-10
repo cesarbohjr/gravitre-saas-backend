@@ -90,8 +90,24 @@ export function mapApiDepartmentToFleet(
   if (key.includes("hr") || key.includes("people") || key.includes("talent") || key.includes("recruit")) {
     return { id: "general", label: raw || "HR" }
   }
+  if (key === "general") return { id: "general", label: raw || "General" }
   if (key.includes("ops") || key.includes("operation")) return { id: "operations", label: raw || "Operations" }
   return { id: "operations", label: raw || "Operations" }
+}
+
+/** Persist fleet department id as a readable API/department label. */
+export function mapFleetDepartmentToApi(department: AgentDepartmentId): string {
+  const labels: Record<AgentDepartmentId, string> = {
+    sales: "Sales",
+    customer_success: "Customer Success",
+    finance: "Finance",
+    operations: "Operations",
+    engineering: "Engineering",
+    marketing: "Marketing",
+    security: "Security",
+    general: "General",
+  }
+  return labels[department] ?? "Operations"
 }
 
 /** Convert a production agent record into a fleet TEAM/LIST card model. */

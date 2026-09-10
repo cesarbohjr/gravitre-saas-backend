@@ -1,6 +1,8 @@
 "use client"
 
+import type { DragEvent } from "react"
 import { cn } from "@/lib/utils"
+import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
@@ -10,21 +12,34 @@ export function GravitreAgentRow({
   agent,
   selected,
   onSelect,
+  draggable = false,
   className,
 }: {
   agent: FleetAgent
   selected?: boolean
   onSelect?: (id: string) => void
+  draggable?: boolean
   className?: string
 }) {
+  const onDragStart = (e: DragEvent) => {
+    if (!draggable) return
+    setFleetAgentDragData(e.dataTransfer, {
+      agentId: agent.id,
+      fromDepartment: agent.department,
+    })
+  }
+
   return (
     <tr
       className={cn(
         "cursor-pointer transition-colors hover:bg-[color:var(--g-surface-2)]/50",
         selected && "bg-[color:var(--g-brand-soft)]/35",
+        draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
       onClick={() => onSelect?.(agent.id)}
+      draggable={draggable}
+      onDragStart={onDragStart}
     >
       <td className="h-12 border-b border-divide/70 px-4">
         <div className="flex min-w-[200px] items-center gap-2.5">

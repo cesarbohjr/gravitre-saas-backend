@@ -119,7 +119,7 @@ function toProfileAgent(api: ApiAgent): Agent {
 }
 
 // Avatar — shared identity treatment; pulse only while Running (processing).
-function AgentOrb({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAgent }) {
+function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAgent }) {
   const { reduced } = useMotionPrefs()
   const status = presentAgentStatus(agent.status)
   const isRunning = agentStatusIsLiveWork(agent.status)
@@ -350,7 +350,7 @@ export default function AgentProfilePage({
           }
         >
           <div className="mb-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <AgentOrb agent={agent} apiAgent={apiAgent} />
+            <AgentIdentityHero agent={agent} apiAgent={apiAgent} />
             <div className="min-w-0 flex-1 space-y-2 text-center sm:pt-2 sm:text-left">
               <p className="text-sm text-[color:var(--g-text-secondary)]">{agent.description}</p>
               <div className="flex justify-center sm:justify-start">

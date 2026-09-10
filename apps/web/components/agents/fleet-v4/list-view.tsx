@@ -7,62 +7,97 @@ import {
   GravitreTd,
   GravitreTh,
 } from "@/components/gravitre/nodus-product/table"
+import { cn } from "@/lib/utils"
+import { DEPARTMENT_ACCENT } from "./identity-tokens"
+import { DepartmentDropZone } from "./department-drop-zone"
+import { FLEET_DEPARTMENT_ORDER } from "./fleet-department-dnd"
 import { GravitreAgentRow } from "./gravitre-agent-row"
-import type { FleetAgent } from "./types"
+import type { AgentDepartmentId, FleetAgent } from "./types"
 
 export function ListView({
   agents,
   selectedId,
   onSelect,
+  onDepartmentChange,
   toolbar,
 }: {
   agents: FleetAgent[]
   selectedId?: string | null
   onSelect?: (id: string) => void
+  onDepartmentChange?: (agentId: string, department: AgentDepartmentId) => void
   toolbar?: ReactNode
 }) {
   return (
-    <GravitreTableShell
-      toolbar={
-        toolbar ?? (
-          <p className="text-xs text-[color:var(--g-text-muted)]">
-            Operational fleet — dense compare for status, tasks, and model.
-          </p>
-        )
-      }
-    >
-      <GravitreTable>
-        <thead>
-          <tr>
-            <GravitreTh>Agent</GravitreTh>
-            <GravitreTh>Department</GravitreTh>
-            <GravitreTh>Status</GravitreTh>
-            <GravitreTh>Current work</GravitreTh>
-            <GravitreTh>Tasks today</GravitreTh>
-            <GravitreTh>Success</GravitreTh>
-            <GravitreTh>Model</GravitreTh>
-            <GravitreTh>Last active</GravitreTh>
-            <GravitreTh>
-              <span className="sr-only">Actions</span>
-            </GravitreTh>
-          </tr>
-        </thead>
-        <tbody>
-          {agents.map((agent) => (
-            <GravitreAgentRow
-              key={agent.id}
-              agent={agent}
-              selected={selectedId === agent.id}
-              onSelect={onSelect}
-            />
+    <div className="space-y-3">
+      {onDepartmentChange ? (
+        <div className="flex flex-wrap gap-2">
+          {FLEET_DEPARTMENT_ORDER.map((department) => (
+            <DepartmentDropZone
+              key={department}
+              department={department}
+              onDropAgent={onDepartmentChange}
+              className="min-w-[7.5rem] flex-1 border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)] sm:flex-none"
+              highlightClassName="border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35"
+            >
+              <p
+                className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wide",
+                  DEPARTMENT_ACCENT[department].accentClass,
+                )}
+              >
+                {DEPARTMENT_ACCENT[department].label}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[color:var(--g-text-muted)]">Drop here</p>
+            </DepartmentDropZone>
           ))}
-          {agents.length === 0 ? (
+        </div>
+      ) : null}
+
+      <GravitreTableShell
+        toolbar={
+          toolbar ?? (
+            <p className="text-xs text-[color:var(--g-text-muted)]">
+              Operational fleet — dense compare for status, tasks, and model.
+            </p>
+          )
+        }
+      >
+        <GravitreTable>
+          <thead>
             <tr>
-              <GravitreTd className="text-[color:var(--g-text-muted)]">No agents match filters.</GravitreTd>
+              <GravitreTh>Agent</GravitreTh>
+              <GravitreTh>Department</GravitreTh>
+              <GravitreTh>Status</GravitreTh>
+              <GravitreTh>Current work</GravitreTh>
+              <GravitreTh>Tasks today</GravitreTh>
+              <GravitreTh>Success</GravitreTh>
+              <GravitreTh>Model</GravitreTh>
+              <GravitreTh>Last active</GravitreTh>
+              <GravitreTh>
+                <span className="sr-only">Actions</span>
+              </GravitreTh>
             </tr>
-          ) : null}
-        </tbody>
-      </GravitreTable>
-    </GravitreTableShell>
+          </thead>
+          <tbody>
+            {agents.map((agent) => (
+              <GravitreAgentRow
+                key={agent.id}
+                agent={agent}
+                selected={selectedId === agent.id}
+                onSelect={onSelect}
+                draggable={Boolean(onDepartmentChange)}
+              />
+            ))}
+            {agents.length === 0 ? (
+              <tr>
+                <GravitreTd className="text-[color:var(--g-text-muted)]">
+                  No agents match filters.
+                </GravitreTd>
+              </tr>
+            ) : null}
+          </tbody>
+        </GravitreTable>
+      </GravitreTableShell>
+    </div>
   )
 }

@@ -1,18 +1,91 @@
 "use client"
 
-import { useMemo } from "react"
+import { useId, useMemo } from "react"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { NucleoConnector, NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { layoutFleetGraph } from "@/lib/agents-fleet-graph"
+import { DEPARTMENT_ACCENT } from "./identity-tokens"
+import { DepartmentDropZone } from "./department-drop-zone"
+import { FLEET_DEPARTMENT_ORDER } from "./fleet-department-dnd"
 import { GravitreAgentNode } from "./gravitre-agent-node"
-import type { FleetAgent, FleetEdge, FleetGraphExtraNode } from "./types"
+import type { AgentDepartmentId, FleetAgent, FleetEdge, FleetGraphExtraNode } from "./types"
 
 const NODE_W = 188
 const NODE_H = 56
 
+function FleetEdgePath({
+  edgeId,
+  d,
+  active,
+  dashed,
+  sweep,
+}: {
+  edgeId: string
+  d: string
+  active: boolean
+  dashed: boolean
+  sweep: boolean
+}) {
+  const reactId = useId()
+  const gradientId = `fleet-edge-${edgeId}-${reactId.replace(/:/g, "")}`
+
+  return (
+    <g>
+      <path
+        d={d}
+        fill="none"
+        stroke="var(--color-line, #eaedf1)"
+        strokeWidth={active ? 2 : 1.5}
+        strokeDasharray={dashed ? "5 4" : undefined}
+        strokeLinecap="round"
+      />
+      {sweep ? (
+        <>
+          <path
+            d={d}
+            fill="none"
+            stroke={`url(#${gradientId})`}
+            strokeWidth={active ? 2.25 : 1.75}
+            strokeLinecap="round"
+          />
+          <defs>
+            <motion.linearGradient
+              id={gradientId}
+              gradientUnits="userSpaceOnUse"
+              initial={{ x1: "0%", x2: "12%", y1: "0%", y2: "0%" }}
+              animate={{ x1: "88%", x2: "100%", y1: "0%", y2: "0%" }}
+              transition={{
+                duration: active ? 1.6 : 2.4,
+                repeat: Infinity,
+                repeatType: "loop",
+                ease: "easeInOut",
+                repeatDelay: active ? 0.4 : 1,
+              }}
+            >
+              <stop stopColor="var(--color-line, #EAEDF1)" />
+              <stop
+                offset="0.5"
+                stopColor={active ? "var(--color-blue-500, #3b82f6)" : "var(--color-brand, #2563eb)"}
+              />
+              <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+            </motion.linearGradient>
+          </defs>
+        </>
+      ) : null}
+      {active ? (
+        <circle r="3.5" fill="var(--g-brand)">
+          <animateMotion dur="1.6s" repeatCount="indefinite" path={d} />
+        </circle>
+      ) : null}
+    </g>
+  )
+}
+
 /**
- * Fleet GRAPH — structural + binding edges only (parent, swarm, connectors).
- * No invented collaborates/escalates. Activity pulse only on live swarm edges.
+ * Fleet GRAPH — Nodus connectors canvas + combo/tech-stack edge sweeps.
+ * Honest edges only (parent, swarm, connectors). Department lanes accept drops.
  */
 export function GraphView({
   agents,
@@ -20,6 +93,7 @@ export function GraphView({
   extraNodes = [],
   selectedId,
   onSelect,
+  onDepartmentChange,
   activeAgentIds,
   emptyHint,
   className,
@@ -29,6 +103,7 @@ export function GraphView({
   extraNodes?: FleetGraphExtraNode[]
   selectedId?: string | null
   onSelect?: (id: string) => void
+  onDepartmentChange?: (agentId: string, department: AgentDepartmentId) => void
   activeAgentIds?: Set<string>
   emptyHint?: string
   className?: string
@@ -43,7 +118,7 @@ export function GraphView({
     if (pts.length === 0) return { w: 640, h: 360 }
     const maxX = Math.max(...pts.map((p) => p.x)) + NODE_W + 48
     const maxY = Math.max(...pts.map((p) => p.y)) + NODE_H + 64
-    return { w: Math.max(640, maxX), h: Math.max(360, maxY) }
+    return { w: Math.max(720, maxX), h: Math.max(420, maxY) }
   }, [positions])
 
   const edgePath = (from: string, to: string) => {
@@ -58,15 +133,23 @@ export function GraphView({
     return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`
   }
 
+  const deptsPresent = useMemo(() => {
+    const set = new Set(agents.map((a) => a.department))
+    return FLEET_DEPARTMENT_ORDER.filter((d) => set.has(d) || Boolean(onDepartmentChange))
+  }, [agents, onDepartmentChange])
+
   if (agents.length === 0) {
     return (
       <div
         className={cn(
-          "flex min-h-[280px] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/30 p-6 text-sm text-[color:var(--g-text-muted)]",
+          "relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-[var(--np-radius-lg)] border border-divide",
           className,
         )}
       >
-        {emptyHint ?? "No agents to graph."}
+        <ConnectorsAtmosphere className="z-0" />
+        <p className="relative z-10 text-sm text-[color:var(--g-text-muted)]">
+          {emptyHint ?? "No agents to graph."}
+        </p>
       </div>
     )
   }
@@ -74,86 +157,112 @@ export function GraphView({
   const live = Boolean(activeAgentIds && activeAgentIds.size > 0)
 
   return (
-    <div
-      className={cn(
-        "relative min-h-[420px] overflow-auto rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/30",
-        className,
-      )}
-    >
-      <div className="relative p-4" style={{ minWidth: bounds.w, minHeight: bounds.h }}>
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
-          {edges.map((edge) => {
-            const d = edgePath(edge.source, edge.target)
-            if (!d) return null
-            const active = Boolean(edge.active)
-            const dashed =
-              edge.kind === "uses_connector" || edge.kind === "collaborates_with"
+    <div className={cn("space-y-3", className)}>
+      {onDepartmentChange ? (
+        <div className="relative z-10 flex flex-wrap gap-2">
+          {deptsPresent.map((department) => {
+            const count = agents.filter((a) => a.department === department).length
             return (
-              <g key={edge.id}>
-                <path
-                  d={d}
-                  fill="none"
-                  stroke={active ? "var(--g-brand)" : "var(--color-line, #d4d4d8)"}
-                  strokeWidth={active ? 2 : 1.25}
-                  strokeDasharray={dashed ? "5 4" : undefined}
-                  opacity={active ? 1 : 0.75}
-                />
-                {active ? (
-                  <circle r="3.5" fill="var(--g-brand)">
-                    <animateMotion dur="1.6s" repeatCount="indefinite" path={d} />
-                  </circle>
-                ) : null}
-              </g>
+              <DepartmentDropZone
+                key={department}
+                department={department}
+                onDropAgent={onDepartmentChange}
+                className="min-w-[6.5rem] border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)]"
+                highlightClassName="border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35"
+              >
+                <p
+                  className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    DEPARTMENT_ACCENT[department].accentClass,
+                  )}
+                >
+                  {DEPARTMENT_ACCENT[department].label}
+                </p>
+                <p className="text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
+                  {count} · drop to move
+                </p>
+              </DepartmentDropZone>
             )
           })}
-        </svg>
+        </div>
+      ) : null}
 
-        {agents.map((agent) => {
-          const pos = positions[agent.id]
-          if (!pos) return null
-          const executing = activeAgentIds?.has(agent.id)
-          return (
-            <div key={agent.id} className="absolute" style={{ left: pos.x, top: pos.y }}>
-              <GravitreAgentNode
-                agent={agent}
-                selected={selectedId === agent.id}
-                executing={executing}
-                onSelect={onSelect}
-              />
-            </div>
-          )
-        })}
+      <div className="relative min-h-[420px] overflow-auto rounded-[var(--np-radius-lg)] border border-divide">
+        <ConnectorsAtmosphere className="z-0" />
+        <div
+          className="relative z-10 p-4"
+          style={{ minWidth: bounds.w, minHeight: bounds.h }}
+        >
+          <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+            {edges.map((edge) => {
+              const d = edgePath(edge.source, edge.target)
+              if (!d) return null
+              const active = Boolean(edge.active)
+              const dashed =
+                edge.kind === "uses_connector" || edge.kind === "collaborates_with"
+              return (
+                <FleetEdgePath
+                  key={edge.id}
+                  edgeId={edge.id}
+                  d={d}
+                  active={active}
+                  dashed={dashed}
+                  sweep
+                />
+              )
+            })}
+          </svg>
 
-        {extraNodes.map((node) => {
-          const pos = positions[node.id]
-          if (!pos) return null
-          const Icon = node.kind === "workflow" ? NucleoWorkflow : NucleoConnector
-          return (
-            <div
-              key={node.id}
-              className="absolute flex w-[160px] items-center gap-2 rounded-[var(--np-radius-md)] border border-dashed border-divide bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[var(--np-shadow)]"
-              style={{ left: pos.x, top: pos.y }}
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-200/80 bg-cyan-50/90 text-cyan-700 dark:border-cyan-800/45 dark:bg-cyan-950/25 dark:text-cyan-300">
-                <Icon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
-                  {node.kind === "workflow" ? "Workflow" : "Connector"}
-                </p>
-                <p className="truncate text-sm font-medium">{node.label}</p>
+          {agents.map((agent) => {
+            const pos = positions[agent.id]
+            if (!pos) return null
+            const executing = activeAgentIds?.has(agent.id)
+            return (
+              <div key={agent.id} className="absolute" style={{ left: pos.x, top: pos.y }}>
+                <GravitreAgentNode
+                  agent={agent}
+                  selected={selectedId === agent.id}
+                  executing={executing}
+                  onSelect={onSelect}
+                  draggable={Boolean(onDepartmentChange)}
+                />
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
 
-        <div className="absolute bottom-4 left-4 flex flex-wrap gap-3 text-[10px] text-[color:var(--g-text-muted)]">
-          <span>── parent / swarm</span>
-          <span>- - uses connector</span>
-          {live ? <span className="text-[color:var(--g-brand)]">● live swarm path</span> : null}
-          {edges.length === 0 ? (
-            <span>No relationship edges yet — connectors appear when agents have connected systems</span>
-          ) : null}
+          {extraNodes.map((node) => {
+            const pos = positions[node.id]
+            if (!pos) return null
+            const Icon = node.kind === "workflow" ? NucleoWorkflow : NucleoConnector
+            return (
+              <div
+                key={node.id}
+                className="absolute flex w-[160px] items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-white px-3 py-2 shadow-[var(--np-shadow)]"
+                style={{ left: pos.x, top: pos.y }}
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-200">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+                    {node.kind === "workflow" ? "Workflow" : "Connector"}
+                  </p>
+                  <p className="truncate text-sm font-medium">{node.label}</p>
+                </div>
+              </div>
+            )
+          })}
+
+          <div className="absolute bottom-4 left-4 flex flex-wrap gap-3 text-[10px] text-[color:var(--g-text-muted)]">
+            <span>── parent / swarm</span>
+            <span>- - uses connector</span>
+            {live ? <span className="text-[color:var(--g-brand)]">● live swarm path</span> : null}
+            {edges.length === 0 ? (
+              <span>
+                No relationship edges yet — connectors appear when agents have connected systems
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

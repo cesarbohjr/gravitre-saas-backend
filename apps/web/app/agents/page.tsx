@@ -64,10 +64,11 @@ import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
-import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { FleetControls, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
-import { toFleetAgent } from "@/lib/agent-identity-bridge"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
+import { mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
 import { isAgentsFleetView } from "@/lib/agents-fleet-prefs"
@@ -567,6 +568,27 @@ export default function AgentsPage() {
       setIsMutatingAgent((current) => (current === agent.id ? null : current))
     }
   }
+
+  const handleDepartmentChange = async (agentId: string, department: AgentDepartmentId) => {
+    const agent = agents.find((a) => a.id === agentId)
+    if (!agent) return
+    const label = mapFleetDepartmentToApi(department)
+    if (String(agent.department ?? "").trim().toLowerCase() === label.toLowerCase()) return
+    try {
+      setIsMutatingAgent(agentId)
+      await agentsApi.update(agentId, { department: label as Agent["department"] })
+      toast.success(`${agent.name} moved to ${label}`)
+      await mutate()
+      if (selectedAgent?.id === agentId) {
+        setSelectedAgent({ ...selectedAgent, department: label as Agent["department"] })
+      }
+    } catch (err) {
+      console.error("[v0] Failed to move agent department:", err)
+      toast.error(`Failed to move ${agent.name}`)
+    } finally {
+      setIsMutatingAgent((current) => (current === agentId ? null : current))
+    }
+  }
   
   const filteredAgents = useMemo(() => {
     if (!normalizedSearchQuery) return agents
@@ -836,8 +858,9 @@ export default function AgentsPage() {
             ) : null}
           </div>
 
-          {/* TEAM / LIST — Agents 4.0 Phase 3 */}
+          {/* TEAM / LIST / GRAPH — Nodus Connectors atmosphere + department DnD */}
           <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
+            <ConnectorsAtmosphere className="z-0" />
             <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
               {error ? (
                 <WorkSectionErrorCard
@@ -921,9 +944,10 @@ export default function AgentsPage() {
                   agents={fleetAgents}
                   selectedId={visibleSelectedAgent?.id ?? null}
                   onSelect={selectAgentById}
+                  onDepartmentChange={handleDepartmentChange}
                   toolbar={
                     <p className="text-xs text-[color:var(--g-text-muted)]">
-                      List view — sort and filter for fleet operations
+                      List view — drag rows onto a department to reassign · sort and filter for fleet ops
                     </p>
                   }
                 />
@@ -936,7 +960,7 @@ export default function AgentsPage() {
                   ) : (
                     <p className="text-xs text-[color:var(--g-text-muted)]">
                       Graph shows parent links, swarm delegation, and connector usage — only
-                      edges backed by data.
+                      edges backed by data. Drag agents onto a department to reassign.
                     </p>
                   )}
                   <GraphView
@@ -945,6 +969,7 @@ export default function AgentsPage() {
                     extraNodes={graphModel.extraNodes}
                     selectedId={visibleSelectedAgent?.id ?? null}
                     onSelect={selectAgentById}
+                    onDepartmentChange={handleDepartmentChange}
                     activeAgentIds={graphModel.activeAgentIds}
                   />
                 </div>
@@ -954,6 +979,7 @@ export default function AgentsPage() {
                   selectedId={visibleSelectedAgent?.id ?? null}
                   grouped
                   onSelect={selectAgentById}
+                  onDepartmentChange={handleDepartmentChange}
                 />
               )}
             </div>

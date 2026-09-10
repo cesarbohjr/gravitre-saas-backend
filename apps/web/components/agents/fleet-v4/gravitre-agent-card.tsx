@@ -1,6 +1,8 @@
 "use client"
 
+import type { DragEvent } from "react"
 import { cn } from "@/lib/utils"
+import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
 import { GravitreAgentDepartmentBadge } from "./gravitre-agent-department-badge"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
@@ -11,21 +13,34 @@ export function GravitreAgentCard({
   agent,
   selected,
   onSelect,
+  draggable = false,
   className,
 }: {
   agent: FleetAgent
   selected?: boolean
   onSelect?: (id: string) => void
+  draggable?: boolean
   className?: string
 }) {
+  const onDragStart = (e: DragEvent) => {
+    if (!draggable) return
+    setFleetAgentDragData(e.dataTransfer, {
+      agentId: agent.id,
+      fromDepartment: agent.department,
+    })
+  }
+
   return (
     <button
       type="button"
       onClick={() => onSelect?.(agent.id)}
+      draggable={draggable}
+      onDragStart={onDragStart}
       className={cn(
-        "group w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-3 text-left shadow-[var(--np-shadow)] transition-[border-color,box-shadow]",
+        "group w-full rounded-[var(--np-radius-md)] border border-divide bg-white p-3 text-left shadow-[var(--np-shadow)] transition-[border-color,box-shadow]",
         "hover:border-[color:var(--g-brand-border)]",
         selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
+        draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
     >

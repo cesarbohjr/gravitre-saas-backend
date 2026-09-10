@@ -128,8 +128,10 @@ function Agents4PrototypeBody() {
               href="/e2e/shots/agents"
               className="flex flex-col gap-0.5 px-4 py-3 transition-colors hover:bg-muted/40"
             >
-              <span className="text-sm font-medium">Current production agents shot</span>
-              <span className="text-xs text-muted-foreground">Orb constellation baseline</span>
+              <span className="text-sm font-medium">Production agents shot</span>
+              <span className="text-xs text-muted-foreground">
+                Live /agents surface with fixture data (TEAM / LIST / GRAPH)
+              </span>
             </Link>
           </li>
         </ul>

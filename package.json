@@ -160,6 +160,7 @@
     "test:navigation": "playwright test e2e/marketing-navigation-crawler.spec.ts e2e/execution-result-navigation.spec.ts e2e/app-navigation-crawler.spec.ts",
     "test:marketing-smoke": "playwright test e2e/marketing-system-smoke.spec.ts",
     "test:marketing-visual": "playwright test -c playwright.visual.config.ts e2e/visual/marketing-system-fidelity.spec.ts",
+    "test:agents-visual": "playwright test -c playwright.visual.config.ts e2e/visual/agents-4.spec.ts",
     "test:navigation:install": "playwright install --with-deps chromium",
     "test:click-audit:prompt3": "node scripts/prompt3-authenticated-click-audit.js https://gravitre.app"
   },

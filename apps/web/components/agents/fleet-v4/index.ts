@@ -35,6 +35,13 @@ export { FleetControls } from "./fleet-controls"
 export { TeamView } from "./team-view"
 export { ListView } from "./list-view"
 export { GraphView } from "./graph-view"
+export { DepartmentDropZone, DepartmentLaneHeader } from "./department-drop-zone"
+export {
+  FLEET_AGENT_DRAG_MIME,
+  FLEET_DEPARTMENT_ORDER,
+  setFleetAgentDragData,
+  getFleetAgentDragData,
+} from "./fleet-department-dnd"
 export { AgentInspector } from "./agent-inspector"
 export { AgentFleetInspectorBody } from "./agent-fleet-inspector"
 export { AgentAppearancePicker } from "./appearance-picker"

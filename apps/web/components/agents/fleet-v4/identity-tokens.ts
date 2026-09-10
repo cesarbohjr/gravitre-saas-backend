@@ -20,8 +20,8 @@ import type { AgentIdentityColorId, AgentRoleIconId, AgentDepartmentId } from ".
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
 
 /**
- * Soft surface + stronger icon. Identity color ≠ status color.
- * Maps forward from legacy bg-*-500 where needed in production migration.
+ * Solid Nodus tiles — crisp icon ink, no washed /90 surfaces.
+ * Identity color ≠ status color.
  */
 export const IDENTITY_COLOR_TOKENS: Record<
   AgentIdentityColorId,
@@ -29,45 +29,45 @@ export const IDENTITY_COLOR_TOKENS: Record<
 > = {
   green: {
     label: "Green",
-    surfaceClass: "bg-emerald-50/90 dark:bg-emerald-950/25",
-    iconClass: "text-emerald-700 dark:text-emerald-300",
-    borderClass: "border-emerald-200/80 dark:border-emerald-800/45",
+    surfaceClass: "bg-emerald-100 dark:bg-emerald-950/50",
+    iconClass: "text-emerald-700 dark:text-emerald-200",
+    borderClass: "border-emerald-300 dark:border-emerald-700",
   },
   cyan: {
     label: "Cyan",
-    surfaceClass: "bg-cyan-50/90 dark:bg-cyan-950/25",
-    iconClass: "text-cyan-700 dark:text-cyan-300",
-    borderClass: "border-cyan-200/80 dark:border-cyan-800/45",
+    surfaceClass: "bg-cyan-100 dark:bg-cyan-950/50",
+    iconClass: "text-cyan-700 dark:text-cyan-200",
+    borderClass: "border-cyan-300 dark:border-cyan-700",
   },
   violet: {
     label: "Violet",
-    surfaceClass: "bg-violet-50/90 dark:bg-violet-950/25",
-    iconClass: "text-violet-700 dark:text-violet-300",
-    borderClass: "border-violet-200/80 dark:border-violet-800/45",
+    surfaceClass: "bg-violet-100 dark:bg-violet-950/50",
+    iconClass: "text-violet-700 dark:text-violet-200",
+    borderClass: "border-violet-300 dark:border-violet-700",
   },
   blue: {
     label: "Blue",
-    surfaceClass: "bg-sky-50/90 dark:bg-sky-950/25",
-    iconClass: "text-sky-700 dark:text-sky-300",
-    borderClass: "border-sky-200/80 dark:border-sky-800/45",
+    surfaceClass: "bg-sky-100 dark:bg-sky-950/50",
+    iconClass: "text-sky-700 dark:text-sky-200",
+    borderClass: "border-sky-300 dark:border-sky-700",
   },
   teal: {
     label: "Teal",
-    surfaceClass: "bg-teal-50/90 dark:bg-teal-950/25",
-    iconClass: "text-teal-700 dark:text-teal-300",
-    borderClass: "border-teal-200/80 dark:border-teal-800/45",
+    surfaceClass: "bg-teal-100 dark:bg-teal-950/50",
+    iconClass: "text-teal-700 dark:text-teal-200",
+    borderClass: "border-teal-300 dark:border-teal-700",
   },
   amber: {
     label: "Amber",
-    surfaceClass: "bg-amber-50/80 dark:bg-amber-950/20",
-    iconClass: "text-amber-800 dark:text-amber-200",
-    borderClass: "border-amber-200/80 dark:border-amber-800/40",
+    surfaceClass: "bg-amber-100 dark:bg-amber-950/45",
+    iconClass: "text-amber-800 dark:text-amber-100",
+    borderClass: "border-amber-300 dark:border-amber-700",
   },
   rose: {
     label: "Rose",
-    surfaceClass: "bg-rose-50/90 dark:bg-rose-950/25",
-    iconClass: "text-rose-700 dark:text-rose-300",
-    borderClass: "border-rose-200/80 dark:border-rose-800/45",
+    surfaceClass: "bg-rose-100 dark:bg-rose-950/50",
+    iconClass: "text-rose-700 dark:text-rose-200",
+    borderClass: "border-rose-300 dark:border-rose-700",
   },
 }
 
