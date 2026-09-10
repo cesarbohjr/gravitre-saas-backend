@@ -60,6 +60,7 @@ export function DepartmentDropZone({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       data-department-drop={department}
+      data-fleet-interactive=""
       className={cn(
         "rounded-[var(--np-radius-md)] transition-[box-shadow,background-color,border-color]",
         over &&

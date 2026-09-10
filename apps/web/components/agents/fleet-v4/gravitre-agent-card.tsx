@@ -4,7 +4,6 @@ import type { DragEvent } from "react"
 import { cn } from "@/lib/utils"
 import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
-import { GravitreAgentDepartmentBadge } from "./gravitre-agent-department-badge"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
 import { NodusGlowFrame } from "./nodus-fleet-chrome"
@@ -17,6 +16,8 @@ export function GravitreAgentCard({
   draggable = false,
   /** Nodus Aceternity glow frame (TEAM topology). */
   nodusGlow = false,
+  /** Dense TEAM canvas card — less chrome, more cards fit. */
+  compact = false,
   className,
 }: {
   agent: FleetAgent
@@ -24,6 +25,7 @@ export function GravitreAgentCard({
   onSelect?: (id: string) => void
   draggable?: boolean
   nodusGlow?: boolean
+  compact?: boolean
   className?: string
 }) {
   const onDragStart = (e: DragEvent) => {
@@ -37,11 +39,13 @@ export function GravitreAgentCard({
   const inner = (
     <button
       type="button"
+      data-fleet-interactive=""
       onClick={() => onSelect?.(agent.id)}
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        "group w-full p-3 text-left transition-[border-color,box-shadow]",
+        "group w-full text-left transition-[border-color,box-shadow]",
+        compact ? "p-2" : "p-3",
         nodusGlow
           ? "rounded-[calc(var(--np-radius-md,8px)-1px)] bg-transparent"
           : "rounded-[var(--np-radius-md)] border border-divide bg-white shadow-[var(--np-shadow)] hover:border-[color:var(--g-brand-border)]",
@@ -51,57 +55,70 @@ export function GravitreAgentCard({
         className,
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className={cn("flex items-start", compact ? "gap-2" : "gap-3")}>
         <GravitreAgentIdentity
           icon={agent.icon}
           identityColor={agent.identityColor}
           status={agent.runtimeState}
-          variant="card"
+          variant={compact ? "graph" : "card"}
+          size={compact ? "sm" : undefined}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-1.5">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[color:var(--g-text-primary)]">
+              <p
+                className={cn(
+                  "truncate font-medium text-[color:var(--g-text-primary)]",
+                  compact ? "text-xs leading-snug" : "text-sm",
+                )}
+              >
                 {agent.name}
               </p>
-              <p className="truncate text-xs text-[color:var(--g-text-muted)]">{agent.role}</p>
+              <p className="truncate text-[10px] text-[color:var(--g-text-muted)] sm:text-xs">
+                {agent.role}
+              </p>
             </div>
-            <GravitreAgentActivityIndicator runtimeState={agent.runtimeState} />
+            {!compact ? (
+              <GravitreAgentActivityIndicator runtimeState={agent.runtimeState} />
+            ) : null}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-0.5", compact ? "mt-1" : "mt-2")}>
             <GravitreAgentStatus
               runtimeState={agent.runtimeState}
               configState={agent.configState}
-              showConfig
+              showConfig={!compact}
             />
-            <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
-              {agent.tasksToday} tasks today
-            </span>
+            {!compact ? (
+              <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
+                {agent.tasksToday} tasks today
+              </span>
+            ) : (
+              <span className="text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
+                {agent.tasksToday} today
+              </span>
+            )}
           </div>
-          {agent.currentActivity ? (
+          {!compact && agent.currentActivity ? (
             <p className="mt-2 truncate text-xs text-[color:var(--g-text-primary)]">
               {agent.currentActivity}
             </p>
           ) : null}
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <GravitreAgentDepartmentBadge department={agent.department} />
-            {agent.successRate != null ? (
-              <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
-                {agent.successRate}% success · {agent.lastActiveLabel}
+          {!compact ? (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
+                {agent.departmentLabel}
               </span>
-            ) : null}
-          </div>
-          <div className="mt-2 hidden gap-2 opacity-0 transition-opacity group-hover:flex group-hover:opacity-100 group-focus-within:flex group-focus-within:opacity-100">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
-              View
-            </span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
-              Run
-            </span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
-              More
-            </span>
-          </div>
+              {agent.successRate != null ? (
+                <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
+                  {agent.successRate}% · {agent.lastActiveLabel}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-1 text-[9px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
+              {agent.departmentLabel}
+            </p>
+          )}
         </div>
       </div>
     </button>
@@ -110,7 +127,11 @@ export function GravitreAgentCard({
   if (!nodusGlow) return inner
 
   return (
-    <NodusGlowFrame className="w-full shadow-md" contentClassName="bg-white dark:bg-neutral-900">
+    <NodusGlowFrame
+      className={cn("w-full shadow-md", compact && "max-w-[200px]")}
+      contentClassName="bg-white dark:bg-neutral-900"
+      size={compact ? "sm" : "md"}
+    >
       {inner}
     </NodusGlowFrame>
   )

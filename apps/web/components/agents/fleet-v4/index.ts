@@ -31,11 +31,12 @@ export { GravitreAgentCard } from "./gravitre-agent-card"
 export { GravitreAgentRow } from "./gravitre-agent-row"
 export { GravitreAgentNode } from "./gravitre-agent-node"
 export { FleetSummaryBar, type FleetSummaryCounts } from "./fleet-summary"
-export { FleetControls } from "./fleet-controls"
+export { FleetControls, FleetControlsCollapsed } from "./fleet-controls"
 export { TeamView } from "./team-view"
 export { ListView } from "./list-view"
 export { GraphView } from "./graph-view"
 export { DepartmentDropZone, DepartmentLaneHeader } from "./department-drop-zone"
+export { FleetPanCanvas } from "./fleet-pan-canvas"
 export {
   NodusGlowFrame,
   NodusDepartmentHub,

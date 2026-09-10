@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { cn } from "@/lib/utils"
 import type {
@@ -45,6 +46,8 @@ export function FleetControls({
   departments,
   roles,
   models,
+  searchSlot,
+  toolbarEnd,
   className,
 }: {
   view: AgentsFleetViewPref
@@ -59,6 +62,10 @@ export function FleetControls({
   departments: string[]
   roles: string[]
   models: string[]
+  /** Search field — rendered on the same row as department/status/role/model. */
+  searchSlot?: ReactNode
+  /** Right-side actions on the view/sort row (e.g. Minimize). */
+  toolbarEnd?: ReactNode
   className?: string
 }) {
   const hasFilters = Boolean(
@@ -107,12 +114,16 @@ export function FleetControls({
             Clear filters
           </button>
         ) : null}
-        <span className="ml-auto hidden text-[11px] text-[color:var(--g-text-muted)] sm:inline">
-          Edges: parent · swarm · connectors
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden text-[11px] text-[color:var(--g-text-muted)] lg:inline">
+            Edges: parent · swarm · connectors
+          </span>
+          {toolbarEnd}
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        {searchSlot ? <div className="min-w-[12rem] flex-[2_1_14rem]">{searchSlot}</div> : null}
         <FilterSelect
           label="Department"
           value={filters.department}
@@ -143,6 +154,38 @@ export function FleetControls({
   )
 }
 
+/** Slim strip when filters chrome is minimized — view switch only. */
+export function FleetControlsCollapsed({
+  view,
+  onViewChange,
+  onShowFilters,
+  className,
+}: {
+  view: AgentsFleetViewPref
+  onViewChange: (view: AgentsFleetViewPref) => void
+  onShowFilters: () => void
+  className?: string
+}) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      <SegmentedControl
+        ariaLabel="Fleet view"
+        options={VIEW_OPTIONS}
+        value={view}
+        onChange={onViewChange}
+      />
+      <button
+        type="button"
+        onClick={onShowFilters}
+        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
+        aria-label="Show filters"
+      >
+        <span className="text-[11px]">Show filters</span>
+      </button>
+    </div>
+  )
+}
+
 function FilterSelect({
   label,
   value,
@@ -157,7 +200,7 @@ function FilterSelect({
   onChange: (value: string | null) => void
 }) {
   return (
-    <label className="flex min-w-[120px] flex-1 flex-col gap-0.5 sm:max-w-[180px]">
+    <label className="flex min-w-[7.5rem] flex-1 flex-col gap-0.5 sm:max-w-[9.5rem]">
       <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
         {label}
       </span>

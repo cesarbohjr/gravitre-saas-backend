@@ -7,33 +7,32 @@
 
 import { useId, type ComponentType, type ReactNode, type SVGProps } from "react"
 import { motion } from "framer-motion"
+import {
+  Briefcase,
+  Code2,
+  Cog,
+  Headphones,
+  Landmark,
+  Megaphone,
+  Shield,
+  Users,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LogoSVG } from "@/components/marketing/nodus/logo"
-import {
-  CodeIcon,
-  PhoneIcon,
-  WindowIcon,
-} from "@/components/marketing/nodus-icons/bento-icons"
-import {
-  NavChart,
-  NavSparkles,
-  NavTarget,
-} from "@/components/icons/nodus-nav/outline"
-import { NucleoApproval, NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import type { AgentDepartmentId } from "./types"
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
 
-/** Small black outline icons — Nodus TextIconBlock left rail. */
+/** Crisp black outline icons — distinct per department. */
 export const DEPARTMENT_OUTLINE_ICONS: Record<AgentDepartmentId, IconComponent> = {
-  sales: NavTarget as IconComponent,
-  customer_success: PhoneIcon as IconComponent,
-  finance: NavChart as IconComponent,
-  operations: NucleoWorkflow,
-  engineering: CodeIcon as IconComponent,
-  marketing: NavSparkles as IconComponent,
-  security: NucleoApproval,
-  general: WindowIcon as IconComponent,
+  sales: Briefcase as IconComponent,
+  customer_success: Headphones as IconComponent,
+  finance: Landmark as IconComponent,
+  operations: Cog as IconComponent,
+  engineering: Code2 as IconComponent,
+  marketing: Megaphone as IconComponent,
+  security: Shield as IconComponent,
+  general: Users as IconComponent,
 }
 
 /** Dual spinning conic ring — NativeToolsHubLogo treatment. */
@@ -71,7 +70,7 @@ export function NodusGlowFrame({
   )
 }
 
-/** Left rail — small black department icon + label (Nodus TextIconBlock). */
+/** Left rail — small black department icon + full label (no truncation). */
 export function NodusDepartmentLabel({
   department,
   label,
@@ -85,14 +84,19 @@ export function NodusDepartmentLabel({
 }) {
   const Icon = DEPARTMENT_OUTLINE_ICONS[department]
   return (
-    <div className={cn("relative flex items-center gap-2", className)}>
-      <Icon className="size-4 shrink-0 text-black dark:text-neutral-100" aria-hidden />
+    <div className={cn("relative flex items-center gap-2.5", className)}>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white text-black shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+        <Icon className="size-[15px]" strokeWidth={1.75} aria-hidden />
+      </span>
       <div className="min-w-0">
-        <span className="block truncate text-sm font-medium text-[color:var(--g-text-primary)]">
+        <span
+          className="block whitespace-nowrap text-sm font-medium leading-tight text-[color:var(--g-text-primary)]"
+          title={label}
+        >
           {label}
         </span>
         {count != null ? (
-          <span className="block text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
+          <span className="mt-0.5 block whitespace-nowrap text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
             {count} agent{count === 1 ? "" : "s"}
           </span>
         ) : null}

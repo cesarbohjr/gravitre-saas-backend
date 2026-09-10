@@ -65,7 +65,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
-import { FleetControls, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
+import { FleetControls, FleetControlsCollapsed, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import { mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
@@ -104,6 +104,8 @@ type Agent = ApiAgent & {
 
 const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
 const AGENT_HEADER_COLLAPSED_KEY = "gravitre:agentsHeaderCollapsed"
+/** Connectors-style: hide search/filters so the roster canvas fills the viewport. */
+const AGENT_FILTERS_CHROME_KEY = "gravitre:agentsFiltersChromeCollapsed"
 const AGENTS_REFRESH_MS = 30_000
 
 function deriveModelLabel(input: Record<string, unknown>): string {
@@ -479,6 +481,25 @@ export default function AgentsPage() {
       return next
     })
   }
+
+  // Connectors-style Minimize: hide search + filter chrome for a full canvas.
+  const [filtersChromeCollapsed, setFiltersChromeCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(AGENT_FILTERS_CHROME_KEY) === "1"
+  })
+
+  const toggleFiltersChrome = () => {
+    setFiltersChromeCollapsed((collapsed) => {
+      const next = !collapsed
+      window.localStorage.setItem(AGENT_FILTERS_CHROME_KEY, next ? "1" : "0")
+      // Minimizing filters also clears the overview banner for max canvas.
+      if (next) {
+        setHeaderCollapsed(true)
+        window.localStorage.setItem(AGENT_HEADER_COLLAPSED_KEY, "1")
+      }
+      return next
+    })
+  }
   
   // Fetch agents from API with SWR — refresh every 30s for live task/active counts
   const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
@@ -762,7 +783,23 @@ export default function AgentsPage() {
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description={SURFACE_COPY.pages.agents.description}
                 icon={<NucleoAgent className="h-5 w-5" />}
-                actions={rosterActions}
+                actions={
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs text-muted-foreground"
+                      onClick={toggleHeaderCollapsed}
+                      aria-label="Hide team overview"
+                      title="Hide overview"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Hide overview</span>
+                    </Button>
+                    {rosterActions}
+                  </div>
+                }
               />
               <div className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
                 <motion.div
@@ -794,72 +831,98 @@ export default function AgentsPage() {
                   {totalTasks > 0 ? ` · ${totalTasks} tasks today` : ""}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">{rosterActions}</div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs text-muted-foreground"
+                  onClick={toggleHeaderCollapsed}
+                  aria-label="Show team overview"
+                  title="Show overview"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Overview</span>
+                </Button>
+                {rosterActions}
+              </div>
             </div>
           )}
 
-          {/* Search + view / filter / sort */}
-          <div className="space-y-3 border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--g-text-muted)]" />
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  placeholder="Search name, role, department, model, status…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search agents"
-                  className="h-10 w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:h-9"
-                />
-                {searchQuery ? (
-                  <button
+          {/* View / search / filters — search shares the filter row; Minimize like Connectors */}
+          <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
+            {filtersChromeCollapsed ? (
+              <FleetControlsCollapsed
+                view={prefs.view}
+                onViewChange={setView}
+                onShowFilters={toggleFiltersChrome}
+              />
+            ) : (
+              <FleetControls
+                view={prefs.view}
+                onViewChange={setView}
+                sort={prefs.sort}
+                sortDir={prefs.sortDir}
+                onSortChange={setSort}
+                onToggleSortDir={toggleSortDir}
+                filters={prefs.filters}
+                onFiltersChange={setFilters}
+                onClearFilters={clearFilters}
+                departments={filterOptions.departments}
+                roles={filterOptions.roles}
+                models={filterOptions.models}
+                searchSlot={
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--g-text-muted)]" />
+                    <input
+                      ref={searchInputRef}
+                      type="search"
+                      placeholder="Search name, role, department…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Search agents"
+                      className="h-8 w-full rounded-md border border-divide bg-[color:var(--g-surface-1)] pl-8 pr-8 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {searchQuery ? (
+                      <button
+                        type="button"
+                        aria-label="Clear search"
+                        onClick={() => {
+                          setSearchQuery("")
+                          searchInputRef.current?.focus()
+                        }}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                }
+                toolbarEnd={
+                  <Button
                     type="button"
-                    aria-label="Clear search"
-                    onClick={() => {
-                      setSearchQuery("")
-                      searchInputRef.current?.focus()
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 shrink-0 text-xs text-muted-foreground"
+                    onClick={toggleFiltersChrome}
+                    aria-pressed={filtersChromeCollapsed}
+                    aria-label="Minimize filters for a full canvas"
+                    title="Minimize"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={toggleHeaderCollapsed}
-                aria-label={headerCollapsed ? "Show team overview" : "Hide team overview for a clear agent canvas"}
-                aria-expanded={!headerCollapsed}
-                title={headerCollapsed ? "Show team overview" : "Clear canvas"}
-                className="h-10 w-10 shrink-0 sm:h-9 sm:w-9"
-              >
-                {headerCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-              </Button>
-            </div>
-            <FleetControls
-              view={prefs.view}
-              onViewChange={setView}
-              sort={prefs.sort}
-              sortDir={prefs.sortDir}
-              onSortChange={setSort}
-              onToggleSortDir={toggleSortDir}
-              filters={prefs.filters}
-              onFiltersChange={setFilters}
-              onClearFilters={clearFilters}
-              departments={filterOptions.departments}
-              roles={filterOptions.roles}
-              models={filterOptions.models}
-            />
-            {(normalizedSearchQuery ||
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Minimize</span>
+                  </Button>
+                }
+              />
+            )}
+            {!filtersChromeCollapsed &&
+            (normalizedSearchQuery ||
               prefs.filters.department ||
               prefs.filters.status ||
               prefs.filters.role ||
               prefs.filters.model) &&
             agents.length > 0 ? (
-              <p className="text-xs text-[color:var(--g-text-muted)]">
+              <p className="mt-2 text-xs text-[color:var(--g-text-muted)]">
                 {fleetAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
               </p>
             ) : null}
