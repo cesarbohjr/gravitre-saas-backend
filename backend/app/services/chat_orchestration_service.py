@@ -806,6 +806,7 @@ class ChatOrchestrationService:
                 user_id=user_id,
                 classification=classification,
                 goal=message,
+                ignore_unconnected_mentions=True,
             )
             return [step]
 
@@ -836,27 +837,29 @@ class ChatOrchestrationService:
         org_id: str,
         user_id: str,
         classification: dict[str, Any],
+        ignore_unconnected_mentions: bool = False,
     ) -> OrchestrationStep:
         connected = {c.lower() for c in connected_integrations}
         # Prefer the vendor that appears first in *this* segment so multi-vendor
         # full-sentence leakage cannot label every step as the first org-wide hit.
         mentioned = self._mentioned_integrations_ordered(segment, connected_integrations)
-        for integration in mentioned:
-            if not self._integration_is_connected(integration, connected):
-                return OrchestrationStep(
-                    step_id=step_id,
-                    segment=segment,
-                    label=f"{integration.replace('_', ' ').title()} (not connected)",
-                    kind="write",
-                    supported=False,
-                    requires_approval=False,
-                    skip_reason=format_operator_message(
-                        "connector_connect_to_run",
-                        integration=integration,
-                        confidence_register="blocked",
-                        allow_humor=False,
-                    ),
-                )
+        if not ignore_unconnected_mentions:
+            for integration in mentioned:
+                if not self._integration_is_connected(integration, connected):
+                    return OrchestrationStep(
+                        step_id=step_id,
+                        segment=segment,
+                        label=f"{integration.replace('_', ' ').title()} (not connected)",
+                        kind="write",
+                        supported=False,
+                        requires_approval=False,
+                        skip_reason=format_operator_message(
+                            "connector_connect_to_run",
+                            integration=integration,
+                            confidence_register="blocked",
+                            allow_humor=False,
+                        ),
+                    )
 
         planning_text = self._segment_planning_text(segment, connected_integrations, goal=goal)
         plan = self._connector.plan_action(

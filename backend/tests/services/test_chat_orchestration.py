@@ -602,3 +602,34 @@ async def test_google_ads_structure_plan_is_presented_as_one_step(orchestration_
     presented = orchestration_service._present_plan_confirm.await_args.args[4]
     assert len(presented) == 1
     assert presented[0].plan.invoke_action == "google_ads.structure.create"
+
+
+@pytest.mark.asyncio
+async def test_ads_structure_plan_ignores_salesforce_keyword_in_brief(orchestration_service):
+    """Quoted Salesforce/HubSpot ad-group copy must not abort the Ads structure step."""
+    message = (
+        "I have a Google Ads campaign strategy. Set it up in Google Ads with "
+        "ad groups including 'AI agent for Salesforce'. Show me the plan."
+    )
+    plan = ConnectorActionPlan(
+        tool_name="google_ads_structure_create",
+        invoke_action="googleads.structure.create",
+        integration="google_ads",
+        kind="write",
+        label="Create Google Ads Search campaign structure",
+        args={"payload": {}},
+        requires_approval=True,
+        destructive=True,
+    )
+    orchestration_service._connector = MagicMock()
+    orchestration_service._connector.plan_action = MagicMock(return_value=plan)
+    orchestration_service._connector.plan_fallback_segment = MagicMock(return_value=None)
+    orchestration_service._connector._evaluate_risk = AsyncMock(return_value={})
+    steps = await orchestration_service._build_plan(
+        message, ["google_ads", "apollo", "hubspot"], "org-1", "user-1", {}
+    )
+    assert len(steps) == 1
+    assert steps[0].supported is True
+    assert steps[0].plan is not None
+    assert "structure.create" in steps[0].plan.invoke_action
+    assert ChatOrchestrationService._is_single_google_ads_structure_plan(steps, message) is True
