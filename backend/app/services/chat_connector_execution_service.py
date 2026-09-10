@@ -1690,6 +1690,48 @@ class ChatConnectorExecutionService:
             approved_params=params if params else None,
         )
 
+    async def _persist_recent_connector_invocation(
+        self,
+        *,
+        conversation_id: str,
+        org_id: str,
+        plan: ConnectorActionPlan,
+        result: ExecutionResult,
+        client: Any | None = None,
+    ) -> None:
+        """Record that this vendor action ran, including validation_error terminals."""
+        if not conversation_id or not org_id:
+            return
+        from app.services.action_availability_honesty import invocations_state_patch
+
+        vendor = str(plan.integration or "").strip().lower()
+        action = str(plan.invoke_action or "").strip().lower()
+        if not vendor and "." in action:
+            vendor = action.split(".", 1)[0]
+        if not vendor:
+            return
+        patch = invocations_state_patch(
+            [
+                {
+                    "vendor": vendor,
+                    "action": action or vendor,
+                    "error_code": str(getattr(result, "error_code", "") or ""),
+                }
+            ]
+        )
+        if not patch:
+            return
+        try:
+            await self._state.update_task_state(
+                conversation_id, org_id, patch, client=client
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "persist_recent_connector_invocation failed conversation_id=%s error=%s",
+                conversation_id,
+                exc,
+            )
+
     async def execute_plan(
         self,
         *,
@@ -1818,6 +1860,13 @@ class ChatConnectorExecutionService:
                     plan=plan,
                     result=failed,
                 )
+            await self._persist_recent_connector_invocation(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                plan=plan,
+                result=failed,
+                client=client,
+            )
             return failed
         except Exception as exc:  # noqa: BLE001
             logger.warning(
@@ -1848,6 +1897,13 @@ class ChatConnectorExecutionService:
                     plan=plan,
                     result=failed,
                 )
+            await self._persist_recent_connector_invocation(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                plan=plan,
+                result=failed,
+                client=client,
+            )
             return failed
 
         success = bool(observation.get("success"))
@@ -1905,6 +1961,13 @@ class ChatConnectorExecutionService:
                     plan=plan,
                     result=failed,
                 )
+            await self._persist_recent_connector_invocation(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                plan=plan,
+                result=failed,
+                client=client,
+            )
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
@@ -1982,6 +2045,13 @@ class ChatConnectorExecutionService:
                         plan=plan,
                         result=failed,
                     )
+                await self._persist_recent_connector_invocation(
+                    conversation_id=conversation_id,
+                    org_id=org_id,
+                    plan=plan,
+                    result=failed,
+                    client=client,
+                )
                 return failed
 
         finalize_run_id: str | None = None
@@ -2057,6 +2127,13 @@ class ChatConnectorExecutionService:
                 org_id,
                 {**file_ledger_patch, **session_updates},
             )
+        await self._persist_recent_connector_invocation(
+            conversation_id=conversation_id,
+            org_id=org_id,
+            plan=plan,
+            result=result,
+            client=client,
+        )
         return result
 
     def _finalize_connector_outcome(

@@ -853,18 +853,25 @@ def _exec_hubspot_lists_get(ctx: ToolContext, params: dict[str, Any]) -> Normali
 
 
 def _exec_hubspot_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    from app.connectors.hubspot import create_list as hubspot_create_list
+    from app.connectors.hubspot import (
+        create_list as hubspot_create_list,
+        normalize_hubspot_list_processing_type,
+    )
 
     cid, token = _hubspot_connector_and_token(ctx, params)
     name = params.get("name") or params.get("list_name") or params.get("listName")
     if not name:
         raise ToolValidationError("hubspot.lists.create requires name")
+
+    processing_type = normalize_hubspot_list_processing_type(
+        params.get("processing_type") or params.get("processingType") or "MANUAL"
+    )
     try:
         data = hubspot_create_list(
             token,
             str(name),
             object_type_id=str(params.get("object_type_id") or params.get("objectTypeId") or "0-1"),
-            processing_type=str(params.get("processing_type") or params.get("processingType") or "MANUAL"),
+            processing_type=processing_type,
         )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc

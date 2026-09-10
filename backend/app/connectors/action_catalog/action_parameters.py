@@ -296,9 +296,23 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     "hubspot.lists.create": {
         "type": "object",
         "properties": {
-            "name": {"type": "string", "description": "List name"},
-            "object_type_id": {"type": "string", "description": "HubSpot object type id (default 0-1 contacts)"},
-            "processing_type": {"type": "string", "description": "MANUAL or DYNAMIC"},
+            "name": {"type": "string", "description": "HubSpot list name (e.g. MSPs)."},
+            "object_type_id": {
+                "type": "string",
+                "description": (
+                    "HubSpot object type id. Default 0-1 (contacts). "
+                    "Do not send Salesforce field names or default-value maps."
+                ),
+            },
+            "processing_type": {
+                "type": "string",
+                "description": (
+                    "MANUAL (static contact list, default) or DYNAMIC. "
+                    "Salesforce STATIC/standard maps to MANUAL. "
+                    "DYNAMIC requires HubSpot filterBranch which this action does not send "
+                    "— use MANUAL unless the user supplied HubSpot list filters."
+                ),
+            },
             "connector_id": _CONNECTOR_ID,
         },
         "required": ["name"],

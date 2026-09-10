@@ -22,6 +22,8 @@ from app.services.unified_turn_knowledge_context import (
         ("ok", False),
         ("What can you help me with?", False),
         ("what tools do you have access to?", False),
+        ("Use standard default fields.", False),
+        ("just use the defaults", False),
     ],
 )
 def test_should_augment_informational_messages(message: str, expected: bool) -> None:

@@ -139,13 +139,26 @@ class UnifiedRetrievalService:
         metrics: dict[str, Any] = {}
         if active_scopes.knowledge:
             try:
+                from app.services.connected_vendor_knowledge_filter import (
+                    bias_retrieval_query_for_connected_crm,
+                    filter_competing_crm_knowledge_hits,
+                )
+
+                connected_for_crm = []
+                if isinstance(org_context, dict):
+                    connected_for_crm = list(org_context.get("connectedIntegrations") or [])
+                if not connected_for_crm:
+                    connected_for_crm = list(params.get("connected_integrations") or [])
+                retrieval_query = bias_retrieval_query_for_connected_crm(
+                    query, connected_for_crm
+                )
                 top_k = int(params.get("rag_top_k") or self.settings.rag_top_k or 8)
                 filters: dict[str, Any] = {"environment": environment_name}
                 if reranking_enabled is False:
                     filters["disable_rerank"] = True
                 rows, metrics = await self.rag_service.retrieve_hybrid_rows(
                     org_id,
-                    query,
+                    retrieval_query,
                     scope="agent",
                     top_k=top_k,
                     agent_id=agent_id or None,
@@ -160,6 +173,7 @@ class UnifiedRetrievalService:
                         "score": float(row.get("score") or 0.0),
                         "source": str(row.get("title") or row.get("source_title") or row.get("source") or ""),
                         "title": row.get("title") or row.get("source_title"),
+                        "url": row.get("url") or row.get("web_link"),
                         "metadata": row.get("metadata") if isinstance(row.get("metadata"), dict) else {},
                     }
                     for row in rows
@@ -203,6 +217,14 @@ class UnifiedRetrievalService:
                     rag_sources = sorted(boosted, key=lambda row: float(row.get("score") or 0.0), reverse=True)
                 metrics = dict(metrics or {})
                 metrics["retrieval_policy"] = retrieval_plan.policy_version if retrieval_plan.active else "legacy"
+                before_crm = len(rag_sources)
+                rag_sources = filter_competing_crm_knowledge_hits(
+                    rag_sources,
+                    connected_integrations=connected_for_crm,
+                    query=query,
+                )
+                if len(rag_sources) != before_crm:
+                    metrics["competing_crm_hits_dropped"] = before_crm - len(rag_sources)
                 if rag_sources:
                     from app.services.agent_security_gateway import fence_external_content
 

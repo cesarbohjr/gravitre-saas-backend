@@ -31,6 +31,12 @@ def test_humanize_catalog_action_key_never_returns_dotted_id():
         assert key not in human
 
 
+def test_humanize_hubspot_lists_create_uses_short_name_not_schema_dump():
+    human = humanize_catalog_action_key("hubspot.lists.create")
+    assert human == "Create list"
+    assert "via hubspot API" not in human.lower()
+
+
 def test_format_operator_response_unmapped_intent_no_catalog_dump():
     available = [
         "gmail.messages.list — List messages",

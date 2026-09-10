@@ -33,6 +33,12 @@ from app.services.factual_claim_honesty import (
     should_escalate_fast_for_run_history,
     should_escalate_fast_for_schedules,
 )
+from app.services.action_availability_honesty import (
+    answer_claims_action_missing,
+    apply_action_availability_honesty_gate,
+    extract_recent_connector_invocations,
+    invocations_state_patch,
+)
 from app.services.connector_chat_routing import (
     run_connector_fallback_turn,
     should_attempt_connector_fallback,
@@ -149,7 +155,15 @@ You have two sources of knowledge available:
    facts not present in the internal knowledge
    base, or to verify/supplement internal findings.
 
-Prefer internal knowledge. Reach for web search
+Prefer internal knowledge. Retrieved excerpts about
+an unconnected vendor in the same product family must
+not override a connected vendor's action (HubSpot
+connected → do not treat Salesforce or Siebel docs as
+HubSpot list/field schema; Gmail connected → do not
+treat Outlook docs as Gmail schema; same for Jira vs
+Linear, Slack vs Teams, and any other catalog pair
+that shares business language).
+Reach for web search
 only when:
 - The internal knowledge base has no relevant
   content for this specific question
@@ -202,6 +216,10 @@ RULES_SECTION = """
 - Never take irreversible actions without confirmation
 - Your responses must be actionable and specific
 - Never invent metrics, connector states, or tool results you do not have
+- Connected integrations are the systems you can act on. A knowledge-base hit about a competing vendor in the same family (Salesforce Trailhead while HubSpot is connected, Outlook while Gmail is connected, Linear while Jira is connected) is not that connected vendor's schema and is not evidence that the connected action is missing
+- After a connected-vendor write fails validation, retry that vendor with its known defaults. Do not search another vendor's documentation to fill parameters
+- "Use standard default fields" / "use defaults" after a connector failure means apply that connector's defaults and retry — it is not a knowledge-base question
+- Never claim a vendor action is missing if it already ran in this conversation, including when it returned a validation error. A parameter rejection is not a missing action
 """
 
 # Role/security/output only — Voice comes from gravitre_voice via _build_system_prompt.
@@ -1054,6 +1072,8 @@ class AgentIntelligence:
         conflicts: list[dict[str, Any]] | None,
         refined_query: str | None,
         turn_context: Any | None = None,
+        tool_results: list[dict[str, Any]] | None = None,
+        task_state: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         validation: dict[str, Any] | None = None
         content = answer
@@ -1218,6 +1238,12 @@ class AgentIntelligence:
             query=query,
             react_result=react_result,
         )
+        content = apply_action_availability_honesty_gate(
+            content,
+            tool_results=tool_results,
+            react_result=react_result,
+            task_state=task_state,
+        )
         confidence = get_intelligence_orchestrator(settings).finalize_confidence(
             query=query,
             answer=content,
@@ -1250,6 +1276,12 @@ class AgentIntelligence:
             content,
             query=query,
             react_result=react_result,
+        )
+        content = apply_action_availability_honesty_gate(
+            content,
+            tool_results=tool_results,
+            react_result=react_result,
+            task_state=task_state,
         )
         from app.services.user_facing_copy_guard import finalize_user_facing_message
 
@@ -2303,7 +2335,8 @@ class AgentIntelligence:
             yield sse_intelligence_metadata(
                 message_id=message_id,
                 confidence={"score": 0.0, "needs_clarification": False},
-                answer_explanation="CognitiveTurnKernel pre-ACT complete",
+                answer_explanation="Reviewing context and memory",
+                connected_integrations=list(connected_early or []),
                 effective_mode=mode_key,
                 pipeline_tier=pipeline_tier,
                 routing_tier=routing_control.tier,
@@ -4032,6 +4065,8 @@ class AgentIntelligence:
             conflicts=rag_conflicts,
             refined_query=refined_query,
             turn_context=turn_ctx,
+            tool_results=tool_results,
+            task_state=task_state if isinstance(task_state, dict) else None,
         )
         full_content = _with_social(str(finalized["content"] or ""))
         if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
@@ -4167,12 +4202,47 @@ class AgentIntelligence:
                 strategy_key=str(row.get("type") or ""),
             )
 
-        # Final honesty gate after critic/reflection — no fabricated run counts.
+        # Persist this-turn connector invokes so a later conversational denial
+        # cannot claim the action is missing (screenshot-3 shape).
+        this_turn_invocations = extract_recent_connector_invocations(
+            tool_results=tool_results,
+            react_result=react_result,
+        )
+        if conversation_id and this_turn_invocations:
+            try:
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    invocations_state_patch(this_turn_invocations),
+                    client=client,
+                )
+                if isinstance(task_state, dict):
+                    task_state = {
+                        **task_state,
+                        **invocations_state_patch(
+                            extract_recent_connector_invocations(
+                                tool_results=tool_results,
+                                react_result=react_result,
+                                task_state=task_state,
+                            )
+                        ),
+                    }
+            except Exception as inv_exc:  # noqa: BLE001
+                logger.debug("persist_connector_invocations failed error=%s", inv_exc)
+
+        # Final honesty gate after critic/reflection — no fabricated run counts,
+        # and no "I don't have that action" after this conversation invoked it.
         full_content = apply_run_history_honesty_gate(
             full_content,
             query=task_text,
             tool_results=tool_results,
             react_result=react_result,
+        )
+        full_content = apply_action_availability_honesty_gate(
+            full_content,
+            tool_results=tool_results,
+            react_result=react_result,
+            task_state=task_state if isinstance(task_state, dict) else None,
         )
         finalized["explanation"] = explanation_for_missing_run_history(
             str(finalized.get("explanation") or ""),
@@ -4222,7 +4292,9 @@ class AgentIntelligence:
                     suffix = full_content[len(streamed_content) :]
                     if suffix.strip():
                         yield sse_text_delta(text_id, suffix)
-                elif is_run_history_question(task_text):
+                elif is_run_history_question(task_text) or answer_claims_action_missing(
+                    streamed_content
+                ):
                     # Honesty (or other) wholesale rewrite must replace the bubble.
                     yield sse_text_end(text_id)
                     text_id, start_event = sse_text_start()

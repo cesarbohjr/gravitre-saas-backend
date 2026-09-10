@@ -397,6 +397,35 @@ def get_list_memberships(
     )
 
 
+# HubSpot ILS accepts MANUAL / DYNAMIC / SNAPSHOT. Models often send Salesforce
+# "static" or "standard" here; DYNAMIC without filterBranch is a 400.
+_HUBSPOT_LIST_PROCESSING_ALIASES = {
+    "static": "MANUAL",
+    "standard": "MANUAL",
+    "default": "MANUAL",
+    "defaults": "MANUAL",
+    "manual": "MANUAL",
+    "snapshot": "SNAPSHOT",
+    "dynamic": "DYNAMIC",
+    "active": "DYNAMIC",
+}
+
+
+def normalize_hubspot_list_processing_type(
+    value: str | None,
+    *,
+    has_filter_branch: bool = False,
+) -> str:
+    """Map lookalike list types onto HubSpot ILS processingType."""
+    raw = str(value or "MANUAL").strip()
+    mapped = _HUBSPOT_LIST_PROCESSING_ALIASES.get(raw.lower(), raw.upper())
+    if mapped not in {"MANUAL", "DYNAMIC", "SNAPSHOT"}:
+        mapped = "MANUAL"
+    if mapped == "DYNAMIC" and not has_filter_branch:
+        return "MANUAL"
+    return mapped
+
+
 def create_list(
     access_token: str,
     name: str,
@@ -407,6 +436,7 @@ def create_list(
     """Create a HubSpot CRM list (contacts by default: objectTypeId 0-1)."""
     if not name or not str(name).strip():
         raise HubSpotAPIError("name is required")
+    processing = normalize_hubspot_list_processing_type(processing_type)
     return _request(
         "POST",
         "/crm/v3/lists",
@@ -414,7 +444,7 @@ def create_list(
         json_body={
             "name": str(name).strip()[:100],
             "objectTypeId": str(object_type_id or "0-1"),
-            "processingType": str(processing_type or "MANUAL"),
+            "processingType": processing,
         },
     )
 

@@ -146,7 +146,21 @@ VENDOR_DEFINITIONS: tuple = (
                 ),
             ),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
-            action("hubspot", "lists.create", "Create list", tier="v3", kind="advanced", scope_suffix="lists:write", destructive=True),
+            action(
+                "hubspot",
+                "lists.create",
+                "Create list",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="lists:write",
+                destructive=True,
+                description=(
+                    "Create a HubSpot contact list. Defaults: processing_type=MANUAL "
+                    "(static), object_type_id=0-1 (contacts). Do not send Salesforce "
+                    "fields. DYNAMIC lists need filter rules this action does not accept "
+                    "— use MANUAL. Use when you need to create a HubSpot list."
+                ),
+            ),
             action("hubspot", "tickets.create", "Create support ticket", tier="v3", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
         ),
         v4=(),

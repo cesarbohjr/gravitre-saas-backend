@@ -152,12 +152,24 @@ async def tool_knowledge_base(
 
         client = get_supabase_client(settings)
         use_agent_memory = bool(agent_id)
+        connected: list[str] = []
+        try:
+            from app.services.connector_snapshot_cache import list_connected_integrations_cached
+
+            connected = list_connected_integrations_cached(
+                client, org_id, force_live=False
+            )
+        except Exception:  # noqa: BLE001
+            connected = []
         bundle = await get_unified_retrieval_service().retrieve(
             org_id=org_id,
             query=query,
             client=client,
             agent={"id": agent_id or ""},
-            parameters={"rag_top_k": 5},
+            parameters={
+                "rag_top_k": 5,
+                "connected_integrations": connected,
+            },
             scopes=RetrievalScopes(
                 knowledge=True,
                 org_context=False,

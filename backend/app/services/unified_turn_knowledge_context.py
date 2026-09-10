@@ -92,6 +92,14 @@ def should_augment_unified_turn_with_knowledge(
         return False
     if _GREETING_HINT.match(text):
         return False
+    from app.services.connected_vendor_knowledge_filter import (
+        is_connector_default_fill_followup,
+    )
+
+    # "Use standard default fields" after a connector write is a retry/default-fill,
+    # not a Salesforce-Trailhead knowledge question.
+    if is_connector_default_fill_followup(text):
+        return False
     # Meta/capability: answer from agent config — zero KF / web retrieval / COGS.
     if re_search_meta(text):
         return False
@@ -979,6 +987,29 @@ async def build_unified_turn_knowledge_context(
                 meta["signalScoring"] = scored_all
         except Exception as exc:  # noqa: BLE001
             meta["signalScoringError"] = str(exc)[:160]
+
+    from app.services.connected_vendor_knowledge_filter import (
+        filter_competing_crm_knowledge_hits,
+        keep_knowledge_text,
+    )
+
+    before = len(rag_source_rows)
+    rag_source_rows = filter_competing_crm_knowledge_hits(
+        rag_source_rows,
+        connected_integrations=connected_integrations,
+        query=query,
+    )
+    if len(rag_source_rows) != before:
+        meta["competing_crm_hits_dropped"] = before - len(rag_source_rows)
+        evidence_sections = [
+            section
+            for section in evidence_sections
+            if keep_knowledge_text(
+                section,
+                connected_integrations=connected_integrations,
+                query=query,
+            )
+        ]
 
     sections = evidence_sections + advisory_sections
     if not sections and not any(

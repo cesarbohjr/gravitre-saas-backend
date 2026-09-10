@@ -32,6 +32,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "resolved_entities": {},
     # Recent user turns for multi-turn param fill (Slack channel → body, etc.).
     "recent_user_messages": [],
+    # Recent connector invokes so honesty can refuse "I don't have that action"
+    # after the same conversation already ran it (including validation_error).
+    "recent_connector_invocations": [],
     # Module B — conversation-scoped parameter ledger (canonical slot store).
     "parameter_ledger": {"slots": {}, "pending_missing": []},
     # Module D — last expression-range variant index per category (phrase variety).
@@ -155,6 +158,28 @@ class ConversationStateService:
                 elif key == "recent_user_messages" and isinstance(value, list):
                     existing = list(merged.get("recent_user_messages") or [])
                     merged["recent_user_messages"] = (existing + list(value))[-12:]
+                elif key == "recent_connector_invocations" and isinstance(value, list):
+                    existing = list(merged.get("recent_connector_invocations") or [])
+                    combined = [row for row in list(value) + existing if isinstance(row, dict)]
+                    deduped: list[dict[str, Any]] = []
+                    seen: set[str] = set()
+                    for row in combined:
+                        vendor = str(row.get("vendor") or "").strip().lower()
+                        action = str(row.get("action") or "").strip().lower()
+                        marker = f"{vendor}:{action}"
+                        if not vendor or marker in seen:
+                            continue
+                        seen.add(marker)
+                        deduped.append(
+                            {
+                                "vendor": vendor,
+                                "action": action,
+                                "error_code": str(row.get("error_code") or "")[:80],
+                            }
+                        )
+                        if len(deduped) >= 8:
+                            break
+                    merged["recent_connector_invocations"] = deduped
                 else:
                     merged[key] = value
             self._client(client).table("conversations").update(

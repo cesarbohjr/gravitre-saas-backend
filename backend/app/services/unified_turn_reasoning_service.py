@@ -1665,7 +1665,15 @@ def _unified_live_turn_payload(
     result: UnifiedTurnShadowResult,
     task_state: dict[str, Any] | None,
 ) -> dict[str, Any]:
+    from app.services.action_availability_honesty import apply_action_availability_honesty_gate
     from app.services.cognitive_evidence_envelope import attach_evidence_envelope
+
+    honest = apply_action_availability_honesty_gate(
+        result.user_message or "",
+        task_state=task_state if isinstance(task_state, dict) else None,
+    )
+    if honest != (result.user_message or ""):
+        result.user_message = honest
 
     payload = {
         "stop_pipeline": True,

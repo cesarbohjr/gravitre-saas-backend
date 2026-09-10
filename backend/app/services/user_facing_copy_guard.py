@@ -37,9 +37,15 @@ def humanize_catalog_action_key(action_key: str) -> str:
 
         spec = get_action_spec(key)
         if spec is not None:
+            # Prefer the short catalog name. The auto-generated description
+            # ("Create list via hubspot API. Use when you need to…") was leaking
+            # into validation-error suffixes and reading like a missing schema.
+            name = str(getattr(spec, "name", "") or "").strip()
+            if name:
+                return name
             description = str(getattr(spec, "description", "") or "").strip()
             if description:
-                return description
+                return description.split(".")[0].strip() or description
     except Exception:  # noqa: BLE001
         pass
 
