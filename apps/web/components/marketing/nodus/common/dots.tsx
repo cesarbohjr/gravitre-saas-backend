@@ -58,7 +58,7 @@ export const Dot = ({
       animate={{
         backgroundColor: isNearMouse
           ? "var(--color-brand)"
-          : "var(--color-primary)",
+          : "var(--color-charcoal-900)",
         boxShadow: isNearMouse
           ? "0 0 20px var(--color-brand), 0 0 40px var(--color-brand)"
           : "none",

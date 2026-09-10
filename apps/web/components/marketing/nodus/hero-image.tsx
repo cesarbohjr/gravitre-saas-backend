@@ -13,7 +13,7 @@ import { Dot } from "./common/dots"
  */
 export const HeroImage = () => {
   return (
-    <Container className="border-divide relative flex items-start justify-start overflow-hidden border-x bg-gray-200 p-2 perspective-distant md:p-4 lg:p-8 dark:bg-neutral-800">
+    <Container className="border-divide relative flex items-start justify-start border-x bg-gray-100 p-2 perspective-distant md:p-4 lg:p-8 dark:bg-neutral-800">
       <Dot top left />
       <Dot top right />
       <Dot bottom left />
