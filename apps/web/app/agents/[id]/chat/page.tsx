@@ -35,6 +35,7 @@ import { PersonaSelector } from "@/components/gravitre/assistant/persona-selecto
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
+import { buildDuplexControls } from "@/lib/voice-duplex-controls"
 import { VoiceMicSettingsPopover } from "@/components/gravitre/assistant/voice-mic-settings-popover"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import {
@@ -849,22 +850,10 @@ export default function AgentChatPage({
                 setDuplexVoiceError(undefined)
                 clearVoiceErrors()
               }}
-              duplex={{
-                active: voiceDuplex.isActive,
-                presence: voiceDuplex.presence,
-                levels: voiceDuplex.levels,
-                amplitude: voiceDuplex.amplitude,
-                toggle: voiceDuplex.toggle,
-                bargeIn: () => {
-                  void voiceDuplex.bargeIn()
-                },
-                supported: typeof window !== "undefined" && !!navigator.mediaDevices,
-                playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
-                resumeBlockedPlayback: () => {
-                  void voiceDuplex.resumeBlockedPlayback()
-                  void resumeAgentVoicePlayback()
-                },
-              }}
+              duplex={buildDuplexControls(voiceDuplex, {
+                alsoPlaybackBlocked: agentVoicePlaybackBlocked,
+                alsoResumePlayback: resumeAgentVoicePlayback,
+              })}
               onVoiceInputError={(message) => {
                 if (!message) return
                 setDuplexVoiceError(message)

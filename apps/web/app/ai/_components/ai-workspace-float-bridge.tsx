@@ -31,7 +31,8 @@
  */
 
 import type { KeyboardEvent, ReactNode, RefObject } from "react"
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreFloatingWorkspace } from "@/components/gravitre/ai-floating-workspace"
 import {
   GravitreAIConversationComposer,
@@ -83,6 +84,9 @@ export interface GravitreAIFloatBridgeProps {
   placeholder?: string
   inputRef?: RefObject<HTMLTextAreaElement | null>
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  /** Live voice-to-voice. Omitted here originally, which is why the float window
+   * silently fell back to batch Web Speech with no orb. */
+  voice?: ChatSurfaceVoiceProps
 
   children?: ReactNode
 }
@@ -121,16 +125,24 @@ export function GravitreAIFloatBridge({
   placeholder,
   inputRef,
   onKeyDown,
+  voice,
 }: GravitreAIFloatBridgeProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(bodyRef)
   const tier = floatContentTiers(width)
+  // The orb is portaled into this body so it fills the float window rather than
+  // the composer strip. State, not the ref, because the composer has to re-render
+  // once the node exists.
+  const [orbHost, setOrbHost] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setOrbHost(bodyRef.current)
+  }, [])
 
   return (
     <GravitreFloatingWorkspace presence={presence} onClose={onClose} onExpand={onExpand}>
       <div
         ref={bodyRef}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         data-float-content-tier={tier}
       >
         <div
@@ -184,6 +196,9 @@ export function GravitreAIFloatBridge({
             inputRef={inputRef}
             onKeyDown={onKeyDown}
             bordered={false}
+            {...voice}
+            voiceOrbVariant="contained"
+            voiceOrbContainer={orbHost}
           />
         </div>
       </div>

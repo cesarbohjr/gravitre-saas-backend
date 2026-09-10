@@ -152,6 +152,10 @@ export function useVoiceDuplexSession(options: Options) {
   // surfacing it, so the orb looked normal forever with zero sound.
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const [orchestration, setOrchestration] = useState<"http" | "pipecat">("http")
+  // Mic muted while the session stays connected. Previously the mic button called
+  // toggle(), which tore the whole session down -- so "mute" ended the call, and the
+  // orb was left reading "voice paused" beside "voice channel is live".
+  const [micMuted, setMicMuted] = useState(false)
   const [micLevels, setMicLevels] = useState<MicLevelSnapshot | null>(null)
   const [micEffective, setMicEffective] = useState<MicEffectiveSettings | null>(null)
   const [micProfile, setMicProfile] = useState<string | null>(null)
@@ -185,6 +189,7 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
   const activeRef = useRef(false)
+  const micMutedRef = useRef(false)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmNextTimeRef = useRef(0)
@@ -435,6 +440,27 @@ export function useVoiceDuplexSession(options: Options) {
     rafRef.current = requestAnimationFrame(tick)
   }
 
+  /** Mute/unmute the mic without dropping the session or the WebSocket. */
+  const applyMicMuted = useCallback((next: boolean) => {
+    micMutedRef.current = next
+    setMicMuted(next)
+    // Disabling the track is what actually stops capture; the send guard below is
+    // belt-and-braces so muted silence is never fed to STT, where a long run of it
+    // can otherwise read as end-of-turn.
+    streamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !next
+    })
+    if (next) {
+      setLevels(null)
+      setAmplitude(null)
+      setMicLevels(null)
+    }
+  }, [])
+
+  const toggleMicMute = useCallback(() => {
+    applyMicMuted(!micMutedRef.current)
+  }, [applyMicMuted])
+
   const teardownMic = useCallback(() => {
     stopRaf()
     stopMicTelemetry()
@@ -468,6 +494,9 @@ export function useVoiceDuplexSession(options: Options) {
     setMicLevels(null)
     setMicEffective(null)
     setMicProfile(null)
+    // A new session must never start silently muted.
+    micMutedRef.current = false
+    setMicMuted(false)
   }, [emitMicDiagnostics, stopMicTelemetry])
 
   const bargeIn = useCallback(async () => {
@@ -960,6 +989,7 @@ export function useVoiceDuplexSession(options: Options) {
         prerollEnabled,
         silentTapV2: phase2FlagsRef.current.silentTapV2,
         onPcm: (pcm) => {
+          if (micMutedRef.current) return
           if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
           try {
             wsRef.current.send(encodePipecatAudioMessage(pcm, 16000, 1))
@@ -1082,6 +1112,7 @@ export function useVoiceDuplexSession(options: Options) {
           prerollEnabled,
           silentTapV2: phase2FlagsRef.current.silentTapV2,
           onPcm: (pcm) => {
+            if (micMutedRef.current) return
             if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
             wsRef.current.send(pcm.buffer)
           },
@@ -1150,6 +1181,9 @@ export function useVoiceDuplexSession(options: Options) {
     micEffective,
     micProfile,
     voiceStatus,
+    micMuted,
+    toggleMicMute,
+    setMicMuted: applyMicMuted,
     start,
     stop,
     toggle,

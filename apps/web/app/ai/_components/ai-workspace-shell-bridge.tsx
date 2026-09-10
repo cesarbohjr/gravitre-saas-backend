@@ -24,7 +24,8 @@
  * conversation-sidebar data as Float/`/ai`, not a lookalike copy.
  */
 
-import type { KeyboardEvent, ReactNode, RefObject } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react"
+import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import {
   GravitreAIWorkspaceShell,
   type GravitreAIWorkspaceShellMode,
@@ -91,6 +92,8 @@ export interface GravitreAIWorkspaceShellBridgeProps {
   placeholder?: string
   inputRef?: RefObject<HTMLTextAreaElement | null>
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  /** Live voice-to-voice; previously omitted, leaving this surface voice-less. */
+  voice?: ChatSurfaceVoiceProps
 
   children?: ReactNode
 }
@@ -140,7 +143,14 @@ export function GravitreAIWorkspaceShellBridge({
   placeholder,
   inputRef,
   onKeyDown,
+  voice,
 }: GravitreAIWorkspaceShellBridgeProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const [orbHost, setOrbHost] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setOrbHost(bodyRef.current)
+  }, [])
+
   return (
     <GravitreAIWorkspaceShell
       mode={mode}
@@ -162,6 +172,9 @@ export function GravitreAIWorkspaceShellBridge({
         />
       }
     >
+      {/* Positioned wrapper so the contained voice orb fills the shell body rather
+          than the composer strip. */}
+      <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <GravitreAIConversationTranscript
           routeKey="/ai"
@@ -202,7 +215,11 @@ export function GravitreAIWorkspaceShellBridge({
           inputRef={inputRef}
           onKeyDown={onKeyDown}
           bordered={false}
+          {...voice}
+          voiceOrbVariant="contained"
+          voiceOrbContainer={orbHost}
         />
+      </div>
       </div>
     </GravitreAIWorkspaceShell>
   )

@@ -29,7 +29,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { Mic, MicOff, Volume2, X } from "lucide-react"
+import { Mic, MicOff, Minimize2, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 
@@ -203,11 +203,14 @@ export function GravitreOrb({
   speaker,
   amplitude,
   className,
+  compact = false,
 }: {
   speaker: VoiceSpeaker
   /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
   amplitude?: number | null
   className?: string
+  /** Smaller circle for containers as narrow as 400px (float, mobile sheet). */
+  compact?: boolean
 }) {
   const isUser = speaker === "user"
   // EMA dampening so amplitude breathes instead of twitching (Advanced Design §9).
@@ -233,7 +236,10 @@ export function GravitreOrb({
       data-gravitre-orb=""
       data-voice-orb-reactive={amplitude != null ? "analyser" : "keyframe"}
       className={cn(
-        "pointer-events-none relative z-0 h-[220px] w-[220px] rounded-full sm:h-[280px] sm:w-[280px]",
+        "pointer-events-none relative z-0 rounded-full",
+        compact
+          ? "h-[104px] w-[104px] sm:h-[128px] sm:w-[128px]"
+          : "h-[220px] w-[220px] sm:h-[280px] sm:w-[280px]",
         isUser ? "gv-orb-user" : "gv-orb-agent",
         className,
       )}
@@ -254,20 +260,99 @@ export function GravitreOrb({
   )
 }
 
+export type VoiceOrbPhase = "blocked" | "muted" | "listening" | "replying" | "ended"
+
 /**
- * Component 2 — full-screen orb takeover.
+ * Resolve the orb's heading and subtitle from ONE phase.
+ *
+ * Previously the heading read from `micActive` and the subtitle from `speaker`,
+ * two unrelated inputs. A muted-but-connected session satisfied both branches at
+ * once and rendered "<agent> voice paused" directly above "<agent> voice channel
+ * is live". Exported so that contradiction is testable without a DOM.
+ */
+export function resolveVoiceOrbCopy({
+  playbackBlocked = false,
+  micMuted = false,
+  micActive = true,
+  speaker,
+  sessionLive = true,
+  agentLabel = "Gravitre",
+}: {
+  playbackBlocked?: boolean
+  micMuted?: boolean
+  micActive?: boolean
+  speaker: VoiceSpeaker
+  sessionLive?: boolean
+  agentLabel?: string
+}): { phase: VoiceOrbPhase; label: string; subtitle: string } {
+  const isUser = speaker === "user"
+  const phase: VoiceOrbPhase = playbackBlocked
+    ? "blocked"
+    : micMuted
+      ? "muted"
+      : micActive
+        ? "listening"
+        : !isUser
+          ? "replying"
+          : sessionLive
+            ? "listening"
+            : "ended"
+
+  switch (phase) {
+    case "blocked":
+      return {
+        phase,
+        label: "Sound is blocked",
+        subtitle: "Your browser blocked audio playback. Tap below to enable sound.",
+      }
+    case "muted":
+      return {
+        phase,
+        label: "Microphone muted",
+        subtitle: `${agentLabel} can't hear you — tap the mic to unmute`,
+      }
+    case "replying":
+      return { phase, label: `${agentLabel} is replying`, subtitle: `${agentLabel} is replying` }
+    case "listening":
+      return {
+        phase,
+        label: "I'm listening… What's on your mind?",
+        subtitle: `${agentLabel} voice channel is live`,
+      }
+    default:
+      return {
+        phase,
+        label: `${agentLabel} voice ended`,
+        subtitle: "Tap the mic to start talking again",
+      }
+  }
+}
+
+/**
+ * Component 2 — orb voice surface.
  *
  * Hit areas are siblings in a stacking order, never nested: the centre tap layer
  * is a button covering the surface, with "✕" and the bottom control painted above
  * it. Nesting them would be invalid HTML and, worse, a tap on "✕" would also
  * fire the collapse handler underneath — exiting voice mode AND collapsing.
+ *
+ * Two variants:
+ * - `fullscreen` fixes to the viewport and is a modal dialog.
+ * - `contained` fills its positioned parent instead, for the float window, docked
+ *   shell and mobile sheet. Those are as small as 400×420, so a viewport-fixed
+ *   overlay would swallow the whole screen from inside a small window. Contained is
+ *   deliberately NOT `aria-modal`: content behind it stays reachable.
  */
 export function VoiceOrbTakeover({
   speaker,
   agentLabel = "Gravitre",
   onExitVoice,
   onMicToggle,
+  onMinimize,
   micActive = true,
+  micMuted = false,
+  sessionLive = true,
+  variant = "fullscreen",
   amplitude,
   playbackBlocked = false,
   onEnableSound,
@@ -276,9 +361,20 @@ export function VoiceOrbTakeover({
   agentLabel?: string
   /** Leave voice mode entirely, back to typed text. */
   onExitVoice: () => void
-  /** Toggle mic/listening while staying in voice mode. */
+  /** Mute/unmute the mic while the call stays connected. */
   onMicToggle?: () => void
   micActive?: boolean
+  /** Mic muted with the session still connected — not the same as ended. */
+  micMuted?: boolean
+  /** A duplex session is connected (muted or not). */
+  sessionLive?: boolean
+  /**
+   * Collapse back to the composer waveform while KEEPING the call connected.
+   * Absent means no minimize affordance is rendered — which is how fullscreen
+   * shipped with only "end the call" as a way out.
+   */
+  onMinimize?: () => void
+  variant?: "fullscreen" | "contained"
   /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
   amplitude?: number | null
   /**
@@ -291,64 +387,117 @@ export function VoiceOrbTakeover({
   /** Fresh user gesture to retry the held-back reply and unlock future turns. */
   onEnableSound?: () => void
 }) {
-  // Escape exits voice mode to avoid trapping users inside full-screen voice UI.
+  const fullscreen = variant === "fullscreen"
+
+  // Escape gets out of a surface that covers the viewport. Prefer minimizing --
+  // keeping the call and returning to the composer beats hanging up. Contained
+  // variants do not own the screen, so they must not steal Escape from the dialog
+  // or sheet hosting them.
   useEffect(() => {
+    if (!fullscreen) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation()
-        onExitVoice()
+        if (onMinimize) onMinimize()
+        else onExitVoice()
       }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [onExitVoice])
+  }, [fullscreen, onExitVoice, onMinimize])
 
   // `aria-modal="true"` asserts that everything behind this overlay is unreachable,
   // so focus must land inside the overlay and restore to the opener on unmount.
+  // Contained variants are not modal and must not move focus.
   const collapseRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
+    if (!fullscreen) return
     const opener = document.activeElement as HTMLElement | null
     collapseRef.current?.focus()
     return () => opener?.focus?.()
-  }, [])
+  }, [fullscreen])
 
-  const isUser = speaker === "user"
-  const label = playbackBlocked
-    ? "Sound is blocked"
-    : micActive
-      ? `I'm listening… What's on your mind?`
-      : `${agentLabel} voice paused`
+  const { label, subtitle } = resolveVoiceOrbCopy({
+    playbackBlocked,
+    micMuted,
+    micActive,
+    speaker,
+    sessionLive,
+    agentLabel,
+  })
+
+  // Contained surfaces can be as small as 400x420, so type, orb and controls all
+  // step down. Container queries would be better but the orb sits in parents that
+  // do not declare `container-type`, so this keys off the variant instead.
+  const controlSize = fullscreen ? "h-14 w-14" : "h-11 w-11"
+  const controlIcon = fullscreen ? "h-6 w-6" : "h-5 w-5"
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      // Contained is not modal: it fills its own parent and leaves the rest of the
+      // window usable, so claiming aria-modal here would lie to screen readers.
+      role={fullscreen ? "dialog" : "group"}
+      aria-modal={fullscreen ? true : undefined}
       aria-label={`Voice session — ${label}`}
       data-voice-orb=""
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,var(--gv-voice-orb-backdrop-mid)_0%,var(--gv-voice-orb-backdrop-deep)_58%,var(--gv-voice-orb-backdrop-edge)_100%)] sm:p-6"
+      data-voice-orb-variant={variant}
+      className={cn(
+        "flex items-center justify-center bg-[radial-gradient(circle_at_center,var(--gv-voice-orb-backdrop-mid)_0%,var(--gv-voice-orb-backdrop-deep)_58%,var(--gv-voice-orb-backdrop-edge)_100%)]",
+        fullscreen ? "fixed inset-0 z-50 sm:p-6" : "absolute inset-0 z-30 rounded-[inherit] p-3",
+      )}
     >
       {/* Desktop caps the surface while mobile remains full-bleed. */}
-      <div className="relative flex h-full w-full max-w-full flex-col items-center justify-center overflow-hidden sm:h-[560px] sm:w-[900px] sm:rounded-2xl">
-        <button
-          ref={collapseRef}
-          type="button"
-          onClick={onExitVoice}
-          aria-label="Exit voice mode"
-          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+      <div
+        className={cn(
+          "relative flex h-full w-full max-w-full flex-col items-center justify-center overflow-hidden",
+          fullscreen ? "sm:h-[560px] sm:w-[900px] sm:rounded-2xl" : "gap-1",
+        )}
+      >
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 sm:right-4 sm:top-4">
+          {onMinimize ? (
+            <button
+              ref={collapseRef}
+              type="button"
+              onClick={onMinimize}
+              aria-label="Minimize voice — keeps the call connected"
+              title="Minimize voice (call stays connected)"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            >
+              <Minimize2 className="h-5 w-5" aria-hidden />
+            </button>
+          ) : null}
+          <button
+            // Focus lands on minimize when it exists, so the first tab stop is the
+            // non-destructive way out rather than hanging up.
+            ref={onMinimize ? undefined : collapseRef}
+            type="button"
+            onClick={onExitVoice}
+            aria-label="End voice session"
+            title="End voice session"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[rgba(255,255,255,0.6)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+
+        <GravitreOrb speaker={speaker} amplitude={amplitude} compact={!fullscreen} />
+
+        <div
+          className={cn(
+            "pointer-events-none text-center text-white",
+            fullscreen ? "mt-8" : "mt-4 px-2",
+          )}
         >
-          <X className="h-5 w-5" aria-hidden />
-        </button>
-
-        <GravitreOrb speaker={speaker} amplitude={amplitude} />
-
-        <div className="pointer-events-none mt-8 text-center text-white">
-          <p className="text-4xl font-semibold leading-tight">{label}</p>
-          <p className="mt-2 text-base text-white/70">
-            {playbackBlocked
-              ? "Your browser blocked audio playback. Tap below to enable sound."
-              : isUser
-                ? `${agentLabel} voice channel is live`
-                : `${agentLabel} is replying`}
+          <p
+            className={cn(
+              "font-semibold leading-tight",
+              fullscreen ? "text-4xl" : "text-lg sm:text-xl",
+            )}
+          >
+            {label}
+          </p>
+          <p className={cn("text-white/70", fullscreen ? "mt-2 text-base" : "mt-1 text-xs sm:text-sm")}>
+            {subtitle}
           </p>
         </div>
 
@@ -356,34 +505,51 @@ export function VoiceOrbTakeover({
           <button
             type="button"
             onClick={onEnableSound}
-            className="relative z-10 mt-6 flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            className={cn(
+              "relative z-10 flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-5 py-2.5 font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              fullscreen ? "mt-6 text-sm" : "mt-3 text-xs",
+            )}
           >
             <Volume2 className="h-4 w-4" aria-hidden />
             Enable sound
           </button>
         ) : null}
 
-        <div className="mt-10 flex items-center rounded-full border border-white/15 bg-white/10 p-1.5 backdrop-blur-sm">
+        <div
+          className={cn(
+            "flex items-center rounded-full border border-white/15 bg-white/10 p-1.5 backdrop-blur-sm",
+            fullscreen ? "mt-10" : "mt-4",
+          )}
+        >
           <button
             type="button"
             onClick={onExitVoice}
-            aria-label="Exit voice mode"
-            className="flex h-14 w-14 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label="End voice session"
+            className={cn(
+              "flex items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              controlSize,
+            )}
           >
-            <X className="h-6 w-6" aria-hidden />
+            <X className={controlIcon} aria-hidden />
           </button>
           <button
             type="button"
             onClick={onMicToggle}
-            aria-label={micActive ? "Pause microphone" : "Resume microphone"}
+            aria-label={micMuted ? "Unmute microphone" : "Mute microphone"}
+            aria-pressed={micMuted}
             className={cn(
-              "ml-2 flex h-14 w-14 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-              micActive
-                ? "bg-white/15 text-white hover:bg-white/20"
-                : "bg-[color:var(--gv-voice-user)] text-white hover:bg-[color:var(--gv-voice-user-hover)]",
+              "ml-2 flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              controlSize,
+              micMuted
+                ? "bg-[color:var(--gv-voice-user)] text-white hover:bg-[color:var(--gv-voice-user-hover)]"
+                : "bg-white/15 text-white hover:bg-white/20",
             )}
           >
-            {micActive ? <Mic className="h-6 w-6" aria-hidden /> : <MicOff className="h-6 w-6" aria-hidden />}
+            {micMuted ? (
+              <MicOff className={controlIcon} aria-hidden />
+            ) : (
+              <Mic className={controlIcon} aria-hidden />
+            )}
           </button>
         </div>
       </div>

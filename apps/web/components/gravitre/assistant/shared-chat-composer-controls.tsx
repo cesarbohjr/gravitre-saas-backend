@@ -17,10 +17,12 @@
 
 import {
   useEffect,
+  useState,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
 } from "react"
+import { createPortal } from "react-dom"
 import { ArrowUp, Lock, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -64,6 +66,19 @@ export type SharedChatComposerControlsProps = {
   onVoiceInputError?: (message: string) => void
   /** Display name for the speaking agent (orb + in-input pill). */
   agentLabel?: string
+  /**
+   * `contained` renders the voice orb inside the nearest positioned ancestor
+   * instead of over the viewport. Required for the float window, docked shell and
+   * mobile sheet — a 520x560 window must not launch a full-screen takeover.
+   */
+  voiceOrbVariant?: "fullscreen" | "contained"
+  /**
+   * Where a `contained` orb is rendered. Required for that variant, because the
+   * orb must fill the surface's body — portaling avoids it filling only the
+   * composer strip, which is the nearest positioned ancestor of this component.
+   * The element must be positioned (`relative`).
+   */
+  voiceOrbContainer?: HTMLElement | null
   className?: string
   /** Right-side extras inside the pill, before submit (e.g. Browse files icon). */
   trailingExtras?: ReactNode
@@ -92,6 +107,10 @@ export type SharedChatComposerControlsProps = {
     playbackBlocked?: boolean
     /** Fresh user gesture — retries the held-back reply and unlocks future turns. */
     resumeBlockedPlayback?: () => void
+    /** Mic muted with the session still connected. Distinct from `!active`. */
+    micMuted?: boolean
+    /** Mute/unmute the mic without ending the call. */
+    toggleMicMute?: () => void
   } | null
 }
 
@@ -126,6 +145,8 @@ export function SharedChatComposerControls({
   textareaClassName,
   bordered = true,
   duplex = null,
+  voiceOrbVariant = "fullscreen",
+  voiceOrbContainer = null,
 }: SharedChatComposerControlsProps) {
   const actions = trailingExtras ?? leadingExtras
   const useDuplex = Boolean(duplex)
@@ -166,7 +187,16 @@ export function SharedChatComposerControls({
   const effectivePresence = useDuplex && duplex ? duplex.presence : voicePresence
   const duplexSupported = duplex?.supported !== false
   const canUseVoiceInput = useDuplex ? duplexSupported : isSupported
-  const showVoiceOrb = modality === "voice" && voiceEntitled
+  // Collapsed = still in voice mode, still connected, orb hidden. Distinct from
+  // leaving voice mode: the fullscreen orb previously had no exit but "end call".
+  const [orbCollapsed, setOrbCollapsed] = useState(false)
+  const showVoiceOrb = modality === "voice" && voiceEntitled && !orbCollapsed
+
+  // Leaving voice mode must not leave a stale collapse behind, or the next session
+  // would open minimized with no orb.
+  useEffect(() => {
+    if (modality !== "voice") setOrbCollapsed(false)
+  }, [modality])
 
   // 11a/11b speaker chrome only while Voice owns the floor (mic or TTS / voice stream).
   // Idle Text replies must not paint a graphite agent pill.
@@ -244,11 +274,41 @@ export function SharedChatComposerControls({
 
   const handleWaveformClick = () => {
     if (disabled || !voiceEntitled) return
+    // While collapsed the waveform is the way back to the orb. Treating it as
+    // "stop" there would make minimize a trap: the only tap that looks like
+    // restore would hang up instead.
+    if (orbCollapsed && effectiveListening) {
+      setOrbCollapsed(false)
+      return
+    }
     if (effectiveListening) {
       stopVoiceCapture()
       return
     }
     startVoiceCapture()
+  }
+
+  // The orb's mic control is a MUTE, not a hang-up. It used to call
+  // handleWaveformClick, which ended the session outright -- so muting dropped the
+  // call and left the orb reading "voice paused" beside "voice channel is live".
+  const canMuteMic = Boolean(useDuplex && duplex?.active && duplex?.toggleMicMute)
+  const micMuted = Boolean(useDuplex && duplex?.micMuted)
+
+  // A contained orb without a container would position against the composer strip
+  // and render as an unreadable sliver, so fall back to fullscreen rather than
+  // paint something broken.
+  const effectiveOrbVariant = voiceOrbVariant === "contained" && voiceOrbContainer ? "contained" : "fullscreen"
+  const renderVoiceOrb = (orb: ReactNode) =>
+    effectiveOrbVariant === "contained" && voiceOrbContainer ? createPortal(orb, voiceOrbContainer) : orb
+
+  const handleMicMuteToggle = () => {
+    if (disabled || !voiceEntitled) return
+    if (canMuteMic) {
+      duplex?.toggleMicMute?.()
+      return
+    }
+    // No live duplex session to mute (Web Speech fallback, or not started yet).
+    handleWaveformClick()
   }
   const exitVoiceMode = () => {
     stopVoiceCapture()
@@ -418,16 +478,22 @@ export function SharedChatComposerControls({
       </div>
 
       {showVoiceOrb ? (
-        <VoiceOrbTakeover
-          speaker={speaker}
-          agentLabel={agentLabel}
-          onExitVoice={exitVoiceMode}
-          onMicToggle={handleWaveformClick}
-          micActive={effectiveListening}
-          amplitude={duplex?.amplitude}
-          playbackBlocked={playbackBlocked}
-          onEnableSound={enableSound}
-        />
+        renderVoiceOrb(
+          <VoiceOrbTakeover
+            speaker={speaker}
+            agentLabel={agentLabel}
+            onExitVoice={exitVoiceMode}
+            onMicToggle={handleMicMuteToggle}
+            onMinimize={() => setOrbCollapsed(true)}
+            micActive={effectiveListening && !micMuted}
+            micMuted={micMuted}
+            sessionLive={Boolean(effectiveListening)}
+            variant={effectiveOrbVariant}
+            amplitude={duplex?.amplitude}
+            playbackBlocked={playbackBlocked}
+            onEnableSound={enableSound}
+          />,
+        )
       ) : null}
     </div>
   )

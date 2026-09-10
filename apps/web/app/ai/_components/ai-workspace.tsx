@@ -68,6 +68,7 @@ import { deriveGravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
+import { buildDuplexControls, type ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { getVoiceStatusDetailed, type VoiceStatus } from "@/lib/tier1-voice-client"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { VoiceMicSettingsPopover } from "@/components/gravitre/assistant/voice-mic-settings-popover"
@@ -1864,6 +1865,13 @@ export function AiWorkspace({
   })
   duplexActiveRef.current = voiceDuplex.isActive
 
+  // Every composer on this page — inline, float, shell, mobile — takes the same
+  // controls. Built once so a surface cannot quietly ship without live voice.
+  const duplexControls = buildDuplexControls(voiceDuplex, {
+    alsoPlaybackBlocked: agentVoicePlaybackBlocked,
+    alsoResumePlayback: resumeAgentVoicePlayback,
+  })
+
   // Auto-TTS after assistant reply in Voice modality — same /api/voice/tts as agent chat.
   // Skip when full-duplex session already streamed progressive TTS.
   useEffect(() => {
@@ -1941,6 +1949,17 @@ export function AiWorkspace({
     },
     [stopAgentVoice, clearVoiceErrors],
   )
+
+  // Forwarded to the float, shell and mobile surfaces so voice-to-voice is not
+  // exclusive to the full-page composer. Each surface adds its own orb variant.
+  const surfaceVoiceProps: ChatSurfaceVoiceProps = {
+    duplex: duplexControls,
+    modality,
+    onModalityChange: handleModalityChange,
+    onVoiceInputError: (message) => setDuplexVoiceError(message),
+    onClearVoiceError: () => setDuplexVoiceError(undefined),
+  }
+
   const showConversationsSkeleton = Boolean(user) && conversationsLoading && !conversationsData
   const showConversationsError = Boolean(user) && Boolean(conversationsError) && !conversationsLoading
   const activeConversation = useMemo(
@@ -2202,6 +2221,7 @@ export function AiWorkspace({
           }
           inputRef={inputRef}
           onKeyDown={onKeyDown}
+          voice={surfaceVoiceProps}
         />
       )
     }
@@ -2287,6 +2307,7 @@ export function AiWorkspace({
           }
           inputRef={inputRef}
           onKeyDown={onKeyDown}
+          voice={surfaceVoiceProps}
         />
       )
     }
@@ -2334,6 +2355,7 @@ export function AiWorkspace({
         }
         inputRef={inputRef}
         onKeyDown={onKeyDown}
+        voice={surfaceVoiceProps}
       />
     )
   }
@@ -2548,22 +2570,7 @@ export function AiWorkspace({
                 onModalityChange={handleModalityChange}
                 voiceEntitled={voiceEntitled}
                 voiceUnavailableReason={voiceUnavailableReason}
-                duplex={{
-                  active: voiceDuplex.isActive,
-                  presence: voiceDuplex.presence,
-                  levels: voiceDuplex.levels,
-                  amplitude: voiceDuplex.amplitude,
-                  toggle: voiceDuplex.toggle,
-                  bargeIn: () => {
-                    void voiceDuplex.bargeIn()
-                  },
-                  supported: typeof window !== "undefined" && !!navigator.mediaDevices,
-                  playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
-                  resumeBlockedPlayback: () => {
-                    void voiceDuplex.resumeBlockedPlayback()
-                    void resumeAgentVoicePlayback()
-                  },
-                }}
+                duplex={duplexControls}
               />
             ) : null}
 
@@ -2803,22 +2810,7 @@ export function AiWorkspace({
                   clearVoiceErrors()
                 }}
                 agentLabel={assistantLabel}
-                duplex={{
-                  active: voiceDuplex.isActive,
-                  presence: voiceDuplex.presence,
-                  levels: voiceDuplex.levels,
-                  amplitude: voiceDuplex.amplitude,
-                  toggle: voiceDuplex.toggle,
-                  bargeIn: () => {
-                    void voiceDuplex.bargeIn()
-                  },
-                  supported: typeof window !== "undefined" && !!navigator.mediaDevices,
-                  playbackBlocked: voiceDuplex.playbackBlocked || agentVoicePlaybackBlocked,
-                  resumeBlockedPlayback: () => {
-                    void voiceDuplex.resumeBlockedPlayback()
-                    void resumeAgentVoicePlayback()
-                  },
-                }}
+                duplex={duplexControls}
                 onVoiceInputError={(message) => {
                   if (!message) return
                   setDuplexVoiceError(message)

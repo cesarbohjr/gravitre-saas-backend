@@ -23,7 +23,8 @@
  * not Expanded/Fullscreen's.
  */
 
-import type { KeyboardEvent, ReactNode, RefObject } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react"
+import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreAIMobileSheet, type GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
 import {
   GravitreAIConversationComposer,
@@ -72,6 +73,8 @@ export interface GravitreAIMobileSheetBridgeProps {
   placeholder?: string
   inputRef?: RefObject<HTMLTextAreaElement | null>
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  /** Live voice-to-voice; previously omitted, leaving this surface voice-less. */
+  voice?: ChatSurfaceVoiceProps
 
   children?: ReactNode
 }
@@ -111,9 +114,18 @@ export function GravitreAIMobileSheetBridge({
   placeholder,
   inputRef,
   onKeyDown,
+  voice,
 }: GravitreAIMobileSheetBridgeProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const [orbHost, setOrbHost] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setOrbHost(bodyRef.current)
+  }, [])
+
   return (
     <GravitreAIMobileSheet mode={mode} presence={presence} onModeChange={onModeChange} onClose={onClose}>
+      {/* Positioned wrapper so the contained orb fills the sheet, not the composer. */}
+      <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <GravitreAIConversationTranscript
           routeKey="/ai"
@@ -154,7 +166,11 @@ export function GravitreAIMobileSheetBridge({
           inputRef={inputRef}
           onKeyDown={onKeyDown}
           bordered={false}
+          {...voice}
+          voiceOrbVariant="contained"
+          voiceOrbContainer={orbHost}
         />
+      </div>
       </div>
     </GravitreAIMobileSheet>
   )
