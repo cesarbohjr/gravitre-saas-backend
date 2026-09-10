@@ -2,12 +2,29 @@
 
 Used as an early short-circuit in assistant chat so sidebar FAQ does not
 fall into tool loops or paraphrase hub names (Insights vs Intelligence).
+
+These matchers must stay narrow. A substring like "enterprise" plus "where"
+is ordinary operator language (Google Ads, CRM, etc.) and must not replace
+the live assistant.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+# Long connector/setup prompts are never sidebar FAQs unless they name the nav.
+_MAX_FAQ_CHARS_WITHOUT_NAV = 800
+_OPERATOR_TASK_HINTS = (
+    "google ads",
+    "googleads",
+    "don't execute",
+    "do not execute",
+    "without my approval",
+    "once i approve",
+    "set it up in",
+    "create four campaigns",
+    "campaign strategy",
+)
 
 _ACTIVITY_HINTS = (
     "completed work",
@@ -26,10 +43,8 @@ _AGENTS_HINTS = (
     "manage my agents",
     "agents hub",
 )
-_SETTINGS_HINTS = (
-    "enterprise",
-    "federation",
-    "environments",
+_ADMIN_IA_TERMS = ("enterprise", "federation", "environments")
+_SETTINGS_EXPLICIT = (
     "settings → admin",
     "settings admin",
     "under admin",
@@ -43,16 +58,57 @@ _INTELLIGENCE_HINTS = (
     "operational health",
     "/intelligence",
 )
+# Bare "where" / "primary" / "settings" / "admin" are too common in operator tasks.
+_NAV_INTENT = (
+    "sidebar",
+    "navigation",
+    "nav item",
+    "primary nav",
+    "primary hub",
+    "app navigation",
+    "where do i",
+    "where should i",
+    "where is",
+    "which hub",
+    "which primary",
+)
+_STRONG_NAV = (
+    "sidebar",
+    "navigation",
+    "nav item",
+    "primary nav",
+    "primary hub",
+    "app navigation",
+)
+
+
+def _has_any(text: str, phrases: tuple[str, ...]) -> bool:
+    return any(phrase in text for phrase in phrases)
+
+
+def _is_settings_ia_question(text: str) -> bool:
+    term_count = sum(1 for term in _ADMIN_IA_TERMS if term in text)
+    explicit = _has_any(text, _SETTINGS_EXPLICIT)
+    if term_count >= 2 and _has_any(text, _NAV_INTENT):
+        return True
+    if explicit and _has_any(text, _NAV_INTENT):
+        return True
+    # Single IA term is allowed only with explicit product-nav vocabulary.
+    if term_count >= 1 and _has_any(text, _STRONG_NAV):
+        return True
+    return False
 
 
 def match_frontend_ia_nav_faq(message: str) -> dict[str, Any] | None:
     text = (message or "").strip().lower()
     if not text:
         return None
+    if len(text) > _MAX_FAQ_CHARS_WITHOUT_NAV and not _has_any(text, _STRONG_NAV):
+        return None
+    if _has_any(text, _OPERATOR_TASK_HINTS) and not _has_any(text, _STRONG_NAV):
+        return None
     # Prefer specific hubs before generic "sidebar" chatter.
-    if any(h in text for h in _ACTIVITY_HINTS) and (
-        "sidebar" in text or "navigation" in text or "primary" in text or "where" in text
-    ):
+    if _has_any(text, _ACTIVITY_HINTS) and _has_any(text, _NAV_INTENT):
         return {
             "hub": "activity",
             "answer": (
@@ -60,9 +116,7 @@ def match_frontend_ia_nav_faq(message: str) -> dict[str, Any] | None:
                 "Completed work lives there; failure alerts are under the **Failures** tab."
             ),
         }
-    if any(h in text for h in _AGENTS_HINTS) and (
-        "sidebar" in text or "navigation" in text or "primary" in text or "where" in text
-    ):
+    if _has_any(text, _AGENTS_HINTS) and _has_any(text, _NAV_INTENT):
         return {
             "hub": "agents",
             "answer": (
@@ -70,15 +124,7 @@ def match_frontend_ia_nav_faq(message: str) -> dict[str, Any] | None:
                 "tabs inside that hub — not separate top-level nav items."
             ),
         }
-    if any(h in text for h in _SETTINGS_HINTS) and (
-        "sidebar" in text
-        or "navigation" in text
-        or "primary" in text
-        or "where" in text
-        or "nav item" in text
-        or "settings" in text
-        or "admin" in text
-    ):
+    if _is_settings_ia_question(text):
         return {
             "hub": "settings",
             "answer": (
@@ -86,9 +132,7 @@ def match_frontend_ia_nav_faq(message: str) -> dict[str, Any] | None:
                 "are under **Settings → Admin** — not separate primary sidebar items."
             ),
         }
-    if any(h in text for h in _INTELLIGENCE_HINTS) and (
-        "sidebar" in text or "navigation" in text or "primary" in text or "where" in text or "hub" in text
-    ):
+    if _has_any(text, _INTELLIGENCE_HINTS) and _has_any(text, _NAV_INTENT):
         return {
             "hub": "intelligence",
             "answer": (

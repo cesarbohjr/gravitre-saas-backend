@@ -49,6 +49,10 @@ _SOCIAL_HINT_RE = re.compile(
     r")\b"
 )
 
+# Canned LIVE replies are high-confidence only. Longer operator tasks must fall
+# through to real reasoning (same class as pending-cancel / meta-query / IA FAQ).
+_MAX_CANNED_REPLY_CHARS = 280
+
 # Human-moment / venting lexicon (rule 10) — includes "frustrated" not only "frustrating".
 _VENTING_RE = re.compile(
     r"(?i)\b("
@@ -129,7 +133,12 @@ def heuristic_turn_shape(message: str) -> ConversationalGateDecision | None:
     # Rule 10: frustration/urgency with no explicit ask → conversational first.
     # Do not treat problem-description words (pipeline, traffic, deals) as a tool
     # request when the user is venting without "show me / pull / please / check…".
-    if is_vent and not asks_for_help and not _looks_mixed(text):
+    if (
+        is_vent
+        and not asks_for_help
+        and not _looks_mixed(text)
+        and len(text) <= _MAX_CANNED_REPLY_CHARS
+    ):
         return ConversationalGateDecision(
             shape="conversational",
             reason="human_moment_venting_no_ask",
@@ -285,7 +294,7 @@ def _declined_to_task_shaped(message: str) -> ConversationalGateDecision:
 def is_human_moment_venting_no_ask(message: str) -> bool:
     """True when the message is frustration/urgency without an explicit tool ask."""
     text = (message or "").strip()
-    if not text:
+    if not text or len(text) > _MAX_CANNED_REPLY_CHARS:
         return False
     return bool(_VENTING_RE.search(text)) and not bool(_EXPLICIT_TASK_ASK_RE.search(text))
 
@@ -330,7 +339,7 @@ _AMBIGUOUS_OPEN_CLARIFY: tuple[tuple[re.Pattern[str], str], ...] = (
 def ambiguous_open_clarify_reply(message: str) -> str | None:
     """Deterministic clarify for known ambiguous opens (rule 1). None if not matched."""
     text = (message or "").strip()
-    if not text:
+    if not text or len(text) > _MAX_CANNED_REPLY_CHARS:
         return None
     for pattern, reply in _AMBIGUOUS_OPEN_CLARIFY:
         if pattern.search(text):

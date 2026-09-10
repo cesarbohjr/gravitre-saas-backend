@@ -126,6 +126,8 @@ def should_short_circuit_before_generation(
     settings: Settings,
     permitted_registry: set[str] | frozenset[str] | list[str] | None,
 ) -> bool:
+    if len((query or "").strip()) > 400:
+        return False
     if not is_external_or_general_question(query):
         return False
     if not rag_sources_effectively_empty(rag_sources):

@@ -134,6 +134,23 @@ def test_ambiguous_open_clarify_replies(message, needle):
     assert needle in reply.lower()
 
 
+def test_long_operator_task_is_not_ambiguous_open_or_venting_canned():
+    from app.services.conversational_turn_gate import (
+        ambiguous_open_clarify_reply,
+        is_human_moment_venting_no_ask,
+    )
+
+    message = (
+        "help me improve our SEO. I have a Google Ads campaign strategy ready to go live. "
+        "Set it up in Google Ads exactly as specified below, and don't execute anything "
+        "without my approval first. Create four campaigns with enterprise ad groups, "
+        "then show me where I can verify each campaign actually exists in my real Google Ads "
+        "account, not just that Gravitre says it worked. " * 2
+    )
+    assert ambiguous_open_clarify_reply(message) is None
+    assert is_human_moment_venting_no_ask(message) is False
+
+
 @pytest.mark.parametrize(
     "message,needle",
     [

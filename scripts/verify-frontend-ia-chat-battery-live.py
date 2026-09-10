@@ -74,6 +74,25 @@ CASES: list[dict[str, Any]] = [
         "must_include_any": ["intelligence", "/intelligence"],
         "must_not_include_any": [],
     },
+    {
+        "id": "google_ads_not_settings_faq",
+        "message": (
+            "I have a Google Ads campaign strategy ready to go live. Set it up in "
+            "Google Ads exactly as specified below, and don't execute anything "
+            "without my approval first. Create four campaigns including IT / "
+            "Security Ops for shadow AI in the enterprise and an enterprise AI agent "
+            "management platform. Before you create anything, check that my Google Ads "
+            "account is connected, show me the complete plan campaign by campaign, "
+            "and once it's live, show me where I can verify each campaign actually "
+            "exists in my real Google Ads account, not just that Gravitre says it worked."
+        ),
+        "must_include_any": [],
+        "must_not_include_any": [
+            "Enterprise, Federation, and Environments",
+            "not separate primary sidebar items",
+            "Settings → Admin",
+        ],
+    },
 ]
 
 
@@ -125,15 +144,20 @@ def parse_sse(raw: str) -> dict[str, Any]:
 
 def score_case(case: dict[str, Any], assistant: str) -> dict[str, Any]:
     text = assistant.lower()
-    ok_any = any(tok.lower() in text for tok in case["must_include_any"])
-    bad = [tok for tok in case.get("must_not_include_any") or [] if tok.lower() in text]
-    # Soften must_not — only fail on hard path tokens
-    hard_bad = [b for b in bad if b.startswith("/")]
+    include = list(case.get("must_include_any") or [])
+    ok_any = True if not include else any(tok.lower() in text for tok in include)
+    forbidden = list(case.get("must_not_include_any") or [])
+    forbidden_hits = [tok for tok in forbidden if tok.lower() in text]
+    # Soften must_not — only fail on hard path tokens unless this is a negative case.
+    hard_bad = [b for b in forbidden_hits if b.startswith("/")]
+    if not include:
+        hard_bad = forbidden_hits
     passed = ok_any and not hard_bad
     return {
         "passed": passed,
         "matched_include": ok_any,
         "hard_bad_hits": hard_bad,
+        "forbidden_hits": forbidden_hits,
         "verdict": "PASS" if passed else "FAIL",
     }
 
@@ -242,7 +266,10 @@ async def main() -> int:
     report["total"] = total
     report["finished_at"] = utcnow()
     if passed == total:
-        report["verdict"] = f"PASS — {passed}/{total} IA path answers mention consolidated hubs"
+        report["verdict"] = (
+            f"PASS — {passed}/{total} IA nav answers plus Google Ads operator task "
+            "did not hit the Settings FAQ canned reply"
+        )
     else:
         failed_ids = [c["id"] for c in report["cases"] if not c.get("passed")]
         report["verdict"] = f"FAIL — {passed}/{total}; failed={failed_ids}"

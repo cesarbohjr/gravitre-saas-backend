@@ -118,6 +118,9 @@ async def resolve_unified_live_channel_override_reply(
     override = detect_channel_override_integration(message)
     if not override:
         return None
+    # Long operator tasks that mention "use X instead" are not channel corrections.
+    if len((message or "").strip()) > 280:
+        return None
 
     state = dict(task_state or {})
     clarified = safe_normalize_stored_dict(state, key='clarified_params')

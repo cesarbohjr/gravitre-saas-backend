@@ -880,6 +880,12 @@ async def assistant_chat(
 
     ia_faq = match_frontend_ia_nav_faq(last_user)
     if ia_faq:
+        logger.info(
+            "assistant.ia_nav_faq.served org_id=%s hub=%s chars=%s",
+            org_id,
+            ia_faq.get("hub"),
+            len(last_user),
+        )
         return StreamingResponse(
             _build_cached_stream(str(ia_faq["answer"]), [], []),
             media_type="text/event-stream",

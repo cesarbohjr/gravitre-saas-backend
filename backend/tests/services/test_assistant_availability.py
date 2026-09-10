@@ -57,6 +57,20 @@ def test_should_not_short_circuit_with_kb_hits():
     )
 
 
+def test_should_not_short_circuit_long_operator_task():
+    settings = SimpleNamespace(tavily_api_key="")
+    query = (
+        "What is the best way to set this up? " * 20
+        + "Create four Google Ads campaigns for enterprise security and show me where I can verify them."
+    )
+    assert not should_short_circuit_before_generation(
+        query=query,
+        rag_sources=[],
+        settings=settings,
+        permitted_registry={"web_search"},
+    )
+
+
 def test_apply_bounded_answer_after_failed_web_search():
     settings = SimpleNamespace(tavily_api_key="tvly-test")
     bounded = apply_bounded_answer_if_needed(
