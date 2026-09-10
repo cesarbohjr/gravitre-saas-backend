@@ -54,22 +54,31 @@ function emptyLabel(kind: "runs" | "agents" | "generic"): string {
   return "No data yet"
 }
 
-const KPI_ICON_STYLES: Record<string, { icon: ReactNode; iconClassName: string }> = {
+const KPI_ICON_WRAPPER = "h-7 w-7"
+
+const KPI_ICON_STYLES: Record<
+  string,
+  { icon: ReactNode; iconClassName: string; iconWrapperClassName: string }
+> = {
   "agents.active": {
-    icon: <NucleoAgent className="h-[18px] w-[18px]" aria-hidden />,
-    iconClassName: "bg-blue-100 text-blue-600",
+    icon: <NucleoAgent className="h-3.5 w-3.5 opacity-70" aria-hidden />,
+    iconClassName: "bg-blue-500/8 text-blue-600/60",
+    iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.success_rate": {
-    icon: <NucleoSuccess className="h-[18px] w-[18px]" aria-hidden />,
-    iconClassName: "bg-emerald-100 text-emerald-600",
+    icon: <NucleoSuccess className="h-3.5 w-3.5 opacity-70" aria-hidden />,
+    iconClassName: "bg-emerald-500/8 text-emerald-600/60",
+    iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.avg_duration": {
-    icon: <NucleoHistory className="h-[18px] w-[18px]" aria-hidden />,
-    iconClassName: "bg-amber-100 text-amber-700",
+    icon: <NucleoHistory className="h-3.5 w-3.5 opacity-70" aria-hidden />,
+    iconClassName: "bg-amber-500/8 text-amber-600/55",
+    iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "models.most_used": {
-    icon: <NucleoIntelligence className="h-[18px] w-[18px]" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+    icon: <NucleoIntelligence className="h-3.5 w-3.5 opacity-70" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand)]/10 text-[color:var(--g-brand)]/60",
+    iconWrapperClassName: KPI_ICON_WRAPPER,
   },
 }
 
@@ -98,6 +107,7 @@ function MetricNumber({
       warning={warning}
       icon={iconStyle?.icon}
       iconClassName={iconStyle?.iconClassName}
+      iconWrapperClassName={iconStyle?.iconWrapperClassName}
       className="h-full"
     />
   )

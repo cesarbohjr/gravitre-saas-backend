@@ -13,6 +13,7 @@ export function GravitreMetric({
   href,
   icon,
   iconClassName,
+  iconWrapperClassName,
   warning = false,
   className,
 }: {
@@ -22,6 +23,7 @@ export function GravitreMetric({
   href?: string
   icon?: ReactNode
   iconClassName?: string
+  iconWrapperClassName?: string
   warning?: boolean
   className?: string
 }) {
@@ -31,6 +33,7 @@ export function GravitreMetric({
         <div
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
+            iconWrapperClassName,
             iconClassName ??
               (warning
                 ? "bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]"
