@@ -1,49 +1,52 @@
 "use client"
 
-import { createElement } from "react"
+/**
+ * Canonical agent identity renderer (Agents 4.0 Phase 1).
+ * Compact symbol tile — no glow discs, no saturated orbs.
+ * Preserves prior API so call sites upgrade by import alone.
+ */
+
 import { cn } from "@/lib/utils"
+import { GravitreAgentIcon } from "@/components/agents/fleet-v4/gravitre-agent-icon"
+import { GravitreAgentStatusDot } from "@/components/agents/fleet-v4/gravitre-agent-status"
 import {
-  resolveAgentIconComponent,
   resolveAgentIdentity,
   type AgentIdentity,
   type AgentIdentityInput,
 } from "@/lib/agent-identity"
+import { resolveV4IdentityView } from "@/lib/agent-identity-bridge"
+import type { AgentStatus } from "@/types/api"
+import type { IdentitySize } from "@/components/agents/fleet-v4/types"
 
 export type AgentIdentityAvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "orb"
 
-/** Shared circular orb — same shape everywhere an agent appears. */
-const sizeClasses: Record<AgentIdentityAvatarSize, string> = {
-  xs: "h-6 w-6 rounded-full",
-  sm: "h-8 w-8 rounded-full",
-  md: "h-10 w-10 rounded-full",
-  lg: "h-12 w-12 rounded-full",
-  xl: "h-20 w-20 sm:h-24 sm:w-24 rounded-full",
-  orb: "h-24 w-24 rounded-full",
+const SIZE_TO_TILE: Record<AgentIdentityAvatarSize, IdentitySize> = {
+  xs: "sm",
+  sm: "sm",
+  md: "md",
+  lg: "lg",
+  xl: "lg",
+  /** Legacy orb size — now a large tile, not a 96px glow circle. */
+  orb: "lg",
 }
 
-const iconSizeClasses: Record<AgentIdentityAvatarSize, string> = {
-  xs: "h-3 w-3",
-  sm: "h-4 w-4",
-  md: "h-5 w-5",
-  lg: "h-6 w-6",
-  xl: "h-10 w-10 sm:h-11 sm:w-11",
-  orb: "h-10 w-10",
-}
-
-const initialsSizeClasses: Record<AgentIdentityAvatarSize, string> = {
-  xs: "text-[9px]",
-  sm: "text-[10px]",
-  md: "text-xs",
-  lg: "text-sm",
-  xl: "text-2xl sm:text-3xl",
-  orb: "text-xl",
+const FRAME: Record<AgentIdentityAvatarSize, string> = {
+  xs: "h-6 w-6 rounded-[5px]",
+  sm: "h-9 w-9 rounded-[var(--np-radius-sm,6px)]",
+  md: "h-11 w-11 rounded-[var(--np-radius-md,8px)]",
+  lg: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
+  xl: "h-16 w-16 rounded-[var(--np-radius-md,8px)]",
+  orb: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
 }
 
 export interface AgentIdentityAvatarProps {
   identity?: AgentIdentity
-  agent?: AgentIdentityInput
+  agent?: AgentIdentityInput & { status?: AgentStatus | string | null }
   size?: AgentIdentityAvatarSize
+  /** Prefer icon/color tile; initials only when explicitly requested and no photo. */
   showInitials?: boolean
+  /** Show runtime status as a corner dot (never recolors the tile). */
+  showStatusDot?: boolean
   className?: string
   iconClassName?: string
 }
@@ -53,47 +56,56 @@ export function AgentIdentityAvatar({
   agent,
   size = "md",
   showInitials = false,
+  showStatusDot = true,
   className,
-  iconClassName,
 }: AgentIdentityAvatarProps) {
   const resolved = identity ?? resolveAgentIdentity(agent ?? {})
-  const Icon = resolveAgentIconComponent(resolved.icon, agent?.role, resolved.name)
-  const useImage = Boolean(resolved.avatarUrl) && !showInitials
+  const view = resolveV4IdentityView(agent ?? { name: resolved.name }, resolved)
+  const useImage = Boolean(view.avatarUrl) && !showInitials
   const useInitials = showInitials && !useImage
 
+  if (useImage || useInitials) {
+    return (
+      <span
+        className={cn(
+          "relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-primary)]",
+          FRAME[size],
+          className,
+        )}
+        title={view.name}
+        aria-hidden={!showInitials}
+      >
+        {useImage ? (
+          // eslint-disable-next-line @next/next/no-img-element -- agent avatars may be data URLs
+          <img src={view.avatarUrl!} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              size === "xs" || size === "sm" ? "text-[9px]" : size === "md" ? "text-xs" : "text-sm",
+            )}
+          >
+            {view.initials}
+          </span>
+        )}
+        {showStatusDot && view.runtimeState ? (
+          <span className="absolute -bottom-0.5 -right-0.5">
+            <GravitreAgentStatusDot state={view.runtimeState} />
+          </span>
+        ) : null}
+      </span>
+    )
+  }
+
   return (
-    <div
-      className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br text-white shadow-lg",
-        sizeClasses[size],
-        !useImage && resolved.personality.gradient,
-        !useImage && resolved.personality.glow,
-        useImage && "bg-muted",
-        className,
-      )}
-      aria-hidden={!showInitials}
-      title={resolved.name}
-    >
-      {useImage ? (
-        // eslint-disable-next-line @next/next/no-img-element -- agent avatars may be data URLs
-        <img
-          src={resolved.avatarUrl!}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : (
-        <>
-          <div className="pointer-events-none absolute inset-[10%] rounded-full bg-gradient-to-br from-white/25 to-transparent" />
-          {useInitials ? (
-            <span className={cn("relative z-10 font-bold", initialsSizeClasses[size])}>{resolved.initials}</span>
-          ) : (
-            createElement(Icon, {
-              className: cn("relative z-10 drop-shadow", iconSizeClasses[size], iconClassName),
-              strokeWidth: 2,
-            })
-          )}
-        </>
-      )}
-    </div>
+    <GravitreAgentIcon
+      icon={view.icon}
+      identityColor={view.identityColor}
+      size={SIZE_TO_TILE[size]}
+      runtimeState={view.runtimeState}
+      showStatusDot={showStatusDot && Boolean(view.runtimeState)}
+      elevated={size === "lg" || size === "xl" || size === "orb"}
+      className={cn(size === "xs" && FRAME.xs, size === "xl" && FRAME.xl, className)}
+    />
   )
 }

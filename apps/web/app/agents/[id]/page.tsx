@@ -126,7 +126,7 @@ function AgentOrb({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAgent }) {
 
   return (
     <div className="relative">
-      <AgentIdentityAvatar agent={apiAgent} size="xl" />
+      <AgentIdentityAvatar agent={apiAgent} size="xl" showStatusDot />
 
       {isRunning && !reduced ? (
         <motion.div

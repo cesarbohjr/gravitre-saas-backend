@@ -715,7 +715,7 @@ export default function AgentChatPage({
               animate={{ opacity: 1, y: 0 }}
               className="mx-auto flex h-full max-w-[880px] flex-col items-center justify-center px-2 text-center"
             >
-              <AgentIdentityAvatar agent={agent} size="lg" className="mb-5 shadow-lg" />
+            <AgentIdentityAvatar agent={agent} size="lg" className="mb-5" />
               <h2 className="mb-1.5 text-xl font-semibold text-foreground">Chat with {agent.name}</h2>
               <p className="mb-8 max-w-md text-sm text-muted-foreground">
                 {agent.description ||

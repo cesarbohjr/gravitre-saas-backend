@@ -1,18 +1,16 @@
 "use client"
 
-// Agents Page - AI Team Command Center with Premium Orb System
-import { createElement, Suspense, useEffect, useMemo, useRef, useState } from "react"
+// Agents Page — AI Team (Agents 4.0 Phase 2: department-grouped TEAM view)
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
-  GravitreMetric,
   GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
-import { AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -32,7 +30,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useMotionPrefs } from "@/lib/animations"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { NucleoAgent, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { 
@@ -42,11 +39,7 @@ import {
   Sparkles,
   Brain,
   MessageSquare,
-  TrendingUp,
-  Megaphone,
   Database,
-  PieChart,
-  Headphones,
   Play,
   Pause,
   Settings,
@@ -62,7 +55,6 @@ import {
   Activity,
   Zap,
   Bot,
-  type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
@@ -72,11 +64,15 @@ import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
-import { inferAgentDepartment, resolveAgentRoleIcon } from "@/lib/agent-display"
-import { resolveAgentIdentity } from "@/lib/agent-identity"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
-import { departmentGradient } from "@/lib/department-gradient"
-import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
+import { FleetControls, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
+import { toFleetAgent } from "@/lib/agent-identity-bridge"
+import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
+import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
+import { isAgentsFleetView } from "@/lib/agents-fleet-prefs"
+import { useAgentsFleetPrefs } from "@/hooks/use-agents-fleet-prefs"
+import { agentSwarmApi } from "@/lib/api"
+import type { Agent as ApiAgent, AgentSwarmRun } from "@/types/api"
 import {
   agentStatusIsLiveWork,
   normalizeAgentStatus,
@@ -99,6 +95,9 @@ type Agent = ApiAgent & {
   knowledgeDocCount?: number
   recentTasks?: AgentRecentTask[]
   config?: Record<string, unknown>
+  connectedSystems?: string[]
+  workflowCount?: number
+  parentAgentId?: string | null
 }
 
 const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
@@ -181,7 +180,13 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
               ? "insufficient_data"
               : "stored_column") as Agent["stats"]["successRateSource"],
         avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
-        workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+        workflowsUsing: Number(
+          stats.workflowsUsing ??
+            stats.workflows_using ??
+            input.workflowCount ??
+            input.workflow_count ??
+            0,
+        ),
       }
     })(),
     capabilities: Array.isArray(input.capabilities)
@@ -192,6 +197,20 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       : Array.isArray(input.systems)
       ? (input.systems as string[])
       : [],
+    connectedSystems: Array.isArray(input.connectedSystems)
+      ? (input.connectedSystems as string[]).map(String)
+      : Array.isArray(input.connected_systems)
+        ? (input.connected_systems as string[]).map(String)
+        : Array.isArray(input.systems)
+          ? (input.systems as string[]).map(String)
+          : [],
+    workflowCount: Number(input.workflowCount ?? input.workflow_count ?? stats.workflowsUsing ?? 0),
+    parentAgentId:
+      typeof input.parentAgentId === "string"
+        ? input.parentAgentId
+        : typeof input.parent_agent_id === "string"
+          ? input.parent_agent_id
+          : null,
     lastAction: String(input.lastAction ?? input.last_action ?? "No activity yet"),
     lastActionTime: String(input.lastActionTime ?? input.last_action_time ?? "unknown"),
     model: deriveModelLabel(input),
@@ -220,19 +239,6 @@ function normalizeAgentsResponse(payload: unknown): Agent[] {
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeAgent(item))
     .filter((item) => item.id.length > 0)
-}
-
-const roleIcons: Record<string, LucideIcon> = {
-  "Marketing Operator": Megaphone,
-  "Sales Assistant": TrendingUp,
-  "Data Quality Agent": Database,
-  "Finance Reporter": PieChart,
-  "Support Coordinator": Headphones,
-  "HR Partner": Users,
-}
-
-function getAgentIcon(agent: Agent): LucideIcon {
-  return resolveAgentRoleIcon(agent.role, agent.name)
 }
 
 const statusConfig = {
@@ -344,154 +350,6 @@ function getAgentRecentTasks(agent: Agent): AgentRecentTask[] {
     ]
   }
   return []
-}
-
-// Agent Orb Component - Premium visual personality representation with depth
-function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
-  const { reduced } = useMotionPrefs()
-  const status = presentAgentStatus(agent.status)
-
-  // Shared identity gradient (stored icon/color when present, otherwise department fallback).
-  const identity = resolveAgentIdentity(agent)
-  const { gradient } = identity.personality
-  const isRunning = agentStatusIsLiveWork(agent.status)
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      layout
-      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 30, scale: 0.8 }}
-      animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
-      transition={reduced ? { duration: 0.12 } : { delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={reduced ? undefined : { scale: 1.02, y: -3 }}
-      whileTap={reduced ? undefined : { scale: 0.98 }}
-      className={cn(
-        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
-        "rounded-[var(--np-radius-lg)]",
-        isSelected
-          ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] z-10"
-          : "hover:border-divide hover:bg-[color:var(--g-surface-2)] hover:shadow-[var(--np-shadow)]",
-        agent.status === "idle" && "opacity-85",
-      )}
-    >
-      {/* Soft colored halo behind the orb */}
-      <motion.div
-        aria-hidden
-        className={cn("pointer-events-none absolute inset-x-4 top-6 h-24 rounded-full blur-2xl bg-gradient-to-br", gradient)}
-        animate={{ opacity: isSelected ? 0.35 : 0.18 }}
-      />
-
-      <div className="relative mb-4 flex h-28 w-28 items-center justify-center">
-        {(agent.status === "processing") && !reduced && (
-          <>
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-info/40"
-              animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
-            />
-            <motion.div
-              className="absolute inset-0 rounded-full border border-info/20"
-              animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0, 0.4] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-            />
-          </>
-        )}
-
-        {agent.model ? (
-          <AgentModelBadge
-            model={agent.model}
-            variant="orb"
-            className="absolute -top-1 right-0 z-20 max-w-[92px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm transition-colors group-hover:border-foreground/20 group-hover:text-foreground"
-          />
-        ) : null}
-
-        {Boolean(agent.config?.marketplaceAssetId) ? (
-          <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary shadow-sm">
-            Marketplace
-          </span>
-        ) : null}
-
-        {agent.stats.tasksToday > 0 && (
-          <div className="absolute -top-1 left-0 z-20 flex h-6 min-w-6 items-center justify-center rounded-full border border-border bg-card px-1 shadow-lg">
-            <span className="text-[10px] font-bold text-foreground">
-              {agent.stats.tasksToday > 99 ? "99+" : agent.stats.tasksToday}
-            </span>
-          </div>
-        )}
-
-        <div className="relative" style={{ transform: "translateZ(20px)" }}>
-          <AgentIdentityAvatar
-            agent={agent}
-            size="orb"
-            className={cn(
-              isSelected ? "ring-2 ring-foreground/15" : "",
-              agent.status === "error" && "opacity-50 grayscale-[30%]",
-            )}
-          />
-          {agent.status === "processing" && !reduced && (
-            <motion.div
-              className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-            />
-          )}
-          {agent.status === "error" && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-destructive/30">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="relative z-10 w-full space-y-2 text-center">
-        <div className="space-y-0.5">
-          <p className="truncate text-sm font-semibold text-foreground">{agent.name}</p>
-          <p className="truncate text-[11px] text-muted-foreground">{agent.role}</p>
-        </div>
-
-        {/* Success rate · tasks today */}
-        <p className="text-[10px] text-muted-foreground">
-          {(() => {
-            const rate = getDisplaySuccessRate(agent)
-            return rate != null ? (
-              <span className={successRateColorClass(rate)}>{rate}%</span>
-            ) : (
-              <span className="text-muted-foreground/70">No tasks yet</span>
-            )
-          })()}
-          <span className="mx-1">·</span>
-          <span>{agent.stats.tasksToday} today</span>
-        </p>
-
-        {/* Status pill — API AgentStatus only (Active / Idle / Running / Failed) */}
-        <StatusChip status={agent.status} pulse={isRunning && !reduced}>
-          {status.label}
-        </StatusChip>
-
-        {(agent.knowledgeDocCount ?? 0) > 0 ? (
-          <a
-            href={`/training?agentId=${agent.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
-          >
-            <BookOpen className="h-3 w-3" />
-            {agent.knowledgeDocCount} docs
-          </a>
-        ) : (
-          <a
-            href={`/training?agentId=${agent.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-card/50 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
-          >
-            <BookOpen className="h-3 w-3" />
-            Add training
-          </a>
-        )}
-      </div>
-    </motion.button>
-  )
 }
 
 // Agent Detail Panel
@@ -883,51 +741,26 @@ function MesonBuildButton({
   onClick: () => void
   isOpen?: boolean
 }) {
-  const { reduced } = useMotionPrefs()
-
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <motion.div
-            whileHover={reduced ? undefined : { scale: 1.02 }}
-            whileTap={reduced ? undefined : { scale: 0.98 }}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClick}
+            aria-expanded={isOpen}
+            aria-haspopup="dialog"
+            aria-label="Build with Meson"
+            className={cn(
+              "gap-2 px-3 text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+              isOpen && "bg-[color:var(--g-surface-active)] text-[color:var(--g-text-primary)]",
+            )}
           >
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClick}
-              aria-expanded={isOpen}
-              aria-haspopup="dialog"
-              aria-label="Build with Meson"
-              className={cn(
-                "gap-2 border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3 hover:bg-[color:var(--g-surface-active)]",
-                isOpen && "bg-[color:var(--g-surface-active)]",
-              )}
-            >
-              <motion.span
-                animate={
-                  reduced
-                    ? undefined
-                    : { rotate: [0, 10, -10, 0], scale: [1, 1.08, 1] }
-                }
-                transition={
-                  reduced
-                    ? undefined
-                    : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
-                }
-                className="inline-flex"
-              >
-                <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-intelligence)]" />
-              </motion.span>
-              <span className="hidden font-medium text-[color:var(--g-text-primary)] sm:inline">
-                Build with Meson
-              </span>
-              <span className="text-sm font-medium text-[color:var(--g-text-primary)] sm:hidden">
-                Meson
-              </span>
-            </Button>
-          </motion.div>
+            <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-intelligence)]" />
+            <span className="hidden font-medium sm:inline">Build with Meson</span>
+            <span className="text-sm font-medium sm:hidden">Meson</span>
+          </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           AI-powered builder — describe intent, deploy agents and workflows
@@ -991,8 +824,29 @@ export default function AgentsPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
+  const { prefs, hydrated, setView, setSort, toggleSortDir, setFilters, clearFilters } =
+    useAgentsFleetPrefs()
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+
+  // URL ?view=team|list|graph is shareable; applies once after prefs hydrate.
+  useEffect(() => {
+    if (!hydrated) return
+    const param = new URLSearchParams(window.location.search).get("view")
+    if (isAgentsFleetView(param) && param !== prefs.view) {
+      setView(param)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot URL override after hydrate
+  }, [hydrated])
+
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get("view") === prefs.view) return
+    url.searchParams.set("view", prefs.view)
+    const qs = url.searchParams.toString()
+    window.history.replaceState({}, "", `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`)
+  }, [prefs.view, hydrated])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1051,9 +905,97 @@ export default function AgentsPage() {
 
   const activeCount = agents.filter((a) => a.status === "active").length
   const runningCount = agents.filter((a) => a.status === "processing").length
+  const idleCount = agents.filter((a) => a.status === "idle").length
   const failedCount = agents.filter((a) => a.status === "error").length
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
   const totalAgents = agents.length
+
+  const fleetAgents = useMemo(() => {
+    const mapped = filteredAgents.map((agent) =>
+      toFleetAgent({
+        ...agent,
+        connectedSystems: agent.connectedSystems,
+        workflowCount: agent.workflowCount ?? agent.stats.workflowsUsing,
+        parentAgentId: agent.parentAgentId,
+      }),
+    )
+    const filtered = filterFleetAgents(mapped, prefs.filters)
+    return sortFleetAgents(filtered, prefs.sort, prefs.sortDir)
+  }, [filteredAgents, prefs.filters, prefs.sort, prefs.sortDir])
+
+  const filterOptions = useMemo(() => {
+    const mapped = agents.map((agent) =>
+      toFleetAgent({
+        ...agent,
+        connectedSystems: agent.connectedSystems,
+        workflowCount: agent.workflowCount ?? agent.stats.workflowsUsing,
+        parentAgentId: agent.parentAgentId,
+      }),
+    )
+    return {
+      departments: uniqueSorted(mapped.map((a) => a.departmentLabel)),
+      roles: uniqueSorted(mapped.map((a) => a.role)),
+      models: uniqueSorted(mapped.map((a) => a.model).filter((m) => m && m !== "—")),
+    }
+  }, [agents])
+
+  const agentsById = useMemo(() => {
+    const map = new Map<string, Agent>()
+    for (const agent of agents) map.set(agent.id, agent)
+    return map
+  }, [agents])
+
+  // Fetch swarm runs when GRAPH is open — hydrate subtasks for active runs only.
+  const { data: swarmList } = useSWR(
+    user && prefs.view === "graph" ? "agents-fleet-swarm" : null,
+    () => agentSwarmApi.list({ limit: 12 }),
+    { revalidateOnFocus: true, dedupingInterval: 5000 },
+  )
+
+  const [swarmRunsDetailed, setSwarmRunsDetailed] = useState<AgentSwarmRun[]>([])
+
+  useEffect(() => {
+    if (prefs.view !== "graph") {
+      setSwarmRunsDetailed([])
+      return
+    }
+    const runs = swarmList?.runs ?? []
+    const candidates = runs.filter((r) =>
+      ["pending", "running", "aggregating"].includes(String(r.status)),
+    )
+    if (candidates.length === 0) {
+      setSwarmRunsDetailed([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const detailed = await Promise.all(
+        candidates.slice(0, 3).map(async (run) => {
+          try {
+            return await agentSwarmApi.get(run.id)
+          } catch {
+            return run
+          }
+        }),
+      )
+      if (!cancelled) setSwarmRunsDetailed(detailed)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [prefs.view, swarmList])
+
+  const graphModel = useMemo(
+    () => buildFleetGraphModel(fleetAgents, swarmRunsDetailed),
+    [fleetAgents, swarmRunsDetailed],
+  )
+
+  const selectAgentById = (id: string) => {
+    const agent = agentsById.get(id)
+    if (!agent) return
+    setSelectedAgent(agent)
+    setPreviewOpen(true)
+  }
 
   const prevRunningCountRef = useRef(runningCount)
   const [runningStatPulse, setRunningStatPulse] = useState(false)
@@ -1068,18 +1010,18 @@ export default function AgentsPage() {
 
   const rosterActions = (
     <>
-      <MesonBuildButton
-        onClick={() => setMesonWizardOpen(true)}
-        isOpen={mesonWizardOpen}
-      />
-      <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
-        <Users className="h-4 w-4" />
-        <span className="hidden sm:inline">Multi-Agent Run</span>
-      </Button>
       <Button onClick={() => router.push("/agents/new")} className="gap-2">
         <Plus className="h-4 w-4" />
         <span className="hidden sm:inline">New Agent</span>
       </Button>
+      <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
+        <Users className="h-4 w-4" />
+        <span className="hidden sm:inline">Multi-Agent Run</span>
+      </Button>
+      <MesonBuildButton
+        onClick={() => setMesonWizardOpen(true)}
+        isOpen={mesonWizardOpen}
+      />
       {visibleSelectedAgent ? (
         <Button
           variant="outline"
@@ -1097,7 +1039,7 @@ export default function AgentsPage() {
   return (
   <AppShell title={SURFACE_COPY.pages.agents.title}>
     <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row">
-  {/* Left - Agent Roster with Orbs */}
+  {/* Left - Agent roster */}
   <div className="relative z-10 flex flex-1 flex-col border-divide lg:border-r">
           <div className="relative z-10 space-y-3 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
             <Suspense fallback={null}>
@@ -1116,45 +1058,23 @@ export default function AgentsPage() {
                 icon={<NucleoAgent className="h-5 w-5" />}
                 actions={rosterActions}
               />
-              <section className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)] lg:grid-cols-4">
-                <GravitreMetric
-                  label="Total"
-                  value={<AnimatedCounter value={totalAgents} duration={0.8} />}
-                  hint="In roster"
-                  icon={<NucleoAgent className="h-4 w-4" />}
-                />
-                <GravitreMetric
-                  label="Active"
-                  value={<AnimatedCounter value={activeCount} duration={0.8} />}
-                  hint={activeCount > 0 ? "Ready" : "None active"}
-                  className={activeCount > 0 ? "border-success/30" : undefined}
-                  icon={<Play className="h-4 w-4" />}
-                />
+              <div className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
                 <motion.div
-                  animate={
-                    runningStatPulse
-                      ? { scale: [1, 1.04, 1] }
-                      : { scale: 1 }
-                  }
+                  animate={runningStatPulse ? { scale: [1, 1.01, 1] } : { scale: 1 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  <GravitreMetric
-                    label="Running"
-                    value={<AnimatedCounter value={runningCount} duration={0.8} />}
-                    hint={runningCount > 0 ? "Live work" : "None running"}
-                    className={runningCount > 0 ? "border-info/30" : undefined}
-                    icon={<Activity className="h-4 w-4" />}
+                  <FleetSummaryBar
+                    counts={{
+                      total: totalAgents,
+                      working: runningCount,
+                      available: activeCount,
+                      idle: idleCount,
+                      failed: failedCount,
+                      tasksToday: totalTasks,
+                    }}
                   />
                 </motion.div>
-                <GravitreMetric
-                  label="Failed"
-                  value={<AnimatedCounter value={failedCount} duration={0.8} />}
-                  hint={failedCount > 0 ? "Needs attention" : "None failed"}
-                  warning={failedCount > 0}
-                  className={failedCount > 0 ? "border-destructive/30" : undefined}
-                  icon={<Shield className="h-4 w-4" />}
-                />
-              </section>
+              </div>
             </>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-divide bg-[color:var(--g-surface-1)]/60 px-[var(--np-page-pad-sm)] py-2.5 backdrop-blur-sm sm:px-[var(--np-page-pad)]">
@@ -1163,7 +1083,7 @@ export default function AgentsPage() {
                   {SURFACE_COPY.pages.agents.rosterTitle}
                 </p>
                 <p className="text-xs text-[color:var(--g-text-muted)]">
-                  {runningCount} running · {activeCount} active · {totalAgents} total
+                  {runningCount} working · {activeCount} available · {idleCount} idle · {totalAgents} total
                   {failedCount > 0 ? ` · ${failedCount} failed` : ""}
                   {totalTasks > 0 ? ` · ${totalTasks} tasks today` : ""}
                 </p>
@@ -1172,15 +1092,15 @@ export default function AgentsPage() {
             </div>
           )}
 
-          {/* Search */}
-          <div className="space-y-2 border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
+          {/* Search + view / filter / sort */}
+          <div className="space-y-3 border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--g-text-muted)]" />
                 <input
                   ref={searchInputRef}
                   type="search"
-                  placeholder="Search agents by name, role, department..."
+                  placeholder="Search name, role, department, model, status…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search agents"
@@ -1213,124 +1133,152 @@ export default function AgentsPage() {
                 {headerCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
               </Button>
             </div>
-            {normalizedSearchQuery && agents.length > 0 ? (
+            <FleetControls
+              view={prefs.view}
+              onViewChange={setView}
+              sort={prefs.sort}
+              sortDir={prefs.sortDir}
+              onSortChange={setSort}
+              onToggleSortDir={toggleSortDir}
+              filters={prefs.filters}
+              onFiltersChange={setFilters}
+              onClearFilters={clearFilters}
+              departments={filterOptions.departments}
+              roles={filterOptions.roles}
+              models={filterOptions.models}
+            />
+            {(normalizedSearchQuery ||
+              prefs.filters.department ||
+              prefs.filters.status ||
+              prefs.filters.role ||
+              prefs.filters.model) &&
+            agents.length > 0 ? (
               <p className="text-xs text-[color:var(--g-text-muted)]">
-                {filteredAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
+                {fleetAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
               </p>
             ) : null}
           </div>
 
-          {/* Agent Orb Grid - Premium with particle field */}
+          {/* TEAM / LIST — Agents 4.0 Phase 3 */}
           <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
-            {/* Center stage area. On mobile it keeps a fixed-height band for the
-               horizontal carousel; on desktop it grows with content (min-h-0) so
-               a tall, wrapped constellation flows from the top and scrolls in the
-               parent instead of being vertically centered and clipped. */}
-            <div className="relative flex min-h-[360px] flex-1 flex-col sm:min-h-0">
-              {/* Circular platform effect (clipped so the large rings never force
-                 horizontal overflow on narrow/mobile viewports). */}
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-                <motion.div 
-                  className="h-[600px] w-[600px] rounded-full border border-chart-4/10"
-                  animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
-                  transition={{ duration: 8, repeat: Infinity }}
+            <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
+              {error ? (
+                <WorkSectionErrorCard
+                  title="Could not load agents"
+                  message="We couldn't reach the agents service. Check your connection and try again."
+                  onRetry={() => void mutate()}
+                  className="mx-auto max-w-sm"
                 />
-                <motion.div 
-                  className="absolute h-[450px] w-[450px] rounded-full border border-chart-2/10"
-                  animate={{ scale: [1.05, 1, 1.05], opacity: [0.4, 0.2, 0.4] }}
-                  transition={{ duration: 6, repeat: Infinity }}
-                />
-                <motion.div 
-                  className="absolute h-[300px] w-[300px] rounded-full border border-chart-1/10"
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }}
-                  transition={{ duration: 5, repeat: Infinity }}
-                />
-              </div>
-              
-              {/* Orb constellation.
-                 Mobile: a single-row horizontal swipe carousel, vertically
-                 centered in the fixed-height band (my-auto).
-                 Desktop: a wrapping constellation that flows from the top
-                 (sm:my-0, sm:items-start) and scrolls naturally — no vertical
-                 centering, so tall multi-row layouts are never clipped. */}
-              <TooltipProvider delayDuration={200}>
-              <div className={cn(
-                "relative z-10 flex w-full gap-4 sm:gap-6 lg:gap-8",
-                // Mobile carousel. overflow-x-auto forces overflow-y to clip, so
-                // full-height orbs are centered within the tall band.
-                "-mx-4 my-auto snap-x snap-mandatory flex-nowrap items-center overflow-x-auto px-4 py-4 scrollbar-hide",
-                // sm+: wrapping constellation, top-aligned — denser than marketing stage.
-                "sm:mx-0 sm:my-0 sm:snap-none sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:py-6",
-              )}>
-                {error ? (
-                  <WorkSectionErrorCard
-                    title="Could not load agents"
-                    message="We couldn't reach the agents service. Check your connection and try again."
-                    onRetry={() => void mutate()}
-                    className="mx-auto max-w-sm"
-                  />
-                ) : isLoading && agents.length === 0 ? (
-                  <div className="mx-auto flex flex-wrap justify-center gap-6 pb-20 pt-4 sm:gap-8 sm:pt-6">
+              ) : isLoading && agents.length === 0 ? (
+                prefs.view === "list" ? (
+                  <div className="space-y-2 rounded-[var(--np-radius-lg)] border border-divide p-4">
                     {Array.from({ length: 6 }).map((_, index) => (
-                      <div key={index} className="flex flex-col items-center gap-3">
-                        <Skeleton className="h-24 w-24 rounded-full" />
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-2 w-16" />
+                      <Skeleton key={index} className="h-10 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Array.from({ length: 2 }).map((_, section) => (
+                      <div key={section} className="space-y-3">
+                        <Skeleton className="h-3 w-24" />
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start gap-3 rounded-[var(--np-radius-md)] border border-divide p-3"
+                            >
+                              <Skeleton className="h-11 w-11 rounded-[var(--np-radius-md)]" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-3 w-32" />
+                                <Skeleton className="h-2 w-24" />
+                                <Skeleton className="h-5 w-16" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
-                ) : filteredAgents.length === 0 ? (
-                  <div className="mx-auto w-full max-w-sm px-4">
-                    {normalizedSearchQuery ? (
-                      <GravitreEmpty
-                        icon={<Bot className="h-5 w-5" />}
-                        title={`No agents matching '${searchQuery.trim()}'`}
-                        hint="Try a different name, role, or department."
-                        action={
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSearchQuery("")
-                              searchInputRef.current?.focus()
-                            }}
-                          >
-                            Clear search
-                          </Button>
-                        }
-                      />
-                    ) : (
-                      <GravitreEmpty
-                        icon={<Bot className="h-5 w-5" />}
-                        title="No agents yet"
-                        hint="Create your first AI teammate to start delegating work."
-                        action={
-                          <Button onClick={() => router.push("/agents/new")} className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            New Agent
-                          </Button>
-                        }
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <AnimatePresence mode="popLayout">
-                    {filteredAgents.map((agent, index) => (
-                      <AgentOrb
-                        key={agent.id}
-                        agent={agent}
-                        index={index}
-                        isSelected={visibleSelectedAgent?.id === agent.id}
-                        onClick={() => {
-                          setSelectedAgent(agent)
-                          setPreviewOpen(true)
-                        }}
-                      />
-                    ))}
-                  </AnimatePresence>
-                )}
-              </div>
-              </TooltipProvider>
+                )
+              ) : fleetAgents.length === 0 ? (
+                <div className="mx-auto w-full max-w-sm px-4">
+                  {normalizedSearchQuery ||
+                  prefs.filters.department ||
+                  prefs.filters.status ||
+                  prefs.filters.role ||
+                  prefs.filters.model ? (
+                    <GravitreEmpty
+                      icon={<Bot className="h-5 w-5" />}
+                      title="No agents match"
+                      hint="Try clearing search or filters."
+                      action={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery("")
+                            clearFilters()
+                            searchInputRef.current?.focus()
+                          }}
+                        >
+                          Clear search & filters
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <GravitreEmpty
+                      icon={<Bot className="h-5 w-5" />}
+                      title="No agents yet"
+                      hint="Create your first AI teammate to start delegating work."
+                      action={
+                        <Button onClick={() => router.push("/agents/new")} className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          New Agent
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
+              ) : prefs.view === "list" ? (
+                <ListView
+                  agents={fleetAgents}
+                  selectedId={visibleSelectedAgent?.id ?? null}
+                  onSelect={selectAgentById}
+                  toolbar={
+                    <p className="text-xs text-[color:var(--g-text-muted)]">
+                      List view — sort and filter for fleet operations
+                    </p>
+                  }
+                />
+              ) : prefs.view === "graph" ? (
+                <div className="space-y-2">
+                  {graphModel.hasLiveSwarm ? (
+                    <p className="text-xs text-[color:var(--g-brand)]">
+                      Live multi-agent swarm path highlighted
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[color:var(--g-text-muted)]">
+                      Graph shows parent links, swarm delegation, and connector usage — only
+                      edges backed by data.
+                    </p>
+                  )}
+                  <GraphView
+                    agents={fleetAgents}
+                    edges={graphModel.edges}
+                    extraNodes={graphModel.extraNodes}
+                    selectedId={visibleSelectedAgent?.id ?? null}
+                    onSelect={selectAgentById}
+                    activeAgentIds={graphModel.activeAgentIds}
+                  />
+                </div>
+              ) : (
+                <TeamView
+                  agents={fleetAgents}
+                  selectedId={visibleSelectedAgent?.id ?? null}
+                  grouped
+                  onSelect={selectAgentById}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1348,7 +1296,7 @@ export default function AgentsPage() {
         <AnimatePresence initial={false}>
           {/* Only reserve the side-panel width when there is actually an agent
              to show. Previously the panel defaulted open and reserved 420px even
-             with no selection, leaving a large empty panel that squeezed the orb
+             with no selection, leaving a large empty panel that squeezed the roster.
              stage into a narrow strip. */}
           {detailPanelOpen && visibleSelectedAgent ? (
             <motion.div

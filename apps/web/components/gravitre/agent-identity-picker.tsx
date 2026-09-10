@@ -1,19 +1,17 @@
 "use client"
 
-import { createElement } from "react"
 import { cn } from "@/lib/utils"
 import {
   AGENT_COLOR_OPTIONS,
   AGENT_ICON_OPTIONS,
-  isAgentAvatarColorId,
-  isAgentIconId,
   personalityFromAvatarColor,
-  resolveAgentIconComponent,
   suggestAgentColor,
   suggestAgentIcon,
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
+import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
+import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY } from "@/components/agents/fleet-v4/identity-tokens"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 
 interface AgentIdentityPickerProps {
@@ -25,6 +23,7 @@ interface AgentIdentityPickerProps {
   className?: string
 }
 
+/** Appearance picker — soft tiles + curated colors (API still stores legacy ids). */
 export function AgentIdentityPicker({
   name,
   icon,
@@ -48,11 +47,15 @@ export function AgentIdentityPicker({
             personality,
             initials: name.slice(0, 2).toUpperCase(),
           }}
+          agent={{ name, icon, avatarColor, status: "active" }}
           size="lg"
+          showStatusDot={false}
         />
         <div>
           <p className="text-sm font-medium text-foreground">Agent appearance</p>
-          <p className="text-xs text-muted-foreground">Used everywhere this agent appears.</p>
+          <p className="text-xs text-muted-foreground">
+            Compact tile used everywhere this agent appears. Status is separate.
+          </p>
         </div>
       </div>
 
@@ -60,7 +63,8 @@ export function AgentIdentityPicker({
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Icon</p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
           {AGENT_ICON_OPTIONS.map((option) => {
-            const Icon = resolveAgentIconComponent(option.id)
+            const roleId = LEGACY_ICON_TO_ROLE[option.id]
+            const { Icon } = ROLE_ICON_REGISTRY[roleId]
             const selected = icon === option.id
             return (
               <button
@@ -68,15 +72,15 @@ export function AgentIdentityPicker({
                 type="button"
                 onClick={() => onIconChange(option.id)}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[10px] transition",
+                  "flex flex-col items-center gap-1 rounded-[var(--np-radius-md)] border px-2 py-2 text-[10px] transition",
                   selected
-                    ? "border-primary bg-primary/5 text-foreground"
-                    : "border-border bg-card/50 text-muted-foreground hover:border-border/80 hover:bg-card",
+                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/40 text-foreground"
+                    : "border-divide bg-[color:var(--g-surface-1)] text-muted-foreground hover:border-[color:var(--g-brand-border)]",
                 )}
                 aria-pressed={selected}
                 title={option.label}
               >
-                {createElement(Icon, { className: "h-4 w-4", strokeWidth: 2 })}
+                <Icon className="h-4 w-4" />
                 <span className="truncate">{option.label}</span>
               </button>
             )
@@ -89,18 +93,24 @@ export function AgentIdentityPicker({
         <div className="flex flex-wrap gap-2">
           {AGENT_COLOR_OPTIONS.map((option) => {
             const selected = avatarColor === option.id
+            const soft = IDENTITY_COLOR_TOKENS[LEGACY_COLOR_TO_IDENTITY[option.id]]
             return (
               <button
                 key={option.id}
                 type="button"
                 onClick={() => onColorChange(option.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition",
-                  selected ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:bg-secondary",
+                  "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition",
+                  selected
+                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/30 text-foreground"
+                    : "border-divide text-muted-foreground hover:bg-[color:var(--g-surface-2)]",
                 )}
                 aria-pressed={selected}
               >
-                <span className={cn("h-4 w-4 rounded-full", option.swatchClass)} aria-hidden />
+                <span
+                  className={cn("h-4 w-4 rounded-sm border", soft.surfaceClass, soft.borderClass)}
+                  aria-hidden
+                />
                 {option.label}
               </button>
             )
