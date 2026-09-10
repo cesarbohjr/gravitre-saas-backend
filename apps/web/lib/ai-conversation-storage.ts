@@ -66,6 +66,52 @@ export function clearCachedConversationMessages(conversationId: string): void {
   sessionStorage.removeItem(inlineTurnsCacheKey(conversationId))
 }
 
+/**
+ * Prefixes that hold private conversation content, as opposed to presentation
+ * preferences. Anything listed here must not survive a logout.
+ */
+const PRIVATE_KEY_PREFIXES = [
+  "gravitre_ai_messages_",
+  "gravitre_ai_inline_",
+  // Carries a prompt the user typed on one surface to be replayed on another.
+  "gravitre-ai-handoff:",
+] as const
+
+/**
+ * Erase every trace of the previous user's conversation from browser storage.
+ *
+ * Unmounting the assistant on logout removes it from the DOM, which is not the
+ * same as removing it from the machine: the active thread id lives in
+ * localStorage (so it outlives the tab entirely) and up to 80 cached messages
+ * plus inline turns live in sessionStorage. Without this, logging out left the
+ * previous user's conversation readable by whoever sat down next.
+ *
+ * Scans by prefix rather than clearing the single active id, because caches
+ * accumulate one entry per conversation the user visited, and on logout we no
+ * longer know which ids those were.
+ *
+ * Deliberately does not touch presentation preferences (chat canvas background,
+ * float geometry). Those carry no conversation content, and clearing them would
+ * be unrelated churn.
+ */
+export function purgeStoredConversationState(): void {
+  if (typeof window === "undefined") return
+  writeStoredConversationId(null)
+  for (const store of [window.sessionStorage, window.localStorage]) {
+    try {
+      // Snapshot the key list first — removing while iterating by index skips keys.
+      const keys: string[] = []
+      for (let i = 0; i < store.length; i += 1) {
+        const key = store.key(i)
+        if (key && PRIVATE_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) keys.push(key)
+      }
+      for (const key of keys) store.removeItem(key)
+    } catch {
+      // Storage can be unavailable (private mode, quota, disabled cookies).
+    }
+  }
+}
+
 export function readCachedInlineTurns<T>(conversationId: string): T[] | null {
   if (typeof window === "undefined") return null
   try {

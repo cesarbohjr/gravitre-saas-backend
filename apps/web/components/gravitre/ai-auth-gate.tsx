@@ -30,9 +30,10 @@
  * visitor has no right to use.
  */
 
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { purgeStoredConversationState } from "@/lib/ai-conversation-storage"
 
 /**
  * `loading` counts as not-allowed on purpose. Treating an unresolved session as
@@ -49,6 +50,7 @@ export function GravitreAIAuthGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const { floatWorkspaceOpen, setFloatWorkspaceOpen } = useGravitreAIWorkspace()
   const allowed = isGravitreAIAllowed({ hasSession: Boolean(user?.id), loading })
+  const wasAllowedRef = useRef(false)
 
   // The provider lives above this gate (it has to — it wraps the whole app so
   // float state survives route changes), so unmounting the children does not by
@@ -59,6 +61,21 @@ export function GravitreAIAuthGate({ children }: { children: ReactNode }) {
       setFloatWorkspaceOpen(false)
     }
   }, [allowed, floatWorkspaceOpen, setFloatWorkspaceOpen])
+
+  // Unmounting clears the DOM, not the machine. The thread id lives in
+  // localStorage and the message cache in sessionStorage, so without this the
+  // previous user's conversation stayed readable after logout.
+  //
+  // Fires only on a real allowed -> not-allowed transition, never on first paint:
+  // a cold load starts unauthenticated while the session resolves, and purging
+  // there would wipe the returning user's own cache before they were let in.
+  useEffect(() => {
+    if (loading) return
+    if (wasAllowedRef.current && !allowed) {
+      purgeStoredConversationState()
+    }
+    wasAllowedRef.current = allowed
+  }, [allowed, loading])
 
   if (!allowed) return null
   return <>{children}</>
