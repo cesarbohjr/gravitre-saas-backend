@@ -1,29 +1,23 @@
 import React from "react"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
 import { Container } from "./container"
-
-/** Static corner markers — avoids client Dot (mousemove + framer-motion) on LCP path. */
-function CornerDot({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("absolute z-10 h-2 w-2 bg-[color:var(--color-primary)]", className)}
-      aria-hidden
-    />
-  )
-}
+import { Dot } from "./common/dots"
 
 /**
  * Hero product screenshot — server-rendered for crisp marketing display.
  * Uses the full-resolution dashboard capture in public/nodus/.
+ *
+ * The corner `Dot`s are a small client island (mousemove + framer-motion) —
+ * matching the Nodus reference's hover glow. The `<Image>` itself stays a
+ * plain server-rendered element with `priority`, so this doesn't touch LCP.
  */
 export const HeroImage = () => {
   return (
-    <Container className="border-divide relative flex items-start justify-start overflow-hidden border-x bg-gray-100 p-2 perspective-distant md:p-4 lg:p-8 dark:bg-neutral-800">
-      <CornerDot className="top-0 left-0 xl:-top-1 xl:-left-2" />
-      <CornerDot className="top-0 right-0 xl:-top-1 xl:-right-2" />
-      <CornerDot className="bottom-0 left-0 xl:-bottom-1 xl:-left-2" />
-      <CornerDot className="bottom-0 right-0 xl:-bottom-1 xl:-right-2" />
+    <Container className="border-divide relative flex items-start justify-start overflow-hidden border-x bg-gray-200 p-2 perspective-distant md:p-4 lg:p-8 dark:bg-neutral-800">
+      <Dot top left />
+      <Dot top right />
+      <Dot bottom left />
+      <Dot bottom right />
       <div className="relative w-full">
         <div className="relative z-10 h-full w-full">
           <Image
