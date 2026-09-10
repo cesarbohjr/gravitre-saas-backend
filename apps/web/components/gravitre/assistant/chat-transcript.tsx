@@ -43,6 +43,7 @@ import { ToolExecutionGroup } from "@/components/gravitre/agent-ui/tool-executio
 import { ThinkingRow } from "@/components/gravitre/agent-ui/thinking-row"
 import { ClarificationMessage } from "@/components/gravitre/assistant/clarification-message"
 import { DialogueModeChip } from "@/components/gravitre/assistant/dialogue-mode-chip"
+import { SAFE_STATUS_FALLBACK, sanitizeUserActivityLabel } from "@/lib/ai-state-matrix"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
@@ -216,7 +217,15 @@ export function ChatTranscript({
     setSpeakingMessageId((current) => (isSpeaking ? messageId : current === messageId ? null : current))
   }, [])
 
-  const resolvedWaiting = agentStatusLabel ?? waitingLabel ?? `${assistantLabel} is thinking…`
+  const resolvedWaiting = (() => {
+    const cleaned = sanitizeUserActivityLabel(
+      agentStatusLabel || waitingLabel || SAFE_STATUS_FALLBACK,
+    )
+    if (/\bis thinking\b/i.test(cleaned) || /^(thinking|searching|executing)[.…]*$/i.test(cleaned.trim())) {
+      return SAFE_STATUS_FALLBACK
+    }
+    return cleaned
+  })()
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
   const lastMessage = messages[messages.length - 1]
   const lastAssistantEmpty =

@@ -1,5 +1,7 @@
 /** Shared dialogue / tool activity labels for chat status chrome (no React). */
 
+import { specificToolStatus } from "@/lib/ai-state-matrix"
+
 export const DIALOGUE_MODE_LABELS: Record<string, string> = {
   answer: "Answering",
   clarify: "Clarifying",
@@ -14,11 +16,5 @@ export const DIALOGUE_MODE_LABELS: Record<string, string> = {
 }
 
 export function mapToolNameToModeLabel(toolName?: string | null): string | null {
-  if (!toolName) return null
-  const normalized = toolName.toLowerCase()
-  if (normalized.includes("knowledge") || normalized.includes("search")) return "Retrieving"
-  if (normalized.includes("connector")) return "Checking connectors"
-  if (normalized.includes("simulation") || normalized.includes("simulate")) return "Simulating"
-  if (normalized.includes("approval")) return "Awaiting approval"
-  return "Analyzing"
+  return specificToolStatus(toolName)
 }

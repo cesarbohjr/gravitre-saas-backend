@@ -81,8 +81,8 @@ export function deriveGravitreHelperPresence({
 export const GRAVITRE_HELPER_PRESENCE_COPY: Record<GravitreHelperPresence, { label: string; tone: string }> = {
   ready: { label: "Ready", tone: "text-[color:var(--g-text-muted)]" },
   listening: { label: "Listening", tone: "text-[color:var(--g-signal)]" },
-  thinking: { label: "Thinking", tone: "text-[color:var(--g-intelligence)]" },
-  executing: { label: "Executing", tone: "text-[color:var(--g-signal)]" },
+  thinking: { label: "Working on it", tone: "text-[color:var(--g-intelligence)]" },
+  executing: { label: "Running the action", tone: "text-[color:var(--g-signal)]" },
   needs_approval: { label: "Needs approval", tone: "text-[color:var(--g-approval)]" },
   complete: { label: "Complete", tone: "text-[color:var(--g-brand)]" },
   error: { label: "Error", tone: "text-[color:var(--g-danger)]" },

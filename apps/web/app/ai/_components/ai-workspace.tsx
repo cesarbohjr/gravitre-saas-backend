@@ -416,6 +416,8 @@ export function AiWorkspace({
   const [researchCascade, setResearchCascade] = useState<ResearchCascadePayload | null>(null)
   const [researchProgressSteps, setResearchProgressSteps] = useState<string[]>([])
   const [agentStatusExplanation, setAgentStatusExplanation] = useState<string | null>(null)
+  const [agentUserStatusLabel, setAgentUserStatusLabel] = useState<string | null>(null)
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([])
   const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -592,6 +594,8 @@ export function AiWorkspace({
         researchCascade?: ResearchCascadePayload
         progressSteps?: string[]
         answerExplanation?: string
+        userStatus?: { label?: string | null }
+        connectedIntegrations?: string[]
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
@@ -607,6 +611,12 @@ export function AiWorkspace({
       }
       if (typeof payload.answerExplanation === "string" && payload.answerExplanation.trim()) {
         setAgentStatusExplanation(payload.answerExplanation.trim())
+      }
+      if (typeof payload.userStatus?.label === "string" && payload.userStatus.label.trim()) {
+        setAgentUserStatusLabel(payload.userStatus.label.trim())
+      }
+      if (Array.isArray(payload.connectedIntegrations) && payload.connectedIntegrations.length > 0) {
+        setConnectedIntegrations(payload.connectedIntegrations.map((item) => String(item)))
       }
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
@@ -2113,26 +2123,30 @@ export function AiWorkspace({
         assistantLabel,
         progressSteps: researchProgressSteps,
         answerExplanation: agentStatusExplanation,
+        userStatusLabel: agentUserStatusLabel,
         dialogueMode,
         activeToolName,
         isStreaming,
         isBusy: sessionBusy || isChatBusy,
         pendingTask,
+        connectedIntegrations,
       }),
     [
       assistantLabel,
       researchProgressSteps,
       agentStatusExplanation,
+      agentUserStatusLabel,
       dialogueMode,
       activeToolName,
       isStreaming,
       sessionBusy,
       isChatBusy,
       pendingTask,
+      connectedIntegrations,
     ],
   )
 
-  const hideInlineProgressPanel = shouldHideProgressPanel(researchProgressSteps)
+  const hideInlineProgressPanel = shouldHideProgressPanel(researchProgressSteps, pendingTask)
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 
@@ -2201,7 +2215,7 @@ export function AiWorkspace({
           conversationTitle={conversationTitle}
           onRegenerate={handleRegenerateAssistant}
           assistantLabel={assistantLabel}
-          waitingLabel={`${assistantLabel} is thinking…`}
+          waitingLabel={agentStatusLabel}
           input={input}
           onInputChange={setInput}
           onSubmit={() => void submitPrompt(input)}
@@ -2287,7 +2301,7 @@ export function AiWorkspace({
           conversationTitle={conversationTitle}
           onRegenerate={handleRegenerateAssistant}
           assistantLabel={assistantLabel}
-          waitingLabel={`${assistantLabel} is thinking…`}
+          waitingLabel={agentStatusLabel}
           input={input}
           onInputChange={setInput}
           onSubmit={() => void submitPrompt(input)}
@@ -2335,7 +2349,7 @@ export function AiWorkspace({
         conversationTitle={conversationTitle}
         onRegenerate={handleRegenerateAssistant}
         assistantLabel={assistantLabel}
-        waitingLabel={`${assistantLabel} is thinking…`}
+        waitingLabel={agentStatusLabel}
         input={input}
         onInputChange={setInput}
         onSubmit={() => void submitPrompt(input)}
@@ -2598,6 +2612,7 @@ export function AiWorkspace({
                     <ResearchPlanPanel
                       cascade={researchCascade}
                       progressSteps={researchProgressSteps}
+                      pendingTask={pendingTask}
                       strategicPlan={strategicPlan}
                       className="mb-4"
                     />
@@ -2605,6 +2620,7 @@ export function AiWorkspace({
                     <ResearchPlanPanel
                       cascade={researchCascade}
                       progressSteps={[]}
+                      pendingTask={pendingTask}
                       strategicPlan={strategicPlan}
                       className="mb-4"
                     />
@@ -2636,7 +2652,7 @@ export function AiWorkspace({
                     onRegenerate={handleRegenerateAssistant}
                     onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
                     assistantLabel={assistantLabel}
-                    waitingLabel={`${assistantLabel} is thinking…`}
+                    waitingLabel={agentStatusLabel}
                   />
                 </div>
                 {shouldShowTaskSidePanel(researchProgressSteps, pendingTask) ? (
@@ -2810,6 +2826,7 @@ export function AiWorkspace({
                   clearVoiceErrors()
                 }}
                 agentLabel={assistantLabel}
+                activityLabel={agentStatusLabel}
                 duplex={duplexControls}
                 onVoiceInputError={(message) => {
                   if (!message) return

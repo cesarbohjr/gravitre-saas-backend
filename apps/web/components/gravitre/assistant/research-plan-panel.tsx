@@ -1,18 +1,20 @@
 /** Phase 5 — research plan visualization for adaptive cascade stages. */
 "use client"
 
-import { CheckCircle2, Circle, Loader2, MinusCircle, SkipForward } from "lucide-react"
+import { CheckCircle2, Circle, MinusCircle, SkipForward } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   deriveNamedProgressSteps,
   formatStepCounter,
-  isActionProgressStep,
+  type PendingTaskLike,
 } from "@/lib/chat-progress-steps"
+import { ProgressChecklist } from "@/components/gravitre/assistant/progress-checklist"
 import type { CascadeStageProgress, ResearchCascadePayload } from "./research-cascade-types"
 
 type ResearchPlanPanelProps = {
   cascade: ResearchCascadePayload | null | undefined
   progressSteps?: string[] | null
+  pendingTask?: PendingTaskLike
   strategicPlan?: {
     goal?: string
     confidence?: number
@@ -37,18 +39,17 @@ function StageIcon({ status }: { status: CascadeStageProgress["status"] }) {
 export function ResearchPlanPanel({
   cascade,
   progressSteps,
+  pendingTask,
   strategicPlan,
   className,
 }: ResearchPlanPanelProps) {
   const stages = cascade?.stage_progress ?? []
   const steps = progressSteps?.length ? progressSteps : cascade?.progress_steps ?? []
   const scope = cascade?.research_scope?.replace(/_/g, " ")
-  const actionSteps = steps.filter(isActionProgressStep)
-  // Shared derivation so a step reads identically here and in TaskSidePanel.
-  const namedSteps = deriveNamedProgressSteps(steps, null)
+  const namedSteps = deriveNamedProgressSteps(steps, pendingTask)
   const stepCounter = formatStepCounter(namedSteps)
-  const panelTitle = actionSteps.length > 0 ? "Progress" : "Research plan"
-  const showNamedSteps = namedSteps.length > 0 && actionSteps.length > 0
+  const showNamedSteps = namedSteps.length >= 2
+  const panelTitle = namedSteps.length >= 2 ? "Progress" : "Research plan"
 
   if (!stages.length && !showNamedSteps && !strategicPlan?.goal) return null
 
@@ -89,39 +90,10 @@ export function ResearchPlanPanel({
         </ol>
       ) : null}
 
-      {/* Named action pills. Labels come from the shared parser, so the raw
-          "Running: " / "Completed: " SSE prefixes never reach the user. */}
       {showNamedSteps ? (
-        <ul className="mt-2 flex flex-wrap gap-1.5 border-t border-border/40 pt-2.5">
-          {namedSteps.slice(0, 8).map((step, index) => (
-            <li
-              key={`${step.label}-${index}`}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]",
-                step.status === "current" &&
-                  "border-emerald-500/30 bg-emerald-500/5 font-medium text-foreground",
-                step.status === "done" && "border-border/50 bg-background/60 text-muted-foreground",
-                step.status === "pending" &&
-                  "border-dashed border-border/50 text-muted-foreground/70",
-              )}
-            >
-              {step.status === "done" ? (
-                <CheckCircle2
-                  className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden
-                />
-              ) : step.status === "current" ? (
-                <Loader2
-                  className="h-3 w-3 shrink-0 animate-spin text-emerald-600 dark:text-emerald-400"
-                  aria-hidden
-                />
-              ) : (
-                <Circle className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" aria-hidden />
-              )}
-              <span className="truncate">{step.label}</span>
-            </li>
-          ))}
-        </ul>
+        <div className={cn(stages.length > 0 || strategicPlan?.goal ? "mt-2.5 border-t border-border/40 pt-2.5" : "mt-2")}>
+          <ProgressChecklist steps={namedSteps} />
+        </div>
       ) : null}
     </div>
   )

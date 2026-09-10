@@ -5,7 +5,7 @@ import {
 } from "@/lib/chat-agent-status"
 
 describe("deriveAgentStatusLabel", () => {
-  it("maps context-phase progress to friendly copy", () => {
+  it("uses the current context-phase step as specific copy", () => {
     expect(
       deriveAgentStatusLabel({
         progressSteps: [
@@ -14,10 +14,10 @@ describe("deriveAgentStatusLabel", () => {
           "Loading memory and knowledge",
         ],
       }),
-    ).toBe("Reviewing context and memory…")
+    ).toBe("Loading memory and knowledge…")
   })
 
-  it("maps running action steps to executing copy", () => {
+  it("maps running action steps to the real current step", () => {
     expect(
       deriveAgentStatusLabel({
         progressSteps: ["Completed: Search contacts", "Running: Create contact list"],
@@ -31,7 +31,7 @@ describe("deriveAgentStatusLabel", () => {
         answerExplanation: "write_approval_required",
         isBusy: true,
       }),
-    ).toBe("Gravitre is thinking…")
+    ).toBe("Working on it…")
   })
 
   it("uses approval-friendly copy when awaiting confirm", () => {
@@ -42,30 +42,43 @@ describe("deriveAgentStatusLabel", () => {
     ).toBe("Preparing something for your approval…")
   })
 
-  it("falls back to assistant label while streaming", () => {
+  it("fails closed while streaming with no mapped activity", () => {
     expect(
       deriveAgentStatusLabel({
         assistantLabel: "Friendly Assistant",
         isStreaming: true,
       }),
-    ).toBe("Friendly Assistant is thinking…")
+    ).toBe("Working on it…")
+  })
+
+  it("prefers userStatus over a raw explanation", () => {
+    expect(
+      deriveAgentStatusLabel({
+        answerExplanation: "CognitiveTurnKernel pre-ACT complete",
+        userStatusLabel: "Reviewing context and memory",
+      }),
+    ).toBe("Reviewing context and memory…")
   })
 })
 
 describe("shouldHideProgressPanel", () => {
-  it("hides the inline panel for context-only steps", () => {
+  it("shows the inline checklist for context-only multi-step work", () => {
     expect(
       shouldHideProgressPanel([
         "Classifying request (simple)",
         "Checking Apollo",
         "Loading memory and knowledge",
       ]),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it("shows the inline panel when action steps are present", () => {
     expect(
       shouldHideProgressPanel(["Running: Create contact list", "Completed: Search contacts"]),
     ).toBe(false)
+  })
+
+  it("hides the panel when there is only one named step", () => {
+    expect(shouldHideProgressPanel(["Running: Search contacts"])).toBe(true)
   })
 })

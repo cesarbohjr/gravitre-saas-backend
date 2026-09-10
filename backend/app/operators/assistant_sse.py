@@ -80,14 +80,25 @@ def sse_intelligence_metadata(
     tool_visibility: dict[str, Any] | None = None,
     research_cascade: dict[str, Any] | None = None,
     react_perf: dict[str, Any] | None = None,
+    connected_integrations: list[str] | None = None,
 ) -> AssistantStreamEvent:
+    from app.services.user_facing_activity import sanitize_user_activity_label, user_status_payload
+
+    safe_status = sanitize_user_activity_label(
+        answer_explanation,
+        connectors=connected_integrations,
+    )
     return _sse(
         {
             "type": "data-intelligence",
             "data": {
                 "messageId": message_id,
                 "confidence": confidence,
-                "answerExplanation": answer_explanation,
+                "answerExplanation": safe_status,
+                "userStatus": user_status_payload(
+                    answer_explanation,
+                    connectors=connected_integrations,
+                ),
                 "conflicts": conflicts or [],
                 "refinedQuery": refined_query,
                 "validation": validation,
@@ -119,6 +130,7 @@ def sse_intelligence_metadata(
                 "toolVisibility": tool_visibility or {},
                 "researchCascade": research_cascade or None,
                 "reactPerf": react_perf or None,
+                "connectedIntegrations": list(connected_integrations or []),
             },
         }
     )

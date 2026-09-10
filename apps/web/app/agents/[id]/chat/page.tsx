@@ -45,7 +45,8 @@ import {
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
 import { useChatBackground } from "@/hooks/use-chat-background"
 import { uiMessageText } from "@/lib/chat-messages"
-import { deriveAgentStatusLabel } from "@/lib/chat-agent-status"
+import { deriveAgentStatusLabel, shouldHideProgressPanel } from "@/lib/chat-agent-status"
+import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
 import {
   type ChatExecutionResult,
   type ChatPendingTask,
@@ -165,6 +166,10 @@ export default function AgentChatPage({
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
   const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
   const [confirmExecuting, setConfirmExecuting] = useState(false)
+  const [researchProgressSteps, setResearchProgressSteps] = useState<string[]>([])
+  const [agentStatusExplanation, setAgentStatusExplanation] = useState<string | null>(null)
+  const [agentUserStatusLabel, setAgentUserStatusLabel] = useState<string | null>(null)
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([])
   const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
   const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
@@ -309,10 +314,26 @@ export default function AgentChatPage({
         dialogueMode?: string
         executionResult?: ChatExecutionResult
         pendingTask?: ChatPendingTask
+        progressSteps?: string[]
+        answerExplanation?: string
+        userStatus?: { label?: string | null }
+        connectedIntegrations?: string[]
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
       if (payload.executionResult) setExecutionResult(payload.executionResult)
+      if (Array.isArray(payload.progressSteps) && payload.progressSteps.length > 0) {
+        setResearchProgressSteps(payload.progressSteps)
+      }
+      if (typeof payload.answerExplanation === "string" && payload.answerExplanation.trim()) {
+        setAgentStatusExplanation(payload.answerExplanation.trim())
+      }
+      if (typeof payload.userStatus?.label === "string" && payload.userStatus.label.trim()) {
+        setAgentUserStatusLabel(payload.userStatus.label.trim())
+      }
+      if (Array.isArray(payload.connectedIntegrations) && payload.connectedIntegrations.length > 0) {
+        setConnectedIntegrations(payload.connectedIntegrations.map((item) => String(item)))
+      }
     },
   })
 
@@ -513,10 +534,25 @@ export default function AgentChatPage({
       deriveAgentStatusLabel({
         assistantLabel: agent?.name || "Gravitre",
         activeToolName,
+        progressSteps: researchProgressSteps,
+        answerExplanation: agentStatusExplanation,
+        userStatusLabel: agentUserStatusLabel,
+        pendingTask,
+        connectedIntegrations,
         isStreaming,
         isBusy: isLoading,
       }),
-    [agent?.name, activeToolName, isStreaming, isLoading],
+    [
+      agent?.name,
+      activeToolName,
+      researchProgressSteps,
+      agentStatusExplanation,
+      agentUserStatusLabel,
+      pendingTask,
+      connectedIntegrations,
+      isStreaming,
+      isLoading,
+    ],
   )
 
   const lastMessage = messages[messages.length - 1]
@@ -740,6 +776,14 @@ export default function AgentChatPage({
             </motion.div>
           ) : (
             <>
+              {!shouldHideProgressPanel(researchProgressSteps, pendingTask) ? (
+                <ResearchPlanPanel
+                  cascade={null}
+                  progressSteps={researchProgressSteps}
+                  pendingTask={pendingTask}
+                  className="mb-4"
+                />
+              ) : null}
               <GravitreAIConversationTranscript
                 routeKey="/agents/[id]/chat"
                 messages={messages}
@@ -749,7 +793,7 @@ export default function AgentChatPage({
                 isBusy={isLoading}
                 agentStatusLabel={agentStatusLabel}
                 assistantLabel={agent.name}
-                waitingLabel={`${agent.name} is thinking…`}
+                waitingLabel={agentStatusLabel}
                 dialogueMode={dialogueMode}
                 executionResult={executionResult}
                 pendingTask={pendingTask}
@@ -819,6 +863,7 @@ export default function AgentChatPage({
               // Real agent name, so the orb / pill read the agent rather than
               // the generic Gravitre default used by main chat.
               agentLabel={agent?.name || "Gravitre"}
+              activityLabel={agentStatusLabel}
               input={input}
               onInputChange={setInput}
               inputRef={inputRef}

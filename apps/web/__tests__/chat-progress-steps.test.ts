@@ -34,7 +34,7 @@ describe("deriveNamedProgressSteps", () => {
     expect(steps).toEqual([{ label: "Search contacts", status: "done" }])
   })
 
-  it("drops context-phase steps from named progress lists", () => {
+  it("drops context-phase steps when action steps are also present", () => {
     const steps = deriveNamedProgressSteps(
       [
         "Classifying request (simple)",
@@ -45,6 +45,19 @@ describe("deriveNamedProgressSteps", () => {
       null,
     )
     expect(steps).toEqual([{ label: "Create contact list", status: "current" }])
+  })
+
+  it("surfaces context-phase steps as a live checklist when no action steps exist", () => {
+    const steps = deriveNamedProgressSteps(
+      [
+        "Classifying request (simple)",
+        "Checking Apollo",
+        "Loading memory and knowledge",
+      ],
+      null,
+    )
+    expect(steps.map((s) => s.status)).toEqual(["done", "done", "current"])
+    expect(steps[2].label).toBe("Loading memory and knowledge")
   })
 
   it("falls back to planned steps and marks the current index", () => {

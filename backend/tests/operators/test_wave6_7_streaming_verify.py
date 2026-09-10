@@ -41,6 +41,32 @@ def test_sse_intelligence_metadata_includes_plan_and_execution():
     assert data["strategicPlan"]["goal"] == "Create list"
     assert data["executionResult"]["result_url"].startswith("https://")
     assert data["executionResult"]["assumption_notes"]
+    assert data["answerExplanation"] == "Running connected tools"
+    assert data["userStatus"]["label"] == "Running connected tools"
+
+
+def test_sse_intelligence_metadata_sanitizes_kernel_leak():
+    event = sse_intelligence_metadata(
+        message_id="msg-kernel",
+        confidence={"score": 0.1},
+        answer_explanation="CognitiveTurnKernel pre-ACT complete",
+    )
+    data = event.payload["data"]
+    assert "kernel" not in data["answerExplanation"].lower()
+    assert data["answerExplanation"] == "Reviewing context and memory"
+    assert data["userStatus"]["label"] == "Reviewing context and memory"
+
+
+def test_sse_intelligence_metadata_mutation_unmapped_fails_closed():
+    event = sse_intelligence_metadata(
+        message_id="msg-mut",
+        confidence={"score": 0.1},
+        answer_explanation="TotallyNewUnmappedKernel.info",
+    )
+    data = event.payload["data"]
+    assert data["answerExplanation"] == "Working on it…"
+    assert "Kernel" not in data["answerExplanation"]
+    assert ".info" not in data["answerExplanation"]
 
 
 def test_execution_result_supports_assumption_notes():

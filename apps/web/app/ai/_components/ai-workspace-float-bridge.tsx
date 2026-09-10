@@ -193,6 +193,7 @@ export function GravitreAIFloatBridge({
             voiceEntitled={voiceEntitled}
             placeholder={placeholder}
             agentLabel={assistantLabel}
+            activityLabel={agentStatusLabel}
             inputRef={inputRef}
             onKeyDown={onKeyDown}
             bordered={false}

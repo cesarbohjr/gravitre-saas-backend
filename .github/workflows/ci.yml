@@ -45,6 +45,10 @@ jobs:
         working-directory: .
         run: node scripts/check-chat-surface-drift.mjs
 
+      - name: User-facing status leak guard
+        working-directory: .
+        run: node scripts/check-user-facing-status-leak.mjs
+
       - name: Cognitive regression suite
         working-directory: .
         run: node scripts/cognitive-regression-suite.mjs

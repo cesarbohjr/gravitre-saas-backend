@@ -395,7 +395,11 @@ async def stream_voice_turn_events(
                 # First routing intelligence (before kernel) ≈ classify+setup wall.
                 if (
                     classify_done_ms is None
-                    and data.get("answerExplanation") == "Analyzing your request…"
+                    and data.get("answerExplanation")
+                    in (
+                        "Analyzing your request…",
+                        "Understanding your request",
+                    )
                 ):
                     classify_done_ms = int((time.perf_counter() - t_start) * 1000)
             yield {"type": "voice.intelligence", "payload": event.payload}

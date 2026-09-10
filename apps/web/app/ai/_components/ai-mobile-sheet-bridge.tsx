@@ -163,6 +163,7 @@ export function GravitreAIMobileSheetBridge({
           voiceEntitled={voiceEntitled}
           placeholder={placeholder}
           agentLabel={assistantLabel}
+          activityLabel={agentStatusLabel}
           inputRef={inputRef}
           onKeyDown={onKeyDown}
           bordered={false}

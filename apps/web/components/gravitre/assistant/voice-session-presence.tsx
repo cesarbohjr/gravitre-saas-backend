@@ -65,6 +65,8 @@ type Props = {
    * button, and the orb has nothing real to depict when nobody holds the floor.
    */
   onExpand?: () => void
+  /** Live, human-readable activity from the same chat status matrix. */
+  activityLabel?: string | null
   /** Real AnalyserNode bins when duplex session is live. */
   levels?: number[] | null
   className?: string
@@ -75,6 +77,7 @@ export function VoiceSessionPresence({
   billing = false,
   detail,
   agentLabel = "Gravitre",
+  activityLabel,
   onExpand,
   levels,
   className,
@@ -113,7 +116,7 @@ export function VoiceSessionPresence({
       : isUnderstanding
         ? "Understanding…"
         : isThinking
-          ? "Thinking…"
+          ? activityLabel || "Working on it…"
           : isSpeaking
             ? agentLabel
             : "Voice mode on"

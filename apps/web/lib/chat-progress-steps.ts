@@ -13,6 +13,8 @@
  *  - `pendingTask.params.steps[].label` + `current_step_index`
  */
 
+import { sanitizeUserActivityLabel, SAFE_STATUS_FALLBACK } from "@/lib/ai-state-matrix"
+
 export type ProgressStepStatus = "done" | "current" | "pending"
 
 export type NamedProgressStep = {
@@ -65,6 +67,10 @@ function stripStepPrefix(text: string): string {
     .trim()
 }
 
+function labelSafe(label: string): boolean {
+  return Boolean(label) && !INTERNAL_LABEL_PATTERN.test(label)
+}
+
 /**
  * Derives named steps, preferring live SSE progress and falling back to the
  * planned steps on `pendingTask`.
@@ -73,26 +79,39 @@ export function deriveNamedProgressSteps(
   progressSteps: string[] | null | undefined,
   pendingTask: PendingLike,
 ): NamedProgressStep[] {
-  const fromProgress: NamedProgressStep[] = []
+  const actionSteps: NamedProgressStep[] = []
+  const contextSteps: NamedProgressStep[] = []
 
   for (const raw of progressSteps ?? []) {
     const text = String(raw ?? "").trim()
     if (!text) continue
 
-    const label = stripStepPrefix(text)
-    // Drop internal routing lines, context-phase chatter, and empty labels.
-    if (!label || INTERNAL_LABEL_PATTERN.test(label) || isContextProgressStep(text)) continue
+    const stripped = stripStepPrefix(text)
+    if (!labelSafe(stripped)) continue
+    const label = sanitizeUserActivityLabel(stripped)
+    if (!label || label === SAFE_STATUS_FALLBACK) continue
 
-    if (/^Completed:/i.test(text)) {
-      fromProgress.push({ label, status: "done" })
-    } else if (/^Running:/i.test(text)) {
-      fromProgress.push({ label, status: "current" })
+    const row: NamedProgressStep = /^Completed:/i.test(text)
+      ? { label, status: "done" }
+      : /^Running:/i.test(text)
+        ? { label, status: "current" }
+        : { label, status: "pending" }
+
+    if (isContextProgressStep(text)) {
+      contextSteps.push(row)
     } else {
-      fromProgress.push({ label, status: "pending" })
+      actionSteps.push(row)
     }
   }
 
-  if (fromProgress.length > 0) return fromProgress
+  if (actionSteps.length > 0) return actionSteps
+
+  if (contextSteps.length > 0) {
+    return contextSteps.map((step, index) => ({
+      ...step,
+      status: index < contextSteps.length - 1 ? "done" : "current",
+    }))
+  }
 
   const steps = pendingTask?.params?.steps
   if (!Array.isArray(steps)) return []
@@ -104,7 +123,11 @@ export function deriveNamedProgressSteps(
         step && typeof step === "object" && "label" in step
           ? String((step as { label?: unknown }).label ?? "")
           : ""
-      const label = stripStepPrefix(rawLabel) || `Step ${index + 1}`
+      const stripped = stripStepPrefix(rawLabel)
+      const label = stripped
+        ? sanitizeUserActivityLabel(stripped)
+        : `Step ${index + 1}`
+      if (!label || label === SAFE_STATUS_FALLBACK) return null
       const status: ProgressStepStatus =
         currentIdx >= 0 && index < currentIdx
           ? "done"
@@ -113,7 +136,7 @@ export function deriveNamedProgressSteps(
             : "pending"
       return { label, status }
     })
-    .filter((step) => !INTERNAL_LABEL_PATTERN.test(step.label))
+    .filter((step): step is NamedProgressStep => Boolean(step))
 }
 
 /**

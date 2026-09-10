@@ -79,6 +79,8 @@ export type SharedChatComposerControlsProps = {
    * The element must be positioned (`relative`).
    */
   voiceOrbContainer?: HTMLElement | null
+  /** Live activity label from the chat status matrix (voice thinking). */
+  activityLabel?: string | null
   className?: string
   /** Right-side extras inside the pill, before submit (e.g. Browse files icon). */
   trailingExtras?: ReactNode
@@ -147,6 +149,7 @@ export function SharedChatComposerControls({
   duplex = null,
   voiceOrbVariant = "fullscreen",
   voiceOrbContainer = null,
+  activityLabel,
 }: SharedChatComposerControlsProps) {
   const actions = trailingExtras ?? leadingExtras
   const useDuplex = Boolean(duplex)
@@ -492,6 +495,7 @@ export function SharedChatComposerControls({
             amplitude={duplex?.amplitude}
             playbackBlocked={playbackBlocked}
             onEnableSound={enableSound}
+            activityLabel={activityLabel}
           />,
         )
       ) : null}

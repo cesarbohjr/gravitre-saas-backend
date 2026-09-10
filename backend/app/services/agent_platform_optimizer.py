@@ -422,8 +422,11 @@ def format_live_progress_label(
             snippet = raw.strip().replace("\n", " ")
             if len(snippet) > 48:
                 snippet = snippet[:47] + "…"
-            return f"{label}: “{snippet}”"
-    return label
+            label = f"{label}: “{snippet}”"
+            break
+    from app.services.user_facing_activity import sanitize_user_activity_label
+
+    return sanitize_user_activity_label(label)
 
 
 def append_named_progress_step(

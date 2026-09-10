@@ -277,6 +277,7 @@ export function resolveVoiceOrbCopy({
   speaker,
   sessionLive = true,
   agentLabel = "Gravitre",
+  activityLabel,
 }: {
   playbackBlocked?: boolean
   micMuted?: boolean
@@ -284,6 +285,7 @@ export function resolveVoiceOrbCopy({
   speaker: VoiceSpeaker
   sessionLive?: boolean
   agentLabel?: string
+  activityLabel?: string | null
 }): { phase: VoiceOrbPhase; label: string; subtitle: string } {
   const isUser = speaker === "user"
   const phase: VoiceOrbPhase = playbackBlocked
@@ -311,8 +313,10 @@ export function resolveVoiceOrbCopy({
         label: "Microphone muted",
         subtitle: `${agentLabel} can't hear you — tap the mic to unmute`,
       }
-    case "replying":
-      return { phase, label: `${agentLabel} is replying`, subtitle: `${agentLabel} is replying` }
+    case "replying": {
+      const status = activityLabel?.trim() || `${agentLabel} is replying`
+      return { phase, label: status, subtitle: status }
+    }
     case "listening":
       return {
         phase,
@@ -356,6 +360,7 @@ export function VoiceOrbTakeover({
   amplitude,
   playbackBlocked = false,
   onEnableSound,
+  activityLabel,
 }: {
   speaker: VoiceSpeaker
   agentLabel?: string
@@ -386,6 +391,7 @@ export function VoiceOrbTakeover({
   playbackBlocked?: boolean
   /** Fresh user gesture to retry the held-back reply and unlock future turns. */
   onEnableSound?: () => void
+  activityLabel?: string | null
 }) {
   const fullscreen = variant === "fullscreen"
 
@@ -424,6 +430,7 @@ export function VoiceOrbTakeover({
     speaker,
     sessionLive,
     agentLabel,
+    activityLabel,
   })
 
   // Contained surfaces can be as small as 400x420, so type, orb and controls all
