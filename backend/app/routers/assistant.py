@@ -764,11 +764,11 @@ def _build_stream(
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
-            if suggestions:
-                yield assistant_event_to_sse_line(sse_suggestions(suggestions))
-                if not spoken_mode and _response_cache_eligible(user_text):
-                    cache_key = _response_cache_key(org_id, user_text, conversation_id)
-                    _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+        if suggestions:
+            yield assistant_event_to_sse_line(sse_suggestions(suggestions))
+            if not spoken_mode and _response_cache_eligible(user_text):
+                cache_key = _response_cache_key(org_id, user_text, conversation_id)
+                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
 
         yield sse_done()
 
