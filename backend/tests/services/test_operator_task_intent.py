@@ -14,7 +14,16 @@ from tests.services.task_execution_parity_fixtures import (
 )
 
 
-def test_google_ads_brief_is_operator_task() -> None:
+def test_spoken_does_not_stream_live_deltas_for_operator_tasks() -> None:
+    from app.services.operator_task_intent import spoken_should_stream_live_deltas
+
+    assert spoken_should_stream_live_deltas(spoken_mode=True, message="hey, how's it going")
+    assert not spoken_should_stream_live_deltas(
+        spoken_mode=True, message=GOOGLE_ADS_CAMPAIGN_BRIEF
+    )
+    assert not spoken_should_stream_live_deltas(
+        spoken_mode=False, message="hey, how's it going"
+    )
     assert looks_like_operator_task(GOOGLE_ADS_CAMPAIGN_BRIEF)
     assert should_keep_full_reasoning_for_spoken(GOOGLE_ADS_CAMPAIGN_BRIEF)
 

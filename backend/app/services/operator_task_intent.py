@@ -136,3 +136,12 @@ def use_spoken_lite_path(
 def should_force_live_connector_pipeline(message: str) -> bool:
     """LIVE must not answer real jobs in spoken prose; use orch/classical instead."""
     return looks_like_operator_task(message)
+
+
+def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool:
+    """Chitchat can stream LIVE tokens; operator tasks wait for the typed final payload."""
+    if not spoken_mode:
+        return False
+    if should_force_live_connector_pipeline(message):
+        return False
+    return True
