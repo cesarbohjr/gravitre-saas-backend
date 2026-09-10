@@ -59,13 +59,9 @@ export const Dot = ({
         backgroundColor: isNearMouse
           ? "var(--color-brand)"
           : "var(--color-primary)",
-        // Keep both states as numeric box-shadow strings (never the bare
-        // keyword "none") — framer-motion cannot interpolate a multi-layer
-        // box-shadow to/from "none", which otherwise leaves the glow stuck
-        // in a broken intermediate state after the first hover.
         boxShadow: isNearMouse
           ? "0 0 20px var(--color-brand), 0 0 40px var(--color-brand)"
-          : "0 0 0px var(--color-brand), 0 0 0px var(--color-brand)",
+          : "none",
         scale: isNearMouse ? 1.5 : 1,
         borderRadius: isNearMouse ? "50%" : "0%",
       }}
