@@ -222,9 +222,12 @@ def compare_pair(case: dict[str, Any], typed: dict[str, Any], spoken: dict[str, 
     spoken_tools = sorted({str(t) for t in spoken.get("tools") or []})
     tools_match = typed_tools == spoken_tools
     both_reached = typed_ok and spoken_ok
-    # Tools may be empty on plan-first turns; that is still parity if both empty.
-    passed = both_reached and (tools_match or (not typed_tools and not spoken_tools) or tools_match)
+    typed_orch = "nothing is runnable" in typed_text.lower() or "step orchestration" in typed_text.lower()
+    spoken_orch = "nothing is runnable" in spoken_text.lower() or "step orchestration" in spoken_text.lower()
+    orch_mismatch = typed_orch != spoken_orch
     divergences: list[str] = []
+    if orch_mismatch:
+        divergences.append("orchestration_template_mismatch")
     if typed_hijack:
         divergences.append(f"typed_hijack={typed_hijack}")
     if spoken_hijack:
@@ -235,17 +238,20 @@ def compare_pair(case: dict[str, Any], typed: dict[str, Any], spoken: dict[str, 
         divergences.append("spoken_did_not_reach_task_language")
     if typed_tools != spoken_tools:
         divergences.append(f"tools typed={typed_tools} spoken={spoken_tools}")
+    passed = both_reached and not typed_hijack and not spoken_hijack and not orch_mismatch
     return {
-        "passed": both_reached and not typed_hijack and not spoken_hijack,
+        "passed": passed,
         "typed_ok": typed_ok,
         "spoken_ok": spoken_ok,
         "typed_hijack": typed_hijack,
         "spoken_hijack": spoken_hijack,
         "typed_tools": typed_tools,
         "spoken_tools": spoken_tools,
-        "tools_match": typed_tools == spoken_tools,
+        "tools_match": tools_match,
+        "typed_orch": typed_orch,
+        "spoken_orch": spoken_orch,
         "divergences": divergences,
-        "verdict": "PASS" if both_reached and not typed_hijack and not spoken_hijack else "FAIL",
+        "verdict": "PASS" if passed else "FAIL",
     }
 
 

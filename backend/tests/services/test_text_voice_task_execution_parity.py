@@ -89,6 +89,29 @@ def test_narrow_ambiguous_open_still_clarifies() -> None:
     assert "?" in reply
 
 
+def test_operator_task_forces_classical_defer_on_conversational_live_reply() -> None:
+    from app.services.chat_orchestration_service import ChatOrchestrationService
+    from app.services.operator_task_intent import should_force_live_connector_pipeline
+    from app.services.unified_turn_classical_fallback import should_defer_unified_turn_live_to_classical
+
+    assert should_force_live_connector_pipeline(GOOGLE_ADS_CAMPAIGN_BRIEF)
+    assert ChatOrchestrationService.is_orchestration_intent(
+        GOOGLE_ADS_CAMPAIGN_BRIEF, {}, []
+    )
+    assert should_defer_unified_turn_live_to_classical(
+        mode_key="fast",
+        outcome_kind="conversational_reply",
+        message=GOOGLE_ADS_CAMPAIGN_BRIEF,
+        needs_tool_sse=True,
+    )
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="fast",
+        outcome_kind="conversational_reply",
+        message=GOOGLE_ADS_CAMPAIGN_BRIEF,
+        needs_tool_sse=False,
+    )
+
+
 def test_spoken_and_typed_share_full_depth_for_operator_tasks() -> None:
     for message in (GOOGLE_ADS_CAMPAIGN_BRIEF, CONNECTOR_LOOKUP, MULTI_PARAM_WRITE):
         typed_skip = should_skip_unified_live_guards(

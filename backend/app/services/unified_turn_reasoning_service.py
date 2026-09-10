@@ -2325,9 +2325,10 @@ async def apply_unified_turn_live(
     )
     from app.services.chat_orchestration_service import ChatOrchestrationService
 
-    from app.services.conversational_turn_gate import is_human_moment_venting_no_ask
+    from app.services.operator_task_intent import should_force_live_connector_pipeline
 
     human_moment = is_human_moment_venting_no_ask(message or "")
+    operator_task = should_force_live_connector_pipeline(message or "")
 
     # F2: structured needs_tool_sse — orch / tool-shaped turns set the flag even
     # when the model returned conversational text (no bare apollo/slack keyword).
@@ -2341,6 +2342,10 @@ async def apply_unified_turn_live(
             list(result.connected_integrations or connected_integrations or []),
         )
     ):
+        result.needs_tool_sse = True
+    if operator_task and not human_moment:
+        # Spoken Register 5 often returns conversational_reply with needs_tool_sse
+        # false, which used to serve a narrative instead of the typed orchestration.
         result.needs_tool_sse = True
     if (
         not human_moment
@@ -2381,7 +2386,7 @@ async def apply_unified_turn_live(
             message or "",
             task_state or {},
             connected_for_pack,
-        ):
+        ) or operator_task:
             orch_turn = await get_chat_orchestration_service(active).process_turn(
                 org_id=org_id,
                 user_id=user_id,

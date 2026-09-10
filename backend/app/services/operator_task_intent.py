@@ -131,3 +131,8 @@ def use_spoken_lite_path(
     except Exception:  # noqa: BLE001
         pass
     return True
+
+
+def should_force_live_connector_pipeline(message: str) -> bool:
+    """LIVE must not answer real jobs in spoken prose; use orch/classical instead."""
+    return looks_like_operator_task(message)
