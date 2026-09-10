@@ -7,6 +7,7 @@ import {
   reconcileModelRouteIntent,
   type AiRouteMode,
 } from "@/lib/ai-route-intent"
+import { createSupabaseRouteClient } from "@/lib/supabase/server"
 
 // Classifies a natural-language prompt into one of the three Gravitre AI modes
 // so the unified surface can auto-route to the right engine:
@@ -53,6 +54,16 @@ const ROUTER_SYSTEM_PROMPT = [
 ].join("\n")
 
 export async function POST(req: NextRequest) {
+  // Auth first, before the body is even read. Unlike its sibling assistant routes,
+  // this one does not proxy to FastAPI -- it calls the model here in Next -- so
+  // nothing else was checking a session. It was an open LLM proxy: any request on
+  // the internet reached generateText() and billed a real completion.
+  const supabase = createSupabaseRouteClient(req)
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   let prompt = ""
   try {
     const body = (await req.json()) as { prompt?: unknown }

@@ -47,6 +47,7 @@ import { XCircleOutline24 } from "./XCircleOutline24"
 import { SettingsOutline24 } from "./SettingsOutline24"
 import { HistoryOutline24 } from "./HistoryOutline24"
 import { NewChatOutline24 } from "./NewChatOutline24"
+import { ChatBubbleOutline24 } from "./ChatBubbleOutline24"
 import { PanelToggleOutline24 } from "./PanelToggleOutline24"
 
 type IconProps = SVGProps<SVGSVGElement> & {
@@ -116,6 +117,8 @@ export const NucleoSettings = withSize(SettingsOutline24)
 export const NucleoHistory = withSize(HistoryOutline24)
 /** Start a new chat/conversation */
 export const NucleoNewChat = withSize(NewChatOutline24)
+/** AI Chat itself — open/represent the assistant conversation (no "new" plus) */
+export const NucleoChat = withSize(ChatBubbleOutline24)
 /** Toggle a side panel open/closed */
 export const NucleoPanelToggle = withSize(PanelToggleOutline24)
 /** Activity / execution log */
@@ -158,5 +161,6 @@ export const SEMANTIC_NUCLEO = {
   settings: NucleoSettings,
   history: NucleoHistory,
   newChat: NucleoNewChat,
+  chat: NucleoChat,
   panelToggle: NucleoPanelToggle,
 } as const

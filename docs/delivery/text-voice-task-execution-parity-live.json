@@ -1,0 +1,114 @@
+{
+  "probe": "text_voice_task_execution_parity_live",
+  "started_at": "2026-09-10T14:34:13.212473+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "92e270b8d6c233bef8ceac6cb402186f477ecfab",
+  "cases": [
+    {
+      "id": "google_ads_campaign_brief",
+      "kind": "multi_param_write",
+      "typed": {
+        "conversation_id": "c3786bde-8cc5-49c9-a3c6-e39f604ee345",
+        "http_status": 200,
+        "spoken_mode": false,
+        "assistant": "I planned a **3-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n2. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n3. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Google Ads at /connectors to run this action.; Connect Google Ads at /connectors to run this action.; Connect Google Ads at /connectors to run this action.",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "full"
+      },
+      "spoken": {
+        "conversation_id": "9fad419f-a013-4fd8-a394-0287e090bf1a",
+        "http_status": 200,
+        "spoken_mode": true,
+        "assistant": "I don\u2019t have a Google Ads connector or account status in the tools available here, so I can\u2019t check whether it\u2019s connected. I also can\u2019t create the campaigns yet.\n\nI can do this cleanly once Google Ads is connected and you approve the write. Then I\u2019ll show the plan campaign by campaign, wait for your yes, and only after that I\u2019ll point you to the exact place in Google Ads to verify each live campaign in your account.",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "full"
+      },
+      "passed": true,
+      "typed_ok": true,
+      "spoken_ok": true,
+      "typed_hijack": [],
+      "spoken_hijack": [],
+      "typed_tools": [],
+      "spoken_tools": [],
+      "tools_match": true,
+      "divergences": [],
+      "verdict": "PASS"
+    },
+    {
+      "id": "connector_lookup",
+      "kind": "connector_lookup",
+      "typed": {
+        "conversation_id": "e4298aff-9089-4528-8281-2545fe269a8f",
+        "http_status": 200,
+        "spoken_mode": false,
+        "assistant": "I planned a **2-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n2. \u25cb what access does it currently have? \u2014 *skipped* (No Executable action matched this request.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Google Ads at /connectors to run this action.; No Executable action matched this request.",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "full"
+      },
+      "spoken": {
+        "conversation_id": "99cfbd1c-74f1-483f-b6ea-b4a91d11db68",
+        "http_status": 200,
+        "spoken_mode": true,
+        "assistant": "I can\u2019t verify that from the data here. The sources conflict: one says access shows up in Google Ads after you accept, another says to check Access and Security and confirm Admin or request approval; neither proves your current account state.",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "full"
+      },
+      "passed": true,
+      "typed_ok": true,
+      "spoken_ok": true,
+      "typed_hijack": [],
+      "spoken_hijack": [],
+      "typed_tools": [],
+      "spoken_tools": [],
+      "tools_match": true,
+      "divergences": [],
+      "verdict": "PASS"
+    },
+    {
+      "id": "ambiguous_seo_open",
+      "kind": "clarifying_question",
+      "typed": {
+        "conversation_id": "486f30d8-317f-4f2f-8ba5-c60ee058cdb7",
+        "http_status": 200,
+        "spoken_mode": false,
+        "assistant": "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, or a content calendar \u2014 and for which site or market?",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "full"
+      },
+      "spoken": {
+        "conversation_id": "9c30a54c-072f-45d2-8d31-d0cc3691e086",
+        "http_status": 200,
+        "spoken_mode": true,
+        "assistant": "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, or a content calendar \u2014 and for which site or market?",
+        "stream_errors": [],
+        "tools": [],
+        "reasoning_depth": "conversational"
+      },
+      "passed": true,
+      "typed_ok": true,
+      "spoken_ok": true,
+      "typed_hijack": [],
+      "spoken_hijack": [],
+      "typed_tools": [],
+      "spoken_tools": [],
+      "tools_match": true,
+      "divergences": [],
+      "verdict": "PASS"
+    }
+  ],
+  "note": "spoken_mode=true on /api/assistant/chat is the in-app voice path. Native Pipecat also calls execute_task_streaming(spoken_mode=True); it never hits assistant.py FAQ/cache.",
+  "health": {
+    "git_sha": "92e270b8d6c233bef8ceac6cb402186f477ecfab",
+    "unified_turn_live_enabled": true
+  },
+  "passed": 3,
+  "total": 3,
+  "finished_at": "2026-09-10T14:36:38.229759+00:00",
+  "verdict": "PASS \u2014 3/3 typed vs spoken task-execution pairs matched gates"
+}
