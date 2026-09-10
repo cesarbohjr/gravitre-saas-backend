@@ -39,7 +39,10 @@ export { DepartmentDropZone, DepartmentLaneHeader } from "./department-drop-zone
 export {
   NodusGlowFrame,
   NodusDepartmentHub,
+  NodusDepartmentLabel,
+  NodusGravitreHub,
   NodusSweepConnector,
+  NodusConvergeConnector,
 } from "./nodus-fleet-chrome"
 export {
   FLEET_AGENT_DRAG_MIME,

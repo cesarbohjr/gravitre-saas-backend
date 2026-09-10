@@ -2,15 +2,41 @@
 
 /**
  * Nodus / Aceternity agent-template chrome for fleet TEAM:
- * black-sharp LogoSVG hub, spinning dual-conic glow frames, sweep connectors.
+ * department icon+label → Gravitre LogoSVG hub → agent cards.
  */
 
-import { useId, type ReactNode } from "react"
+import { useId, type ComponentType, type ReactNode, type SVGProps } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { LogoSVG } from "@/components/marketing/nodus/logo"
+import {
+  CodeIcon,
+  PhoneIcon,
+  WindowIcon,
+} from "@/components/marketing/nodus-icons/bento-icons"
+import {
+  NavChart,
+  NavSparkles,
+  NavTarget,
+} from "@/components/icons/nodus-nav/outline"
+import { NucleoApproval, NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import type { AgentDepartmentId } from "./types"
 
-/** Dual spinning conic ring — same treatment as NativeToolsHubLogo. */
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
+
+/** Small black outline icons — Nodus TextIconBlock left rail. */
+export const DEPARTMENT_OUTLINE_ICONS: Record<AgentDepartmentId, IconComponent> = {
+  sales: NavTarget as IconComponent,
+  customer_success: PhoneIcon as IconComponent,
+  finance: NavChart as IconComponent,
+  operations: NucleoWorkflow,
+  engineering: CodeIcon as IconComponent,
+  marketing: NavSparkles as IconComponent,
+  security: NucleoApproval,
+  general: WindowIcon as IconComponent,
+}
+
+/** Dual spinning conic ring — NativeToolsHubLogo treatment. */
 export function NodusGlowFrame({
   children,
   className,
@@ -45,7 +71,50 @@ export function NodusGlowFrame({
   )
 }
 
-/** Department hub — black-sharp LogoSVG inside the glow frame. */
+/** Left rail — small black department icon + label (Nodus TextIconBlock). */
+export function NodusDepartmentLabel({
+  department,
+  label,
+  count,
+  className,
+}: {
+  department: AgentDepartmentId
+  label: string
+  count?: number
+  className?: string
+}) {
+  const Icon = DEPARTMENT_OUTLINE_ICONS[department]
+  return (
+    <div className={cn("relative flex items-center gap-2", className)}>
+      <Icon className="size-4 shrink-0 text-black dark:text-neutral-100" aria-hidden />
+      <div className="min-w-0">
+        <span className="block truncate text-sm font-medium text-[color:var(--g-text-primary)]">
+          {label}
+        </span>
+        {count != null ? (
+          <span className="block text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
+            {count} agent{count === 1 ? "" : "s"}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/** Center hub — Gravitre black-sharp mark only (not a department). */
+export function NodusGravitreHub({ className }: { className?: string }) {
+  return (
+    <NodusGlowFrame
+      size="md"
+      className={cn("h-14 w-14 shrink-0 shadow-md sm:h-16 sm:w-16", className)}
+      contentClassName="flex items-center justify-center p-3 text-black dark:text-white sm:p-3.5"
+    >
+      <LogoSVG className="size-6" />
+    </NodusGlowFrame>
+  )
+}
+
+/** @deprecated Prefer NodusDepartmentLabel + NodusGravitreHub */
 export function NodusDepartmentHub({
   label,
   count,
@@ -57,9 +126,7 @@ export function NodusDepartmentHub({
 }) {
   return (
     <div className={cn("flex shrink-0 items-center gap-3", className)}>
-      <NodusGlowFrame size="md" className="h-14 w-14 shrink-0 shadow-md" contentClassName="flex items-center justify-center p-3 text-black dark:text-white">
-        <LogoSVG className="size-6" />
-      </NodusGlowFrame>
+      <NodusGravitreHub />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium tracking-tight text-[color:var(--g-text-primary)]">
           {label}
@@ -136,8 +203,106 @@ export function NodusSweepConnector({
   )
 }
 
+/**
+ * Elbow connector from a left label into a vertical spine (TopSVG / BottomSVG style).
+ * variant: top bends down into spine, bottom bends up, mid is straight.
+ */
+export function NodusConvergeConnector({
+  variant = "mid",
+  accent = "blue",
+  className,
+}: {
+  variant?: "top" | "mid" | "bottom"
+  accent?: "blue" | "coral" | "amber"
+  className?: string
+}) {
+  const reactId = useId()
+  const gid = `fleet-converge-${reactId.replace(/:/g, "")}`
+  const mid =
+    accent === "coral"
+      ? "#F17463"
+      : accent === "amber"
+        ? "var(--color-yellow-500, #eab308)"
+        : "var(--color-blue-500, #3b82f6)"
+
+  if (variant === "mid") {
+    return <NodusSweepConnector accent={accent} className={cn("w-full max-w-[12rem]", className)} />
+  }
+
+  const h = 32
+  const w = 160
+  const yLine = variant === "top" ? 1 : h - 1
+  const yEnd = variant === "top" ? h : 1
+
+  return (
+    <svg
+      aria-hidden
+      width={w}
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      fill="none"
+      className={cn("shrink-0", className)}
+    >
+      <line
+        x1="0.5"
+        y1={yLine}
+        x2={w - 0.5}
+        y2={yLine}
+        stroke="var(--color-line, #eaedf1)"
+        strokeLinecap="round"
+      />
+      <line
+        x1={w - 0.5}
+        y1={yLine}
+        x2={w - 0.5}
+        y2={yEnd}
+        stroke="var(--color-line, #eaedf1)"
+        strokeLinecap="round"
+      />
+      <line
+        x1="0.5"
+        y1={yLine}
+        x2={w - 0.5}
+        y2={yLine}
+        stroke={`url(#${gid})`}
+        strokeLinecap="round"
+      />
+      <defs>
+        <motion.linearGradient
+          id={gid}
+          gradientUnits="userSpaceOnUse"
+          initial={{ x1: "-20%", x2: "0%", y1: 0, y2: 1 }}
+          animate={{ x1: "105%", x2: "120%", y1: 0, y2: 1 }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "easeInOut",
+            repeatDelay: 1,
+          }}
+        >
+          <stop stopColor="var(--color-line, #EAEDF1)" />
+          <stop offset="0.33" stopColor={mid} />
+          <stop offset="0.66" stopColor={mid} />
+          <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+        </motion.linearGradient>
+      </defs>
+    </svg>
+  )
+}
+
 const SWEEP_ACCENTS = ["blue", "coral", "amber"] as const
 
 export function sweepAccentForIndex(index: number): (typeof SWEEP_ACCENTS)[number] {
   return SWEEP_ACCENTS[index % SWEEP_ACCENTS.length]!
+}
+
+export function convergeVariantForIndex(
+  index: number,
+  total: number,
+): "top" | "mid" | "bottom" {
+  if (total <= 1) return "mid"
+  if (index === 0) return "top"
+  if (index === total - 1) return "bottom"
+  return "mid"
 }
