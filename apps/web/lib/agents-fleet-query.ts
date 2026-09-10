@@ -29,8 +29,10 @@ export function filterFleetAgents(
 ): FleetAgent[] {
   return agents.filter((agent) => {
     if (filters.department) {
-      const d = filters.department.toLowerCase()
-      if (agent.departmentLabel.toLowerCase() !== d && agent.department !== filters.department) {
+      const d = filters.department.trim().toLowerCase()
+      const label = agent.departmentLabel.trim().toLowerCase()
+      const id = agent.department.trim().toLowerCase()
+      if (label !== d && id !== d) {
         return false
       }
     }

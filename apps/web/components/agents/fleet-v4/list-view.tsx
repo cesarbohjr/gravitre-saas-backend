@@ -19,17 +19,22 @@ export function ListView({
   selectedId,
   onSelect,
   onDepartmentChange,
+  showEmptyDepartments = true,
   toolbar,
 }: {
   agents: FleetAgent[]
   selectedId?: string | null
   onSelect?: (id: string) => void
   onDepartmentChange?: (agentId: string, department: AgentDepartmentId) => void
+  /** Department drop rail only when filters are clear (All). */
+  showEmptyDepartments?: boolean
   toolbar?: ReactNode
 }) {
+  const showDropRail = Boolean(onDepartmentChange) && showEmptyDepartments
+
   return (
     <div className="space-y-3">
-      {onDepartmentChange ? (
+      {showDropRail ? (
         <div className="flex flex-wrap gap-2">
           {FLEET_DEPARTMENT_ORDER.map((department) => (
             <DepartmentDropZone
@@ -85,7 +90,7 @@ export function ListView({
                 agent={agent}
                 selected={selectedId === agent.id}
                 onSelect={onSelect}
-                draggable={Boolean(onDepartmentChange)}
+                draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
               />
             ))}
             {agents.length === 0 ? (

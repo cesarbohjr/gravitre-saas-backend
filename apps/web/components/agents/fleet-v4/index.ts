@@ -37,6 +37,11 @@ export { ListView } from "./list-view"
 export { GraphView } from "./graph-view"
 export { DepartmentDropZone, DepartmentLaneHeader } from "./department-drop-zone"
 export {
+  NodusGlowFrame,
+  NodusDepartmentHub,
+  NodusSweepConnector,
+} from "./nodus-fleet-chrome"
+export {
   FLEET_AGENT_DRAG_MIME,
   FLEET_DEPARTMENT_ORDER,
   setFleetAgentDragData,

@@ -609,6 +609,13 @@ export default function AgentsPage() {
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
   const totalAgents = agents.length
 
+  const hasActiveFilters = Boolean(
+    prefs.filters.department ||
+      prefs.filters.status ||
+      prefs.filters.role ||
+      prefs.filters.model,
+  )
+
   const fleetAgents = useMemo(() => {
     const mapped = filteredAgents.map((agent) =>
       toFleetAgent({
@@ -945,9 +952,12 @@ export default function AgentsPage() {
                   selectedId={visibleSelectedAgent?.id ?? null}
                   onSelect={selectAgentById}
                   onDepartmentChange={handleDepartmentChange}
+                  showEmptyDepartments={!hasActiveFilters}
                   toolbar={
                     <p className="text-xs text-[color:var(--g-text-muted)]">
-                      List view — drag rows onto a department to reassign · sort and filter for fleet ops
+                      {hasActiveFilters
+                        ? "Filtered list — clear filters to drag agents between departments"
+                        : "List view — drag rows onto a department to reassign"}
                     </p>
                   }
                 />
@@ -960,7 +970,10 @@ export default function AgentsPage() {
                   ) : (
                     <p className="text-xs text-[color:var(--g-text-muted)]">
                       Graph shows parent links, swarm delegation, and connector usage — only
-                      edges backed by data. Drag agents onto a department to reassign.
+                      edges backed by data
+                      {hasActiveFilters
+                        ? "."
+                        : ". Drag agents onto a department to reassign."}
                     </p>
                   )}
                   <GraphView
@@ -970,6 +983,7 @@ export default function AgentsPage() {
                     selectedId={visibleSelectedAgent?.id ?? null}
                     onSelect={selectAgentById}
                     onDepartmentChange={handleDepartmentChange}
+                    showEmptyDepartments={!hasActiveFilters}
                     activeAgentIds={graphModel.activeAgentIds}
                   />
                 </div>
@@ -980,6 +994,7 @@ export default function AgentsPage() {
                   grouped
                   onSelect={selectAgentById}
                   onDepartmentChange={handleDepartmentChange}
+                  showEmptyDepartments={!hasActiveFilters}
                 />
               )}
             </div>

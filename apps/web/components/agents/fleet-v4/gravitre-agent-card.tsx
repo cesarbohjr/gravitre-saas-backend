@@ -7,6 +7,7 @@ import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indica
 import { GravitreAgentDepartmentBadge } from "./gravitre-agent-department-badge"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
+import { NodusGlowFrame } from "./nodus-fleet-chrome"
 import type { FleetAgent } from "./types"
 
 export function GravitreAgentCard({
@@ -14,12 +15,15 @@ export function GravitreAgentCard({
   selected,
   onSelect,
   draggable = false,
+  /** Nodus Aceternity glow frame (TEAM topology). */
+  nodusGlow = false,
   className,
 }: {
   agent: FleetAgent
   selected?: boolean
   onSelect?: (id: string) => void
   draggable?: boolean
+  nodusGlow?: boolean
   className?: string
 }) {
   const onDragStart = (e: DragEvent) => {
@@ -30,16 +34,19 @@ export function GravitreAgentCard({
     })
   }
 
-  return (
+  const inner = (
     <button
       type="button"
       onClick={() => onSelect?.(agent.id)}
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        "group w-full rounded-[var(--np-radius-md)] border border-divide bg-white p-3 text-left shadow-[var(--np-shadow)] transition-[border-color,box-shadow]",
-        "hover:border-[color:var(--g-brand-border)]",
-        selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
+        "group w-full p-3 text-left transition-[border-color,box-shadow]",
+        nodusGlow
+          ? "rounded-[calc(var(--np-radius-md,8px)-1px)] bg-transparent"
+          : "rounded-[var(--np-radius-md)] border border-divide bg-white shadow-[var(--np-shadow)] hover:border-[color:var(--g-brand-border)]",
+        !nodusGlow && selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
+        nodusGlow && selected && "ring-2 ring-[color:var(--g-brand)]/45 ring-offset-1",
         draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
@@ -98,5 +105,13 @@ export function GravitreAgentCard({
         </div>
       </div>
     </button>
+  )
+
+  if (!nodusGlow) return inner
+
+  return (
+    <NodusGlowFrame className="w-full shadow-md" contentClassName="bg-white dark:bg-neutral-900">
+      {inner}
+    </NodusGlowFrame>
   )
 }

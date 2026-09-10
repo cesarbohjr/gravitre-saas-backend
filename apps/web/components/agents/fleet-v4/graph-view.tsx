@@ -94,6 +94,7 @@ export function GraphView({
   selectedId,
   onSelect,
   onDepartmentChange,
+  showEmptyDepartments = true,
   activeAgentIds,
   emptyHint,
   className,
@@ -104,6 +105,8 @@ export function GraphView({
   selectedId?: string | null
   onSelect?: (id: string) => void
   onDepartmentChange?: (agentId: string, department: AgentDepartmentId) => void
+  /** Empty department drop chips only when filters are clear. */
+  showEmptyDepartments?: boolean
   activeAgentIds?: Set<string>
   emptyHint?: string
   className?: string
@@ -135,8 +138,10 @@ export function GraphView({
 
   const deptsPresent = useMemo(() => {
     const set = new Set(agents.map((a) => a.department))
-    return FLEET_DEPARTMENT_ORDER.filter((d) => set.has(d) || Boolean(onDepartmentChange))
-  }, [agents, onDepartmentChange])
+    return FLEET_DEPARTMENT_ORDER.filter(
+      (d) => set.has(d) || (showEmptyDepartments && Boolean(onDepartmentChange)),
+    )
+  }, [agents, onDepartmentChange, showEmptyDepartments])
 
   if (agents.length === 0) {
     return (
@@ -158,7 +163,7 @@ export function GraphView({
 
   return (
     <div className={cn("space-y-3", className)}>
-      {onDepartmentChange ? (
+      {onDepartmentChange && (showEmptyDepartments || deptsPresent.length > 0) ? (
         <div className="relative z-10 flex flex-wrap gap-2">
           {deptsPresent.map((department) => {
             const count = agents.filter((a) => a.department === department).length
@@ -166,7 +171,7 @@ export function GraphView({
               <DepartmentDropZone
                 key={department}
                 department={department}
-                onDropAgent={onDepartmentChange}
+                onDropAgent={showEmptyDepartments ? onDepartmentChange : undefined}
                 className="min-w-[6.5rem] border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)]"
                 highlightClassName="border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35"
               >
@@ -224,7 +229,7 @@ export function GraphView({
                   selected={selectedId === agent.id}
                   executing={executing}
                   onSelect={onSelect}
-                  draggable={Boolean(onDepartmentChange)}
+                  draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
                 />
               </div>
             )
