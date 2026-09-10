@@ -10,7 +10,6 @@ import {
   NavApproval,
   NavCalendar,
   NavChart,
-  NavChat,
   NavDatabase,
   NavFile,
   NavGrid,
@@ -23,6 +22,9 @@ import {
   NavTasks,
   NavWorkflow,
 } from "@/components/icons/nodus-nav/outline"
+// Chat opens the same Gravitre AI experience as the floating helper bubble —
+// use the identical AI-chip glyph so both entry points read as one identity.
+import { NucleoAgent } from "@/components/icons/nucleo/semantic"
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string; size?: number | string }>
 
@@ -43,7 +45,7 @@ export const SIDEBAR_NUCLEO_BY_ICON: Partial<Record<IconName, NavIcon>> = {
   approvals: NavApproval,
   sparkles: NavSparkles,
   brain: NavSparkles,
-  chat: NavChat,
+  chat: NucleoAgent,
   target: NavTarget,
   database: NavDatabase,
   calendar: NavCalendar,
