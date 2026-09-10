@@ -332,6 +332,7 @@ def google_vendor_connection_auth_status(
     settings: Settings,
     *,
     environment_name: str | None = None,
+    validate_remote: bool = True,
 ) -> str:
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not google_oauth_configured(settings, env):
@@ -341,11 +342,32 @@ def google_vendor_connection_auth_status(
         return "pending_auth"
     if token_needs_refresh(tokens, TOKEN_REFRESH_BUFFER_SEC) and not tokens.get("refresh_token"):
         return "auth_expired"
-    token, err = ensure_google_vendor_session(
-        client, org_id, connector_id, settings, environment_name=env
-    )
-    if err or not token:
-        return "auth_expired"
+    if validate_remote:
+        token, err = ensure_google_vendor_session(
+            client, org_id, connector_id, settings, environment_name=env
+        )
+        if err or not token:
+            # Inventory vs execute: a live refresh/session failure is not the
+            # same as "never connected". Isolated Google Ads clones share tokens
+            # with the operator connector; a refresh race / EAGAIN on Railway
+            # omitted google_ads from list_executable_integrations while
+            # connectors.status stayed healthy and a direct Ads API read
+            # still returned campaigns (conv 9addc750 @ 2026-09-10T19:19:08Z,
+            # connected_integrations=["apollo","hubspot"]).
+            if vendor == "google_ads" and _google_ads_inventory_ready(
+                client, org_id, connector_id, settings, tokens
+            ):
+                logger.warning(
+                    "google_ads_session_ensure_failed_inventory_connected "
+                    "org_id=%s connector_id=%s err=%s",
+                    org_id,
+                    connector_id,
+                    str(err or "missing_token")[:240],
+                )
+                return "connected"
+            return "auth_expired"
+    elif not str(tokens.get("access_token") or "").strip():
+        return "pending_auth"
     if vendor == "google_analytics" and not _connector_property_id(client, org_id, connector_id):
         return "pending_property"
     if vendor == "google_search_console" and not _connector_site_url(client, org_id, connector_id):
@@ -356,6 +378,20 @@ def google_vendor_connection_auth_status(
         if not _connector_ads_customer_id(client, org_id, connector_id):
             return "pending_customer"
     return "connected"
+
+
+def _google_ads_inventory_ready(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Settings,
+    tokens: dict[str, Any],
+) -> bool:
+    if not str(tokens.get("access_token") or "").strip():
+        return False
+    if not (getattr(settings, "google_ads_developer_token", None) or "").strip():
+        return False
+    return bool(_connector_ads_customer_id(client, org_id, connector_id))
 
 
 def _connector_ads_customer_id(client: Any, org_id: str, connector_id: str) -> str | None:

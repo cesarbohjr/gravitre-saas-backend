@@ -605,6 +605,20 @@ class ChatOrchestrationService:
                     )
 
             steps = await self._build_plan(message, connected_integrations, org_id, user_id, classification)
+            # Google Ads structure.create is intentionally one executable step
+            # (four campaigns / ad groups / keywords). Treating len<2 as "not
+            # orch" discarded that plan and LIVE then stole quoted "Problem Aware"
+            # into assistant.create_workflow (conv 10f34663 @ 2026-09-10T19:30Z
+            # once google_ads was in connectedIntegrations).
+            if self._is_single_google_ads_structure_plan(steps, message):
+                return await self._present_plan_confirm(
+                    conversation_id,
+                    org_id,
+                    user_id,
+                    message,
+                    steps,
+                    client,
+                )
             if len(steps) < 2:
                 return None
             # STA-307 — zero runnable steps: terminal blocked state (no confirm / no wait loop).
@@ -1848,9 +1862,31 @@ class ChatOrchestrationService:
         key = integration.lower()
         if key in connected:
             return True
+        if key in {"google_ads", "googleads"} and connected & {"google_ads", "googleads"}:
+            return True
         if key in GOOGLE_WORKSPACE_FAMILY and connected & GOOGLE_WORKSPACE_FAMILY:
             return True
         return False
+
+    @staticmethod
+    def _is_single_google_ads_structure_plan(
+        steps: list[OrchestrationStep],
+        message: str,
+    ) -> bool:
+        if len(steps) != 1:
+            return False
+        step = steps[0]
+        if not step.supported or step.plan is None:
+            return False
+        integration = str(step.plan.integration or "").strip().lower()
+        action = str(step.plan.invoke_action or "").strip().lower()
+        if integration not in {"google_ads", "googleads"}:
+            return False
+        if "structure.create" not in action:
+            return False
+        from app.services.chat_action_mapper import GOOGLE_ADS_STRUCTURE_INTENT
+
+        return bool(GOOGLE_ADS_STRUCTURE_INTENT.search(message or ""))
 
     @staticmethod
     def _segment_planning_text(

@@ -400,6 +400,13 @@ def list_connector_availability(
     return out
 
 
+def _canonical_executable_vendor(vendor: str) -> str:
+    key = _normalize_vendor(vendor)
+    if key in {"googleads", "adwords"}:
+        return "google_ads"
+    return key
+
+
 def list_executable_integrations(
     client: Any,
     org_id: str,
@@ -420,7 +427,7 @@ def list_executable_integrations(
     ):
         if not item.get("execution_available"):
             continue
-        vendor = _normalize_vendor(str(item.get("vendor") or ""))
+        vendor = _canonical_executable_vendor(str(item.get("vendor") or ""))
         if vendor:
             integrations.add(vendor)
     return sorted(integrations)
@@ -447,7 +454,7 @@ def find_integration_availability(
             force_live=force_live,
             action_key=action_key,
         )
-        if _normalize_vendor(str(item.get("vendor") or "")) == target
+        if _canonical_executable_vendor(str(item.get("vendor") or "")) == _canonical_executable_vendor(target)
     ]
     if not matches:
         return None

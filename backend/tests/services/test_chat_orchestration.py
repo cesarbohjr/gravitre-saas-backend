@@ -543,3 +543,62 @@ async def test_sta307_disconnected_pair_labels_and_blocks_immediately(orchestrat
     assert hub_idx != slack_idx
     assert all(s.get("supported") is False for s in steps)
     assert result.get("execution_result", {}).get("success") is False
+
+
+def test_googleads_alias_counts_as_connected(orchestration_service):
+    connected = {"googleads"}
+    assert orchestration_service._integration_is_connected("google_ads", connected) is True
+    assert orchestration_service._integration_is_connected("googleads", {"google_ads"}) is True
+
+
+@pytest.mark.asyncio
+async def test_google_ads_structure_plan_is_presented_as_one_step(orchestration_service):
+    """Connected Ads briefs collapse to structure.create; len<2 must not discard that plan."""
+    message = (
+        "I have a Google Ads campaign strategy ready. Set it up in Google Ads "
+        "with four campaigns and ad groups, including keywords for Salesforce. "
+        "Show me the complete plan before I approve."
+    )
+    step = OrchestrationStep(
+        step_id="1",
+        segment=message,
+        label="Create Google Ads campaign structure",
+        kind="write",
+        supported=True,
+        requires_approval=True,
+        plan=ConnectorActionPlan(
+            tool_name="google_ads_structure_create",
+            invoke_action="google_ads.structure.create",
+            integration="google_ads",
+            kind="write",
+            label="Create Google Ads campaign structure",
+            args={"campaigns": [{"name": "RevOps / Sales Ops"}]},
+            requires_approval=True,
+            destructive=True,
+        ),
+    )
+    orchestration_service._present_plan_confirm = AsyncMock(
+        return_value={"stop_pipeline": True, "dialogue_mode": "confirm", "message": "ads plan"}
+    )
+    with patch.object(
+        orchestration_service, "_build_plan", AsyncMock(return_value=[step])
+    ), patch(
+        "app.services.retrieve_plan_gate.retrieve_plan_or_none",
+        return_value=None,
+    ):
+        result = await orchestration_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-ads-structure",
+            message=message,
+            classification={"intent": "workflow_execution"},
+            task_state={"pending_task": None},
+            connected_integrations=["google_ads", "apollo", "hubspot"],
+            client=MagicMock(),
+        )
+    assert result is not None
+    assert result["stop_pipeline"] is True
+    orchestration_service._present_plan_confirm.assert_awaited_once()
+    presented = orchestration_service._present_plan_confirm.await_args.args[4]
+    assert len(presented) == 1
+    assert presented[0].plan.invoke_action == "google_ads.structure.create"

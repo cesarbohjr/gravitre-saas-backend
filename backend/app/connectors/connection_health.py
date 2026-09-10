@@ -156,6 +156,7 @@ def _resolve_connector_auth_status_uncached(
             google_vendor,
             settings,
             environment_name=environment_name,
+            validate_remote=validate_remote,
         )
     if normalize_slack_vendor(vendor) == "slack":
         return slack_connection_auth_status(

@@ -173,6 +173,16 @@ def test_list_executable_integrations_uses_live_availability(mock_list):
     mock_list.assert_called_once()
 
 
+@patch("app.connectors.connector_availability_service.list_connector_availability")
+def test_list_executable_canonicalizes_googleads_vendor(mock_list):
+    mock_list.return_value = [
+        {"vendor": "Google Ads", "execution_available": True},
+        {"vendor": "hubspot", "execution_available": True},
+    ]
+    connected = list_executable_integrations(MagicMock(), "org-1", _settings(), force_live=True)
+    assert connected == ["google_ads", "hubspot"]
+
+
 @patch(
     "app.connectors.connector_availability_service.evaluate_connector_availability",
     side_effect=[

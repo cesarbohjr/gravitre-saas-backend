@@ -1,0 +1,132 @@
+{
+  "started_at": "2026-09-10T19:30:54.227799+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "ads_db_rows": [
+    {
+      "id": "a726bcae-9710-45fd-bec2-5667c4f22686",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "type": "google_ads",
+      "vendor": "google_ads",
+      "status": "healthy",
+      "environment": "production",
+      "deleted_at": null,
+      "customer_id_present": true
+    },
+    {
+      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "type": "google_ads",
+      "vendor": "google_ads",
+      "status": "healthy",
+      "environment": "production",
+      "deleted_at": null,
+      "customer_id_present": true
+    }
+  ],
+  "old_typed_audits": [
+    {
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-09-10T19:19:08.328028+00:00",
+      "model": "unified_turn+operator_task_orchestration_skip_live",
+      "outcome_kind": "confirmation_request",
+      "connected_integrations": [
+        "apollo",
+        "hubspot"
+      ],
+      "payload_keys": [
+        "classical_path_active",
+        "connected_integrations",
+        "error",
+        "fallthrough_reason",
+        "first_token_proxy_ms",
+        "latency_breakdown",
+        "latency_ms",
+        "live_served",
+        "model",
+        "needs_tool_sse",
+        "outcome_kind",
+        "qa_force_outcome",
+        "qa_force_tool",
+        "qa_overrode_model_tool",
+        "requires_write_approval",
+        "shadow_executes_tools",
+        "shadow_user_visible",
+        "streamed",
+        "tool_arguments",
+        "tool_invoke_action",
+        "tool_name",
+        "tool_stats",
+        "user_message"
+      ]
+    },
+    {
+      "action": "memory.recalled",
+      "created_at": "2026-09-10T19:19:06.576759+00:00",
+      "model": null,
+      "outcome_kind": null,
+      "connected_integrations": null,
+      "payload_keys": [
+        "agentId",
+        "attempted",
+        "bySource",
+        "cognitiveTurnId",
+        "degraded",
+        "entryPoint",
+        "failedSources",
+        "ran",
+        "reasoningDepth",
+        "surface",
+        "total"
+      ]
+    }
+  ],
+  "git_sha": "e7a62c91559ffd7e19da492ee51537b93e565cf5",
+  "connectors_http": 200,
+  "connectors_count": 0,
+  "connectors_types": [],
+  "connectors_ads": [],
+  "railway_connectedIntegrations": [
+    "apollo",
+    "google_ads",
+    "hubspot"
+  ],
+  "typed_conversation_id": "10f34663-f8b2-410a-afbf-6694fa1a4ca1",
+  "typed_http": 200,
+  "typed": {
+    "assistant_head": "I'll create a draft workflow for **Problem Aware**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+    "connected_seen": [
+      [],
+      [
+        "apollo",
+        "google_ads",
+        "hubspot"
+      ],
+      [],
+      []
+    ],
+    "google_ads_in_sse": true,
+    "not_connected": false,
+    "pending_type": "create_workflow",
+    "models": [],
+    "explanations": [
+      "Understanding your request",
+      "Reviewing context and memory",
+      "Running the requested action",
+      "Running the requested action"
+    ],
+    "event_types_head": [
+      "start",
+      "start-step",
+      "data-intelligence",
+      "data-intelligence",
+      "data-intelligence",
+      "text-start",
+      "text-delta",
+      "text-end",
+      "data-intelligence",
+      "finish-step",
+      "finish"
+    ]
+  },
+  "new_typed_audits": []
+}
