@@ -298,10 +298,27 @@ def build_pipecat_voice_task(
                 org_id=org_id,
                 user_id=user_id,
                 conversation_id=conversation_id,
-                end_to_end_ms=_pending_e2e_ms.pop("value", None),
+                end_to_end_ms=_pending_e2e_ms.get("value"),
                 user_turn_finalization_ms=user_turn_finalization_ms,
                 ttfb_by_processor_ms=ttfb_by_processor_ms,
             )
+            e2e_ms = _pending_e2e_ms.pop("value", None)
+            if e2e_ms is not None:
+                from app.services.pipecat_voice.voice_latency_metrics import (
+                    record_voice_slo_metric,
+                )
+                from app.services.voice_slo import METRIC_A_ID
+
+                record_voice_slo_metric(
+                    settings,
+                    metric=METRIC_A_ID,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    ms=e2e_ms,
+                    source="duplex_first_speech",
+                    composed=True,
+                )
         except Exception as exc:  # noqa: BLE001
             logger.debug("pipecat_voice_latency_breakdown_sample_failed error=%s", exc)
 

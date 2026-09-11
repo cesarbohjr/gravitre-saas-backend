@@ -89,17 +89,37 @@ def test_percentiles_computed_independently_per_field_not_correlated_1to1():
     assert out["ttfb_by_processor"]["TTS"]["max_ms"] == 180
 
 
-def test_alert_fires_when_e2e_p50_exceeds_threshold():
-    """MUTATION PROOF: the alert threshold comparison must actually read the
-    reduced p50/p99, not a hardcoded pass-through.
-    """
+def test_e2e_is_not_the_standing_slo_alert():
+    """MUTATION PROOF: blended e2e is not the voice SLO. Alerts live on Metric A/B."""
     e2e_rows = [_row({"end_to_end_ms": 20_000})]
     client = FakeClient({"voice.turn_latency.e2e": e2e_rows, "voice.turn_latency.llm_stage": []})
 
     out = mod._voice_turn_latency_signals(client, since_iso="2026-09-01T00:00:00Z", hours=24)
 
-    assert any("voice_e2e_p50" in a for a in out["alerts"])
-    assert any("voice_e2e_p99" in a for a in out["alerts"])
+    assert out["alerts"] == []
+    assert "voice_e2e_p50" not in " ".join(out["alerts"])
+
+
+def test_metric_a_and_b_alert_separately_never_blended():
+    """MUTATION PROOF: a slow completion must not fire Metric A, and a slow
+    first-audio must not fire Metric B. One blended 'voice_latency' key is forbidden.
+    """
+    a_rows = [_row({"ms": 900})]
+    b_rows = [_row({"ms": 9000})]
+    client = FakeClient(
+        {
+            "voice.slo.metric_a": a_rows,
+            "voice.slo.metric_b": b_rows,
+        }
+    )
+    out = mod._voice_slo_two_metric_signals(client, since_iso="2026-09-01T00:00:00Z", hours=24)
+    assert out["blended_voice_latency"] is None
+    alerts = " ".join(out["alerts"])
+    assert "voice_slo_metric_a_p50>500ms" in alerts
+    assert "voice_slo_metric_b_p50>5000ms" in alerts
+    assert "voice_e2e" not in alerts
+    assert out["metric_a"]["p50_ms"] == 900
+    assert out["metric_b"]["p50_ms"] == 9000
 
 
 def test_no_samples_yields_empty_stats_not_an_error():

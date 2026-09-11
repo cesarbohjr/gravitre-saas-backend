@@ -5,6 +5,7 @@ and write-scope checks using a fast model tier.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
@@ -157,6 +158,39 @@ class VerificationCriticService:
                     "error": str(exc)[:200],
                 }
             return {"passed": True, "issues": [], "revised_answer": answer, "skipped": "error"}
+
+
+_CRITIC_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
+
+
+def schedule_verification_after_delivery(
+    *,
+    settings: Settings | None = None,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Fire-and-forget critic for non-write OBSERVE. Must not block spoken delivery."""
+    answer = kwargs.get("answer") or ""
+
+    async def _run() -> None:
+        try:
+            await get_verification_critic_service(settings).verify_before_delivery(**kwargs)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("async_observe_critic_failed error=%s", exc)
+
+    try:
+        task = asyncio.create_task(_run())
+        _CRITIC_BACKGROUND_TASKS.add(task)
+        task.add_done_callback(_CRITIC_BACKGROUND_TASKS.discard)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("async_observe_critic_schedule_failed error=%s", exc)
+    return {
+        "passed": True,
+        "issues": [],
+        "revised_answer": answer,
+        "skipped": "async_non_write_observe",
+        "mandatory": False,
+        "blocking": False,
+    }
 
 
 def is_consequential_classification(classification: dict[str, Any]) -> bool:

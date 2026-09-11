@@ -8,6 +8,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.workflows.repository import get_supabase_client
+from app.services.voice_slo import (
+    AUDIT_METRIC_A,
+    AUDIT_METRIC_B,
+    METRIC_A_P50_MS,
+    METRIC_A_P95_MS,
+    METRIC_B_P50_MS,
+    METRIC_B_P95_MS,
+)
 
 PLATFORM_ORG_ID = os.environ.get(
     "GRAVITRE_PLATFORM_SIGNALS_ORG_ID",
@@ -185,6 +193,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
         }
 
     voice_latency = _voice_turn_latency_signals(client, since_iso=since_iso, hours=hours)
+    voice_slo = _voice_slo_two_metric_signals(client, since_iso=since_iso, hours=hours)
 
     deploy_smoke = _latest_platform_signal(client, "platform.deploy_smoke")
     hardening = _latest_platform_signal(client, "platform.hardening_smoke")
@@ -214,7 +223,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
     if mount_p50 is not None and mount_p50 > MOUNT_TTI_ALERT_MS:
         mount_alerts.append(f"mount_ai_nav_p50>{MOUNT_TTI_ALERT_MS}ms")
     alerts.extend(mount_alerts)
-    alerts.extend(voice_latency.get("alerts") or [])
+    alerts.extend(voice_slo.get("alerts") or [])
 
     r2_ready = (
         fallthrough_pct <= 1.0
@@ -258,6 +267,7 @@ async def load_golden_signals_dashboard(settings: Any, *, period: str = "24h") -
             "alert_threshold_ms": MOUNT_TTI_ALERT_MS,
             "alerts": mount_alerts,
         },
+        "voice_slo": voice_slo,
         "voice_turn_latency": voice_latency,
         "prefix_cache": {
             "avg_cached_prompt_ratio": round(sum(cache_ratios) / len(cache_ratios), 4)
@@ -425,10 +435,8 @@ def _voice_turn_latency_signals(client: Any, *, since_iso: str, hours: int) -> d
     ttfb_stats = {proc: _stats(vals) for proc, vals in ttfb_by_processor.items()}
 
     alerts: list[str] = []
-    if (end_to_end["p50_ms"] or 0) > VOICE_LATENCY_E2E_ALERT_P50_MS:
-        alerts.append(f"voice_e2e_p50>{VOICE_LATENCY_E2E_ALERT_P50_MS}ms")
-    if (end_to_end["p99_ms"] or 0) > VOICE_LATENCY_E2E_ALERT_P99_MS:
-        alerts.append(f"voice_e2e_p99>{VOICE_LATENCY_E2E_ALERT_P99_MS}ms")
+    # Internal duplex stage timings only — not the standing voice SLO.
+    # Blending first-audio with operator completion is forbidden (two-metric standard).
 
     return {
         "window_hours": hours,
@@ -444,12 +452,78 @@ def _voice_turn_latency_signals(client: Any, *, since_iso: str, hours: int) -> d
         },
         "alerts": alerts,
         "note": (
-            "Real, measured per-stage voice-turn latency (not estimated). "
-            "llm_first_token = Cognitive LLM TTFT; llm_first_speakable_chunk = "
-            "first sentence-chunk ready for TTS; tts_requested = first chunk "
-            "actually pushed downstream to TTS; end_to_end = "
-            "GravitreVoiceLatencyObserver's real user-audio-stopped to "
-            "bot-audio-started measurement on the live Flux path."
+            "Internal Flux-path stage timings (not the standing voice SLO). "
+            "Report Metric A and Metric B separately via voice_slo — blending "
+            "first-honest-audio with operator-task completion misrepresents both."
+        ),
+    }
+
+
+def _voice_slo_two_metric_signals(client: Any, *, since_iso: str, hours: int) -> dict[str, Any]:
+    """Standing two-metric voice SLO. Never a single blended 'voice latency' number."""
+
+    def _field(rows: list[dict], key: str) -> list[int]:
+        out: list[int] = []
+        for row in rows:
+            val = _meta(row).get(key)
+            if isinstance(val, (int, float)):
+                out.append(int(val))
+        return out
+
+    def _stats(values: list[int]) -> dict[str, Any]:
+        s = sorted(values)
+        return {
+            "sample_count": len(s),
+            "p50_ms": _percentile(s, 0.50),
+            "p95_ms": _percentile(s, 0.95),
+            "p99_ms": _percentile(s, 0.99),
+            "max_ms": s[-1] if s else None,
+        }
+
+    a_rows = _fetch_rows(client, action=AUDIT_METRIC_A, since_iso=since_iso)
+    b_rows = _fetch_rows(client, action=AUDIT_METRIC_B, since_iso=since_iso)
+    metric_a = _stats(_field(a_rows, "ms"))
+    metric_b = _stats(_field(b_rows, "ms"))
+    alerts: list[str] = []
+    if metric_a["sample_count"] and (metric_a["p50_ms"] or 0) > METRIC_A_P50_MS:
+        alerts.append(f"voice_slo_metric_a_p50>{METRIC_A_P50_MS}ms")
+    if metric_a["sample_count"] and (metric_a["p95_ms"] or 0) > METRIC_A_P95_MS:
+        alerts.append(f"voice_slo_metric_a_p95>{METRIC_A_P95_MS}ms")
+    if metric_b["sample_count"] and (metric_b["p50_ms"] or 0) > METRIC_B_P50_MS:
+        alerts.append(f"voice_slo_metric_b_p50>{METRIC_B_P50_MS}ms")
+    if metric_b["sample_count"] and (metric_b["p95_ms"] or 0) > METRIC_B_P95_MS:
+        alerts.append(f"voice_slo_metric_b_p95>{METRIC_B_P95_MS}ms")
+    return {
+        "window_hours": hours,
+        "metric_a": {
+            "id": "time_to_first_honest_response",
+            "label": "Time to first honest response",
+            "hard_target": {"p50_ms": METRIC_A_P50_MS, "p95_ms": METRIC_A_P95_MS},
+            **metric_a,
+        },
+        "metric_b": {
+            "id": "operator_task_completion_latency",
+            "label": "Operator-task completion latency",
+            "target": {"p50_ms": METRIC_B_P50_MS, "p95_ms": METRIC_B_P95_MS},
+            **metric_b,
+        },
+        "blended_voice_latency": None,
+        "alert_thresholds_ms": {
+            "metric_a_p50": METRIC_A_P50_MS,
+            "metric_a_p95": METRIC_A_P95_MS,
+            "metric_b_p50": METRIC_B_P50_MS,
+            "metric_b_p95": METRIC_B_P95_MS,
+        },
+        "alerts": alerts,
+        "citations": [
+            "Full-Duplex-Bench-v3 https://arxiv.org/abs/2604.04847 (Gemini Live 3.1 completion 4.25s)",
+            "EVA-Bench https://arxiv.org/abs/2605.13841 (separate tool vs no-tool latency curves)",
+        ],
+        "note": (
+            "Two separately measured SLOs. Metric A is first genuine composed "
+            "audio (STA-343 loop-stage speech on operator turns). Metric B is "
+            "final composed answer on tool-using / multi-stage turns only. "
+            "Never blend them into one voice-latency number."
         ),
     }
 

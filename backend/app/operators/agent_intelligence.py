@@ -4413,18 +4413,34 @@ class AgentIntelligence:
         if consensus_result.get("consensus_used"):
             full_content = str(consensus_result.get("response") or full_content)
 
-        from app.services.verification_critic_service import get_verification_critic_service
+        from app.services.verification_critic_service import (
+            get_verification_critic_service,
+            schedule_verification_after_delivery,
+        )
         from app.services.complexity_routing_guardrails import requires_mandatory_critic
+        from app.services.voice_slo import verification_must_block_delivery
 
         # Phase D item 5 — mandatory critic on consequential writes / high-risk actions.
         _cls = pipeline_classification if isinstance(pipeline_classification, dict) else {}
         _mandatory_critic = requires_mandatory_critic(task_text, _cls)
+        _pending_for_critic = None
+        if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):
+            _pending_for_critic = task_state.get("pending_task")
+        _execution_verified = bool(getattr(react_result, "execution_verified", False)) if react_result else False
+        _block_critic = verification_must_block_delivery(
+            tool_results=tool_results if isinstance(tool_results, list) else None,
+            execution_verified=_execution_verified,
+            pending_task=_pending_for_critic if isinstance(_pending_for_critic, dict) else None,
+            message=task_text,
+            classification=_cls,
+        )
         # Voice conversational depth: skip non-mandatory critic LLM (does not skip
         # mandatory critic on consequential writes — Phase 1 constraint).
+        # Two-metric SLO Phase 3: non-write OBSERVE (reads, plan staging) is async.
         if (
             spoken_mode
             and reasoning_depth == "conversational"
-            and not _mandatory_critic
+            and not _block_critic
         ):
             critic = {
                 "passed": True,
@@ -4433,6 +4449,18 @@ class AgentIntelligence:
                 "skipped": "spoken_conversational_depth",
                 "mandatory": False,
             }
+        elif not _block_critic:
+            critic = schedule_verification_after_delivery(
+                settings=active_settings,
+                query=task_text,
+                answer=full_content,
+                classification=_cls,
+                routing_tier=routing_control.tier,
+                rag_sources=rag_sources,
+                tool_results=tool_results,
+                org_id=org_id,
+                mandatory=False,
+            )
         else:
             critic = await get_verification_critic_service(active_settings).verify_before_delivery(
                 query=task_text,

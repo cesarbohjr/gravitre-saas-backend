@@ -146,6 +146,52 @@ def record_voice_e2e_latency_sample(
     )
 
 
+def record_voice_slo_metric(
+    settings: Any,
+    *,
+    metric: str,
+    org_id: str,
+    user_id: str | None,
+    conversation_id: str | None,
+    ms: int | None,
+    source: str | None = None,
+    operator_task: bool | None = None,
+    composed: bool | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """One Metric A or Metric B sample. Never merged into a blended SLO row."""
+    from app.services.voice_slo import AUDIT_METRIC_A, AUDIT_METRIC_B, METRIC_A_ID, METRIC_B_ID
+
+    if metric == METRIC_A_ID:
+        action = AUDIT_METRIC_A
+    elif metric == METRIC_B_ID:
+        action = AUDIT_METRIC_B
+    else:
+        return
+    if ms is None:
+        return
+    payload: dict[str, Any] = {
+        "metric": metric,
+        "ms": int(ms),
+    }
+    if source:
+        payload["source"] = source
+    if operator_task is not None:
+        payload["operator_task"] = bool(operator_task)
+    if composed is not None:
+        payload["composed"] = bool(composed)
+    if extra:
+        payload.update(extra)
+    _write(
+        settings,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        action=action,
+        payload=payload,
+    )
+
+
 def record_voice_barge_in_reconciliation(
     settings: Any,
     *,

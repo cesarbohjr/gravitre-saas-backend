@@ -195,6 +195,7 @@ async def stream_voice_turn_events(
     tts_output_format: str = "mp3_44100_128",
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
+    t_start = time.perf_counter()
     from app.operators.agent_intelligence import get_agent_intelligence
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
     from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
@@ -233,9 +234,12 @@ async def stream_voice_turn_events(
     intelligence = get_agent_intelligence()
     text_buffer = ""
     full_text: list[str] = []
-    t_start = time.perf_counter()
     first_text_ms: int | None = None
     first_audio_ms: int | None = None
+    first_text_preview: str | None = None
+    loop_stage_spoken = False
+    operator_task = False
+    metric_a_recorded = False
     agent_audio_started = False
     cancelled = False
     tts_failed = False
@@ -255,7 +259,7 @@ async def stream_voice_turn_events(
     classify_done_ms: int | None = None
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
-        nonlocal first_audio_ms, agent_audio_started, cancelled, tts_failed
+        nonlocal first_audio_ms, agent_audio_started, cancelled, tts_failed, metric_a_recorded
         spoken_chunk = normalize_spoken_text(chunk)
         if not spoken_chunk:
             return
@@ -267,7 +271,7 @@ async def stream_voice_turn_events(
             cancelled = True
             return
             yield  # pragma: no cover — keeps this an async generator
-        buffered_audio = bytearray()
+        first_piece = True
         try:
             for audio in synthesize_speech_stream(
                 settings,
@@ -279,14 +283,48 @@ async def stream_voice_turn_events(
                 if _cancelled():
                     cancelled = True
                     return
+                if not audio:
+                    continue
                 if first_audio_ms is None:
                     first_audio_ms = int((time.perf_counter() - t_start) * 1000)
-                    yield {"type": "voice.ttfa", "ms": first_audio_ms, "turn_id": resolved_turn_id}
+                    yield {
+                        "type": "voice.ttfa",
+                        "ms": first_audio_ms,
+                        "turn_id": resolved_turn_id,
+                        "metric": "A",
+                    }
+                    if not metric_a_recorded:
+                        metric_a_recorded = True
+                        from app.services.pipecat_voice.voice_latency_metrics import (
+                            record_voice_slo_metric,
+                        )
+                        from app.services.voice_slo import METRIC_A_ID, is_metric_a_source
+
+                        record_voice_slo_metric(
+                            settings,
+                            metric=METRIC_A_ID,
+                            org_id=org_id,
+                            user_id=user_id,
+                            conversation_id=resolved_conversation_id,
+                            ms=first_audio_ms,
+                            source=is_metric_a_source(
+                                first_text_preview,
+                                loop_stage="PERCEIVE" if loop_stage_spoken else None,
+                            ),
+                            operator_task=operator_task or loop_stage_spoken,
+                            composed=True,
+                        )
                 if not agent_audio_started:
                     agent_audio_started = True
                     yield {"type": "voice.agent_speech.start", "turn_id": resolved_turn_id}
-                if audio:
-                    buffered_audio.extend(audio)
+                yield {
+                    "type": "voice.audio.delta",
+                    "content_type": audio_content_type,
+                    "audio_base64": base64.b64encode(audio).decode("ascii"),
+                    "text_chunk": spoken_chunk if first_piece else "",
+                    "turn_id": resolved_turn_id,
+                }
+                first_piece = False
         except VoiceProviderError as exc:
             tts_failed = True
             from app.services.response_composer import TTS_SAFE_ERROR
@@ -313,16 +351,6 @@ async def stream_voice_turn_events(
                 "turn_id": resolved_turn_id,
             }
             return
-        if not buffered_audio:
-            return
-            yield  # pragma: no cover — keeps this an async generator
-        yield {
-            "type": "voice.audio.delta",
-            "content_type": audio_content_type,
-            "audio_base64": base64.b64encode(bytes(buffered_audio)).decode("ascii"),
-            "text_chunk": spoken_chunk,
-            "turn_id": resolved_turn_id,
-        }
 
     async for event in intelligence.execute_task_streaming(
         settings=settings,
@@ -409,6 +437,8 @@ async def stream_voice_turn_events(
                         "progress_steps": data.get("progressSteps") or [],
                         "turn_id": resolved_turn_id,
                     }
+                if routing.get("operatorTask"):
+                    operator_task = True
                 raw_breakdown = routing.get("latencyBreakdown")
                 if isinstance(raw_breakdown, dict):
                     unified_breakdown = safe_normalize_stored_dict(raw_breakdown)
@@ -433,6 +463,11 @@ async def stream_voice_turn_events(
         yield {"type": "voice.text.delta", "delta": delta, "turn_id": resolved_turn_id}
         if first_text_ms is None:
             first_text_ms = int((time.perf_counter() - t_start) * 1000)
+            first_text_preview = delta[:200]
+            from app.services.voice_slo import is_metric_a_source
+
+            if is_metric_a_source(delta).startswith("loop_stage:"):
+                loop_stage_spoken = True
             yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
         full_text.append(delta)
         text_buffer += delta
@@ -510,8 +545,30 @@ async def stream_voice_turn_events(
                     "wall_to_first_token_ms": wall_to_first_token_ms,
                     "spoken_streamed": spoken_streamed,
                     "unified_breakdown": unified_breakdown or None,
+                    "metric_a_ms": first_audio_ms,
+                    "metric_b_ms": int((time.perf_counter() - t_start) * 1000),
                 },
         }
+        from app.services.pipecat_voice.voice_latency_metrics import record_voice_slo_metric
+        from app.services.voice_slo import METRIC_B_ID, operator_task_for_metric_b
+
+        completion_ms = int((time.perf_counter() - t_start) * 1000)
+        if operator_task_for_metric_b(
+            operator_task=operator_task,
+            loop_stage_spoken=loop_stage_spoken,
+            tool_results=getattr(pending_complete, "tool_results", None),
+        ):
+            record_voice_slo_metric(
+                settings,
+                metric=METRIC_B_ID,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=resolved_conversation_id,
+                ms=completion_ms,
+                source="composed_final",
+                operator_task=True,
+                composed=True,
+            )
     # Flush remainder after turn.complete so audio may continue even after text is rendered.
     rem = text_buffer.strip()
     if rem and not _cancelled():

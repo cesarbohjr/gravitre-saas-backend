@@ -56,6 +56,20 @@ type GoldenSignalsResponse = {
     ready?: boolean
     current_fallthrough_pct?: number
   }
+  voice_slo?: {
+    metric_a?: LatencyStageStats & {
+      id?: string
+      label?: string
+      hard_target?: { p50_ms?: number; p95_ms?: number }
+    }
+    metric_b?: LatencyStageStats & {
+      id?: string
+      label?: string
+      target?: { p50_ms?: number; p95_ms?: number }
+    }
+    blended_voice_latency?: null
+    alerts?: string[]
+  }
   voice_turn_latency?: {
     llm_first_token?: LatencyStageStats
     llm_first_speakable_chunk?: LatencyStageStats
@@ -94,6 +108,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   const ttft = signals?.ttft
   const mount = signals?.mount_tti
   const research = signals?.research_lookups
+  const voiceSlo = signals?.voice_slo
   const voiceLatency = signals?.voice_turn_latency
 
   return (
@@ -178,21 +193,39 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           warning={Boolean(research?.alerts?.length)}
         />
       </section>
-      {voiceLatency && (voiceLatency.end_to_end?.sample_count ?? 0) > 0 ? (
+      {voiceSlo ? (
         <div className="mt-4 border-t border-border/60 pt-4">
           <h4 className="text-xs font-medium tracking-tight text-muted-foreground">
-            Voice turn latency (real, per-stage — Flux path)
+            Voice latency (two metrics — never blended)
           </h4>
           <section className="mt-2 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
             <GravitreMetric
-              label="Voice reply speed (typical / worst)"
+              label="Time to first honest speech (P50 / P95)"
               value={
-                voiceLatency.end_to_end?.p50_ms != null
-                  ? `${voiceLatency.end_to_end.p50_ms} / ${voiceLatency.end_to_end.p99_ms ?? "—"} ms`
+                voiceSlo?.metric_a?.p50_ms != null
+                  ? `${voiceSlo.metric_a.p50_ms} / ${voiceSlo.metric_a.p95_ms ?? "—"} ms`
                   : "—"
               }
-              warning={Boolean(voiceLatency.alerts?.length)}
+              warning={Boolean(voiceSlo?.alerts?.some((a) => a.includes("metric_a")))}
             />
+            <GravitreMetric
+              label="Operator-task completion (P50 / P95)"
+              value={
+                voiceSlo?.metric_b?.p50_ms != null
+                  ? `${voiceSlo.metric_b.p50_ms} / ${voiceSlo.metric_b.p95_ms ?? "—"} ms`
+                  : "—"
+              }
+              warning={Boolean(voiceSlo?.alerts?.some((a) => a.includes("metric_b")))}
+            />
+          </section>
+        </div>
+      ) : null}
+      {voiceLatency && (voiceLatency.end_to_end?.sample_count ?? 0) > 0 ? (
+        <div className="mt-4 border-t border-border/60 pt-4">
+          <h4 className="text-xs font-medium tracking-tight text-muted-foreground">
+            Internal duplex stages (not the SLO)
+          </h4>
+          <section className="mt-2 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
             <GravitreMetric
               label="Voice LLM first token (typical)"
               value={

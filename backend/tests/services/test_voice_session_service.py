@@ -37,7 +37,7 @@ def _settings_with_voice(mock_settings):
 
 
 @pytest.mark.asyncio
-async def test_stream_voice_turn_coalesces_streamed_audio_chunks(monkeypatch, mock_settings):
+async def test_stream_voice_turn_emits_audio_chunks_as_they_arrive(monkeypatch, mock_settings):
     monkeypatch.setattr(
         "app.operators.agent_intelligence.get_agent_intelligence",
         lambda: _FakeIntelligence(["Please provide recipient, subject, and body."]),
@@ -62,8 +62,12 @@ async def test_stream_voice_turn_coalesces_streamed_audio_chunks(monkeypatch, mo
     ]
 
     audio_events = [e for e in events if e.get("type") == "voice.audio.delta"]
-    assert len(audio_events) == 1
-    assert base64.b64decode(str(audio_events[0]["audio_base64"])) == b"chunk-1-chunk-2"
+    assert [base64.b64decode(str(e["audio_base64"])) for e in audio_events] == [
+        b"chunk-1-",
+        b"chunk-2",
+    ]
+    ttfa = next((e for e in events if e.get("type") == "voice.ttfa"), None)
+    assert ttfa is not None and ttfa.get("metric") == "A"
     assert any(e.get("type") == "voice.turn.complete" for e in events)
 
 

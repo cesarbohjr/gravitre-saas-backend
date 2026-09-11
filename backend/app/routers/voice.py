@@ -565,23 +565,6 @@ async def post_session_turn(
     user_id = str(user.get("id") or user.get("user_id") or "")
     client = get_supabase_client(settings)
     assert_agent_voice_use(client, seat, org_id=org_id, agent_id=body.agent_id)
-    agent: dict[str, Any] | None = None
-    if body.agent_id:
-        try:
-            rows = (
-                client.table("agents")
-                .select("*")
-                .eq("org_id", org_id)
-                .eq("id", body.agent_id)
-                .limit(1)
-                .execute()
-                .data
-                or []
-            )
-            agent = rows[0] if rows else {"id": body.agent_id}
-        except Exception:  # noqa: BLE001
-            agent = {"id": body.agent_id}
-
     qa_force_header = request.headers.get(QA_FORCE_VOICE_ERROR_HEADER)
 
     async def gen() -> AsyncIterator[bytes]:
@@ -596,6 +579,8 @@ async def post_session_turn(
                 raise forced_voice_provider_error(forced)
 
             # Immediate ack so clients never see a silent empty 200 if kernel setup fails.
+            # Agent row fetch waits until after this byte so Metric A is not
+            # charged for a blocking Supabase round-trip.
             yield (
                 json.dumps(
                     {
@@ -608,6 +593,23 @@ async def post_session_turn(
                 )
                 + "\n"
             ).encode("utf-8")
+
+            agent: dict[str, Any] | None = None
+            if body.agent_id:
+                try:
+                    rows = (
+                        client.table("agents")
+                        .select("*")
+                        .eq("org_id", org_id)
+                        .eq("id", body.agent_id)
+                        .limit(1)
+                        .execute()
+                        .data
+                        or []
+                    )
+                    agent = rows[0] if rows else {"id": body.agent_id}
+                except Exception:  # noqa: BLE001
+                    agent = {"id": body.agent_id}
 
             async for event in stream_voice_turn_events(
                 settings=settings,

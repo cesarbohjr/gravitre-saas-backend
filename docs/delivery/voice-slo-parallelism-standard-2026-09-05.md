@@ -2,7 +2,9 @@
 
 **Date:** 2026-09-05
 **Deployed tip:** `cd04d20301ecdecc151276451706412548476789` (live, confirmed via `/health`)
-**Standard:** P50 TTFA <500ms, P95 TTFA <800ms, interruption-to-silence <150–200ms
+**Status (2026-09-11):** the single-number voice-latency target below is **superseded**. Standing definition: two separately measured SLOs in `docs/delivery/voice-slo-two-metric-standard-2026-09-11.md` (Metric A = time to first honest speech; Metric B = operator-task completion). This document remains the historical Phase-1 parallelism measurement record.
+
+**Historical single-number standard (superseded):** P50 TTFA <500ms, P95 TTFA <800ms, interruption-to-silence <150–200ms
 
 ## MANDATORY PRE-FLIGHT
 

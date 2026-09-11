@@ -1,0 +1,42 @@
+name: Voice SLO two-metric gates
+
+# Standing regression guard: Metric A and Metric B are alerted separately.
+# A blended "voice latency" number is not a pass/fail signal.
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: voice-slo-gates
+  cancel-in-progress: false
+
+jobs:
+  voice-slo:
+    name: Two-metric voice SLO alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install python-dotenv supabase
+
+      - name: Live window alert (Metric A and Metric B separately)
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/check-voice-slo-alerts.py
+
+      - name: Upload voice SLO alert artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-slo-alerts
+          path: docs/delivery/voice-slo-alerts-latest.json
+          if-no-files-found: ignore

@@ -118,6 +118,36 @@ def test_no_user_id_skips_write_entirely():
     write.assert_not_called()
 
 
+def test_slo_metric_writes_separate_actions():
+    client = MagicMock()
+    with (
+        patch("app.workflows.repository.get_supabase_client", return_value=client),
+        patch("app.workflows.audit.write_audit_event") as write,
+    ):
+        mod.record_voice_slo_metric(
+            object(),
+            metric="time_to_first_honest_response",
+            org_id="11111111-1111-1111-1111-111111111111",
+            user_id="33333333-3333-3333-3333-333333333333",
+            conversation_id="22222222-2222-2222-2222-222222222222",
+            ms=420,
+            source="loop_stage:PERCEIVE",
+            composed=True,
+        )
+        mod.record_voice_slo_metric(
+            object(),
+            metric="operator_task_completion_latency",
+            org_id="11111111-1111-1111-1111-111111111111",
+            user_id="33333333-3333-3333-3333-333333333333",
+            conversation_id="22222222-2222-2222-2222-222222222222",
+            ms=4100,
+            operator_task=True,
+            composed=True,
+        )
+    actions = [c.args[3] for c in write.call_args_list]
+    assert actions == ["voice.slo.metric_a", "voice.slo.metric_b"]
+
+
 def test_write_failure_is_swallowed_never_raises():
     """MUTATION PROOF: a live voice turn must never crash because a
     best-effort latency sample failed to persist.
