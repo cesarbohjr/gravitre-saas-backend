@@ -18,6 +18,11 @@ import {
   isTerminalServerErrorClass,
   resolveFailureMessage,
 } from "@/lib/voice-socket-reconnect"
+import {
+  recordVoiceSocketFailure,
+  redactVoiceWsUrl,
+  type VoiceSocketDiagnostic,
+} from "@/lib/voice-socket-diagnostics"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import {
   buildPipecatVoiceWsUrl,
@@ -219,6 +224,9 @@ export function useVoiceDuplexSession(options: Options) {
   // can repeat it instead of replacing it with the generic string.
   const lastServerErrorRef = useRef<string | null>(null)
   const lastServerErrorBillingRef = useRef(false)
+  // Held for diagnostics only. Always pass it through redactVoiceWsUrl before it
+  // leaves this module: the access token rides in the query string.
+  const wsUrlRef = useRef<string | null>(null)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmNextTimeRef = useRef(0)
@@ -504,9 +512,28 @@ export function useVoiceDuplexSession(options: Options) {
    * interrupted" fix. A genuine fault is retried a bounded number of times before
    * the user is told anything.
    */
-  const handlePipecatSocketFailure = useCallback(() => {
+  const handlePipecatSocketFailure = useCallback((diag?: VoiceSocketDiagnostic) => {
     if (failureHandledRef.current) return
     failureHandledRef.current = true
+
+    // Why this logs instead of staying silent: the remaining unexplained report of
+    // this toast could not be diagnosed from code alone, because the two facts that
+    // separate the candidate causes -- the actual socket URL and the actual close
+    // code -- exist only in the browser at the moment of failure. Recording them
+    // means the next occurrence explains itself instead of requiring the user to
+    // read DevTools by hand.
+    recordVoiceSocketFailure({
+      event: diag?.event ?? "error",
+      url: redactVoiceWsUrl(wsUrlRef.current),
+      code: diag?.code,
+      reason: diag?.reason,
+      wasClean: diag?.wasClean,
+      everOpened: socketOpenedRef.current,
+      attempt: reconnectAttemptRef.current,
+      intentional: intentionalCloseRef.current,
+      sessionWanted: sessionWantedRef.current,
+      lastServerError: lastServerErrorRef.current,
+    })
 
     const decision = decideSocketFailure({
       intentional: intentionalCloseRef.current,
@@ -977,6 +1004,7 @@ export function useVoiceDuplexSession(options: Options) {
       startRaf()
       startMicTelemetry()
 
+      wsUrlRef.current = built.url
       const ws = new WebSocket(built.url)
       wsRef.current = ws
       // Per-attempt state. `intentionalCloseRef` must be cleared here: a previous
@@ -1084,10 +1112,17 @@ export function useVoiceDuplexSession(options: Options) {
       // error and close share one handler because which of them fires is not a
       // reliable signal (Node's ws and browsers disagree on unclean teardown), and
       // both can fire for a single failure. Intent decides, and this runs once.
-      ws.onerror = () => handlePipecatSocketFailure()
-      ws.onclose = () => {
+      ws.onerror = () => handlePipecatSocketFailure({ event: "error" })
+      ws.onclose = (ev) => {
         const wasIntentional = intentionalCloseRef.current
-        handlePipecatSocketFailure()
+        // The close code is the fact that separates the remaining candidate
+        // causes, and it exists nowhere else, so hand it to the diagnostic.
+        handlePipecatSocketFailure({
+          event: "close",
+          code: ev.code,
+          reason: ev.reason,
+          wasClean: ev.wasClean,
+        })
         // A completed turn is still worth reporting when the user hung up; on a
         // failure being retried it would end the turn mid-reconnect.
         if (
