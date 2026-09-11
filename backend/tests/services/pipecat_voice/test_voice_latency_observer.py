@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from types import SimpleNamespace
 
 import pytest
 from pipecat.frames.frames import (
@@ -27,10 +28,15 @@ from pipecat.processors.frame_processor import FrameDirection
 from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
 
 
+def _named_processor(label: str) -> SimpleNamespace:
+    """Pipecat observers read processor.name; None is not a processor."""
+    return SimpleNamespace(name=label)
+
+
 def _pushed(frame, *, direction: FrameDirection = FrameDirection.DOWNSTREAM) -> FramePushed:
     return FramePushed(
-        source=None,  # type: ignore[arg-type]
-        destination=None,  # type: ignore[arg-type]
+        source=_named_processor("test-source"),  # type: ignore[arg-type]
+        destination=_named_processor("test-destination"),  # type: ignore[arg-type]
         frame=frame,
         direction=direction,
         timestamp=0,
