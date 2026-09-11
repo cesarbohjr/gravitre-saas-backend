@@ -159,17 +159,18 @@ async def test_llm_failure_uses_blocked_register_not_raw_error():
 
 
 @pytest.mark.asyncio
-async def test_progress_kind_composes_from_real_stage_draft():
+async def test_progress_kind_keeps_honest_stage_draft():
+    draft = "I'm not executing anything. I'll show the plan for your approval."
     text = await compose_user_reply(
-        {"success": True, "data": {"stage": "ACT", "text": "I'm not executing anything."}},
+        {"success": True, "data": {"stage": "ACT", "text": draft}},
         kind="progress",
-        draft="I'm not executing anything. I'll show the plan for your approval.",
+        draft=draft,
         spoken=True,
         user_message="Show me the complete plan. Don't execute.",
         org_id="org",
         compose_fn=_compose_fn,
     )
-    assert "progress" in text.lower()
+    assert text == draft
     assert "Traceback" not in text
     assert "CognitiveTurnKernel" not in text
 

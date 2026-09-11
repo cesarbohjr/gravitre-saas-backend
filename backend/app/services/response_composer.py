@@ -44,7 +44,6 @@ MUST_COMPOSE_KINDS = frozenset(
         "shortcut",
         "correction",
         "request_failed",
-        "progress",
     }
 )
 
@@ -355,6 +354,8 @@ async def compose_user_reply(
     env = coerce_user_envelope(envelope or {"success": True, "data": {"text": draft or ""}})
     resolved_kind = kind or envelope_kind(env)
     must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
+    if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     used_model = False
     fallback = False
     text = (draft or "").strip()

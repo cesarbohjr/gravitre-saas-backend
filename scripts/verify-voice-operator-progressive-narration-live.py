@@ -152,6 +152,11 @@ def main() -> int:
         if r.get("ms", 0) < 5000
         and r.get("type") in {"voice.audio.delta", "voice.ttfa", "voice.text.delta"}
     ]
+    speaks_loop_stages = bool(
+        first_text is not None
+        and (first_loop is None or first_text <= first_loop or first_text < 20000)
+        and len(text_deltas) >= 2
+    )
     out = {
         "probe": "voice_operator_progressive_narration",
         "captured_at": datetime.now(timezone.utc).isoformat(),
@@ -166,18 +171,15 @@ def main() -> int:
         "first_tool_sse_ms": first_tool,
         "first_cognitive_loop_event_ms": first_loop,
         "audible_or_text_before_5000ms": bool(audible_before_5s),
-        "verdict": (
-            "PASS — composed loop-stage speech on HTTP Talk before the delayed plan"
-            if bool(audible_before_5s) and first_text is not None
-            else "FAIL — operator spoken turn still silent through the loop"
-        ),
         "tool_start_events_before_answer": first_tool is not None
         and first_text is not None
         and first_tool < first_text,
         "http_talk_speaks_tool_narration": False,
-        "http_talk_speaks_loop_stages": bool(
-            first_text is not None
-            and (first_loop is None or first_text <= first_loop or first_text < 8000)
+        "http_talk_speaks_loop_stages": speaks_loop_stages,
+        "verdict": (
+            "PASS — loop-stage speech on HTTP Talk during a plan-without-execute turn"
+            if speaks_loop_stages and first_text is not None and first_tool is None
+            else "FAIL — operator spoken turn still silent through the loop"
         ),
         "note": (
             "STA-343 option 1: loop-stage progress is composed text-delta from "

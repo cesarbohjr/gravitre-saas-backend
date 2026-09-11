@@ -1,111 +1,173 @@
 {
   "probe": "voice_operator_progressive_narration",
-  "verdict": "NOT ACTIVE on real operator-shaped spoken HTTP Talk turns",
-  "audible_incremental_speech_during_loop": false,
-  "silence_then_delayed_full_answer": true,
-  "captured_at": "2026-09-11T16:22:33.320669+00:00",
-  "git_sha": "f3b4af90cb05f14bc61647723792ecb9b4954e79",
-  "health_timestamp": "2026-09-11T16:21:47.314082+00:00",
+  "captured_at": "2026-09-11T19:11:39.230043+00:00",
+  "git_sha": "98dd068f4860524ee2851cb81d61e308e04082e2",
+  "health_timestamp": "2026-09-11T19:10:20.753551+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "conversation_id": "55be5d00-f1a4-46de-97d9-13cea89315e0",
+  "conversation_id": "0edc0e6a-2586-402a-9bc8-e41270f6a023",
   "http_status": 200,
-  "first_text_delta_ms": 34708,
-  "first_audio_ms": 34898,
+  "first_text_delta_ms": 18740,
+  "first_audio_ms": 18945,
+  "early_text_deltas": [
+    {
+      "ms": 18740,
+      "preview": "On it \u2014 checking your Google Ads connection now."
+    },
+    {
+      "ms": 27677,
+      "preview": "I\u2019m checking the available context first, and nothing will run without your approval."
+    },
+    {
+      "ms": 46331,
+      "preview": "I\u2019m putting the plan together now, and nothing has been executed."
+    },
+    {
+      "ms": 50179,
+      "preview": "I\u2019m not executing anything; I\u2019ll show the plan first for your approval."
+    },
+    {
+      "ms": 55185,
+      "preview": "I\u2019m checking the plan now; nothing has been executed."
+    },
+    {
+      "ms": 72512,
+      "preview": "Before anything runs, here's the plan: first I'll check your Google Ads ad groups, then pull your keywords. Both are rea"
+    }
+  ],
   "first_tool_sse_ms": null,
-  "first_cognitive_loop_event_ms": 16196,
+  "first_cognitive_loop_event_ms": 51308,
   "audible_or_text_before_5000ms": false,
+  "verdict": "FAIL \u2014 operator spoken turn still silent through the loop",
   "tool_start_events_before_answer": false,
   "http_talk_speaks_tool_narration": false,
-  "http_talk_speaks_loop_stages": false,
-  "note": "HTTP Talk TTS is driven only by text-delta. tool-input-available is forwarded as voice.sse.* metadata, not spoken. Progressive tool narration lives on the Pipecat bridge only. Operator-shaped plan-without-execute turns emit no tool SSE before the answer, so even Pipecat would stay silent through PERCEIVE/RETRIEVE/PLAN.",
-  "standing_open_item": "docs/delivery/standing-loop-voice-dead-air.json",
-  "linear": "https://linear.app/staqbot/issue/STA-343/open-six-stage-loop-vs-spoken-first-audio-operator-voice-dead-air",
+  "http_talk_speaks_loop_stages": true,
+  "note": "STA-343 option 1: loop-stage progress is composed text-delta from real PERCEIVE/RETRIEVE/PLAN/ACT/OBSERVE transitions, so HTTP Talk TTS can speak during a plan-without-execute turn that has no tool SSE.",
   "timeline_head": [
     {
-      "ms": 527,
+      "ms": 378,
       "type": "voice.session.accepted"
     },
     {
-      "ms": 876,
+      "ms": 740,
       "type": "voice.session.started"
     },
     {
-      "ms": 4822,
+      "ms": 18740,
+      "type": "voice.sse.text-start"
+    },
+    {
+      "ms": 18740,
+      "type": "voice.text.delta",
+      "delta_preview": "On it \u2014 checking your Google Ads connection now."
+    },
+    {
+      "ms": 18944,
+      "type": "voice.ttft"
+    },
+    {
+      "ms": 18945,
+      "type": "voice.ttfa",
+      "ttfa_ms": 18578
+    },
+    {
+      "ms": 19033,
+      "type": "voice.agent_speech.start"
+    },
+    {
+      "ms": 19337,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 22577,
       "type": "voice.intelligence"
     },
     {
-      "ms": 16196,
+      "ms": 27677,
+      "type": "voice.text.delta"
+    },
+    {
+      "ms": 28000,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 46331,
+      "type": "voice.text.delta"
+    },
+    {
+      "ms": 46670,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 50179,
+      "type": "voice.text.delta"
+    },
+    {
+      "ms": 51307,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 51308,
       "type": "voice.cognitive_loop",
       "fullLoop": false,
       "progress_steps": [
         "Completed: Classifying request",
         "Completed: Loading memory and knowledge",
         "Completed: Planning next actions",
-        "Preparing actions for Apollo, Google_ads, Hubspot",
+        "Completed: Preparing actions for Apollo, Google_ads, Hubspot",
         "Checking the result",
         "Learning from the outcome"
       ]
     },
     {
-      "ms": 22842,
+      "ms": 51315,
       "type": "voice.intelligence"
     },
     {
-      "ms": 23299,
+      "ms": 51596,
       "type": "voice.intelligence"
     },
     {
-      "ms": 34707,
-      "type": "voice.sse.text-start"
+      "ms": 55185,
+      "type": "voice.text.delta"
     },
     {
-      "ms": 34708,
-      "type": "voice.text.delta",
-      "delta_preview": "I have not executed anything. The plan is: first, check Google Ads access by lis"
-    },
-    {
-      "ms": 34898,
-      "type": "voice.ttft"
-    },
-    {
-      "ms": 34898,
-      "type": "voice.ttfa",
-      "ttfa_ms": 34364
-    },
-    {
-      "ms": 34917,
-      "type": "voice.agent_speech.start"
-    },
-    {
-      "ms": 35434,
+      "ms": 55657,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 37182,
+      "ms": 72512,
+      "type": "voice.text.delta"
+    },
+    {
+      "ms": 73118,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 41286,
+      "ms": 73224,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 41354,
+      "ms": 74005,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 74006,
       "type": "voice.sse.text-end"
     },
     {
-      "ms": 42740,
+      "ms": 74116,
       "type": "voice.turn.complete"
     },
     {
-      "ms": 42770,
+      "ms": 74122,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 42771,
+      "ms": 74123,
       "type": "voice.agent_speech.end"
     },
     {
-      "ms": 42771,
+      "ms": 74123,
       "type": "voice.session.ended"
     }
   ]
