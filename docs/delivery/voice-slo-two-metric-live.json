@@ -1,0 +1,337 @@
+{
+  "probe": "voice_slo_two_metric",
+  "captured_at": "2026-09-11T21:54:00.903023+00:00",
+  "git_sha": "c348d13df01dc1be3ed98f20d72beedce889309e",
+  "health_timestamp": "2026-09-11T21:50:47.119720+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "sample_n": 5,
+  "metric_a": {
+    "id": "time_to_first_honest_response",
+    "samples_ms": [
+      748,
+      491,
+      444,
+      529,
+      485
+    ],
+    "p50_ms": 491,
+    "p95_ms": 748,
+    "hard_target_p50_ms": 500,
+    "hard_target_p95_ms": 800,
+    "pass": true
+  },
+  "metric_b": {
+    "id": "operator_task_completion_latency",
+    "samples_ms": [
+      33559,
+      68682,
+      28338,
+      24559,
+      32194
+    ],
+    "p50_ms": 32194,
+    "p95_ms": 68682,
+    "target_p50_ms": 5000,
+    "target_p95_ms": 8000
+  },
+  "blended_voice_latency": null,
+  "turns": [
+    {
+      "http_status": 200,
+      "conversation_id": "8d3fb117-62d0-4e42-9c87-f0feef4c5ab3",
+      "metric_a_ms": 748,
+      "first_text_ms": 422,
+      "metric_b_ms": 33559,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 421,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 422,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 422,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 589,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 742,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 743,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 748,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 748,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 754,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 759,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 762,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 765,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "bf38f3d4-3792-4919-88aa-c747e13795a4",
+      "metric_a_ms": 491,
+      "first_text_ms": 331,
+      "metric_b_ms": 68682,
+      "first_tool_sse_ms": 29033,
+      "timeline_head": [
+        {
+          "ms": 330,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 331,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 331,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 335,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 483,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 485,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 491,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 493,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 497,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 500,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 507,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 507,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "21b79c18-f75d-4f17-b871-3d5589bd08ef",
+      "metric_a_ms": 444,
+      "first_text_ms": 306,
+      "metric_b_ms": 28338,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 305,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 305,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 306,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 312,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 428,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 432,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 444,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 445,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 445,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 448,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 460,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 460,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "96f70ca4-d840-40f1-9ed9-4dfa7c660a4f",
+      "metric_a_ms": 529,
+      "first_text_ms": 410,
+      "metric_b_ms": 24559,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 409,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 410,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 410,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 410,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 526,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 526,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 529,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 533,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 536,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 540,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 543,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 548,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "2ab899bf-bb7c-4b9c-96d4-d7a3496fd22a",
+      "metric_a_ms": 485,
+      "first_text_ms": 302,
+      "metric_b_ms": 32194,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 302,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 302,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 302,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 303,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 476,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 476,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 485,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 486,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 486,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 492,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 494,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 511,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    }
+  ],
+  "verdict": "PASS \u2014 Metric A P50 <500ms on operator-shaped spoken sample",
+  "note": "STA-343 narration is the Metric A speech mechanism. Metric B is completion of the same plan-without-execute operator turns. A genuine write still blocks on verification; this sample is plan-hold."
+}
