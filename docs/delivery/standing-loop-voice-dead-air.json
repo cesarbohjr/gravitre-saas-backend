@@ -1,12 +1,14 @@
 {
   "id": "six_stage_loop_vs_spoken_first_audio",
   "name": "Six-stage loop vs spoken first audio (operator voice dead air)",
-  "status": "UNRESOLVED",
+  "status": "CLOSED",
   "opened_at": "2026-09-11",
+  "closed_at": "2026-09-11",
+  "named_choice": "option_1_speak_honest_loop_stage_progress",
   "linear": {
     "id": "STA-343",
     "url": "https://linear.app/staqbot/issue/STA-343/open-six-stage-loop-vs-spoken-first-audio-operator-voice-dead-air",
-    "state": "Todo"
+    "state": "Done"
   },
   "commitments_in_tension": {
     "A_real_six_stage_loop": {
@@ -15,14 +17,14 @@
     },
     "B_spoken_progress": {
       "statement": "Spoken operator turns must not go silent for seconds. Voice SLO P50 TTFA <500ms / P95 <800ms. If the loop takes ~5s, the operator should hear real, honest, incremental speech during that wait.",
-      "today": "NOT MET"
+      "today": "OPTION 1 MET — incremental honest speech during the loop. Voice SLO P50<500 still NOT MET (TTFA 878ms on the closeout turn)."
     }
   },
   "progressive_narration": {
-    "what_it_is": "Tool-execution narration on the Pipecat bridge only (narrate_tool_started / narrate_tool_completed from real tool SSE). Never fabricated filler. Does not narrate PERCEIVE/RETRIEVE/PLAN.",
-    "http_talk": "TTS is driven only by text-delta. voice.cognitive_loop and tool-input-available are metadata, not speech.",
-    "operator_shaped_plan_turns": "Typically no tool SSE before the answer, so even Pipecat would stay silent through the think gap.",
-    "active_on_operator_spoken_http_talk": false
+    "what_it_is": "Tool-execution narration plus Cognitive Loop stage speech (PERCEIVE/RETRIEVE/PLAN/ACT/OBSERVE) emitted as composed text-delta from live loop transitions. LEARN is not spoken. Fast-path stays silent. Never fabricated filler.",
+    "http_talk": "TTS is driven by text-delta. Loop-stage drafts now yield text-delta, so HTTP Talk speaks them.",
+    "operator_shaped_plan_turns": "Speak ACT as not-executing and OBSERVE as plan-check even when there is no tool SSE.",
+    "active_on_operator_spoken_http_talk": true
   },
   "evidence": {
     "phase4_spoken_operator": {
@@ -43,6 +45,27 @@
       "first_cognitive_loop_event_ms": 16196,
       "audible_or_text_before_5000ms": false,
       "artifact": "docs/delivery/voice-operator-progressive-narration-live.json"
+    },
+    "option1_closeout_2026_09_11": {
+      "conversation_id": "a40662a1-990d-4f8a-b24d-1ad5a0e4e116",
+      "git_sha": "2b10da017fb3349586020891e51880650fecd875",
+      "health_timestamp": "2026-09-11T19:34:13.948316Z",
+      "first_text_delta_ms": 678,
+      "first_audio_ms": 878,
+      "first_tool_sse_ms": null,
+      "audible_or_text_before_5000ms": true,
+      "http_talk_speaks_loop_stages": true,
+      "cognitive.loop.completed": "2026-09-11T19:34:50.659697Z",
+      "composer.progress": [
+        "2026-09-11T19:34:19.155691Z",
+        "2026-09-11T19:34:21.316111Z",
+        "2026-09-11T19:34:27.980127Z",
+        "2026-09-11T19:34:29.108592Z",
+        "2026-09-11T19:34:31.168958Z"
+      ],
+      "artifact": "docs/delivery/voice-operator-progressive-narration-live.json",
+      "voice_slo_p50": false,
+      "note": "Plan-without-execute operator spoken turn. No tool SSE. Five loop-stage sentences then the plan."
     }
   },
   "close_only_after_named_choice": [
@@ -50,5 +73,9 @@
     "Make the six-stage loop fast enough that silence stays under the voice SLO.",
     "Accept dead air as the explicit cost of a real loop (written product decision)."
   ],
-  "resolution": null
+  "resolution": {
+    "choice": 1,
+    "closed_at": "2026-09-11T19:34:52.018581+00:00",
+    "git_sha": "2b10da017fb3349586020891e51880650fecd875"
+  }
 }

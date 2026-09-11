@@ -1,112 +1,112 @@
 {
   "probe": "voice_operator_progressive_narration",
-  "captured_at": "2026-09-11T19:11:39.230043+00:00",
-  "git_sha": "98dd068f4860524ee2851cb81d61e308e04082e2",
-  "health_timestamp": "2026-09-11T19:10:20.753551+00:00",
+  "captured_at": "2026-09-11T19:34:52.018581+00:00",
+  "git_sha": "2b10da017fb3349586020891e51880650fecd875",
+  "health_timestamp": "2026-09-11T19:34:13.948316+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "conversation_id": "0edc0e6a-2586-402a-9bc8-e41270f6a023",
+  "conversation_id": "a40662a1-990d-4f8a-b24d-1ad5a0e4e116",
   "http_status": 200,
-  "first_text_delta_ms": 18740,
-  "first_audio_ms": 18945,
+  "first_text_delta_ms": 678,
+  "first_audio_ms": 878,
   "early_text_deltas": [
     {
-      "ms": 18740,
-      "preview": "On it \u2014 checking your Google Ads connection now."
+      "ms": 678,
+      "preview": "I've classified this as a real request, so I'm running the full loop."
     },
     {
-      "ms": 27677,
-      "preview": "I\u2019m checking the available context first, and nothing will run without your approval."
+      "ms": 3266,
+      "preview": "I'm loading memory and knowledge now."
     },
     {
-      "ms": 46331,
-      "preview": "I\u2019m putting the plan together now, and nothing has been executed."
+      "ms": 10531,
+      "preview": "I'm putting the plan together, and I haven't executed it."
     },
     {
-      "ms": 50179,
-      "preview": "I\u2019m not executing anything; I\u2019ll show the plan first for your approval."
+      "ms": 10788,
+      "preview": "I'm not executing anything. I'll show the plan for your approval."
     },
     {
-      "ms": 55185,
-      "preview": "I\u2019m checking the plan now; nothing has been executed."
+      "ms": 12958,
+      "preview": "I'm checking the plan. Nothing has been executed."
     },
     {
-      "ms": 72512,
-      "preview": "Before anything runs, here's the plan: first I'll check your Google Ads ad groups, then pull your keywords. Both are rea"
+      "ms": 31141,
+      "preview": "Before anything runs, here's what I have planned \u2014 two read steps: first, list your Google Ads ad groups, then list your"
     }
   ],
   "first_tool_sse_ms": null,
-  "first_cognitive_loop_event_ms": 51308,
-  "audible_or_text_before_5000ms": false,
-  "verdict": "FAIL \u2014 operator spoken turn still silent through the loop",
+  "first_cognitive_loop_event_ms": 10802,
+  "audible_or_text_before_5000ms": true,
   "tool_start_events_before_answer": false,
   "http_talk_speaks_tool_narration": false,
   "http_talk_speaks_loop_stages": true,
+  "verdict": "PASS \u2014 loop-stage speech on HTTP Talk during a plan-without-execute turn",
   "note": "STA-343 option 1: loop-stage progress is composed text-delta from real PERCEIVE/RETRIEVE/PLAN/ACT/OBSERVE transitions, so HTTP Talk TTS can speak during a plan-without-execute turn that has no tool SSE.",
   "timeline_head": [
     {
-      "ms": 378,
+      "ms": 413,
       "type": "voice.session.accepted"
     },
     {
-      "ms": 740,
+      "ms": 671,
       "type": "voice.session.started"
     },
     {
-      "ms": 18740,
+      "ms": 678,
       "type": "voice.sse.text-start"
     },
     {
-      "ms": 18740,
+      "ms": 678,
       "type": "voice.text.delta",
-      "delta_preview": "On it \u2014 checking your Google Ads connection now."
+      "delta_preview": "I've classified this as a real request, so I'm running the full loop."
     },
     {
-      "ms": 18944,
+      "ms": 878,
       "type": "voice.ttft"
     },
     {
-      "ms": 18945,
+      "ms": 878,
       "type": "voice.ttfa",
-      "ttfa_ms": 18578
+      "ttfa_ms": 468
     },
     {
-      "ms": 19033,
+      "ms": 1026,
       "type": "voice.agent_speech.start"
     },
     {
-      "ms": 19337,
+      "ms": 1468,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 22577,
+      "ms": 3035,
       "type": "voice.intelligence"
     },
     {
-      "ms": 27677,
+      "ms": 3266,
       "type": "voice.text.delta"
     },
     {
-      "ms": 28000,
+      "ms": 3563,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 46331,
+      "ms": 10531,
       "type": "voice.text.delta"
     },
     {
-      "ms": 46670,
+      "ms": 10788,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 50179,
+      "ms": 10788,
       "type": "voice.text.delta"
     },
     {
-      "ms": 51307,
+      "ms": 10801,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 51308,
+      "ms": 10802,
       "type": "voice.cognitive_loop",
       "fullLoop": false,
       "progress_steps": [
@@ -119,55 +119,55 @@
       ]
     },
     {
-      "ms": 51315,
+      "ms": 12589,
       "type": "voice.intelligence"
     },
     {
-      "ms": 51596,
+      "ms": 12661,
       "type": "voice.intelligence"
     },
     {
-      "ms": 55185,
+      "ms": 12958,
       "type": "voice.text.delta"
     },
     {
-      "ms": 55657,
+      "ms": 13365,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 72512,
+      "ms": 31141,
       "type": "voice.text.delta"
     },
     {
-      "ms": 73118,
+      "ms": 32199,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 73224,
+      "ms": 32208,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 74005,
+      "ms": 32210,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 74006,
+      "ms": 32210,
       "type": "voice.sse.text-end"
     },
     {
-      "ms": 74116,
+      "ms": 32477,
       "type": "voice.turn.complete"
     },
     {
-      "ms": 74122,
+      "ms": 32496,
       "type": "voice.audio.delta"
     },
     {
-      "ms": 74123,
+      "ms": 32497,
       "type": "voice.agent_speech.end"
     },
     {
-      "ms": 74123,
+      "ms": 32497,
       "type": "voice.session.ended"
     }
   ]
