@@ -1,0 +1,168 @@
+{
+  "probe": "response_composer",
+  "started_at": "2026-09-11T15:16:01.830517+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "f3b4af90",
+  "phase0_inventory": {
+    "model_generated_prose": {
+      "path": "execute_task_streaming LIVE / ReAct text_delta",
+      "before": "streamed to UI as-is after finalize_user_facing_message (scrub keys only)",
+      "after": "Composer adopt_model_delta leak-filter; leaky finals recomposed after OBSERVE"
+    },
+    "gateway_shortcuts": {
+      "path": "intent_gateway candidate answer \u2192 sse_text_delta",
+      "before": "canned FAQ verbatim, never rewritten",
+      "after": "kind=shortcut always model-composed"
+    },
+    "tool_connector_errors": {
+      "path": "format_react_tool_output + bubble from observation.error",
+      "before": "format_tool_error_for_user templates and sometimes raw vendor strings",
+      "after": "envelope coerce; chip is non-leaking status; bubble composed"
+    },
+    "database_exceptions_timeouts": {
+      "path": "bare except Exception \u2192 str(exc) in registry / assistant sse_error(err)",
+      "before": "raw exception could reach errorText / bubble",
+      "after": "coerce_user_envelope + Composer; sse_error never forwards raw detail"
+    },
+    "validation_permission": {
+      "path": "ToolPermissionDeniedError / validation_error",
+      "before": "templated Module D copy via gravitre_voice.tool_error_template",
+      "after": "kind=permission|validation model-composed from envelope"
+    },
+    "internal_state_labels": {
+      "path": "sanitize_user_activity_label / answer_explanation",
+      "before": "status bar; kernel-info leak class already scrubbed",
+      "after": "unchanged status-bar sanitizer; bubble owned by Composer"
+    },
+    "voice_tts_errors": {
+      "path": "voice_session_service voice.error detail=str(exc)",
+      "before": "raw TTS exception text up to 300 chars",
+      "after": "TTS_SAFE_ERROR composed/blocked-register copy, never str(exc)"
+    }
+  },
+  "envelope": {
+    "format": "{success, data, error_code, error_detail}",
+    "reuses": "NormalizedResult.error_message aliased as error_detail"
+  },
+  "git_sha": "f3b4af90cb05f14bc61647723792ecb9b4954e79",
+  "health_timestamp": "2026-09-11T15:16:03.418967+00:00",
+  "typed_tool_failure": {
+    "http_status": 200,
+    "conversation_id": "83918eaa-8f89-4c5b-9964-2ab8333d5c35",
+    "wall_ms": 30182,
+    "parsed": {
+      "assistant": "I can\u2019t do that yet. Slack isn\u2019t listed as Connected for this org, and I don\u2019t have a Slack post tool here.\n\nIf you want, I can help you verify the channel or connect Slack first.",
+      "error_texts": [],
+      "first_delta_ms": 0,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 36,
+      "has_question": false
+    },
+    "composer_audit": [],
+    "audit_actions": []
+  },
+  "typed_permission": {
+    "http_status": 200,
+    "conversation_id": "292be521-0be2-468d-800b-3adb19286379",
+    "wall_ms": 32847,
+    "parsed": {
+      "assistant": "I can\u2019t delete every HubSpot contact without explicit approval.\n\nIf you really want to proceed, reply **yes** and I\u2019ll queue the HubSpot deletion step for approval before anything is removed.",
+      "error_texts": [],
+      "first_delta_ms": 0,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 30,
+      "has_question": false
+    },
+    "composer_audit": [],
+    "audit_actions": []
+  },
+  "typed_timeout": {
+    "http_status": 200,
+    "conversation_id": "3a4700a6-8c92-4e23-84b7-2a3a070a422a",
+    "wall_ms": 82085,
+    "parsed": {
+      "assistant": "A few things worth flagging before we go further:\n\n**What I can actually pull** \u2014 Google Ads doesn't expose a true \"search-term report\" through the standard keywords and campaigns endpoints. Search term data (the actual queries that triggered your ads) lives in a separate search terms view, and the tools I have here cover keywords and campaigns \u2014 not that granular query-level data.\n\n**The 10-year window** \u2014 Google Ads only retains search term data for roughly the past 4\u20135 years at most, so a 10-year pull isn't possible regardless of tooling.\n\n**\"Every segment and every metric\"** \u2014 that's not a safe instruction to run literally. Some metric/segment combinations are mutually exclusive in the API and will error; others produce enormous result sets that aren't useful as a flat list.\n\nHere's what I'd suggest instead: tell me what you're actually trying to answer \u2014 performance by query, wasted spend, match type analysis, something else \u2014 and I'll pull the right data in a usable shape. What's the underlying question?",
+      "error_texts": [],
+      "first_delta_ms": 1,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 168,
+      "has_question": true
+    },
+    "composer_audit": [],
+    "audit_actions": []
+  },
+  "typed_ambiguous": {
+    "http_status": 200,
+    "conversation_id": "c2652e2c-cc56-4c8f-924d-5dca9188dda4",
+    "wall_ms": 11163,
+    "parsed": {
+      "assistant": "What are we trying to fix first: organic traffic growth, a ranking drop, or a content calendar \u2014 and which site/market?",
+      "error_texts": [],
+      "first_delta_ms": 0,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 21,
+      "has_question": true
+    },
+    "composer_audit": [],
+    "audit_actions": []
+  },
+  "spoken_ambiguous": {
+    "http_status": 200,
+    "conversation_id": "af32614e-2f9f-4fb7-865a-bd515a9a695f",
+    "wall_ms": 6184,
+    "parsed": {
+      "assistant": "And which site or market?",
+      "error_texts": [],
+      "first_delta_ms": 0,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 5,
+      "has_question": true
+    },
+    "composer_audit": [
+      {
+        "action": "response.composer.completed",
+        "created_at": "2026-09-11T15:18:54.011041+00:00",
+        "metadata": {
+          "kind": "shortcut",
+          "success": true,
+          "fallback": false,
+          "errorCode": null,
+          "usedModel": true
+        },
+        "resource_id": "af32614e-2f9f-4fb7-865a-bd515a9a695f"
+      }
+    ],
+    "audit_actions": [
+      "response.composer.completed"
+    ]
+  },
+  "spoken_tool_failure": {
+    "http_status": 200,
+    "conversation_id": "4624539e-c90d-45a1-8a12-6b03e710b54a",
+    "wall_ms": 21685,
+    "parsed": {
+      "assistant": "I can\u2019t do that. Slack isn\u2019t connected in the data I have for this turn, and this would be a write anyway, so I need the connector confirmed and approval if required.",
+      "error_texts": [],
+      "first_delta_ms": 0,
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 32,
+      "has_question": false
+    },
+    "composer_audit": [],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "unified_turn.live.completed",
+      "evidence.sufficiency.assessed",
+      "memory.recalled"
+    ]
+  },
+  "verdict": "PASS \u2014 no raw backend markers in user-facing text; Composer audits recorded; typed SEO asked a question=True; spoken SEO asked a question=True",
+  "finished_at": "2026-09-11T15:19:19.060927+00:00"
+}
