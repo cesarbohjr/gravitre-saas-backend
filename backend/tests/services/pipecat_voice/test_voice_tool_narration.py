@@ -1,11 +1,12 @@
 """Unit tests for the Phase 2 (conversational-realism) narration helpers."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.services.pipecat_voice.voice_tool_narration import (
     is_write_shaped_tool_name,
     narrate_connector_write_executing,
+    narrate_loop_stage,
     narrate_tool_completed,
     narrate_tool_started,
     will_execute_staged_connector_write,
@@ -249,3 +250,23 @@ class TestNarrateConnectorWriteExecuting:
         out = narrate_connector_write_executing("Zendesk Ticket Escalation")
         assert out == "One moment, I'm doing that now."
         assert "I'm that now" not in out
+
+
+class TestNarrateLoopStage:
+    def test_plan_without_execute_act_does_not_claim_execution(self) -> None:
+        from app.services.cognitive_loop_controller import CognitiveLoopController
+        from app.services.intent_gateway import GatewayDecision
+
+        ctl = CognitiveLoopController(settings=MagicMock())
+        trace = ctl.begin(
+            message="Show me the complete plan. Don't execute without my approval.",
+            spoken_mode=True,
+        )
+        ctl.mark_perceive(
+            trace,
+            GatewayDecision(action="fallthrough", reason="operator_task_shaped"),
+        )
+        spoken = narrate_loop_stage("ACT", trace=trace)
+        assert spoken is not None
+        assert "not executing" in spoken.lower()
+        assert narrate_loop_stage("LEARN", trace=trace) is None

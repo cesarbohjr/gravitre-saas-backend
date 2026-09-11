@@ -44,10 +44,11 @@ Relationship to the spoken prompt (resolved 2026-09-08). Register 5b in
 me check" — a directive this module then violated from outside the model, where
 no prompt can reach it. Production voice turns audibly said "Let me check your
 knowledge base. Found 5." while the prompt banned exactly that phrase. The split
-is now explicit: **the runtime owns progress narration for real tool calls (this
-module); the model owns the answer and must not narrate steps at all.** Register
-5b states that division instead of contradicting it — if the phrasing here
-changes, update that directive too.
+is now explicit: **the runtime owns progress narration for real tool calls and
+for real Cognitive Loop stage transitions (this module); the model owns the
+answer and must not narrate steps at all.** Register 5b states that division
+instead of contradicting it — if the phrasing here changes, update that
+directive too.
 """
 from __future__ import annotations
 
@@ -323,3 +324,20 @@ def narrate_connector_write_executing(label: str | None) -> str:
     if text and is_write_shaped_tool_name(text):
         return f"One moment, I'm {_gerund_phrase(text)} now."
     return "One moment, I'm doing that now."
+
+
+def narrate_loop_stage(
+    stage: str,
+    *,
+    trace: Any = None,
+    extras: dict[str, Any] | None = None,
+) -> str | None:
+    """Honest spoken sentence for a real Cognitive Loop stage transition.
+
+    Same product-truth rule as tool narration: only speak from live loop
+    state. LEARN is not spoken. Fast-path turns stay silent. Callers must
+    not substitute fabricated filler when this returns None.
+    """
+    from app.services.cognitive_loop_controller import speakable_loop_stage
+
+    return speakable_loop_stage(stage, trace=trace, extras=extras)

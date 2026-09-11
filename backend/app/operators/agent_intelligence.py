@@ -1716,6 +1716,52 @@ class AgentIntelligence:
                 close=close,
             )
 
+        spoken_progress_text_id: str | None = None
+        spoken_progress_text = ""
+        spoken_progress_stages: set[str] = set()
+
+        async def _loop_stage_speech(
+            stage: str, *, extras: dict[str, Any] | None = None
+        ) -> list[AssistantStreamEvent]:
+            nonlocal spoken_progress_text_id, spoken_progress_text
+            if not spoken_mode or loop_trace.fast_path:
+                return []
+            name = str(stage or "").strip().upper()
+            if name in spoken_progress_stages:
+                return []
+            from app.services.pipecat_voice.voice_tool_narration import narrate_loop_stage
+
+            draft = narrate_loop_stage(stage, trace=loop_trace, extras=extras)
+            if not draft:
+                return []
+            spoken_progress_stages.add(name)
+            packed = await compose_reply_events(
+                {
+                    "success": True,
+                    "data": {"stage": stage, "text": draft},
+                    "action": f"loop.{stage.lower()}",
+                },
+                kind="progress",
+                draft=draft,
+                spoken=True,
+                history=conversation_history if isinstance(conversation_history, list) else None,
+                user_message=task_text,
+                settings=active_settings,
+                org_id=org_id,
+                client=client,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                existing_text_id=spoken_progress_text_id,
+                close=False,
+            )
+            spoken_progress_text_id = packed.text_id
+            piece = (packed.text or "").strip()
+            if piece and piece[-1] not in ".!?":
+                piece += "."
+            if piece:
+                spoken_progress_text = f"{spoken_progress_text}{piece} "
+            return packed.events
+
         from app.services.composer_failure_triggers import (
             resolve_composer_failure_probe,
             run_composer_failure_probe,
@@ -1835,6 +1881,13 @@ class AgentIntelligence:
                 proactive_suggestions=list((gateway.extras or {}).get("suggestions") or []),
             )
             return
+
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+        _plan_hold = is_plan_without_execute_turn(task_text)
+        if spoken_mode and not loop_trace.fast_path:
+            for ev in await _loop_stage_speech("PERCEIVE"):
+                yield ev
 
         # Spoken non-write: use connector snapshot cache (force_live=False) to avoid
         # ~0.6–1.2s live auth round-trips on every simple Talk turn. Write-shaped
@@ -2531,6 +2584,10 @@ class AgentIntelligence:
                     )
                 except Exception:  # noqa: BLE001 — logging must never break the turn.
                     pass
+            loop_controller.mark_stage_entered(loop_trace, "RETRIEVE")
+            if spoken_mode and not loop_trace.fast_path:
+                for ev in await _loop_stage_speech("RETRIEVE"):
+                    yield ev
             cognitive_request = CognitiveTurnRequest(
                 org_id=org_id,
                 user_id=user_id,
@@ -2553,6 +2610,18 @@ class AgentIntelligence:
                 cognitive_request
             )
             loop_controller.attach_retrieve_and_plan(loop_trace, cognitive_ctx)
+            if spoken_mode and not loop_trace.fast_path:
+                for ev in await _loop_stage_speech(
+                    "PLAN", extras={"plan_without_execute": _plan_hold}
+                ):
+                    yield ev
+                loop_controller.mark_stage_entered(
+                    loop_trace, "ACT", extras={"plan_without_execute": _plan_hold}
+                )
+                for ev in await _loop_stage_speech(
+                    "ACT", extras={"plan_without_execute": _plan_hold}
+                ):
+                    yield ev
             _mark("kernel_pre_act")
             if isinstance(task_state, dict):
                 task_state = {
@@ -2724,7 +2793,7 @@ class AgentIntelligence:
 
             live_turn: dict[str, Any] | None
             streamed_voice_text = False
-            text_id: str | None = None
+            text_id: str | None = spoken_progress_text_id
             if spoken_mode and delta_queue is not None:
                 live_task = asyncio.create_task(_run_unified_live())
                 while True:
@@ -2797,11 +2866,29 @@ class AgentIntelligence:
                         },
                     },
                 )
+                if spoken_mode and not streamed_voice_text:
+                    pending_live = (
+                        live_turn.get("pending_task")
+                        if isinstance(live_turn.get("pending_task"), dict)
+                        else None
+                    )
+                    for ev in await _loop_stage_speech(
+                        "OBSERVE",
+                        extras={
+                            "plan_without_execute": _plan_hold,
+                            "pending_approval": bool(pending_live),
+                        },
+                    ):
+                        yield ev
                 if not streamed_voice_text:
                     live_kind = "clarify" if dialogue_mode in {"clarify", "confirm"} else "success"
                     if looks_like_raw_backend(response_text):
                         live_kind = "error"
-                    packed = await _composed_reply(response_text, kind=live_kind)
+                    packed = await _composed_reply(
+                        response_text,
+                        kind=live_kind,
+                        existing_text_id=spoken_progress_text_id,
+                    )
                     response_text = packed.text
                     text_id = packed.text_id
                     for ev in packed.events:
@@ -3616,13 +3703,14 @@ class AgentIntelligence:
             else None
         )
         # Phase 5 — acknowledge corrections before plan/tools so the user hears it first.
-        text_id: str | None = None
-        streamed_content = ""
-        full_content_parts: list[str] = []
+        text_id: str | None = spoken_progress_text_id
+        streamed_content = spoken_progress_text
+        full_content_parts: list[str] = [spoken_progress_text] if spoken_progress_text else []
         if correction_ack:
             packed = await _composed_reply(
                 correction_ack + "\n\n",
                 kind="correction",
+                existing_text_id=spoken_progress_text_id,
                 close=False,
             )
             text_id = packed.text_id
@@ -4519,6 +4607,15 @@ class AgentIntelligence:
         pending_for_loop = None
         if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):
             pending_for_loop = task_state.get("pending_task")
+        if spoken_mode and not loop_trace.fast_path:
+            for ev in await _loop_stage_speech(
+                "OBSERVE",
+                extras={
+                    "plan_without_execute": _plan_hold,
+                    "pending_approval": bool(pending_for_loop),
+                },
+            ):
+                yield ev
         await _complete_cognitive_loop(
             pending_task=pending_for_loop,
             tool_results=tool_results if isinstance(tool_results, list) else None,

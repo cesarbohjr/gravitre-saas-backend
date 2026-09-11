@@ -233,7 +233,12 @@ def _propose_phrase_bank(ctx: GatewayContext) -> CandidateVerdict | None:
     if decision is None or decision.shape != "conversational":
         return None
     category = str(decision.category or "")
-    reply = _GREETING_BANK.get(category)
+    if category == "small_talk":
+        category = "greeting"
+    if category == "meta_capability":
+        reply = "I can operate the tools connected in this workspace. Tell me the specific job."
+    else:
+        reply = _GREETING_BANK.get(category)
     if not reply:
         return None
     if len((ctx.message or "").strip()) > 120:

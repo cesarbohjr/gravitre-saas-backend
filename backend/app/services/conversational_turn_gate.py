@@ -20,7 +20,8 @@ TurnShape = Literal["conversational", "task_shaped", "mixed"]
 
 _GREETING_RE = re.compile(
     r"(?i)^\s*("
-    r"(?:hi|hey|hello|howdy|yo|sup|hiya)(?:\s*,?\s*)?"
+    r"(?:hi|hey|hello|howdy|yo|sup|hiya)(?:\s+there)?"
+    r"(?:\s*,?\s*)?"
     r"(?:how'?s\s+it\s+going|how\s+are\s+you|how\s+are\s+things|what'?s\s+up)?"
     r"|"
     r"good\s+(morning|afternoon|evening)|"

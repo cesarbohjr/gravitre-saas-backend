@@ -25,6 +25,7 @@ META_PHRASES = [
     "what tools do you have access to?",
     "how can you help me?",
     "who are you?",
+    "what can you help with in one sentence",
 ]
 
 DOMAIN_PHRASES = [

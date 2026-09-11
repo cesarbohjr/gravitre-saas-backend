@@ -156,3 +156,37 @@ async def test_llm_failure_uses_blocked_register_not_raw_error():
     assert "Traceback" not in text
     assert "RuntimeError" not in text
     assert text.strip()
+
+
+@pytest.mark.asyncio
+async def test_progress_kind_composes_from_real_stage_draft():
+    text = await compose_user_reply(
+        {"success": True, "data": {"stage": "ACT", "text": "I'm not executing anything."}},
+        kind="progress",
+        draft="I'm not executing anything. I'll show the plan for your approval.",
+        spoken=True,
+        user_message="Show me the complete plan. Don't execute.",
+        org_id="org",
+        compose_fn=_compose_fn,
+    )
+    assert "progress" in text.lower()
+    assert "Traceback" not in text
+    assert "CognitiveTurnKernel" not in text
+
+
+@pytest.mark.asyncio
+async def test_progress_kind_falls_back_to_honest_draft_when_llm_fails():
+    async def boom(**kwargs):
+        raise RuntimeError("composer down")
+
+    draft = "I'm loading memory and knowledge now."
+    text = await compose_user_reply(
+        {"success": True, "data": {"stage": "RETRIEVE", "text": draft}},
+        kind="progress",
+        draft=draft,
+        spoken=True,
+        user_message="check HubSpot",
+        org_id="org",
+        compose_fn=boom,
+    )
+    assert text == draft

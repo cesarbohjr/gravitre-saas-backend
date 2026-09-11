@@ -85,7 +85,22 @@ async def test_below_threshold_always_falls_through(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
-async def test_nav_faq_shortcuts_identically_for_text_and_voice() -> None:
+async def test_hello_there_and_capability_one_liner_shortcut_at_threshold() -> None:
+    """Calibration: these are high-confidence social/meta, not a reason to lower 0.92."""
+    hello = await evaluate_intent_gateway(GatewayContext(message="hello there", org_id="org"))
+    capability = await evaluate_intent_gateway(
+        GatewayContext(message="what can you help with in one sentence", org_id="org")
+    )
+    assert hello.action == "shortcut"
+    assert hello.candidate_id == "phrase_bank"
+    assert hello.confidence is not None and hello.confidence >= INTENT_GATEWAY_THRESHOLD
+    assert capability.action == "shortcut"
+    assert capability.candidate_id in {"phrase_bank", "meta_capability"}
+    assert capability.confidence is not None and capability.confidence >= INTENT_GATEWAY_THRESHOLD
+    job = await evaluate_intent_gateway(
+        GatewayContext(message="What can you help with for our SEO campaign this quarter?", org_id="org")
+    )
+    assert job.action == "fallthrough"
     typed = await evaluate_intent_gateway(GatewayContext(message=NAV_FAQ, spoken_mode=False, org_id="org"))
     spoken = await evaluate_intent_gateway(GatewayContext(message=NAV_FAQ, spoken_mode=True, org_id="org"))
     assert typed.action == "shortcut"

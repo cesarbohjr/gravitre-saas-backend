@@ -159,3 +159,25 @@ def test_planner_injects_explainable_signal_step():
     assert "prioritize_scored_intelligence" in ids
     assert plan["signal_scoring"]["explainable"] is True
     assert plan["signal_scoring"]["priority_count"] == 1
+
+
+def test_speakable_loop_stage_is_honest_and_silent_on_fast_path():
+    from app.services.cognitive_loop_controller import speakable_loop_stage
+
+    ctl = CognitiveLoopController(settings=MagicMock())
+    hold = ctl.begin(
+        message="Check that my Google Ads account is actually connected, and show me the complete plan before you execute anything. Don't execute without my approval.",
+        spoken_mode=True,
+    )
+    ctl.mark_perceive(hold, _gateway())
+    assert "not executing" in (speakable_loop_stage("ACT", trace=hold) or "").lower()
+    assert "haven't executed" in (speakable_loop_stage("PLAN", trace=hold) or "").lower()
+    assert speakable_loop_stage("LEARN", trace=hold) is None
+    fast = ctl.begin(message="thanks", spoken_mode=True)
+    ctl.mark_perceive(
+        fast,
+        _gateway(action="shortcut", reason="social", candidate="phrase_bank", confidence=0.93),
+    )
+    assert speakable_loop_stage("PERCEIVE", trace=fast) is None
+    ctl.mark_stage_entered(hold, "RETRIEVE")
+    assert hold.stage_map()["RETRIEVE"].evidence.get("entered") is True

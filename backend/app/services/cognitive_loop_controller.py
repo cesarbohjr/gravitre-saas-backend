@@ -21,6 +21,7 @@ never take that path and must show all six stages.
 """
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -52,6 +53,20 @@ USER_STAGE_LABELS: dict[str, str] = {
 AUDIT_ACTION_LOOP_COMPLETED = "cognitive.loop.completed"
 SKIP_GATEWAY_FAST_PATH = "intent_gateway_fast_path"
 KERNEL_RETRIEVE_STAGES = frozenset({"RETRIEVE", "RECALL", "KNOWLEDGE"})
+SPEAKABLE_LOOP_STAGES = ("PERCEIVE", "RETRIEVE", "PLAN", "ACT", "OBSERVE")
+
+_PLAN_WITHOUT_EXECUTE_RE = re.compile(
+    r"(?i)don'?t\s+execute|do\s+not\s+execute|without\s+my\s+approval|"
+    r"show\s+me\s+the\s+complete\s+plan|show\s+the\s+plan\s+before"
+)
+
+_SPOKEN_STAGE_DRAFTS: dict[str, str] = {
+    "PERCEIVE": "I've classified this as a real request, so I'm running the full loop.",
+    "RETRIEVE": "I'm loading memory and knowledge now.",
+    "PLAN": "I'm putting the plan together.",
+    "ACT": "I'm preparing the next actions.",
+    "OBSERVE": "I'm checking that against what just happened.",
+}
 
 
 @dataclass
@@ -156,6 +171,42 @@ class CognitiveLoopTrace:
         }
 
 
+def is_plan_without_execute_turn(message: str) -> bool:
+    """True when the user asked for a plan and explicitly withheld execution."""
+    return bool(_PLAN_WITHOUT_EXECUTE_RE.search(message or ""))
+
+
+def speakable_loop_stage(
+    stage: str,
+    *,
+    trace: CognitiveLoopTrace | None = None,
+    extras: dict[str, Any] | None = None,
+) -> str | None:
+    """Honest spoken draft for a real loop-stage transition.
+
+    Returns None when there is nothing real to say (fast-path, LEARN, unknown
+    stage). Callers must stay silent rather than invent filler.
+    """
+    name = str(stage or "").strip().upper()
+    if name not in SPEAKABLE_LOOP_STAGES:
+        return None
+    if trace is not None and trace.fast_path:
+        return None
+    extras = extras or {}
+    plan_hold = bool(
+        extras.get("plan_without_execute")
+        or extras.get("pending_approval")
+        or (trace is not None and is_plan_without_execute_turn(trace.message))
+    )
+    if name == "ACT" and plan_hold:
+        return "I'm not executing anything. I'll show the plan for your approval."
+    if name == "PLAN" and plan_hold:
+        return "I'm putting the plan together, and I haven't executed it."
+    if name == "OBSERVE" and plan_hold:
+        return "I'm checking the plan. Nothing has been executed."
+    return _SPOKEN_STAGE_DRAFTS.get(name)
+
+
 def _elapsed_ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000.0, 1)
 
@@ -221,6 +272,22 @@ class CognitiveLoopController:
             return trace
         trace.record("PERCEIVE", ok=True, ms=ms, evidence=evidence)
         return trace
+
+    def mark_stage_entered(
+        self,
+        trace: CognitiveLoopTrace,
+        stage: str,
+        *,
+        extras: dict[str, Any] | None = None,
+    ) -> LoopStageRecord | None:
+        """Record that this stage is now running. Completing evidence may overwrite later."""
+        if trace.fast_path:
+            return None
+        name = str(stage or "").strip().upper()
+        if name not in LOOP_STAGES:
+            return None
+        evidence = {"entered": True, **dict(extras or {})}
+        return trace.record(stage=name, ok=True, evidence=evidence)
 
     def reasoning_depth_for(self, *, message: str, spoken_mode: bool, current: str | None = None) -> str:
         """Operator-task-shaped turns always keep full retrieval/planning depth."""

@@ -170,20 +170,32 @@ async def generate_conversational_reply(
 
 # Meta / capability questions — answer from agent config only; never retrieve.
 # Prefer full-message match so "what can you help with our SEO campaign" stays task-shaped.
-_META_CAPABILITY_FULL = (
-    r"(?i)^\s*("
-    r"what can you do"
-    r"|what can you help(?:\s+me|\s+us)?(?:\s+with)?"
-    r"|what (can|do) you help (me|us)?\s*(with)?"
-    r"|how can you help(?:\s+me|\s+us)?"
-    r"|what are you able to do"
-    r"|what tools? do you (have|have access to|support|offer)"
-    r"|what('?s| is) your (capability|capabilities|skillset|skills)"
-    r"|are you (an )?(human or )?ai"
-    r"|who are you"
-    r"|what are you"
-    r"|human or ai"
-    r")\s*\??\s*$"
+# Trailing manner/length asks stay meta. A following job object ("our SEO
+# campaign") must still fail the full-message match.
+_META_MANNER_TAIL = (
+    r"(?:\s+(?:in\s+(?:a\s+|one\s+)?(?:single\s+)?sentence|briefly|quickly|"
+    r"in\s+a\s+nutshell|in\s+plain\s+(?:english|words)))?"
+)
+
+_META_CAPABILITY_FULL = "".join(
+    (
+        r"(?i)^\s*(",
+        r"what can you do",
+        r"|what can you help(?:\s+me|\s+us)?(?:\s+with)?",
+        _META_MANNER_TAIL,
+        r"|what (can|do) you help (me|us)?\s*(with)?",
+        _META_MANNER_TAIL,
+        r"|how can you help(?:\s+me|\s+us)?",
+        _META_MANNER_TAIL,
+        r"|what are you able to do",
+        r"|what tools? do you (have|have access to|support|offer)",
+        r"|what('?s| is) your (capability|capabilities|skillset|skills)",
+        r"|are you (an )?(human or )?ai",
+        r"|who are you",
+        r"|what are you",
+        r"|human or ai",
+        r")\s*\??\s*$",
+    )
 )
 
 

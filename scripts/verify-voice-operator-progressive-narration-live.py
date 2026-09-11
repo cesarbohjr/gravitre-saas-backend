@@ -90,6 +90,7 @@ def main() -> int:
     first_tool = None
     first_loop = None
     narration_like = []
+    text_deltas = []
     with httpx.Client(timeout=240) as client:
         create = client.post(
             f"{BASE}/api/conversations",
@@ -131,9 +132,12 @@ def main() -> int:
                     first_loop = ms
                     row["fullLoop"] = (ev.get("cognitive_loop") or {}).get("fullLoop")
                     row["progress_steps"] = ev.get("progress_steps")
-                if et in {"voice.text.delta", "text-delta"} and first_text is None:
-                    first_text = ms
-                    row["delta_preview"] = str(ev.get("delta") or "")[:80]
+                if et in {"voice.text.delta", "text-delta"}:
+                    preview = str(ev.get("delta") or "")[:120]
+                    text_deltas.append({"ms": ms, "preview": preview})
+                    if first_text is None:
+                        first_text = ms
+                        row["delta_preview"] = preview
                 if et in {"voice.audio.delta", "voice.ttfa"} and first_audio is None:
                     first_audio = ms
                     if et == "voice.ttfa":
@@ -158,18 +162,27 @@ def main() -> int:
         "http_status": status,
         "first_text_delta_ms": first_text,
         "first_audio_ms": first_audio,
+        "early_text_deltas": text_deltas[:8],
         "first_tool_sse_ms": first_tool,
         "first_cognitive_loop_event_ms": first_loop,
         "audible_or_text_before_5000ms": bool(audible_before_5s),
+        "verdict": (
+            "PASS — composed loop-stage speech on HTTP Talk before the delayed plan"
+            if bool(audible_before_5s) and first_text is not None
+            else "FAIL — operator spoken turn still silent through the loop"
+        ),
         "tool_start_events_before_answer": first_tool is not None
         and first_text is not None
         and first_tool < first_text,
         "http_talk_speaks_tool_narration": False,
-        "http_talk_speaks_loop_stages": False,
+        "http_talk_speaks_loop_stages": bool(
+            first_text is not None
+            and (first_loop is None or first_text <= first_loop or first_text < 8000)
+        ),
         "note": (
-            "HTTP Talk TTS is driven only by text-delta. tool-input-available is "
-            "forwarded as voice.sse.* metadata, not spoken. Progressive tool "
-            "narration lives on the Pipecat bridge only."
+            "STA-343 option 1: loop-stage progress is composed text-delta from "
+            "real PERCEIVE/RETRIEVE/PLAN/ACT/OBSERVE transitions, so HTTP Talk TTS "
+            "can speak during a plan-without-execute turn that has no tool SSE."
         ),
         "timeline_head": timeline[:40],
     }
@@ -178,7 +191,7 @@ def main() -> int:
     print("timeline_head:")
     for row in timeline[:25]:
         print(f"  +{row['ms']:5d}ms  {row['type']}")
-    return 0
+    return 0 if str(out.get("verdict") or "").startswith("PASS") else 1
 
 
 if __name__ == "__main__":

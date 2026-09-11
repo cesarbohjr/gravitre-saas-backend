@@ -44,6 +44,7 @@ MUST_COMPOSE_KINDS = frozenset(
         "shortcut",
         "correction",
         "request_failed",
+        "progress",
     }
 )
 
@@ -59,6 +60,7 @@ _FALLBACK_BY_KIND: dict[str, str] = {
     "shortcut": "Here's the short version — tell me what you want to do next.",
     "correction": "Got it, I'll use that from here.",
     "canned": "I have that. What should we do with it?",
+    "progress": "I'm working through this now.",
     "success": "Done.",
 }
 
@@ -259,6 +261,20 @@ def _user_prompt(
         draft_note = f"\nDraft to rewrite (may be templated — do not copy robotically):\n{draft[:600]}\n"
     elif draft and looks_like_raw_backend(draft):
         draft_note = "\nA raw backend payload was suppressed. Speak from the envelope only.\n"
+    if kind == "progress":
+        stage = ""
+        data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
+        stage = str((data or {}).get("stage") or envelope.get("action") or "").strip()
+        return (
+            f"Kind: progress\n"
+            f"Loop stage that actually started: {stage or 'unknown'}\n"
+            f"User said: {(user_message or '')[:500]}\n"
+            f"Envelope: {safe}\n"
+            f"{draft_note}"
+            "Write ONE short spoken sentence for this real loop stage. "
+            "Do not invent extra work, tools, or execution. "
+            "Do not say you executed anything unless the envelope says so. No preamble."
+        )
     return (
         f"Kind: {kind}\n"
         f"User said: {(user_message or '')[:500]}\n"
@@ -358,6 +374,10 @@ async def compose_user_reply(
         if composed and not looks_like_raw_backend(composed):
             text = composed
             used_model = True
+        elif resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
+            text = draft.strip()
+            fallback = True
+            used_model = False
         else:
             text = _fallback_text(resolved_kind)
             fallback = True
@@ -396,7 +416,10 @@ async def compose_user_reply(
         text = re.sub(rf"\b{re.escape(code)}\b", "", text)
         text = re.sub(r"\s{2,}", " ", text).strip()
     if looks_like_raw_backend(text) or not text:
-        text = _fallback_text(resolved_kind)
+        if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
+            text = draft.strip()
+        else:
+            text = _fallback_text(resolved_kind)
         fallback = True
 
     _emit_composer_audit(
