@@ -1,6 +1,6 @@
 {
   "probe": "voice_composer_and_socket",
-  "started_at": "2026-09-11T22:37:58.408228+00:00",
+  "started_at": "2026-09-11T23:48:54.593509+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "utterance": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
@@ -8,9 +8,9 @@
     "cognitive_llm raw-exception leak on the voice path (3e621c07)",
     "Phase B real WS URL + close code"
   ],
-  "git_sha": "2cfc14fcc1569d36238be4ac0ffbab4b053635ef",
-  "health_timestamp": "2026-09-11T22:37:59.411897+00:00",
-  "speech_bytes": 144150,
+  "git_sha": "d10b03e4665f434cd695a32bae2f49d5cc405f6c",
+  "health_timestamp": "2026-09-11T23:48:56.584626+00:00",
+  "speech_bytes": 147122,
   "healthy_session": {
     "ws_url_redacted": "wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
     "ws_path": "/api/voice/pipecat/ws",
@@ -95,6 +95,30 @@
         "type": "assistant_text"
       },
       {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
         "type": "metrics"
       },
       {
@@ -119,58 +143,16 @@
         "type": "bot-output"
       },
       {
-        "type": "bot-llm-text"
-      },
-      {
-        "type": "bot-transcription"
-      },
-      {
-        "type": "bot-llm-text"
-      },
-      {
-        "type": "bot-transcription"
-      },
-      {
         "type": "bot-tts-text"
       },
       {
         "type": "bot-output"
       },
       {
-        "type": "bot-tts-text"
-      },
-      {
         "type": "bot-output"
       },
       {
-        "type": "bot-tts-text"
-      },
-      {
         "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "metrics"
-      },
-      {
-        "type": "metrics"
-      },
-      {
-        "type": "metrics"
-      },
-      {
-        "type": "metrics"
       },
       {
         "type": "bot-tts-text"
@@ -209,7 +191,25 @@
         "type": "bot-output"
       },
       {
+        "type": "bot-tts-text"
+      },
+      {
         "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
       },
       {
         "type": "bot-output"
@@ -246,42 +246,6 @@
       },
       {
         "type": "bot-llm-stopped"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
-      },
-      {
-        "type": "bot-tts-text"
-      },
-      {
-        "type": "bot-output"
       }
     ],
     "assistant_text": "I've classified this as a real request, so I'm running the full loop.I'm loading memory and knowledge now.I'm putting the plan together.I'm preparing the next actions.",
@@ -293,7 +257,7 @@
         "cognitive_path": "CognitiveTurnKernel",
         "write_confirm_policy": "nl_yes_same_path_as_text",
         "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-        "conversation_id": "05838e4b-e104-4db7-950d-1dc6816700cc",
+        "conversation_id": "f06b306c-d24c-4676-9f7c-3c0c101670d8",
         "tts_model": "eleven_flash_v2_5",
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
@@ -334,21 +298,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#6",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#6",
+              "processor": "DeepgramFluxSTTService#0",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#0",
               "value": 0.0
             }
           ]
@@ -388,7 +352,7 @@
         "data": {
           "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
           "user_id": "",
-          "timestamp": "2026-09-11T22:38:26.468+00:00",
+          "timestamp": "2026-09-11T23:49:43.028+00:00",
           "final": false
         }
       },
@@ -404,10 +368,10 @@
         "data": {
           "stt_usage": [
             {
-              "processor": "DeepgramFluxSTTService#6",
+              "processor": "DeepgramFluxSTTService#0",
               "model": "flux-general-en",
               "value": {
-                "audio_seconds": 6.4446874999999615
+                "audio_seconds": 6.177562499999968
               }
             }
           ]
@@ -419,7 +383,7 @@
         "data": {
           "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
           "user_id": "",
-          "timestamp": "2026-09-11T22:38:26.641+00:00",
+          "timestamp": "2026-09-11T23:49:43.868+00:00",
           "final": true
         }
       },
@@ -477,7 +441,7 @@
         "data": {
           "characters": [
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#0",
               "model": "eleven_flash_v2_5",
               "value": 69
             }
@@ -490,13 +454,41 @@
       },
       {
         "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I'm putting the plan together. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I'm putting the plan together. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I'm preparing the next actions. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I'm preparing the next actions. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
         "type": "metrics",
         "data": {
           "ttfb": [
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#0",
               "model": "eleven_flash_v2_5",
-              "value": 0.14242887496948242
+              "value": 2.2594382762908936
             }
           ]
         }
@@ -507,11 +499,47 @@
         "data": {
           "ttfa": [
             {
-              "processor": "ElevenLabsTTSService#6",
+              "processor": "ElevenLabsTTSService#0",
               "model": "eleven_flash_v2_5",
-              "ttfa": 0.18442887496948243,
-              "ttfb": 0.14242887496948242,
-              "leading_silence": 0.042
+              "ttfa": 2.2744382762908937,
+              "ttfb": 2.2594382762908936,
+              "leading_silence": 0.015
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#0",
+              "model": "eleven_flash_v2_5",
+              "value": 37
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#0",
+              "model": "eleven_flash_v2_5",
+              "value": 30
             }
           ]
         }
@@ -526,7 +554,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "spoken": false,
           "will_be_spoken": true,
           "spoken_status": "new",
@@ -549,7 +577,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -571,41 +599,13 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
             "accumulated_text": "I've classified",
             "remaining_text": " this as a real request, so I'm running the full loop."
           }
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "I'm putting the plan together. "
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "I'm putting the plan together. "
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-llm-text",
-        "data": {
-          "text": "I'm preparing the next actions. "
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-transcription",
-        "data": {
-          "text": "I'm preparing the next actions. "
         }
       },
       {
@@ -621,12 +621,44 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
             "accumulated_text": "I've classified this",
             "remaining_text": " as a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I'm loading memory and knowledge now.",
+          "aggregated_by": "sentence",
+          "segment_id": 460,
+          "spoken": false,
+          "will_be_spoken": true,
+          "spoken_status": "new",
+          "spoken_progress": {
+            "accumulated_text": "",
+            "remaining_text": "I'm loading memory and knowledge now."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I'm putting the plan together.",
+          "aggregated_by": "sentence",
+          "segment_id": 463,
+          "spoken": false,
+          "will_be_spoken": true,
+          "spoken_status": "new",
+          "spoken_progress": {
+            "accumulated_text": "",
+            "remaining_text": "I'm putting the plan together."
           }
         }
       },
@@ -643,7 +675,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -665,7 +697,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -687,7 +719,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -709,49 +741,13 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
             "accumulated_text": "I've classified this as a real request,",
             "remaining_text": " so I'm running the full loop."
           }
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {}
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {
-          "characters": [
-            {
-              "processor": "ElevenLabsTTSService#6",
-              "model": "eleven_flash_v2_5",
-              "value": 37
-            }
-          ]
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {}
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "metrics",
-        "data": {
-          "characters": [
-            {
-              "processor": "ElevenLabsTTSService#6",
-              "model": "eleven_flash_v2_5",
-              "value": 30
-            }
-          ]
         }
       },
       {
@@ -767,7 +763,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -789,7 +785,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -811,7 +807,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -833,7 +829,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -855,7 +851,7 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "in-progress",
           "spoken_progress": {
@@ -877,44 +873,12 @@
         "data": {
           "text": "I've classified this as a real request, so I'm running the full loop.",
           "aggregated_by": "sentence",
-          "segment_id": 6426,
+          "segment_id": 410,
           "will_be_spoken": true,
           "spoken_status": "completed",
           "spoken_progress": {
             "accumulated_text": "I've classified this as a real request, so I'm running the full loop.",
             "remaining_text": ""
-          }
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-output",
-        "data": {
-          "text": "I'm loading memory and knowledge now.",
-          "aggregated_by": "sentence",
-          "segment_id": 6593,
-          "spoken": false,
-          "will_be_spoken": true,
-          "spoken_status": "new",
-          "spoken_progress": {
-            "accumulated_text": "",
-            "remaining_text": "I'm loading memory and knowledge now."
-          }
-        }
-      },
-      {
-        "label": "rtvi-ai",
-        "type": "bot-output",
-        "data": {
-          "text": "I'm putting the plan together.",
-          "aggregated_by": "sentence",
-          "segment_id": 6596,
-          "spoken": false,
-          "will_be_spoken": true,
-          "spoken_status": "new",
-          "spoken_progress": {
-            "accumulated_text": "",
-            "remaining_text": "I'm putting the plan together."
           }
         }
       }
@@ -1041,21 +1005,21 @@
         "data": {
           "ttfb": [
             {
-              "processor": "DeepgramFluxSTTService#7",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#7",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ],
           "processing": [
             {
-              "processor": "DeepgramFluxSTTService#7",
+              "processor": "DeepgramFluxSTTService#1",
               "value": 0.0
             },
             {
-              "processor": "ElevenLabsTTSService#7",
+              "processor": "ElevenLabsTTSService#1",
               "value": 0.0
             }
           ]
@@ -1095,7 +1059,7 @@
         "data": {
           "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
           "user_id": "",
-          "timestamp": "2026-09-11T22:39:08.320+00:00",
+          "timestamp": "2026-09-11T23:50:22.358+00:00",
           "final": false
         }
       },
@@ -1111,10 +1075,10 @@
         "data": {
           "stt_usage": [
             {
-              "processor": "DeepgramFluxSTTService#7",
+              "processor": "DeepgramFluxSTTService#1",
               "model": "flux-general-en",
               "value": {
-                "audio_seconds": 5.884687499999963
+                "audio_seconds": 6.497562499999961
               }
             }
           ]
@@ -1126,7 +1090,7 @@
         "data": {
           "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
           "user_id": "",
-          "timestamp": "2026-09-11T22:39:08.801+00:00",
+          "timestamp": "2026-09-11T23:50:22.599+00:00",
           "final": true
         }
       },
@@ -1168,6 +1132,6 @@
   "composed_safe_line_present": true,
   "control_ok": true,
   "fails": [],
-  "verdict": "PASS - on 2cfc14fc: induced cognitive-turn failure on a live voice session produced the composed safe line, not the raw exception; healthy close_code=1000 failure close_code=1000 url=wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
-  "finished_at": "2026-09-11T22:39:38.922751+00:00"
+  "verdict": "PASS - on d10b03e4: induced cognitive-turn failure on a live voice session produced the composed safe line, not the raw exception; healthy close_code=1000 failure close_code=1000 url=wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
+  "finished_at": "2026-09-11T23:50:50.980783+00:00"
 }
