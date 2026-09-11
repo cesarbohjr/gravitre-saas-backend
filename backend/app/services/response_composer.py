@@ -134,6 +134,25 @@ def looks_like_raw_backend(text: str | None) -> bool:
     return False
 
 
+def safe_voice_text(text: str | None) -> str:
+    """Last gate before spoken output: substitute anything that reads as backend.
+
+    The AST guard checks the *shape* of an emission site -- it rejects text built
+    inline -- but a local variable holding raw text still satisfies that shape.
+    Rather than reach for dataflow analysis to prove where a string came from,
+    check what it actually says at the moment it leaves. Content is the thing
+    that matters to the listener, and it is cheap to inspect.
+
+    Deliberately fails closed: unrecognised or empty text becomes the safe line,
+    because on the voice path the alternative to a wrong sentence is silence,
+    and silence during a failure reads as the product hanging.
+    """
+    candidate = (text or "").strip()
+    if not candidate or looks_like_raw_backend(candidate):
+        return TTS_SAFE_ERROR
+    return candidate
+
+
 def adopt_model_delta(delta: str) -> str:
     """Pass already-generated model tokens through after dropping leaky chunks."""
     piece = delta or ""

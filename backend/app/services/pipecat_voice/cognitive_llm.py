@@ -80,11 +80,16 @@ class GravitreCognitiveLLMService(LLMService):
                 # hearing a Python error read aloud. Local import mirrors the
                 # house style below and keeps the Composer out of the module's
                 # import cycle.
-                from app.services.response_composer import TTS_SAFE_ERROR
+                from app.services.response_composer import TTS_SAFE_ERROR, safe_voice_text
 
                 logger.exception("pipecat_cognitive_llm_failed error=%s", exc)
-                await self.push_error(error_msg=TTS_SAFE_ERROR, exception=exc)
-                await self.push_frame(ErrorFrame(error=TTS_SAFE_ERROR))
+                # Through the content gate even though the input is already the
+                # safe line. The AST guard only checks that this argument is a
+                # reference, so if it ever becomes a variable carrying something
+                # else, this is what still stands between that and the listener.
+                spoken = safe_voice_text(TTS_SAFE_ERROR)
+                await self.push_error(error_msg=spoken, exception=exc)
+                await self.push_frame(ErrorFrame(error=spoken))
             finally:
                 await self.stop_processing_metrics()
                 await self.push_frame(LLMFullResponseEndFrame())
