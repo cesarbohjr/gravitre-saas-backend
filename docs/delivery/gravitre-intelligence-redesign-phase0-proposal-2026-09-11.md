@@ -293,6 +293,94 @@ append — §10 is left intact above as the original creation-time record.
   Phases 9–14. Live human-verification and prod deploy/redeploy evidence for
   this Phase 1 slice have not yet been captured as of this write-up.
 
+## 14. Phase 1 verification — resolved (2026-09-11)
+
+- **Background route-check, confirmed:** all 8 Intelligence sub-nav
+  destinations exist and render real content in production (verified via a
+  `browser-use` subagent pass plus a direct CDP check from an authenticated
+  admin session). `/intelligence/performance` rendered a genuine Business
+  Impact Score and an honest empty/dash ROI table; all 8 tabs were clickable.
+  A round of raw `fetch()` calls against `outcomes` / `simulations` /
+  `trust-summary` / `business-impact` returned 401 in both the subagent's
+  check and my own direct check — but a controlled comparison against
+  `engine-settings` (a route this fix never touched, still genuinely
+  admin-gated) returned the *same* 401, proving the 401s were a raw-fetch
+  test artifact (missing the app's real `Authorization`/`x-org-id` headers
+  from `apps/web/lib/fetcher.ts`), not a real permission regression. Genuine
+  non-admin, hands-on click-through verification was handed off to be done
+  directly by the requester rather than attempted further by the agent.
+- **`.vercel` project-name mismatch, investigated and resolved as harmless:**
+  `apps/web/.vercel/project.json` links to a Vercel project literally named
+  `gravitre-saas-backend`. Confirmed via `vercel project ls` that this exact
+  project's Latest Production URL is `https://gravitre.app` (the real
+  production frontend, confirmed serving `Server: Vercel` /
+  `X-Powered-By: Next.js`), consistent with the timing of the Phase 1 push.
+  The name is a confusing historical artifact, not a live misconfiguration —
+  the link is correct and the file is gitignored/untracked, so it has no
+  bearing on the real CI/CD path either way. Separately noted, not touched:
+  a second, apparently-stale Vercel project named `web`
+  (`web-drab-five-19.vercel.app`, last updated 7 days prior) that does not
+  serve any real traffic. No fix applied to either project, per explicit
+  instruction that deploy-infrastructure changes require a separate go-ahead.
+
+## 15. Phase 2 — what shipped (2026-09-11)
+
+Scope, per decisions #3 and #5: real, state-driven Motion System components
+sharing the existing visual signature (CSS + SVG + Framer Motion — no
+WebGL/Three.js), wired to genuine backend events, independent of STA-343.
+
+- **New backend endpoint — `GET /api/intelligence/core/state`**
+  (`backend/app/routers/intelligence_engine.py`, `require_org_member` — same
+  non-admin access model as `/models/catalog` and `/training-readiness` on
+  this router, consistent with decision #1's spirit). Aggregates, per org,
+  entirely from live tables, never simulated:
+  - Department breakdown from `intelligence_outcome_events.department` (the
+    same column already backing `OutcomeLearningService.get_department_outcome_summary`)
+    over a real recency window (default 24h) — a new public
+    `OutcomeLearningService.fetch_recent_events()` wrapper adds hour-level
+    cutoff filtering on top of the existing `_fetch_events` primitive.
+  - Org-level (not department-attributable — today's schema doesn't support
+    that join) real signals: pending workflow approvals (`workflow_runs`),
+    pending memory-promotion approvals (`memory_promotion_candidates`), and
+    active agent swarm runs (`agent_swarm_runs`).
+  - Departments with zero real events in the window simply do not appear in
+    the response — the endpoint never invents a department entry the org has
+    no signal for. 7 new backend tests (`test_intelligence_core_state.py`,
+    `test_outcome_learning_service_recent_events.py`) cover: non-admin
+    reachability, real per-department attribution (a `sales`-tagged event
+    never leaks into `marketing`), org-level (not fabricated per-department)
+    approval/run counts, and honest degrade-to-zero on downstream failures.
+  - **Known, disclosed limitation:** this is a polled snapshot (frontend
+    refreshes every 20s), not a sub-second live push — the "PULSE" motion is
+    real recent activity, not a live SSE feed. No existing org-wide SSE
+    activity stream exists to source truer real-time push from today.
+- **New frontend component — `GravitreIntelligenceCoreLive`**
+  (`apps/web/components/intelligence/core/`): a real, live successor to the
+  marketing `GravitreDepartmentNetwork` story, reusing the same card/hub/edge
+  visual language (rounded white department cards, Nodus conic-spin hub,
+  sweeping-gradient SVG edges) but driven entirely by
+  `GET /api/intelligence/core/state` polled every 20s — no scripted beats, no
+  fixed department set. Visual states (`idle`, `flow-inward`, `trace`,
+  `pending-approval`, `resolved`, `low-confidence`) map 1:1 to the backend
+  response. Honest empty state when an org has no real activity in the
+  window, rather than an empty diagram or placeholder nodes. Mounted on the
+  Intelligence Overview page (`/intelligence`), directly under the new
+  sub-nav.
+- **Verification:** backend — 7/7 new tests pass, plus the full pre-existing
+  `test_intelligence_engine.py` (18 tests) and Phase 1's
+  `test_admin_intelligence_overview_permissions.py` (7 tests) all still pass
+  (39/40 → 40/40 after one test fixture fix, no regressions). Frontend —
+  `tsc --noEmit` clean across the whole `apps/web` workspace; `eslint` on
+  every new/changed file — 0 errors (pre-existing, unrelated warnings only).
+- **Explicitly not done in this slice:** live prod deploy + prod re-run
+  evidence for this Phase 2 slice (not yet committed/pushed/redeployed as of
+  this write-up — that is the very next step after this note); the
+  packet-capsule transfer animation from the marketing precedent (kept to a
+  simpler gradient-sweep edge for this first real slice); wiring the
+  remaining Phase 3–14 scope (3-layer Overview restructure, Ask Gravitre,
+  Why? evidence graphs, knowledge/graph visualization, business-language
+  reframe, etc.) — all still pending, unchanged from §13's list.
+
 ## No-invented-surfaces declaration
 
 This document adds no code, no customer-facing price, claim, badge, or entitlement toggle. It is a proposal only. Every technical claim above is sourced to a specific file path, line range, or delivery-doc artifact gathered during this Phase 0 inventory (three parallel `explore` passes); nothing here is fabricated or assumed. Where data was insufficient to answer a §1 question honestly, that gap is stated explicitly rather than guessed.

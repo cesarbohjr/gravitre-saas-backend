@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -383,6 +383,31 @@ class OutcomeLearningService:
 
     async def get_agent_success_rate(self, org_id: str, agent_id: str) -> dict[str, Any]:
         return await self.calculate_outcome_score(org_id, "agent", agent_id)
+
+    async def fetch_recent_events(self, org_id: str, *, since_hours: int = 24) -> list[dict[str, Any]]:
+        """Public, org-wide (no entity filter) window of real outcome events.
+
+        Added for Phase 2 Intelligence Core (2026-09-11): the Core visualization needs a
+        recent-activity window per department, not per-entity, so this wraps `_fetch_events`
+        with a precise hour-level cutoff instead of `_fetch_events`'s day-granular `since_days`.
+        Returns only real rows already present in `intelligence_outcome_events` — never
+        synthesizes data when the table is empty or unreachable.
+        """
+        since_days = max(1, (since_hours + 23) // 24)
+        rows = await self._fetch_events(org_id, since_days=since_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=since_hours)
+        recent: list[dict[str, Any]] = []
+        for row in rows:
+            created_raw = row.get("created_at")
+            if not created_raw:
+                continue
+            try:
+                created = datetime.fromisoformat(str(created_raw).replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if created >= cutoff:
+                recent.append(row)
+        return recent
 
     async def get_workflow_success_rate(self, org_id: str, workflow_id: str) -> dict[str, Any]:
         return await self.calculate_outcome_score(org_id, "workflow", workflow_id)

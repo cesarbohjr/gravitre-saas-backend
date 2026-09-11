@@ -2285,6 +2285,18 @@ export const intelligenceApi = {
   },
   trainingReadiness: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/training-readiness")),
+  /**
+   * Phase 2 (2026-09-11): real, org-scoped snapshot for the Intelligence Core
+   * visualization. Every field is derived from live tables server-side; the
+   * client must never fabricate a department entry or state that isn't present
+   * in this response.
+   */
+  coreState: (params?: { windowHours?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.windowHours != null) query.set("window_hours", String(params.windowHours))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<IntelligenceCoreStateResponse>(apiUrl(`/api/intelligence/core/state${suffix}`))
+  },
   churnRiskAdvisory: (params?: { limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))
@@ -2612,6 +2624,39 @@ export type IntelligenceOutcomesResponse = {
   pendingMeasurements: number
   observableMetrics: Array<{ connector: string; entityType: string; metric: string }>
   agentSummaries: IntelligenceOutcomesAgentSummary[]
+}
+
+// ============ Intelligence Core (Phase 2, 2026-09-11) ============
+/** Real, backend-derived visual state — must map 1:1 to a Motion System state, never invented client-side. */
+export type IntelligenceCoreVisualState =
+  | "idle"
+  | "flow-inward"
+  | "trace"
+  | "pending-approval"
+  | "resolved"
+  | "low-confidence"
+
+export type IntelligenceCoreDepartment = {
+  id: string
+  eventsInWindow: number
+  recentInflow: number
+  recentResolved: number
+  confidence: number | null
+  state: IntelligenceCoreVisualState
+}
+
+export type IntelligenceCoreStateResponse = {
+  generatedAt: string
+  windowHours: number
+  core: {
+    state: IntelligenceCoreVisualState
+    activeAgentRuns: number
+    pendingWorkflowApprovals: number
+    pendingMemoryApprovals: number
+    pendingApprovalsTotal: number
+  }
+  departments: IntelligenceCoreDepartment[]
+  note: string
 }
 
 // ============ Memory Promotion (v4) ============

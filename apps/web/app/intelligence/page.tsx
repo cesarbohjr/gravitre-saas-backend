@@ -20,6 +20,7 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
 import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-suggestion-cards"
 import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { GravitreIntelligenceCoreLive } from "@/components/intelligence/core/gravitre-intelligence-core-live"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
@@ -177,6 +178,8 @@ function IntelligenceCenterInner() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
         <IntelligenceHubTabs active="overview" className="relative mb-2 flex-wrap" />
+
+        <GravitreIntelligenceCoreLive className="relative" />
 
         {/* Always show Module C strip — empty state is honest when catalog has no rows */}
         <div className="relative">
