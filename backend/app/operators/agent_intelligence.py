@@ -1644,12 +1644,20 @@ class AgentIntelligence:
             )
         )
         _mark("intent_gateway")
-        if gateway.action == "shortcut" and (gateway.answer or "").strip():
+        if (
+            gateway.action == "shortcut"
+            and (gateway.answer or "").strip()
+            and gateway.confidence is not None
+        ):
             message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
+            gateway_confidence = {
+                "score": gateway.confidence,
+                "needs_clarification": False,
+            }
             yield sse_intelligence_metadata(
                 message_id=message_id,
-                confidence={"score": gateway.confidence or 0.92, "needs_clarification": False},
+                confidence=gateway_confidence,
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 effective_mode=str(mode or "fast"),
@@ -1664,7 +1672,7 @@ class AgentIntelligence:
                 react_result=None,
                 model=f"intent_gateway:{gateway.candidate_id}",
                 message_id=message_id,
-                confidence={"score": gateway.confidence or 0.92, "needs_clarification": False},
+                confidence=gateway_confidence,
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 proactive_suggestions=list((gateway.extras or {}).get("suggestions") or []),
