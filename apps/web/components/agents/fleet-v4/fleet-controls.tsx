@@ -1,7 +1,6 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ChevronDown } from "lucide-react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { cn } from "@/lib/utils"
 import type {
@@ -149,16 +148,14 @@ export function FleetControls({
   )
 }
 
-/** Slim strip when roster chrome is minimized — view switch + Expand. */
+/** Slim strip when roster chrome is minimized — view switch only. */
 export function FleetControlsCollapsed({
   view,
   onViewChange,
-  onExpand,
   className,
 }: {
   view: AgentsFleetViewPref
   onViewChange: (view: AgentsFleetViewPref) => void
-  onExpand: () => void
   className?: string
 }) {
   return (
@@ -169,16 +166,6 @@ export function FleetControlsCollapsed({
         value={view}
         onChange={onViewChange}
       />
-      <button
-        type="button"
-        onClick={onExpand}
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-divide px-2.5 text-xs font-medium text-[color:var(--g-text-primary)] transition-colors hover:bg-[color:var(--g-surface-active)]"
-        aria-label="Expand header and filters"
-        title="Expand"
-      >
-        <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-        Expand
-      </button>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo } from "react"
+import { useCallback, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
@@ -85,7 +85,7 @@ function FleetEdgePath({
 
 /**
  * Fleet GRAPH — Nodus connectors canvas + combo/tech-stack edge sweeps.
- * Honest edges only (parent, swarm, connectors). Department lanes accept drops.
+ * Pointer-drag repositions nodes; HTML5 DnD onto department chips reassigns teams.
  */
 export function GraphView({
   agents,
@@ -111,10 +111,44 @@ export function GraphView({
   emptyHint?: string
   className?: string
 }) {
-  const positions = useMemo(
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [positionOverrides, setPositionOverrides] = useState<Record<string, { x: number; y: number }>>({})
+  const [hoverDepartment, setHoverDepartment] = useState<AgentDepartmentId | null>(null)
+  const dragRef = useRef<{
+    agentId: string
+    pointerId: number
+    originX: number
+    originY: number
+    startLeft: number
+    startTop: number
+    moved: boolean
+  } | null>(null)
+
+  const departmentAtPoint = (clientX: number, clientY: number): AgentDepartmentId | null => {
+    if (typeof document === "undefined") return null
+    const stack = document.elementsFromPoint(clientX, clientY)
+    for (const el of stack) {
+      const zone = (el as Element).closest?.("[data-department-drop]") as HTMLElement | null
+      const department = zone?.getAttribute("data-department-drop") as AgentDepartmentId | null
+      if (department) return department
+    }
+    return null
+  }
+
+  const layoutPositions = useMemo(
     () => layoutFleetGraph(agents, extraNodes),
     [agents, extraNodes],
   )
+
+  const positions = useMemo(() => {
+    const merged: Record<string, { x: number; y: number }> = { ...layoutPositions }
+    for (const [id, pos] of Object.entries(positionOverrides)) {
+      if (merged[id] || agents.some((a) => a.id === id)) {
+        merged[id] = pos
+      }
+    }
+    return merged
+  }, [agents, layoutPositions, positionOverrides])
 
   const bounds = useMemo(() => {
     const pts = Object.values(positions)
@@ -143,6 +177,68 @@ export function GraphView({
     )
   }, [agents, onDepartmentChange, showEmptyDepartments])
 
+  const onNodePointerDown = useCallback(
+    (agentId: string, event: ReactPointerEvent) => {
+      if (event.button !== 0) return
+      const pos = positions[agentId]
+      if (!pos) return
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+      dragRef.current = {
+        agentId,
+        pointerId: event.pointerId,
+        originX: event.clientX,
+        originY: event.clientY,
+        startLeft: pos.x,
+        startTop: pos.y,
+        moved: false,
+      }
+    },
+    [positions],
+  )
+
+  const onNodePointerMove = useCallback((event: ReactPointerEvent) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const dx = event.clientX - drag.originX
+    const dy = event.clientY - drag.originY
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return
+    drag.moved = true
+    const next = {
+      x: Math.max(0, drag.startLeft + dx),
+      y: Math.max(0, drag.startTop + dy),
+    }
+    setPositionOverrides((prev) => ({ ...prev, [drag.agentId]: next }))
+    setHoverDepartment(departmentAtPoint(event.clientX, event.clientY))
+  }, [])
+
+  const onNodePointerUp = useCallback(
+    (event: ReactPointerEvent) => {
+      const drag = dragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+      const wasClick = !drag.moved
+      const agentId = drag.agentId
+      dragRef.current = null
+      setHoverDepartment(null)
+
+      if (wasClick) {
+        onSelect?.(agentId)
+        return
+      }
+
+      const department = departmentAtPoint(event.clientX, event.clientY)
+      if (department && onDepartmentChange) {
+        onDepartmentChange(agentId, department)
+      }
+    },
+    [onDepartmentChange, onSelect],
+  )
+
   if (agents.length === 0) {
     return (
       <div
@@ -160,10 +256,11 @@ export function GraphView({
   }
 
   const live = Boolean(activeAgentIds && activeAgentIds.size > 0)
+  const canAssign = Boolean(onDepartmentChange)
 
   return (
     <div className={cn("space-y-3", className)}>
-      {onDepartmentChange && (showEmptyDepartments || deptsPresent.length > 0) ? (
+      {canAssign ? (
         <div className="relative z-10 flex flex-wrap gap-2">
           {deptsPresent.map((department) => {
             const count = agents.filter((a) => a.department === department).length
@@ -171,8 +268,12 @@ export function GraphView({
               <DepartmentDropZone
                 key={department}
                 department={department}
-                onDropAgent={showEmptyDepartments ? onDepartmentChange : undefined}
-                className="min-w-[6.5rem] border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)]"
+                onDropAgent={onDepartmentChange}
+                className={cn(
+                  "min-h-[3.25rem] min-w-[7.5rem] border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)]",
+                  hoverDepartment === department &&
+                    "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35",
+                )}
                 highlightClassName="border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35"
               >
                 <p
@@ -184,7 +285,7 @@ export function GraphView({
                   {DEPARTMENT_ACCENT[department].label}
                 </p>
                 <p className="text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
-                  {count} · drop to move
+                  {count} · drop to assign
                 </p>
               </DepartmentDropZone>
             )
@@ -195,6 +296,7 @@ export function GraphView({
       <div className="relative min-h-[420px] overflow-auto rounded-[var(--np-radius-lg)] border border-divide">
         <ConnectorsAtmosphere className="z-0" />
         <div
+          ref={canvasRef}
           className="relative z-10 p-4"
           style={{ minWidth: bounds.w, minHeight: bounds.h }}
         >
@@ -223,13 +325,22 @@ export function GraphView({
             if (!pos) return null
             const executing = activeAgentIds?.has(agent.id)
             return (
-              <div key={agent.id} className="absolute" style={{ left: pos.x, top: pos.y }}>
+              <div
+                key={agent.id}
+                className="absolute touch-none cursor-grab active:cursor-grabbing"
+                style={{ left: pos.x, top: pos.y }}
+                onPointerDown={(event) => onNodePointerDown(agent.id, event)}
+                onPointerMove={onNodePointerMove}
+                onPointerUp={onNodePointerUp}
+                onPointerCancel={onNodePointerUp}
+              >
                 <GravitreAgentNode
                   agent={agent}
                   selected={selectedId === agent.id}
                   executing={executing}
-                  onSelect={onSelect}
-                  draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
+                  draggable={false}
+                  // Selection handled on pointer-up when the gesture was a click.
+                  onSelect={undefined}
                 />
               </div>
             )
@@ -259,6 +370,7 @@ export function GraphView({
           })}
 
           <div className="absolute bottom-4 left-4 flex flex-wrap gap-3 text-[10px] text-[color:var(--g-text-muted)]">
+            <span>Drag nodes to rearrange · release on a department chip to reassign</span>
             <span>── parent / swarm</span>
             <span>- - uses connector</span>
             {live ? <span className="text-[color:var(--g-brand)]">● live swarm path</span> : null}

@@ -1,6 +1,6 @@
 "use client"
 
-import type { DragEvent } from "react"
+import type { DragEvent, KeyboardEvent } from "react"
 import { cn } from "@/lib/utils"
 import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
@@ -32,16 +32,27 @@ export function GravitreAgentNode({
     })
   }
 
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (!onSelect) return
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      onSelect(agent.id)
+    }
+  }
+
   return (
-    <button
-      type="button"
+    <div
+      role={onSelect ? "button" : "group"}
+      tabIndex={onSelect ? 0 : undefined}
       onClick={() => onSelect?.(agent.id)}
+      onKeyDown={onKeyDown}
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
         "w-[188px] rounded-[var(--np-radius-md)] border border-divide bg-white px-3 py-2 text-left shadow-[var(--np-shadow)] transition-shadow",
         selected && "ring-2 ring-[color:var(--g-brand)]/55",
         executing && "border-[color:var(--g-brand)]/45",
+        onSelect && "cursor-pointer",
         draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
@@ -70,6 +81,6 @@ export function GravitreAgentNode({
           </div>
         </div>
       </div>
-    </button>
+    </div>
   )
 }

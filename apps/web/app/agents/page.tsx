@@ -46,6 +46,7 @@ import {
   X,
   ChevronRight,
   ChevronUp,
+  ChevronDown,
   PanelRightClose,
   PanelRightOpen,
   Shield,
@@ -64,7 +65,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
-import { FleetControls, FleetControlsCollapsed, FleetSummaryBar, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
+import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import { mapApiDepartmentToFleet, mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
@@ -625,13 +626,6 @@ export default function AgentsPage() {
     return null
   }, [selectedAgent, filteredAgents])
 
-  const activeCount = agents.filter((a) => a.status === "active").length
-  const runningCount = agents.filter((a) => a.status === "processing").length
-  const idleCount = agents.filter((a) => a.status === "idle").length
-  const failedCount = agents.filter((a) => a.status === "error").length
-  const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
-  const totalAgents = agents.length
-
   const hasActiveFilters = Boolean(
     prefs.filters.department ||
       prefs.filters.status ||
@@ -726,19 +720,25 @@ export default function AgentsPage() {
     setPreviewOpen(true)
   }
 
-  const prevRunningCountRef = useRef(runningCount)
-  const [runningStatPulse, setRunningStatPulse] = useState(false)
-
-  useEffect(() => {
-    if (prevRunningCountRef.current === runningCount) return
-    prevRunningCountRef.current = runningCount
-    setRunningStatPulse(true)
-    const t = window.setTimeout(() => setRunningStatPulse(false), 700)
-    return () => window.clearTimeout(t)
-  }, [runningCount])
+  const chromeToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 shrink-0 gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
+      onClick={toggleChromeCollapsed}
+      aria-pressed={chromeCollapsed}
+      aria-label={chromeCollapsed ? "Expand header and filters" : "Minimize header for a full canvas"}
+      title={chromeCollapsed ? "Expand" : "Minimize"}
+    >
+      {chromeCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{chromeCollapsed ? "Expand" : "Minimize"}</span>
+    </Button>
+  )
 
   const rosterActions = (
     <>
+      {chromeToggle}
       <Button onClick={() => router.push("/agents/new")} className="gap-2">
         <Plus className="h-4 w-4" />
         <span className="hidden sm:inline">New Agent</span>
@@ -782,7 +782,6 @@ export default function AgentsPage() {
               <FleetControlsCollapsed
                 view={prefs.view}
                 onViewChange={setView}
-                onExpand={toggleChromeCollapsed}
               />
               <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">{rosterActions}</div>
             </div>
@@ -796,40 +795,10 @@ export default function AgentsPage() {
                 icon={<NucleoAgent className="h-5 w-5" />}
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 shrink-0 gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
-                      onClick={toggleChromeCollapsed}
-                      aria-pressed={false}
-                      aria-label="Minimize header for a full canvas"
-                      title="Minimize"
-                    >
-                      <ChevronUp className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Minimize</span>
-                    </Button>
                     {rosterActions}
                   </div>
                 }
               />
-              <div className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
-                <motion.div
-                  animate={runningStatPulse ? { scale: [1, 1.01, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                >
-                  <FleetSummaryBar
-                    counts={{
-                      total: totalAgents,
-                      working: runningCount,
-                      available: activeCount,
-                      idle: idleCount,
-                      failed: failedCount,
-                      tasksToday: totalTasks,
-                    }}
-                  />
-                </motion.div>
-              </div>
 
               <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
                 <FleetControls
