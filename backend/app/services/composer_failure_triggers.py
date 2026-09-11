@@ -41,6 +41,34 @@ def resolve_composer_failure_probe(*, org_id: str | None, header_value: str | No
     return None
 
 
+# The probes above are tool-level faults the Composer already handles. This one
+# is different: it forces the *whole* cognitive turn to raise, which is the only
+# way to exercise the voice path's except-handler -- the site that used to push
+# str(exc) into an ErrorFrame for the user to hear.
+#
+# A voice turn cannot carry a probe header, because the transport is a WebSocket
+# whose only per-session identifiers are org and conversation. So this one is
+# keyed on a sentinel conversation id, behind the same isolated-org gate as the
+# HTTP probes, meaning a real org cannot reach it however it is called.
+VOICE_TURN_FAILURE_CONVERSATION_ID = "f07e57c0-0000-4000-8000-c04e57a0fa11"
+
+# Deliberately shaped like the leak it guards against: carries a kernel name and
+# a backend path, so if this text ever reaches a user the Composer's own
+# looks_like_raw_backend detector is guaranteed to flag it. A bland message could
+# pass a leak scan while still proving nothing.
+VOICE_TURN_FAILURE_MESSAGE = (
+    "CognitiveTurnKernel probe fault: statement timeout raised in backend/app"
+)
+
+
+def is_voice_turn_failure_probe(*, org_id: str | None, conversation_id: str | None) -> bool:
+    if not is_isolated_conversation_test_org(org_id):
+        return False
+    return (
+        str(conversation_id or "").strip().lower() == VOICE_TURN_FAILURE_CONVERSATION_ID
+    )
+
+
 def _postgres_dsn(settings: Any) -> str:
     for raw in (
         getattr(settings, "database_url", None),

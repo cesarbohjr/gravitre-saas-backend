@@ -93,7 +93,19 @@ class GravitreCognitiveLLMService(LLMService):
 
     async def _run_gravitre_turn(self, context: Any) -> None:
         from app.operators.agent_intelligence import get_agent_intelligence
+        from app.services.composer_failure_triggers import (
+            VOICE_TURN_FAILURE_MESSAGE,
+            is_voice_turn_failure_probe,
+        )
         from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+
+        # Disposable fault path, isolated smoke org + sentinel conversation only.
+        # The except-handler in process_frame is unreachable otherwise, so without
+        # this the fix above could only ever be argued from code review.
+        if is_voice_turn_failure_probe(
+            org_id=self._org_id, conversation_id=self._conversation_id
+        ):
+            raise RuntimeError(VOICE_TURN_FAILURE_MESSAGE)
 
         user_text, history = _messages_from_context(context)
         if not user_text:
