@@ -390,6 +390,21 @@ async def stream_voice_turn_events(
                         pass
                 if routing.get("spokenStreamed") is not None:
                     spoken_streamed = bool(routing.get("spokenStreamed"))
+                if routing.get("cognitiveLoop") or data.get("cognitiveLoop"):
+                    yield {
+                        "type": "voice.cognitive_loop",
+                        "cognitive_loop": {
+                            "fullLoop": routing.get("fullLoop"),
+                            "operatorTask": routing.get("operatorTask"),
+                            "fastPath": routing.get("fastPath"),
+                            "stages": routing.get("stages"),
+                            "loopId": routing.get("loopId"),
+                            "turnId": routing.get("turnId"),
+                            "spokenMode": True,
+                        },
+                        "progress_steps": data.get("progressSteps") or [],
+                        "turn_id": resolved_turn_id,
+                    }
                 raw_breakdown = routing.get("latencyBreakdown")
                 if isinstance(raw_breakdown, dict):
                     unified_breakdown = safe_normalize_stored_dict(raw_breakdown)

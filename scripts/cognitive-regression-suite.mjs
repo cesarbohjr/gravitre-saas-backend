@@ -50,6 +50,10 @@ mustExist("scripts/scan_intent_gateway_bypass.py")
 mustExist("backend/tests/test_intent_gateway.py")
 mustExist("backend/tests/test_intent_gateway_bypass.py")
 mustExist("backend/tests/test_intent_gateway_adversarial_corpus.py")
+mustExist("backend/app/services/cognitive_loop_controller.py")
+mustExist("backend/app/services/cognitive_nlu_adversarial_corpus.py")
+mustExist("backend/tests/test_cognitive_loop_controller.py")
+mustExist("backend/tests/test_cognitive_nlu_adversarial_battery.py")
 if (read("backend/app/routers/assistant.py").includes("match_frontend_ia_nav_faq")) {
   fail("backend/app/routers/assistant.py must not call match_frontend_ia_nav_faq (Intent Gateway owns it)")
 }
@@ -73,12 +77,23 @@ if (read("backend/app/routers/assistant.py").includes("match_frontend_ia_nav_faq
     const region = nextDef > 0 ? after.slice(0, nextDef) : after
 
     const gatewayIdx = region.indexOf("evaluate_intent_gateway")
+    const loopIdx = region.indexOf("get_cognitive_loop_controller")
     const kernelIdx = region.indexOf("run_pre_act")
     const liveIdx = region.indexOf("apply_unified_turn_live")
     if (gatewayIdx < 0) {
       fail(`${rel}: execute_task_streaming must call evaluate_intent_gateway`)
+    } else if (loopIdx < 0) {
+      fail(`${rel}: execute_task_streaming must call get_cognitive_loop_controller`)
     } else if (kernelIdx < 0) {
       fail(`${rel}: execute_task_streaming must call run_pre_act`)
+    } else if (gatewayIdx >= loopIdx) {
+      fail(
+        `${rel}: Intent Gateway must appear BEFORE CognitiveLoopController (got gateway@${gatewayIdx} loop@${loopIdx})`,
+      )
+    } else if (loopIdx >= kernelIdx) {
+      fail(
+        `${rel}: CognitiveLoopController must appear BEFORE run_pre_act (got loop@${loopIdx} kernel@${kernelIdx})`,
+      )
     } else if (gatewayIdx >= kernelIdx) {
       fail(
         `${rel}: Intent Gateway evaluate_intent_gateway must appear BEFORE run_pre_act (got gateway@${gatewayIdx} kernel@${kernelIdx})`,
@@ -222,6 +237,8 @@ mustContain(
       "tests/test_intent_gateway.py",
       "tests/test_intent_gateway_bypass.py",
       "tests/test_intent_gateway_adversarial_corpus.py",
+      "tests/test_cognitive_loop_controller.py",
+      "tests/test_cognitive_nlu_adversarial_battery.py",
     ]
     const env = {
       ...process.env,

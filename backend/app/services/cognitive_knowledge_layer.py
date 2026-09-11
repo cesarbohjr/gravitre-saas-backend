@@ -134,7 +134,7 @@ async def merge(
     catalog_hints = [{"note": _CATALOG_HINT}]
     prompt_section = _build_prompt_section(fabric_chunks, entity_section, catalog_hints)
 
-    return {
+    pack: dict[str, Any] = {
         "fabric_chunks": fabric_chunks,
         "fabric_route": fabric_route,
         "entity_section": entity_section,
@@ -144,6 +144,21 @@ async def merge(
         "catalog_hints": catalog_hints,
         "prompt_section": prompt_section,
     }
+    pack = await _attach_signal_scoring(
+        pack,
+        client=client,
+        org_id=org_id,
+        query=query or "",
+        agent=agent,
+        settings=active,
+    )
+    pack = await _attach_sufficiency(
+        pack,
+        query=query or "",
+        settings=active,
+        org_id=org_id,
+    )
+    return pack
 
 
 def _empty_pack() -> dict[str, Any]:
@@ -188,3 +203,131 @@ def _build_prompt_section(
         if note:
             parts.append(f"<capability_ontology>\n{note}\n</capability_ontology>")
     return "\n\n".join(parts)
+
+
+async def _attach_signal_scoring(
+    pack: dict[str, Any],
+    *,
+    client: Any,
+    org_id: str,
+    query: str,
+    agent: dict[str, Any] | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Explainable multi-source scores into RETRIEVE so PLAN can cite them.
+
+    Reuses the existing department_signal_scoring_service. Never invents a
+    score when WorkObjects or sources are missing — gaps stay explicit.
+    """
+    try:
+        from app.services.unified_turn_knowledge_context import should_include_signal_priorities
+    except Exception:  # noqa: BLE001
+        return pack
+    if not should_include_signal_priorities(query):
+        return pack
+    if client is None or not org_id:
+        pack["signal_scoring"] = {"skipped": "no_client_or_org", "priorities": [], "gaps": ["Scoring needs an org-scoped client."]}
+        return pack
+    try:
+        import asyncio
+
+        from app.services.department_signal_scoring_service import (
+            get_department_signal_scoring_service,
+        )
+
+        dept = None
+        if isinstance(agent, dict):
+            dept = str(agent.get("department") or (agent.get("config") or {}).get("department") or "").strip().lower()
+        scorer = get_department_signal_scoring_service(settings)
+        if dept in {"sales", "marketing", "finance", "hr", "msp"}:
+            payload = await asyncio.to_thread(
+                scorer.score_department,
+                org_id,
+                client=client,
+                department=dept,
+                limit=5,
+            )
+        else:
+            payload = await asyncio.to_thread(
+                scorer.score_department,
+                org_id,
+                client=client,
+                department="sales",
+                limit=5,
+            )
+            payload = dict(payload)
+            payload.setdefault("gaps", [])
+            if not dept:
+                payload["gaps"] = list(payload.get("gaps") or []) + [
+                    "Department not classified; scored Sales (hiring / tech-adoption / engagement) as the default operator priority surface."
+                ]
+        pack["signal_scoring"] = payload
+        rendered = scorer.render_priority_context(payload)
+        if rendered:
+            section = str(pack.get("prompt_section") or "")
+            block = f"<signal_intelligence>\n{rendered}\nScores are source-cited contributions, not an opaque rank.\n</signal_intelligence>"
+            pack["prompt_section"] = f"{section}\n\n{block}".strip() if section else block
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("cognitive_signal_scoring_skipped error=%s", exc)
+        pack["signal_scoring"] = {"ok": False, "error": str(exc)[:200], "priorities": [], "gaps": ["Signal scoring failed open."]}
+    return pack
+
+
+async def _attach_sufficiency(
+    pack: dict[str, Any],
+    *,
+    query: str,
+    settings: Settings,
+    org_id: str,
+) -> dict[str, Any]:
+    """Resume sufficiency-gated retrieval (CRAG) on the kernel RETRIEVE path.
+
+    The loop already exists in unified_turn_knowledge_context. Kernel merge
+    used to retrieve once and stop. Operator-task and prioritization turns now
+    get a real sufficiency verdict on the same fabric rows; additional internet
+    rounds stay on the unified-turn path to avoid a second retrieval stack.
+    """
+    if not getattr(settings, "evidence_sufficiency_loop_enabled", True):
+        pack["sufficiency"] = {"skipped": "flag_disabled"}
+        return pack
+    try:
+        from app.services.evidence_sufficiency_service import (
+            BAR_CASUAL,
+            assess_evidence_sufficiency,
+            sufficiency_bar_for,
+        )
+        from app.services.operator_task_intent import is_operator_task_shaped
+        from app.services.unified_turn_knowledge_context import should_include_signal_priorities
+
+        if not (is_operator_task_shaped(query) or should_include_signal_priorities(query)):
+            pack["sufficiency"] = {"skipped": "not_operator_or_priority"}
+            return pack
+        bar = sufficiency_bar_for(query=query, route_departments=[], route_jurisdictions=[], reasoning_depth="full")
+        if bar.name == BAR_CASUAL:
+            pack["sufficiency"] = {"skipped": "casual_bar", "bar": bar.name}
+            return pack
+        rows = []
+        for chunk in list(pack.get("fabric_chunks") or [])[:8]:
+            if not isinstance(chunk, dict):
+                continue
+            rows.append(
+                {
+                    "content": str(chunk.get("content") or chunk.get("text") or chunk.get("snippet") or ""),
+                    "score": chunk.get("score") or 0.5,
+                    "source": chunk.get("source") or chunk.get("source_id"),
+                }
+            )
+        verdict = await assess_evidence_sufficiency(
+            query=query,
+            rows=rows,
+            bar=bar,
+            settings=settings,
+            org_id=org_id,
+            routing_tier="multi_step",
+            sources_tried=["knowledge_fabric"],
+        )
+        pack["sufficiency"] = verdict.to_dict() if hasattr(verdict, "to_dict") else {"sufficient": bool(getattr(verdict, "sufficient", False))}
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("cognitive_sufficiency_skipped error=%s", exc)
+        pack["sufficiency"] = {"skipped": "assessor_error", "error": str(exc)[:200]}
+    return pack

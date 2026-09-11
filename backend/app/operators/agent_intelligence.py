@@ -1644,10 +1644,52 @@ class AgentIntelligence:
             )
         )
         _mark("intent_gateway")
+        from app.services.cognitive_loop_controller import get_cognitive_loop_controller
+
+        loop_controller = get_cognitive_loop_controller(active_settings)
+        loop_trace = loop_controller.begin(message=task_text, spoken_mode=bool(spoken_mode))
+        loop_controller.mark_perceive(
+            loop_trace,
+            gateway,
+            ms=float(_pre_kernel_checkpoints.get("intent_gateway") or 0),
+        )
+        cognitive_request = None
+        cognitive_ctx = None
+
+        async def _complete_cognitive_loop(
+            *,
+            pending_task: dict[str, Any] | None = None,
+            tool_results: list[Any] | None = None,
+            react_result: Any = None,
+        ) -> None:
+            if loop_trace.fast_path:
+                return
+            try:
+                await loop_controller.observe_and_learn(
+                    loop_trace,
+                    request=cognitive_request,
+                    cognitive_ctx=cognitive_ctx,
+                    tool_results=tool_results if isinstance(tool_results, list) else None,
+                    pending_task=pending_task if isinstance(pending_task, dict) else None,
+                    execution_verified=bool(getattr(react_result, "execution_verified", False))
+                    if react_result is not None
+                    else False,
+                    react_status=str(getattr(react_result, "react_status", "") or "")
+                    if react_result is not None
+                    else None,
+                    client=client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                )
+            except Exception as loop_exc:  # noqa: BLE001
+                logger.debug("cognitive_loop_complete_skipped error=%s", loop_exc)
+
         if (
             gateway.action == "shortcut"
             and (gateway.answer or "").strip()
             and gateway.confidence is not None
+            and not loop_trace.operator_task
         ):
             message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
@@ -1661,6 +1703,8 @@ class AgentIntelligence:
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 effective_mode=str(mode or "fast"),
+                routing=loop_trace.to_sse(),
+                progress_steps=loop_trace.progress_steps(),
             )
             text_id, start_event = sse_text_start()
             yield start_event
@@ -2339,6 +2383,12 @@ class AgentIntelligence:
             elif _spoken_keep_full:
                 reasoning_depth = "full"
 
+        reasoning_depth = loop_controller.reasoning_depth_for(
+            message=task_text,
+            spoken_mode=bool(spoken_mode),
+            current=reasoning_depth,
+        )
+
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
         try:
@@ -2364,26 +2414,28 @@ class AgentIntelligence:
                     )
                 except Exception:  # noqa: BLE001 — logging must never break the turn.
                     pass
-            cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
-                CognitiveTurnRequest(
-                    org_id=org_id,
-                    user_id=user_id,
-                    agent_id=str(agent_id) if agent_id else None,
-                    conversation_id=conversation_id,
-                    message=task_text,
-                    surface=_surface,
-                    entry_point="execute_task_streaming",
-                    environment_name=environment_name,
-                    spoken_mode=bool(spoken_mode),
-                    intent="chat",
-                    task_state=task_state if isinstance(task_state, dict) else None,
-                    conversation_history=conversation_history,
-                    client=client,
-                    agent=early_agent,
-                    reasoning_depth=reasoning_depth,
-                    connected_integrations=list(connected_early or []),
-                )
+            cognitive_request = CognitiveTurnRequest(
+                org_id=org_id,
+                user_id=user_id,
+                agent_id=str(agent_id) if agent_id else None,
+                conversation_id=conversation_id,
+                message=task_text,
+                surface=_surface,
+                entry_point="execute_task_streaming",
+                environment_name=environment_name,
+                spoken_mode=bool(spoken_mode),
+                intent="chat",
+                task_state=task_state if isinstance(task_state, dict) else None,
+                conversation_history=conversation_history,
+                client=client,
+                agent=early_agent,
+                reasoning_depth=reasoning_depth,
+                connected_integrations=list(connected_early or []),
             )
+            cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
+                cognitive_request
+            )
+            loop_controller.attach_retrieve_and_plan(loop_trace, cognitive_ctx)
             _mark("kernel_pre_act")
             if isinstance(task_state, dict):
                 task_state = {
@@ -2416,7 +2468,11 @@ class AgentIntelligence:
                     "cognitiveStageMs": _stage_ms,
                     "cognitiveTotalStageMs": round(sum(_stage_ms.values()), 1),
                     "spokenMode": bool(spoken_mode),
+                    **loop_trace.to_sse(),
                 },
+                progress_steps=loop_trace.progress_steps(
+                    connected_integrations=list(connected_early or [])
+                ),
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
@@ -2631,6 +2687,11 @@ class AgentIntelligence:
                     yield sse_text_end(text_id)
                 elif text_id is not None:
                     yield sse_text_end(text_id)
+                await _complete_cognitive_loop(
+                    pending_task=live_turn.get("pending_task")
+                    if isinstance(live_turn.get("pending_task"), dict)
+                    else None,
+                )
                 yield AssistantStreamComplete(
                     full_content=response_text,
                     tool_results=[],
@@ -2979,6 +3040,11 @@ class AgentIntelligence:
                 yield start_event
                 yield sse_text_delta(text_id, response_text)
                 yield sse_text_end(text_id)
+                await _complete_cognitive_loop(
+                    pending_task=orchestration_turn.get("pending_task")
+                    if isinstance(orchestration_turn.get("pending_task"), dict)
+                    else None,
+                )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},
@@ -2995,8 +3061,14 @@ class AgentIntelligence:
                     effective_mode=mode_key,
                     pipeline_tier=pipeline_tier,
                     routing_tier=routing_control.tier,
-                    routing=routing_sse,
+                    routing={
+                        **(routing_sse if isinstance(routing_sse, dict) else {}),
+                        **loop_trace.to_sse(),
+                    },
                     react_perf=orch_perf if isinstance(orch_perf, dict) else None,
+                    progress_steps=loop_trace.progress_steps(
+                        connected_integrations=list(connected_early or [])
+                    ),
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -3087,6 +3159,12 @@ class AgentIntelligence:
                 yield start_event
                 yield sse_text_delta(text_id, response_text)
                 yield sse_text_end(text_id)
+                await _complete_cognitive_loop(
+                    pending_task=connector_turn.get("pending_task")
+                    if isinstance(connector_turn.get("pending_task"), dict)
+                    else None,
+                    tool_results=_tool_results_from_connector_turn(connector_turn),
+                )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},
@@ -3103,7 +3181,13 @@ class AgentIntelligence:
                     effective_mode=mode_key,
                     pipeline_tier=pipeline_tier,
                     routing_tier=routing_control.tier,
-                    routing=routing_sse,
+                    routing={
+                        **(routing_sse if isinstance(routing_sse, dict) else {}),
+                        **loop_trace.to_sse(),
+                    },
+                    progress_steps=loop_trace.progress_steps(
+                        connected_integrations=list(connected_early or [])
+                    ),
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -4321,6 +4405,14 @@ class AgentIntelligence:
         react_perf = _react_perf_from_tool_calls(
             getattr(react_result, "tool_calls", None) if react_result else None
         )
+        pending_for_loop = None
+        if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):
+            pending_for_loop = task_state.get("pending_task")
+        await _complete_cognitive_loop(
+            pending_task=pending_for_loop,
+            tool_results=tool_results if isinstance(tool_results, list) else None,
+            react_result=react_result,
+        )
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence=finalized["confidence"],
@@ -4356,7 +4448,11 @@ class AgentIntelligence:
                 **routing_sse,
                 "routingTier": routing_control.tier,
                 "escalations": list(routing_control.escalations),
+                **loop_trace.to_sse(),
             },
+            progress_steps=loop_trace.progress_steps(
+                connected_integrations=list(connected_list or connected_early or [])
+            ),
             research_cascade=turn_ctx.research_cascade if isinstance(turn_ctx.research_cascade, dict) else None,
             react_perf=react_perf,
         )
