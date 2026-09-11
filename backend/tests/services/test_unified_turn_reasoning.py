@@ -483,26 +483,21 @@ async def test_apply_unified_live_pending_unrelated_uses_hold_prompt():
 
 
 @pytest.mark.asyncio
-async def test_apply_unified_live_channel_override_no_use_gmail():
-    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
-    with patch(
-        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
-        new=AsyncMock(),
-    ) as mock_shadow:
-        out = await apply_unified_turn_live(
-            org_id="org",
-            user_id="user",
-            conversation_id="conv",
+async def test_intent_gateway_channel_override_no_use_gmail():
+    from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+
+    decision = await evaluate_intent_gateway(
+        GatewayContext(
             message="No use Gmail.",
-            task_state={},
-            conversation_history=[],
-            connected_integrations=["gmail", "hubspot"],
-            settings=settings,
+            org_id="org",
+            conversation_id="conv",
+            spoken_mode=False,
         )
-    mock_shadow.assert_not_called()
-    assert out is not None
-    assert "Gmail" in out["message"]
-    assert out["task_state"].get("preferred_connector") == "gmail"
+    )
+    assert decision.action == "shortcut"
+    assert decision.candidate_id == "channel_override"
+    assert decision.confidence is not None and decision.confidence >= 0.92
+    assert "Gmail" in (decision.answer or "")
 
 
 @pytest.mark.parametrize(
@@ -519,8 +514,9 @@ async def test_apply_unified_live_channel_override_no_use_gmail():
     ],
 )
 @pytest.mark.asyncio
-async def test_apply_unified_live_meta_capability_uses_expression_path(message: str):
-    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+async def test_intent_gateway_meta_capability_uses_expression_path(message: str):
+    from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+
     meta_text = (
         "I am Gravitre — a calm operator for your Connected tools. Connected for this org right now: Apollo."
     )
@@ -528,24 +524,20 @@ async def test_apply_unified_live_meta_capability_uses_expression_path(message: 
     with patch(
         "app.services.conversational_reply_service.generate_conversational_reply",
         new=AsyncMock(return_value=meta_text),
-    ), patch(
-        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
-        new=AsyncMock(),
-    ) as mock_shadow:
-        out = await apply_unified_turn_live(
-            org_id="org",
-            user_id="user",
-            conversation_id="conv",
-            message=message,
-            task_state={},
-            conversation_history=[],
-            connected_integrations=["apollo"],
-            settings=settings,
+    ):
+        decision = await evaluate_intent_gateway(
+            GatewayContext(
+                message=message,
+                org_id="org",
+                conversation_id="conv",
+                connected_integrations=["apollo"],
+                spoken_mode=False,
+            )
         )
 
-    mock_shadow.assert_not_called()
-    assert out is not None
-    assert "Connected tools" in out["message"]
+    assert decision.action == "shortcut"
+    assert decision.candidate_id == "meta_capability"
+    assert "Connected tools" in (decision.answer or "")
 
 
 @pytest.mark.asyncio

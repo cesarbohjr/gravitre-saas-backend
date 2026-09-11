@@ -41,6 +41,7 @@ from app.services.ai_guardrails import (
     injection_hardening_note,
 )
 from app.services.chat_performance import ChatPerfTimer
+from app.services.intent_gateway import _RESPONSE_CACHE  # noqa: F401
 from app.services.conversation_context_service import (
     load_conversation_summary,
     persist_conversation_summary,
@@ -122,8 +123,6 @@ _TOOL_DISPLAY_NAMES = TOOL_DISPLAY_NAMES
 _DEFAULT_TOOLS = DEFAULT_ASSISTANT_TOOLS
 # Phase 4 — allow 30+ turn client histories into summarization (was 12).
 _MAX_HISTORY = 48
-_RESPONSE_CACHE_TTL = 30
-_RESPONSE_CACHE: dict[str, tuple[float, str, list[str]]] = {}
 
 
 class UserPreferencesUpdate(BaseModel):
@@ -328,52 +327,10 @@ def _response_cache_key(org_id: str, question: str, conversation_id: str | None 
 
 
 def _response_cache_eligible(question: str) -> bool:
-    """Confirm/decline and real operator tasks must never skip live reasoning."""
-    from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
-    from app.services.operator_task_intent import looks_like_operator_task
+    """Thin wrapper — eligibility is owned by the Intent Gateway."""
+    from app.services.intent_gateway import response_cache_eligible
 
-    text = (question or "").strip()
-    if not text:
-        return False
-    if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
-        return False
-    if looks_like_operator_task(text):
-        return False
-    return True
-
-
-def _build_cached_stream(content: str, tool_results: list[dict[str, Any]], suggestions: list[str]):
-    async def generator():
-        yield _sse({"type": "start"})
-        yield _sse({"type": "start-step"})
-        for tool in tool_results:
-            call_id = f"call-{uuid.uuid4().hex[:12]}"
-            yield _sse(
-                {
-                    "type": "tool-input-available",
-                    "toolCallId": call_id,
-                    "toolName": tool["displayName"],
-                    "input": tool.get("input") or {},
-                }
-            )
-            yield _sse(
-                {
-                    "type": "tool-output-available",
-                    "toolCallId": call_id,
-                    "output": tool.get("output"),
-                }
-            )
-        text_id = f"text-{uuid.uuid4().hex[:12]}"
-        yield _sse({"type": "text-start", "id": text_id})
-        yield _sse({"type": "text-delta", "id": text_id, "delta": content})
-        yield _sse({"type": "text-end", "id": text_id})
-        if suggestions:
-            yield _sse({"type": "data-suggestions", "data": {"suggestions": suggestions}})
-        yield _sse({"type": "finish-step"})
-        yield _sse({"type": "finish"})
-        yield "data: [DONE]\n\n"
-
-    return generator()
+    return response_cache_eligible(question)
 
 
 def _sse(chunk: dict[str, Any]) -> str:
@@ -766,9 +723,10 @@ def _build_stream(
             logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
-            if not spoken_mode and _response_cache_eligible(user_text):
-                cache_key = _response_cache_key(org_id, user_text, conversation_id)
-                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+        if not spoken_mode:
+            from app.services.intent_gateway import response_cache_put
+
+            response_cache_put(org_id, conversation_id, user_text, assistant_text, suggestions)
 
         yield sse_done()
 
@@ -878,23 +836,6 @@ async def assistant_chat(
     if not last_user.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
-    # Frontend IA consolidation — deterministic sidebar FAQ (no tool loop).
-    from app.services.frontend_ia_nav_faq import match_frontend_ia_nav_faq
-
-    ia_faq = match_frontend_ia_nav_faq(last_user)
-    if ia_faq:
-        logger.info(
-            "assistant.ia_nav_faq.served org_id=%s hub=%s chars=%s",
-            org_id,
-            ia_faq.get("hub"),
-            len(last_user),
-        )
-        return StreamingResponse(
-            _build_cached_stream(str(ia_faq["answer"]), [], []),
-            media_type="text/event-stream",
-            headers=_STREAM_HEADERS,
-        )
-
     # Keep department/cross-department as system guidance only.
     # Never prepend onto last_user — that string is also connector task text
     # (Slack bodies, confirm matching, param inference).
@@ -904,29 +845,6 @@ async def assistant_chat(
     explicit_tools = body.tools
     resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)
     model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
-
-    cache_key = _response_cache_key(org_id, last_user, conversation_id=(body.conversation_id or "").strip() or None)
-    cached = _RESPONSE_CACHE.get(cache_key)
-    if (
-        not bool(getattr(body, "spoken_mode", False))
-        and _response_cache_eligible(last_user)
-        and cached
-        and time.time() - cached[0] < _RESPONSE_CACHE_TTL
-    ):
-        cached_content, cached_suggestions = cached[1], cached[2]
-        cached_tools = await _run_tools(
-            resolved_tools,
-            org_id,
-            last_user,
-            settings,
-            agent_id=(body.agent_id or "").strip() or None,
-            user_id=str(current_user.get("user_id") or "") or None,
-        )
-        return StreamingResponse(
-            _build_cached_stream(cached_content, cached_tools, cached_suggestions),
-            media_type="text/event-stream",
-            headers=_STREAM_HEADERS,
-        )
 
     system_prompt = _build_assistant_system_prompt(
         settings,

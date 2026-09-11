@@ -1619,6 +1619,58 @@ class AgentIntelligence:
         _mark("client_ready")
 
         task_text = query.strip()
+        from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        gateway_state: dict[str, Any] = {}
+        if conversation_id:
+            try:
+                gateway_state = await get_conversation_state_service(
+                    active_settings
+                ).get_task_state(conversation_id, org_id, client=client)
+            except Exception:  # noqa: BLE001
+                gateway_state = {}
+        gateway = await evaluate_intent_gateway(
+            GatewayContext(
+                message=task_text,
+                spoken_mode=bool(spoken_mode),
+                conversation_history=conversation_history,
+                task_state=gateway_state if isinstance(gateway_state, dict) else {},
+                org_id=org_id,
+                conversation_id=conversation_id,
+                user_id=user_id,
+                client=client,
+                settings=active_settings,
+            )
+        )
+        _mark("intent_gateway")
+        if gateway.action == "shortcut" and (gateway.answer or "").strip():
+            message_id = str(uuid.uuid4())
+            response_text = str(gateway.answer)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": gateway.confidence or 0.92, "needs_clarification": False},
+                answer_explanation=f"intent_gateway:{gateway.candidate_id}",
+                dialogue_mode="answer",
+                effective_mode=str(mode or "fast"),
+            )
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model=f"intent_gateway:{gateway.candidate_id}",
+                message_id=message_id,
+                confidence={"score": gateway.confidence or 0.92, "needs_clarification": False},
+                answer_explanation=f"intent_gateway:{gateway.candidate_id}",
+                dialogue_mode="answer",
+                proactive_suggestions=list((gateway.extras or {}).get("suggestions") or []),
+            )
+            return
+
         # Spoken non-write: use connector snapshot cache (force_live=False) to avoid
         # ~0.6–1.2s live auth round-trips on every simple Talk turn. Write-shaped
         # intents and operator tasks still force live so ACT sees current auth.
@@ -1679,10 +1731,11 @@ class AgentIntelligence:
         _mark("connected_integrations")
         _mark("mcp_tools")
         _mark("engine_settings")
-        # Voice: default to the same fast tier used for simple text turns unless caller
-        # pinned another mode. Consequential writes escalate after classification.
-        if spoken_mode and mode is None:
-            mode = "fast"
+        # Same mode resolver for text and voice when the caller did not pin one.
+        if mode is None:
+            from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+
+            mode = resolve_voice_session_intelligence_mode(task_text)
         requested_mode = normalize_mode(mode)
         mode_key = resolve_effective_intelligence_mode(
             mode,
@@ -2276,11 +2329,7 @@ class AgentIntelligence:
                         "spokenConsequentialEscalation": True,
                     }
             elif _spoken_keep_full:
-                # Typed operator tasks already use full depth on Fast. Spoken must
-                # match that — never conversational lite — without escalating mode.
                 reasoning_depth = "full"
-            elif routing_control.tier == "simple" or requested_mode == "fast":
-                reasoning_depth = "conversational"
 
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
@@ -2608,18 +2657,11 @@ class AgentIntelligence:
             )
         _mark("unified_shadow_scheduled")
 
-        # Conversational path (additive): only when nothing is pending. Pending-reply
-        # classifier remains the owner for awaiting_* / sticky plans.
-        #
-        # R1 (STA-334): when LIVE is enabled, skip phrase-bank-as-primary early-exit —
-        # LIVE already owns meta/pending/pure chat. Keep turn_shape + mixed social ack
-        # for classical tool fallthrough. Rollback: UNIFIED_TURN_LIVE_ENABLED=false.
+        # Conversational mixed-turn social ack (not a canned answer). Pending-reply
+        # classifier remains the owner for awaiting_* / sticky plans. Phrase-bank
+        # answers are Intent Gateway candidates, not an independent exit.
         conversational_prefix = ""
-        live_enabled = bool(getattr(active_settings, "unified_turn_live_enabled", False))
-        from app.services.conversational_turn_gate import (
-            classify_turn_shape,
-            should_offer_conversational_path,
-        )
+        from app.services.conversational_turn_gate import classify_turn_shape
         from app.services.pending_reply_classifier import has_pending_family
 
         pending_family_active = has_pending_family(task_state)
@@ -2636,57 +2678,7 @@ class AgentIntelligence:
             call_site="agent_intelligence_classical",
         )
         _mark("turn_shape_classified")
-        if (
-            not live_enabled
-            and should_offer_conversational_path(turn_shape, has_pending=pending_family_active)
-        ):
-            from app.services.conversational_reply_service import generate_conversational_reply
-
-            response_text = await generate_conversational_reply(
-                task_text,
-                decision=turn_shape,
-                settings=active_settings,
-                org_id=org_id,
-                task_state=task_state,
-                conversation_history=conversation_history,
-                connected_integrations=list(connected_early or []),
-                client=client,
-                allow_humor=turn_shape.category in {"banter", "greeting", "thanks"},
-            )
-            yield sse_intelligence_metadata(
-                message_id=message_id,
-                confidence={"score": 0.9, "needs_clarification": False},
-                answer_explanation="Conversational path (non-task)",
-                dialogue_mode="answer",
-                persona_key=str(persona.get("persona_key") or ""),
-                task_state=task_state,
-                effective_mode=mode_key,
-                pipeline_tier=pipeline_tier,
-                routing_tier=routing_control.tier,
-                routing={
-                    **(routing_sse if isinstance(routing_sse, dict) else {}),
-                    "turnShape": turn_shape.shape,
-                    "conversationalCategory": turn_shape.category,
-                },
-            )
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
-            yield AssistantStreamComplete(
-                full_content=response_text,
-                tool_results=[],
-                react_result=None,
-                model="conversational_path",
-                message_id=message_id,
-                confidence={"score": 0.9, "needs_clarification": False},
-                answer_explanation="Conversational path (non-task)",
-                dialogue_mode="answer",
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=[],
-                task_state=task_state,
-            )
-            return
+        # Phrase-bank answers are Intent Gateway candidates, not an independent exit.
 
         social_ack_emitted = False
         if (

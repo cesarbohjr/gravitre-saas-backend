@@ -78,6 +78,11 @@ class TestWriteShapedGate:
 
     def test_read_only_question_is_not_flagged(self):
         assert _looks_write_shaped("What integrations do I have connected") is False
+
+    def test_google_ads_operator_brief_is_write_shaped(self):
+        from tests.services.task_execution_parity_fixtures import GOOGLE_ADS_CAMPAIGN_BRIEF
+
+        assert _looks_write_shaped(GOOGLE_ADS_CAMPAIGN_BRIEF) is True
         assert _looks_write_shaped("What is two plus two") is False
 
     def test_empty_text_is_not_flagged(self):

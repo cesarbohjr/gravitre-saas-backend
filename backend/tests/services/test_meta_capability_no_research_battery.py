@@ -4,7 +4,7 @@ Mirrors withhold_no_tool discipline — combined pass rate must stay at 100%.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -16,7 +16,6 @@ from app.services.adaptive_research_cascade import (
 from app.services.conversational_reply_service import re_search_meta
 from app.services.conversational_turn_gate import heuristic_turn_shape
 from app.services.unified_turn_knowledge_context import should_augment_unified_turn_with_knowledge
-from app.services.unified_turn_reasoning_service import apply_unified_turn_live
 
 
 META_PHRASES = [
@@ -56,8 +55,9 @@ def test_domain_phrases_not_suppressed_as_meta(message: str) -> None:
 
 @pytest.mark.parametrize("message", META_PHRASES)
 @pytest.mark.asyncio
-async def test_live_meta_short_circuit_skips_shadow_and_research(message: str) -> None:
-    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+async def test_gateway_meta_short_circuit_skips_live_shadow(message: str) -> None:
+    from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+
     meta_text = (
         "I am Gravitre — a calm operator for your Connected tools. "
         "Connected for this org right now: HubSpot."
@@ -65,27 +65,18 @@ async def test_live_meta_short_circuit_skips_shadow_and_research(message: str) -
     with patch(
         "app.services.conversational_reply_service.generate_conversational_reply",
         new=AsyncMock(return_value=meta_text),
-    ), patch(
-        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
-        new=AsyncMock(),
-    ) as mock_shadow, patch(
-        "app.services.unified_turn_knowledge_context.build_unified_turn_knowledge_context",
-        new=AsyncMock(),
-    ) as mock_knowledge:
-        out = await apply_unified_turn_live(
-            org_id="org",
-            user_id="user",
-            conversation_id="conv",
-            message=message,
-            task_state={},
-            conversation_history=[],
-            connected_integrations=["hubspot"],
-            settings=settings,
+    ):
+        decision = await evaluate_intent_gateway(
+            GatewayContext(
+                message=message,
+                org_id="org",
+                conversation_id="conv",
+                connected_integrations=["hubspot"],
+            )
         )
-    mock_shadow.assert_not_called()
-    mock_knowledge.assert_not_called()
-    assert out is not None
-    assert "Connected" in out["message"] or "HubSpot" in out["message"]
+    assert decision.action == "shortcut"
+    assert decision.candidate_id == "meta_capability"
+    assert "Connected" in (decision.answer or "") or "HubSpot" in (decision.answer or "")
 
 
 def test_relevance_floor_drops_adversarial_noise() -> None:

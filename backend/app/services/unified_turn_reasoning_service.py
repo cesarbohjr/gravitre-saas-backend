@@ -1856,115 +1856,41 @@ async def apply_unified_turn_live(
         return None
 
     from app.services.unified_turn_pending_live import (
-        resolve_unified_live_channel_override_reply,
-        resolve_unified_live_meta_capability_reply,
         resolve_unified_live_pending_reply,
         unified_live_message_violates_no_pending_hold,
     )
     from app.services.pending_reply_classifier import has_pending_family
 
-    from app.services.operator_task_intent import should_skip_unified_live_guards
-
     _guard_t0 = time.perf_counter()
-    # Spoken conversational with no pending write/plan: skip sequential channel /
-    # meta / pending resolvers (~100–400ms). Operator tasks and pending family
-    # keep the full guard chain (same as typed).
-    _skip_live_guards = should_skip_unified_live_guards(
-        spoken_mode=bool(spoken_mode),
-        reasoning_depth=str(reasoning_depth or ""),
-        has_pending=has_pending_family(task_state),
-        message=message or "",
+    # Channel override + meta-capability are Intent Gateway candidates.
+    # LIVE may only continue a pending family (kernel, not a new-request shortcut).
+    pending_result = await resolve_unified_live_pending_reply(
+        message=message,
+        task_state=task_state,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        client=client,
+        settings=active,
     )
-    if _skip_live_guards:
-        _guard_t1 = _guard_t0
-        _guard_t2 = _guard_t0
-        _guard_t3 = time.perf_counter()
-        logger.info(
-            "apply_unified_turn_live_guards_ms org_id=%s channel_ms=0 meta_ms=0 pending_ms=0 "
-            "total_guard_ms=%s skipped=spoken_conversational_no_pending",
-            org_id,
-            int((_guard_t3 - _guard_t0) * 1000),
-        )
-    else:
-        channel_result = await resolve_unified_live_channel_override_reply(
-            message=message,
-            task_state=task_state,
-            org_id=org_id,
+    _guard_t3 = time.perf_counter()
+    logger.info(
+        "apply_unified_turn_live_guards_ms org_id=%s channel_ms=0 meta_ms=0 pending_ms=%s "
+        "total_guard_ms=%s",
+        org_id,
+        int((_guard_t3 - _guard_t0) * 1000),
+        int((_guard_t3 - _guard_t0) * 1000),
+    )
+    if pending_result and (pending_result.user_message or "").strip():
+        pending_result.live_served = True
+        emit_unified_turn_shadow_audit(
             client=client,
+            org_id=org_id,
+            actor_id=user_id,
             conversation_id=conversation_id,
-            settings=active,
+            result=pending_result,
         )
-        _guard_t1 = time.perf_counter()
-        if channel_result and (channel_result.user_message or "").strip():
-            channel_result.live_served = True
-            emit_unified_turn_shadow_audit(
-                client=client,
-                org_id=org_id,
-                actor_id=user_id,
-                conversation_id=conversation_id,
-                result=channel_result,
-            )
-            updated_state = dict(task_state or {})
-            clarified = safe_normalize_stored_dict(updated_state, key='clarified_params')
-            from app.services.gravitre_voice import detect_channel_override_integration
-
-            override = detect_channel_override_integration(message)
-            if override:
-                clarified["channel_override"] = override
-                updated_state["clarified_params"] = clarified
-                updated_state["preferred_connector"] = override
-            payload = _unified_live_turn_payload(channel_result, updated_state)
-            return payload
-
-        meta_result = await resolve_unified_live_meta_capability_reply(
-            message=message,
-            task_state=task_state,
-            org_id=org_id,
-            connected_integrations=connected_integrations,
-            client=client,
-            settings=active,
-        )
-        _guard_t2 = time.perf_counter()
-        if meta_result and (meta_result.user_message or "").strip():
-            meta_result.live_served = True
-            emit_unified_turn_shadow_audit(
-                client=client,
-                org_id=org_id,
-                actor_id=user_id,
-                conversation_id=conversation_id,
-                result=meta_result,
-            )
-            return _unified_live_turn_payload(meta_result, task_state)
-
-        pending_result = await resolve_unified_live_pending_reply(
-            message=message,
-            task_state=task_state,
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            client=client,
-            settings=active,
-        )
-        _guard_t3 = time.perf_counter()
-        logger.info(
-            "apply_unified_turn_live_guards_ms org_id=%s channel_ms=%s meta_ms=%s pending_ms=%s "
-            "total_guard_ms=%s",
-            org_id,
-            int((_guard_t1 - _guard_t0) * 1000),
-            int((_guard_t2 - _guard_t1) * 1000),
-            int((_guard_t3 - _guard_t2) * 1000),
-            int((_guard_t3 - _guard_t0) * 1000),
-        )
-        if pending_result and (pending_result.user_message or "").strip():
-            pending_result.live_served = True
-            emit_unified_turn_shadow_audit(
-                client=client,
-                org_id=org_id,
-                actor_id=user_id,
-                conversation_id=conversation_id,
-                result=pending_result,
-            )
-            return _unified_live_turn_payload(pending_result, task_state)
+        return _unified_live_turn_payload(pending_result, task_state)
 
     # confirm/reject/modify/slot_answer return None from the pending resolver so
     # classical Module B can execute them. Do not let shadow invent a yes/hold.
@@ -1998,15 +1924,7 @@ async def apply_unified_turn_live(
     # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
     # ambiguous clarify). Runs before shadow + orch so classical never invents
     # steps when a retrieved plan exists.
-    # Spoken conversational with no pending: skip — pure chat never needs pack
-    # plan retrieval on the critical path (~10–40ms DB). Operator tasks keep it.
-    _skip_retrieve_plan = should_skip_unified_live_guards(
-        spoken_mode=bool(spoken_mode),
-        reasoning_depth=str(reasoning_depth or ""),
-        has_pending=has_pending_family(task_state),
-        message=message or "",
-    )
-    if conversation_id and not _skip_retrieve_plan:
+    if conversation_id:
         from app.services.retrieve_plan_gate import (
             retrieve_plan_or_none,
             stage_retrieved_plan_turn,
@@ -2048,147 +1966,9 @@ async def apply_unified_turn_live(
             )
             return staged
 
-    from app.services.conversational_turn_gate import (
-        ambiguous_open_clarify_reply,
-        correction_recall_pushback_reply,
-        definition_brief_reply,
-        heuristic_turn_shape,
-        is_human_moment_venting_no_ask,
-    )
-    from app.services.pending_reply_classifier import has_pending_family
+    from app.services.conversational_turn_gate import is_human_moment_venting_no_ask
 
-    # Rule 1 hard path: known ambiguous opens must clarify first. Shared LIVE
-    # path for every agent/surface — pattern list must include Legal/Cyber opens,
-    # not only Marketing/Sales/HR/default.
-    clarify_open = ambiguous_open_clarify_reply(message or "")
-    if clarify_open and not has_pending_family(task_state):
-        clarify_result = UnifiedTurnShadowResult(
-            outcome_kind="clarifying_question",
-            user_message=clarify_open,
-            live_served=True,
-            needs_tool_sse=False,
-            model="ambiguous_open_clarify",
-            connected_integrations=list(connected_integrations or []),
-        )
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=clarify_result,
-        )
-        return _unified_live_turn_payload(clarify_result, task_state)
-
-    # Rule 9 hard path: simple "what's X?" definitions stay brief prose (no
-    # Handoff JSON / option dumps from department personas).
-    definition_open = definition_brief_reply(message or "")
-    if definition_open and not has_pending_family(task_state):
-        definition_result = UnifiedTurnShadowResult(
-            outcome_kind="conversational_reply",
-            user_message=definition_open,
-            live_served=True,
-            needs_tool_sse=False,
-            model="definition_brief",
-            connected_integrations=list(connected_integrations or []),
-        )
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=definition_result,
-        )
-        return _unified_live_turn_payload(definition_result, task_state)
-
-    # Rules 6+7 hard path: standing-correction recall (+ optional Also: pushback)
-    # before connector/identity derails ("which item / workflow / connector").
-    recall_push = correction_recall_pushback_reply(
-        message or "",
-        conversation_history,
-    )
-    if recall_push and not has_pending_family(task_state):
-        recall_result = UnifiedTurnShadowResult(
-            outcome_kind="conversational_reply",
-            user_message=recall_push,
-            live_served=True,
-            needs_tool_sse=False,
-            model="correction_recall_pushback",
-            connected_integrations=list(connected_integrations or []),
-        )
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=recall_result,
-        )
-        return _unified_live_turn_payload(recall_result, task_state)
-
-    # Rule 10 hard path: human-moment venting with no explicit ask must be served
-    # as LIVE text without classical tool fallthrough (prevents HubSpot/Apollo derail).
-    if is_human_moment_venting_no_ask(message or "") and not has_pending_family(task_state):
-        result = await run_unified_turn_shadow(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            message=message,
-            task_state=task_state,
-            conversation_history=conversation_history,
-            connected_integrations=connected_integrations,
-            client=client,
-            settings=active,
-            qa_force_tool=None,
-            qa_force_outcome=None,
-            agent=agent,
-            permitted_tools=permitted_tools,
-            spoken_mode=bool(spoken_mode),
-            classification=classification,
-            research_scope=None,
-            reasoning_depth=reasoning_depth,
-            cognitive_context=cognitive_context,
-            on_text_delta=on_text_delta,
-        )
-        text = (result.user_message or "").strip()
-        if result.outcome_kind in {"skipped", "error"} or not text:
-            from app.services.conversational_reply_service import generate_conversational_reply
-
-            decision = heuristic_turn_shape(message or "")
-            if decision is None or decision.shape != "conversational":
-                from app.services.conversational_turn_gate import ConversationalGateDecision
-
-                decision = ConversationalGateDecision(
-                    shape="conversational",
-                    reason="human_moment_venting_no_ask",
-                    social_portion=(message or "").strip(),
-                    category="venting",
-                )
-            text = await generate_conversational_reply(
-                message or "",
-                decision=decision,
-                settings=active,
-                org_id=org_id,
-                task_state=task_state,
-                conversation_history=conversation_history,
-                connected_integrations=list(connected_integrations or []),
-                client=client,
-                allow_humor=False,
-            )
-            result.outcome_kind = "conversational_reply"
-            result.user_message = text
-            result.error = None
-        result.needs_tool_sse = False
-        result.live_served = True
-        result.tool_name = None
-        result.tool_invoke_action = None
-        result.tool_arguments = None
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=result,
-        )
-        return _unified_live_turn_payload(result, task_state)
+    # Ambiguous-open / definition / recall / venting are Intent Gateway candidates.
 
     # Spoken Register 5 is a knowledge-boundary generator: if no tool ran this
     # turn, it refuses. Typed then replaces that prose with ChatOrchestration.

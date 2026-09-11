@@ -1,11 +1,11 @@
 """Deterministic answers for consolidated admin IA navigation questions.
 
-Used as an early short-circuit in assistant chat so sidebar FAQ does not
+Used as an Intent Gateway candidate so sidebar FAQ does not
 fall into tool loops or paraphrase hub names (Insights vs Intelligence).
 
 These matchers must stay narrow. A substring like "enterprise" plus "where"
 is ordinary operator language (Google Ads, CRM, etc.) and must not replace
-the live assistant.
+the live assistant. The gateway, not this module, decides whether a hit is served.
 """
 
 from __future__ import annotations

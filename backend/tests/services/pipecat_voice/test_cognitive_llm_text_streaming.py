@@ -143,3 +143,52 @@ def test_valid_closed_set_delivery_tag_is_still_stripped_from_tts_text() -> None
     assert "[[" not in full_spoken
     assert "delivery" not in full_spoken
     assert "worry" in full_spoken
+
+
+def test_operator_ads_brief_uses_agent_intelligence_mode() -> None:
+    captured: dict[str, str] = {}
+
+    async def _fake_stream(**kwargs):
+        captured["mode"] = str(kwargs.get("mode") or "")
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "plan."})
+        yield AssistantStreamComplete(
+            full_content="plan.",
+            tool_results=[],
+            react_result=None,
+            model="test",
+        )
+
+    fake_intelligence = type(
+        "FakeIntelligence",
+        (),
+        {"execute_task_streaming": staticmethod(_fake_stream)},
+    )()
+    service = GravitreCognitiveLLMService(
+        app_settings=object(),
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+    )
+    service.push_frame = AsyncMock()
+    service._push_llm_text = AsyncMock()
+    service.start_ttfb_metrics = AsyncMock()
+    service.stop_ttfb_metrics = AsyncMock()
+
+    class _FakeContext:
+        def get_messages(self):
+            return [
+                {
+                    "role": "user",
+                    "content": (
+                        "I have a Google Ads campaign strategy ready. Set it up in "
+                        "Google Ads and don't execute without my approval."
+                    ),
+                }
+            ]
+
+    with patch(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        return_value=fake_intelligence,
+    ):
+        asyncio.run(service._run_gravitre_turn(_FakeContext()))
+
+    assert captured.get("mode") == "agent"

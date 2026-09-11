@@ -1,4 +1,5 @@
 from app.services.operator_task_intent import (
+    is_operator_task_shaped,
     looks_like_operator_task,
     should_keep_full_reasoning_for_spoken,
     should_skip_unified_live_guards,
@@ -26,6 +27,9 @@ def test_spoken_does_not_stream_live_deltas_for_operator_tasks() -> None:
     )
     assert looks_like_operator_task(GOOGLE_ADS_CAMPAIGN_BRIEF)
     assert should_keep_full_reasoning_for_spoken(GOOGLE_ADS_CAMPAIGN_BRIEF)
+    assert is_operator_task_shaped(GOOGLE_ADS_CAMPAIGN_BRIEF)
+    assert is_operator_task_shaped(SEO_PLUS_GOOGLE_ADS)
+    assert not is_operator_task_shaped("hey, how's it going")
 
 
 def test_rule_10_hubspot_vent_is_not_operator_task() -> None:
@@ -43,8 +47,8 @@ def test_connector_lookup_and_list_create_are_operator_tasks() -> None:
     assert looks_like_operator_task("In Apollo, create a contact list.")
 
 
-def test_spoken_lite_path_never_hijacks_operator_tasks() -> None:
-    assert use_spoken_lite_path(
+def test_spoken_lite_path_is_absorbed_by_the_gateway() -> None:
+    assert not use_spoken_lite_path(
         spoken_mode=True,
         routing_tier="simple",
         message="hey, how's it going",
@@ -66,8 +70,8 @@ def test_spoken_lite_path_never_hijacks_operator_tasks() -> None:
     )
 
 
-def test_spoken_live_guards_stay_on_for_operator_tasks() -> None:
-    assert should_skip_unified_live_guards(
+def test_spoken_live_guards_are_absorbed_by_the_gateway() -> None:
+    assert not should_skip_unified_live_guards(
         spoken_mode=True,
         reasoning_depth="conversational",
         has_pending=False,

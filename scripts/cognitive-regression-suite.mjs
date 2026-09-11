@@ -45,6 +45,15 @@ mustExist("backend/app/services/cognitive_turn_kernel.py")
 mustExist("backend/app/services/cognitive_planner.py")
 mustExist("supabase/migrations/20260813092023_cognitive_turn_kernel.sql")
 
+mustExist("backend/app/services/intent_gateway.py")
+mustExist("scripts/scan_intent_gateway_bypass.py")
+mustExist("backend/tests/test_intent_gateway.py")
+mustExist("backend/tests/test_intent_gateway_bypass.py")
+mustExist("backend/tests/test_intent_gateway_adversarial_corpus.py")
+if (read("backend/app/routers/assistant.py").includes("match_frontend_ia_nav_faq")) {
+  fail("backend/app/routers/assistant.py must not call match_frontend_ia_nav_faq (Intent Gateway owns it)")
+}
+
 // --- 2) agent_intelligence: run_pre_act present; kernel before apply_unified_turn_live in streaming ---
 {
   const rel = "backend/app/operators/agent_intelligence.py"
@@ -63,10 +72,17 @@ mustExist("supabase/migrations/20260813092023_cognitive_turn_kernel.sql")
     const nextDef = after.search(/\n    async def |\n    def /)
     const region = nextDef > 0 ? after.slice(0, nextDef) : after
 
+    const gatewayIdx = region.indexOf("evaluate_intent_gateway")
     const kernelIdx = region.indexOf("run_pre_act")
     const liveIdx = region.indexOf("apply_unified_turn_live")
-    if (kernelIdx < 0) {
+    if (gatewayIdx < 0) {
+      fail(`${rel}: execute_task_streaming must call evaluate_intent_gateway`)
+    } else if (kernelIdx < 0) {
       fail(`${rel}: execute_task_streaming must call run_pre_act`)
+    } else if (gatewayIdx >= kernelIdx) {
+      fail(
+        `${rel}: Intent Gateway evaluate_intent_gateway must appear BEFORE run_pre_act (got gateway@${gatewayIdx} kernel@${kernelIdx})`,
+      )
     } else if (liveIdx < 0) {
       fail(`${rel}: execute_task_streaming must reference apply_unified_turn_live`)
     } else if (kernelIdx >= liveIdx) {
@@ -203,6 +219,9 @@ mustContain(
       "tests/services/test_operator_task_intent.py",
       "tests/services/test_text_voice_task_execution_parity.py",
       "tests/services/test_conversational_turn_gate.py",
+      "tests/test_intent_gateway.py",
+      "tests/test_intent_gateway_bypass.py",
+      "tests/test_intent_gateway_adversarial_corpus.py",
     ]
     const env = {
       ...process.env,

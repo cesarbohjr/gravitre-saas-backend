@@ -51,6 +51,16 @@ logger = get_logger(__name__)
 def _looks_write_shaped(text: str) -> bool:
     """Conservative gate — speculative path must never touch write execution."""
     try:
+        from app.services.operator_task_intent import (
+            looks_like_operator_task,
+            should_keep_full_reasoning_for_spoken,
+        )
+
+        if looks_like_operator_task(text) or should_keep_full_reasoning_for_spoken(text):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from app.services.conversational_planning_engine import is_direct_connector_write_intent
 
         return bool(is_direct_connector_write_intent(text or ""))
@@ -155,6 +165,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
 
         def _runner():
             from app.operators.agent_intelligence import get_agent_intelligence
+            from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
 
             intelligence = get_agent_intelligence()
             _, history = messages_from_context(self._llm_context) if self._llm_context else ("", [])
@@ -167,7 +178,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 conversation_history=history or None,
                 conversation_id=self._conversation_id,
                 spoken_mode=True,
-                mode="fast",
+                mode=resolve_voice_session_intelligence_mode(text),
             )
 
         run = start_speculative_run(text=text, runner=_runner, create_task=self.create_task)

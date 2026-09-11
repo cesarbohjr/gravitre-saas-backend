@@ -85,6 +85,7 @@ class GravitreCognitiveLLMService(LLMService):
 
     async def _run_gravitre_turn(self, context: Any) -> None:
         from app.operators.agent_intelligence import get_agent_intelligence
+        from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
 
         user_text, history = _messages_from_context(context)
         if not user_text:
@@ -178,7 +179,7 @@ class GravitreCognitiveLLMService(LLMService):
                 conversation_history=history or None,
                 conversation_id=self._conversation_id,
                 spoken_mode=True,
-                mode="fast",
+                mode=resolve_voice_session_intelligence_mode(user_text),
             )
         async for event in events_source:
             if isinstance(event, AssistantStreamComplete):

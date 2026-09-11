@@ -91,23 +91,25 @@ def should_keep_full_reasoning_for_spoken(message: str) -> bool:
     return False
 
 
-def should_skip_unified_live_guards(
-    *,
-    spoken_mode: bool,
-    reasoning_depth: str,
-    has_pending: bool,
-    message: str,
-) -> bool:
-    """Voice latency skip of channel/meta/pending resolvers — never for operator tasks."""
-    if not spoken_mode:
-        return False
-    if has_pending:
-        return False
-    if str(reasoning_depth or "").strip().lower() != "conversational":
-        return False
-    if looks_like_operator_task(message) or should_keep_full_reasoning_for_spoken(message):
-        return False
-    return True
+def is_operator_task_shaped(message: str) -> bool:
+    """Single shared definition: this turn is ineligible for every canned shortcut.
+
+    Reuses the proven detectors (operator-task lexicon, Google Ads structure,
+    direct connector writes). The Intent Gateway is the only caller that may
+    treat this as a hard ineligibility gate.
+    """
+    if looks_like_operator_task(message):
+        return True
+    if should_keep_full_reasoning_for_spoken(message):
+        return True
+    try:
+        from app.services.conversational_planning_engine import is_direct_connector_write_intent
+
+        if is_direct_connector_write_intent(message or ""):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
 
 
 def use_spoken_lite_path(
@@ -116,21 +118,19 @@ def use_spoken_lite_path(
     routing_tier: str,
     message: str,
 ) -> bool:
-    """Skip understand/classify enrichments for spoken chitchat only."""
-    if not spoken_mode:
-        return False
-    if str(routing_tier or "").strip().lower() != "simple":
-        return False
-    if should_keep_full_reasoning_for_spoken(message):
-        return False
-    try:
-        from app.services.conversational_planning_engine import is_direct_connector_write_intent
+    """Absorbed by the Intent Gateway. Spoken no longer skips kernel enrichments."""
+    return False
 
-        if is_direct_connector_write_intent(message or ""):
-            return False
-    except Exception:  # noqa: BLE001
-        pass
-    return True
+
+def should_skip_unified_live_guards(
+    *,
+    spoken_mode: bool,
+    reasoning_depth: str,
+    has_pending: bool,
+    message: str,
+) -> bool:
+    """Absorbed by the Intent Gateway. Kernel fallthrough always keeps LIVE guards."""
+    return False
 
 
 def should_force_live_connector_pipeline(message: str) -> bool:
