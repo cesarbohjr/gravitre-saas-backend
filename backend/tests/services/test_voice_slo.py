@@ -8,7 +8,11 @@ from app.services.voice_slo import (
 )
 
 
-def test_plan_hold_is_not_a_completed_write():
+def test_early_perceive_draft_matches_loop_controller():
+    from app.services.cognitive_loop_controller import _SPOKEN_STAGE_DRAFTS
+    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+    assert EARLY_PERCEIVE_DRAFT == _SPOKEN_STAGE_DRAFTS["PERCEIVE"]
     pending = {"status": "awaiting_plan_confirm", "type": "connector_orchestration"}
     assert (
         turn_claimed_write_complete(

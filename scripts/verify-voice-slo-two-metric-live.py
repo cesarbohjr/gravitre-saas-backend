@@ -77,39 +77,46 @@ def _one_turn(client: httpx.Client, headers: dict[str, str], prompt: str, conv: 
     first_audio = None
     first_tool = None
     complete_ms = None
+    status = None
+    stream_error = None
     t0 = time.perf_counter()
-    with client.stream(
-        "POST",
-        f"{BASE}/api/voice/session/turn",
-        headers=headers,
-        json={
-            "text": prompt,
-            "conversation_id": conv,
-            "turn_id": str(uuid.uuid4()),
-            "history": [],
-        },
-        timeout=240,
-    ) as vr:
-        status = vr.status_code
-        for line in vr.iter_lines():
-            if not line:
-                continue
-            ms = int((time.perf_counter() - t0) * 1000)
-            try:
-                ev = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            et = str(ev.get("type") or "")
-            if et in {"voice.text.delta", "text-delta"} and first_text is None:
-                first_text = ms
-            if et == "voice.audio.delta" and first_audio is None:
-                first_audio = ms
-            if et == "voice.sse.tool-input-available" and first_tool is None:
-                first_tool = ms
-            if et == "voice.turn.complete" and complete_ms is None:
-                complete_ms = ms
-            if len(timeline) < 12:
-                timeline.append({"ms": ms, "type": et})
+    try:
+        with client.stream(
+            "POST",
+            f"{BASE}/api/voice/session/turn",
+            headers=headers,
+            json={
+                "text": prompt,
+                "conversation_id": conv,
+                "turn_id": str(uuid.uuid4()),
+                "history": [],
+            },
+            timeout=240,
+        ) as vr:
+            status = vr.status_code
+            for line in vr.iter_lines():
+                if not line:
+                    continue
+                ms = int((time.perf_counter() - t0) * 1000)
+                try:
+                    ev = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                et = str(ev.get("type") or "")
+                if et in {"voice.text.delta", "text-delta"} and first_text is None:
+                    first_text = ms
+                if et == "voice.audio.delta" and first_audio is None:
+                    first_audio = ms
+                if et == "voice.sse.tool-input-available" and first_tool is None:
+                    first_tool = ms
+                if et == "voice.turn.complete" and complete_ms is None:
+                    complete_ms = ms
+                if len(timeline) < 12:
+                    timeline.append({"ms": ms, "type": et})
+                if complete_ms is not None:
+                    break
+    except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.TransportError) as exc:
+        stream_error = f"{type(exc).__name__}: {exc}"[:300]
     return {
         "http_status": status,
         "conversation_id": conv,
@@ -118,6 +125,7 @@ def _one_turn(client: httpx.Client, headers: dict[str, str], prompt: str, conv: 
         "metric_b_ms": complete_ms,
         "first_tool_sse_ms": first_tool,
         "timeline_head": timeline,
+        "stream_error": stream_error,
     }
 
 

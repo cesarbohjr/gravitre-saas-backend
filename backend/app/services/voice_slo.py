@@ -33,6 +33,13 @@ METRIC_B_P95_MS = 8000
 AUDIT_METRIC_A = "voice.slo.metric_a"
 AUDIT_METRIC_B = "voice.slo.metric_b"
 
+# Must stay identical to cognitive_loop_controller._SPOKEN_STAGE_DRAFTS["PERCEIVE"].
+# Kept here so Metric A speech does not import the Cognitive Loop Controller on the
+# first-audio critical path (that import was a measured 1s+ stall).
+EARLY_PERCEIVE_DRAFT = (
+    "I've classified this as a real request, so I'm running the full loop."
+)
+
 # Do not use these as a blended "voice latency" headline.
 INTERNAL_DUPLEX_E2E_ACTION = "voice.turn_latency.e2e"
 

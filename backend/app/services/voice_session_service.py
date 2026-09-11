@@ -46,6 +46,11 @@ _STRIKETHROUGH = re.compile(r"~~([^~\n]+)~~")
 # marker, never speakable content.
 _STRAY_ASTERISK = re.compile(r"\*+")
 
+# Cached TTS of the standing PERCEIVE draft (same sentence every operator turn).
+# Keyed by voice/model/format so Metric A is not charged a cold ElevenLabs hop
+# on every subsequent turn in this worker.
+_PERCEIVE_TTS_CACHE: dict[tuple[str, str, str], list[bytes]] = {}
+
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
 # Prefer Redis so cancel works across Railway replicas; memory is local fallback.
 _CANCELLED_TURNS: dict[str, float] = {}
@@ -196,9 +201,11 @@ async def stream_voice_turn_events(
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     t_start = time.perf_counter()
-    from app.operators.agent_intelligence import get_agent_intelligence
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
-    from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+    from app.services.operator_task_intent import (
+        looks_like_operator_task,
+        resolve_voice_session_intelligence_mode,
+    )
     from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
@@ -230,8 +237,6 @@ async def stream_voice_turn_events(
         "turn_id": resolved_turn_id,
         "conversation_id": resolved_conversation_id,
     }
-
-    intelligence = get_agent_intelligence()
     text_buffer = ""
     full_text: list[str] = []
     first_text_ms: int | None = None
@@ -272,14 +277,33 @@ async def stream_voice_turn_events(
             return
             yield  # pragma: no cover — keeps this an async generator
         first_piece = True
+        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+        perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+        cache_key = (
+            str(resolved_voice or ""),
+            str(model or ""),
+            str(tts_output_format),
+        )
+        cached_pieces = (
+            _PERCEIVE_TTS_CACHE.get(cache_key)
+            if spoken_chunk == perceive_text
+            else None
+        )
+        collected: list[bytes] = []
         try:
-            for audio in synthesize_speech_stream(
-                settings,
-                text=spoken_chunk,
-                voice_key=resolved_voice,
-                model_id=model,
-                output_format=tts_output_format,
-            ):
+            audio_iter = (
+                iter(cached_pieces)
+                if cached_pieces is not None
+                else synthesize_speech_stream(
+                    settings,
+                    text=spoken_chunk,
+                    voice_key=resolved_voice,
+                    model_id=model,
+                    output_format=tts_output_format,
+                )
+            )
+            for audio in audio_iter:
                 if _cancelled():
                     cancelled = True
                     return
@@ -325,6 +349,10 @@ async def stream_voice_turn_events(
                     "turn_id": resolved_turn_id,
                 }
                 first_piece = False
+                if cached_pieces is None and spoken_chunk == perceive_text:
+                    collected.append(audio)
+            if cached_pieces is None and spoken_chunk == perceive_text and collected:
+                _PERCEIVE_TTS_CACHE[cache_key] = collected
         except VoiceProviderError as exc:
             tts_failed = True
             from app.services.response_composer import TTS_SAFE_ERROR
@@ -352,6 +380,30 @@ async def stream_voice_turn_events(
             }
             return
 
+    early_perceive_draft: str | None = None
+    if looks_like_operator_task(text):
+        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+        early_perceive_draft = EARLY_PERCEIVE_DRAFT
+        if early_perceive_draft:
+            operator_task = True
+            loop_stage_spoken = True
+            yield {
+                "type": "voice.text.delta",
+                "delta": early_perceive_draft,
+                "turn_id": resolved_turn_id,
+            }
+            if first_text_ms is None:
+                first_text_ms = int((time.perf_counter() - t_start) * 1000)
+                first_text_preview = early_perceive_draft[:200]
+                yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
+            full_text.append(early_perceive_draft)
+            async for audio_ev in _emit_tts(early_perceive_draft):
+                yield audio_ev
+
+    from app.operators.agent_intelligence import get_agent_intelligence
+
+    intelligence = get_agent_intelligence()
     async for event in intelligence.execute_task_streaming(
         settings=settings,
         org_id=org_id,
@@ -459,6 +511,8 @@ async def stream_voice_turn_events(
             continue
         delta = event.payload.get("delta")
         if not isinstance(delta, str) or not delta:
+            continue
+        if early_perceive_draft and delta.strip() == early_perceive_draft.strip():
             continue
         yield {"type": "voice.text.delta", "delta": delta, "turn_id": resolved_turn_id}
         if first_text_ms is None:

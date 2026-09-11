@@ -72,6 +72,47 @@ async def test_stream_voice_turn_emits_audio_chunks_as_they_arrive(monkeypatch, 
 
 
 @pytest.mark.asyncio
+async def test_operator_turn_speaks_perceive_before_kernel(monkeypatch, mock_settings):
+    """MUTATION PROOF: Metric A must not wait on execute_task_streaming."""
+    import asyncio
+
+    started = {"kernel": False}
+
+    class _SlowIntelligence(_FakeIntelligence):
+        async def execute_task_streaming(self, **kwargs: Any) -> AsyncIterator[Any]:
+            started["kernel"] = True
+            await asyncio.sleep(0.4)
+            async for ev in super().execute_task_streaming(**kwargs):
+                yield ev
+
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _SlowIntelligence(["Plan ready. Nothing executed."]),
+    )
+    monkeypatch.setattr(
+        voice_session_service,
+        "synthesize_speech_stream",
+        lambda *_, **__: iter((b"audio-1",)),
+    )
+    t0 = __import__("time").perf_counter()
+    first_audio_ms = None
+    async for event in voice_session_service.stream_voice_turn_events(
+        settings=_settings_with_voice(mock_settings),
+        org_id="org-1",
+        user_id="user-1",
+        text="Show me the complete plan before you execute anything. Don't execute.",
+        agent={"id": "agent-1"},
+        conversation_id="conv-1",
+    ):
+        if event.get("type") == "voice.audio.delta" and first_audio_ms is None:
+            first_audio_ms = int((__import__("time").perf_counter() - t0) * 1000)
+            assert started["kernel"] is False
+            break
+    assert first_audio_ms is not None
+    assert started["kernel"] is False
+
+
+@pytest.mark.asyncio
 async def test_stream_voice_turn_keeps_text_path_when_tts_fails(monkeypatch, mock_settings):
     monkeypatch.setattr(
         "app.operators.agent_intelligence.get_agent_intelligence",
