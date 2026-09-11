@@ -1,0 +1,1173 @@
+{
+  "probe": "voice_composer_and_socket",
+  "started_at": "2026-09-11T22:37:58.408228+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "utterance": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+  "covers": [
+    "cognitive_llm raw-exception leak on the voice path (3e621c07)",
+    "Phase B real WS URL + close code"
+  ],
+  "git_sha": "2cfc14fcc1569d36238be4ac0ffbab4b053635ef",
+  "health_timestamp": "2026-09-11T22:37:59.411897+00:00",
+  "speech_bytes": 144150,
+  "healthy_session": {
+    "ws_url_redacted": "wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
+    "ws_path": "/api/voice/pipecat/ws",
+    "token_in_query": true,
+    "opened": true,
+    "session_ready": true,
+    "close_code": 1000,
+    "close_reason": "",
+    "was_clean": true,
+    "connect_error": null,
+    "events": [
+      {
+        "type": "session.ready"
+      },
+      {
+        "type": "tts.warmed"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "speech.interrupted"
+      },
+      {
+        "type": "user-started-speaking"
+      },
+      {
+        "type": "bot-interrupted"
+      },
+      {
+        "type": "user-transcription"
+      },
+      {
+        "type": "transcript"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "user-transcription"
+      },
+      {
+        "type": "assistant_text"
+      },
+      {
+        "type": "assistant_text"
+      },
+      {
+        "type": "user-llm-text"
+      },
+      {
+        "type": "user-stopped-speaking"
+      },
+      {
+        "type": "bot-llm-started"
+      },
+      {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "bot-tts-started"
+      },
+      {
+        "type": "assistant_text"
+      },
+      {
+        "type": "assistant_text"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "bot-started-speaking"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "bot-llm-text"
+      },
+      {
+        "type": "bot-transcription"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-llm-stopped"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      },
+      {
+        "type": "bot-tts-text"
+      },
+      {
+        "type": "bot-output"
+      }
+    ],
+    "assistant_text": "I've classified this as a real request, so I'm running the full loop.I'm loading memory and knowledge now.I'm putting the plan together.I'm preparing the next actions.",
+    "server_errors": [],
+    "raw_messages": [
+      {
+        "type": "session.ready",
+        "architecture": "pipecat_deepgram_cognitive_elevenlabs",
+        "cognitive_path": "CognitiveTurnKernel",
+        "write_confirm_policy": "nl_yes_same_path_as_text",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "conversation_id": "05838e4b-e104-4db7-950d-1dc6816700cc",
+        "tts_model": "eleven_flash_v2_5",
+        "tts_transport": "websocket",
+        "tts_warmup": "elevenlabs_ws_preconnect",
+        "barge_in": "elevenlabs_interrupt_report",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
+        "speculative_generation": "probable_eot_cancelable_adopt_on_match",
+        "stt_provider": "deepgram_flux",
+        "stt_model": "flux-general-en",
+        "stt_provider_key": "flux",
+        "stt_turn_detection": "flux_native_eot",
+        "stt_keyterm_count": 12,
+        "krisp_requested": false,
+        "krisp_active": false,
+        "krisp_skip_reason": "flag_off",
+        "keyterms_enabled": true,
+        "keyterm_count": 12,
+        "keyterm_sources": [
+          "connected_integrations",
+          "gravitre_core",
+          "org_name"
+        ],
+        "tts_ab_eval": false,
+        "tts_ab_model": null,
+        "spoken_prompt_v2": true,
+        "response_length_adapt_v1": true,
+        "played_audio_reconcile_v1": true
+      },
+      {
+        "type": "tts.warmed",
+        "method": "elevenlabs_ws_preconnect",
+        "ok": true
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "ttfb": [
+            {
+              "processor": "DeepgramFluxSTTService#6",
+              "value": 0.0
+            },
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "value": 0.0
+            }
+          ],
+          "processing": [
+            {
+              "processor": "DeepgramFluxSTTService#6",
+              "value": 0.0
+            },
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "value": 0.0
+            }
+          ]
+        }
+      },
+      {
+        "type": "speech.interrupted",
+        "tts_provider": "elevenlabs",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs, not Deepgram Speak v2",
+        "spoken_text": "",
+        "full_draft_text": "",
+        "interrupted": true,
+        "playback_offset_ms": null,
+        "reconciled_text": "",
+        "reconcile_played_audio": true,
+        "reconciled_chars": 0,
+        "draft_chars": 0,
+        "dropped_chars": 0,
+        "truncated": false,
+        "match_strategy": "empty_draft",
+        "matched_words": 0,
+        "spoken_source": "draft_fallback",
+        "draft_source": "llm_frames"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-started-speaking"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-interrupted"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-transcription",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+          "user_id": "",
+          "timestamp": "2026-09-11T22:38:26.468+00:00",
+          "final": false
+        }
+      },
+      {
+        "type": "transcript",
+        "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+        "final": true,
+        "user_id": ""
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "stt_usage": [
+            {
+              "processor": "DeepgramFluxSTTService#6",
+              "model": "flux-general-en",
+              "value": {
+                "audio_seconds": 6.4446874999999615
+              }
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-transcription",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+          "user_id": "",
+          "timestamp": "2026-09-11T22:38:26.641+00:00",
+          "final": true
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-llm-text",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-stopped-speaking"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-started"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I'm loading memory and knowledge now. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I'm loading memory and knowledge now. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "value": 69
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-started"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "ttfb": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "value": 0.14242887496948242
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "ttfa": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "ttfa": 0.18442887496948243,
+              "ttfb": 0.14242887496948242,
+              "leading_silence": 0.042
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-started-speaking"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "spoken": false,
+          "will_be_spoken": true,
+          "spoken_status": "new",
+          "spoken_progress": {
+            "accumulated_text": "",
+            "remaining_text": "I've classified this as a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "I've"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've",
+            "remaining_text": " classified this as a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "classified"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified",
+            "remaining_text": " this as a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I'm putting the plan together. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I'm putting the plan together. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-text",
+        "data": {
+          "text": "I'm preparing the next actions. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-transcription",
+        "data": {
+          "text": "I'm preparing the next actions. "
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "this"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this",
+            "remaining_text": " as a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "as"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as",
+            "remaining_text": " a real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "a"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a",
+            "remaining_text": " real request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "real"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real",
+            "remaining_text": " request, so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "request,"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request,",
+            "remaining_text": " so I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "value": 37
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {}
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "characters": [
+            {
+              "processor": "ElevenLabsTTSService#6",
+              "model": "eleven_flash_v2_5",
+              "value": 30
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "so"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so",
+            "remaining_text": " I'm running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "I'm"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so I'm",
+            "remaining_text": " running the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "running"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so I'm running",
+            "remaining_text": " the full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "the"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so I'm running the",
+            "remaining_text": " full loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "full"
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "in-progress",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so I'm running the full",
+            "remaining_text": " loop."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-tts-text",
+        "data": {
+          "text": "loop."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I've classified this as a real request, so I'm running the full loop.",
+          "aggregated_by": "sentence",
+          "segment_id": 6426,
+          "will_be_spoken": true,
+          "spoken_status": "completed",
+          "spoken_progress": {
+            "accumulated_text": "I've classified this as a real request, so I'm running the full loop.",
+            "remaining_text": ""
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I'm loading memory and knowledge now.",
+          "aggregated_by": "sentence",
+          "segment_id": 6593,
+          "spoken": false,
+          "will_be_spoken": true,
+          "spoken_status": "new",
+          "spoken_progress": {
+            "accumulated_text": "",
+            "remaining_text": "I'm loading memory and knowledge now."
+          }
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-output",
+        "data": {
+          "text": "I'm putting the plan together.",
+          "aggregated_by": "sentence",
+          "segment_id": 6596,
+          "spoken": false,
+          "will_be_spoken": true,
+          "spoken_status": "new",
+          "spoken_progress": {
+            "accumulated_text": "",
+            "remaining_text": "I'm putting the plan together."
+          }
+        }
+      }
+    ],
+    "audio_frames": 0,
+    "audio_bytes": 0
+  },
+  "induced_failure_session": {
+    "ws_url_redacted": "wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
+    "ws_path": "/api/voice/pipecat/ws",
+    "token_in_query": true,
+    "opened": true,
+    "session_ready": true,
+    "close_code": 1000,
+    "close_reason": "",
+    "was_clean": true,
+    "connect_error": null,
+    "events": [
+      {
+        "type": "session.ready"
+      },
+      {
+        "type": "tts.warmed"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "speech.interrupted"
+      },
+      {
+        "type": "user-started-speaking"
+      },
+      {
+        "type": "bot-interrupted"
+      },
+      {
+        "type": "user-transcription"
+      },
+      {
+        "type": "transcript"
+      },
+      {
+        "type": "metrics"
+      },
+      {
+        "type": "user-transcription"
+      },
+      {
+        "type": "user-llm-text"
+      },
+      {
+        "type": "user-stopped-speaking"
+      },
+      {
+        "type": "bot-llm-started"
+      },
+      {
+        "type": "bot-llm-stopped"
+      },
+      {
+        "type": "error"
+      },
+      {
+        "type": "_recv_timeout"
+      }
+    ],
+    "assistant_text": "",
+    "server_errors": [
+      {
+        "label": "rtvi-ai",
+        "type": "error",
+        "data": {
+          "error": "I couldn't complete that just now. Try again in a moment.",
+          "fatal": false
+        }
+      }
+    ],
+    "raw_messages": [
+      {
+        "type": "session.ready",
+        "architecture": "pipecat_deepgram_cognitive_elevenlabs",
+        "cognitive_path": "CognitiveTurnKernel",
+        "write_confirm_policy": "nl_yes_same_path_as_text",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "conversation_id": "f07e57c0-0000-4000-8000-c04e57a0fa11",
+        "tts_model": "eleven_flash_v2_5",
+        "tts_transport": "websocket",
+        "tts_warmup": "elevenlabs_ws_preconnect",
+        "barge_in": "elevenlabs_interrupt_report",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
+        "speculative_generation": "probable_eot_cancelable_adopt_on_match",
+        "stt_provider": "deepgram_flux",
+        "stt_model": "flux-general-en",
+        "stt_provider_key": "flux",
+        "stt_turn_detection": "flux_native_eot",
+        "stt_keyterm_count": 10,
+        "krisp_requested": false,
+        "krisp_active": false,
+        "krisp_skip_reason": "flag_off",
+        "keyterms_enabled": true,
+        "keyterm_count": 10,
+        "keyterm_sources": [
+          "connected_integrations",
+          "gravitre_core",
+          "org_name"
+        ],
+        "tts_ab_eval": false,
+        "tts_ab_model": null,
+        "spoken_prompt_v2": true,
+        "response_length_adapt_v1": true,
+        "played_audio_reconcile_v1": true
+      },
+      {
+        "type": "tts.warmed",
+        "method": "elevenlabs_ws_preconnect",
+        "ok": true
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "ttfb": [
+            {
+              "processor": "DeepgramFluxSTTService#7",
+              "value": 0.0
+            },
+            {
+              "processor": "ElevenLabsTTSService#7",
+              "value": 0.0
+            }
+          ],
+          "processing": [
+            {
+              "processor": "DeepgramFluxSTTService#7",
+              "value": 0.0
+            },
+            {
+              "processor": "ElevenLabsTTSService#7",
+              "value": 0.0
+            }
+          ]
+        }
+      },
+      {
+        "type": "speech.interrupted",
+        "tts_provider": "elevenlabs",
+        "speak_v2": false,
+        "speak_v2_note": "N/A \u2014 live TTS is ElevenLabs, not Deepgram Speak v2",
+        "spoken_text": "",
+        "full_draft_text": "",
+        "interrupted": true,
+        "playback_offset_ms": null,
+        "reconciled_text": "",
+        "reconcile_played_audio": true,
+        "reconciled_chars": 0,
+        "draft_chars": 0,
+        "dropped_chars": 0,
+        "truncated": false,
+        "match_strategy": "empty_draft",
+        "matched_words": 0,
+        "spoken_source": "draft_fallback",
+        "draft_source": "llm_frames"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-started-speaking"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-interrupted"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-transcription",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+          "user_id": "",
+          "timestamp": "2026-09-11T22:39:08.320+00:00",
+          "final": false
+        }
+      },
+      {
+        "type": "transcript",
+        "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+        "final": true,
+        "user_id": ""
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "metrics",
+        "data": {
+          "stt_usage": [
+            {
+              "processor": "DeepgramFluxSTTService#7",
+              "model": "flux-general-en",
+              "value": {
+                "audio_seconds": 5.884687499999963
+              }
+            }
+          ]
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-transcription",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month.",
+          "user_id": "",
+          "timestamp": "2026-09-11T22:39:08.801+00:00",
+          "final": true
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-llm-text",
+        "data": {
+          "text": "Pull my connected HubSpot contacts and tell me which accounts went quiet this month."
+        }
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "user-stopped-speaking"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-started"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "bot-llm-stopped"
+      },
+      {
+        "label": "rtvi-ai",
+        "type": "error",
+        "data": {
+          "error": "I couldn't complete that just now. Try again in a moment.",
+          "fatal": false
+        }
+      }
+    ],
+    "audio_frames": 0,
+    "audio_bytes": 0
+  },
+  "tts_safe_error_expected": "I couldn't complete that just now. Try again in a moment.",
+  "probe_message_that_must_not_appear": "CognitiveTurnKernel probe fault: statement timeout raised in backend/app",
+  "leaks": [],
+  "raw_probe_text_verbatim": [],
+  "composed_safe_line_present": true,
+  "control_ok": true,
+  "fails": [],
+  "verdict": "PASS - on 2cfc14fc: induced cognitive-turn failure on a live voice session produced the composed safe line, not the raw exception; healthy close_code=1000 failure close_code=1000 url=wss://api.gravitre.app/api/voice/pipecat/ws?access_token=<redacted>&org_id=<redacted>&conversation_id=<redacted>",
+  "finished_at": "2026-09-11T22:39:38.922751+00:00"
+}

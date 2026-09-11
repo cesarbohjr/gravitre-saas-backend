@@ -170,6 +170,9 @@ async def run_session(
         "events": [],
         "assistant_text": "",
         "server_errors": [],
+        "raw_messages": [],
+        "audio_frames": 0,
+        "audio_bytes": 0,
     }
 
     deltas: list[str] = []
@@ -223,6 +226,11 @@ async def run_session(
                     )
                     break
                 if isinstance(raw, bytes):
+                    # Binary frames are synthesized speech. Counting them matters:
+                    # if the composed line is spoken but never mirrored as text,
+                    # a text-only capture would wrongly report silence.
+                    result["audio_frames"] = int(result.get("audio_frames") or 0) + 1
+                    result["audio_bytes"] = int(result.get("audio_bytes") or 0) + len(raw)
                     continue
                 try:
                     msg = json.loads(raw)
@@ -238,14 +246,16 @@ async def run_session(
                         deltas.append(delta)
                         last_text_at = time.monotonic()
                 elif kind == "error":
-                    result["server_errors"].append(
-                        {
-                            "error": str(msg.get("error") or "")[:600],
-                            "error_class": str(msg.get("error_class") or ""),
-                        }
-                    )
+                    # Record the WHOLE payload. Reading a guessed key is how a
+                    # capture reports "empty" when the text is sitting in a field
+                    # the reader never looked at.
+                    result["server_errors"].append(json.loads(json.dumps(msg))) 
                 if kind not in {"audio"}:
                     result["events"].append({"type": kind or "(untyped)"})
+                    # Keep full payloads for anything that is not a bulk transcript
+                    # delta, so the rendered surface can be reconstructed later.
+                    if kind != "assistant_text" and len(result["raw_messages"]) < 60:
+                        result["raw_messages"].append(json.loads(json.dumps(msg)))
                 if last_text_at is not None and time.monotonic() - last_text_at > 5.0:
                     break
 
@@ -315,22 +325,46 @@ def main() -> int:
     from app.services.response_composer import TTS_SAFE_ERROR, looks_like_raw_backend
 
     def user_facing(session: dict[str, Any]) -> list[str]:
-        return [session.get("assistant_text") or ""] + [
-            e.get("error") or "" for e in session.get("server_errors") or []
-        ]
+        """Every string the server sent that a user could end up reading or hearing.
 
-    token = service_token()
+        Pulls all string values out of error payloads rather than one guessed
+        key, because the field carrying the message is exactly the thing not to
+        assume.
+        """
+        def strings(node: Any) -> list[str]:
+            # Recurses, because the live payload nests the message at data.error
+            # rather than at the top level. A flat read of the same event returned
+            # empty and would have been reported as "no user-facing text".
+            if isinstance(node, str):
+                return [node]
+            if isinstance(node, dict):
+                return [s for v in node.values() for s in strings(v)]
+            if isinstance(node, list):
+                return [s for v in node for s in strings(v)]
+            return []
+
+        return [session.get("assistant_text") or ""] + strings(
+            session.get("server_errors") or []
+        )
 
     # A healthy turn first: establishes the socket's normal close code, which is
-    # the baseline Phase B needs in order to call any other code abnormal.
-    healthy = asyncio.run(run_session(token, speech))
+    # the baseline Phase B needs in order to call any other code abnormal. A
+    # fresh token and a real gap per session, because the first back-to-back
+    # attempt degraded both runs -- two sessions in quick succession on one token
+    # closed 1006 with no text, where a single session closed 1000 with text.
+    healthy = asyncio.run(run_session(service_token(), speech))
     out["healthy_session"] = healthy
+    time.sleep(float(os.environ.get("VOICE_PROBE_GAP_S", "20")))
 
     # Then the deliberate cognitive-turn failure. The happy path never enters the
     # except-handler, so without this the fix is untested however green the
     # healthy run looks.
     failed = asyncio.run(
-        run_session(token, speech, conversation_id=VOICE_TURN_FAILURE_CONVERSATION_ID)
+        run_session(
+            service_token(),
+            speech,
+            conversation_id=VOICE_TURN_FAILURE_CONVERSATION_ID,
+        )
     )
     out["induced_failure_session"] = failed
 
@@ -346,9 +380,41 @@ def main() -> int:
         TTS_SAFE_ERROR in (t or "") for t in fail_texts
     )
 
+    # If the control turn did not itself produce text, this run cannot tell the
+    # difference between "the failure path stayed silent" and "the harness got
+    # nothing either way". That is INCONCLUSIVE, not PASS and not FAIL.
+    control_ok = bool(
+        healthy.get("opened")
+        and healthy.get("session_ready")
+        and (healthy.get("assistant_text") or "").strip()
+    )
+    out["control_ok"] = control_ok
+    if not control_ok:
+        out["verdict"] = (
+            "INCONCLUSIVE - control turn produced no text "
+            f"(opened={healthy.get('opened')} ready={healthy.get('session_ready')} "
+            f"close={healthy.get('close_code')}); cannot attribute the failure "
+            "turn's silence to the code under test"
+        )
+        out["finished_at"] = utcnow()
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text(json.dumps(out, indent=2, default=str) + "\n", encoding="utf-8")
+        print(
+            json.dumps(
+                {
+                    "verdict": out["verdict"],
+                    "git_sha": sha,
+                    "healthy_close_code": healthy.get("close_code"),
+                    "failure_close_code": failed.get("close_code"),
+                    "healthy_events": [e.get("type") for e in healthy.get("events") or []],
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return 2
+
     fails: list[str] = []
-    if not healthy.get("opened") or not healthy.get("session_ready"):
-        fails.append(f"healthy_session_broken({healthy.get('connect_error')})")
     if not failed.get("opened"):
         fails.append(f"failure_session_never_opened({failed.get('connect_error')})")
     if out["raw_probe_text_verbatim"]:
@@ -390,6 +456,10 @@ def main() -> int:
                 "close_code": session.get("close_code"),
                 "was_clean": session.get("was_clean"),
                 "server_errors": session.get("server_errors"),
+                "raw_messages": session.get("raw_messages"),
+                "audio_frames": session.get("audio_frames"),
+                "audio_bytes": session.get("audio_bytes"),
+                "healthy_audio_frames": healthy.get("audio_frames"),
                 "assistant_text": (session.get("assistant_text") or "")[:400],
             },
             indent=2,
