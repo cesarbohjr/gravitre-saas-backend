@@ -74,9 +74,17 @@ class GravitreCognitiveLLMService(LLMService):
                 await self.start_processing_metrics()
                 await self._run_gravitre_turn(frame.context)
             except Exception as exc:  # noqa: BLE001
+                # str(exc) stays in the log, which is where a stack-shaped string
+                # belongs. What went downstream before was the same raw exception
+                # text -- on the voice path, so the failure mode was the user
+                # hearing a Python error read aloud. Local import mirrors the
+                # house style below and keeps the Composer out of the module's
+                # import cycle.
+                from app.services.response_composer import TTS_SAFE_ERROR
+
                 logger.exception("pipecat_cognitive_llm_failed error=%s", exc)
-                await self.push_error(error_msg=str(exc)[:500], exception=exc)
-                await self.push_frame(ErrorFrame(error=str(exc)[:500]))
+                await self.push_error(error_msg=TTS_SAFE_ERROR, exception=exc)
+                await self.push_frame(ErrorFrame(error=TTS_SAFE_ERROR))
             finally:
                 await self.stop_processing_metrics()
                 await self.push_frame(LLMFullResponseEndFrame())

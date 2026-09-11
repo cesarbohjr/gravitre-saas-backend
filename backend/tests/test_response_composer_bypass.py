@@ -36,6 +36,47 @@ def test_disposable_direct_write_fails_the_scan() -> None:
     assert any(name == "sse_text_delta" for _, _, name in hits)
 
 
+def test_raw_exception_into_a_voice_frame_fails_the_scan() -> None:
+    """The exact shape that shipped in the voice path, now guarded.
+
+    cognitive_llm.py emitted ErrorFrame(error=str(exc)[:500]), so a Python
+    exception string was pushed downstream on the voice path for the user to
+    hear. The SSE helpers the scanner already watched describe only the chat
+    half of "chat stream or TTS output", so nothing saw it.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from scan_response_composer_bypass import scan_source
+
+    leak = "await self.push_frame(ErrorFrame(error=str(exc)[:500]))\n"
+    hits = scan_source(leak, path="cognitive_llm.py")
+    assert hits, "a raw exception built inline into a voice frame must fail"
+    assert "ErrorFrame" in hits[0][2]
+
+
+def test_composed_text_into_a_voice_frame_is_allowed() -> None:
+    """The voice path must still be able to emit an error -- a composed one."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from scan_response_composer_bypass import scan_source
+
+    fixed = "await self.push_frame(ErrorFrame(error=TTS_SAFE_ERROR))\n"
+    assert not scan_source(fixed, path="cognitive_llm.py"), (
+        "a reference to composed text is the sanctioned shape and must pass"
+    )
+
+
+def test_ad_hoc_wording_at_the_emission_site_fails_the_scan() -> None:
+    """Hand-written wording is the other half of the leak class."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from scan_response_composer_bypass import scan_source
+
+    for shape in (
+        'ErrorFrame(error="Something went wrong in the kernel")',
+        'TextFrame(text=f"failed: {exc}")',
+        'TTSSpeakFrame(text="retrying " + name)',
+    ):
+        assert scan_source(shape, path="probe.py"), f"must reject {shape}"
+
+
 def test_exemption_cannot_be_claimed_by_renaming_a_file(tmp_path: Path) -> None:
     """The exemption is a path, not a name.
 

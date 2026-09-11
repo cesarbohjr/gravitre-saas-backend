@@ -26,6 +26,35 @@ FORBIDDEN_CALLS = {
     "sse_error",
 }
 
+# The rule covers the chat stream OR TTS output, but the SSE helpers above only
+# describe the chat half. Voice output leaves through pipecat frames, which is
+# how `ErrorFrame(error=str(exc)[:500])` sat in the voice path emitting a raw
+# Python exception for the user to hear, invisible to this scanner.
+#
+# Forbidding these constructors outright would be wrong -- the voice path has to
+# be able to emit an error. What it must not do is *build the text here*. So the
+# argument has to be a plain reference (TTS_SAFE_ERROR, or a local holding a
+# composed string), never an inline literal, f-string, call, or slice. That
+# rejects the whole shape of ad-hoc text written at the emission site and forces
+# the wording to come from somewhere else, and the Composer is the only
+# sanctioned producer.
+VOICE_TEXT_FRAMES = {
+    "ErrorFrame",
+    "TextFrame",
+    "TTSSpeakFrame",
+}
+
+
+def _inline_text_arg(node: ast.Call) -> str | None:
+    """Return a short description of an inline text argument, or None if clean."""
+    for arg in [*node.args, *(kw.value for kw in node.keywords)]:
+        if isinstance(arg, (ast.Name, ast.Attribute)):
+            continue  # a reference: produced elsewhere, which is the point
+        if isinstance(arg, ast.Constant) and not isinstance(arg.value, str):
+            continue  # non-text keyword such as a flag or count
+        return type(arg).__name__
+    return None
+
 # Exempt by path, not basename. Matching on basename alone meant any new file
 # anywhere under app/ called response_composer.py inherited the exemption: a
 # disposable probe at routers/response_composer.py holding an identical
@@ -54,6 +83,12 @@ def scan_tree(tree: ast.AST, *, path: str) -> list[tuple[str, int, str]]:
         name = _call_name(node)
         if name in FORBIDDEN_CALLS:
             hits.append((path, getattr(node, "lineno", 0), name))
+        elif name in VOICE_TEXT_FRAMES and isinstance(node, ast.Call):
+            inline = _inline_text_arg(node)
+            if inline:
+                hits.append(
+                    (path, getattr(node, "lineno", 0), f"{name}(<inline {inline}>)")
+                )
     return hits
 
 
