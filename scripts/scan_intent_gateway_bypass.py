@@ -30,15 +30,15 @@ FORBIDDEN_CALLS = {
     "resolve_unified_live_meta_capability_reply",
 }
 
-EXEMPT_FILES = {
-    "intent_gateway.py",
-}
-
-# Modules that define the producers — calling internally is their job.
-EXEMPT_DIRS = {
-    "frontend_ia_nav_faq.py",
-    "conversational_turn_gate.py",
-    "unified_turn_pending_live.py",
+# Exempt by path, not basename, for the same reason as the Composer scanner: a
+# basename exemption is claimable by any new file that adopts the name. The
+# second group is the modules that DEFINE the producers — calling them
+# internally is their job.
+EXEMPT_PATHS = {
+    "services/intent_gateway.py",
+    "services/frontend_ia_nav_faq.py",
+    "services/conversational_turn_gate.py",
+    "services/unified_turn_pending_live.py",
 }
 
 
@@ -70,7 +70,8 @@ def scan_source(source: str, *, path: str = "<probe>") -> list[tuple[str, int, s
 def scan_app(root: Path = APP) -> list[tuple[str, int, str]]:
     hits: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
-        if path.name in EXEMPT_FILES or path.name in EXEMPT_DIRS:
+        rel = path.relative_to(root).as_posix()
+        if rel in EXEMPT_PATHS:
             continue
         if path.name.startswith("test_"):
             continue
@@ -78,7 +79,6 @@ def scan_app(root: Path = APP) -> list[tuple[str, int, str]]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except SyntaxError:
             continue
-        rel = str(path.relative_to(root))
         hits.extend(scan_tree(tree, path=rel))
     return hits
 

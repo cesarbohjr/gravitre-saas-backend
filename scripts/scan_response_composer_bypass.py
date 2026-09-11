@@ -26,9 +26,14 @@ FORBIDDEN_CALLS = {
     "sse_error",
 }
 
-EXEMPT_FILES = {
-    "assistant_sse.py",
-    "response_composer.py",
+# Exempt by path, not basename. Matching on basename alone meant any new file
+# anywhere under app/ called response_composer.py inherited the exemption: a
+# disposable probe at routers/response_composer.py holding an identical
+# `yield sse_text_delta(...)` scanned clean. A guard whose exemption can be
+# claimed by naming a file is not structural.
+EXEMPT_PATHS = {
+    "operators/assistant_sse.py",
+    "services/response_composer.py",
 }
 
 
@@ -60,7 +65,8 @@ def scan_source(source: str, *, path: str = "<probe>") -> list[tuple[str, int, s
 def scan_app(root: Path = APP) -> list[tuple[str, int, str]]:
     hits: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
-        if path.name in EXEMPT_FILES:
+        rel = path.relative_to(root).as_posix()
+        if rel in EXEMPT_PATHS:
             continue
         if path.name.startswith("test_"):
             continue
@@ -68,7 +74,6 @@ def scan_app(root: Path = APP) -> list[tuple[str, int, str]]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except SyntaxError:
             continue
-        rel = str(path.relative_to(root))
         hits.extend(scan_tree(tree, path=rel))
     return hits
 
