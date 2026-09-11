@@ -5,9 +5,12 @@ import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 from app.ml.base import ModelStatus
 from app.ml.model_catalog import GRAVITRE_ML_CATALOG, get_model_instance, get_org_model_status
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
+
+logger = get_logger(__name__)
 
 SCOPE_NOTE = (
     "PredictiveOperationsEngine routes to GRAVITRE_ML_CATALOG via catalog status checks. "
@@ -92,9 +95,28 @@ class PredictiveOperationsEngine:
 
         instance = await load_org_trained_catalog_model(org_id, model_name, settings=self.settings)
         try:
-            structured = await instance.predict_structured(org_id=org_id, settings=self.settings)
-        except TypeError:
-            structured = await instance.predict_structured()
+            try:
+                structured = await instance.predict_structured(org_id=org_id, settings=self.settings)
+            except TypeError:
+                structured = await instance.predict_structured()
+        except AttributeError:
+            # Some catalog model classes (e.g. AnomalyDetector,
+            # WorkflowSuccessPredictor, WorkflowForecaster) don't implement the
+            # structured-prediction interface yet. Never let one model class
+            # crash the whole domain request (asyncio.gather) with a 500 —
+            # degrade to an honest "not available" card instead.
+            logger.warning(
+                "predictive_ops_structured_interface_missing model=%s org_id=%s",
+                model_name,
+                org_id,
+            )
+            return {
+                "status": "not_available",
+                "model": model_name,
+                "reason": "This model type does not support structured domain predictions yet.",
+                "advisory_only": True,
+                "scope_note": SCOPE_NOTE,
+            }
 
         result_status = str(structured.get("status") or "ok")
         if result_status in {"not_available", "not_trained", "insufficient_data"}:

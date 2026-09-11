@@ -67,3 +67,63 @@ async def test_domain_pack_includes_new_models():
     engine = PredictiveOperationsEngine()
     assert "deal_loss_scorer" in engine.DOMAIN_PREDICTION_PACKS["sales"]
     assert "sla_breach_predictor" in engine.DOMAIN_PREDICTION_PACKS["support"]
+
+
+@pytest.mark.asyncio
+async def test_model_missing_structured_interface_degrades_honestly():
+    """Regression: workflow_anomaly_detector / workflow_success_predictor /
+    workflow_duration_forecaster route to AnomalyDetector / WorkflowSuccessPredictor /
+    WorkflowForecaster, none of which implement predict_structured(). Before the
+    fix this raised an uncaught AttributeError inside asyncio.gather, 500-ing the
+    whole /intelligence/predictive domain request for every org (found live via
+    2026-09-11 page audit — sales/support/operations domains were 100% broken).
+
+    A model class lacking the structured-prediction interface must degrade to an
+    honest "not_available" card, never crash the request.
+    """
+    engine = PredictiveOperationsEngine()
+
+    class _NoStructuredInterface:
+        """Stands in for AnomalyDetector et al — no predict_structured method."""
+
+    mock_instance = _NoStructuredInterface()
+    with patch(
+        "app.services.predictive_operations_engine.get_org_model_status",
+        AsyncMock(return_value={"catalog_status": ModelStatus.TRAINED.value}),
+    ):
+        with patch(
+            "app.ml.model_catalog.load_org_trained_catalog_model",
+            AsyncMock(return_value=mock_instance),
+        ):
+            result = await engine._predict_model("org-1", "workflow_anomaly_detector")
+
+    assert result["status"] == "not_available"
+    assert result["model"] == "workflow_anomaly_detector"
+    assert result["advisory_only"] is True
+
+
+@pytest.mark.asyncio
+async def test_run_domain_predictions_never_500s_when_one_model_lacks_interface():
+    """End-to-end: run_domain_predictions must return a normal payload (never
+    raise) even when the domain pack includes a model class without
+    predict_structured — this is the exact path the live /intelligence/predictive
+    API hit for the support/operations/sales domains.
+    """
+    engine = PredictiveOperationsEngine()
+
+    class _NoStructuredInterface:
+        pass
+
+    with patch(
+        "app.services.predictive_operations_engine.get_org_model_status",
+        AsyncMock(return_value={"catalog_status": ModelStatus.TRAINED.value}),
+    ):
+        with patch(
+            "app.ml.model_catalog.load_org_trained_catalog_model",
+            AsyncMock(return_value=_NoStructuredInterface()),
+        ):
+            result = await engine.run_domain_predictions("org-1", "support")
+
+    assert result["domain"] == "support"
+    statuses = {name: payload.get("status") for name, payload in result["predictions"].items()}
+    assert statuses["workflow_anomaly_detector"] == "not_available"
