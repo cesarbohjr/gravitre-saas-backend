@@ -20,6 +20,7 @@ REACT_SHORT_CIRCUIT_ERROR_CODES = frozenset(
         "missing_scope",
         "rate_limited",
         "connector_timeout",
+        "statement_timeout",
         "tool_not_available",
         "action_not_found",
         "tool_error",

@@ -1597,6 +1597,7 @@ class AgentIntelligence:
         qa_force_outcome: str | None = None,
         department: str | None = None,
         spoken_mode: bool = False,
+        composer_failure_probe: str | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1714,6 +1715,88 @@ class AgentIntelligence:
                 existing_text_id=existing_text_id,
                 close=close,
             )
+
+        from app.services.composer_failure_triggers import (
+            resolve_composer_failure_probe,
+            run_composer_failure_probe,
+        )
+        from app.services.response_envelope import coerce_user_envelope, envelope_kind
+
+        probe_kind = resolve_composer_failure_probe(
+            org_id=org_id, header_value=composer_failure_probe
+        )
+        if probe_kind:
+            message_id = str(uuid.uuid4())
+            result, evidence = await run_composer_failure_probe(
+                probe_kind,
+                settings=active_settings,
+                client=client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                environment_name=environment_name,
+            )
+            env = coerce_user_envelope(result, action=result.action or probe_kind)
+            kind = envelope_kind(env)
+            tool_name = str(result.action or probe_kind)
+            call_id = f"call-{uuid.uuid4().hex[:12]}"
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": 0.0, "needs_clarification": False},
+                answer_explanation="Composer failure-mode probe",
+                dialogue_mode="answer",
+                effective_mode=str(mode or "fast"),
+                routing=loop_trace.to_sse(),
+                progress_steps=loop_trace.progress_steps(),
+            )
+            yield sse_react_tool_start(
+                call_id=call_id,
+                registry_tool_name=tool_name,
+                tool_args={"probe": probe_kind},
+            )
+            yield sse_react_tool_complete(
+                call_id=call_id,
+                registry_tool_name=tool_name,
+                observation=env,
+            )
+            packed = await _composed_reply(
+                str(result.error_message or ""),
+                kind=kind,
+                extra=env,
+            )
+            for ev in packed.events:
+                yield ev
+            await _complete_cognitive_loop(
+                pending_task=None,
+                tool_results=[
+                    {
+                        "name": tool_name,
+                        "output": env,
+                        "error": env.get("error_detail"),
+                        "errorCode": env.get("error_code"),
+                    }
+                ],
+            )
+            yield AssistantStreamComplete(
+                full_content=packed.text,
+                tool_results=[
+                    {
+                        "name": tool_name,
+                        "displayName": tool_name,
+                        "input": {"probe": probe_kind},
+                        "output": format_react_tool_output(tool_name, env),
+                        "error": env.get("error_detail"),
+                        "errorCode": env.get("error_code"),
+                    }
+                ],
+                react_result=None,
+                model="composer_failure_probe",
+                message_id=message_id,
+                confidence={"score": 0.0, "needs_clarification": False},
+                answer_explanation=f"composer_failure_probe:{probe_kind}",
+                dialogue_mode="answer",
+            )
+            return
 
         if (
             gateway.action == "shortcut"

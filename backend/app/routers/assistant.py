@@ -585,6 +585,7 @@ def _build_stream(
     qa_force_outcome: str | None = None,
     department: str | None = None,
     spoken_mode: bool = False,
+    composer_failure_probe: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -631,6 +632,7 @@ def _build_stream(
                 qa_force_outcome=qa_force_outcome,
                 department=department,
                 spoken_mode=bool(spoken_mode),
+                composer_failure_probe=composer_failure_probe,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -1035,9 +1037,11 @@ async def assistant_chat(
         "yes",
     }
     from app.services.unified_turn_qa_hooks import QA_FORCE_TOOL_HEADER, QA_FORCE_OUTCOME_HEADER
+    from app.services.composer_failure_triggers import COMPOSER_FAILURE_PROBE_HEADER
 
     qa_force_tool = (request.headers.get(QA_FORCE_TOOL_HEADER) or "").strip() or None
     qa_force_outcome = (request.headers.get(QA_FORCE_OUTCOME_HEADER) or "").strip() or None
+    composer_failure_probe = (request.headers.get(COMPOSER_FAILURE_PROBE_HEADER) or "").strip() or None
     return StreamingResponse(
         _build_stream(
             explicit_tools,
@@ -1059,6 +1063,7 @@ async def assistant_chat(
             qa_force_outcome=qa_force_outcome,
             department=department_scope,
             spoken_mode=bool(getattr(body, "spoken_mode", False)),
+            composer_failure_probe=composer_failure_probe,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

@@ -240,6 +240,7 @@ _TOOL_ERROR_TEMPLATES: dict[str, str] = {
     "validation_error": EXPRESSION_BANKS["tool_error.validation_error"][0],
     "rate_limited": EXPRESSION_BANKS["tool_error.rate_limited"][0],
     "connector_timeout": EXPRESSION_BANKS["tool_error.connector_timeout"][0],
+    "statement_timeout": EXPRESSION_BANKS["tool_error.connector_timeout"][0],
     "write_approval_required": "This write needs your approval before it runs.",
     "tool_not_available": EXPRESSION_BANKS["tool_error.tool_not_available"][0],
     "action_not_found": EXPRESSION_BANKS["tool_error.action_not_found"][0],

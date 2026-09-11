@@ -57,14 +57,19 @@ def test_genuine_client_errors_are_still_validation_errors(status):
 
 
 def test_rate_limit_and_auth_classification_is_unchanged():
+    from app.services.tool_types import ToolPermissionDeniedError
+
     assert isinstance(
         _handle_hubspot_error(HubSpotAPIError("429", status_code=429)), ToolRateLimitedError
     )
-    for status in (401, 403):
-        assert isinstance(
-            _handle_hubspot_error(HubSpotAPIError(str(status), status_code=status)),
-            ToolAuthExpiredError,
-        )
+    assert isinstance(
+        _handle_hubspot_error(HubSpotAPIError("401", status_code=401)),
+        ToolAuthExpiredError,
+    )
+    assert isinstance(
+        _handle_hubspot_error(HubSpotAPIError("403", status_code=403)),
+        ToolPermissionDeniedError,
+    )
 
 
 def test_every_branch_returns_a_tool_error():
@@ -180,5 +185,5 @@ def test_the_user_facing_template_exists_for_every_code_we_emit():
     """A code with no template would fall back to something less useful."""
     from app.services.voice_expression_range import EXPRESSION_BANKS
 
-    for code in ("validation_error", "connector_timeout", "tool_error", "rate_limited"):
+    for code in ("validation_error", "connector_timeout", "tool_error", "rate_limited", "permission_denied"):
         assert f"tool_error.{code}" in EXPRESSION_BANKS

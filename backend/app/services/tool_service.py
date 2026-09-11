@@ -201,10 +201,16 @@ ToolExecutor = Callable[[ToolContext, dict[str, Any]], NormalizedResult]
 _MAX_RETRIES = 2
 _RETRY_BACKOFF_SEC = (0.5, 1.0)
 
-_AUTH_HINTS = ("unauthorized", "invalid_auth", "token", "expired", "authentication", "401", "403")
+_AUTH_HINTS = ("unauthorized", "invalid_auth", "token", "expired", "authentication", "401")
 _CHANNEL_HINTS = ("channel_not_found", "not_in_channel", "is_archived")
 _SCOPE_HINTS = ("missing_scope", "insufficient scope", "required scope", "missing scopes", "oauth_scopes")
 _TIMEOUT_HINTS = ("timeout", "timed out")
+_STATEMENT_TIMEOUT_HINTS = (
+    "canceling statement due to statement timeout",
+    "cancelling statement due to statement timeout",
+    "sqlstate 57014",
+    "57014",
+)
 # Substrings, not just exception types, because a transport fault raised deeper
 # in a vendor client is often re-raised as a plain Exception carrying the text.
 _TRANSPORT_HINTS = (
@@ -222,6 +228,18 @@ _TRANSPORT_HINTS = (
 )
 
 
+def _is_statement_timeout(exc: Exception) -> bool:
+    """True when Postgres actually canceled the statement (SQLSTATE 57014)."""
+    name = type(exc).__name__.lower()
+    if "querycanceled" in name or "querycancelled" in name:
+        return True
+    sqlstate = getattr(exc, "sqlstate", None) or getattr(exc, "pgcode", None)
+    if str(sqlstate or "").strip() == "57014":
+        return True
+    msg = str(exc).lower()
+    return any(hint in msg for hint in _STATEMENT_TIMEOUT_HINTS)
+
+
 def _classify_error(exc: Exception) -> ToolError:
     import httpx
 
@@ -235,6 +253,8 @@ def _classify_error(exc: Exception) -> ToolError:
         return exc
     if isinstance(exc, RateLimitError):
         return ToolRateLimitedError(str(exc))
+    if _is_statement_timeout(exc):
+        return ToolError(str(exc), code="statement_timeout")
     msg = str(exc).lower()
     if any(h in msg for h in _CHANNEL_HINTS):
         return ToolChannelNotFoundError(str(exc))
@@ -358,8 +378,10 @@ def _handle_hubspot_error(exc: HubSpotAPIError) -> ToolError:
     status = exc.status_code
     if status == 429:
         return ToolRateLimitedError(str(exc))
-    if status in {401, 403}:
+    if status == 401:
         return ToolAuthExpiredError(str(exc))
+    if status == 403:
+        return ToolPermissionDeniedError(str(exc))
     if status is not None and 400 <= status < 500:
         return ToolValidationError(str(exc))
     # A missing status code means the reply never arrived — a timeout or a
@@ -3433,8 +3455,10 @@ def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
     status = getattr(exc, "status_code", None)
     if status == 429:
         return ToolRateLimitedError(str(exc))
-    if status in {401, 403}:
+    if status == 401:
         return ToolAuthExpiredError(str(exc))
+    if status == 403:
+        return ToolPermissionDeniedError(str(exc))
     return ToolValidationError(str(exc))
 
 
