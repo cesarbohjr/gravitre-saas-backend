@@ -652,8 +652,42 @@ class ChatOrchestrationService:
             "execute",
             "approve",
         }
+        ads_budget = None
+        if status == "awaiting_plan_confirm":
+            from app.services.google_ads_structure_brief import parse_daily_budget_total
+
+            ads_budget = parse_daily_budget_total(message)
+            if ads_budget is not None:
+                task_state = self._bind_ads_structure_daily_budget(task_state, ads_budget)
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {
+                        "clarified_params": task_state.get("clarified_params"),
+                        "pending_task": task_state.get("pending_task"),
+                    },
+                    client=client,
+                )
+                task_state = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
 
         if status == "awaiting_plan_confirm" and confirmed:
+            if self._ads_structure_missing_daily_budget(task_state):
+                refreshed = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "confirm",
+                    "message": (
+                        "The campaign-by-campaign plan is ready, but I still need a "
+                        "USD daily budget before I can create anything. Reply with `$` "
+                        "and `/day`, then **yes** to approve. I will not invent a budget."
+                    ),
+                    "task_state": refreshed,
+                    "pending_task": self._pending_task_payload(refreshed),
+                }
             return await self._start_execution(
                 org_id=org_id,
                 user_id=user_id,
@@ -663,6 +697,21 @@ class ChatOrchestrationService:
                 client=client,
                 environment_name=environment_name,
             )
+
+        if status == "awaiting_plan_confirm" and ads_budget is not None:
+            refreshed = await self._state.get_task_state(
+                conversation_id, org_id, client=client
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "confirm",
+                "message": (
+                    f"Locked in **${ads_budget:g}** daily budget. Reply **yes** to "
+                    "approve the plan, or tell me what to change."
+                ),
+                "task_state": refreshed,
+                "pending_task": self._pending_task_payload(refreshed),
+            }
 
         if status == "awaiting_step_confirm" and confirmed:
             return await self._execute_current_step(
@@ -1099,6 +1148,7 @@ class ChatOrchestrationService:
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
+        campaign_block = self._format_ads_structure_plan_block(steps)
         memory_hint = ""
         try:
             from app.services.execution_memory_service import get_execution_memory_service
@@ -1116,6 +1166,7 @@ class ChatOrchestrationService:
             "message": (
                 f"I planned a **{len(steps)}-step orchestration**:\n\n"
                 + "\n".join(lines)
+                + campaign_block
                 + "\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\n"
                 "Reply **yes** to approve the plan, or tell me what to change."
                 + hint_block
@@ -1155,6 +1206,18 @@ class ChatOrchestrationService:
             )
         params["current_step_index"] = 0
         params["step_results"] = []
+        if ChatOrchestrationService._ads_structure_missing_daily_budget(task_state):
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "confirm",
+                "message": (
+                    "The campaign-by-campaign plan is ready, but I still need a "
+                    "USD daily budget before I can create anything. Reply with `$` "
+                    "and `/day`, then **yes** to approve. I will not invent a budget."
+                ),
+                "task_state": task_state,
+                "pending_task": self._pending_task_payload(task_state),
+            }
         run_id = start_orchestration_run(
             client,
             org_id=org_id,
@@ -1859,6 +1922,72 @@ class ChatOrchestrationService:
         approval = "approval required" if step.requires_approval else "auto-run"
         kind = step.kind or "action"
         return f"{index}. **{step.label}** ({kind}, {approval})"
+
+    @staticmethod
+    def _format_ads_structure_plan_block(steps: list[OrchestrationStep]) -> str:
+        from app.services.google_ads_structure_brief import (
+            format_google_ads_structure_plan_details,
+        )
+
+        for step in steps:
+            plan = step.plan
+            if plan is None:
+                continue
+            action = str(plan.invoke_action or "").strip().lower()
+            if "structure.create" not in action:
+                continue
+            detail = format_google_ads_structure_plan_details(plan.args)
+            if detail:
+                return "\n\n" + detail
+        return ""
+
+    @staticmethod
+    def _bind_ads_structure_daily_budget(
+        task_state: dict[str, Any],
+        budget: float,
+    ) -> dict[str, Any]:
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
+        steps = list(params.get("steps") or [])
+        changed = False
+        for idx, step in enumerate(steps):
+            if not isinstance(step, dict):
+                continue
+            plan = step.get("plan")
+            if not isinstance(plan, dict):
+                continue
+            action = str(plan.get("invoke_action") or "").strip().lower()
+            if "structure.create" not in action:
+                continue
+            args = dict(plan.get("args") or {})
+            args["daily_budget_total"] = budget
+            steps[idx] = {**step, "plan": {**plan, "args": args}}
+            changed = True
+        if not changed:
+            return task_state
+        params = {**params, "steps": steps}
+        pending = dict(task_state.get("pending_task") or {})
+        pending_params = dict(pending.get("params") or {})
+        pending_params["steps"] = steps
+        pending["params"] = pending_params
+        return {
+            **task_state,
+            "clarified_params": params,
+            "pending_task": pending,
+        }
+
+    @staticmethod
+    def _ads_structure_missing_daily_budget(task_state: dict[str, Any]) -> bool:
+        from app.services.google_ads_structure_brief import ads_structure_missing_daily_budget
+
+        params = safe_normalize_stored_dict(task_state, key="clarified_params")
+        for step in params.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            plan = step.get("plan") if isinstance(step.get("plan"), dict) else {}
+            action = str(plan.get("invoke_action") or "").strip().lower()
+            if "structure.create" in action:
+                return ads_structure_missing_daily_budget(plan.get("args"))
+        return False
 
     @staticmethod
     def _integration_is_connected(integration: str, connected: set[str]) -> bool:

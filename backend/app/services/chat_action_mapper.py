@@ -7,6 +7,7 @@ from typing import Any
 
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
 from app.services.chat_tool_visibility import chat_visible_connector_tool_names
+from app.services.parameter_ledger import quoted_strings
 from app.services.connector_action_workflows import extract_asana_assignee_only
 from app.services.connector_execution_matrix import (
     ConnectorActionMatrixEntry,
@@ -33,7 +34,6 @@ ADVISE_ONLY_NO_TOOL = re.compile(
     r"\bwithout\s+(calling|using|invoking)\s+(any\s+)?tools?"
     r")"
 )
-QUOTED = re.compile(r'["\']([^"\']{1,500})["\']')
 EMAIL = re.compile(r"\b[\w.+-]+@[\w.-]+\.\w+\b")
 SLACK_CHANNEL = re.compile(r"(#[\w-]+|<#[^>]+>|@\w+)")
 TICKET_ID = re.compile(r"\b(?:ticket\s*#?\s*|#)(\d{3,})\b", re.I)
@@ -158,7 +158,11 @@ class ChatActionMapper:
                 continue
             # Fix 3 — schema-constrained extraction is primary; vendor regex is fallback.
             args: dict[str, Any] | None = None
-            if write_intent and entry.kind != "read":
+            ads_structure = (
+                entry.connector_id in {"google_ads", "googleads"}
+                and "structure.create" in entry.action_key
+            )
+            if write_intent and entry.kind != "read" and not ads_structure:
                 try:
                     from app.services.schema_param_extractor import extract_action_args_heuristic
 
@@ -173,8 +177,11 @@ class ChatActionMapper:
                     pass
             vendor_args = self._extract_args(text, entry)
             if vendor_args:
-                # Vendor regex/heuristics win over schema fallthrough (full-message dumps).
-                args = {**(args or {}), **vendor_args}
+                if ads_structure and vendor_args.get("campaigns"):
+                    args = vendor_args
+                else:
+                    # Vendor regex/heuristics win over schema fallthrough (full-message dumps).
+                    args = {**(args or {}), **vendor_args}
             elif args is None:
                 args = vendor_args
             if args is None:
@@ -519,7 +526,7 @@ class ChatActionMapper:
     def _extract_args(self, message: str, entry: ConnectorActionMatrixEntry) -> dict[str, Any] | None:
         text = message.strip()
         suffix = entry.action_key.split(".", 1)[-1]
-        quoted = [m.group(1).strip() for m in QUOTED.finditer(text)]
+        quoted = quoted_strings(text)
         args: dict[str, Any] = {}
 
         if entry.kind == "read":
@@ -547,6 +554,11 @@ class ChatActionMapper:
                         args[key] = match.group(1)
                         return args
                 return args if args else {"query": text[:120]}
+
+        if entry.connector_id in {"google_ads", "googleads"} and "structure.create" in entry.action_key:
+            from app.services.google_ads_structure_brief import extract_google_ads_structure_args
+
+            return extract_google_ads_structure_args(text)
 
         if "slack" in entry.connector_id and "post_message" in entry.registry_key:
             channel = SLACK_CHANNEL.search(text)

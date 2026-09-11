@@ -633,3 +633,89 @@ async def test_ads_structure_plan_ignores_salesforce_keyword_in_brief(orchestrat
     assert steps[0].plan is not None
     assert "structure.create" in steps[0].plan.invoke_action
     assert ChatOrchestrationService._is_single_google_ads_structure_plan(steps, message) is True
+
+
+def test_ads_structure_plan_block_lists_campaigns(orchestration_service):
+    step = OrchestrationStep(
+        step_id="1",
+        segment="create google ads campaigns",
+        label="Create Google Ads campaign structure",
+        kind="write",
+        supported=True,
+        requires_approval=True,
+        plan=ConnectorActionPlan(
+            tool_name="google_ads_structure_create",
+            invoke_action="google_ads.structure.create",
+            integration="google_ads",
+            kind="write",
+            label="Create Google Ads campaign structure",
+            args={
+                "campaigns": [
+                    {"name": "RevOps / Sales Ops", "budget_weight": 0.3},
+                    {"name": "IT / Security Ops", "budget_weight": 0.3},
+                ],
+                "status": "PAUSED",
+            },
+            requires_approval=True,
+            destructive=True,
+        ),
+    )
+    block = orchestration_service._format_ads_structure_plan_block([step])
+    assert "RevOps / Sales Ops" in block
+    assert "IT / Security Ops" in block
+    assert "I will not invent one" in block
+    assert "t execute" not in block
+
+
+@pytest.mark.asyncio
+async def test_ads_yes_without_budget_does_not_start_execution(orchestration_service):
+    params = {
+        "goal": "create google ads campaigns",
+        "steps": [
+            {
+                "step_id": "1",
+                "segment": "create",
+                "label": "Create Google Ads campaign structure",
+                "kind": "write",
+                "supported": True,
+                "requires_approval": True,
+                "plan": {
+                    "tool_name": "google_ads_structure_create",
+                    "invoke_action": "google_ads.structure.create",
+                    "integration": "google_ads",
+                    "kind": "write",
+                    "label": "Create Google Ads campaign structure",
+                    "args": {
+                        "campaigns": [{"name": "RevOps / Sales Ops"}],
+                        "status": "PAUSED",
+                    },
+                },
+            }
+        ],
+        "current_step_index": 0,
+        "step_results": [],
+        "total_steps": 1,
+    }
+    task_state = {
+        "clarified_params": params,
+        "pending_task": {
+            "type": "connector_orchestration",
+            "status": "awaiting_plan_confirm",
+            "params": params,
+        },
+    }
+    orchestration_service._state.get_task_state = AsyncMock(return_value=task_state)
+    out = await orchestration_service.process_turn(
+        org_id="org-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        message="yes",
+        classification={"intent": "workflow_execution"},
+        task_state=task_state,
+        connected_integrations=["google_ads"],
+        client=MagicMock(),
+    )
+    assert out is not None
+    assert "will not invent a budget" in (out.get("message") or "").lower()
+    assert out.get("dialogue_mode") == "confirm"
+

@@ -30,7 +30,24 @@ SLACK_CHANNEL_RE = re.compile(
     r"|(?:\bchannel\s+)([a-z0-9_-]+)\b",
     re.I,
 )
-QUOTED_RE = re.compile(r"[\"']([^\"']{1,500})[\"']")
+# Double quotes, or single quotes that are not contractions (don't / it's).
+QUOTED_RE = re.compile(
+    r"\"([^\"]{1,500})\""
+    r"|(?<!\w)'([^']{1,500})'"
+)
+
+
+def quoted_strings(text: str) -> list[str]:
+    """Quoted spans, ignoring apostrophes inside contractions like don't."""
+    out: list[str] = []
+    for match in QUOTED_RE.finditer(text or ""):
+        value = next((group for group in match.groups() if group), "")
+        cleaned = (value or "").strip()
+        if cleaned:
+            out.append(cleaned)
+    return out
+
+
 PROJECT_KEY_RE = re.compile(r"\bproject\s+([A-Z][A-Z0-9_-]{1,15})\b", re.I)
 # Instruction-framing leftovers from naive "subject … body …" splits.
 _EMAIL_SUBJECT_CUE_RESIDUE = re.compile(
@@ -379,7 +396,7 @@ def ingest_message_slots(
     # Mask emails so local-parts like subject.pollution@x never match \bsubject.
     text_for_freeform = EMAIL_RE.sub(" ", text)
 
-    quoted = QUOTED_RE.findall(text_for_freeform)
+    quoted = quoted_strings(text_for_freeform)
     if quoted:
         # Keep latest quote as a generic binding target until schema bind.
         result.upsert(
@@ -562,7 +579,10 @@ def bind_args_from_ledger(
                 filled.setdefault("message", value)
     else:
         # No schema — bind common aliases into empty args.
+        skip_title = "structure.create" in (invoke_action or "").lower()
         for key in ("to", "email", "channel", "subject", "body", "summary", "project_key", "name"):
+            if skip_title and key in {"summary", "name"}:
+                continue
             if not str(filled.get(key) or "").strip():
                 value = ledger.get(key)
                 if value:

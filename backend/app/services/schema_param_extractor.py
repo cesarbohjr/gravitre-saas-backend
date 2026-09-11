@@ -59,7 +59,7 @@ def extract_action_args_heuristic(
     from app.services.parameter_ledger import (
         EMAIL_RE,
         PROJECT_KEY_RE,
-        QUOTED_RE,
+        quoted_strings,
         ingest_message_slots,
     )
 
@@ -75,7 +75,7 @@ def extract_action_args_heuristic(
 
     # Mask emails so local-parts like subject.pollution@x never match \bsubject.
     text_for_slots = EMAIL_RE.sub(" ", text)
-    quoted = QUOTED_RE.findall(text_for_slots)
+    quoted = quoted_strings(text_for_slots)
     email = EMAIL_RE.search(text)
     project = PROJECT_KEY_RE.search(text)
 
@@ -111,6 +111,8 @@ def extract_action_args_heuristic(
                 args[key] = list_m.group(1)
             elif active.get("list_id"):
                 args[key] = active.get("list_id")  # type: ignore[assignment]
+        elif "structure.create" in invoke_action and key in {"summary", "title", "name"}:
+            continue
         elif key in {"summary", "title", "name"} or any(
             tok in label_l for tok in ("summary", "title", "name", "list name")
         ):
