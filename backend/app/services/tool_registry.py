@@ -1061,6 +1061,22 @@ class ToolRegistry:
         tool_name: str,
         args: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """Execute an agent tool call via invoke_tool.
+
+        Always returns the canonical envelope {success, data, error_code, error_detail}.
+        """
+        from app.services.response_envelope import coerce_user_envelope
+
+        payload = await self._execute_tool_raw(ctx=ctx, tool_name=tool_name, args=args)
+        return coerce_user_envelope(payload, action=tool_name)
+
+    async def _execute_tool_raw(
+        self,
+        *,
+        ctx: ToolContext,
+        tool_name: str,
+        args: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Execute an agent tool call via invoke_tool.
 

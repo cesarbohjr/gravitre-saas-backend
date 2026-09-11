@@ -51,9 +51,14 @@ from app.operators.assistant_sse import (
     sse_knowledge_base_tool,
     sse_react_tool_complete,
     sse_react_tool_start,
-    sse_text_delta,
-    sse_text_end,
-    sse_text_start,
+)
+from app.services.response_composer import (
+    adopt_model_delta,
+    compose_reply_events,
+    emit_text_delta,
+    emit_text_end,
+    emit_text_start,
+    looks_like_raw_backend,
 )
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
@@ -1685,6 +1690,31 @@ class AgentIntelligence:
             except Exception as loop_exc:  # noqa: BLE001
                 logger.debug("cognitive_loop_complete_skipped error=%s", loop_exc)
 
+        async def _composed_reply(
+            draft: str,
+            *,
+            kind: str,
+            extra: dict[str, Any] | None = None,
+            existing_text_id: str | None = None,
+            close: bool = True,
+        ):
+            env = extra if isinstance(extra, dict) else {"success": True, "data": {"text": draft}}
+            return await compose_reply_events(
+                env,
+                kind=kind,
+                draft=draft,
+                spoken=bool(spoken_mode),
+                history=conversation_history if isinstance(conversation_history, list) else None,
+                user_message=task_text,
+                settings=active_settings,
+                org_id=org_id,
+                client=client,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                existing_text_id=existing_text_id,
+                close=close,
+            )
+
         if (
             gateway.action == "shortcut"
             and (gateway.answer or "").strip()
@@ -1706,10 +1736,10 @@ class AgentIntelligence:
                 routing=loop_trace.to_sse(),
                 progress_steps=loop_trace.progress_steps(),
             )
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
+            packed = await _composed_reply(response_text, kind="shortcut")
+            response_text = packed.text
+            for ev in packed.events:
+                yield ev
             yield AssistantStreamComplete(
                 full_content=response_text,
                 tool_results=[],
@@ -1908,10 +1938,10 @@ class AgentIntelligence:
                 answer = str(tier0_hit.get("answer") or "")
                 confidence = tier0_hit.get("confidence") or {}
                 explanation = str(tier0_hit.get("answer_explanation") or "")
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, answer)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(answer, kind="success")
+                answer = packed.text
+                for ev in packed.events:
+                    yield ev
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence=confidence if isinstance(confidence, dict) else None,
@@ -2081,10 +2111,14 @@ class AgentIntelligence:
                         "Reply `abandon` to drop it and handle your new message, "
                         "or `hold` to keep it aside — I won't guess."
                     )
-                    text_id, start_event = sse_text_start()
-                    yield start_event
-                    yield sse_text_delta(text_id, clarify_msg)
-                    yield sse_text_end(text_id)
+                    packed = await _composed_reply(
+                        clarify_msg,
+                        kind="clarify",
+                        extra={"success": False, "error_code": "validation_error", "data": {"text": clarify_msg}},
+                    )
+                    clarify_msg = packed.text
+                    for ev in packed.events:
+                        yield ev
                     yield sse_intelligence_metadata(
                         message_id=message_id,
                         confidence={"score": 0.4, "needs_clarification": True},
@@ -2615,10 +2649,10 @@ class AgentIntelligence:
                     if piece is None:
                         break
                     if text_id is None:
-                        text_id, start_event = sse_text_start()
+                        text_id, start_event = emit_text_start()
                         yield start_event
                     streamed_voice_text = True
-                    yield sse_text_delta(text_id, piece)
+                    yield emit_text_delta(text_id, adopt_model_delta(piece))
                 live_turn = await live_task
             else:
                 live_turn = await _run_unified_live()
@@ -2681,12 +2715,16 @@ class AgentIntelligence:
                     },
                 )
                 if not streamed_voice_text:
-                    text_id, start_event = sse_text_start()
-                    yield start_event
-                    yield sse_text_delta(text_id, response_text)
-                    yield sse_text_end(text_id)
+                    live_kind = "clarify" if dialogue_mode in {"clarify", "confirm"} else "success"
+                    if looks_like_raw_backend(response_text):
+                        live_kind = "error"
+                    packed = await _composed_reply(response_text, kind=live_kind)
+                    response_text = packed.text
+                    text_id = packed.text_id
+                    for ev in packed.events:
+                        yield ev
                 elif text_id is not None:
-                    yield sse_text_end(text_id)
+                    yield emit_text_end(text_id)
                 await _complete_cognitive_loop(
                     pending_task=live_turn.get("pending_task")
                     if isinstance(live_turn.get("pending_task"), dict)
@@ -2769,10 +2807,10 @@ class AgentIntelligence:
             # include it in the client-visible transcript.
             prefix_now = (conversational_prefix or "").strip()
             if prefix_now:
-                social_id, social_start = sse_text_start()
-                yield social_start
-                yield sse_text_delta(social_id, prefix_now + "\n\n")
-                yield sse_text_end(social_id)
+                packed = await _composed_reply(prefix_now + "\n\n", kind="success")
+                conversational_prefix = packed.text.rstrip()
+                for ev in packed.events:
+                    yield ev
                 social_ack_emitted = True
 
         def _with_social(text: str) -> str:
@@ -2809,10 +2847,10 @@ class AgentIntelligence:
                 routing_tier=routing_control.tier,
                 routing=routing_sse,
             )
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
+            packed = await _composed_reply(response_text, kind="canned")
+            response_text = packed.text
+            for ev in packed.events:
+                yield ev
             yield AssistantStreamComplete(
                 full_content=response_text,
                 tool_results=[],
@@ -2878,10 +2916,10 @@ class AgentIntelligence:
                     routing_tier=routing_control.tier,
                     routing=routing_sse,
                 )
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(response_text, kind="canned")
+                response_text = packed.text
+                for ev in packed.events:
+                    yield ev
                 yield AssistantStreamComplete(
                     full_content=response_text,
                     tool_results=[],
@@ -2931,10 +2969,10 @@ class AgentIntelligence:
                     routing_tier=routing_control.tier,
                     routing=routing_sse,
                 )
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
+            packed = await _composed_reply(response_text, kind="canned")
+            response_text = packed.text
+            for ev in packed.events:
+                yield ev
             yield sse_intelligence_metadata(
                 message_id=message_id,
                 confidence={"score": classification_confidence, "needs_clarification": False},
@@ -3036,10 +3074,10 @@ class AgentIntelligence:
                         react_perf=orch_perf if isinstance(orch_perf, dict) else None,
                         progress_steps=orch_progress or None,
                     )
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(response_text, kind="canned")
+                response_text = packed.text
+                for ev in packed.events:
+                    yield ev
                 await _complete_cognitive_loop(
                     pending_task=orchestration_turn.get("pending_task")
                     if isinstance(orchestration_turn.get("pending_task"), dict)
@@ -3114,12 +3152,12 @@ class AgentIntelligence:
                         else {}
                     )
                     pending_label = str(_pending_params.get("label") or "")
-                    exec_text_id, exec_start_event = sse_text_start()
-                    yield exec_start_event
-                    yield sse_text_delta(
-                        exec_text_id, narrate_connector_write_executing(pending_label)
+                    packed = await _composed_reply(
+                        narrate_connector_write_executing(pending_label),
+                        kind="canned",
                     )
-                    yield sse_text_end(exec_text_id)
+                    for ev in packed.events:
+                        yield ev
 
             connector_turn = await run_connector_turn(
                 settings=active_settings,
@@ -3155,10 +3193,10 @@ class AgentIntelligence:
                         routing_tier=routing_control.tier,
                         routing=routing_sse,
                     )
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(response_text, kind="canned")
+                response_text = packed.text
+                for ev in packed.events:
+                    yield ev
                 await _complete_cognitive_loop(
                     pending_task=connector_turn.get("pending_task")
                     if isinstance(connector_turn.get("pending_task"), dict)
@@ -3413,10 +3451,14 @@ class AgentIntelligence:
                 question = str(clarification.get("question") or "Could you clarify?")
             # Preserve mixed-turn social ack on clarify exits (e.g. connector not Connected).
             question = _with_social(question)
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, question)
-            yield sse_text_end(text_id)
+            packed = await _composed_reply(
+                question,
+                kind="clarify",
+                extra={"success": False, "error_code": "validation_error", "data": {"text": question}},
+            )
+            question = packed.text
+            for ev in packed.events:
+                yield ev
             # Routing wave — early clarify exits still emit classified tier (Trace C).
             yield sse_intelligence_metadata(
                 message_id=message_id,
@@ -3495,11 +3537,16 @@ class AgentIntelligence:
         streamed_content = ""
         full_content_parts: list[str] = []
         if correction_ack:
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, correction_ack + "\n\n")
-            streamed_content = correction_ack + "\n\n"
-            full_content_parts.append(correction_ack + "\n\n")
+            packed = await _composed_reply(
+                correction_ack + "\n\n",
+                kind="correction",
+                close=False,
+            )
+            text_id = packed.text_id
+            for ev in packed.events:
+                yield ev
+            streamed_content = packed.text if packed.text.endswith("\n\n") else packed.text + "\n\n"
+            full_content_parts.append(streamed_content)
 
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
         context_engine_applied = getattr(turn_ctx, "context_engine_applied", False) is True
@@ -3702,12 +3749,16 @@ class AgentIntelligence:
                 web_attempted=False,
                 connected_integrations=connected_list,
             )
-            # Reuse Phase-5 correction text stream if already opened.
-            if text_id is None:
-                text_id, start_event = sse_text_start()
-                yield start_event
-            yield sse_text_delta(text_id, bounded)
-            yield sse_text_end(text_id)
+            packed = await _composed_reply(
+                bounded,
+                kind="error",
+                extra={"success": False, "error_code": "tool_not_available", "data": {"text": bounded}},
+                existing_text_id=text_id,
+            )
+            bounded = packed.text
+            text_id = packed.text_id
+            for ev in packed.events:
+                yield ev
             yield sse_intelligence_metadata(
                 message_id=message_id,
                 confidence={"score": 0.2, "needs_clarification": True},
@@ -3794,12 +3845,15 @@ class AgentIntelligence:
                     settings=active_settings,
                 )
                 body = str(staged.get("message") or "")
-                if text_id is None:
-                    text_id, start_event = sse_text_start()
-                    yield start_event
-                if body:
-                    yield sse_text_delta(text_id, body)
-                    yield sse_text_end(text_id)
+                packed = await _composed_reply(
+                    body,
+                    kind="clarify" if retrieved.kind == "clarify" else "canned",
+                    existing_text_id=text_id,
+                )
+                body = packed.text
+                text_id = packed.text_id
+                for ev in packed.events:
+                    yield ev
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": 0.85, "needs_clarification": retrieved.kind == "clarify"},
@@ -3972,9 +4026,9 @@ class AgentIntelligence:
                 # fabricated count then silently rewriting leaves the client with the lie.
                 if not is_run_history_question(task_text):
                     if text_id is None:
-                        text_id, start_event = sse_text_start()
+                        text_id, start_event = emit_text_start()
                         yield start_event
-                    yield sse_text_delta(text_id, event.content)
+                    yield emit_text_delta(text_id, adopt_model_delta(event.content))
             elif event.kind == "done":
                 react_result = event.react_result
 
@@ -4007,10 +4061,11 @@ class AgentIntelligence:
                 task_state = approval_turn.get("task_state") or task_state
                 response_text = _with_social(str(approval_turn.get("message") or ""))
                 dialogue_mode = str(approval_turn.get("dialogue_mode") or "confirm")
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(response_text, kind="clarify")
+                response_text = packed.text
+                text_id = packed.text_id
+                for ev in packed.events:
+                    yield ev
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},
@@ -4073,10 +4128,11 @@ class AgentIntelligence:
                     fallback_turn.get("pending_task")
                     or (task_state if isinstance(task_state, dict) else {}).get("pending_task")
                 )
-                text_id, start_event = sse_text_start()
-                yield start_event
-                yield sse_text_delta(text_id, response_text)
-                yield sse_text_end(text_id)
+                packed = await _composed_reply(response_text, kind="canned")
+                response_text = packed.text
+                text_id = packed.text_id
+                for ev in packed.events:
+                    yield ev
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},
@@ -4377,34 +4433,6 @@ class AgentIntelligence:
 
         full_content = finalize_user_facing_message(full_content, context="assistant_pre_emit")
 
-        # Some ReAct paths populate react_result.answer without emitting text_delta
-        # events (e.g. empty delta chunks). The UI contract still requires text-start/
-        # text-delta/text-end before finish events.
-        if full_content.strip() and text_id is None:
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, full_content)
-            yield sse_text_end(text_id)
-        elif text_id is not None:
-            if full_content.strip() and full_content.strip() != streamed_content.strip():
-                if full_content.startswith(streamed_content):
-                    suffix = full_content[len(streamed_content) :]
-                    if suffix.strip():
-                        yield sse_text_delta(text_id, suffix)
-                elif is_run_history_question(task_text) or answer_claims_action_missing(
-                    streamed_content
-                ):
-                    # Honesty (or other) wholesale rewrite must replace the bubble.
-                    yield sse_text_end(text_id)
-                    text_id, start_event = sse_text_start()
-                    yield start_event
-                    yield sse_text_delta(text_id, full_content)
-                # Other wholesale rewrites: keep streamed text (avoid duplicate paragraphs).
-            yield sse_text_end(text_id)
-
-        react_perf = _react_perf_from_tool_calls(
-            getattr(react_result, "tool_calls", None) if react_result else None
-        )
         pending_for_loop = None
         if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):
             pending_for_loop = task_state.get("pending_task")
@@ -4412,6 +4440,67 @@ class AgentIntelligence:
             pending_task=pending_for_loop,
             tool_results=tool_results if isinstance(tool_results, list) else None,
             react_result=react_result,
+        )
+
+        # Composer sits after OBSERVE: leaky or never-streamed finals are composed
+        # here; already-streamed model tokens were leak-filtered on the way out.
+        if looks_like_raw_backend(full_content):
+            packed = await _composed_reply(
+                full_content,
+                kind="error",
+                extra={
+                    "success": False,
+                    "error_code": "tool_error",
+                    "error_detail": full_content,
+                },
+            )
+            full_content = packed.text
+            if text_id is not None:
+                yield emit_text_end(text_id)
+            for ev in packed.events:
+                yield ev
+            text_id = packed.text_id
+        elif full_content.strip() and text_id is None:
+            packed = await _composed_reply(full_content, kind="success")
+            full_content = packed.text
+            text_id = packed.text_id
+            for ev in packed.events:
+                yield ev
+        elif text_id is not None:
+            already_closed = False
+            if full_content.strip() and full_content.strip() != streamed_content.strip():
+                if full_content.startswith(streamed_content):
+                    suffix = full_content[len(streamed_content) :]
+                    if suffix.strip():
+                        if looks_like_raw_backend(suffix):
+                            packed = await _composed_reply(
+                                suffix,
+                                kind="error",
+                                extra={"success": False, "error_code": "tool_error", "error_detail": suffix},
+                                existing_text_id=text_id,
+                                close=False,
+                            )
+                            yield emit_text_delta(text_id, packed.text)
+                        else:
+                            yield emit_text_delta(text_id, suffix)
+                elif is_run_history_question(task_text) or answer_claims_action_missing(
+                    streamed_content
+                ):
+                    yield emit_text_end(text_id)
+                    packed = await _composed_reply(
+                        full_content,
+                        kind="success" if not looks_like_raw_backend(full_content) else "error",
+                    )
+                    full_content = packed.text
+                    text_id = packed.text_id
+                    for ev in packed.events:
+                        yield ev
+                    already_closed = True
+            if not already_closed:
+                yield emit_text_end(text_id)
+
+        react_perf = _react_perf_from_tool_calls(
+            getattr(react_result, "tool_calls", None) if react_result else None
         )
         yield sse_intelligence_metadata(
             message_id=message_id,

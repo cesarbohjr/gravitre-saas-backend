@@ -12,6 +12,7 @@ Sequence (deterministic, not optional):
     PLAN      → CognitiveTurnKernel PLAN (CognitivePlanner)
     ACT       → existing catalog / LIVE / orchestration (caller)
     OBSERVE   → F6 verified-completion coverage + scheduled read-back
+    COMPOSE   → Response Composer (mandatory; after OBSERVE, before any UI text)
     LEARN     → GIBE / cognitive_outcome_loop via kernel.run_learn
 
 The only legal skip is the Intent Gateway's own proven fast-path for

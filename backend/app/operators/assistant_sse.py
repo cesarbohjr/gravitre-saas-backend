@@ -193,10 +193,14 @@ def format_react_tool_output(registry_tool_name: str, observation: dict[str, Any
         ]
         query = observation.get("query") or ""
         if observation.get("success") is False:
+            from app.services.response_composer import chip_status_text
+            from app.services.response_envelope import coerce_user_envelope
+
+            env = coerce_user_envelope(observation, action=registry_tool_name)
             return {
                 "results": [],
                 "totalResults": 0,
-                "error": observation.get("error") or "web search unavailable",
+                "error": chip_status_text(env) or "Web search didn't complete.",
                 "query": query,
             }
         return {
@@ -206,28 +210,16 @@ def format_react_tool_output(registry_tool_name: str, observation: dict[str, Any
             "query": query,
         }
     if observation.get("success") is False:
-        from app.services.tool_error_messages import format_tool_error_for_user
+        from app.services.response_composer import chip_status_text
+        from app.services.response_envelope import coerce_user_envelope
 
-        error_code = observation.get("error_code")
-        raw_error = observation.get("error")
-        formatted = format_tool_error_for_user(
-            str(error_code) if error_code is not None else None,
-            str(raw_error) if raw_error is not None else None,
-            integration=observation.get("integration")
-            if isinstance(observation.get("integration"), str)
-            else None,
-            action=(
-                observation.get("action")
-                if isinstance(observation.get("action"), str)
-                else registry_tool_name
-            ),
-        )
+        env = coerce_user_envelope(observation, action=registry_tool_name)
         payload: dict[str, Any] = {
-            "error": formatted,
+            "error": chip_status_text(env),
             "success": False,
         }
-        if error_code is not None:
-            payload["errorCode"] = error_code
+        if env.get("error_code"):
+            payload["errorCode"] = env.get("error_code")
         return payload
     payload = observation.get("result")
     if isinstance(payload, dict):

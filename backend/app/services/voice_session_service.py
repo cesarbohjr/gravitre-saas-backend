@@ -289,20 +289,24 @@ async def stream_voice_turn_events(
                     buffered_audio.extend(audio)
         except VoiceProviderError as exc:
             tts_failed = True
+            from app.services.response_composer import TTS_SAFE_ERROR
+
             yield {
                 "type": "voice.error",
-                "detail": str(exc)[:300],
+                "detail": TTS_SAFE_ERROR,
                 "error_class": exc.error_class or "service_failure",
                 "billing_issue": bool((exc.error_class or "") == "billing" or exc.status_code == 402),
                 "provider": "elevenlabs",
                 "turn_id": resolved_turn_id,
             }
             return
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             tts_failed = True
+            from app.services.response_composer import TTS_SAFE_ERROR
+
             yield {
                 "type": "voice.error",
-                "detail": f"TTS stream failed: {exc.__class__.__name__}:{exc}"[:300],
+                "detail": TTS_SAFE_ERROR,
                 "error_class": "service_failure",
                 "billing_issue": False,
                 "provider": "elevenlabs",

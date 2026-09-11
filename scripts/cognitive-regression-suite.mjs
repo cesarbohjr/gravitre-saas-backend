@@ -54,6 +54,27 @@ mustExist("backend/app/services/cognitive_loop_controller.py")
 mustExist("backend/app/services/cognitive_nlu_adversarial_corpus.py")
 mustExist("backend/tests/test_cognitive_loop_controller.py")
 mustExist("backend/tests/test_cognitive_nlu_adversarial_battery.py")
+mustExist("backend/app/services/response_composer.py")
+mustExist("backend/app/services/response_envelope.py")
+mustExist("scripts/scan_response_composer_bypass.py")
+mustExist("backend/tests/test_response_composer.py")
+mustExist("backend/tests/test_response_composer_bypass.py")
+mustContain(
+  "backend/app/operators/agent_intelligence.py",
+  "compose_reply_events",
+  "Response Composer compose_reply_events",
+)
+mustContain(
+  "backend/app/operators/agent_intelligence.py",
+  "emit_text_delta",
+  "Response Composer emit_text_delta",
+)
+if (read("backend/app/operators/agent_intelligence.py").includes("sse_text_delta(")) {
+  fail("backend/app/operators/agent_intelligence.py must not call sse_text_delta (Composer owns stream writes)")
+}
+if (read("backend/app/routers/assistant.py").includes("sse_error(")) {
+  fail("backend/app/routers/assistant.py must not call sse_error (Composer owns stream errors)")
+}
 if (read("backend/app/routers/assistant.py").includes("match_frontend_ia_nav_faq")) {
   fail("backend/app/routers/assistant.py must not call match_frontend_ia_nav_faq (Intent Gateway owns it)")
 }
@@ -165,6 +186,23 @@ mustContain(
   "classical evidence envelope",
 )
 
+{
+  const scan = spawnSync("python", ["scripts/scan_response_composer_bypass.py"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+  let result = scan
+  if (scan.error && (scan.error.code === "ENOENT" || String(scan.error).includes("ENOENT"))) {
+    result = spawnSync("python3", ["scripts/scan_response_composer_bypass.py"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    })
+  }
+  if (!result.error && result.status !== 0) {
+    fail(`scan_response_composer_bypass failed:\n${(result.stdout || "") + (result.stderr || "")}`.slice(0, 800))
+  }
+}
+
 // --- 7) Optional python import smoke ---
 {
   const strictImportSmoke =
@@ -239,6 +277,8 @@ mustContain(
       "tests/test_intent_gateway_adversarial_corpus.py",
       "tests/test_cognitive_loop_controller.py",
       "tests/test_cognitive_nlu_adversarial_battery.py",
+      "tests/test_response_composer.py",
+      "tests/test_response_composer_bypass.py",
     ]
     const env = {
       ...process.env,

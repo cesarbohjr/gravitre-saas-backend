@@ -65,13 +65,13 @@ from app.operators.assistant_mode_config import resolve_assistant_tool_names
 from app.operators.assistant_sse import (
     assistant_event_to_sse_line,
     sse_done,
-    sse_error,
     sse_finish,
     sse_finish_step,
     sse_start,
     sse_start_step,
     sse_suggestions,
 )
+from app.services.response_composer import emit_stream_error
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
@@ -653,7 +653,7 @@ def _build_stream(
                 str(exc)[:500],
             )
             if not streamed_text_parts:
-                yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
+                yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
                 yield sse_done()
                 return
             logger.warning(
@@ -667,14 +667,14 @@ def _build_stream(
             assistant_text = "".join(streamed_text_parts).strip()
 
         if not assistant_text:
-            yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
+            yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
             yield sse_done()
             return
 
         if complete is not None and complete.react_result is not None and getattr(complete.react_result, "error", None):
             err = str(complete.react_result.error or "")
             if err and not assistant_text:
-                yield assistant_event_to_sse_line(sse_error(err))
+                yield assistant_event_to_sse_line(emit_stream_error("error", detail=err))
                 yield sse_done()
                 return
 

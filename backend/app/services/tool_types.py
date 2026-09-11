@@ -89,6 +89,16 @@ class NormalizedResult:
     connector_id: str | None = None
     latency_ms: int | None = None
 
+    @property
+    def error_detail(self) -> str | None:
+        """Alias of error_message — canonical Composer envelope field."""
+        return self.error_message
+
+    def to_user_envelope(self) -> dict[str, Any]:
+        from app.services.response_envelope import coerce_user_envelope
+
+        return coerce_user_envelope(self)
+
     def to_step_output(self) -> dict[str, Any]:
         if self.success:
             return dict(self.data)
