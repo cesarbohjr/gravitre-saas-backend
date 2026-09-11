@@ -105,9 +105,12 @@ async def induce_statement_timeout(
             classified = _classify_error(exc)
             evidence["classified_code"] = classified.code
             if classified.code == "statement_timeout":
+                if "57014" in str(exc) and not evidence.get("sqlstate"):
+                    evidence["sqlstate"] = "57014"
                 return _result_from_tool_error(exc, action="postgres.query"), evidence
             msg = str(exc).lower()
             if "statement timeout" in msg or "57014" in msg:
+                evidence["sqlstate"] = evidence.get("sqlstate") or "57014"
                 return (
                     NormalizedResult(
                         success=False,

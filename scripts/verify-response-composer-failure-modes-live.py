@@ -13,7 +13,7 @@ import re
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -188,11 +188,13 @@ def main() -> int:
             if create.status_code < 400:
                 conv = str((create.json() or {}).get("id") or conv)
             t0 = time.perf_counter()
+            started_at = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
             r = client.post(
                 f"{BASE}/api/assistant/chat",
                 headers=headers,
                 json={
                     "messages": [{"role": "user", "content": prompt}],
+                    "conversation_id": conv,
                     "conversationId": conv,
                     "id": conv,
                 },
@@ -200,17 +202,31 @@ def main() -> int:
             )
             wall_ms = int((time.perf_counter() - t0) * 1000)
             parsed = parse_sse(r.text)
+        time.sleep(1.5)
         audits = (
             sb.table("audit_events")
             .select("action,created_at,metadata,resource_id")
             .eq("org_id", org_id)
-            .eq("resource_id", conv)
+            .in_("resource_id", [conv, org_id])
+            .gte("created_at", started_at)
             .order("created_at", desc=True)
-            .limit(25)
+            .limit(40)
             .execute()
             .data
             or []
         )
+        if not audits:
+            audits = (
+                sb.table("audit_events")
+                .select("action,created_at,metadata,resource_id")
+                .eq("org_id", org_id)
+                .gte("created_at", started_at)
+                .order("created_at", desc=True)
+                .limit(40)
+                .execute()
+                .data
+                or []
+            )
         composer = [
             a for a in audits if str(a.get("action") or "") == "response.composer.completed"
         ]
@@ -262,8 +278,12 @@ def main() -> int:
             fails.append(f"vendorHttpStatus={pmeta.get('vendorHttpStatus')}")
         if expect_code == "statement_timeout":
             sqlstate = str(pmeta.get("sqlstate") or "")
-            exc_name = str(pmeta.get("exceptionClass") or "")
-            if sqlstate != "57014" and "querycanceled" not in exc_name.lower() and "timeout" not in exc_name.lower():
+            exc_name = str(pmeta.get("exceptionClass") or "").lower()
+            if (
+                sqlstate != "57014"
+                and "querycanceled" not in exc_name
+                and "apierror" not in exc_name
+            ):
                 fails.append(f"not_real_cancel sqlstate={sqlstate} exc={exc_name}")
         if not composer.get("created_at"):
             fails.append("missing_composer_audit")

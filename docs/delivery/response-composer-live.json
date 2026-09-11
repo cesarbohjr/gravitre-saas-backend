@@ -164,5 +164,35 @@
     ]
   },
   "verdict": "PASS \u2014 no raw backend markers in user-facing text; Composer audits recorded; typed SEO asked a question=True; spoken SEO asked a question=True",
-  "finished_at": "2026-09-11T15:19:19.060927+00:00"
+  "finished_at": "2026-09-11T15:19:19.060927+00:00",
+  "failure_mode_closeout": {
+    "closed_at": "2026-09-11T17:22:09.522711+00:00",
+    "git_sha": "efa7a398c98edd8e070bb7639df245755d2f2c42",
+    "health_timestamp": "2026-09-11T17:21:33.404875+00:00",
+    "artifact": "docs/delivery/response-composer-failure-modes-live.json",
+    "original_partials_preserved_above": {
+      "typed_timeout": "PARTIAL \u2014 10-year Ads pull composed a capability refusal, not a Postgres statement_timeout",
+      "typed_permission": "PARTIAL \u2014 HubSpot mass-delete hit the approval/execution gate, not a vendor OAuth 403"
+    },
+    "now": {
+      "typed_statement_timeout": {
+        "status": "PASS",
+        "conversation_id": "59327025-f110-4f58-bc22-88f3066c1fc4",
+        "composer.completed": "2026-09-11T17:21:46.109251+00:00",
+        "probe.completed": "2026-09-11T17:21:41.056647+00:00",
+        "kind": "timeout",
+        "error_code": "statement_timeout",
+        "postgres": "APIError code 57014 canceling statement due to statement timeout via gravitre_probe_statement_timeout"
+      },
+      "typed_oauth_permission_denied": {
+        "status": "PASS",
+        "conversation_id": "5733315e-166e-45f9-9b0e-76e80dd5eb16",
+        "composer.completed": "2026-09-11T17:22:03.688644+00:00",
+        "probe.completed": "2026-09-11T17:21:57.665351+00:00",
+        "kind": "permission",
+        "error_code": "permission_denied",
+        "vendor": "hubspot GET /conversations/v3/conversations/inboxes HTTP 403"
+      }
+    }
+  }
 }

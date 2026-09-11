@@ -1,0 +1,146 @@
+{
+  "probe": "response_composer_failure_modes",
+  "started_at": "2026-09-11T17:21:32.948407+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "efa7a398",
+  "note": "Closes the two PARTIAL asterisks from docs/delivery/response-composer-live.json: a genuine Postgres statement_timeout and a genuine connector OAuth 403.",
+  "git_sha": "efa7a398c98edd8e070bb7639df245755d2f2c42",
+  "health_timestamp": "2026-09-11T17:21:33.404875+00:00",
+  "typed_statement_timeout": {
+    "http_status": 200,
+    "conversation_id": "59327025-f110-4f58-bc22-88f3066c1fc4",
+    "wall_ms": 14832,
+    "parsed": {
+      "assistant": "The HubSpot contact check timed out, so I can\u2019t confirm CRM reachability from that attempt. Retry the check, or narrow it to a small sample of contacts first.",
+      "error_texts": [],
+      "tool_error_codes": [
+        "statement_timeout"
+      ],
+      "tools": [
+        ""
+      ],
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 28
+    },
+    "composer_audit": [
+      {
+        "action": "response.composer.completed",
+        "created_at": "2026-09-11T17:21:46.109251+00:00",
+        "metadata": {
+          "kind": "timeout",
+          "success": false,
+          "fallback": false,
+          "errorCode": "statement_timeout",
+          "usedModel": true
+        },
+        "resource_id": "59327025-f110-4f58-bc22-88f3066c1fc4"
+      }
+    ],
+    "probe_audit": [
+      {
+        "action": "composer.failure_probe.completed",
+        "created_at": "2026-09-11T17:21:41.056647+00:00",
+        "metadata": {
+          "probe": "statement_timeout",
+          "action": "postgres.query",
+          "vendor": null,
+          "sqlstate": null,
+          "errorCode": "statement_timeout",
+          "classifiedCode": "statement_timeout",
+          "exceptionClass": "APIError",
+          "vendorHttpStatus": null
+        },
+        "resource_id": "59327025-f110-4f58-bc22-88f3066c1fc4"
+      }
+    ],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "response.composer.completed",
+      "composer.failure_probe.completed"
+    ],
+    "audit_event_ids": {
+      "composer.failure_probe.completed": "33e68976-1a98-434d-bd89-e95ca603580c",
+      "response.composer.completed": "f8e64a4c-6ae4-4be3-a108-634dd96a4dbe"
+    },
+    "conversation_message_ids": {
+      "user": "c5c73db1-aeff-4bb0-a834-03e01fe659aa",
+      "assistant": "1421b129-4f1f-4291-842a-14af9b4b16fb"
+    },
+    "postgres_57014_corroboration": {
+      "same_rpc": "gravitre_probe_statement_timeout",
+      "note": "Chat-path audit stores exceptionClass=APIError and classifiedCode=statement_timeout; supabase-py does not set .sqlstate. Independent call of the same RPC against prod Postgres raised the cancel body below.",
+      "exception_class": "APIError",
+      "code": "57014",
+      "message": "canceling statement due to statement timeout",
+      "reproduced_at": "2026-09-11T17:23:00+00:00"
+    }
+  },
+  "typed_oauth_permission_denied": {
+    "http_status": 200,
+    "conversation_id": "5733315e-166e-45f9-9b0e-76e80dd5eb16",
+    "wall_ms": 12609,
+    "parsed": {
+      "assistant": "HubSpot blocked the inbox list request because the connected account doesn\u2019t have permission for Conversations inboxes. Use a HubSpot account with Conversations inbox access, or update the app/account permissions, then I can try again.",
+      "error_texts": [],
+      "tool_error_codes": [
+        "permission_denied"
+      ],
+      "tools": [
+        ""
+      ],
+      "leak_hits": [],
+      "looks_composed": true,
+      "word_count": 34
+    },
+    "composer_audit": [
+      {
+        "action": "response.composer.completed",
+        "created_at": "2026-09-11T17:22:03.688644+00:00",
+        "metadata": {
+          "kind": "permission",
+          "success": false,
+          "fallback": false,
+          "errorCode": "permission_denied",
+          "usedModel": true
+        },
+        "resource_id": "5733315e-166e-45f9-9b0e-76e80dd5eb16"
+      }
+    ],
+    "probe_audit": [
+      {
+        "action": "composer.failure_probe.completed",
+        "created_at": "2026-09-11T17:21:57.665351+00:00",
+        "metadata": {
+          "probe": "oauth_permission_denied",
+          "action": "hubspot.conversations.inboxes.list",
+          "vendor": "hubspot",
+          "sqlstate": null,
+          "errorCode": "permission_denied",
+          "classifiedCode": "permission_denied",
+          "exceptionClass": null,
+          "vendorHttpStatus": 403
+        },
+        "resource_id": "5733315e-166e-45f9-9b0e-76e80dd5eb16"
+      }
+    ],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "response.composer.completed",
+      "composer.failure_probe.completed"
+    ],
+    "audit_event_ids": {
+      "composer.failure_probe.completed": "76db2e89-46ab-437f-8092-f454979c21e5",
+      "response.composer.completed": "37ea1538-4e0d-40c3-8b81-25d4dc07c3c1"
+    },
+    "conversation_message_ids": {
+      "user": "bd1737c8-aa6e-4fa2-885d-73b2f323dcf6",
+      "assistant": "45135828-013f-47ba-b589-a251fbf1dd94"
+    }
+  },
+  "timeout_fails": [],
+  "permission_fails": [],
+  "verdict": "PASS \u2014 live statement_timeout and OAuth permission_denied composed without backend leaks; timeout composer @ 2026-09-11T17:21:46.109251+00:00; permission composer @ 2026-09-11T17:22:03.688644+00:00",
+  "finished_at": "2026-09-11T17:22:09.522711+00:00"
+}
