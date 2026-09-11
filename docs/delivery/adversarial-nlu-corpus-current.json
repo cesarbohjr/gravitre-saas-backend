@@ -1,0 +1,114 @@
+{
+  "captured_at": "2026-09-11T16:21:42Z",
+  "source": "scripts/report-adversarial-nlu-corpus.py",
+  "corpus": "backend/app/services/cognitive_nlu_adversarial_corpus.py",
+  "ci_gate": "backend/tests/test_cognitive_nlu_adversarial_battery.py",
+  "total": 449,
+  "ci_thresholds": {
+    "fallthrough_required": ">=0.98",
+    "shortcut_seeds_required": 1.0,
+    "social_required": "reported, not 100%",
+    "would_pass_ci": true
+  },
+  "honest_summary": "Operator-shaped families are 443/443 (100%) fallthrough on both typed and spoken gateway eval. The one FAQ seed still shortcuts 1/1. The battery's new surface is social: 3/5 greetings/capability one-liners shortcut; 2/5 miss the cheap path and take the full six-stage loop (below_threshold). No typed/spoken mismatches.",
+  "corpus_stats": {
+    "total": 449,
+    "family_vendor_job": 140,
+    "family_obscure": 70,
+    "family_ambiguous": 70,
+    "family_multi_clause": 84,
+    "family_edge": 36,
+    "family_prioritize": 40,
+    "family_anchor": 3,
+    "family_shortcut_seed": 1,
+    "family_social_report": 5,
+    "expected_fallthrough": 443,
+    "expected_shortcut": 6
+  },
+  "fallthrough_families": {
+    "n": 443,
+    "pass": 443,
+    "fail": 0,
+    "rate": 1.0
+  },
+  "shortcut_seeds": {
+    "n": 1,
+    "pass": 1,
+    "fail": 0,
+    "rate": 1.0
+  },
+  "social_report": {
+    "n": 5,
+    "shortcut_both": 3,
+    "not_shortcut": 2,
+    "shortcut_rate": 0.6,
+    "shortcut_messages": ["Hi", "thanks", "good morning"],
+    "misses": [
+      "hello there",
+      "what can you help with in one sentence"
+    ],
+    "note": "Reported honestly; not a 100% CI gate. These two still fall through as below_threshold, so a spoken hello/capability one-liner pays the full six-stage loop (and the spoken dead-air cost) instead of the cheap FAQ shortcut."
+  },
+  "by_family": {
+    "ambiguous": {
+      "n": 70,
+      "pass": 70
+    },
+    "anchor": {
+      "n": 3,
+      "pass": 3
+    },
+    "edge": {
+      "n": 36,
+      "pass": 36
+    },
+    "multi_clause": {
+      "n": 84,
+      "pass": 84
+    },
+    "obscure": {
+      "n": 70,
+      "pass": 70
+    },
+    "prioritize": {
+      "n": 40,
+      "pass": 40
+    },
+    "shortcut_seed": {
+      "n": 1,
+      "pass": 1
+    },
+    "social_report": {
+      "n": 5,
+      "pass": 3,
+      "fail": 2,
+      "report_not_shortcut": 2
+    },
+    "vendor_job": {
+      "n": 140,
+      "pass": 140
+    }
+  },
+  "fail_count": 2,
+  "fails": [
+    {
+      "id": "social_002",
+      "family": "social_report",
+      "kind": "social_or_wrap_not_shortcut",
+      "typed": "fallthrough:None:below_threshold",
+      "spoken": "fallthrough:None:below_threshold",
+      "message": "hello there"
+    },
+    {
+      "id": "social_005",
+      "family": "social_report",
+      "kind": "social_or_wrap_not_shortcut",
+      "typed": "fallthrough:None:below_threshold",
+      "spoken": "fallthrough:None:below_threshold",
+      "message": "what can you help with in one sentence"
+    }
+  ],
+  "fail_kinds": {
+    "social_or_wrap_not_shortcut": 2
+  }
+}

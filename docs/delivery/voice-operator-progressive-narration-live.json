@@ -1,0 +1,112 @@
+{
+  "probe": "voice_operator_progressive_narration",
+  "verdict": "NOT ACTIVE on real operator-shaped spoken HTTP Talk turns",
+  "audible_incremental_speech_during_loop": false,
+  "silence_then_delayed_full_answer": true,
+  "captured_at": "2026-09-11T16:22:33.320669+00:00",
+  "git_sha": "f3b4af90cb05f14bc61647723792ecb9b4954e79",
+  "health_timestamp": "2026-09-11T16:21:47.314082+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "55be5d00-f1a4-46de-97d9-13cea89315e0",
+  "http_status": 200,
+  "first_text_delta_ms": 34708,
+  "first_audio_ms": 34898,
+  "first_tool_sse_ms": null,
+  "first_cognitive_loop_event_ms": 16196,
+  "audible_or_text_before_5000ms": false,
+  "tool_start_events_before_answer": false,
+  "http_talk_speaks_tool_narration": false,
+  "http_talk_speaks_loop_stages": false,
+  "note": "HTTP Talk TTS is driven only by text-delta. tool-input-available is forwarded as voice.sse.* metadata, not spoken. Progressive tool narration lives on the Pipecat bridge only. Operator-shaped plan-without-execute turns emit no tool SSE before the answer, so even Pipecat would stay silent through PERCEIVE/RETRIEVE/PLAN.",
+  "standing_open_item": "docs/delivery/standing-loop-voice-dead-air.json",
+  "linear": "https://linear.app/staqbot/issue/STA-343/open-six-stage-loop-vs-spoken-first-audio-operator-voice-dead-air",
+  "timeline_head": [
+    {
+      "ms": 527,
+      "type": "voice.session.accepted"
+    },
+    {
+      "ms": 876,
+      "type": "voice.session.started"
+    },
+    {
+      "ms": 4822,
+      "type": "voice.intelligence"
+    },
+    {
+      "ms": 16196,
+      "type": "voice.cognitive_loop",
+      "fullLoop": false,
+      "progress_steps": [
+        "Completed: Classifying request",
+        "Completed: Loading memory and knowledge",
+        "Completed: Planning next actions",
+        "Preparing actions for Apollo, Google_ads, Hubspot",
+        "Checking the result",
+        "Learning from the outcome"
+      ]
+    },
+    {
+      "ms": 22842,
+      "type": "voice.intelligence"
+    },
+    {
+      "ms": 23299,
+      "type": "voice.intelligence"
+    },
+    {
+      "ms": 34707,
+      "type": "voice.sse.text-start"
+    },
+    {
+      "ms": 34708,
+      "type": "voice.text.delta",
+      "delta_preview": "I have not executed anything. The plan is: first, check Google Ads access by lis"
+    },
+    {
+      "ms": 34898,
+      "type": "voice.ttft"
+    },
+    {
+      "ms": 34898,
+      "type": "voice.ttfa",
+      "ttfa_ms": 34364
+    },
+    {
+      "ms": 34917,
+      "type": "voice.agent_speech.start"
+    },
+    {
+      "ms": 35434,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 37182,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 41286,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 41354,
+      "type": "voice.sse.text-end"
+    },
+    {
+      "ms": 42740,
+      "type": "voice.turn.complete"
+    },
+    {
+      "ms": 42770,
+      "type": "voice.audio.delta"
+    },
+    {
+      "ms": 42771,
+      "type": "voice.agent_speech.end"
+    },
+    {
+      "ms": 42771,
+      "type": "voice.session.ended"
+    }
+  ]
+}

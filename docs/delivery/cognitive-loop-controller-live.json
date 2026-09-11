@@ -1,0 +1,875 @@
+{
+  "probe": "cognitive_loop_controller",
+  "started_at": "2026-09-11T09:11:00.402402+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "1a5521fc",
+  "f6_coverage": {
+    "mutating_action_count": 362,
+    "declared_count": 362,
+    "catalog_path_exists": true,
+    "coverage_pct": 100.0,
+    "full_coverage": true,
+    "missing_count": 0,
+    "missing_sample": [],
+    "by_mode": {
+      "follow_up_entity_get": 75,
+      "accepted_async": 283,
+      "follow_up_field_assert": 1,
+      "follow_up_membership": 3
+    },
+    "examples": {
+      "follow_up_membership": [
+        {
+          "action": "hubspot.lists.add_contact",
+          "mode": "follow_up_membership",
+          "read_action": "hubspot.lists.get",
+          "assert_field": "membership_count",
+          "reason": "F6 collection population membership proof"
+        },
+        {
+          "action": "marketo.lists.add_to_static_list",
+          "mode": "follow_up_membership",
+          "read_action": "marketo.lists.get_leads",
+          "assert_field": "membership_count",
+          "reason": "F6 collection population membership proof"
+        },
+        {
+          "action": "apollo.lists.add",
+          "mode": "follow_up_membership",
+          "read_action": "apollo.lists.list",
+          "assert_field": "membership_count",
+          "reason": "F6 collection population membership proof"
+        }
+      ],
+      "follow_up_entity_get": [
+        {
+          "action": "salesforce.leads.create",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.leads.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "salesforce.leads.update",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.leads.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "salesforce.accounts.create",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.accounts.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "salesforce.opportunities.create",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.opportunities.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "salesforce.accounts.update",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.accounts.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "salesforce.opportunities.update",
+          "mode": "follow_up_entity_get",
+          "read_action": "salesforce.opportunities.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "hubspot.contacts.create",
+          "mode": "follow_up_entity_get",
+          "read_action": "hubspot.contacts.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        },
+        {
+          "action": "hubspot.contacts.update",
+          "mode": "follow_up_entity_get",
+          "read_action": "hubspot.contacts.get",
+          "assert_field": "id",
+          "reason": "Sibling GET must return the written entity id/field"
+        }
+      ],
+      "accepted_async": [
+        {
+          "action": "salesforce.tasks.create",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "salesforce.opportunities.update_stage",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.campaigns.update",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.contacts.delete",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.deals.delete",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.notes.create",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.notes.delete",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        },
+        {
+          "action": "hubspot.associations.create",
+          "mode": "accepted_async",
+          "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+        }
+      ]
+    },
+    "population_actions": [
+      "apollo.lists.add",
+      "hubspot.lists.add_contact",
+      "marketo.lists.add_to_static_list"
+    ]
+  },
+  "nlu_corpus": {
+    "total": 449,
+    "family_vendor_job": 140,
+    "family_obscure": 70,
+    "family_ambiguous": 70,
+    "family_multi_clause": 84,
+    "family_edge": 36,
+    "family_prioritize": 40,
+    "family_anchor": 3,
+    "family_shortcut_seed": 1,
+    "family_social_report": 5,
+    "expected_fallthrough": 443,
+    "expected_shortcut": 6
+  },
+  "voice_slo": {
+    "p50_ttfa_ms": 500,
+    "p95_ttfa_ms": 800,
+    "prior_measurement": "2026-09-05/06 voice SLO doc: simple_conversational first_text_delta 1011\u20131848ms; P50<500 / P95<800 was not met. This run reports a fresh spoken operator-turn first_delta_ms against that same standard.",
+    "this_run_first_delta_ms": 4980,
+    "p50_met": false,
+    "honest_label": "NOT MET"
+  },
+  "git_sha": "1a5521fc13599bc7398cd89ddcbf2af2ae4a45ee",
+  "health_timestamp": "2026-09-11T09:11:01.344379+00:00",
+  "typed_operator": {
+    "http_status": 200,
+    "conversation_id": "9eabab6c-58f5-4814-a392-762c5a9987da",
+    "wall_ms": 11774,
+    "parsed": {
+      "assistant": "I planned a **2-step orchestration**:\n\n1. **List Google Ads ad groups** (read, auto-run)\n2. **List Google Ads keywords** (read, auto-run)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "loop": {
+        "cognitiveLoop": true,
+        "loopId": "72f15a66-fe8d-492d-9b17-4e00a21d76d2",
+        "operatorTask": true,
+        "fastPath": false,
+        "spokenMode": false,
+        "turnId": "4be34b8a-ca5d-4a9d-abfd-db858e3aa470",
+        "stages": [
+          {
+            "stage": "PERCEIVE",
+            "ok": true,
+            "ms": 80.0,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "action": "fallthrough",
+              "reason": "operator_task_shaped",
+              "candidate_id": null,
+              "confidence": null
+            }
+          },
+          {
+            "stage": "RETRIEVE",
+            "ok": true,
+            "ms": 230.2,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "kernel_stages": [
+                {
+                  "stage": "RETRIEVE",
+                  "ok": true,
+                  "ms": 0.0,
+                  "meta": {
+                    "surface": "ai_chat",
+                    "entry_point": "execute_task_streaming"
+                  }
+                },
+                {
+                  "stage": "RECALL",
+                  "ok": true,
+                  "ms": 150.8,
+                  "meta": {
+                    "keys": [
+                      "working",
+                      "episodic",
+                      "preference",
+                      "decision",
+                      "outcome",
+                      "relationship",
+                      "procedural"
+                    ],
+                    "recall": {
+                      "ran": true,
+                      "total": 20,
+                      "bySource": {
+                        "hybrid": 8,
+                        "agent": 0,
+                        "department": 0,
+                        "ledger": 0,
+                        "workspace": 12
+                      },
+                      "attempted": [
+                        "hybrid",
+                        "ledger",
+                        "workspace"
+                      ],
+                      "degraded": false,
+                      "failedSources": []
+                    }
+                  }
+                },
+                {
+                  "stage": "KNOWLEDGE",
+                  "ok": true,
+                  "ms": 79.36,
+                  "meta": {
+                    "fabric_count": 0
+                  }
+                }
+              ],
+              "fabric_count": 0,
+              "signal_scoring": false,
+              "sufficiency": {
+                "sufficient": false,
+                "stance": "incorrect",
+                "stance_inferred": false,
+                "keep_indices": [],
+                "assessor": "deterministic",
+                "reason": "0 substantive source(s) retrieved; business bar needs at least 1",
+                "gaps": [
+                  "insufficient_source_count"
+                ],
+                "bar": "business",
+                "min_sources": 1,
+                "require_citable_source": false,
+                "require_freshness_signal": false,
+                "bar_reason": "general business question",
+                "assessment_confidence": null,
+                "confidence_is_estimate": false,
+                "confidenceIsEstimate": false,
+                "confidence_source": "insufficient_data",
+                "confidenceSource": "insufficient_data"
+              }
+            }
+          },
+          {
+            "stage": "PLAN",
+            "ok": true,
+            "ms": 0.1,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "step_count": 3,
+              "source": "cognitive_planner",
+              "has_signal_priorities": false
+            }
+          }
+        ],
+        "fullLoop": false
+      },
+      "loop_event_count": 1,
+      "progress_steps": [
+        "Completed: Classifying request",
+        "Completed: Loading memory and knowledge",
+        "Completed: Planning next actions",
+        "Preparing actions for Apollo, Google_ads, Hubspot",
+        "Checking the result",
+        "Learning from the outcome"
+      ],
+      "pending_task": {
+        "type": "connector_orchestration",
+        "params": {
+          "goal": "Check that my Google Ads account is actually connected, and show me the complete plan before you execute anything. Don't execute without my approval.",
+          "steps": [
+            {
+              "kind": "read",
+              "plan": {
+                "args": {
+                  "limit": 10,
+                  "query": "Check that my Google Ads account is actually connected"
+                },
+                "kind": "read",
+                "label": "List Google Ads ad groups",
+                "tool_name": "google_ads_ad_groups_list",
+                "destructive": false,
+                "integration": "google_ads",
+                "invoke_action": "googleads.ad_groups.list",
+                "approval_reason": null,
+                "bound_tool_name": "google_ads_ad_groups_list",
+                "inferred_fields": [],
+                "bound_args_digest": "36380f847d520a6b7964face38ca2ed4567cf21bcca018f7ba8adb71131cdcb6",
+                "bound_integration": "google_ads",
+                "inference_sources": {},
+                "requires_approval": false,
+                "approval_action_id": "8dc27017-2783-4c9d-9ad2-07f52d264800",
+                "bound_invoke_action": "googleads.ad_groups.list"
+              },
+              "label": "List Google Ads ad groups",
+              "segment": "Check that my Google Ads account is actually connected",
+              "step_id": "step_1",
+              "supported": true,
+              "skip_reason": null,
+              "requires_approval": false
+            },
+            {
+              "kind": "read",
+              "plan": {
+                "args": {
+                  "limit": 10,
+                  "query": "me the complete plan before you execute anything. Don't execute without my approval"
+                },
+                "kind": "read",
+                "label": "List Google Ads keywords",
+                "tool_name": "google_ads_keywords_list",
+                "destructive": false,
+                "integration": "google_ads",
+                "invoke_action": "googleads.keywords.list",
+                "approval_reason": null,
+                "bound_tool_name": "google_ads_keywords_list",
+                "inferred_fields": [],
+                "bound_args_digest": "a97b71034790a62710c9b9ddea6936a15565b6c61c4a07ce44ceef9e8c4a38fd",
+                "bound_integration": "google_ads",
+                "inference_sources": {},
+                "requires_approval": false,
+                "approval_action_id": "c612984b-0ec8-419c-a414-cb1b7857db1e",
+                "bound_invoke_action": "googleads.keywords.list"
+              },
+              "label": "List Google Ads keywords",
+              "segment": "show me the complete plan before you execute anything. Don't execute without my approval",
+              "step_id": "step_2",
+              "supported": true,
+              "skip_reason": null,
+              "requires_approval": false
+            }
+          ],
+          "total_steps": 2,
+          "step_results": [],
+          "current_step_index": 0
+        },
+        "status": "awaiting_plan_confirm"
+      },
+      "first_delta_ms": 0
+    },
+    "loop_audit": [
+      {
+        "action": "cognitive.loop.completed",
+        "created_at": "2026-09-11T09:11:12.985738+00:00",
+        "metadata": {
+          "loopId": "72f15a66-fe8d-492d-9b17-4e00a21d76d2",
+          "stages": [
+            {
+              "ms": 80.0,
+              "ok": true,
+              "stage": "PERCEIVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 230.2,
+              "ok": true,
+              "stage": "RETRIEVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.1,
+              "ok": true,
+              "stage": "PLAN",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.0,
+              "ok": true,
+              "stage": "ACT",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 1.3,
+              "ok": true,
+              "stage": "OBSERVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 502.2,
+              "ok": true,
+              "stage": "LEARN",
+              "skipped": false,
+              "skipReason": null
+            }
+          ],
+          "turnId": "4be34b8a-ca5d-4a9d-abfd-db858e3aa470",
+          "fastPath": false,
+          "fullLoop": true,
+          "spokenMode": false,
+          "operatorTask": true
+        },
+        "resource_id": "9eabab6c-58f5-4814-a392-762c5a9987da"
+      }
+    ],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "unified_turn.live.completed",
+      "memory.recalled"
+    ]
+  },
+  "typed_priority": {
+    "http_status": 200,
+    "conversation_id": "88ebcff8-7e68-43fb-975f-8561ab93fca6",
+    "wall_ms": 24976,
+    "parsed": {
+      "assistant": "I can\u2019t substantiate a real priority list from the sources you gave.\n\nWhat I do have is only this:\n- The internal sales signal set shows **three fixture accounts**, all with **0.0/100** and the note that the key gaps are **missing technology-adoption sources** and **department classification**.\n- The web result is general context about hiring signals, not account-level evidence.\n- I do **not** have source-backed hiring momentum, technology adoption, or engagement data for specific companies in this turn.\n\nSo the honest answer is: **I can\u2019t rank who to prioritize this week from the evidence available here.** The source excerpt only supports that the current signal coverage is incomplete, not which accounts are hottest.\n\nIf you want, I can do one of two useful things next:\n1. **Build a source-cited priority list** once you give me the target account list, or\n2. **Fetch Apollo company data** for a named set of accounts and rank them from those signals.",
+      "loop": {
+        "cognitiveLoop": true,
+        "loopId": "cca3d47b-9fbc-4249-8fbc-a8a5b5a14ab3",
+        "operatorTask": false,
+        "fastPath": false,
+        "spokenMode": false,
+        "turnId": "bd391886-214e-4358-afd3-3706096ece84",
+        "stages": [
+          {
+            "stage": "PERCEIVE",
+            "ok": true,
+            "ms": 65.0,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "action": "fallthrough",
+              "reason": "below_threshold",
+              "candidate_id": null,
+              "confidence": null
+            }
+          },
+          {
+            "stage": "RETRIEVE",
+            "ok": true,
+            "ms": 3097.8,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "kernel_stages": [
+                {
+                  "stage": "RETRIEVE",
+                  "ok": true,
+                  "ms": 0.0,
+                  "meta": {
+                    "surface": "ai_chat",
+                    "entry_point": "execute_task_streaming"
+                  }
+                },
+                {
+                  "stage": "RECALL",
+                  "ok": true,
+                  "ms": 146.69,
+                  "meta": {
+                    "keys": [
+                      "working",
+                      "episodic",
+                      "preference",
+                      "decision",
+                      "outcome",
+                      "relationship",
+                      "procedural"
+                    ],
+                    "recall": {
+                      "ran": true,
+                      "total": 20,
+                      "bySource": {
+                        "hybrid": 8,
+                        "agent": 0,
+                        "department": 0,
+                        "ledger": 0,
+                        "workspace": 12
+                      },
+                      "attempted": [
+                        "hybrid",
+                        "ledger",
+                        "workspace"
+                      ],
+                      "degraded": false,
+                      "failedSources": []
+                    }
+                  }
+                },
+                {
+                  "stage": "KNOWLEDGE",
+                  "ok": true,
+                  "ms": 2951.07,
+                  "meta": {
+                    "fabric_count": 6
+                  }
+                }
+              ],
+              "fabric_count": 6,
+              "signal_scoring": true,
+              "sufficiency": {
+                "sufficient": false,
+                "stance": "incorrect",
+                "stance_inferred": false,
+                "keep_indices": [],
+                "assessor": "llm",
+                "reason": "The retrieved evidence is about employment law and EEOC guidance on recruitment/discrimination, not sales prioritization. It does not address hiring momentum, technology adoption, or engagement signals, and it cannot support identifying who to prioritize this week in sales.",
+                "gaps": [
+                  "does_not_address_question",
+                  "wrong_subject",
+                  "partial_coverage",
+                  "weak_relevance_to_sales_prioritization"
+                ],
+                "bar": "business",
+                "min_sources": 1,
+                "require_citable_source": false,
+                "require_freshness_signal": false,
+                "bar_reason": "general business question",
+                "assessment_confidence": 0.99,
+                "confidence_is_estimate": true,
+                "confidenceIsEstimate": true,
+                "confidence_source": "heuristic",
+                "confidenceSource": "heuristic"
+              }
+            }
+          },
+          {
+            "stage": "PLAN",
+            "ok": true,
+            "ms": 0.1,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "step_count": 4,
+              "source": "cognitive_planner",
+              "has_signal_priorities": true,
+              "signal_scoring": true
+            }
+          }
+        ],
+        "fullLoop": false
+      },
+      "loop_event_count": 1,
+      "progress_steps": [
+        "Completed: Classifying request",
+        "Completed: Loading memory and knowledge",
+        "Completed: Planning next actions",
+        "Preparing actions for Apollo, Google_ads, Hubspot",
+        "Checking the result",
+        "Learning from the outcome"
+      ],
+      "pending_task": null,
+      "first_delta_ms": 0
+    },
+    "loop_audit": [
+      {
+        "action": "cognitive.loop.completed",
+        "created_at": "2026-09-11T09:11:40.438182+00:00",
+        "metadata": {
+          "loopId": "cca3d47b-9fbc-4249-8fbc-a8a5b5a14ab3",
+          "stages": [
+            {
+              "ms": 65.0,
+              "ok": true,
+              "stage": "PERCEIVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 3097.8,
+              "ok": true,
+              "stage": "RETRIEVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.1,
+              "ok": true,
+              "stage": "PLAN",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.0,
+              "ok": true,
+              "stage": "ACT",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 1.3,
+              "ok": true,
+              "stage": "OBSERVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 670.7,
+              "ok": true,
+              "stage": "LEARN",
+              "skipped": false,
+              "skipReason": null
+            }
+          ],
+          "turnId": "bd391886-214e-4358-afd3-3706096ece84",
+          "fastPath": false,
+          "fullLoop": true,
+          "spokenMode": false,
+          "operatorTask": false
+        },
+        "resource_id": "88ebcff8-7e68-43fb-975f-8561ab93fca6"
+      }
+    ],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "unified_turn.live.completed",
+      "evidence.sufficiency.assessed",
+      "memory.recalled"
+    ]
+  },
+  "spoken_operator": {
+    "http_status": 200,
+    "conversation_id": "e6abffa9-b18c-4837-bb7a-f9c01fd8431a",
+    "wall_ms": 6936,
+    "parsed": {
+      "assistant": "I planned a **2-step orchestration**:\n\n1. **List Google Ads ad groups** (read, auto-run)\n2. **List Google Ads keywords** (read, auto-run)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.I planned a 2-step orchestration:. List Google Ads ad groups (read, auto-run). List Google Ads keywords (read, auto-run). Read steps run automatically. Write steps run automatically unless your approval settings require confirmation. Reply yes to approve the plan, or tell me what to change.",
+      "loop": {
+        "fullLoop": false,
+        "operatorTask": true,
+        "fastPath": false,
+        "stages": [
+          {
+            "stage": "PERCEIVE",
+            "ok": true,
+            "ms": 62.0,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "action": "fallthrough",
+              "reason": "operator_task_shaped",
+              "candidate_id": null,
+              "confidence": null
+            }
+          },
+          {
+            "stage": "RETRIEVE",
+            "ok": true,
+            "ms": 2575.6,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "kernel_stages": [
+                {
+                  "stage": "RETRIEVE",
+                  "ok": true,
+                  "ms": 0.0,
+                  "meta": {
+                    "surface": "voice",
+                    "entry_point": "execute_task_streaming"
+                  }
+                },
+                {
+                  "stage": "RECALL",
+                  "ok": true,
+                  "ms": 178.77,
+                  "meta": {
+                    "keys": [
+                      "working",
+                      "episodic",
+                      "preference",
+                      "decision",
+                      "outcome",
+                      "relationship",
+                      "procedural"
+                    ],
+                    "recall": {
+                      "ran": true,
+                      "total": 20,
+                      "bySource": {
+                        "hybrid": 8,
+                        "agent": 0,
+                        "department": 0,
+                        "ledger": 0,
+                        "workspace": 12
+                      },
+                      "attempted": [
+                        "hybrid",
+                        "ledger",
+                        "workspace"
+                      ],
+                      "degraded": false,
+                      "failedSources": []
+                    }
+                  }
+                },
+                {
+                  "stage": "KNOWLEDGE",
+                  "ok": true,
+                  "ms": 2396.78,
+                  "meta": {
+                    "fabric_count": 6
+                  }
+                }
+              ],
+              "fabric_count": 6,
+              "signal_scoring": false,
+              "sufficiency": {
+                "sufficient": false,
+                "stance": "incorrect",
+                "stance_inferred": false,
+                "keep_indices": [],
+                "assessor": "llm",
+                "reason": "The retrieved evidence is about EEOC employment guidance and unrelated marketing course materials. It does not address whether a Google Ads account is connected, nor does it provide a plan for checking or executing anything. The evidence is off-target for the asked business/account-status question, so keeping it would not help answer dependably.",
+                "gaps": [
+                  "does_not_address_question",
+                  "wrong_subject",
+                  "weak_authority",
+                  "partial_coverage"
+                ],
+                "bar": "business",
+                "min_sources": 1,
+                "require_citable_source": false,
+                "require_freshness_signal": false,
+                "bar_reason": "general business question",
+                "assessment_confidence": 0.99,
+                "confidence_is_estimate": true,
+                "confidenceIsEstimate": true,
+                "confidence_source": "heuristic",
+                "confidenceSource": "heuristic"
+              }
+            }
+          },
+          {
+            "stage": "PLAN",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "step_count": 3,
+              "source": "cognitive_planner",
+              "has_signal_priorities": false
+            }
+          }
+        ],
+        "loopId": "49eb05b0-993d-434d-a493-8e3fc649230b",
+        "turnId": "f7d94c9a-3cc3-40fd-889f-be20a30ab859",
+        "spokenMode": true
+      },
+      "loop_event_count": 1,
+      "progress_steps": null,
+      "pending_task": null,
+      "first_delta_ms": 4980
+    },
+    "loop_audit": [
+      {
+        "action": "cognitive.loop.completed",
+        "created_at": "2026-09-11T09:11:51.747036+00:00",
+        "metadata": {
+          "loopId": "49eb05b0-993d-434d-a493-8e3fc649230b",
+          "stages": [
+            {
+              "ms": 62.0,
+              "ok": true,
+              "stage": "PERCEIVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 2575.6,
+              "ok": true,
+              "stage": "RETRIEVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.0,
+              "ok": true,
+              "stage": "PLAN",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 0.0,
+              "ok": true,
+              "stage": "ACT",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 1.2,
+              "ok": true,
+              "stage": "OBSERVE",
+              "skipped": false,
+              "skipReason": null
+            },
+            {
+              "ms": 365.5,
+              "ok": true,
+              "stage": "LEARN",
+              "skipped": false,
+              "skipReason": null
+            }
+          ],
+          "turnId": "f7d94c9a-3cc3-40fd-889f-be20a30ab859",
+          "fastPath": false,
+          "fullLoop": true,
+          "spokenMode": true,
+          "operatorTask": true
+        },
+        "resource_id": "e6abffa9-b18c-4837-bb7a-f9c01fd8431a"
+      }
+    ],
+    "audit_actions": [
+      "cognitive.loop.completed",
+      "unified_turn.live.completed",
+      "memory.recalled"
+    ]
+  },
+  "verdict": "PASS \u2014 six-stage loop on typed and spoken operator turns",
+  "standing_open_item": {
+    "name": "six_stage_loop_vs_spoken_first_audio",
+    "status": "UNRESOLVED",
+    "artifact": "docs/delivery/standing-loop-voice-dead-air.json",
+    "linear": "https://linear.app/staqbot/issue/STA-343/open-six-stage-loop-vs-spoken-first-audio-operator-voice-dead-air",
+    "note": "voice_slo_p50 remains NOT MET. Do not treat as a footnote. See the standing artifact and Linear STA-343."
+  },
+  "checks": {
+    "typed_operator": true,
+    "spoken_operator": true,
+    "typed_priority_http": true,
+    "priority_full_loop": false,
+    "voice_slo_p50": false
+  },
+  "finished_at": "2026-09-11T09:11:52.797959+00:00"
+}

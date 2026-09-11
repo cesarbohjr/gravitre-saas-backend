@@ -1,0 +1,54 @@
+{
+  "id": "six_stage_loop_vs_spoken_first_audio",
+  "name": "Six-stage loop vs spoken first audio (operator voice dead air)",
+  "status": "UNRESOLVED",
+  "opened_at": "2026-09-11",
+  "linear": {
+    "id": "STA-343",
+    "url": "https://linear.app/staqbot/issue/STA-343/open-six-stage-loop-vs-spoken-first-audio-operator-voice-dead-air",
+    "state": "Todo"
+  },
+  "commitments_in_tension": {
+    "A_real_six_stage_loop": {
+      "statement": "Every operator request must run a real PERCEIVE → RETRIEVE → PLAN → ACT → OBSERVE → LEARN loop. Skipping the brain for speed is forbidden.",
+      "today": "MET"
+    },
+    "B_spoken_progress": {
+      "statement": "Spoken operator turns must not go silent for seconds. Voice SLO P50 TTFA <500ms / P95 <800ms. If the loop takes ~5s, the operator should hear real, honest, incremental speech during that wait.",
+      "today": "NOT MET"
+    }
+  },
+  "progressive_narration": {
+    "what_it_is": "Tool-execution narration on the Pipecat bridge only (narrate_tool_started / narrate_tool_completed from real tool SSE). Never fabricated filler. Does not narrate PERCEIVE/RETRIEVE/PLAN.",
+    "http_talk": "TTS is driven only by text-delta. voice.cognitive_loop and tool-input-available are metadata, not speech.",
+    "operator_shaped_plan_turns": "Typically no tool SSE before the answer, so even Pipecat would stay silent through the think gap.",
+    "active_on_operator_spoken_http_talk": false
+  },
+  "evidence": {
+    "phase4_spoken_operator": {
+      "conversation_id": "e6abffa9-b18c-4837-bb7a-f9c01fd8431a",
+      "audit": "cognitive.loop.completed @ 2026-09-11T09:11:51.747036Z",
+      "first_delta_ms": 4980,
+      "git_sha": "1a5521fc13599bc7398cd89ddcbf2af2ae4a45ee",
+      "artifact": "docs/delivery/cognitive-loop-controller-live.json",
+      "voice_slo_p50": false
+    },
+    "reconfirm_2026_09_11": {
+      "conversation_id": "55be5d00-f1a4-46de-97d9-13cea89315e0",
+      "git_sha": "f3b4af90cb05f14bc61647723792ecb9b4954e79",
+      "health_timestamp": "2026-09-11T16:21:47.314082Z",
+      "first_text_delta_ms": 34708,
+      "first_audio_ms": 34898,
+      "first_tool_sse_ms": null,
+      "first_cognitive_loop_event_ms": 16196,
+      "audible_or_text_before_5000ms": false,
+      "artifact": "docs/delivery/voice-operator-progressive-narration-live.json"
+    }
+  },
+  "close_only_after_named_choice": [
+    "Speak honest loop-stage progress on the spoken path, derived from real loop state (not fabricated filler).",
+    "Make the six-stage loop fast enough that silence stays under the voice SLO.",
+    "Accept dead air as the explicit cost of a real loop (written product decision)."
+  ],
+  "resolution": null
+}
