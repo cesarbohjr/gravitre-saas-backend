@@ -45,6 +45,8 @@ const VOICE_ORB_MOUNTERS = new Set([
 const GRAVITRE_ORB_MOUNTERS = new Set([
   "components/gravitre/assistant/voice-presentation.tsx",
   "app/e2e/shots/voice-states/page.tsx",
+  // Launcher bubble: 36px presence disc, not a VoiceOrbTakeover shell.
+  "components/gravitre/ai-helper.tsx",
 ])
 
 function walk(dir, out = []) {
@@ -245,8 +247,14 @@ for (const rel of requiredImporters) {
       `${rel}: must import/use SharedChatComposerControls (or GravitreAIConversationComposer wrapper)`,
     )
   }
-  if (!src.includes("duplex={{")) {
-    failures.push(`${rel}: must wire full-duplex voice via duplex={{ ... }} on SharedChatComposerControls`)
+  const wiresDuplex =
+    src.includes("duplex={{") ||
+    src.includes("duplex={duplexControls") ||
+    src.includes("duplex={buildDuplexControls")
+  if (!wiresDuplex) {
+    failures.push(
+      `${rel}: must wire full-duplex voice via duplex={...} on SharedChatComposerControls`,
+    )
   }
   if (rel.includes("agents/") && !/ai-chat-surface/.test(src)) {
     failures.push(`${rel}: agent chat shell must include ai-chat-surface (same canvas tokens as /ai)`)
