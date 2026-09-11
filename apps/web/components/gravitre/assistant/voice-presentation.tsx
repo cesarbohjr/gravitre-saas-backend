@@ -32,6 +32,8 @@ import { useEffect, useRef, useState } from "react"
 import { Mic, MicOff, Minimize2, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
+import { useElementSize } from "@/hooks/use-element-size"
+import { orbBloomPx, voiceOrbSize } from "@/lib/voice-orb-sizing"
 
 /**
  * Who currently holds the floor. This maps 1:1 onto the presence state the chat
@@ -204,6 +206,7 @@ export function GravitreOrb({
   amplitude,
   className,
   compact = false,
+  diameter,
 }: {
   speaker: VoiceSpeaker
   /** Optional AnalyserNode peak 0–1 — scales the orb when present. */
@@ -211,8 +214,19 @@ export function GravitreOrb({
   className?: string
   /** Smaller circle for containers as narrow as 400px (float, mobile sheet). */
   compact?: boolean
+  /**
+   * Measured diameter in px, from the container the orb actually sits in.
+   *
+   * When present it replaces the `compact` classes entirely. Those were two fixed
+   * pairs stepped by the `sm:` breakpoint -- a *viewport* media query -- so a
+   * 400px-wide float window on a wide monitor rendered the large orb. `compact`
+   * remains the fallback for callers that have nothing to measure yet (first
+   * paint, and the 36px launcher disc which sizes itself by className).
+   */
+  diameter?: number | null
 }) {
   const isUser = speaker === "user"
+  const measured = typeof diameter === "number" && Number.isFinite(diameter) && diameter > 0
   // EMA dampening so amplitude breathes instead of twitching (Advanced Design §9).
   const smoothedRef = useRef(0)
   const [smoothed, setSmoothed] = useState(0)
@@ -235,15 +249,28 @@ export function GravitreOrb({
       data-voice-orb-circle=""
       data-gravitre-orb=""
       data-voice-orb-reactive={amplitude != null ? "analyser" : "keyframe"}
+      data-voice-orb-sizing={measured ? "container" : "class"}
       className={cn(
         "pointer-events-none relative z-0 rounded-full",
-        compact
-          ? "h-[104px] w-[104px] sm:h-[128px] sm:w-[128px]"
-          : "h-[220px] w-[220px] sm:h-[280px] sm:w-[280px]",
+        // Only fall back to the fixed pairs when there is no measurement.
+        !measured &&
+          (compact
+            ? "h-[104px] w-[104px] sm:h-[128px] sm:w-[128px]"
+            : "h-[220px] w-[220px] sm:h-[280px] sm:w-[280px]"),
         isUser ? "gv-orb-user" : "gv-orb-agent",
         className,
       )}
       style={{
+        ...(measured
+          ? {
+              height: `${diameter}px`,
+              width: `${diameter}px`,
+              // The pulse bloom used to be a fixed spread, which is unremarkable
+              // around a 280px orb and overflows a small container around a 96px
+              // one. Proportional, it scales with the circle.
+              ["--gv-orb-bloom" as string]: `${orbBloomPx(diameter!)}px`,
+            }
+          : null),
         backgroundImage: isUser
           ? "radial-gradient(circle at 35% 30%, var(--gv-voice-user-bright), var(--gv-voice-user) 55%, var(--gv-voice-user-deep) 100%)"
           : "radial-gradient(circle at 35% 30%, var(--gv-voice-agent-light), var(--gv-voice-agent-mid) 55%, var(--gv-voice-idle-dark) 100%)",
@@ -433,14 +460,29 @@ export function VoiceOrbTakeover({
     activityLabel,
   })
 
-  // Contained surfaces can be as small as 400x420, so type, orb and controls all
-  // step down. Container queries would be better but the orb sits in parents that
-  // do not declare `container-type`, so this keys off the variant instead.
+  // Contained surfaces can be as small as 400x420, so type and controls step down
+  // with the variant.
+  //
+  // The orb no longer does. It used to share this coarse switch, and the step
+  // between its two fixed sizes was the `sm:` *viewport* media query, so a 400px
+  // float window on a wide monitor rendered the large orb inside a small
+  // container. It is now measured from this element -- a real ResizeObserver on
+  // the surface itself, which is the container that actually constrains it.
   const controlSize = fullscreen ? "h-14 w-14" : "h-11 w-11"
   const controlIcon = fullscreen ? "h-6 w-6" : "h-5 w-5"
 
+  const [surfaceEl, setSurfaceEl] = useState<HTMLDivElement | null>(null)
+  const surface = useElementSize(surfaceEl)
+  const orb = voiceOrbSize({
+    containerWidth: surface.width,
+    containerHeight: surface.height,
+    variant: fullscreen ? "fullscreen" : "contained",
+    amplitude,
+  })
+
   return (
     <div
+      ref={setSurfaceEl}
       // Contained is not modal: it fills its own parent and leaves the rest of the
       // window usable, so claiming aria-modal here would lie to screen readers.
       role={fullscreen ? "dialog" : "group"}
@@ -487,7 +529,19 @@ export function VoiceOrbTakeover({
           </button>
         </div>
 
-        <GravitreOrb speaker={speaker} amplitude={amplitude} compact={!fullscreen} />
+        {/*
+          A null diameter means the container has no room for a legible orb, which
+          is the minimized case: show nothing here rather than an illegible disc.
+          `compact` stays as the pre-measurement fallback for the first paint.
+        */}
+        {orb.diameter !== 0 ? (
+          <GravitreOrb
+            speaker={speaker}
+            amplitude={amplitude}
+            compact={!fullscreen}
+            diameter={orb.diameter}
+          />
+        ) : null}
 
         <div
           className={cn(

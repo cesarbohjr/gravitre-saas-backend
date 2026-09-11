@@ -862,13 +862,19 @@
     .gv-wave-active .gv-wave-bar:nth-child(7) { animation-name: gv-wave7; animation-delay: 0.48s; }
   }
 
+  /* The bloom spread is proportional to the orb, not fixed.
+     A flat 78px is unremarkable around a 280px orb and overflows its container
+     around a 96px one, and the orb is now sized from the container it sits in, so
+     it really does get that small. GravitreOrb sets --gv-orb-bloom from the
+     measured diameter; the fallback keeps the previous look for the unmeasured
+     first paint. */
   @keyframes gv-orb-pulse-user {
-    0%, 100% { transform: scale(1);    box-shadow: 0 0 56px rgba(22, 163, 116, 0.35); }
-    50%      { transform: scale(1.045); box-shadow: 0 0 78px rgba(22, 163, 116, 0.5); }
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 calc(var(--gv-orb-bloom, 78px) * 0.72) rgba(22, 163, 116, 0.35); }
+    50%      { transform: scale(1.045); box-shadow: 0 0 var(--gv-orb-bloom, 78px) rgba(22, 163, 116, 0.5); }
   }
   @keyframes gv-orb-pulse-agent {
-    0%, 100% { transform: scale(1);    box-shadow: 0 0 48px rgba(255, 255, 255, 0.18); }
-    50%      { transform: scale(1.03); box-shadow: 0 0 68px rgba(255, 255, 255, 0.28); }
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 calc(var(--gv-orb-bloom, 68px) * 0.71) rgba(255, 255, 255, 0.18); }
+    50%      { transform: scale(1.03); box-shadow: 0 0 var(--gv-orb-bloom, 68px) rgba(255, 255, 255, 0.28); }
   }
   .gv-orb-user  { animation: gv-orb-pulse-user 1.65s ease-in-out infinite; }
   .gv-orb-agent { animation: gv-orb-pulse-agent 2.45s ease-in-out infinite; }
