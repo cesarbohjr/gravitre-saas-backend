@@ -52,6 +52,7 @@ import {
 } from "react"
 import { usePathname, useParams } from "next/navigation"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
+import { modeToRemember, restoreTargetMode } from "@/lib/chat-window-state"
 import type { UIMessage } from "ai"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
@@ -134,6 +135,20 @@ export interface GravitreAIWorkspaceContextValue {
    */
   floatWorkspaceOpen: boolean
   setFloatWorkspaceOpen: (open: boolean) => void
+  /**
+   * The mode to come back to when the launcher reopens the chat.
+   *
+   * Without this, closing to the launcher set the mode to "expanded" regardless
+   * of what the user was in, and the launcher then always opened "float": a user
+   * working in fullscreen came back to a small window, and a user in a small
+   * window could not be returned to it. Never "helper", since restoring to the
+   * launcher would look like the click did nothing.
+   */
+  previousPresentationMode: GravitrePresentationMode
+  /** Records the current mode as the restore target, then closes to the launcher. */
+  minimizeToHelper: () => void
+  /** Reopens at the remembered mode rather than always at "float". */
+  restoreFromHelper: () => void
   pageContext: GravitreAIPageContext
   conversation: GravitreAIConversationSnapshot | null
   setConversation: (snapshot: GravitreAIConversationSnapshot | null) => void
@@ -176,6 +191,24 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     setFloatWorkspaceOpenState(open)
   }, [])
 
+  const [previousPresentationMode, setPreviousPresentationMode] =
+    useState<GravitrePresentationMode>("float")
+
+  const minimizeToHelper = useCallback(() => {
+    // Capture before closing. The old closeToHelper() overwrote the mode with
+    // "expanded" first, which destroyed the only record of where to return to.
+    setPresentationMode((current) => {
+      setPreviousPresentationMode(modeToRemember(current))
+      return current
+    })
+    setFloatWorkspaceOpen(false)
+  }, [setFloatWorkspaceOpen])
+
+  const restoreFromHelper = useCallback(() => {
+    setPresentationMode(restoreTargetMode(previousPresentationMode))
+    setFloatWorkspaceOpen(true)
+  }, [previousPresentationMode, setFloatWorkspaceOpen])
+
   // usePathname/useParams are safe this high in the tree — OnboardingChecklist
   // (also mounted directly in app/layout.tsx) already relies on the same
   // Next.js App Router behavior.
@@ -211,6 +244,9 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       setPresentationMode,
       floatWorkspaceOpen,
       setFloatWorkspaceOpen,
+      previousPresentationMode,
+      minimizeToHelper,
+      restoreFromHelper,
       pageContext,
       conversation,
       setConversation,
@@ -219,7 +255,18 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       voice,
       setVoice,
     }),
-    [presentationMode, floatWorkspaceOpen, setFloatWorkspaceOpen, pageContext, conversation, approval, voice],
+    [
+      presentationMode,
+      floatWorkspaceOpen,
+      setFloatWorkspaceOpen,
+      previousPresentationMode,
+      minimizeToHelper,
+      restoreFromHelper,
+      pageContext,
+      conversation,
+      approval,
+      voice,
+    ],
   )
 
   return (

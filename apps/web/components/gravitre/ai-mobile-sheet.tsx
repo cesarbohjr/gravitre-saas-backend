@@ -57,8 +57,8 @@
 
 import { useCallback, useRef, type ReactNode } from "react"
 import { Drawer } from "vaul"
-import { NucleoChat, NucleoCollapse, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
-import { Button } from "@/components/ui/button"
+import { NucleoChat } from "@/components/icons/nucleo/semantic"
+import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { cn } from "@/lib/utils"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 import {
@@ -129,10 +129,8 @@ export function GravitreAIMobileSheet({
     else if (mode === "expanded") onModeChange("fullscreen")
   }, [mode, onModeChange])
 
-  const cycleDown = useCallback(() => {
-    if (mode === "fullscreen") onModeChange("expanded")
-    else if (mode === "expanded") onModeChange("float")
-  }, [mode, onModeChange])
+  // cycleDown is gone: the controls now name their destination directly rather
+  // than sharing one button whose meaning changed with the mode.
 
   return (
     <Drawer.Root
@@ -197,42 +195,22 @@ export function GravitreAIMobileSheet({
                 {copy.label}
               </span>
             </div>
-            <div className="flex items-center gap-0.5">
-              {mode !== "float" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label={isFullscreen ? "Exit fullscreen" : "Collapse to floating window"}
-                  onClick={cycleDown}
-                >
-                  <NucleoCollapse className="h-3.5 w-3.5" />
-                </Button>
-              ) : null}
-              {mode !== "fullscreen" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label={mode === "float" ? "Expand" : "Fullscreen"}
-                  onClick={cycleUp}
-                >
-                  <NucleoExpand className="h-3.5 w-3.5" />
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                aria-label="Minimize to helper"
-                onClick={onClose}
-              >
-                <NucleoMinimize className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            {/*
+              Uses the same per-mode manifest as the desktop shells rather than a
+              mobile-specific list, so the two cannot drift. Previously one button
+              here served two different actions via a conditional aria-label, and
+              fullscreen offered no direct route back to the floating window.
+            */}
+            <ChatWindowControls
+              surface={mode}
+              handlers={{
+                expand: () => onModeChange("expanded"),
+                fullscreen: () => onModeChange("fullscreen"),
+                exitFullscreen: () => onModeChange("expanded"),
+                collapseToFloat: () => onModeChange("float"),
+                minimizeToHelper: onClose,
+              }}
+            />
           </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
         </Drawer.Content>

@@ -225,6 +225,8 @@ export function AiWorkspace({
     setPresentationMode,
     floatWorkspaceOpen,
     setFloatWorkspaceOpen,
+    minimizeToHelper,
+    restoreFromHelper,
     conversation,
     approval,
     voice,
@@ -2178,10 +2180,10 @@ export function AiWorkspace({
 
   if (GRAVITRE_AI_FLOAT_ENABLED && floatWorkspaceOpen) {
     const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
-    const closeToHelper = () => {
-      setPresentationMode("expanded")
-      setFloatWorkspaceOpen(false)
-    }
+    // Was: setPresentationMode("expanded") then close. That overwrote the mode
+    // before anything recorded it, so the launcher had nothing to restore and
+    // always reopened a small window. The provider now captures the mode first.
+    const closeToHelper = minimizeToHelper
 
     // Phase 4 — mobile gets the vaul-based sheet instead of the desktop
     // drag-window/3-panel shells, at every presentationMode value (float/
@@ -2331,6 +2333,7 @@ export function AiWorkspace({
         presence={presence}
         onClose={closeToHelper}
         onExpand={() => setPresentationMode("expanded")}
+        onEnterFullscreen={() => setPresentationMode("fullscreen")}
         messages={messages}
         showWaiting={showWaitingForReply && !conversationLoading}
         isStreaming={isStreaming || isChatBusy}
@@ -2890,7 +2893,11 @@ export function AiWorkspace({
   )
 
   if (GRAVITRE_AI_FLOAT_ENABLED && !floatWorkspaceOpen && onAiRoute) {
-    return slotElement ? createPortal(fullPageLayout, slotElement) : null
+    // Rendering into the slot keeps the page's own layout. But returning null
+    // when the slot has not mounted yet meant /ai could show no chat at all --
+    // and /ai hides the floating launcher by design, so there was nothing left to
+    // click. Fall back to rendering in place instead of rendering nothing.
+    return slotElement ? createPortal(fullPageLayout, slotElement) : fullPageLayout
   }
 
   return fullPageLayout

@@ -39,14 +39,8 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
-import {
-  NucleoChat,
-  NucleoClose,
-  NucleoCollapse,
-  NucleoFullscreen,
-  NucleoMinimize,
-  NucleoPanelToggle,
-} from "@/components/icons/nucleo/semantic"
+import { NucleoChat, NucleoPanelToggle } from "@/components/icons/nucleo/semantic"
+import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useMotionPrefs } from "@/lib/animations"
@@ -156,7 +150,16 @@ export function GravitreAIWorkspaceShell({
             {copy.label}
           </span>
         </div>
-        <div className="flex items-center gap-0.5">
+        <ChatWindowControls
+          surface={isFullscreen ? "fullscreen" : "expanded"}
+          handlers={{
+            fullscreen: onEnterFullscreen,
+            exitFullscreen: onExitFullscreen,
+            collapseToFloat: onMinimizeToFloat,
+            minimizeToHelper: onClose,
+          }}
+          leading={
+            <>
           <Button
             type="button"
             variant="ghost"
@@ -179,50 +182,9 @@ export function GravitreAIWorkspaceShell({
           >
             <NucleoPanelToggle className="h-3.5 w-3.5 scale-x-[-1]" />
           </Button>
-          {!isFullscreen ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              aria-label="Fullscreen"
-              onClick={onEnterFullscreen}
-            >
-              <NucleoFullscreen className="h-3.5 w-3.5" />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              aria-label="Exit fullscreen"
-              onClick={onExitFullscreen}
-            >
-              <NucleoCollapse className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="Collapse to floating window"
-            onClick={onMinimizeToFloat}
-          >
-            <NucleoMinimize className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="Close to helper"
-            onClick={onClose}
-          >
-            <NucleoClose className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+            </>
+          }
+        />
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/*

@@ -50,6 +50,8 @@ export interface GravitreAIFloatBridgeProps {
   /** Phase 3: transitions to Expanded mode. Omitted → no Expand control
    * renders (see `GravitreFloatingWorkspace`'s `onExpand` prop). */
   onExpand?: () => void
+  /** Straight to Fullscreen from the windowed shell. */
+  onEnterFullscreen?: () => void
 
   // Transcript — same values AiWorkspace's inline transcript already uses.
   messages: UIMessage[]
@@ -95,6 +97,7 @@ export function GravitreAIFloatBridge({
   presence,
   onClose,
   onExpand,
+  onEnterFullscreen,
   messages,
   showWaiting,
   isStreaming,
@@ -139,7 +142,12 @@ export function GravitreAIFloatBridge({
   }, [])
 
   return (
-    <GravitreFloatingWorkspace presence={presence} onClose={onClose} onExpand={onExpand}>
+    <GravitreFloatingWorkspace
+      presence={presence}
+      onClose={onClose}
+      onExpand={onExpand}
+      onEnterFullscreen={onEnterFullscreen}
+    >
       <div
         ref={bodyRef}
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"

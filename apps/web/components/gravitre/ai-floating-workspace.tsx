@@ -55,8 +55,8 @@ import { motion, useDragControls, useMotionValue, useReducedMotion } from "frame
 // resize-handle affordance (Phase 3) — do not replace it (see the
 // architecture doc's C1 audit and this phase's own instructions).
 import { GripVertical } from "lucide-react"
-import { NucleoChat, NucleoExpand, NucleoMinimize } from "@/components/icons/nucleo/semantic"
-import { Button } from "@/components/ui/button"
+import { NucleoChat } from "@/components/icons/nucleo/semantic"
+import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { cn } from "@/lib/utils"
 import {
   GRAVITRE_HELPER_PRESENCE_COPY,
@@ -84,9 +84,18 @@ export type GravitreFloatingWorkspaceProps = PropsWithChildren<{
   /** Transitions to Expanded mode (GravitreAIWorkspaceShell). Omitted →
    * no Expand button renders (keeps this shell usable standalone in tests). */
   onExpand?: () => void
+  /** Transitions straight to Fullscreen. Previously unreachable from here, so
+   * fullscreen took two steps (expand, then fullscreen) for no reason. */
+  onEnterFullscreen?: () => void
 }>
 
-export function GravitreFloatingWorkspace({ presence, onClose, onExpand, children }: GravitreFloatingWorkspaceProps) {
+export function GravitreFloatingWorkspace({
+  presence,
+  onClose,
+  onExpand,
+  onEnterFullscreen,
+  children,
+}: GravitreFloatingWorkspaceProps) {
   const dragControls = useDragControls()
   const reduceMotion = useReducedMotion()
   const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null)
@@ -208,30 +217,14 @@ export function GravitreFloatingWorkspace({ presence, onClose, onExpand, childre
             {copy.label}
           </span>
         </div>
-        <div className="flex items-center gap-0.5">
-          {onExpand ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              aria-label="Expand"
-              onClick={onExpand}
-            >
-              <NucleoExpand className="h-3.5 w-3.5" />
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="Minimize to helper"
-            onClick={onClose}
-          >
-            <NucleoMinimize className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <ChatWindowControls
+          surface="float"
+          handlers={{
+            expand: onExpand,
+            fullscreen: onEnterFullscreen,
+            minimizeToHelper: onClose,
+          }}
+        />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       {/*

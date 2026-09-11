@@ -68,9 +68,8 @@ function helperOrbSpeaker(presence: GravitreHelperPresence): "user" | "agent" {
 export function GravitreAIHelper() {
   const {
     pageContext,
-    setPresentationMode,
     floatWorkspaceOpen,
-    setFloatWorkspaceOpen,
+    restoreFromHelper,
     conversation,
     approval,
     voice,
@@ -96,10 +95,9 @@ export function GravitreAIHelper() {
     presence === "thinking" ||
     presence === "executing"
 
-  const handleOpen = () => {
-    setPresentationMode("float")
-    setFloatWorkspaceOpen(true)
-  }
+  // Reopens at whatever mode the user left, rather than always forcing "float".
+  // Someone who minimised from fullscreen used to come back to a small window.
+  const handleOpen = restoreFromHelper
 
   // "Open AI Chat" is the required accessible name. The presence label stays on the
   // end so a screen reader also hears whether voice is live — the status dot conveys

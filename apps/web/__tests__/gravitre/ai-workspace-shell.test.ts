@@ -183,7 +183,10 @@ describe("GravitreAIWorkspaceShell — shared window controls", () => {
     expect(onToggleRight).toHaveBeenCalledTimes(1)
     click("Collapse to floating window")
     expect(onMinimizeToFloat).toHaveBeenCalledTimes(1)
-    click("Close to helper")
+    // Was "Close to helper" here while the float window called the identical
+    // action "Minimize to helper". One action needs one name, and nothing is
+    // closed -- the window returns to the launcher with the conversation intact.
+    click("Minimize to helper")
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
