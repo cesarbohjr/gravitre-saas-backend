@@ -25,6 +25,7 @@ import { LearningTrendsTab } from "./_components/learning-trends-tab"
 import { CognitiveTurnsTab } from "./_components/cognitive-turns-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
@@ -84,6 +85,8 @@ export default function AdminIntelligencePage() {
             </Button>
           }
         />
+
+        <IntelligenceHubTabs active="learning" />
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
           <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto scrollbar-hide rounded-full border border-border/70 bg-secondary/30 p-1 lg:flex-wrap">

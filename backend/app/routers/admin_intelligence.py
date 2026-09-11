@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_org_context, require_admin
+from app.auth.dependencies import get_org_context, require_admin, require_org_member
 from app.config import Settings, get_settings
 from app.services.knowledge_intelligence_service import load_admin_intelligence_snapshot
 from app.services.response_evaluation_service import load_admin_response_evaluations
@@ -310,11 +310,18 @@ async def get_response_evaluations(
 @router.get("/outcomes")
 async def get_outcome_summaries(
     org_id: Annotated[str, Depends(get_org_context)],
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
     period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
 ) -> dict[str, Any]:
-    """v8 correlational outcomes plus unified intelligence outcome events."""
+    """v8 correlational outcomes plus unified intelligence outcome events.
+
+    Intelligence redesign Phase 1 (2026-09-11): read-only org-level outcome
+    analytics for the Overview page — any org member, not admin-only. This is
+    the same aggregate data already surfaced (with no admin check at the
+    frontend) on /intelligence and /intelligence/reports; this endpoint was
+    the actual, previously-unnoticed 403 gate for non-admin viewers of both.
+    """
     service = get_outcome_attribution_service(settings)
     v8 = await service.load_admin_outcomes_snapshot(org_id, settings=settings)
     unified = await get_outcome_learning_service(settings).load_admin_outcomes_summary(
@@ -553,19 +560,21 @@ async def get_learning_live_dashboard(
 @router.get("/simulations")
 async def get_simulations_summary(
     org_id: Annotated[str, Depends(get_org_context)],
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    """Intelligence redesign Phase 1 (2026-09-11): Overview-page read data, org member not admin-only."""
     return await get_simulation_service(settings).load_admin_simulations_summary(org_id)
 
 
 @router.get("/trust-summary")
 async def get_trust_summary(
     org_id: Annotated[str, Depends(get_org_context)],
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
     period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
 ) -> dict[str, Any]:
+    """Intelligence redesign Phase 1 (2026-09-11): Overview-page read data, org member not admin-only."""
     events = await get_outcome_learning_service(settings)._fetch_events(org_id)
     confidences = [float(r["confidence_score"]) for r in events if r.get("confidence_score") is not None]
     trust = get_ai_trust_layer()
@@ -715,10 +724,14 @@ async def update_performance_mode(
 @router.get("/business-impact")
 async def get_business_impact_snapshot(
     org_id: Annotated[str, Depends(get_org_context)],
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Revenue Risk Radar + Business Impact Score over existing v8/v10 signals."""
+    """Revenue Risk Radar + Business Impact Score over existing v8/v10 signals.
+
+    Intelligence redesign Phase 1 (2026-09-11): org-scoped business-outcome
+    analytics for the new Performance destination -- org member, not admin-only.
+    """
     return await load_business_impact_snapshot(org_id, settings=settings)
 
 

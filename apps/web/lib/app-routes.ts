@@ -27,6 +27,10 @@ export const APP_ROUTES = {
   intelligencePredictive: "/intelligence/predictive",
   intelligenceMemory: "/intelligence/memory",
   intelligenceReports: "/intelligence/reports",
+  /** Phase 1 (2026-09-11): real, measured business-outcome metrics — new primary destination. */
+  intelligencePerformance: "/intelligence/performance",
+  /** Phase 1 (2026-09-11): Model Studio landing — real entry points into existing model/training capability. */
+  intelligenceModelStudio: "/intelligence/model-studio",
   marketplace: "/marketplace/assets",
   connectors: "/connectors",
   workflows: "/workflows",

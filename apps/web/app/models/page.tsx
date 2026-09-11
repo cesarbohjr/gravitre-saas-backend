@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModelRegistryOverview } from "@/components/gravitre/model-registry-overview"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
@@ -34,7 +37,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
-import { APP_ROUTES } from "@/lib/app-routes"
 import { connectorVendorKey } from "@/lib/connectors"
 import { mlProviderVendorKey } from "@/lib/brand-vendor"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
@@ -148,6 +150,9 @@ export default function ModelsPage() {
   const [taskType, setTaskType] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [modelsTab, setModelsTab] = useState<"registry" | "built-in">(
+    searchParams.get("tab") === "built-in" ? "built-in" : "registry",
+  )
   const [selectedTemplateLayer, setSelectedTemplateLayer] = useState<MlStackLayerId | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -316,13 +321,24 @@ export default function ModelsPage() {
           }
         />
 
-        <p className="text-sm text-muted-foreground">
-          Looking for Gravitre&apos;s built-in learners? Open{" "}
-          <Link href={APP_ROUTES.builtInModels} className="text-primary hover:underline">
-            {SURFACE_COPY.builtInModels.title}
-          </Link>
-          .
-        </p>
+        <IntelligenceHubTabs active="models" />
+
+        {/*
+          Intelligence redesign Phase 1 (2026-09-11): Built-in Models folded
+          into Models as a real tab (no strong technical reason to keep them
+          separate — see the Phase 0 proposal). /intelligence/models and its
+          /models/built-in alias still work unchanged for existing bookmarks;
+          this tab renders the exact same BuiltInModelsPanel component.
+        */}
+        <Tabs value={modelsTab} onValueChange={(value) => setModelsTab(value as "registry" | "built-in")}>
+          <TabsList>
+            <TabsTrigger value="registry">Registry</TabsTrigger>
+            <TabsTrigger value="built-in">Built-in models</TabsTrigger>
+          </TabsList>
+          <TabsContent value="built-in" className="pt-4">
+            <BuiltInModelsPanel />
+          </TabsContent>
+          <TabsContent value="registry" className="space-y-6 pt-4">
 
         <ModelRegistryOverview
           totalModels={models.length}
@@ -437,6 +453,8 @@ export default function ModelsPage() {
           ) : null}
         </div>
         ) : null}
+          </TabsContent>
+        </Tabs>
       </div>
 
       <Dialog

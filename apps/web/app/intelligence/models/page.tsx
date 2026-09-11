@@ -7,6 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -43,7 +44,16 @@ function dataSufficiencyProgress(
   }
 }
 
-export default function IntelligenceModelsPage() {
+/**
+ * Intelligence redesign Phase 1 (2026-09-11): the real body of the built-in
+ * models experience, extracted from the page component (no AppShell/nav
+ * inside) so it can be reused both at its own real route (`/intelligence/models`,
+ * aliased from `/models/built-in` — unchanged, zero broken links) AND as the
+ * "Built-in" tab folded into the primary Models destination (`/models`), per
+ * the redesign brief's "fold Built-in Models into Models" instruction. No
+ * capability was removed or duplicated in logic — this is the same component.
+ */
+export function BuiltInModelsPanel() {
   const { user } = useAuth()
   const copy = SURFACE_COPY.builtInModels
   const [filter, setFilter] = useState<FilterKey>("all")
@@ -110,75 +120,81 @@ export default function IntelligenceModelsPage() {
   }, [items])
 
   if (!user) {
-    return (
-      <AppShell title={copy.title}>
-        <EmptyState title="Sign in required" description="Log in to view built-in models." />
-      </AppShell>
-    )
+    return <EmptyState title="Sign in required" description="Log in to view built-in models." />
   }
 
   if (error) {
     return (
-      <AppShell title={copy.title}>
-        <ErrorState
-          title="Unable to load built-in models"
-          description={error instanceof ApiError ? error.message : "Try again in a moment."}
-          onRetry={() => mutate()}
-        />
-      </AppShell>
+      <ErrorState
+        title="Unable to load built-in models"
+        description={error instanceof ApiError ? error.message : "Try again in a moment."}
+        onRetry={() => mutate()}
+      />
     )
   }
 
   return (
+    <div className="space-y-2">
+      <div className="px-4 pb-8 md:px-6 space-y-5">
+        {isLoading && !data ? (
+          <p className="text-sm text-muted-foreground">Loading your org ML brain…</p>
+        ) : items.length === 0 ? (
+          <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
+        ) : (
+          <>
+            <section
+              className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4"
+              aria-label="Built-in model counts"
+            >
+              <GravitreMetric
+                label="Active"
+                value={metrics.active}
+                hint="In use (artifact or heuristic)"
+                icon={<Pulse className="h-4 w-4" weight="duotone" aria-hidden />}
+              />
+              <GravitreMetric
+                label="Needs data"
+                value={metrics.needsData}
+                hint="Below example threshold"
+                warning={metrics.needsData > 0}
+                icon={<Database className="h-4 w-4" weight="duotone" aria-hidden />}
+              />
+              <GravitreMetric
+                label="Roadmap"
+                value={metrics.roadmap}
+                hint="Planned or unavailable"
+                icon={<CircleDashed className="h-4 w-4" aria-hidden />}
+              />
+              <GravitreMetric
+                label="With signals"
+                value={metrics.withSignal}
+                hint="Readiness tracking started"
+                icon={<Sparkle className="h-4 w-4" weight="duotone" aria-hidden />}
+              />
+            </section>
+            <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Real route: /intelligence/models (aliased from /models/built-in). Unchanged URL. */
+export default function IntelligenceModelsPage() {
+  const copy = SURFACE_COPY.builtInModels
+  return (
     <AppShell title={copy.title}>
       <div className="space-y-2">
-        <GravitrePageHeader
-          title={copy.title}
-          description={copy.intro}
-          icon={<NucleoIntelligence className="h-5 w-5" />}
-        />
-
-        <div className="px-4 pb-8 md:px-6 space-y-5">
-          {isLoading && !data ? (
-            <p className="text-sm text-muted-foreground">Loading your org ML brain…</p>
-          ) : items.length === 0 ? (
-            <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
-          ) : (
-            <>
-              <section
-                className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4"
-                aria-label="Built-in model counts"
-              >
-                <GravitreMetric
-                  label="Active"
-                  value={metrics.active}
-                  hint="In use (artifact or heuristic)"
-                  icon={<Pulse className="h-4 w-4" weight="duotone" aria-hidden />}
-                />
-                <GravitreMetric
-                  label="Needs data"
-                  value={metrics.needsData}
-                  hint="Below example threshold"
-                  warning={metrics.needsData > 0}
-                  icon={<Database className="h-4 w-4" weight="duotone" aria-hidden />}
-                />
-                <GravitreMetric
-                  label="Roadmap"
-                  value={metrics.roadmap}
-                  hint="Planned or unavailable"
-                  icon={<CircleDashed className="h-4 w-4" aria-hidden />}
-                />
-                <GravitreMetric
-                  label="With signals"
-                  value={metrics.withSignal}
-                  hint="Readiness tracking started"
-                  icon={<Sparkle className="h-4 w-4" weight="duotone" aria-hidden />}
-                />
-              </section>
-              <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />
-            </>
-          )}
+        <div className="px-4 pt-4 md:px-6">
+          <GravitrePageHeader
+            title={copy.title}
+            description={copy.intro}
+            icon={<NucleoIntelligence className="h-5 w-5" />}
+          />
+          <IntelligenceHubTabs active="models" className="mt-3 flex-wrap" />
         </div>
+        <BuiltInModelsPanel />
       </div>
     </AppShell>
   )

@@ -31,6 +31,7 @@ import {
 import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/executive-intelligence-scorecard"
 import { PackKpiPanel } from "@/components/marketplace/pack-kpi-panel"
 import { AgentRoiPanel } from "@/components/enterprise/agent-roi-panel"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
@@ -97,6 +98,8 @@ export default function IntelligenceReportsPage() {
             ) : null
           }
         />
+
+        <IntelligenceHubTabs active="reports" />
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap">

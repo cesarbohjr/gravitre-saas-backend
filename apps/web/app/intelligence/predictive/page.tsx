@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,12 +27,14 @@ export default function PredictiveOpsPage() {
   const predictions = normalizeDomainPredictions(data?.predictions)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <GravitrePageHeader
-        title={copy.title}
-        description={copy.description}
-        icon={<NucleoIntelligence className="h-5 w-5" />}
-      />
+    <AppShell title={copy.title}>
+      <div className="mx-auto max-w-6xl space-y-6 p-6">
+        <GravitrePageHeader
+          title={copy.title}
+          description={copy.description}
+          icon={<NucleoIntelligence className="h-5 w-5" />}
+        />
+        <IntelligenceHubTabs active="predictions" />
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">Domain pack</span>
         <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>
@@ -78,6 +82,7 @@ export default function PredictiveOpsPage() {
           )
         })}
       </div>
-    </div>
+      </div>
+    </AppShell>
   )
 }

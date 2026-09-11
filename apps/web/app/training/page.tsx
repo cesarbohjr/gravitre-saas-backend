@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -566,6 +567,8 @@ function TrainingPageContent() {
             </div>
           }
         />
+
+        <IntelligenceHubTabs active="training" />
 
         {loadError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
