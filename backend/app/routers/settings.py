@@ -314,6 +314,11 @@ async def create_lite_seat_department_route(
 ) -> dict:
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .insert()) has no .select()/.single() method — chaining them raised
+    # an uncaught AttributeError on every call. .insert() already returns the
+    # full row by default (returning=representation); take the first row
+    # in place of the (non-functional) .single().
     created = (
         client.table("departments")
         .insert(
@@ -324,13 +329,13 @@ async def create_lite_seat_department_route(
                 "department_admin_id": body.department_admin_id,
             }
         )
-        .select("id, org_id, name, lite_seat_allocation, department_admin_id, created_at")
-        .single()
         .execute()
     )
     if response_error(created):
         raise HTTPException(status_code=500, detail=str(response_error(created)))
-    return {"department": created.data}
+    if not created.data:
+        raise HTTPException(status_code=500, detail="Unable to create department")
+    return {"department": created.data[0]}
 
 
 @router.patch("/lite-seats")
@@ -783,16 +788,21 @@ async def update_meson_addons_route(
         enabled.add(body.code)
     else:
         enabled.discard(body.code)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .upsert()) has no .select()/.single() method — chaining them raised
+    # an uncaught AttributeError on every call. .upsert() already returns the
+    # full row by default (returning=representation); take the first row in
+    # place of the (non-functional) .single().
     updated = (
         client.table("subscriptions")
         .upsert({"org_id": org_id, "meson_addons": sorted(enabled)}, on_conflict="org_id")
-        .select("org_id, meson_addons")
-        .single()
         .execute()
     )
     if response_error(updated):
         raise HTTPException(status_code=500, detail=str(response_error(updated)))
-    return {"subscription": updated.data}
+    if not updated.data:
+        raise HTTPException(status_code=500, detail="Unable to update Meson addons")
+    return {"subscription": updated.data[0]}
 
 
 @router.get("/voice-access")

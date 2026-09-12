@@ -264,6 +264,10 @@ def _create_sandbox_org(client: Any, publisher_org_id: str, publisher_name: str)
         "onboarding": {"seeded": False, "checklist_dismissed": True},
         "billing": {"sandbox_exempt": True},
     }
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .insert()) has no .select()/.limit() method — chaining them raised
+    # an uncaught AttributeError on every call. .insert() already returns the
+    # full row by default (returning=representation).
     created = (
         client.table("organizations")
         .insert(
@@ -274,8 +278,6 @@ def _create_sandbox_org(client: Any, publisher_org_id: str, publisher_name: str)
                 "settings": org_settings,
             }
         )
-        .select("id, name, slug")
-        .limit(1)
         .execute()
     )
     if not created.data:
@@ -324,6 +326,10 @@ def provision_sandbox(
         {"id": str(uuid4()), "org_id": sandbox_org_id, "user_id": user_id, "role": "admin"}
     ).execute()
 
+    # Bug fix (2026-09-12): same root cause as _create_sandbox_org above —
+    # postgrest-py's SyncQueryRequestBuilder (returned by .insert()) has no
+    # .select()/.limit() method. .insert() already returns the full row by
+    # default (returning=representation).
     mapping = (
         client.table("marketplace_sandbox_orgs")
         .insert(
@@ -333,8 +339,6 @@ def provision_sandbox(
                 "created_by": user_id,
             }
         )
-        .select("*")
-        .limit(1)
         .execute()
     )
     if not mapping.data:

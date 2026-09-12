@@ -175,11 +175,17 @@ def ensure_user_workspace(
     slug = f"{slug_base}-{user_id.replace('-', '')[:8]}"
 
     try:
+        # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder
+        # (returned by .insert()) has no .select()/.limit() method —
+        # chaining them raised an uncaught AttributeError on every call,
+        # which this try/except silently swallowed and returned None for,
+        # meaning this OAuth-signup fallback (used when the DB signup
+        # trigger did not run) never actually created a workspace.
+        # .insert() already returns the full row by default
+        # (returning=representation).
         org_resp = (
             client.table("organizations")
             .insert({"name": org_name, "slug": slug, "status": "active"})
-            .select("id")
-            .limit(1)
             .execute()
         )
     except Exception as exc:  # noqa: BLE001

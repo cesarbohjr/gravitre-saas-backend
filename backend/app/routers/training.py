@@ -131,6 +131,10 @@ async def create_dataset(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .insert()) has no .select()/.limit() method — chaining them raised
+    # an uncaught AttributeError on every call. .insert() already returns the
+    # full row by default (returning=representation).
     response = (
         client.table("training_datasets")
         .insert(
@@ -144,8 +148,6 @@ async def create_dataset(
                 "created_by": user["user_id"],
             }
         )
-        .select("id, name, description, type, status, record_count, created_by, created_at, updated_at")
-        .limit(1)
         .execute()
     )
     _raise_if_response_error(response)
@@ -544,6 +546,10 @@ async def create_job(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .insert()) has no .select()/.limit() method — chaining them raised
+    # an uncaught AttributeError on every call. .insert() already returns the
+    # full row by default (returning=representation).
     response = (
         client.table("training_jobs")
         .insert(
@@ -557,8 +563,6 @@ async def create_job(
                 "created_by": user["user_id"],
             }
         )
-        .select("id, dataset_id, model_base, status, progress, metrics, started_at, completed_at, error, created_at")
-        .limit(1)
         .execute()
     )
     _raise_if_response_error(response)
@@ -650,6 +654,10 @@ async def create_instruction(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .insert()) has no .select()/.limit() method — chaining them raised
+    # an uncaught AttributeError on every call. .insert() already returns the
+    # full row by default (returning=representation).
     response = (
         client.table("custom_instructions")
         .insert(
@@ -662,8 +670,6 @@ async def create_instruction(
                 "created_by": user["user_id"],
             }
         )
-        .select("id, agent_id, name, content, is_active, created_at, updated_at")
-        .limit(1)
         .execute()
     )
     _raise_if_response_error(response)

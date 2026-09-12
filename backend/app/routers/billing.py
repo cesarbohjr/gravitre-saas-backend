@@ -1190,11 +1190,13 @@ async def update_seats(
 ) -> dict:
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
+    # by .upsert()) has no .select()/.limit() method — chaining them raised
+    # an uncaught AttributeError on every call. .upsert() already returns the
+    # full row by default (returning=representation).
     response = (
         client.table("subscriptions")
         .upsert({"org_id": org_id, "seat_count": body.quantity, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="org_id")
-        .select("*")
-        .limit(1)
         .execute()
     )
     resp_err = getattr(response, "error", None)

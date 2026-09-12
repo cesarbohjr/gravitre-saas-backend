@@ -343,11 +343,17 @@ async def create_organization(
 ) -> dict:
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     slug = _slugify(body.slug or body.name)
+    # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (the type
+    # returned by .insert()) has no .select()/.limit() method — chaining them
+    # here raised an uncaught AttributeError on every call, surfaced to the
+    # client as a generic 500 "unexpected error" (via the global exception
+    # handler in app/main.py). .insert() already returns the full row by
+    # default (returning=representation), so no .select() chain is needed —
+    # matches the plain insert().execute() pattern used everywhere else in
+    # this codebase (e.g. routers/sources.py, routers/workflows.py).
     created = (
         client.table("organizations")
         .insert({"name": body.name.strip(), "slug": slug, "status": "active"})
-        .select("id, name, slug, settings, created_at")
-        .limit(1)
         .execute()
     )
     if not created.data:
@@ -386,12 +392,14 @@ async def update_organization(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
         return _normalize_org_row(existing.data[0])
 
+    # Bug fix (2026-09-12): same root cause as create_organization above —
+    # postgrest-py's SyncFilterRequestBuilder (returned by .update().eq())
+    # has no .select()/.limit() method. .update() already returns the full
+    # row by default (returning=representation).
     updated = (
         client.table("organizations")
         .update(payload)
         .eq("id", org_id_str)
-        .select("id, name, slug, settings, created_at")
-        .limit(1)
         .execute()
     )
     if not updated.data:

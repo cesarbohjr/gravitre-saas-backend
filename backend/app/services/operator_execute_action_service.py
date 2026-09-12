@@ -7,6 +7,7 @@ from typing import Any
 
 from supabase import Client
 
+from app.core.supabase_response import response_error
 from app.workflows.execute import execute_workflow_steps
 from app.workers.workflow_dispatch import try_enqueue_workflow_run_sync
 
@@ -74,10 +75,21 @@ def _run_workflow(
         "parameters": parameters or {},
         "created_at": now_iso,
     }
-    insert_resp = client.table("workflow_runs").insert(insert_payload).select("id").single().execute()
-    if insert_resp.error or not insert_resp.data:
-        raise ValueError(str(insert_resp.error or "Could not start workflow run"))
-    run_id = str(insert_resp.data.get("id"))
+    # Bug fix (2026-09-12): two stacked bugs here.
+    # (1) postgrest-py's SyncQueryRequestBuilder (returned by .insert()) has
+    #     no .select()/.single() method — chaining them raised an uncaught
+    #     AttributeError on every call. .insert() already returns the full
+    #     row by default (returning=representation); take the first row in
+    #     place of the (non-functional) .single().
+    # (2) postgrest-py v2's APIResponse has no `.error` attribute (v1 had
+    #     one) — reading it directly also raises AttributeError. Use the
+    #     project's response_error() helper (app/core/supabase_response.py),
+    #     which getattr()s safely, matching the rest of the codebase.
+    insert_resp = client.table("workflow_runs").insert(insert_payload).execute()
+    insert_error = response_error(insert_resp)
+    if insert_error or not insert_resp.data:
+        raise ValueError(str(insert_error or "Could not start workflow run"))
+    run_id = str(insert_resp.data[0].get("id"))
     queued = try_enqueue_workflow_run_sync(
         client=client,
         org_id=org_id,
@@ -133,6 +145,10 @@ def execute_operator_action(
     if action_type == "scheduled" or "schedule" in combined.lower():
         workflow_id = _pick_workflow_id(client, org_id, title, combined)
         if workflow_id:
+            # Bug fix (2026-09-12): same two stacked bugs as _run_workflow
+            # above — no .select()/.single() on .insert()'s return type, and
+            # no .error attribute on APIResponse in this postgrest-py
+            # version. See response_error() import/usage above.
             schedule_resp = (
                 client.table("workflow_schedules")
                 .insert(
@@ -144,12 +160,10 @@ def execute_operator_action(
                         "environment": environment,
                     }
                 )
-                .select("id")
-                .single()
                 .execute()
             )
-            if not schedule_resp.error and schedule_resp.data:
-                schedule_id = str(schedule_resp.data.get("id"))
+            if not response_error(schedule_resp) and schedule_resp.data:
+                schedule_id = str(schedule_resp.data[0].get("id"))
                 return {
                     "success": True,
                     "message": "Workflow scheduled for nightly execution.",
