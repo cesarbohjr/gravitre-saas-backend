@@ -381,6 +381,69 @@ WebGL/Three.js), wired to genuine backend events, independent of STA-343.
   Why? evidence graphs, knowledge/graph visualization, business-language
   reframe, etc.) — all still pending, unchanged from §13's list.
 
+## 16. Phase 2.5 — what shipped (2026-09-11)
+
+Scope: ban bare lifecycle status words anywhere in the user-facing product;
+translate real, existing technical states into the brief's business-friendly
+phrases + honest one-line context; render the real six-question model-card
+structure. Display-layer only — no new technical states invented anywhere.
+
+- **New shared module — `apps/web/lib/intelligence/status-language.ts`**:
+  the brief's exact 8-row translation table (Untrained/Training/Trained/
+  Deployed/Evaluating/Stale/Failed/Fine-tuning), plus honest extensions for
+  every other real status value already produced by this codebase today
+  (`heuristic`, `data_gate`, `planned`, `disabled`, `draft`, `validating`,
+  `archived`, `ok`, `not_available`, `insufficient_data`). An unmapped real
+  status is humanized, never given a fabricated friendly phrase, and its
+  gap is disclosed in the returned `detail` string.
+- **New shared component — `ModelStatusBadge`**
+  (`apps/web/components/intelligence/model-status-badge.tsx`): the one place
+  a status renders to a user — always a friendly phrase, paired with a
+  visible one-line context sentence (default) or a title tooltip for the
+  densest table/chip rows where the surrounding card already carries
+  context. Replaced every bare `<Badge>{status}</Badge>` call site found in
+  the Phase 2.5 inventory: built-in models directory card, detail panel, and
+  table row; the built-in model profile page header; predictive-ops domain
+  cards; the custom model registry list rows and detail-page header/metric.
+- **New shared component — `SixQuestionsPanel`**
+  (`apps/web/components/intelligence/six-questions-panel.tsx`): renders the
+  brief's six-question structure (What / Why / Learns-from / How-well /
+  Where-used / How-to-improve). Mounted as a "Quick answers" section on both
+  full model-detail surfaces — the built-in catalog profile page and the
+  custom registry's `ModelDetailInsights` — sourced entirely from data
+  already fetched on those pages. The one genuine, disclosed gap found in
+  the Phase 0 inventory (model usage isn't tracked at the individual
+  agent/workflow level) is rendered as an explicit gap answer, never
+  fabricated; real use-case tags are shown alongside it where they exist.
+- **Not touched, deliberately**: `GibeHonestyStrip` and
+  `decision-transparency-card.tsx` already paired their runtime-honesty
+  chips with a detail sentence/tooltip via the pre-existing
+  `presentModelRuntime()` (Module C) — these already satisfied the
+  "context in the same view" rule before this pass and were left as-is to
+  avoid regressing Module C's honesty semantics.
+- **Verification**: `tsc --noEmit` clean across `apps/web`; `eslint` on
+  every touched/new file — 0 errors (2 pre-existing, unrelated warnings
+  confirmed via `git diff` to predate this change). 5 new unit tests for
+  the translation table (`status-language.test.ts`) plus the pre-existing
+  `built-in-model-catalog.test.ts` (3 tests) both green.
+  Pushed as `b98b18fd`; confirmed live via the Vercel deployment API
+  (`get_deployment`) showing `githubCommitSha: b98b18fdd80d2fe5abdcf7917be0d1a9532d40e0`,
+  `readyState: READY`, aliased to `gravitre.app` (production). A live,
+  authenticated `browser-use` pass confirmed the exact new phrases
+  ("Estimating with rules", "Not built yet", "Turned off", "Needs more
+  data", "Not available") rendering on `/models/built-in` and
+  `/intelligence/predictive` in production, and confirmed the full 6/6
+  "Quick answers" panel with real content on a built-in model detail page
+  (`capacity_forecaster`), with zero console errors on every page checked.
+  **Honest caveat**: the `/models` registry list badge itself could not be
+  visually confirmed in that same pass because the authenticated test org
+  has zero registered custom models (empty state) — the badge text the
+  subagent reported on that page did not match this change's exact phrases
+  and most likely came from a different UI element on the page, not the
+  `ModelStatusBadge` component. `tsc`/`eslint`/unit tests cover that call
+  site; live visual confirmation on a populated registry is still open and
+  not claimed as PASS.
+
 ## No-invented-surfaces declaration
 
 This document adds no code, no customer-facing price, claim, badge, or entitlement toggle. It is a proposal only. Every technical claim above is sourced to a specific file path, line range, or delivery-doc artifact gathered during this Phase 0 inventory (three parallel `explore` passes); nothing here is fabricated or assumed. Where data was insufficient to answer a §1 question honestly, that gap is stated explicitly rather than guessed.
