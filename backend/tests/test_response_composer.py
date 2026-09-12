@@ -58,6 +58,8 @@ def test_looks_like_raw_backend_catches_known_leak_class():
     assert looks_like_raw_backend("permission_denied") is True
     assert looks_like_raw_backend("CognitiveTurnKernel pre-ACT complete") is True
     assert looks_like_raw_backend("Slack isn't connected. Connect it and I'll pick this up.") is False
+    assert looks_like_raw_backend("I'd need assistant_connector_status to verify Clay.") is True
+    assert looks_like_raw_backend("Call getConnectorStatus first.") is True
 
 
 def test_adopt_model_delta_drops_leaky_chunks():

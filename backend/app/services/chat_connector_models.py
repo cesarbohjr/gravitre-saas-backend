@@ -42,6 +42,7 @@ INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "quickbooks": ("quickbooks", "qbo"),
     "asana": ("asana",),
     "apollo": ("apollo", "apollo.io"),
+    "clay": ("clay",),
     "notion": ("notion",),
     "odoo": ("odoo",),
     "netsuite": ("netsuite",),

@@ -277,6 +277,44 @@ async def _propose_channel_override(ctx: GatewayContext) -> CandidateVerdict | N
     )
 
 
+async def _propose_connector_status(ctx: GatewayContext) -> CandidateVerdict | None:
+    from app.services.connector_status_reply_service import answer_connector_status_question
+    from app.services.pending_reply_classifier import has_pending_family
+
+    if has_pending_family(ctx.task_state):
+        return None
+    if not ctx.org_id or ctx.client is None:
+        return None
+    settings = ctx.settings
+    if settings is None:
+        from app.config import get_settings
+
+        settings = get_settings()
+    try:
+        result = answer_connector_status_question(
+            ctx.message,
+            client=ctx.client,
+            org_id=ctx.org_id,
+            settings=settings,
+            connected_integrations=list(ctx.connected_integrations or []),
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    text = str((result.text if result else "") or "").strip()
+    if not text or result is None:
+        return None
+    return CandidateVerdict(
+        candidate_id="connector_status",
+        confidence=_MATCH_CONFIDENCE,
+        answer=text,
+        extras={
+            "vendor_slug": result.vendor_slug,
+            "state": result.state.value if result.state else None,
+            "question_kind": result.kind.value,
+        },
+    )
+
+
 async def _propose_meta_capability(ctx: GatewayContext) -> CandidateVerdict | None:
     from app.services.pending_reply_classifier import has_pending_family
     from app.services.unified_turn_pending_live import resolve_unified_live_meta_capability_reply
@@ -331,7 +369,7 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
         if verdict is not None:
             proposals.append(verdict)
 
-    for propose_async in (_propose_channel_override, _propose_meta_capability):
+    for propose_async in (_propose_channel_override, _propose_connector_status, _propose_meta_capability):
         try:
             verdict = await propose_async(ctx)
         except Exception:  # noqa: BLE001

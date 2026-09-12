@@ -814,8 +814,11 @@ async def run_unified_turn_shadow(
         )
     _add_part(
         "connected_integrations",
-        "CONNECTED INTEGRATIONS THIS ORG (authoritative for this turn — do not claim "
-        "a listed vendor is disconnected without calling assistant_connector_status):\n"
+        "CONNECTED INTEGRATIONS THIS ORG (authoritative executable list for this turn — "
+        "vendors listed here ARE connected; vendors absent are NOT connected for this org; "
+        "absence is not uncertainty; answer connection questions directly from this list "
+        "or from connector status data already loaded — never tell the user internal tool "
+        "names or that you lack data when absence means not connected):\n"
         + capability_block,
     )
     from app.services.chat_write_intent import build_gmail_write_intent_prompt_section

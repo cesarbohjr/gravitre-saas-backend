@@ -19,6 +19,9 @@ from typing import Any
 _MESSAGE_TOOL_SSE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bconnectors?\b.*\bconnected\b", re.I),
     re.compile(r"\bwhat connectors\b", re.I),
+    re.compile(r"\bis\s+[\w\s.&'-]{1,48}\s+connected\b", re.I),
+    re.compile(r"\b(?:do we have|have we got)\s+[\w\s.&'-]{1,48}\s+connected\b", re.I),
+    re.compile(r"\bdoes gravitre support\b", re.I),
     re.compile(r"\bgetconnectorstatus\b", re.I),
     re.compile(r"\brefund policy\b", re.I),
     re.compile(r"\binternal (?:org )?knowledge\b", re.I),

@@ -10,6 +10,11 @@ RAW_CATALOG_ACTION_KEY = re.compile(
     re.IGNORECASE,
 )
 
+_INTERNAL_TOOL_NAME = re.compile(
+    r"\b(?:assistant_[a-z0-9_]+|getConnectorStatus|tool_call|function\s+schema)\b",
+    re.IGNORECASE,
+)
+
 
 def _catalog_key_match_inside_url(text: str, start: int) -> bool:
     """True when a dotted-token match is part of an http(s) URL host (e.g. app.apollo.io)."""
@@ -89,6 +94,12 @@ def scrub_raw_catalog_keys(text: str) -> str:
     return RAW_CATALOG_ACTION_KEY.sub(_repl, raw)
 
 
+def scrub_internal_tool_references(text: str) -> str:
+    """Remove internal assistant tool identifiers from user-visible copy."""
+    cleaned = _INTERNAL_TOOL_NAME.sub("", text or "")
+    return re.sub(r"\s{2,}", " ", cleaned).strip()
+
+
 def dedupe_repeated_paragraphs(text: str) -> str:
     """Collapse exact duplicate paragraphs (model/stream glitch — STA-335)."""
     raw = (text or "").strip()
@@ -124,6 +135,8 @@ def assert_no_raw_catalog_action_keys(text: str, *, context: str = "") -> None:
 
 
 def finalize_user_facing_message(text: str, *, context: str = "") -> str:
-    cleaned = dedupe_repeated_paragraphs(scrub_raw_catalog_keys((text or "").strip()))
+    cleaned = dedupe_repeated_paragraphs(
+        scrub_internal_tool_references(scrub_raw_catalog_keys((text or "").strip()))
+    )
     assert_no_raw_catalog_action_keys(cleaned, context=context or "user_facing_message")
     return cleaned
