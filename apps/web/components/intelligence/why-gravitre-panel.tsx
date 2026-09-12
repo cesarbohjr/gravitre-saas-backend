@@ -25,9 +25,9 @@ import { cn } from "@/lib/utils"
 import { CaretDown, CheckCircle, Circle, WarningCircle } from "@phosphor-icons/react"
 import { useState } from "react"
 
-type SourceStatus = "live_connector" | "knowledge_fabric_only" | "missing"
+export type SourceStatus = "live_connector" | "knowledge_fabric_only" | "missing"
 
-type SignalEvidence = {
+export type SignalEvidence = {
   sourceId?: string
   sourceLabel?: string
   status?: SourceStatus
@@ -36,7 +36,7 @@ type SignalEvidence = {
   strength?: number
 }
 
-type SignalContribution = {
+export type SignalContribution = {
   signalId?: string
   label?: string
   weight?: number
@@ -46,7 +46,7 @@ type SignalContribution = {
   evidence?: SignalEvidence[]
 }
 
-type PriorityItem = {
+export type PriorityItem = {
   workObjectId?: string
   title?: string
   department?: string
@@ -57,19 +57,42 @@ type PriorityItem = {
   gaps?: string[]
 }
 
-type DepartmentScorePayload = {
+export type DepartmentScorePayload = {
   department?: string
   capturedAt?: string
   priorities?: PriorityItem[]
   gaps?: string[]
 }
 
-type AllDepartmentsPayload = {
+export type AllDepartmentsPayload = {
   capturedAt?: string
   departments?: DepartmentScorePayload[]
 }
 
 const MAX_ITEMS = 4
+
+/**
+ * Pure data-shaping step, extracted so it can be unit-tested without a DOM
+ * (this repo's vitest runs in `environment: "node"`, no jsdom/testing-library
+ * — see apps/web/vitest.config.ts). This is exactly the kind of arithmetic
+ * that hid the earlier Improves-pillar 100x scaling bug, so it gets its own
+ * real, executable assertions rather than only a source-code read.
+ */
+export function flattenPriorities(
+  data: AllDepartmentsPayload | null | undefined,
+  maxItems: number = MAX_ITEMS,
+): PriorityItem[] {
+  const departments = data?.departments ?? []
+  return departments
+    .flatMap((dept) => (dept.priorities ?? []).map((item) => ({ ...item, department: item.department ?? dept.department })))
+    .sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0))
+    .slice(0, maxItems)
+}
+
+export function collectDepartmentGaps(data: AllDepartmentsPayload | null | undefined, maxGaps: number = 3): string[] {
+  const departments = data?.departments ?? []
+  return departments.flatMap((dept) => dept.gaps ?? []).slice(0, maxGaps)
+}
 
 export function useWhyGravitreEvidence(enabled: boolean) {
   return useSWR(
@@ -79,7 +102,7 @@ export function useWhyGravitreEvidence(enabled: boolean) {
   )
 }
 
-function sourceStatusLabel(status: SourceStatus | undefined): string {
+export function sourceStatusLabel(status: SourceStatus | undefined): string {
   switch (status) {
     case "live_connector":
       return "Connected source"
@@ -102,11 +125,11 @@ function StatusIcon({ status }: { status: SourceStatus | undefined }) {
   return <Circle className="h-3.5 w-3.5 text-[color:var(--g-text-muted)]" weight="duotone" aria-hidden />
 }
 
-function relativeFreshness(iso: string | undefined): string {
+export function relativeFreshness(iso: string | undefined, now: number = Date.now()): string {
   if (!iso) return "Freshness not available"
   const parsed = Date.parse(iso)
   if (Number.isNaN(parsed)) return "Freshness not available"
-  const diffMs = Date.now() - parsed
+  const diffMs = now - parsed
   const minutes = Math.round(diffMs / 60_000)
   if (minutes < 1) return "Evidence captured just now"
   if (minutes < 60) return `Evidence captured ${minutes}m ago`
@@ -116,8 +139,12 @@ function relativeFreshness(iso: string | undefined): string {
   return `Evidence captured ${days}d ago`
 }
 
+export function evidenceEventCount(evidence: SignalEvidence): number {
+  return (evidence.eventHits ?? 0) + (evidence.externalSignalHits ?? 0)
+}
+
 function EvidenceRow({ evidence }: { evidence: SignalEvidence }) {
-  const count = (evidence.eventHits ?? 0) + (evidence.externalSignalHits ?? 0)
+  const count = evidenceEventCount(evidence)
   return (
     <li className="flex items-center justify-between gap-2 py-0.5 text-[11px]">
       <span className="flex items-center gap-1.5 text-[color:var(--g-text-secondary)]">
@@ -265,12 +292,8 @@ export function WhyGravitrePanel({
   isLoading?: boolean
   className?: string
 }) {
-  const departments = data?.departments ?? []
-  const flattened = departments
-    .flatMap((dept) => (dept.priorities ?? []).map((item) => ({ ...item, department: item.department ?? dept.department })))
-    .sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0))
-  const top = flattened.slice(0, MAX_ITEMS)
-  const departmentGaps = departments.flatMap((dept) => dept.gaps ?? []).slice(0, 3)
+  const top = flattenPriorities(data)
+  const departmentGaps = collectDepartmentGaps(data)
 
   return (
     <section
