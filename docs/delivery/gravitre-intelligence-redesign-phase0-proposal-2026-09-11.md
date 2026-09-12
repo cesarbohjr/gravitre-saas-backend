@@ -444,6 +444,143 @@ structure. Display-layer only — no new technical states invented anywhere.
   site; live visual confirmation on a populated registry is still open and
   not claimed as PASS.
 
+## 17. Brief-Phase 3 — Overview: Three Real Layers (what shipped, 2026-09-11)
+
+Scope: restructure `/intelligence` (Overview) into the brief's three layers —
+Layer 1 (Intelligence Core, already live from Phase 2) unchanged; a new
+Layer 2 "What matters now"; a new Layer 3 "Ask Gravitre"; plus a business-
+friendly KNOWS/LEARNS/PREDICTS/ACTS/IMPROVES summary. Nothing existing on
+the page was removed — all new sections were inserted between the Core
+visualization and the pre-existing Module C strip.
+
+- **Layer 2 — `WhatMattersNowPanel`**
+  (`apps/web/components/intelligence/what-matters-now.tsx`): reads
+  `assistantApi.businessSignals()` (already server-ranked by
+  `quality_score` in `recommendation_quality_engine.rank_recommendations`),
+  re-sorts defensively client-side, caps at 5. Honest empty state
+  ("Nothing ranked as urgent right now") when the org has no qualifying
+  signals — never a placeholder card. Links out to `/ai?prompt=...` for
+  more detail.
+- **Layer 3 — `AskGravitreEntry`**
+  (`apps/web/components/intelligence/ask-gravitre-entry.tsx`): compact,
+  visually subordinate to Layers 1-2 (no large hero treatment). Real
+  suggested questions from `assistantApi.dailyBriefing().suggestions`;
+  falls back to the brief's own three example questions ("What changed
+  today?" / "What needs attention?" / "What have you learned?") only as
+  clickable link *labels* when the org has no live briefing yet, with an
+  explicit on-screen disclosure that these are examples, not live answers.
+  Every chip deep-links to the same `/ai?prompt=` pattern used elsewhere in
+  the product (confirmed real query-param handling in `app/ai/page.tsx`).
+- **Five-pillar summary — `IntelligencePillars`**
+  (`apps/web/components/intelligence/intelligence-pillars.tsx`): KNOWS =
+  `entity_count`/`relationship_count` from `intelligenceApi.knowledgeGraph()`;
+  LEARNS = ready-to-train count from the existing
+  `summarizeTrainingReadiness()` helper (reused, not duplicated) against
+  `trainingReadiness()`; PREDICTS = count of `artifact_loaded` models from
+  the already-fetched `modelCatalog()`; ACTS = `activeAgentRuns` from
+  `intelligenceApi.coreState()` (same endpoint/SWR key as the Phase 2 Core
+  visualization — deduplicated, not double-polled) plus
+  `recommendation_created` count from outcomes; IMPROVES =
+  `businessImpactScore`/`avgOutcomeWinRate` from
+  `intelligenceApi.businessImpact()`. Every card renders "—" honestly when
+  its source has no data yet, never a fabricated number.
+- **Backend permission fix (same pattern as Phase 1 decision #1)**: `GET
+  /api/admin/intelligence/knowledge-graph` switched from `require_admin` to
+  `require_org_member` in `backend/app/routers/admin_intelligence.py` — the
+  KNOWS pillar needs this to be reachable by real, non-admin org members.
+  Confirmed via direct code read of
+  `knowledge_graph_service.get_admin_summary()` (lines 478-522) that this
+  endpoint returns aggregate counts/type-lists only (`entity_count`,
+  `relationship_count`, `entity_types`, `relationship_types`,
+  `avg_relationship_confidence`, `max_traversal_hops`) — no raw entity or
+  relationship content. The adjacent `GET
+  /api/admin/intelligence/knowledge-graph/traverse` endpoint (entity-by-id
+  lookups) was deliberately left `require_admin` and unchanged.
+- **New regression tests** in
+  `backend/tests/test_admin_intelligence_overview_permissions.py`:
+  `test_knowledge_graph_summary_reachable_by_non_admin_member` and
+  `test_knowledge_graph_traverse_stays_admin_only`. Full file:
+  **9/9 passed** (7 pre-existing + 2 new), confirmed by direct pytest run.
+- **Verification**: `tsc --noEmit` clean across the whole `apps/web`
+  workspace; `eslint` on every new/changed file — 0 errors. Existing
+  frontend unit tests (`__tests__/intelligence/*`, 29 tests across 5 files)
+  all still pass — no regressions. Pushed as `acff957c2929277bfd2ffcd2aeed8e37252e8407`.
+  Confirmed live: Vercel deployment `dpl_BmSBi4PSFokyRc4ZaKWXeZdJ39Dd`,
+  `readyState: READY`, `target: production`, aliased to `gravitre.app`,
+  `githubCommitSha` matches exactly. Railway backend `GET
+  https://api.gravitre.app/health` returns
+  `git_sha: acff957c2929277bfd2ffcd2aeed8e37252e8407` — same commit, both
+  layers live on the same tip.
+- **Live browser verification**: authenticated `browser-use` pass against
+  `https://gravitre.app/intelligence` (production, no login redirect,
+  console errors = `[]`). All 5 pillar cards rendered with real values —
+  Knows `0` / "0 relationships mapped", Learns `0` / "11 models tracked",
+  Predicts `0` / "of 14 in catalog", Acts `0` / "Active runs, last 24h",
+  Improves (see bug below). Layer 2 correctly showed the honest empty
+  state ("Nothing ranked as urgent right now") for this org. Layer 3
+  showed 3 real suggested questions from a live daily briefing for this
+  org ("What agents are currently active?" / "Show failed workflows from
+  today" / "Which connectors have sync errors?") — the example-question
+  fallback disclosure correctly did *not* render, because this org has a
+  real briefing (this is correct behavior, not a gap). Clicking a question
+  chip navigated to `/ai?prompt=What%20agents%20are%20currently%20active%3F`
+  and the assistant answered with real agent names (Sales Agent, Marketing
+  Agent) and source citations — a genuine end-to-end pass through the same
+  `/ai` surface. Pre-existing sections below (Model data readiness,
+  GIBE Module C strip, routing/simulation cards, link groups) all
+  confirmed present and unchanged.
+- **Bug found by this same live pass, fixed same-session**: the Improves
+  card showed `10000` (hint "healthy") instead of a sane 0-100 score. Root
+  cause: `businessImpactScore` is already 0-100 server-side
+  (`backend/app/services/business_impact_service.py`:
+  `max(0, min(100, 100 - penalty))`), but the new component multiplied it
+  by 100 again assuming a 0-1 fraction. `avgOutcomeWinRate` (used for the
+  hint text) *is* a genuine 0-1 fraction and was scaled correctly — only
+  `businessImpactScore` had the bug. Fixed in
+  `apps/web/components/intelligence/intelligence-pillars.tsx`, pushed as
+  `bc733d28bb7008752afd73fd5754ca424462172a`, confirmed `READY` on
+  `gravitre.app` via deployment   `dpl_BnATqgdiKjYQUqeWxvkUunsKAPJv`
+  (`githubCommitSha` matches). Re-verified live: a second authenticated
+  `browser-use` pass on `/intelligence?cachebust=phase3verify2` confirmed
+  the Improves card now shows `100` / "healthy" (was `10000`) — matches
+  `businessImpactScore=100` for an org with zero penalties, `scoreLabel`
+  "healthy" at `>=80`. Knows/Learns/Predicts/Acts unaffected by the fix,
+  still `0` with the same honest hints as before.
+- **Scrutiny applied to the live-verification claims** (same discipline as
+  Phase 2.5's caught false-alarm): the subagent's first pass flagged the
+  missing example-question disclaimer on the "Ask Gravitre" card as a
+  potential gap. This is **not a bug** — the disclaimer is intentionally
+  conditional (`usingFallback = !suggestions?.length`) and correctly did
+  not render because this org has a real live daily briefing with 3 real
+  suggested questions ("What agents are currently active?" / "Show failed
+  workflows from today" / "Which connectors have sync errors?"), not the
+  brief's example questions. Re-read the component source to confirm this
+  before accepting the subagent's framing.
+  Separately: showing `entityCount=0`/`relationshipCount=0` (an actual
+  number, not the "—" honest-gap fallback) on the Knows card is itself
+  proof the `GET /knowledge-graph` call returned `200` with real payload
+  for this authenticated session — if the permission fix had not taken
+  effect (or this session were unauthorized), the SWR fetch would have
+  failed and the component's `!= null` check would have rendered "—"
+  instead. **Caveat, stated honestly**: this proves the endpoint call
+  succeeds end-to-end for *this* session; it does not by itself prove that
+  session is a non-admin member (role wasn't independently confirmed via
+  browser). The precise, authoritative proof of the admin-vs-member
+  distinction is the backend pytest
+  (`test_knowledge_graph_summary_reachable_by_non_admin_member`), which
+  explicitly mocks `require_org_member` (not `require_admin`) and asserts
+  `200` — that test is what actually isolates the permission tier; the
+  live pass corroborates real end-to-end wiring on top of it.
+- **Console errors**: none observed on `/intelligence` (checked via CDP
+  `Log.enable`/`Runtime.enable`, empty array both passes) or after
+  navigating to `/ai?prompt=...` from a Layer-3 chip click (real assistant
+  reply with real agent names, confirming the deep-link pattern works).
+- **Regression check**: pre-existing sections (Model data readiness —
+  Ready `0`/Needs data `11`/Recent train `0`/Tracked `11`; GIBE Module C
+  runtime-honesty strip; routing-trace/simulation cards; Measure/Models/
+  Knowledge link groups) all confirmed present in the DOM snapshot,
+  unchanged.
+
 ## No-invented-surfaces declaration
 
 This document adds no code, no customer-facing price, claim, badge, or entitlement toggle. It is a proposal only. Every technical claim above is sourced to a specific file path, line range, or delivery-doc artifact gathered during this Phase 0 inventory (three parallel `explore` passes); nothing here is fabricated or assumed. Where data was insufficient to answer a §1 question honestly, that gap is stated explicitly rather than guessed.
