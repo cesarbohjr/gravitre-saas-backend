@@ -1,9 +1,7 @@
 "use client"
 
 import { useCallback, useState, type ReactNode } from "react"
-import Link from "next/link"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
+import { AssistantMarkdown } from "@/components/gravitre/assistant/assistant-markdown"
 import { motion } from "framer-motion"
 import {
   BookmarkPlus,
@@ -80,37 +78,6 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
     })
   }
   return invocations
-}
-
-const markdownLinkComponents = {
-  a: ({ href, children, ...props }: { href?: string; children?: React.ReactNode }) => {
-    const raw = (href || "").trim()
-    // Legacy CTAs used ?conversation=; AI page hydrates via ?c=.
-    const normalized = raw.startsWith("/ai?conversation=")
-      ? raw.replace("/ai?conversation=", "/ai?c=")
-      : raw
-    if (normalized.startsWith("/")) {
-      return (
-        <Link href={normalized} className="underline underline-offset-2">
-          {children}
-        </Link>
-      )
-    }
-    if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-      return (
-        <a
-          href={normalized}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2"
-          {...props}
-        >
-          {children}
-        </a>
-      )
-    }
-    return <span>{children}</span>
-  },
 }
 
 /**
@@ -380,20 +347,10 @@ export function ChatTranscript({
                       {displayText.trim() ? (
                         dialogueMode === "clarify" && isLastAssistant ? (
                           <ClarificationMessage>
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={markdownLinkComponents}
-                            >
-                              {displayText}
-                            </ReactMarkdown>
+                            <AssistantMarkdown>{displayText}</AssistantMarkdown>
                           </ClarificationMessage>
                         ) : (
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={markdownLinkComponents}
-                          >
-                            {displayText}
-                          </ReactMarkdown>
+                          <AssistantMarkdown>{displayText}</AssistantMarkdown>
                         )
                       ) : null}
                       <AssistantSourceLinks invocations={toolInvocations} />
