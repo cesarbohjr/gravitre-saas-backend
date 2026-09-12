@@ -92,6 +92,34 @@ async def test_business_impact_reachable_by_non_admin_member(member_client):
 
 
 @pytest.mark.asyncio
+async def test_knowledge_graph_summary_reachable_by_non_admin_member(member_client):
+    """Intelligence redesign Phase 3 (2026-09-11): the KNOWS pillar on the
+    Overview page needs a real org-scoped count. This is aggregate-only
+    (entity_count/relationship_count/type lists) -- .../traverse (entity-by-id
+    lookups) stays admin-gated and is not touched by this fix.
+    """
+    client, org_id = member_client
+    with patch("app.services.knowledge_graph_service.get_knowledge_graph_service") as mock_kg:
+        mock_kg.return_value.get_admin_summary = AsyncMock(
+            return_value={"entity_count": 0, "relationship_count": 0, "advisory_only": True}
+        )
+        resp = await client.get("/api/admin/intelligence/knowledge-graph")
+    assert resp.status_code == 200
+    assert resp.json()["entity_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_knowledge_graph_traverse_stays_admin_only(member_client):
+    """Regression guard: only the summary endpoint was relaxed. Traverse
+    (specific entity-by-id graph lookups) must remain admin-gated."""
+    client, org_id = member_client
+    resp = await client.get(
+        "/api/admin/intelligence/knowledge-graph/traverse?entityType=account&entityId=1"
+    )
+    assert resp.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
 async def test_golden_signals_stays_admin_only(member_client):
     """golden-signals is platform ops/deploy health (no org_id param at all) --
     it must stay out of this fix's scope, still 403/401 for non-admin members.

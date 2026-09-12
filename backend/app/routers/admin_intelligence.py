@@ -773,7 +773,12 @@ async def get_golden_signals(
 @router.get("/knowledge-graph")
 async def get_knowledge_graph_admin(
     org_id: Annotated[str, Depends(get_org_context)],
-    _admin: Annotated[tuple, Depends(require_admin)],
+    # Intelligence redesign Phase 3 (2026-09-11): aggregate counts only
+    # (entity_count/relationship_count/type lists), no raw entity/relationship
+    # content — same category of org-scoped read analytics as the outcomes/
+    # trust-summary/business-impact fix in Phase 1. `.../traverse` below stays
+    # admin-gated since it returns specific entity-by-id graph data.
+    _member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     from app.services.knowledge_graph_service import get_knowledge_graph_service

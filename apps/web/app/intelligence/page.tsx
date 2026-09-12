@@ -25,6 +25,9 @@ import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
 import { TrainingReadinessStrip } from "@/components/intelligence/training-readiness-strip"
+import { WhatMattersNowPanel, useWhatMattersNow } from "@/components/intelligence/what-matters-now"
+import { AskGravitreEntry, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-entry"
+import { IntelligencePillars, useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { LivingMineralField } from "@/components/gravitre/visual"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
@@ -132,6 +135,15 @@ function IntelligenceCenterInner() {
     { revalidateOnFocus: false },
   )
 
+  // Brief-Phase 3 (2026-09-11): Overview "Three Real Layers" — What matters
+  // now (Layer 2), Ask Gravitre (Layer 3), and the KNOWS/LEARNS/PREDICTS/
+  // ACTS/IMPROVES summary. Every source below is a real, already-scoped
+  // endpoint; see docs/delivery/gravitre-intelligence-redesign-phase0-
+  // proposal-2026-09-11.md §17 for the mapping.
+  const { data: businessSignals, isLoading: signalsLoading } = useWhatMattersNow(Boolean(user))
+  const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
+  const { knowledgeGraph, coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
@@ -180,6 +192,21 @@ function IntelligenceCenterInner() {
         <IntelligenceHubTabs active="overview" className="relative mb-2 flex-wrap" />
 
         <GravitreIntelligenceCoreLive className="relative" />
+
+        <IntelligencePillars
+          className="relative"
+          readiness={readiness}
+          modelCatalog={modelCatalog}
+          outcomesByEvent={byEvent}
+          knowledgeGraph={knowledgeGraph.data}
+          coreState={coreState.data}
+          businessImpact={businessImpact.data}
+        />
+
+        <div className="relative grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
+          <WhatMattersNowPanel signals={businessSignals?.signals as Record<string, unknown>[] | undefined} isLoading={signalsLoading} />
+          <AskGravitreEntry suggestions={dailyBriefing?.suggestions} />
+        </div>
 
         {/* Always show Module C strip — empty state is honest when catalog has no rows */}
         <div className="relative">
