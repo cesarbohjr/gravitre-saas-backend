@@ -97,7 +97,7 @@ def resolve_connector_slug_from_text(text: str) -> str | None:
         return _slug_from_vendor_token(str(match.group("vendor") or ""))
     broad = re.search(
         r"(?i)\b(?:is|are|do\s+we\s+have|have\s+we\s+got)\s+"
-        r"(?P<vendor>[\w][\w\s.&'-]{0,48}?)\s+(?:connected|hooked\s+up)\b",
+        r"(?P<vendor>[\w][\w \t.&'-]{0,48}?)\s+(?:connected|hooked\s+up)\b",
         text or "",
     )
     if broad:
@@ -118,9 +118,17 @@ def _slug_from_vendor_token(token: str) -> str | None:
     return normalized or None
 
 
+def _is_short_connector_status_utterance(text: str) -> bool:
+    """Status questions are single-line asks — not clauses inside operator briefs."""
+    stripped = (text or "").strip()
+    if not stripped or "\n" in stripped:
+        return False
+    return len(stripped) <= 160
+
+
 def parse_connector_status_question(message: str) -> ConnectorStatusQuestion | None:
     text = (message or "").strip()
-    if not text:
+    if not text or not _is_short_connector_status_utterance(text):
         return None
     if _LIST_CONNECTED_RE.search(text):
         return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.LIST)
@@ -130,7 +138,11 @@ def parse_connector_status_question(message: str) -> ConnectorStatusQuestion | N
     if _IS_VENDOR_CONNECTED_RE.match(text):
         slug = resolve_connector_slug_from_text(text)
         return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.CONNECTION, vendor_slug=slug)
-    if re.search(r"(?i)\b(is|are)\s+[\w\s.&'-]{1,48}\s+(connected|hooked\s+up)\b", text):
+    if re.search(
+        r"(?i)\b(?:is|are|do\s+we\s+have|have\s+we\s+got)\s+"
+        r"[\w][\w \t.&'-]{0,48}\s+(?:connected|hooked\s+up)\b",
+        text,
+    ):
         slug = resolve_connector_slug_from_text(text)
         if slug:
             return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.CONNECTION, vendor_slug=slug)

@@ -19,9 +19,6 @@ from typing import Any
 _MESSAGE_TOOL_SSE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bconnectors?\b.*\bconnected\b", re.I),
     re.compile(r"\bwhat connectors\b", re.I),
-    re.compile(r"\bis\s+[\w\s.&'-]{1,48}\s+connected\b", re.I),
-    re.compile(r"\b(?:do we have|have we got)\s+[\w\s.&'-]{1,48}\s+connected\b", re.I),
-    re.compile(r"\bdoes gravitre support\b", re.I),
     re.compile(r"\bgetconnectorstatus\b", re.I),
     re.compile(r"\brefund policy\b", re.I),
     re.compile(r"\binternal (?:org )?knowledge\b", re.I),
@@ -50,6 +47,10 @@ def message_requires_classical_tool_sse(message: str) -> bool:
 
     if try_pack_common_msp_enrich_workflow_plan(text) is not None:
         return False
+    from app.services.connector_status_reply_service import is_connector_status_question
+
+    if is_connector_status_question(text):
+        return True
     return any(p.search(text) for p in _MESSAGE_TOOL_SSE_PATTERNS)
 
 
