@@ -9,7 +9,7 @@ import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 
 export function ThinkingRow({
@@ -41,16 +41,21 @@ export function ThinkingRow({
         onClick={() => hasDetail && setOpen((v) => !v)}
         aria-expanded={hasDetail ? open : undefined}
         className={cn(
-          "inline-flex max-w-full items-center gap-2 px-2.5 py-1 text-xs",
-          RADIUS.control,
-          active ? STATUS.running : STATUS.idle,
-          hasDetail ? "cursor-pointer hover:opacity-90" : "cursor-default",
+          // Deliberately not a filled pill. A heavy brand-tinted chip competes
+          // with the answer it sits above and reads as a dashboard widget; this
+          // is secondary status text next to the existing pulse instead.
+          "inline-flex max-w-full items-center gap-1.5",
+          TYPE.meta,
+          hasDetail
+            ? "cursor-pointer transition-colors hover:text-[color:var(--g-text-primary)]"
+            : "cursor-default",
         )}
       >
         {active ? (
           <GravitreThinkingLoader size={14} title={label} className="text-current" />
         ) : null}
-        <span className={cn(TYPE.meta, "truncate font-medium")}>{label}</span>
+        {/* Inherits colour from the button so the hover affordance is visible. */}
+        <span className="truncate font-medium">{label}</span>
         {hasDetail ? (
           <ChevronDown
             className={cn("h-3 w-3 shrink-0 transition-transform", open && "rotate-180")}

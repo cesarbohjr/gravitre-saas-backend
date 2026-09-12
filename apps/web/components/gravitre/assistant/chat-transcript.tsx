@@ -41,6 +41,7 @@ import { ToolExecutionGroup } from "@/components/gravitre/agent-ui/tool-executio
 import { ThinkingRow } from "@/components/gravitre/agent-ui/thinking-row"
 import { ClarificationMessage } from "@/components/gravitre/assistant/clarification-message"
 import { DialogueModeChip } from "@/components/gravitre/assistant/dialogue-mode-chip"
+import { shouldShowDialogueModeChip } from "@/lib/dialogue-mode-labels"
 import { SAFE_STATUS_FALLBACK, sanitizeUserActivityLabel } from "@/lib/ai-state-matrix"
 import { uiMessageText } from "@/lib/chat-messages"
 import {
@@ -243,6 +244,12 @@ export function ChatTranscript({
           const displayText = isUser ? text : polishAssistantText(text)
           const showInlineStatus =
             isStreamingAssistant && !displayText.trim() && toolInvocations.length === 0
+          const showModeChip = shouldShowDialogueModeChip({
+            isLastAssistant,
+            dialogueMode,
+            turnInFlight: isStreamingAssistant || (showAgentWorking && isLastAssistant),
+            showInlineStatus,
+          })
           const createdAt = messageCreatedAt(message)
           const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
           const showDay = shouldShowDayDivider(visibleMessages, visibleIndex)
@@ -338,10 +345,7 @@ export function ChatTranscript({
                       {showInlineStatus ? (
                         <ThinkingRow label={resolvedWaiting} active className="mb-2" />
                       ) : null}
-                      {isLastAssistant &&
-                      dialogueMode &&
-                      dialogueMode !== "clarify" &&
-                      !showInlineStatus ? (
+                      {showModeChip ? (
                         <DialogueModeChip mode={dialogueMode} className="mb-2" />
                       ) : null}
                       {displayText.trim() ? (

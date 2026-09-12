@@ -6,17 +6,30 @@ export const CHAT_ROLE_LABEL_CLASS =
   "mb-1 px-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted,var(--g-text-muted))]"
 
 /** 14px on small screens, 15px from `sm` up: the comfortable reading size the
- *  assistant renderer also targets, so user and assistant turns match. */
+ *  assistant renderer also targets, so user and assistant turns match.
+ *
+ *  Padding lives in the per-role classes below, not here, because only the user
+ *  turn is a bubble. Keeping `px-3 py-2` here would fight the assistant's
+ *  padding-free surface, and two competing Tailwind padding utilities resolve by
+ *  CSS source order rather than the order they appear in the class string. */
 export const CHAT_BUBBLE_BASE_CLASS =
-  "max-w-full rounded-[var(--np-radius-md)] px-3 py-2 text-[14px] leading-relaxed sm:text-[15px]"
+  "max-w-full rounded-[var(--np-radius-md)] text-[14px] leading-relaxed sm:text-[15px]"
 
 /** User turns — brand green (not marketing blue / ChatGPT purple). */
 export const CHAT_USER_BUBBLE_CLASS =
-  "bg-[color:var(--g-brand)] text-white shadow-[var(--np-shadow)]"
+  "bg-[color:var(--g-brand)] px-3 py-2 text-white shadow-[var(--np-shadow)]"
 
-/** Assistant turns — mineral surface + divide hairline. */
-export const CHAT_ASSISTANT_BUBBLE_CLASS =
-  "border border-divide bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
+/**
+ * Assistant turns — no card.
+ *
+ * This previously carried `border border-divide`, a `--g-surface-1` fill and a
+ * shadow, which boxed every reply in its own panel; a thread then read as a
+ * stack of dashboard widgets rather than a conversation, and the border competed
+ * with the real structure inside the answer (headings, lists, tables, code).
+ * The user turn keeps its green bubble, so authorship is still unambiguous —
+ * this is the ChatGPT / Claude / Cursor arrangement the design target names.
+ */
+export const CHAT_ASSISTANT_BUBBLE_CLASS = "text-[color:var(--g-text-primary)]"
 
 export const CHAT_BODY_TEXT_CLASS = "text-[14px] leading-relaxed"
 
