@@ -28,6 +28,7 @@ import { TrainingReadinessStrip } from "@/components/intelligence/training-readi
 import { WhatMattersNowPanel, useWhatMattersNow } from "@/components/intelligence/what-matters-now"
 import { AskGravitreEntry, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-entry"
 import { IntelligencePillars, useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
+import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
 import { LivingMineralField } from "@/components/gravitre/visual"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
@@ -143,6 +144,11 @@ function IntelligenceCenterInner() {
   const { data: businessSignals, isLoading: signalsLoading } = useWhatMattersNow(Boolean(user))
   const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
   const { knowledgeGraph, coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
+  // Phase 4 (2026-09-11) — "Why Gravitre thinks this": real contributing
+  // signals/sources/evidence-counts/confidence/freshness from
+  // department_signal_scoring_service.score_all_departments(). See
+  // docs/delivery/gravitre-intelligence-redesign-phase0-proposal-2026-09-11.md §18.
+  const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
 
   if (!user) {
     return (
@@ -207,6 +213,8 @@ function IntelligenceCenterInner() {
           <WhatMattersNowPanel signals={businessSignals?.signals as Record<string, unknown>[] | undefined} isLoading={signalsLoading} />
           <AskGravitreEntry suggestions={dailyBriefing?.suggestions} />
         </div>
+
+        <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
 
         {/* Always show Module C strip — empty state is honest when catalog has no rows */}
         <div className="relative">
