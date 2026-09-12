@@ -6,12 +6,12 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { intelligenceApi } from "@/lib/api"
 import { normalizeDomainPredictions } from "@/lib/intelligence/normalize-domain-predictions"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
 
 const copy = SURFACE_COPY.pages.predictive
 
@@ -61,7 +61,7 @@ export default function PredictiveOpsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base font-medium">{model.replace(/_/g, " ")}</CardTitle>
-                  <Badge variant={status === "ok" ? "default" : "secondary"}>{status}</Badge>
+                  <ModelStatusBadge status={status} size="sm" />
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">

@@ -33,6 +33,7 @@ import {
   type BaseModelOption,
 } from "@/lib/ml-registry-catalog"
 import { cn } from "@/lib/utils"
+import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelligence/six-questions-panel"
 
 const availabilityBadge: Record<string, string> = {
   platform: "bg-sky-500/10 text-sky-300 border-sky-500/25",
@@ -106,6 +107,50 @@ export function ModelDetailInsights({
     (model.status === "ready" || model.status === "deployed") &&
     (model.deployedVersion != null || model.currentVersion > 0)
 
+  // Phase 2.5 — six-question structure sourced entirely from real, already-loaded
+  // model/guidance data. "Where used" is a disclosed real gap: no per-workflow or
+  // per-agent instance tracking exists at model granularity today.
+  const liveVersion = model.versions.find((v) => v.version === (model.deployedVersion ?? model.currentVersion))
+  const liveMetricEntries = Object.entries(liveVersion?.metrics ?? {}).filter(([, v]) => v != null)
+  const sixQuestionsAnswers: SixQuestionsAnswer[] = [
+    {
+      question: "what",
+      answer: typeMeta?.tagline ?? "Org-scoped model entry tracked through training, validation, and deployment.",
+    },
+    { question: "why", answer: guidance.headline },
+    {
+      question: "learnsFrom",
+      answer: model.datasetId
+        ? `${guidance.datasetHint} Linked dataset: ${model.datasetId}.`
+        : guidance.datasetHint,
+    },
+    hasVersions && liveMetricEntries.length > 0
+      ? {
+          question: "howWell",
+          answer: `v${liveVersion?.version} — ${liveMetricEntries
+            .slice(0, 4)
+            .map(([key, value]) => `${formatMetricKey(key)}: ${formatMetricValue(value)}`)
+            .join(", ")}.`,
+        }
+      : {
+          question: "howWell",
+          answer: hasVersions
+            ? "Trained, but no metrics were recorded for the current version yet."
+            : "Not enough training runs yet to measure performance.",
+          isGap: true,
+        },
+    {
+      question: "whereUsed",
+      answer:
+        "Not tracked at the individual workflow or agent level yet — a real, disclosed gap. Reference this model's ID from Meson inference nodes or agent tool configs once deployed to use it live.",
+      isGap: true,
+    },
+    {
+      question: "howToImprove",
+      answer: `${guidance.bullets[0] ?? "Add more training data."} Then start a new run on Training and deploy the resulting version.`,
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <motion.section
@@ -157,6 +202,13 @@ export function ModelDetailInsights({
           </div>
         </div>
       </motion.section>
+
+      <div>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick answers
+        </p>
+        <SixQuestionsPanel answers={sixQuestionsAnswers} />
+      </div>
 
       <Card className="border-border/70 bg-card/40">
         <CardHeader className="pb-3">

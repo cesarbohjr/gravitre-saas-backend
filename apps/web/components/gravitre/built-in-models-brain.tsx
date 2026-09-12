@@ -22,17 +22,16 @@ import {
   ArrowRight,
   type LucideIcon,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { formatScore, modelStatusChipClass } from "@/lib/intelligence/helpers"
+import { formatScore } from "@/lib/intelligence/helpers"
+import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
 import {
   BUILT_IN_MODEL_DOMAINS,
   domainLabel,
-  statusShortLabel,
   statusTone,
   summarizeBrainHealth,
   type BuiltInModelDomainId,
@@ -140,14 +139,8 @@ function ModelCard({
       ) : null}
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-        <p className="truncate text-[11px] text-muted-foreground">
-          {domainLabel(row.guide.domain)}
-          <span className="mx-1.5 text-border">·</span>
-          {statusShortLabel(row.status)}
-        </p>
-        <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", modelStatusChipClass(row.status))}>
-          {statusShortLabel(row.status)}
-        </Badge>
+        <p className="truncate text-[11px] text-muted-foreground">{domainLabel(row.guide.domain)}</p>
+        <ModelStatusBadge status={row.status} size="sm" showDetail={false} />
       </div>
     </button>
   )
@@ -172,14 +165,12 @@ function DetailPanel({ row }: { row: BuiltInModelListItem }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-semibold tracking-tight text-foreground">{row.guide.label}</h3>
-              <Badge variant="outline" className={cn("capitalize", modelStatusChipClass(row.status))}>
-                {statusShortLabel(row.status)}
-              </Badge>
             </div>
             <p className="mt-0.5 font-mono text-xs text-muted-foreground">{row.id}</p>
           </div>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{row.guide.summary}</p>
+        <ModelStatusBadge status={row.status} className="mt-3" />
       </div>
 
       <div className="space-y-4 p-5">
@@ -427,9 +418,7 @@ export function BuiltInModelsBrain({
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{domainLabel(row.guide.domain)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant="outline" className={cn("text-[10px]", modelStatusChipClass(row.status))}>
-                        {statusShortLabel(row.status)}
-                      </Badge>
+                      <ModelStatusBadge status={row.status} size="sm" showDetail={false} />
                     </td>
                     <td className="px-4 py-3 tabular-nums text-muted-foreground">
                       {row.sufficiency.value == null ? "—" : row.sufficiency.label}

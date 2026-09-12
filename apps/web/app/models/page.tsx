@@ -17,6 +17,7 @@ import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-c
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -67,20 +68,6 @@ import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
-// Lifecycle stages mapped to the semantic status vocabulary. training and
-// validating are both in-progress (info); ready/deployed both success, kept
-// distinct by opacity; draft/archived are neutral (muted). The badge label
-// carries the exact stage, so collapsing near-identical hues loses no meaning.
-const statusStyles: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground border-border",
-  training: "bg-info/10 text-info border-info/20",
-  validating: "bg-info/10 text-info border-info/20",
-  ready: "bg-success/10 text-success border-success/20",
-  deployed: "bg-success/15 text-success border-success/30",
-  failed: "bg-destructive/10 text-destructive border-destructive/20",
-  archived: "bg-muted text-muted-foreground border-border",
-}
-
 const availabilityBadge: Record<string, string> = {
   platform: "bg-info/10 text-info border-info/25",
   connected: "bg-success/10 text-success border-success/25",
@@ -127,9 +114,7 @@ function ModelRow({ model, index }: { model: MlModelSummary; index: number }) {
             </div>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
-            <Badge variant="outline" className={cn("capitalize", statusStyles[status] ?? statusStyles.draft)}>
-              {status}
-            </Badge>
+            <ModelStatusBadge status={status} size="sm" showDetail={false} />
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
         </div>

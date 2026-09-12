@@ -9,8 +9,8 @@ import { ModelDetailInsights } from "@/components/gravitre/model-detail-insights
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -25,16 +25,6 @@ import {
 import { ArrowLeft, RefreshCw } from "lucide-react"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
-
-const statusStyles: Record<string, string> = {
-  draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-  training: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  validating: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  ready: "bg-success/10 text-success border-success/20",
-  deployed: "bg-success/15 text-success border-success/30",
-  failed: "bg-destructive/10 text-destructive border-destructive/20",
-  archived: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
-}
 
 function formatType(value: string): string {
   return value.replace(/_/g, " ")
@@ -160,14 +150,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
                   Back
                 </Link>
               </Button>
-              {model ? (
-                <Badge
-                  variant="outline"
-                  className={cn("capitalize", statusStyles[model.status] ?? statusStyles.draft)}
-                >
-                  {model.status}
-                </Badge>
-              ) : null}
+              {model ? <ModelStatusBadge status={model.status} showDetail={false} /> : null}
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating || isLoading}>
                 <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
                 Refresh
@@ -197,7 +180,11 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
           ) : model ? (
             <>
               <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
-                <GravitreMetric label="Status" value={model.status} hint="Lifecycle stage" />
+                <GravitreMetric
+                  label="Status"
+                  value={<ModelStatusBadge status={model.status} showDetail={false} />}
+                  hint="Lifecycle stage"
+                />
                 <GravitreMetric label="Version" value={versionLabel} hint="Current · deployed when set" />
                 <GravitreMetric
                   label="Type"

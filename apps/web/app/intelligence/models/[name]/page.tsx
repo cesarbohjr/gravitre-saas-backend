@@ -10,7 +10,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
@@ -20,12 +19,13 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   formatPercent,
   formatScore,
-  modelStatusChipClass,
   plainDecisionReasoning,
   readNumber,
   readString,
 } from "@/lib/intelligence/helpers"
-import { getBuiltInModelGuide, statusLabel } from "@/lib/built-in-model-catalog"
+import { getBuiltInModelGuide } from "@/lib/built-in-model-catalog"
+import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
+import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelligence/six-questions-panel"
 
 export default function ModelProfilePage() {
   const { user } = useAuth()
@@ -118,6 +118,51 @@ export default function ModelProfilePage() {
     (row) => readString(row.model_name) === modelName,
   )
 
+  // Phase 2.5 — six-question structure sourced entirely from real, already-fetched
+  // data. "Where used" is a disclosed real gap: use_cases tags are real catalog
+  // metadata, but per-agent/per-workflow instance tracking doesn't exist yet.
+  const useCases = (catalogEntry.use_cases as string[] | undefined) ?? []
+  const sixQuestionsAnswers: SixQuestionsAnswer[] = [
+    { question: "what", answer: guide.summary },
+    { question: "why", answer: guide.whyItMatters },
+    {
+      question: "learnsFrom",
+      answer: guide.howToFeed ? `${guide.dataExplainer} ${guide.howToFeed}` : guide.dataExplainer,
+    },
+    isPlanned
+      ? {
+          question: "howWell",
+          answer: "Not built yet — no performance to measure until this model is trainable for your org.",
+          isGap: true,
+        }
+      : outcomeScoreDisplay === "—"
+        ? {
+            question: "howWell",
+            answer: "Not enough measured usage yet to score performance for your org.",
+            isGap: true,
+          }
+        : {
+            question: "howWell",
+            answer: `Outcome score ${outcomeScoreDisplay} across ${recentEvents.length} measured event${recentEvents.length === 1 ? "" : "s"} in the last 30 days.`,
+          },
+    useCases.length > 0
+      ? {
+          question: "whereUsed",
+          answer: `Tagged for: ${useCases.map((c) => c.replace(/_/g, " ")).join(", ")}. Specific agent or workflow instances aren't tracked at the individual level yet — a real, disclosed gap.`,
+        }
+      : {
+          question: "whereUsed",
+          answer: "No use-case tags recorded for this model yet.",
+          isGap: true,
+        },
+    {
+      question: "howToImprove",
+      answer: isPlanned
+        ? "Not trainable yet for your org — check back once this reaches the platform roadmap."
+        : guide.howToFeed || "Keep connecting sources and using the product so signals grow past the data gate, then retrain.",
+    },
+  ]
+
   return (
     <AppShell title={guide.label}>
       <div>
@@ -134,9 +179,7 @@ export default function ModelProfilePage() {
                   Back
                 </Link>
               </Button>
-              <Badge variant="outline" className={modelStatusChipClass(status)}>
-                {statusLabel(status)}
-              </Badge>
+              <ModelStatusBadge status={status} showDetail={false} />
               {!isPlanned && readinessStatus === "ready" ? (
                 <Button size="sm" onClick={handleTrain} disabled={training}>
                   <Play className="mr-2 h-4 w-4" weight="fill" aria-hidden />
@@ -186,6 +229,12 @@ export default function ModelProfilePage() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-6 space-y-4">
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Quick answers
+                </p>
+                <SixQuestionsPanel answers={sixQuestionsAnswers} />
+              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
                   <p className="font-medium text-foreground">Why this matters</p>
