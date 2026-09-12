@@ -47,6 +47,10 @@ def message_requires_classical_tool_sse(message: str) -> bool:
 
     if try_pack_common_msp_enrich_workflow_plan(text) is not None:
         return False
+    from app.services.connector_status_reply_service import is_connector_status_question
+
+    if is_connector_status_question(text):
+        return True
     return any(p.search(text) for p in _MESSAGE_TOOL_SSE_PATTERNS)
 
 

@@ -77,6 +77,11 @@ _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\b[A-Za-z_][A-Za-z0-9_]+Error:"),
     re.compile(r"\b[A-Za-z_][A-Za-z0-9_]+Exception:"),
     re.compile(r"\b0x[0-9a-fA-F]{8,}\b"),
+    re.compile(r"\bassistant_[a-z0-9_]+\b", re.I),
+    re.compile(r"\bgetConnectorStatus\b"),
+    re.compile(r"\btool_call\b", re.I),
+    re.compile(r"\bfunction\s+schema\b", re.I),
+    re.compile(r"\bcapability__[a-z0-9_]+\b", re.I),
 )
 
 _CODE_AS_MESSAGE = re.compile(r"^[a-z][a-z0-9_]{2,}$")
