@@ -1,9 +1,9 @@
 {
   "probe": "google_ads_typed_spoken_connected_live",
-  "started_at": "2026-09-10T18:36:50.330062+00:00",
+  "started_at": "2026-09-10T19:19:30.302379+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "git_sha": "5da2fba96b15b383642722b9af298f8df9d69b09",
+  "git_sha": "e7a62c91559ffd7e19da492ee51537b93e565cf5",
   "google_ads_connected": true,
   "google_ads_connectors": [
     {
@@ -14,20 +14,23 @@
   ],
   "typed": {
     "http_status": 200,
-    "assistant": "I'll create a draft workflow for **Problem Aware**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+    "assistant": "I planned a **5-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n2. \u25cb Salesforce (not connected) \u2014 *skipped* (Connect Salesforce at /connectors to run this action.)\n3. \u25cb show me the complete plan for what you're about to create, campaign by campaign, \u2014 *skipped* (No Executable action matched this request.)\n4. \u25cb create it \u2014 *skipped* (No Executable action matched this request.)\n5. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Google Ads at /connectors to run this action.; Connect Salesforce at /connectors to run this action.; No Executable action matched this request.; No Executable action matched this request.",
     "pending_task": null,
     "path": "assistant_chat_typed_agent",
-    "conversation_id": "8d65bb37-ff8a-44db-b49d-d53d2e944c3f",
+    "conversation_id": "9addc750-1315-4885-a3a4-1a66ed2f0c12",
     "class": {
       "safety_refuse": false,
-      "orchestration": false,
-      "step_count": null,
-      "approval": true,
-      "not_connected": false,
+      "orchestration": true,
+      "step_count": 5,
+      "approval": false,
+      "not_connected": true,
       "faq": [],
-      "mentions_google_ads": false
+      "mentions_google_ads": true,
+      "workflow_steal": false,
+      "ads_structure": false,
+      "campaign_name_hits": 0
     },
-    "head": "I'll create a draft workflow for **Problem Aware**.\n\nReply **yes** to create it now, or tell me what to adjust."
+    "head": "I planned a **5-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n2. \u25cb Salesforce (not connected) \u2014 *skipped* (Connect Salesforce at /connectors to run this action.)\n3. \u25cb show me the complete plan for what you're about to create, campaign by campaign, \u2014 *skipped* (No Executable action matched this request.)\n4. \u25cb create it \u2014 *skipped* (No Executable action matched this request.)\n5. \u25cb Google Ads (not connected) \u2014 *skipped* (Connect Google Ads at /connectors to run this action.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Google Ads at /connectors to run this action.; Connect Salesforce at /connectors to run this action.; No "
   },
   "spoken": {
     "http_status": 200,
@@ -53,7 +56,7 @@
     ],
     "path": "voice_session_turn",
     "used_complete_text": true,
-    "conversation_id": "eb3aeb53-e5ac-4f2e-8b56-3139d3840400",
+    "conversation_id": "8bf841fb-442d-4760-9fdd-911795fc311e",
     "class": {
       "safety_refuse": false,
       "orchestration": false,
@@ -61,15 +64,30 @@
       "approval": true,
       "not_connected": false,
       "faq": [],
-      "mentions_google_ads": false
+      "mentions_google_ads": false,
+      "workflow_steal": true,
+      "ads_structure": false,
+      "campaign_name_hits": 0
     },
     "head": "I'll create a draft workflow for Problem Aware. Reply yes to create it now, or tell me what to adjust."
   },
   "compare": {
     "same_plan_steps_approval": false,
-    "divergences": [],
+    "identical_wrong_workflow_steal": false,
+    "intercept_verdict": "FAIL",
+    "ads_plan_verdict": "FAIL \u2014 typed/spoken did not both propose a Google Ads campaign plan",
+    "divergences": [
+      "orchestration_mismatch",
+      "step_count typed=5 spoken=None",
+      "approval_mismatch",
+      "connected_claim_mismatch",
+      "typed_still_treats_google_ads_as_disconnected",
+      "workflow_steal_mismatch"
+    ],
     "verdict": "FAIL"
   },
-  "note": "Connected Google Ads OAuth clone in isolated org. No campaign create was approved. Skip-LIVE intercept fix is local until deployed; this run measures production git_sha.",
-  "verdict": "FAIL"
+  "note": "Connected Google Ads OAuth clone in isolated org (operator source a726bcae / isolated d4fb0fcf). No campaign create was approved. Ads-plan PASS requires four-campaign structure, not a matching create_workflow steal.",
+  "verdict": "FAIL",
+  "intercept_verdict": "FAIL",
+  "ads_plan_verdict": "FAIL \u2014 typed/spoken did not both propose a Google Ads campaign plan"
 }

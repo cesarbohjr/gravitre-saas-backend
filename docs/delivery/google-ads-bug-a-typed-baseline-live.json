@@ -1,0 +1,309 @@
+{
+  "probe": "google_ads_bug_a_typed_baseline_then_spoken",
+  "started_at": "2026-09-10T22:33:16.787760+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "3c0fa3fa5d9a66992f7289e53aa97abd02b3c040",
+  "clone_id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+  "git_sha": "3c0fa3fa5d9a66992f7289e53aa97abd02b3c040",
+  "health_timestamp": "2026-09-10T22:33:17.938903+00:00",
+  "clone": {
+    "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+    "type": "google_ads",
+    "vendor": "google_ads",
+    "status": "healthy",
+    "environment": "production",
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001"
+  },
+  "typed_conversation_id": "cc1ce18d-f519-4709-8539-8160d1a9089a",
+  "typed": {
+    "http_status": 200,
+    "assistant_head": "I planned a **1-step orchestration**:\n\n1. **Create Google Ads Search campaign structure** (advanced, approval required)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "connected_seen": [
+      [],
+      [
+        "apollo",
+        "google_ads",
+        "hubspot"
+      ],
+      []
+    ],
+    "google_ads_in_sse": true,
+    "audit_connected_integrations": [
+      "apollo",
+      "google_ads",
+      "hubspot"
+    ],
+    "google_ads_in_audit": true,
+    "structure": {
+      "pending_type": "connector_orchestration",
+      "pending_status": "awaiting_plan_confirm",
+      "step_count": 1,
+      "invoke_actions": [
+        "googleads.structure.create",
+        "googleads.structure.create"
+      ],
+      "has_structure_create": true,
+      "labels": [
+        "Create Google Ads Search campaign structure",
+        "Create Google Ads Search campaign structure"
+      ]
+    },
+    "class": {
+      "workflow_steal": false,
+      "problem_aware_steal": false,
+      "not_connected": false,
+      "orch_plan": true,
+      "approval": true,
+      "mentions_campaigns": true
+    },
+    "explanations": [
+      "Understanding your request",
+      "Reviewing context and memory",
+      "Working on your request"
+    ],
+    "pending_task": {
+      "type": "connector_orchestration",
+      "params": {
+        "goal": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+        "steps": [
+          {
+            "kind": "advanced",
+            "plan": {
+              "args": {
+                "name": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:",
+                "channel": "general",
+                "payload": {
+                  "intent_text": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exa"
+                },
+                "summary": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:"
+              },
+              "kind": "advanced",
+              "label": "Create Google Ads Search campaign structure",
+              "tool_name": "google_ads_structure_create",
+              "destructive": true,
+              "integration": "google_ads",
+              "invoke_action": "googleads.structure.create",
+              "approval_reason": "Action type 'googleads.structure.create' requires approval per policy",
+              "bound_tool_name": "google_ads_structure_create",
+              "inferred_fields": [],
+              "bound_args_digest": "ef439be2e3941aaa18719f4aecac2bcaa6667ea8e84df519326b3dbdf48c0c91",
+              "bound_integration": "google_ads",
+              "inference_sources": {},
+              "requires_approval": true,
+              "approval_action_id": "3a281100-77d4-4685-a900-9eedb65a9432",
+              "bound_invoke_action": "googleads.structure.create"
+            },
+            "label": "Create Google Ads Search campaign structure",
+            "segment": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+            "step_id": "1",
+            "supported": true,
+            "skip_reason": null,
+            "requires_approval": true
+          }
+        ],
+        "total_steps": 1,
+        "step_results": [],
+        "current_step_index": 0
+      },
+      "status": "awaiting_plan_confirm"
+    },
+    "task_state_pending": {
+      "type": "connector_orchestration",
+      "params": {
+        "goal": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+        "steps": [
+          {
+            "kind": "advanced",
+            "plan": {
+              "args": {
+                "name": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:",
+                "channel": "general",
+                "payload": {
+                  "intent_text": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exa"
+                },
+                "summary": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:"
+              },
+              "kind": "advanced",
+              "label": "Create Google Ads Search campaign structure",
+              "tool_name": "google_ads_structure_create",
+              "destructive": true,
+              "integration": "google_ads",
+              "invoke_action": "googleads.structure.create",
+              "approval_reason": "Action type 'googleads.structure.create' requires approval per policy",
+              "bound_tool_name": "google_ads_structure_create",
+              "inferred_fields": [],
+              "bound_args_digest": "ef439be2e3941aaa18719f4aecac2bcaa6667ea8e84df519326b3dbdf48c0c91",
+              "bound_integration": "google_ads",
+              "inference_sources": {},
+              "requires_approval": true,
+              "approval_action_id": "3a281100-77d4-4685-a900-9eedb65a9432",
+              "bound_invoke_action": "googleads.structure.create"
+            },
+            "label": "Create Google Ads Search campaign structure",
+            "segment": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+            "step_id": "1",
+            "supported": true,
+            "skip_reason": null,
+            "requires_approval": true
+          }
+        ],
+        "total_steps": 1,
+        "step_results": [],
+        "current_step_index": 0
+      },
+      "status": "awaiting_plan_confirm"
+    },
+    "audits": [
+      {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-09-10T22:33:49.296871+00:00",
+        "model": "unified_turn+operator_task_orchestration_skip_live",
+        "outcome_kind": "confirmation_request",
+        "connected_integrations": [
+          "apollo",
+          "google_ads",
+          "hubspot"
+        ],
+        "tool_invoke_action": null,
+        "tool_name": null
+      },
+      {
+        "action": "memory.recalled",
+        "created_at": "2026-09-10T22:33:47.060327+00:00",
+        "model": null,
+        "outcome_kind": null,
+        "connected_integrations": null,
+        "tool_invoke_action": null,
+        "tool_name": null
+      }
+    ],
+    "pass": true
+  },
+  "typed_verdict": "PASS \u2014 google_ads listed and structure.create staged",
+  "spoken": {
+    "http_status": 200,
+    "conversation_id": "49f972d3-8865-4f01-99e0-348d32631342",
+    "assistant_head": "I planned a 1-step orchestration:. Create Google Ads Search campaign structure (advanced, approval required). Read steps run automatically. Write steps run automatically unless your approval settings require confirmation. Reply yes to approve the plan, or tell me what to change.",
+    "event_types": [
+      "voice.session.accepted",
+      "voice.session.started",
+      "voice.intelligence",
+      "voice.intelligence",
+      "voice.intelligence",
+      "voice.sse.text-start",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.sse.text-end",
+      "voice.turn.complete",
+      "voice.audio.delta",
+      "voice.agent_speech.end",
+      "voice.session.ended"
+    ],
+    "used_complete_text": true,
+    "class": {
+      "workflow_steal": false,
+      "problem_aware_steal": false,
+      "not_connected": false,
+      "orch_plan": true,
+      "approval": true,
+      "mentions_campaigns": true
+    },
+    "audit_connected_integrations": [
+      "apollo",
+      "google_ads",
+      "hubspot"
+    ],
+    "google_ads_in_audit": true,
+    "structure": {
+      "pending_type": "connector_orchestration",
+      "pending_status": "awaiting_plan_confirm",
+      "step_count": 1,
+      "invoke_actions": [
+        "googleads.structure.create"
+      ],
+      "has_structure_create": true,
+      "labels": [
+        "Create Google Ads Search campaign structure"
+      ]
+    },
+    "task_state_pending": {
+      "type": "connector_orchestration",
+      "params": {
+        "goal": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+        "steps": [
+          {
+            "kind": "advanced",
+            "plan": {
+              "args": {
+                "name": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:",
+                "channel": "general",
+                "payload": {
+                  "intent_text": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exa"
+                },
+                "summary": "t execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups:"
+              },
+              "kind": "advanced",
+              "label": "Create Google Ads Search campaign structure",
+              "tool_name": "google_ads_structure_create",
+              "destructive": true,
+              "integration": "google_ads",
+              "invoke_action": "googleads.structure.create",
+              "approval_reason": "Action type 'googleads.structure.create' requires approval per policy",
+              "bound_tool_name": "google_ads_structure_create",
+              "inferred_fields": [],
+              "bound_args_digest": "ef439be2e3941aaa18719f4aecac2bcaa6667ea8e84df519326b3dbdf48c0c91",
+              "bound_integration": "google_ads",
+              "inference_sources": {},
+              "requires_approval": true,
+              "approval_action_id": "d1f3e01d-cf23-4b48-b6ea-07656bedbf9e",
+              "bound_invoke_action": "googleads.structure.create"
+            },
+            "label": "Create Google Ads Search campaign structure",
+            "segment": "I have a Google Ads campaign strategy ready to go live. Set it up in Google Ads exactly as specified below, and don't execute anything without my approval first.\n\nCreate four campaigns:\n\n1. RevOps / Sales Ops \u2014 30% budget weight. Start on Maximize Conversions (no target) for the first 3 weeks to build conversion history. Ad groups: \"Problem Aware\" (broad+phrase: sales ops automation tools, manual CRM data entry problem, sales team AI agents, automate sales workflow), \"Solution Aware\" (phrase+exact: AI agent for Salesforce, AI agent for HubSpot, CRM workflow automation with approval, AI sales agent governance), \"Ready to Buy\" (exact: Gravitre, Gravitre pricing, AI ops platform for sales teams, best AI agent platform Salesforce).\n\n2. IT / Security Ops \u2014 30% budget weight. Start on Target CPA using the initial demo-request cost as a placeholder target. Ad groups: \"Problem Aware\" (broad+phrase: AI agent security risk, shadow AI in the enterprise, AI agent without oversight, AI agent compliance problem), \"Solution Aware\" (phrase+exact: AI agent governance platform, audit trail AI agents, AI agent approval workflow, MCP server security, role-based access AI agents), \"Ready to Buy\" (exact: Gravitre security, enterprise AI agent management platform, AES-256 AI agent platform, AI agent audit trail software).\n\n3. DevOps / Engineering Leaders \u2014 20% budget weight. Maximize Conversions from the start, optimizing for free trial signup. Ad groups: \"Problem Aware\" (broad+phrase: AI agents keep failing in production, AI agent orchestration problem, connecting AI agents to internal tools, agent sprawl), \"Solution Aware\" (phrase+exact: MCP server platform, AI agent orchestration platform, connect AI agents to Jira, connect AI agents to Slack, agent workflow simulation), \"Ready to Buy\" (exact: Gravitre MCP, Gravitre integrations, best MCP agent platform, AI agent platform 50 integrations).\n\n4. Customer Support Ops \u2014 20% budget weight. Run Target CPA from the outset, borrowing an initial CPA estimate from the RevOps campaign. Ad groups: \"Problem Aware\" (broad+phrase: support ticket volume too high, customer support automation ideas, AI for customer service team, reduce support response time), \"Solution Aware\" (phrase+exact: AI agent for customer support, support ops automation, AI workflow approval customer service, customer support agent health score), \"Ready to Buy\" (exact: Gravitre customer support, AI support agent platform pricing, enterprise support automation software, best AI agent for support ops).\n\nAccount-wide, apply these negative keywords to all four campaigns: gravitee, free, open source, jobs, careers, tutorial, course. The \"gravitee\" one matters \u2014 Gravitee.io is a similarly-named competitor and I don't want to pay for their traffic.\n\nSet up \"Free Trial Signup\" and \"Demo Request\" as two separate, distinctly-valued conversion actions, don't combine them.\n\nStart every campaign on phrase and exact match only for the first month, no broad match yet.\n\nBefore you create anything: check that my Google Ads account is actually connected and has the right access, confirm you can see my current account structure so we're not creating duplicates, and show me the complete plan for what you're about to create, campaign by campaign, before asking me to approve it. I want to see the real, exact structure you're about to build, not just a summary.\n\nOnce I approve, go ahead and create it, and once it's live, show me where I can verify each campaign actually exists in my real Google Ads account, not just that Gravitre says it worked.",
+            "step_id": "1",
+            "supported": true,
+            "skip_reason": null,
+            "requires_approval": true
+          }
+        ],
+        "total_steps": 1,
+        "step_results": [],
+        "current_step_index": 0
+      },
+      "status": "awaiting_plan_confirm"
+    },
+    "audits": [
+      {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-09-10T22:33:58.376277+00:00",
+        "model": "unified_turn+operator_task_orchestration_skip_live",
+        "outcome_kind": "confirmation_request",
+        "connected_integrations": [
+          "apollo",
+          "google_ads",
+          "hubspot"
+        ],
+        "tool_invoke_action": null,
+        "tool_name": null
+      },
+      {
+        "action": "memory.recalled",
+        "created_at": "2026-09-10T22:33:56.606869+00:00",
+        "model": null,
+        "outcome_kind": null,
+        "connected_integrations": null,
+        "tool_invoke_action": null,
+        "tool_name": null
+      }
+    ]
+  },
+  "bug_b_verdict": "PASS \u2014 spoken staged google_ads.structure.create like typed",
+  "finished_at": "2026-09-10T22:34:00.030505+00:00",
+  "verdict": "PASS \u2014 google_ads listed and structure.create staged"
+}

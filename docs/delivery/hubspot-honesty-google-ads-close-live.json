@@ -1,0 +1,172 @@
+{
+  "probe": "hubspot_honesty_google_ads_close_live",
+  "started_at": "2026-09-11T06:50:25.042700+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "4185a00b",
+  "health": {
+    "git_sha": "4185a00bd58d53c05aa871c195526b5bb87e4990",
+    "unified_turn_live_enabled": true
+  },
+  "connectors": [
+    {
+      "id": "63dc0c01-2e27-4703-b503-a035b6189b12",
+      "type": "greenhouse",
+      "status": "active"
+    },
+    {
+      "id": "0caaa79b-ed4b-4609-855c-55129ace5921",
+      "type": "stripe",
+      "status": "active"
+    },
+    {
+      "id": "8992743f-6632-4252-81a1-8d09c0482575",
+      "type": "apollo",
+      "status": "healthy"
+    },
+    {
+      "id": "4d7fcc34-83a4-40c4-af31-97f5b1576163",
+      "type": "google_search_console",
+      "status": "healthy"
+    },
+    {
+      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+      "type": "google_ads",
+      "status": "healthy"
+    },
+    {
+      "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
+      "type": "google_analytics",
+      "status": "healthy"
+    },
+    {
+      "id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+      "type": "hubspot",
+      "status": "healthy"
+    },
+    {
+      "id": "6c7cc1fb-88c5-41d7-8006-6b5a5fb202f8",
+      "type": "clay",
+      "status": "active"
+    },
+    {
+      "id": "3226672d-8d26-4243-8cf5-06c788bf0990",
+      "type": "linkedin",
+      "status": "active"
+    },
+    {
+      "id": "98d82730-17d0-4a4d-af23-9fd738ebad58",
+      "type": "slack",
+      "status": "error"
+    }
+  ],
+  "hubspot_connected": true,
+  "google_ads_connected": true,
+  "hubspot": {
+    "list_name": "Gravitre Honesty Close 20260911-065027",
+    "conversation_id": "e0e0d85b-8b54-4de5-a1d7-cffa2e6b84fb",
+    "steps": [
+      {
+        "id": "create_request",
+        "http_status": 200,
+        "assistant": "I can create a contact list named **Gravitre Honesty Close 20260911-065027** in Hubspot.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+        "stream_errors": [],
+        "execution_result": null,
+        "pending_task": null
+      },
+      {
+        "id": "state_after_create",
+        "http_status": 200,
+        "pending_status": "awaiting_confirm",
+        "pending_type": "connector_action",
+        "invoke_action": "hubspot.lists.create"
+      },
+      {
+        "id": "confirm_yes",
+        "http_status": 200,
+        "assistant": "**Done \u2014 Create list**\n\nCreated Hubspot list Gravitre Honesty Close 20260911-065027.\n\n_What this means:_ HubSpot now has this record \u2014 you can open it or create a follow-up from chat.\n\n[View in Gravitre](/ai?c=e0e0d85b-8b54-4de5-a1d7-cffa2e6b84fb)\n\n[View in Hubspot](https://app.hubspot.com/contacts/343328749/lists/52)\n\n**What I'd look at next:** Decide the next hubspot step \u2014 Create list completed Verifiedly. I'd look at related records or a follow-up write next \u2014 say what you want.\n_Suggest only \u2014 reply_ **What should I do next with this?** _to proceed (nothing runs until you approve)._",
+        "stream_errors": [],
+        "execution_result": null,
+        "pending_task": null
+      },
+      {
+        "id": "state_after_yes",
+        "http_status": 200,
+        "pending_status": "executed",
+        "pending_type": "connector_action",
+        "invoke_action": ""
+      },
+      {
+        "id": "next_turn_capability",
+        "http_status": 200,
+        "assistant": "HubSpot lists create is available in this conversation \u2014 it was already invoked. I should not claim that action is missing.",
+        "stream_errors": [],
+        "execution_result": null,
+        "pending_task": null
+      }
+    ],
+    "audits": [
+      {
+        "audit_action": "tool.invoke.completed",
+        "created_at": "2026-09-11T06:50:48.662864+00:00",
+        "resource_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "target_action": "hubspot.lists.create",
+        "error_code": null,
+        "error": ""
+      }
+    ],
+    "invoked_lists_create": true,
+    "denial_hits": [],
+    "next_turn_head": "HubSpot lists create is available in this conversation \u2014 it was already invoked. I should not claim that action is missing.",
+    "verdict": "PASS"
+  },
+  "google_ads": {
+    "steps": [],
+    "typed": {
+      "conversation_id": "099bcd57-41d3-49b5-a947-1c1b1ddae9f8",
+      "http_status": 200,
+      "assistant": "I planned a **1-step orchestration**:\n\n1. **Create Google Ads Search campaign structure** (advanced, approval required)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "stream_errors": [],
+      "execution_result": null,
+      "pending_task": null,
+      "faq_hits": [],
+      "head": "I planned a **1-step orchestration**:\n\n1. **Create Google Ads Search campaign structure** (advanced, approval required)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "mentions_google_ads": true,
+      "verdict": "PASS"
+    },
+    "spoken": {
+      "conversation_id": "2013fd64-a9a7-4da6-b439-726ab5f1594a",
+      "http_status": 200,
+      "assistant": "I planned a **1-step orchestration**:\n\n1. **Create Google Ads Search campaign structure** (advanced, approval required)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "event_types": [
+        "voice.session.accepted",
+        "voice.session.started",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.intelligence",
+        "voice.sse.text-start",
+        "voice.text.delta",
+        "voice.ttft",
+        "voice.ttfa",
+        "voice.agent_speech.start",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.audio.delta",
+        "voice.sse.text-end",
+        "voice.turn.complete",
+        "voice.audio.delta",
+        "voice.agent_speech.end",
+        "voice.session.ended"
+      ],
+      "originating_modality": null,
+      "spoken_mode": null,
+      "path": "voice_session_turn",
+      "faq_hits": [],
+      "head": "I planned a **1-step orchestration**:\n\n1. **Create Google Ads Search campaign structure** (advanced, approval required)\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "mentions_google_ads": true,
+      "verdict": "PASS"
+    }
+  },
+  "finished_at": "2026-09-11T06:51:43.231769+00:00",
+  "verdict": "PASS \u2014 HubSpot honesty close + Google Ads typed/spoken on git_sha=4185a00bd58d53c05aa871c195526b5bb87e4990"
+}

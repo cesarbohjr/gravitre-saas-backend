@@ -29,6 +29,9 @@
     },
     "redis-development": {
       "enabled": true
+    },
+    "amplitude": {
+      "enabled": true
     }
   }
 }
