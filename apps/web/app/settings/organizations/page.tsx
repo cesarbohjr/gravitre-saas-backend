@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,7 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { organizationsApi } from "@/lib/api"
-import { invalidateOrgCache, setSelectedOrgInStorage } from "@/lib/org-context"
+import { getSelectedOrgFromStorage, invalidateOrgCache, setSelectedOrgInStorage } from "@/lib/org-context"
 import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
@@ -47,7 +47,24 @@ export default function ManageOrganizationsPage() {
   const { isAdmin } = useOrgAdmin()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showMembersDialog, setShowMembersDialog] = useState(false)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  // Bug fix (2026-09-11): this used to start at `null` and fall back to
+  // `organizations[0]?.id`, so on every fresh page load the "Current" badge
+  // and the "Switch to this org" menu item were keyed off "whichever org the
+  // list API happened to return first" instead of the REAL active org. That
+  // silently hid the "Switch to this org" action for organizations[0] any
+  // time the real active org (localStorage `gravitre:selectedOrg`, the same
+  // value the top-bar switcher and every API call's `x-org-id` header read)
+  // was something else — permanently blocking switching back to it from this
+  // page. Seed from the real source of truth instead.
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
+    () => getSelectedOrgFromStorage()?.id ?? null
+  )
+  // Separate from `selectedOrgId`: which org's members dialog is open. This
+  // used to reuse `selectedOrgId` itself, which meant opening "Manage members"
+  // on a non-active org would also (wrongly) relabel that org as "Current"
+  // and hide its own "Switch to this org" action — the same bug class as
+  // above, via a different path.
+  const [membersDialogOrgId, setMembersDialogOrgId] = useState<string | null>(null)
   const [newOrgName, setNewOrgName] = useState("")
   const [newOrgSlug, setNewOrgSlug] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
@@ -66,11 +83,22 @@ export default function ManageOrganizationsPage() {
   )
 
   const currentOrgId = selectedOrgId ?? organizations[0]?.id ?? null
-  const selectedOrg = organizations.find((org) => org.id === currentOrgId) ?? null
+
+  // If the org id read from storage is no longer a valid membership (e.g. the
+  // user left or was removed from it), fall back to organizations[0] rather
+  // than getting stuck pointing at an org that no longer exists.
+  useEffect(() => {
+    if (!selectedOrgId || organizations.length === 0) return
+    if (!organizations.some((org) => org.id === selectedOrgId)) {
+      setSelectedOrgId(null)
+    }
+  }, [organizations, selectedOrgId])
+
+  const membersDialogOrg = organizations.find((org) => org.id === membersDialogOrgId) ?? null
 
   const { data: membersData, isLoading: membersLoading, mutate: mutateMembers } = useSWR(
-    user && showMembersDialog && selectedOrg?.id ? `organizations:members:${selectedOrg.id}` : null,
-    () => organizationsApi.listMembers(selectedOrg!.id)
+    user && showMembersDialog && membersDialogOrg?.id ? `organizations:members:${membersDialogOrg.id}` : null,
+    () => organizationsApi.listMembers(membersDialogOrg!.id)
   )
   const members = (membersData?.members as Member[] | undefined) ?? []
 
@@ -133,6 +161,7 @@ export default function ManageOrganizationsPage() {
       await organizationsApi.delete(orgId)
       await mutate()
       if (selectedOrgId === orgId) setSelectedOrgId(null)
+      if (membersDialogOrgId === orgId) setMembersDialogOrgId(null)
       toast.success("Organization deleted")
     } catch (error) {
       console.error("Failed to delete organization", error)
@@ -143,13 +172,13 @@ export default function ManageOrganizationsPage() {
   }
 
   const handleInviteMember = async () => {
-    if (!selectedOrg || !inviteEmail.trim()) {
+    if (!membersDialogOrg || !inviteEmail.trim()) {
       toast.error("Invite email is required")
       return
     }
     try {
       setIsMutating(true)
-      await organizationsApi.inviteMember(selectedOrg.id, inviteEmail.trim(), inviteRole, sendInviteEmail)
+      await organizationsApi.inviteMember(membersDialogOrg.id, inviteEmail.trim(), inviteRole, sendInviteEmail)
       setInviteEmail("")
       await mutateMembers()
       toast.success(sendInviteEmail ? "Invitation sent" : "Member added without invite email")
@@ -162,10 +191,10 @@ export default function ManageOrganizationsPage() {
   }
 
   const handleUpdateMemberRole = async (member: Member, role: "admin" | "member") => {
-    if (!selectedOrg) return
+    if (!membersDialogOrg) return
     try {
       setIsMutating(true)
-      await organizationsApi.updateMemberRole(selectedOrg.id, member.id, role)
+      await organizationsApi.updateMemberRole(membersDialogOrg.id, member.id, role)
       await mutateMembers()
       toast.success("Member role updated")
     } catch (error) {
@@ -177,11 +206,11 @@ export default function ManageOrganizationsPage() {
   }
 
   const handleRemoveMember = async (member: Member) => {
-    if (!selectedOrg) return
+    if (!membersDialogOrg) return
     if (!window.confirm(`Remove ${member.email ?? member.id} from organization?`)) return
     try {
       setIsMutating(true)
-      await organizationsApi.removeMember(selectedOrg.id, member.id)
+      await organizationsApi.removeMember(membersDialogOrg.id, member.id)
       await mutateMembers()
       toast.success("Member removed")
     } catch (error) {
@@ -378,7 +407,7 @@ export default function ManageOrganizationsPage() {
                         <DropdownMenuItem
                           className="gap-2 cursor-pointer"
                           onClick={() => {
-                            setSelectedOrgId(org.id)
+                            setMembersDialogOrgId(org.id)
                             setShowMembersDialog(true)
                           }}
                         >
@@ -465,7 +494,7 @@ export default function ManageOrganizationsPage() {
           <DialogHeader>
             <DialogTitle>Manage Members</DialogTitle>
             <DialogDescription>
-              Invite and manage members in {selectedOrg?.name ?? "organization"}.
+              Invite and manage members in {membersDialogOrg?.name ?? "organization"}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
