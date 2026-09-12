@@ -68,6 +68,53 @@ export function buildConversationTranscript(
   return transcript
 }
 
+/** Same message by content, for two copies that carry different ids. */
+function sameMessage(a: UIMessage, b: UIMessage): boolean {
+  return a.role === b.role && normalizeUiText(a) === normalizeUiText(b)
+}
+
+/**
+ * How many messages at the head of `appended` re-describe the tail of `stored`.
+ *
+ * Returns the longest such run, so a whole duplicated turn collapses rather than
+ * only its first message.
+ */
+function trailingOverlapLength(stored: UIMessage[], appended: UIMessage[]): number {
+  const limit = Math.min(stored.length, appended.length)
+  for (let run = limit; run > 0; run -= 1) {
+    let matches = true
+    for (let offset = 0; offset < run; offset += 1) {
+      if (!sameMessage(stored[stored.length - run + offset], appended[offset])) {
+        matches = false
+        break
+      }
+    }
+    if (matches) return run
+  }
+  return 0
+}
+
+/**
+ * Combine server-stored messages with the client's live ones.
+ *
+ * Id matching alone is not enough, and never was: live ids are generated on the
+ * client while stored ids are database uuids, so the same turn appears under two
+ * different ids and every id-based check misses it. Stored `[user, assistant]`
+ * plus live `[user, assistant]` therefore rendered as user, assistant, user,
+ * assistant — the doubling reported from a live screenshot.
+ *
+ * This was already known for the user message: the previous implementation
+ * dropped a duplicated leading live *user* prompt by comparing text. The bug was
+ * that the same comparison stopped there, so the assistant reply behind it still
+ * duplicated. This applies that existing rule to the whole overlapping run
+ * instead of just the first message.
+ *
+ * Stored wins on a match because it is the persisted copy. One case this does
+ * not catch: a live assistant message still mid-stream whose text is a partial
+ * prefix of the stored row will not compare equal, so it can still duplicate.
+ * Matching on prefixes would risk collapsing genuinely distinct replies, so it
+ * is deliberately left alone.
+ */
 export function mergeTranscriptWithLiveMessages(
   storedTranscript: UIMessage[],
   liveMessages: UIMessage[],
@@ -79,17 +126,9 @@ export function mergeTranscriptWithLiveMessages(
   const appended = liveMessages.filter((message) => !storedIds.has(message.id))
   if (appended.length === 0) return storedTranscript
 
-  const lastStored = storedTranscript[storedTranscript.length - 1]
-  const firstLive = appended[0]
-  if (
-    lastStored?.role === "user" &&
-    firstLive?.role === "user" &&
-    normalizeUiText(lastStored) === normalizeUiText(firstLive)
-  ) {
-    return [...storedTranscript, ...appended.slice(1)]
-  }
-
-  return [...storedTranscript, ...appended]
+  const overlap = trailingOverlapLength(storedTranscript, appended)
+  if (overlap === 0) return [...storedTranscript, ...appended]
+  return [...storedTranscript, ...appended.slice(overlap)]
 }
 
 function normalizeUiText(message: UIMessage): string {
