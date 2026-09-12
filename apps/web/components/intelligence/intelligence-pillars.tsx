@@ -71,6 +71,9 @@ export function IntelligencePillars({
   const activeRuns = coreState?.core?.activeAgentRuns
   const actionsTaken = readNumber(outcomesByEvent?.recommendation_created, 0)
 
+  // businessImpactScore is already 0-100 (see backend business_impact_service.py
+  // `max(0, min(100, 100 - penalty))`) -- do not multiply by 100 again.
+  // avgOutcomeWinRate is a 0-1 fraction -- multiply by 100 for a percent.
   const impactScore = businessImpact?.businessImpactScore
   const winRate = businessImpact?.avgOutcomeWinRate
 
@@ -123,7 +126,7 @@ export function IntelligencePillars({
         />
         <GravitreMetric
           label="Improves"
-          value={impactScore != null ? Math.round(impactScore * 100) : "—"}
+          value={impactScore != null ? Math.round(impactScore) : "—"}
           hint={
             winRate != null
               ? `${Math.round(winRate * 100)}% avg outcome win rate`
