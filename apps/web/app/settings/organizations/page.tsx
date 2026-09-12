@@ -30,6 +30,7 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { organizationsApi } from "@/lib/api"
+import { invalidateOrgCache, setSelectedOrgInStorage } from "@/lib/org-context"
 import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
@@ -103,8 +104,20 @@ export default function ManageOrganizationsPage() {
     try {
       setIsMutating(true)
       await organizationsApi.switch(orgId)
+      // Bug fix (2026-09-11): the backend switch succeeded and this toasted
+      // success, but nothing ever updated the client-side org context that
+      // every other page's API calls actually read (`x-org-id` comes from
+      // localStorage via getSelectedOrgFromStorage — see lib/fetcher.ts),
+      // so the rest of the app kept operating on the previous org. Mirror
+      // the working top-bar switch pattern: persist the new org to
+      // localStorage, drop the cached org id, then reload so every
+      // SWR-cached, org-scoped fetch picks up the new org_id header.
+      const targetOrg = organizations.find((org) => org.id === orgId)
+      setSelectedOrgInStorage({ id: orgId, name: targetOrg?.name ?? "Organization" })
+      invalidateOrgCache()
       setSelectedOrgId(orgId)
       toast.success("Organization switched")
+      window.location.reload()
     } catch (error) {
       console.error("Failed to switch organization", error)
       toast.error(error instanceof Error ? error.message : "Failed to switch organization")
