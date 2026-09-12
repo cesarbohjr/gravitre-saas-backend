@@ -223,6 +223,11 @@ export function useVoiceDuplexSession(options: Options) {
   // are then followed by a close. Hold that explanation so the end of the ladder
   // can repeat it instead of replacing it with the generic string.
   const lastServerErrorRef = useRef<string | null>(null)
+  // Mirrored into state as well as the ref: the ref is what the retry ladder
+  // reads, but a ref cannot re-render the orb, and the orb is where a person
+  // actually finds out why voice stopped. Without this the surface had no access
+  // to the server's explanation at all.
+  const [lastServerError, setLastServerError] = useState<string | null>(null)
   const lastServerErrorBillingRef = useRef(false)
   // Held for diagnostics only. Always pass it through redactVoiceWsUrl before it
   // leaves this module: the access token rides in the query string.
@@ -1025,6 +1030,7 @@ export function useVoiceDuplexSession(options: Options) {
         // A live socket also retires the previous attempt's explanation; keeping
         // it would let a stale reason surface after an unrelated later failure.
         lastServerErrorRef.current = null
+        setLastServerError(null)
         lastServerErrorBillingRef.current = false
         setIsActive(true)
         setPresence("listening")
@@ -1057,6 +1063,7 @@ export function useVoiceDuplexSession(options: Options) {
             // reason so the final toast repeats it rather than degrading to
             // "Voice connection interrupted".
             lastServerErrorRef.current = err
+            setLastServerError(err)
             lastServerErrorBillingRef.current = billing
           }
           optsRef.current.onError?.(err, billing)
@@ -1359,6 +1366,7 @@ export function useVoiceDuplexSession(options: Options) {
 
   return {
     presence,
+    lastServerError,
     levels,
     amplitude,
     provisionalTranscript,

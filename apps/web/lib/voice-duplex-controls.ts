@@ -40,6 +40,7 @@ export type ChatSurfaceVoiceProps = Pick<
 export type DuplexSessionLike = {
   isActive: boolean
   presence: DuplexControls["presence"]
+  lastServerError?: string | null
   levels?: number[] | null
   amplitude?: number | null
   playbackBlocked?: boolean
@@ -64,6 +65,7 @@ export function buildDuplexControls(
   return {
     active: session.isActive,
     presence: session.presence,
+    lastServerError: session.lastServerError ?? null,
     levels: session.levels,
     amplitude: session.amplitude,
     micMuted: session.micMuted,

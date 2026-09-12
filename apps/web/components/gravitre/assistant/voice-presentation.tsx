@@ -287,7 +287,14 @@ export function GravitreOrb({
   )
 }
 
-export type VoiceOrbPhase = "blocked" | "muted" | "listening" | "replying" | "ended"
+export type VoiceOrbPhase =
+  | "blocked"
+  | "muted"
+  | "listening"
+  | "replying"
+  | "ended"
+  | "failed"
+  | "reconnecting"
 
 /**
  * Resolve the orb's heading and subtitle from ONE phase.
@@ -305,6 +312,8 @@ export function resolveVoiceOrbCopy({
   sessionLive = true,
   agentLabel = "Gravitre",
   activityLabel,
+  presence,
+  failureReason,
 }: {
   playbackBlocked?: boolean
   micMuted?: boolean
@@ -313,19 +322,31 @@ export function resolveVoiceOrbCopy({
   sessionLive?: boolean
   agentLabel?: string
   activityLabel?: string | null
+  presence?: string | null
+  failureReason?: string | null
 }): { phase: VoiceOrbPhase; label: string; subtitle: string } {
   const isUser = speaker === "user"
+  // Failure outranks the mic/session booleans. Both "error" and "disconnected"
+  // leave micActive and sessionLive false, which used to land on "ended" -- so a
+  // session that failed to connect rendered the same calm "voice ended / tap the
+  // mic to start talking again" as one the user deliberately hung up. That is
+  // why a real failure looked like nothing happening: the surface had no way to
+  // say a session had died, or why.
   const phase: VoiceOrbPhase = playbackBlocked
     ? "blocked"
-    : micMuted
-      ? "muted"
-      : micActive
-        ? "listening"
-        : !isUser
-          ? "replying"
-          : sessionLive
+    : presence === "error"
+      ? "failed"
+      : presence === "disconnected"
+        ? "reconnecting"
+        : micMuted
+          ? "muted"
+          : micActive
             ? "listening"
-            : "ended"
+            : !isUser
+              ? "replying"
+              : sessionLive
+                ? "listening"
+                : "ended"
 
   switch (phase) {
     case "blocked":
@@ -349,6 +370,21 @@ export function resolveVoiceOrbCopy({
         phase,
         label: "I'm listening… What's on your mind?",
         subtitle: `${agentLabel} voice channel is live`,
+      }
+    case "failed":
+      return {
+        phase,
+        label: "Voice couldn't connect",
+        // The server's own explanation when there is one. Falling back to advice
+        // rather than an error code, since a code tells the person nothing they
+        // can act on.
+        subtitle: failureReason?.trim() || "Tap the mic to try again",
+      }
+    case "reconnecting":
+      return {
+        phase,
+        label: "Reconnecting…",
+        subtitle: `The voice channel dropped — ${agentLabel} is trying again`,
       }
     default:
       return {
@@ -388,9 +424,15 @@ export function VoiceOrbTakeover({
   playbackBlocked = false,
   onEnableSound,
   activityLabel,
+  presence,
+  failureReason,
 }: {
   speaker: VoiceSpeaker
   agentLabel?: string
+  /** Raw duplex presence, so a dead session can say so instead of "ended". */
+  presence?: string | null
+  /** The server's explanation, when it sent one. */
+  failureReason?: string | null
   /** Leave voice mode entirely, back to typed text. */
   onExitVoice: () => void
   /** Mute/unmute the mic while the call stays connected. */
@@ -451,6 +493,8 @@ export function VoiceOrbTakeover({
   }, [fullscreen])
 
   const { label, subtitle } = resolveVoiceOrbCopy({
+    presence,
+    failureReason,
     playbackBlocked,
     micMuted,
     micActive,

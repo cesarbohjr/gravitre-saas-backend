@@ -105,6 +105,8 @@ export type SharedChatComposerControlsProps = {
     toggle: () => void
     bargeIn: () => void
     supported?: boolean
+    /** The server's explanation for a failed session, when it sent one. */
+    lastServerError?: string | null
     /** Browser autoplay gate tripped — reply audio held, not dropped. */
     playbackBlocked?: boolean
     /** Fresh user gesture — retries the held-back reply and unlocks future turns. */
@@ -491,6 +493,8 @@ export function SharedChatComposerControls({
             micActive={effectiveListening && !micMuted}
             micMuted={micMuted}
             sessionLive={Boolean(effectiveListening)}
+            presence={useDuplex ? effectivePresence : null}
+            failureReason={useDuplex ? duplex?.lastServerError : null}
             variant={effectiveOrbVariant}
             amplitude={duplex?.amplitude}
             playbackBlocked={playbackBlocked}
