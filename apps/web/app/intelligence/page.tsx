@@ -18,6 +18,10 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { useWhatMattersNow } from "@/components/intelligence/what-matters-now"
+import {
+  canonicalLearningsForDisplay,
+  canonicalPredictionsToAttentionSignals,
+} from "@/lib/intelligence/canonical-attention"
 import { AskGravitreComposer, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
 import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
@@ -134,23 +138,17 @@ function IntelligenceCenterInner() {
   const { data: simulations } = useSWR(user ? "intelligence/simulations" : null, () =>
     intelligenceApi.simulations(),
   )
-  const { data: modelCatalog } = useSWR(user ? "intelligence/model-catalog" : null, () =>
-    intelligenceApi.modelCatalog(),
-  )
-  const { data: readiness } = useSWR(
-    user ? "intelligence/training-readiness" : null,
-    () => intelligenceApi.trainingReadiness(),
-    { revalidateOnFocus: false },
-  )
   const { data: pageContext } = useSWR(
     user ? ["intelligence/page-context", activeLens] : null,
     () => intelligenceApi.pageContext({ windowHours: 24, activeLens }),
     { revalidateOnFocus: false },
   )
 
-  const { data: businessSignals, isLoading: signalsLoading } = useWhatMattersNow(Boolean(user))
+  const { data: businessSignals, isLoading: legacySignalsLoading } = useWhatMattersNow(
+    Boolean(user) && !pageContext,
+  )
   const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
-  const { knowledgeGraph, coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
+  const { coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
   const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
 
   const mapAgents = useMemo(
@@ -158,30 +156,46 @@ function IntelligenceCenterInner() {
     [pageContext?.snapshot.agents],
   )
 
+  const canonicalMetrics = pageContext?.metrics ?? pageContext?.snapshot.metrics
+
   const lensMetrics = useMemo(
     () =>
       buildLensMetrics({
-        knowledgeGraph: knowledgeGraph.data,
-        readiness,
-        modelCatalog,
+        knowledgeGraph: null,
+        readiness: null,
+        modelCatalog: null,
         coreState: coreState.data,
         businessImpact: businessImpact.data,
         outcomesByEvent: (outcomes?.by_event_type as Record<string, number> | undefined) ?? {},
-        canonicalMetrics: pageContext?.metrics ?? pageContext?.snapshot.metrics,
+        canonicalMetrics,
       }),
-    [
-      knowledgeGraph.data,
-      readiness,
-      modelCatalog,
-      coreState.data,
-      businessImpact.data,
-      outcomes,
-      pageContext?.metrics,
-      pageContext?.snapshot.metrics,
-    ],
+    [coreState.data, businessImpact.data, outcomes, canonicalMetrics],
   )
 
-  const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
+  const canonicalAttentionSignals = useMemo(
+    () =>
+      canonicalPredictionsToAttentionSignals(
+        pageContext?.snapshot.predictions as Parameters<
+          typeof canonicalPredictionsToAttentionSignals
+        >[0],
+      ),
+    [pageContext?.snapshot.predictions],
+  )
+
+  const signals = useMemo(() => {
+    if (canonicalAttentionSignals.length > 0) return canonicalAttentionSignals
+    return (businessSignals?.signals as Record<string, unknown>[] | undefined) ?? []
+  }, [canonicalAttentionSignals, businessSignals?.signals])
+
+  const signalsLoading = pageContext ? false : legacySignalsLoading
+
+  const displayLearnings = useMemo(
+    () =>
+      canonicalLearningsForDisplay(
+        pageContext?.snapshot.learnings as Parameters<typeof canonicalLearningsForDisplay>[0],
+      ),
+    [pageContext?.snapshot.learnings],
+  )
 
   const graphNodeIds = useMemo(() => {
     const ids = new Set<string>()
@@ -308,11 +322,11 @@ function IntelligenceCenterInner() {
                 lens={activeLens}
                 signals={signals}
                 agents={mapAgents}
-                entityTypes={knowledgeGraph.data?.entity_types}
-                readiness={readiness}
-                orgTraining={modelCatalog?.orgTrainingStatus}
-                entityCount={knowledgeGraph.data?.entity_count}
-                relationshipCount={knowledgeGraph.data?.relationship_count}
+                entityTypes={undefined}
+                readiness={undefined}
+                orgTraining={undefined}
+                entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
+                relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
                 canonicalGraph={pageContext?.graph}
                 selection={mapSelection}
                 onSelectionChange={setMapSelection}
@@ -371,7 +385,7 @@ function IntelligenceCenterInner() {
             }}
           />
 
-          <WhatGravitreLearnedSection />
+          <WhatGravitreLearnedSection learnings={displayLearnings} />
 
           <BusinessImpactCompact totalEvents={totalEvents} avgConfidence={avgConfidence} />
 

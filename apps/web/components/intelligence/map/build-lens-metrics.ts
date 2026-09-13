@@ -27,17 +27,22 @@ export function buildLensMetrics({
     outcomes?: Record<string, number | null | undefined>
   } | null
 }): IntelligenceLensMetrics {
+  const hasCanonical = canonicalMetrics != null
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
   const predictingLive = Object.values(orgTraining).filter((row) => row?.artifact_loaded).length
   const trackedModels = Object.keys(orgTraining).length
-  const entityCount = canonicalMetrics?.knowledge?.knownEntities ?? knowledgeGraph?.entity_count
-  const relationshipCount =
-    canonicalMetrics?.knowledge?.knownRelationships ?? knowledgeGraph?.relationship_count
+  const entityCount = hasCanonical
+    ? canonicalMetrics?.knowledge?.knownEntities
+    : (canonicalMetrics?.knowledge?.knownEntities ?? knowledgeGraph?.entity_count)
+  const relationshipCount = hasCanonical
+    ? canonicalMetrics?.knowledge?.knownRelationships
+    : (canonicalMetrics?.knowledge?.knownRelationships ?? knowledgeGraph?.relationship_count)
   const configuredActive = canonicalMetrics?.execution?.configuredActiveAgents
   const currentlyRunning = canonicalMetrics?.execution?.currentlyRunningAgents
-  const activeRuns = coreState?.core?.activeAgentRuns
+  const activeRuns = hasCanonical ? undefined : coreState?.core?.activeAgentRuns
   const actionsTaken = readNumber(
-    canonicalMetrics?.execution?.actionsCompleted ?? outcomesByEvent?.recommendation_created,
+    canonicalMetrics?.execution?.actionsCompleted ??
+      (hasCanonical ? undefined : outcomesByEvent?.recommendation_created),
     0,
   )
   const activePredictions = canonicalMetrics?.predictions?.activePredictions
@@ -54,10 +59,10 @@ export function buildLensMetrics({
         : "—"
   const actsHint =
     configuredActive != null && currentlyRunning != null
-      ? `${currentlyRunning} running now`
+      ? `${currentlyRunning} running · ${configuredActive} configured active`
       : actionsTaken > 0
         ? `${actionsTaken} actions completed`
-        : "Configured active agents"
+        : "Configured active agents (not swarm run count)"
 
   return {
     knows: {
@@ -75,18 +80,15 @@ export function buildLensMetrics({
           : "No business learning yet",
     },
     predicts: {
-      value:
-        activePredictions != null
-          ? String(activePredictions)
-          : trackedModels > 0
-            ? String(predictingLive)
-            : "—",
+      value: activePredictions != null ? String(activePredictions) : hasCanonical ? "0" : "—",
       hint:
         activePredictions != null
-          ? "Deduped predictions"
-          : trackedModels > 0
-            ? `of ${trackedModels} in catalog`
-            : "No catalog models",
+          ? "Deduped business predictions"
+          : hasCanonical
+            ? "No active predictions in window"
+            : trackedModels > 0
+              ? `${predictingLive} models with artifacts`
+              : "Awaiting canonical state",
     },
     acts: {
       value: actsValue,

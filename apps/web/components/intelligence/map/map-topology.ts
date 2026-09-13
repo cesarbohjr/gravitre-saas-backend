@@ -3,6 +3,7 @@ import type { Agent } from "@/types/api"
 import type { IntelligenceMapLens } from "./intelligence-map-lens"
 import { formatDepartmentLabel, radialLayout } from "@/components/intelligence/core/types"
 import { readString } from "@/lib/intelligence/helpers"
+import { modelBusinessLabel } from "@/lib/intelligence/business-labels"
 
 export type MapNodeKind = "department" | "agent" | "entity-type" | "model" | "signal" | "learning"
 
@@ -127,7 +128,7 @@ export function buildMapTopology({
       const modelNodes: MapNode[] = modelEntries.map(([key, info]) => ({
         id: `model:${key}`,
         kind: "model",
-        label: key,
+        label: modelBusinessLabel(key),
         sublabel: readString(info?.status, "tracked"),
         state: readString(info?.status, "") === "ready" ? "resolved" : "low-confidence",
         emphasis: readString(info?.status, "") === "ready" ? 1 : 0.55,
@@ -137,7 +138,7 @@ export function buildMapTopology({
           modelNodes.push({
             id: `model:${key}`,
             kind: "model",
-            label: key,
+            label: modelBusinessLabel(key),
             sublabel: row?.artifact_loaded ? "artifact loaded" : "not loaded",
             state: row?.artifact_loaded ? "trace" : "idle",
             emphasis: row?.artifact_loaded ? 1 : 0.4,

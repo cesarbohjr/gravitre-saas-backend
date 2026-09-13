@@ -106,7 +106,13 @@ export function BusinessImpactCompact({
   )
 }
 
-export function WhatGravitreLearnedSection({ className }: { className?: string }) {
+export function WhatGravitreLearnedSection({
+  learnings,
+  className,
+}: {
+  learnings?: Array<{ id: string; statement: string; learnedAt?: string; confidence?: string }>
+  className?: string
+}) {
   return (
     <section className={cn("space-y-3", className)} aria-labelledby="learned-heading">
       <div className="flex items-end justify-between gap-3">
@@ -124,6 +130,26 @@ export function WhatGravitreLearnedSection({ className }: { className?: string }
           <ArrowRight className="h-3 w-3" aria-hidden />
         </Link>
       </div>
+      {learnings && learnings.length > 0 ? (
+        <ul className="grid gap-2 md:grid-cols-3">
+          {learnings.map((row) => (
+            <li
+              key={row.id}
+              className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-3"
+            >
+              <p className={cn(TYPE.cardTitle, "line-clamp-3")}>{row.statement}</p>
+              {row.learnedAt ? (
+                <p className={cn(TYPE.meta, "mt-1")}>Learned {row.learnedAt}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={cn(TYPE.bodyMuted, "rounded-md border border-dashed border-divide px-4 py-3")}>
+          No validated business learning in canonical state yet — not model readiness or platform
+          telemetry.
+        </p>
+      )}
       <HeuristicSuggestionCards />
     </section>
   )
