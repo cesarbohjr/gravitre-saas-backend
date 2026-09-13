@@ -1,40 +1,44 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import {
-  GravitreMetric,
-  GravitrePageHeader,
-} from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { intelligenceApi } from "@/lib/api"
+import { agentsApi, intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { formatPercent, readNumber } from "@/lib/intelligence/helpers"
+import { readNumber } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
-import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-suggestion-cards"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
-import { GravitreIntelligenceCoreLive } from "@/components/intelligence/core/gravitre-intelligence-core-live"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
 import { TrainingReadinessStrip } from "@/components/intelligence/training-readiness-strip"
-import { WhatMattersNowPanel, useWhatMattersNow } from "@/components/intelligence/what-matters-now"
-import { AskGravitreEntry, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-entry"
-import { IntelligencePillars, useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
+import { useWhatMattersNow } from "@/components/intelligence/what-matters-now"
+import { AskGravitreComposer, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
+import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
 import { LivingMineralField } from "@/components/gravitre/visual"
-import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
-import { StatsSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import {
+  IntelligenceMap,
+  type IntelligenceMapSelection,
+} from "@/components/intelligence/map/intelligence-map"
+import { IntelligenceLensBar } from "@/components/intelligence/map/intelligence-lens-bar"
+import { IntelligenceMapContextPanel } from "@/components/intelligence/map/intelligence-map-context-panel"
+import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
+import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
+import {
+  BusinessImpactCompact,
+  WhatGravitreLearnedSection,
+  WhatNeedsAttentionCompact,
+} from "@/components/intelligence/map/intelligence-support-sections"
 import { TYPE } from "@/lib/design-system"
-import { ESTIMATED_CONFIDENCE_LABEL } from "@/lib/outcome-labels"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import {
@@ -47,15 +51,10 @@ import {
   Sparkle,
 } from "@phosphor-icons/react"
 
-/**
- * The seven destinations answer three different questions, so they're grouped
- * rather than dumped as one flat 7-card grid where everything competes equally:
- * how is it performing, what models drive it, and what does it know.
- */
-const LINK_GROUPS = [
+const ADVANCED_LINK_GROUPS = [
   {
     heading: "Measure",
-    description: "How the system is performing right now.",
+    description: "Operational health, reports, and predictive ops.",
     links: [
       { ...SURFACE_COPY.hubLinks.operationalHealth, icon: Heartbeat },
       { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
@@ -64,7 +63,7 @@ const LINK_GROUPS = [
   },
   {
     heading: "Models",
-    description: "What drives the predictions and how they're managed.",
+    description: "Registry, built-in catalog, and training.",
     links: [
       { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
       { ...SURFACE_COPY.hubLinks.models, icon: Database },
@@ -72,7 +71,7 @@ const LINK_GROUPS = [
   },
   {
     heading: "Knowledge",
-    description: "What the system has learned and retained.",
+    description: "Learning hub and org memory.",
     links: [
       { ...SURFACE_COPY.hubLinks.learning, icon: Sparkle },
       { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
@@ -115,7 +114,10 @@ function IntelligenceSectionRedirect() {
 function IntelligenceCenterInner() {
   const { user } = useAuth()
   const copy = SURFACE_COPY.insights
-  const { data: outcomes, error, mutate, isLoading } = useSWR(
+  const [activeLens, setActiveLens] = useState<IntelligenceMapLens>("knows")
+  const [mapSelection, setMapSelection] = useState<IntelligenceMapSelection>(null)
+
+  const { data: outcomes, error, mutate } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
     { revalidateOnFocus: false },
@@ -126,7 +128,6 @@ function IntelligenceCenterInner() {
   const { data: simulations } = useSWR(user ? "intelligence/simulations" : null, () =>
     intelligenceApi.simulations(),
   )
-  // Module C: surface heuristic vs trained runtime on the hub (not only admin models).
   const { data: modelCatalog } = useSWR(user ? "intelligence/model-catalog" : null, () =>
     intelligenceApi.modelCatalog(),
   )
@@ -135,20 +136,27 @@ function IntelligenceCenterInner() {
     () => intelligenceApi.trainingReadiness(),
     { revalidateOnFocus: false },
   )
+  const { data: agentsResponse } = useSWR(user ? "intelligence/map/agents" : null, () =>
+    agentsApi.list(),
+  )
 
-  // Brief-Phase 3 (2026-09-11): Overview "Three Real Layers" — What matters
-  // now (Layer 2), Ask Gravitre (Layer 3), and the KNOWS/LEARNS/PREDICTS/
-  // ACTS/IMPROVES summary. Every source below is a real, already-scoped
-  // endpoint; see docs/delivery/gravitre-intelligence-redesign-phase0-
-  // proposal-2026-09-11.md §17 for the mapping.
   const { data: businessSignals, isLoading: signalsLoading } = useWhatMattersNow(Boolean(user))
   const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
   const { knowledgeGraph, coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
-  // Phase 4 (2026-09-11) — "Why Gravitre thinks this": real contributing
-  // signals/sources/evidence-counts/confidence/freshness from
-  // department_signal_scoring_service.score_all_departments(). See
-  // docs/delivery/gravitre-intelligence-redesign-phase0-proposal-2026-09-11.md §18.
   const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
+
+  const lensMetrics = useMemo(
+    () =>
+      buildLensMetrics({
+        knowledgeGraph: knowledgeGraph.data,
+        readiness,
+        modelCatalog,
+        coreState: coreState.data,
+        businessImpact: businessImpact.data,
+        outcomesByEvent: (outcomes?.by_event_type as Record<string, number> | undefined) ?? {},
+      }),
+    [knowledgeGraph.data, readiness, modelCatalog, coreState.data, businessImpact.data, outcomes],
+  )
 
   if (!user) {
     return (
@@ -171,207 +179,173 @@ function IntelligenceCenterInner() {
   }
 
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
-  const byEvent = (outcomes?.by_event_type as Record<string, number> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
-  const trustRecord = trust as Record<string, unknown> | undefined
-  const confidenceIsEstimate = Boolean(
-    trustRecord?.confidence_is_estimate ?? trustRecord?.confidenceIsEstimate,
-  )
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
   const hasRuntimeRows = Object.keys(orgTraining).length > 0
+  const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
 
   return (
     <AppShell title={copy.title}>
-      <div className="relative space-y-6 bg-[color:var(--g-canvas)] p-4 md:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 overflow-hidden">
-          <LivingMineralField intensity="section" className="opacity-80" />
-        </div>
+      <div className="relative bg-[color:var(--g-canvas)]">
         <IntelligenceSectionRedirect />
-        <GravitrePageHeader
-          className="relative border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/80 backdrop-blur-sm"
-          eyebrow="GIBE"
-          title={copy.title}
-          description={copy.description}
-          icon={<NucleoIntelligence className="h-5 w-5" />}
-        />
-        <IntelligenceHubTabs active="overview" className="relative mb-2 flex-wrap" />
 
-        <GravitreIntelligenceCoreLive className="relative" />
+        {/* Dominant map zone — the product, not a card among cards */}
+        <section className="relative border-b border-divide">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <LivingMineralField intensity="section" className="opacity-90" />
+          </div>
+          <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
+            <GravitrePageHeader
+              className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/75 backdrop-blur-sm"
+              eyebrow="GIBE"
+              title={copy.title}
+              description="One shared intelligence coordinating your business — explore the live map, then inspect evidence below."
+              icon={<NucleoIntelligence className="h-5 w-5" />}
+            />
+            <IntelligenceHubTabs active="overview" className="flex-wrap" />
 
-        <IntelligencePillars
-          className="relative"
-          readiness={readiness}
-          modelCatalog={modelCatalog}
-          outcomesByEvent={byEvent}
-          knowledgeGraph={knowledgeGraph.data}
-          coreState={coreState.data}
-          businessImpact={businessImpact.data}
-        />
+            <AskGravitreComposer
+              variant="map"
+              suggestions={dailyBriefing?.suggestions}
+            />
 
-        <div className="relative grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
-          <WhatMattersNowPanel signals={businessSignals?.signals as Record<string, unknown>[] | undefined} isLoading={signalsLoading} />
-          <AskGravitreEntry suggestions={dailyBriefing?.suggestions} />
-        </div>
+            <div className="flex min-h-[52vh] flex-col gap-4 lg:flex-row">
+              <IntelligenceMap
+                lens={activeLens}
+                signals={signals}
+                agents={agentsResponse?.agents}
+                entityTypes={knowledgeGraph.data?.entity_types}
+                readiness={readiness}
+                orgTraining={modelCatalog?.orgTrainingStatus}
+                entityCount={knowledgeGraph.data?.entity_count}
+                relationshipCount={knowledgeGraph.data?.relationship_count}
+                selection={mapSelection}
+                onSelectionChange={setMapSelection}
+                className="min-h-[48vh] lg:min-h-[52vh]"
+              />
+              <IntelligenceMapContextPanel
+                selection={mapSelection}
+                className="w-full shrink-0 lg:w-80"
+              />
+            </div>
 
-        <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
+            <IntelligenceLensBar
+              activeLens={activeLens}
+              onLensChange={(lens) => {
+                setActiveLens(lens)
+                setMapSelection(null)
+              }}
+              metrics={lensMetrics}
+            />
+          </div>
+        </section>
 
-        {/* Always show Module C strip — empty state is honest when catalog has no rows */}
-        <div className="relative">
-          <GibeHonestyStrip orgTraining={hasRuntimeRows ? orgTraining : null} />
-        </div>
-
-        <div className="relative">
-          <TrainingReadinessStrip readiness={readiness} loading={readinessLoading} />
-        </div>
-
-        {isLoading && !outcomes ? (
-          <StatsSkeleton count={4} />
-        ) : totalEvents === 0 ? (
-          <EmptyState
-            variant="ai"
-            iconSlot={<Sparkle className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
-            title={copy.emptyTitle}
-            description={copy.emptyDescription}
+        {/* Contextual support — subordinate to the map */}
+        <div className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 md:px-6">
+          <WhatNeedsAttentionCompact
+            signals={signals}
+            isLoading={signalsLoading}
+            onSelectSignal={(signal) => {
+              setMapSelection({ kind: "signal", signal })
+              setActiveLens("predicts")
+              window.scrollTo({ top: 0, behavior: "smooth" })
+            }}
           />
-        ) : (
-          <section className="relative grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label={SURFACE_COPY.stats.outcomeEvents}
-              value={totalEvents}
-              hint="Business outcomes"
-              icon={<NucleoIntelligence className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label={
-                confidenceIsEstimate
-                  ? ESTIMATED_CONFIDENCE_LABEL
-                  : SURFACE_COPY.stats.avgConfidence
-              }
-              value={
-                avgConfidence != null ? (
-                  <span className="inline-flex flex-col gap-1">
-                    <span>{formatPercent(avgConfidence)}</span>
-                    <ConfidenceBadge
-                      score={avgConfidence}
-                      isEstimate={confidenceIsEstimate}
-                      showScore={false}
-                      className="text-[10px] normal-case tracking-normal"
+
+          <WhatGravitreLearnedSection />
+
+          <BusinessImpactCompact totalEvents={totalEvents} avgConfidence={avgConfidence} />
+
+          <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
+
+          <details className="group rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]">
+            <summary className="cursor-pointer list-none px-5 py-4 marker:content-none">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className={TYPE.eyebrow}>Advanced</p>
+                  <h2 className={TYPE.sectionTitle}>Models, training, routing, and deep tools</h2>
+                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
+                    Everything that powered the old dashboard layout — still here, no longer the
+                    primary experience.
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground group-open:rotate-180">▼</span>
+              </div>
+            </summary>
+            <div className="space-y-6 border-t border-divide px-5 py-5">
+              <GibeHonestyStrip orgTraining={hasRuntimeRows ? orgTraining : null} />
+              <TrainingReadinessStrip readiness={readiness} loading={readinessLoading} />
+              <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
+
+              <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
+                <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/50 p-5">
+                  <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h3>
+                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
+                    {SURFACE_COPY.sections.routingTraceHint}
+                  </p>
+                  <div className="mt-4 rounded-[var(--np-radius-md)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-6 text-center">
+                    <p className={TYPE.cardTitle}>No live routing trace on this hub</p>
+                    <p className={cn(TYPE.meta, "mt-1")}>
+                      Per-turn traces appear on chat surfaces with real SSE metadata.
+                    </p>
+                  </div>
+                </section>
+                <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/50 p-5">
+                  <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h3>
+                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
+                    {SURFACE_COPY.sections.latestSimulationHint}
+                  </p>
+                  <div className="mt-4">
+                    <SimulationCard
+                      simulation={(simulations as Record<string, unknown> | undefined) ?? null}
                     />
-                  </span>
-                ) : (
-                  "—"
-                )
-              }
-              hint={confidenceIsEstimate ? "Estimate" : "Trust period"}
-              warning={confidenceIsEstimate}
-            />
-            <GravitreMetric
-              label={SURFACE_COPY.stats.recommendationsCreated}
-              value={readNumber(byEvent.recommendation_created, 0)}
-              hint="Created"
-            />
-            <GravitreMetric
-              label={SURFACE_COPY.stats.recommendationsRejected}
-              value={readNumber(byEvent.recommendation_rejected, 0)}
-              hint="Rejected"
-              warning={readNumber(byEvent.recommendation_rejected, 0) > 0}
-            />
-          </section>
-        )}
-
-        {avgConfidence == null && !isLoading ? (
-          <p className={cn(TYPE.meta, "rounded-[var(--np-radius-md)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-3 py-2")}>
-            Avg confidence not yet available for this period — shown as — rather than a fabricated score.
-          </p>
-        ) : null}
-
-        <RecommendationExplanation
-          summary={SURFACE_COPY.sections.recommendationSummary}
-          confidence={typeof avgConfidence === "number" ? avgConfidence : null}
-          isEstimate={confidenceIsEstimate}
-          advisoryOnly
-          sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
-        />
-
-        <HeuristicSuggestionCards />
-
-        <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
-
-        <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
-          <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-            <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h2>
-            <p className={cn(TYPE.bodyMuted, "mt-1")}>
-              {SURFACE_COPY.sections.routingTraceHint}
-            </p>
-            <div
-              className="mt-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-6 text-center"
-            >
-              <p className={TYPE.cardTitle}>No live routing trace on this hub</p>
-              <p className={cn(TYPE.meta, "mt-1")}>
-                Per-turn traces appear on chat / decision surfaces with real SSE metadata — this page
-                does not invent “ok” stage chips.
-              </p>
-            </div>
-          </section>
-          <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-            <h2 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h2>
-            <p className={cn(TYPE.bodyMuted, "mt-1")}>{SURFACE_COPY.sections.latestSimulationHint}</p>
-            <div className="mt-4">
-              <SimulationCard simulation={(simulations as Record<string, unknown> | undefined) ?? null} />
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-6 border-t border-divide pt-6">
-          {LINK_GROUPS.map((group) => (
-            <section key={group.heading} aria-labelledby={`links-${group.heading}`}>
-              <div className="mb-3">
-                <h2 id={`links-${group.heading}`} className={TYPE.eyebrow}>
-                  {group.heading}
-                </h2>
-                <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
+                  </div>
+                </section>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {group.links.map((link) => {
-                  const LinkIcon = link.icon
-                  return (
-                    <Link
-                      key={link.route}
-                      href={link.route}
-                      className="group rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-surface)]"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-intelligence-surface)] text-[color:var(--g-intelligence)]"
+
+              {ADVANCED_LINK_GROUPS.map((group) => (
+                <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
+                  <div className="mb-3">
+                    <h3 id={`adv-${group.heading}`} className={TYPE.eyebrow}>
+                      {group.heading}
+                    </h3>
+                    <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {group.links.map((link) => {
+                      const LinkIcon = link.icon
+                      return (
+                        <Link
+                          key={link.route}
+                          href={link.route}
+                          className="group rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-4 transition-colors hover:border-[color:var(--g-brand-border)]"
                         >
-                          <LinkIcon className="h-5 w-5" weight="duotone" aria-hidden />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className={TYPE.cardTitle}>{link.title}</span>
-                          <p className={cn(TYPE.bodyMuted, "mt-1")}>{link.summary}</p>
-                        </span>
-                        <ArrowRight
-                          className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                          aria-hidden
-                        />
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
+                          <div className="flex items-start gap-3">
+                            <LinkIcon className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--g-intelligence)]" />
+                            <span className="min-w-0 flex-1">
+                              <span className={TYPE.cardTitle}>{link.title}</span>
+                              <p className={cn(TYPE.meta, "mt-1")}>{link.summary}</p>
+                            </span>
+                            <ArrowRight className="h-4 w-4 shrink-0 opacity-50 group-hover:translate-x-0.5" />
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-6">
-          <span className={TYPE.eyebrow}>Jump to</span>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={APP_ROUTES.agents}>Agents hub</Link>
-          </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={APP_ROUTES.agents}>Agents hub</Link>
+                </Button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </AppShell>

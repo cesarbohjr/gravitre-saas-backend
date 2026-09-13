@@ -26,10 +26,13 @@ export function DepartmentNode({
   department,
   reduced = false,
   style,
+  embedded = false,
 }: {
   department: IntelligenceCoreDepartment
   reduced?: boolean
   style?: CSSProperties
+  /** When true, parent handles positioning (map click targets). */
+  embedded?: boolean
 }) {
   const isActive = department.state === "flow-inward" || department.state === "trace"
   const isResolved = department.state === "resolved"
@@ -38,7 +41,7 @@ export function DepartmentNode({
 
   return (
     <motion.div
-      className="absolute -translate-x-1/2 -translate-y-1/2"
+      className={cn(!embedded && "absolute -translate-x-1/2 -translate-y-1/2")}
       style={style}
       animate={!reduced ? { y: [0, -3, 0] } : { y: 0 }}
       transition={!reduced ? { duration: 3.6, repeat: Infinity, ease: "easeInOut" } : undefined}

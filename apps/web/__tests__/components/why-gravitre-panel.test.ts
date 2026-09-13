@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { buildEvidenceGraph } from "@/components/intelligence/evidence-graph-topology"
 import {
   collectDepartmentGaps,
   evidenceEventCount,
@@ -6,6 +7,7 @@ import {
   relativeFreshness,
   sourceStatusLabel,
   type AllDepartmentsPayload,
+  type PriorityItem,
 } from "@/components/intelligence/why-gravitre-panel"
 
 /**
@@ -93,6 +95,50 @@ describe("why-gravitre-panel — flattenPriorities", () => {
   it("returns an empty array honestly when there is no scored data yet", () => {
     expect(flattenPriorities(undefined)).toEqual([])
     expect(flattenPriorities({ departments: [] })).toEqual([])
+  })
+})
+
+describe("evidence-graph — buildEvidenceGraph", () => {
+  const item: PriorityItem = {
+    workObjectId: "wo-1",
+    title: "Acme retention risk",
+    department: "support",
+    priorityScore: 82,
+    priorityBand: "high",
+    signalContributions: [
+      {
+        signalId: "sig-a",
+        label: "Support tickets",
+        points: 3,
+        evidence: [
+          { sourceLabel: "Zendesk", status: "live_connector", eventHits: 3 },
+          { sourceLabel: "Stripe", status: "missing" },
+        ],
+      },
+      {
+        signalId: "sig-b",
+        label: "Usage decline",
+        points: 2,
+        evidence: [{ sourceLabel: "HubSpot", status: "live_connector", externalSignalHits: 1 }],
+      },
+    ],
+    gaps: ["Engagement signal: no live source available."],
+  }
+
+  it("builds insight → signal → source nodes with honest event counts", () => {
+    const graph = buildEvidenceGraph(item)
+    expect(graph.nodes.filter((n) => n.kind === "insight")).toHaveLength(1)
+    expect(graph.nodes.filter((n) => n.kind === "signal")).toHaveLength(2)
+    expect(graph.nodes.filter((n) => n.kind === "source")).toHaveLength(3)
+    expect(graph.meta.totalEvidenceEvents).toBe(4)
+    expect(graph.meta.sourceLabels).toEqual(expect.arrayContaining(["Zendesk", "HubSpot"]))
+  })
+
+  it("marks missing sources with dashed edges and includes disclosed gaps", () => {
+    const graph = buildEvidenceGraph(item)
+    expect(graph.nodes.some((n) => n.kind === "gap")).toBe(true)
+    expect(graph.edges.some((e) => e.dashed)).toBe(true)
+    expect(graph.meta.gaps).toContain("Engagement signal: no live source available.")
   })
 })
 
