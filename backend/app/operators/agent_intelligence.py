@@ -3847,9 +3847,14 @@ class AgentIntelligence:
             else None
         )
         # Phase 5 — acknowledge corrections before plan/tools so the user hears it first.
+        # Loop-stage narration (spoken_progress_text) is delivered live via its own
+        # "progress" SSE events for TTS pacing only — it must NOT leak into the final
+        # full_content/transcript, or the visible answer becomes "I've classified
+        # this as a real request... " instead of the actual answer once ReAct
+        # returns its result without ever emitting an incremental text_delta.
         text_id: str | None = spoken_progress_text_id
-        streamed_content = spoken_progress_text
-        full_content_parts: list[str] = [spoken_progress_text] if spoken_progress_text else []
+        streamed_content = ""
+        full_content_parts: list[str] = []
         if correction_ack:
             packed = await _composed_reply(
                 correction_ack + "\n\n",

@@ -71,3 +71,19 @@ tests_list.txt
 # Licensed Nodus (Aceternity) — source on disk, not committed by default
 vendor/nodus-agent-template/
 
+# Local Cursor MCP config — machine-specific, not shared via git
+.cursor/mcp.json
+
+# Repo-root scratch logs from ad-hoc dev/verification commands
+# (dev servers, pytest/vitest/lint/pip-install runs, push/pull retries, etc.)
+# — these should be redirected outside the repo, but ignore them here too
+# so they stop accumulating as untracked clutter at the repo root.
+/dev_*.log
+/pytest_*.log
+/vitest_*.log
+/lint_*.log
+/pip_install_*.log
+/pull_*.log
+/push_*.log
+/prod_*.html
+

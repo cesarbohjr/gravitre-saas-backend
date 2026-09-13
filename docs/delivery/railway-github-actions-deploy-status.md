@@ -74,6 +74,19 @@ The CLI `--ci` waiter often exits **1** when the competing deployment wins, is s
 2. **Remove `railway up --ci` from CI** — rely on GitHub-connected Railway auto-deploy + `/health` poll only (eliminates duplicate FAILED deployments on the service).
 3. **Tighten `watchPatterns`** in `backend/railway.toml` to backend app paths only (`app/**`, requirements, Dockerfile).
 
+## Fix (2026-09-13)
+
+`railway_commit_touches_backend.py` originally treated *any* path under
+`backend/` as deploy-relevant, but `backend/railway.toml`'s `watchPatterns`
+only rebuilds for `app/**`, `requirements*.txt`, `Dockerfile`, `railway.toml`,
+`pyproject.toml`, `.railway-deploy-stamp` — not `backend/scripts/**` or
+`backend/tests/**`. A script- or test-only commit under `backend/` therefore
+ran the gate, which waited the full timeout for a redeploy Railway was never
+going to do, and failed the job (e.g. run `34728926180` for a scripts-only
+commit). The detector now checks the same globs Railway itself watches
+(`DEPLOY_RELEVANT_GLOBS` in the script), so the gate only runs when something
+could actually change what's live.
+
 ## Fix (2026-07-23)
 
 ## Operational note

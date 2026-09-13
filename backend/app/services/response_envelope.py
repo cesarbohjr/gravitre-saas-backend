@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tool_types import NormalizedResult, ToolError
 
 ENVELOPE_KEYS = ("success", "data", "error_code", "error_detail")
@@ -103,8 +104,9 @@ def coerce_user_envelope(value: Any, *, action: str = "") -> dict[str, Any]:
 
     data = payload.get("data")
     if not isinstance(data, dict):
-        if isinstance(payload.get("result"), dict):
-            data = dict(payload["result"])
+        result = payload.get("result")
+        if isinstance(result, dict):
+            data = safe_normalize_stored_dict(result)
         elif data is not None:
             data = _as_data(data)
         else:

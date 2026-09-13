@@ -1958,15 +1958,15 @@ class ChatOrchestrationService:
             action = str(plan.get("invoke_action") or "").strip().lower()
             if "structure.create" not in action:
                 continue
-            args = dict(plan.get("args") or {})
+            args = safe_normalize_stored_dict(plan, key="args")
             args["daily_budget_total"] = budget
             steps[idx] = {**step, "plan": {**plan, "args": args}}
             changed = True
         if not changed:
             return task_state
         params = {**params, "steps": steps}
-        pending = dict(task_state.get("pending_task") or {})
-        pending_params = dict(pending.get("params") or {})
+        pending = safe_normalize_stored_dict(task_state, key="pending_task")
+        pending_params = safe_normalize_stored_dict(pending, key="params")
         pending_params["steps"] = steps
         pending["params"] = pending_params
         return {
