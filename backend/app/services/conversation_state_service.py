@@ -39,6 +39,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "parameter_ledger": {"slots": {}, "pending_missing": []},
     # Module D — last expression-range variant index per category (phrase variety).
     "voice_expression_last": {},
+    # Structured continuation for a READ offer. Not a write pending_task.
+    "offered_action": None,
 }
 
 

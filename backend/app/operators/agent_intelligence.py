@@ -2154,6 +2154,138 @@ class AgentIntelligence:
                     )
                     early_pending = None
                     early_plan = None
+            from app.services.offered_action_continuation import (
+                PROGRESS_ACK,
+                execute_offered_read,
+                progress_steps_for_scopes,
+                resolve_offered_action_turn,
+            )
+
+            continuation = resolve_offered_action_turn(
+                task_text,
+                task_state=early_state if isinstance(early_state, dict) else {},
+                conversation_history=(
+                    conversation_history if isinstance(conversation_history, list) else None
+                ),
+            )
+            if continuation.kind == "decline" and continuation.offered is not None:
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"offered_action": None},
+                    client=client,
+                )
+                packed = await _composed_reply("Okay — I won't run that check.", kind="success")
+                for ev in packed.events:
+                    yield ev
+                await _complete_cognitive_loop(pending_task=None, tool_results=[])
+                yield AssistantStreamComplete(
+                    full_content=packed.text,
+                    tool_results=[],
+                    react_result=None,
+                    model="offered_action_continuation",
+                    message_id=message_id,
+                    dialogue_mode="answer",
+                    task_state={**(early_state or {}), "offered_action": None},
+                )
+                return
+            if continuation.kind == "topic_change" and continuation.offered is not None:
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"offered_action": None},
+                    client=client,
+                )
+            if continuation.kind == "execute_read" and continuation.offered is not None:
+                loop_trace.record(
+                    "RETRIEVE",
+                    ok=True,
+                    skipped=True,
+                    skip_reason="offered_action_fast_path",
+                )
+                loop_trace.record(
+                    "PLAN",
+                    ok=True,
+                    skipped=True,
+                    skip_reason="offered_action_fast_path",
+                )
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": False},
+                    answer_explanation="Continuing the offered inspection",
+                    dialogue_mode="answer",
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing={
+                        **(routing_sse if isinstance(routing_sse, dict) else {}),
+                        "offeredActionFastPath": True,
+                        "pendingActionId": continuation.offered.id,
+                    },
+                    progress_steps=progress_steps_for_scopes(
+                        continuation.offered.scope,
+                        current=continuation.offered.scope[0] if continuation.offered.scope else None,
+                    ),
+                    task_state=early_state,
+                )
+                packed_ack = await _composed_reply(
+                    PROGRESS_ACK,
+                    kind="success",
+                    close=False,
+                )
+                for ev in packed_ack.events:
+                    yield ev
+                executed = await execute_offered_read(
+                    continuation.offered,
+                    org_id=org_id,
+                    settings=active_settings,
+                    user_id=user_id,
+                    environment_name=environment_name,
+                )
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"offered_action": executed.get("offered_action")},
+                    client=client,
+                )
+                tool_results = executed.get("tool_results") if isinstance(executed.get("tool_results"), list) else []
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": False},
+                    answer_explanation="Offered READ continuation",
+                    dialogue_mode="answer",
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing={
+                        **(routing_sse if isinstance(routing_sse, dict) else {}),
+                        "offeredActionFastPath": True,
+                        "turnTerminalState": executed.get("terminal_state"),
+                    },
+                    progress_steps=list(executed.get("progress_steps") or []),
+                    task_state={**(early_state or {}), "offered_action": executed.get("offered_action")},
+                )
+                packed = await _composed_reply(
+                    str(executed.get("message") or ""),
+                    kind="success",
+                    existing_text_id=packed_ack.text_id,
+                )
+                for ev in packed.events:
+                    yield ev
+                await _complete_cognitive_loop(
+                    pending_task=None,
+                    tool_results=tool_results,
+                )
+                yield AssistantStreamComplete(
+                    full_content=f"{PROGRESS_ACK}\n\n{packed.text}".strip(),
+                    tool_results=tool_results,
+                    react_result=None,
+                    model="offered_action_continuation",
+                    message_id=message_id,
+                    dialogue_mode="answer",
+                    task_state={**(early_state or {}), "offered_action": executed.get("offered_action")},
+                )
+                return
             if (
                 isinstance(early_plan, dict)
                 and early_plan.get("goal")
@@ -2864,7 +2996,14 @@ class AgentIntelligence:
                             )
                             if k in lat_bd
                         },
+                        "offeredActionExecuted": bool(live_turn.get("offered_action_executed")),
+                        "turnTerminalState": live_turn.get("turn_terminal_state"),
                     },
+                    progress_steps=(
+                        list(live_turn.get("progress_steps"))
+                        if isinstance(live_turn.get("progress_steps"), list)
+                        else None
+                    ),
                 )
                 if spoken_mode and not streamed_voice_text:
                     pending_live = (
@@ -2899,10 +3038,15 @@ class AgentIntelligence:
                     pending_task=live_turn.get("pending_task")
                     if isinstance(live_turn.get("pending_task"), dict)
                     else None,
+                    tool_results=live_turn.get("tool_results")
+                    if isinstance(live_turn.get("tool_results"), list)
+                    else [],
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
-                    tool_results=[],
+                    tool_results=live_turn.get("tool_results")
+                    if isinstance(live_turn.get("tool_results"), list)
+                    else [],
                     react_result=None,
                     model=str(live_turn.get("model") or "unified_turn_live"),
                     message_id=message_id,

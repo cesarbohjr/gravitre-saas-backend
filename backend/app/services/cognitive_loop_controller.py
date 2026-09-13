@@ -386,7 +386,16 @@ class CognitiveLoopController:
             execution_verified=execution_verified,
             react_status=react_status,
         )
-        trace.record("ACT", ok=True, ms=_elapsed_ms(t_act), evidence=act_evidence)
+        if not (tool_results or []) and not pending_task:
+            trace.record(
+                "ACT",
+                ok=True,
+                skipped=True,
+                skip_reason="no_tools_invoked",
+                evidence=act_evidence,
+            )
+        else:
+            trace.record("ACT", ok=True, ms=_elapsed_ms(t_act), evidence=act_evidence)
 
         t_obs = time.perf_counter()
         observe = self._observe(tool_results=tool_results, pending_task=pending_task)

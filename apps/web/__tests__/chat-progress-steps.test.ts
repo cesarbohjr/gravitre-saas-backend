@@ -82,6 +82,23 @@ describe("deriveNamedProgressSteps", () => {
     expect(deriveNamedProgressSteps(null, null)).toEqual([])
     expect(deriveNamedProgressSteps([" ", ""], null)).toEqual([])
   })
+
+  it("keeps prefixed checking steps visible beside planning", () => {
+    const steps = deriveNamedProgressSteps(
+      [
+        "Completed: Planning next actions",
+        "Running: Checking connectors",
+        "Learning from the outcome",
+      ],
+      null,
+    )
+    expect(steps.map((s) => s.label)).toEqual([
+      "Planning next actions",
+      "Checking connectors",
+      "Learning from the outcome",
+    ])
+    expect(steps[1]?.status).toBe("current")
+  })
 })
 
 describe("formatStepCounter", () => {

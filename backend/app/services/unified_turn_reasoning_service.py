@@ -1924,6 +1924,86 @@ async def apply_unified_turn_live(
         )
         return None
 
+    from app.services.offered_action_continuation import (
+        execute_offered_read,
+        live_payload_for_execution,
+        patch_task_state_offered,
+        persist_offered_action,
+        resolve_offered_action_turn,
+    )
+
+    offered_decision = resolve_offered_action_turn(
+        message or "",
+        task_state=task_state if isinstance(task_state, dict) else {},
+        conversation_history=conversation_history if isinstance(conversation_history, list) else None,
+    )
+    if offered_decision.kind == "decline" and offered_decision.offered is not None:
+        await persist_offered_action(
+            conversation_id=conversation_id,
+            org_id=org_id,
+            offered=None,
+            client=client,
+            settings=active,
+        )
+        declined = UnifiedTurnShadowResult(
+            outcome_kind="conversational_reply",
+            user_message="Okay — I won't run that check.",
+            live_served=True,
+            model="offered_action_continuation",
+        )
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=declined,
+        )
+        return _unified_live_turn_payload(
+            declined,
+            patch_task_state_offered(task_state, None),
+        )
+    if offered_decision.kind == "topic_change":
+        await persist_offered_action(
+            conversation_id=conversation_id,
+            org_id=org_id,
+            offered=None,
+            client=client,
+            settings=active,
+        )
+        if isinstance(task_state, dict):
+            task_state = {**task_state, "offered_action": None}
+    elif offered_decision.kind == "execute_read" and offered_decision.offered is not None:
+        executed = await execute_offered_read(
+            offered_decision.offered,
+            org_id=org_id,
+            settings=active,
+            user_id=user_id,
+            environment_name=environment_name,
+        )
+        await persist_offered_action(
+            conversation_id=conversation_id,
+            org_id=org_id,
+            offered=executed.get("offered_action") if isinstance(executed.get("offered_action"), dict) else None,
+            client=client,
+            settings=active,
+        )
+        served = UnifiedTurnShadowResult(
+            outcome_kind="connector_tool_proposal",
+            user_message=str(executed.get("message") or ""),
+            live_served=True,
+            model="offered_action_continuation",
+            tool_name=",".join(offered_decision.offered.tools),
+            latency_ms=int(executed.get("elapsed_ms") or 0),
+        )
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=served,
+        )
+        return live_payload_for_execution(executed, task_state)
+
     # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
     # ambiguous clarify). Runs before shadow + orch so classical never invents
     # steps when a retrieved plan exists.
@@ -2379,6 +2459,58 @@ async def apply_unified_turn_live(
             conversation_id=conversation_id,
             result=result,
         )
+        from app.services.offered_action_continuation import (
+            claims_future_action,
+            execute_offered_read,
+            extract_offered_action,
+            is_confirm_utterance,
+            live_payload_for_execution,
+            patch_task_state_offered,
+            persist_offered_action,
+            resolve_offered_action_turn,
+        )
+
+        offered_now = extract_offered_action(result.user_message)
+        if offered_now is not None:
+            task_state = patch_task_state_offered(task_state, offered_now)
+            await persist_offered_action(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                offered=offered_now.as_dict(),
+                client=client,
+                settings=active,
+            )
+        if claims_future_action(result.user_message):
+            if is_confirm_utterance(message or ""):
+                retry = resolve_offered_action_turn(
+                    "yes",
+                    task_state=task_state if isinstance(task_state, dict) else {},
+                    conversation_history=(
+                        conversation_history if isinstance(conversation_history, list) else None
+                    ),
+                )
+                if retry.kind == "execute_read" and retry.offered is not None:
+                    executed = await execute_offered_read(
+                        retry.offered,
+                        org_id=org_id,
+                        settings=active,
+                        user_id=user_id,
+                        environment_name=environment_name,
+                    )
+                    await persist_offered_action(
+                        conversation_id=conversation_id,
+                        org_id=org_id,
+                        offered=executed.get("offered_action")
+                        if isinstance(executed.get("offered_action"), dict)
+                        else None,
+                        client=client,
+                        settings=active,
+                    )
+                    return live_payload_for_execution(executed, task_state)
+            result.user_message = (
+                "I can check that, but I haven't run it yet. Say yes and I'll inspect "
+                "the systems I offered."
+            )
         return _unified_live_turn_payload(result, task_state)
 
     if result.outcome_kind == "connector_tool_proposal" and result.tool_name:

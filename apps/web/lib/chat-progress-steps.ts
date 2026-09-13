@@ -49,7 +49,10 @@ export function isActionProgressStep(step: string): boolean {
 }
 
 export function isContextProgressStep(step: string): boolean {
-  const label = stripStepPrefix(String(step ?? "").trim())
+  const text = String(step ?? "").trim()
+  // Prefixed Running/Completed/Step N/M labels are execution, not context.
+  if (ACTION_STEP_PATTERN.test(text)) return false
+  const label = stripStepPrefix(text)
   return Boolean(label && CONTEXT_STEP_PATTERN.test(label))
 }
 
