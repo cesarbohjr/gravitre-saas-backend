@@ -16,6 +16,8 @@ from app.services.intelligence_agent_roster import load_canonical_agents
 from app.services.intelligence_context_compiler import (
     active_agent_trust_answer,
     compile_intelligence_context_for_query,
+    resolve_intelligence_hub_deterministic_answer,
+    running_agent_trust_answer,
 )
 from app.services.intelligence_graph_builder import (
     build_intelligence_graph,
@@ -103,6 +105,37 @@ def test_prediction_dedup_flags_unscoped():
     preds = normalize_signals_to_predictions(signals, fetched_at=fetched)
     assert len(preds) == 1
     assert "UNSCOPED_PREDICTION" in preds[0].qualityFlags
+
+
+def test_running_agent_trust_answer_lists_swarm_running_only():
+    agents = [
+        _agent("a1", "Email Campaign Reporting Agent"),
+        _agent("a2", "Idle Analyst", configured="active", running=False),
+    ]
+    snapshot = _snapshot(agents)
+    answer = running_agent_trust_answer(snapshot)
+    assert "No agents are currently running" in answer
+    assert "2 agents are configured active" in answer
+
+
+def test_resolve_intelligence_hub_deterministic_active_vs_running():
+    agents = [
+        _agent("a1", "Email Campaign Reporting Agent"),
+        _agent("a2", "Lead Enrichment", running=True),
+    ]
+    snapshot = _snapshot(agents)
+    active_q = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "What agents are currently active?"
+    )
+    running_q = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "Which agents are running?"
+    )
+    assert active_q is not None
+    assert "Email Campaign Reporting Agent" in active_q
+    assert "Lead Enrichment" in active_q
+    assert running_q is not None
+    assert "Lead Enrichment" in running_q
+    assert "Email Campaign Reporting Agent" not in running_q
 
 
 def test_active_agent_trust_answer_lists_configured_active():

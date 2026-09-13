@@ -587,6 +587,8 @@ def _build_stream(
     spoken_mode: bool = False,
     composer_failure_probe: str | None = None,
     intelligence_hub_visualization: dict[str, Any] | None = None,
+    assistant_system_prompt: str | None = None,
+    intelligence_hub_deterministic_answer: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -607,6 +609,81 @@ def _build_stream(
         yield assistant_event_to_sse_line(sse_start())
         yield assistant_event_to_sse_line(sse_start_step())
 
+        base_prompt = (assistant_system_prompt or "").strip() or ASSISTANT_SYSTEM_PROMPT
+
+        if intelligence_hub_deterministic_answer:
+            from app.operators.assistant_sse import (
+                chunk_text_deltas,
+                sse_intelligence_metadata,
+                sse_text_delta,
+                sse_text_end,
+                sse_text_start,
+            )
+
+            message_id = str(uuid.uuid4())
+            assistant_text = intelligence_hub_deterministic_answer.strip()
+            yield assistant_event_to_sse_line(
+                sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 1.0, "needs_clarification": False},
+                    answer_explanation="intelligence_hub:canonical_agent_roster",
+                    dialogue_mode="answer",
+                    effective_mode=str(mode or "fast"),
+                    visualization=intelligence_hub_visualization,
+                )
+            )
+            text_id, start_ev = sse_text_start()
+            yield assistant_event_to_sse_line(start_ev)
+            for delta in chunk_text_deltas(assistant_text):
+                yield assistant_event_to_sse_line(sse_text_delta(text_id, delta))
+            yield assistant_event_to_sse_line(sse_text_end(text_id))
+            yield assistant_event_to_sse_line(sse_finish_step())
+            yield assistant_event_to_sse_line(sse_finish())
+            try:
+                await asyncio.to_thread(
+                    _persist_conversation_turn,
+                    settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    user_text=user_text,
+                    assistant_text=assistant_text,
+                    tool_results=[],
+                    assistant_message_id=message_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "assistant intelligence_hub persist failed org_id=%s error=%s",
+                    org_id,
+                    str(exc),
+                )
+            yield sse_done()
+            elapsed_ms = int((time.monotonic() - start_ms) * 1000)
+            perf.stop("total_response")
+            perf.mark("final_response", elapsed_ms)
+            perf.log_summary(org_id=org_id, conversation_id=conversation_id, mode=mode)
+            billing_result = _estimate_model_response(
+                content=assistant_text,
+                user_text=user_text,
+                model="intelligence_hub:canonical_agent_roster",
+                latency_ms=elapsed_ms,
+            )
+            asyncio.create_task(_record_assistant_billing(settings, org_id, billing_result))
+            asyncio.create_task(
+                get_user_intelligence_service().record_query(
+                    settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    query=user_text,
+                    category=classify_query(user_text),
+                    model_used="intelligence_hub:canonical_agent_roster",
+                    response_time_ms=elapsed_ms,
+                    surface="assistant",
+                    message_id=message_id,
+                )
+            )
+            return
+
         intelligence = get_agent_intelligence()
         complete: AssistantStreamComplete | None = None
         streamed_text_parts: list[str] = []
@@ -624,7 +701,7 @@ def _build_stream(
                 conversation_history=history_messages,
                 history_summary=existing_summary,
                 model_override=prepared_holder.get("model_override"),
-                assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
+                assistant_base_prompt=base_prompt,
                 conversation_id=conversation_id,
                 explicit_persona=preferred_persona,
                 environment_name=environment_name,
@@ -861,6 +938,7 @@ async def assistant_chat(
     model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
 
     intelligence_hub_visualization: dict[str, Any] | None = None
+    intelligence_hub_deterministic_answer: str | None = None
     system_prompt = _build_assistant_system_prompt(
         settings,
         org_id,
@@ -870,7 +948,10 @@ async def assistant_chat(
         environment_name=environment_name,
     )
     if (body.surface or "").strip() == "intelligence_hub":
-        from app.services.intelligence_context_compiler import compile_intelligence_context_for_query
+        from app.services.intelligence_context_compiler import (
+            compile_intelligence_context_for_query,
+            resolve_intelligence_hub_deterministic_answer,
+        )
         from app.services.intelligence_projection_service import get_intelligence_projection_service
 
         snapshot = await get_intelligence_projection_service(settings).build_snapshot(
@@ -879,6 +960,10 @@ async def assistant_chat(
         )
         intel_block, viz = compile_intelligence_context_for_query(snapshot, last_user)
         intelligence_hub_visualization = viz.model_dump() if viz else None
+        intelligence_hub_deterministic_answer = resolve_intelligence_hub_deterministic_answer(
+            snapshot,
+            last_user,
+        )
         system_prompt = (
             f"{system_prompt}\n\n<intelligence_hub_context>\n{intel_block}\n"
             "</intelligence_hub_context>\n"
@@ -1095,6 +1180,8 @@ async def assistant_chat(
             spoken_mode=bool(getattr(body, "spoken_mode", False)),
             composer_failure_probe=composer_failure_probe,
             intelligence_hub_visualization=intelligence_hub_visualization,
+            assistant_system_prompt=system_prompt,
+            intelligence_hub_deterministic_answer=intelligence_hub_deterministic_answer,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

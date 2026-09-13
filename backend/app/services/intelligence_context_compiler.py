@@ -101,6 +101,32 @@ def compile_intelligence_context_for_query(
     return "\n".join(sections), visualization
 
 
+def _is_running_agent_status_question(question: str) -> bool:
+    q = question.lower()
+    patterns = (
+        r"what agents?\s+(are\s+)?(currently\s+)?running",
+        r"which agents?\s+(are\s+)?(currently\s+)?running",
+        r"agents?\s+(that are\s+)?(currently\s+)?running",
+        r"running agents?",
+    )
+    return any(re.search(p, q) for p in patterns)
+
+
+def _is_active_agent_status_question(question: str) -> bool:
+    q = question.lower()
+    if _is_running_agent_status_question(q):
+        return False
+    patterns = (
+        r"what agents?\s+(are\s+)?(currently\s+)?active",
+        r"which agents?\s+(are\s+)?(currently\s+)?active",
+        r"agents?\s+(that are\s+)?(currently\s+)?active",
+        r"active agents?",
+    )
+    return any(re.search(p, q) for p in patterns) or (
+        "currently active" in q and bool(re.search(r"\bagent", q))
+    )
+
+
 def active_agent_trust_answer(snapshot: IntelligenceSnapshot) -> str:
     """Deterministic summary for regression / fast-path answers."""
     active = [a for a in snapshot.agents if a.isConfiguredActive]
@@ -115,3 +141,35 @@ def active_agent_trust_answer(snapshot: IntelligenceSnapshot) -> str:
         f"{len(active)} agent{'s are' if len(active) != 1 else ' is'} configured active{dept_note}: "
         f"{names}{suffix}."
     )
+
+
+def running_agent_trust_answer(snapshot: IntelligenceSnapshot) -> str:
+    """Deterministic answer for currently-running swarm agents."""
+    running = [a for a in snapshot.agents if a.isCurrentlyRunning]
+    configured = sum(1 for a in snapshot.agents if a.isConfiguredActive)
+    if not running:
+        if configured:
+            return (
+                f"No agents are currently running. {configured} agent"
+                f"{'s are' if configured != 1 else ' is'} configured active but idle in swarm execution."
+            )
+        return "No agents are currently running."
+    names = ", ".join(a.businessLabel for a in running[:8])
+    extra = len(running) - 8
+    suffix = f" and {extra} more" if extra > 0 else ""
+    return (
+        f"{len(running)} agent{'s are' if len(running) != 1 else ' is'} currently running: "
+        f"{names}{suffix}."
+    )
+
+
+def resolve_intelligence_hub_deterministic_answer(
+    snapshot: IntelligenceSnapshot,
+    question: str,
+) -> str | None:
+    """Return a canonical roster answer for intelligence_hub trust queries."""
+    if _is_running_agent_status_question(question):
+        return running_agent_trust_answer(snapshot)
+    if _is_active_agent_status_question(question):
+        return active_agent_trust_answer(snapshot)
+    return None
