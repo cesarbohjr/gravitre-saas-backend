@@ -49,6 +49,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # Phase C — typed execution plan + normalized observations.
     "execution_plan": None,
     "execution_observations": [],
+    # Phase D — unified turn trace (gateway → compose).
+    "cognitive_turn_trace": None,
 }
 
 

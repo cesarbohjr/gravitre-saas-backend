@@ -305,6 +305,11 @@ async def _try_cross_source_website_overview_turn(
         **execution_plan_patch(plan),
         **observations_patch(observations),
     }
+    from app.services.structured_assistant_response import blocks_from_execution_observations
+
+    response_blocks = [b.as_dict() for b in blocks_from_execution_observations(
+        [o.as_dict() for o in observations]
+    )]
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
@@ -317,6 +322,7 @@ async def _try_cross_source_website_overview_turn(
         "workflow_status": plan.terminal_status,
         "business_intent": "analytics.traffic_overview",
         "execution_plan": plan.as_dict(),
+        "response_blocks": response_blocks,
     }
 
 
@@ -683,6 +689,16 @@ async def try_analytics_traffic_overview_turn(
         task_state=merged_state,
         workflow_status="completed",
     )
+    from app.services.structured_assistant_response import blocks_from_ga4_reports
+
+    response_blocks = [
+        b.as_dict()
+        for b in blocks_from_ga4_reports(
+            property_name=property_name,
+            current=current,
+            previous=previous,
+        )
+    ]
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
@@ -690,6 +706,7 @@ async def try_analytics_traffic_overview_turn(
         "task_state": merged_state,
         "workflow_status": "completed",
         "business_intent": "analytics.traffic_overview",
+        "response_blocks": response_blocks,
         "resolution": {
             "connector_id": intent.connector_id,
             "property_id": property_id,

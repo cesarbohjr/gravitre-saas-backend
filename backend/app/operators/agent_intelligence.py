@@ -1636,6 +1636,10 @@ class AgentIntelligence:
                 ).get_task_state(conversation_id, org_id, client=client)
             except Exception:  # noqa: BLE001
                 gateway_state = {}
+        _cognitive_resolution = None
+        _canonical_task_state: dict[str, Any] = (
+            dict(gateway_state) if isinstance(gateway_state, dict) else {}
+        )
         gateway = await evaluate_intent_gateway(
             GatewayContext(
                 message=task_text,
@@ -1691,6 +1695,63 @@ class AgentIntelligence:
             except Exception as loop_exc:  # noqa: BLE001
                 logger.debug("cognitive_loop_complete_skipped error=%s", loop_exc)
 
+        from app.services.cognitive_trace_engine import (
+            CognitiveTraceBuilder,
+            attach_cognitive_turn_trace,
+            sync_trace_from_task_state,
+            unify_turn_id,
+        )
+
+        _cognitive_trace_builder: CognitiveTraceBuilder | None = None
+
+        def _boot_cognitive_trace(state: dict[str, Any] | None) -> None:
+            nonlocal _cognitive_trace_builder
+            if _cognitive_trace_builder is not None:
+                return
+            st = state if isinstance(state, dict) else {}
+            turn_id = unify_turn_id(st)
+            _cognitive_trace_builder = CognitiveTraceBuilder(
+                turn_id=turn_id,
+                conversation_id=conversation_id,
+                tenant_id=org_id,
+            )
+            _cognitive_trace_builder.mark("gateway", entry="agent_intelligence")
+            resolution = st.get("resolution_trace")
+            if isinstance(resolution, dict):
+                _cognitive_trace_builder.link(
+                    "resolution_trace",
+                    str(resolution.get("turn_id") or turn_id),
+                )
+
+        def _merge_trace_into_state(state: dict[str, Any] | None) -> dict[str, Any]:
+            base = dict(state) if isinstance(state, dict) else {}
+            if _cognitive_trace_builder is None:
+                return base
+            sync_trace_from_task_state(_cognitive_trace_builder.trace, base)
+            return attach_cognitive_turn_trace(base, _cognitive_trace_builder.trace)
+
+        def _trace_compose_extra(
+            extra: dict[str, Any] | None,
+            *,
+            state: dict[str, Any] | None = None,
+            draft: str = "",
+        ) -> dict[str, Any]:
+            if isinstance(extra, dict):
+                env = {**extra}
+                data = env.get("data")
+                env["data"] = dict(data) if isinstance(data, dict) else {"text": draft}
+            else:
+                env = {"success": True, "data": {"text": draft}}
+            _boot_cognitive_trace(state or _canonical_task_state)
+            if _cognitive_trace_builder is not None:
+                if isinstance(state, dict):
+                    sync_trace_from_task_state(_cognitive_trace_builder.trace, state)
+                _cognitive_trace_builder.mark("compose")
+                trace_dict = _cognitive_trace_builder.trace.as_dict()
+                env["cognitive_turn_trace"] = trace_dict
+                env["data"]["turn_id"] = trace_dict.get("turn_id")
+            return env
+
         async def _composed_reply(
             draft: str,
             *,
@@ -1698,8 +1759,16 @@ class AgentIntelligence:
             extra: dict[str, Any] | None = None,
             existing_text_id: str | None = None,
             close: bool = True,
+            trace_state: dict[str, Any] | None = None,
         ):
-            env = extra if isinstance(extra, dict) else {"success": True, "data": {"text": draft}}
+            env = _trace_compose_extra(
+                extra,
+                state=trace_state
+                if isinstance(trace_state, dict)
+                else (task_state if isinstance(task_state, dict) else _canonical_task_state),
+                draft=draft,
+            )
+            env["data"].setdefault("text", draft)
             return await compose_reply_events(
                 env,
                 kind=kind,
@@ -1901,10 +1970,6 @@ class AgentIntelligence:
 
         # Phase A canonical ingress: cognitive resolution runs once per turn after
         # connected_integrations load (below) and before offered_action / ReAct.
-        _cognitive_resolution = None
-        _canonical_task_state: dict[str, Any] = (
-            dict(gateway_state) if isinstance(gateway_state, dict) else {}
-        )
 
         from app.services.cognitive_loop_controller import is_plan_without_execute_turn
 
@@ -2619,6 +2684,11 @@ class AgentIntelligence:
                 pipeline_classification,
             )
             _mark("router_enrichments")
+            _boot_cognitive_trace(
+                task_state if isinstance(task_state, dict) else _canonical_task_state
+            )
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.mark("resolution", canonical=bool(_cognitive_resolution))
             from app.services.capability_router import (
                 apply_capability_route_to_classification,
                 route_capability_for_turn,
@@ -2669,6 +2739,11 @@ class AgentIntelligence:
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("execution_plan_persist_skipped: %s", exc)
+            if _cognitive_trace_builder is not None and _capability_route is not None:
+                _cognitive_trace_builder.mark(
+                    "capability_route",
+                    capability_id=_capability_route.capability_id,
+                )
             _mark("capability_route")
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
@@ -3793,6 +3868,12 @@ class AgentIntelligence:
             cognitive_ctx=cognitive_ctx,
             prefetched_turn_ctx=_prefetched_turn_ctx,
         )
+        if _cognitive_trace_builder is not None:
+            _cognitive_trace_builder.mark(
+                "context_compile",
+                prefetched=_context_prefetched,
+                slices=list((_compiled_meta or {}).keys())[:8],
+            )
         _mark("context_prefetch_adopted" if _context_prefetched else "context_inline")
         _mark("assistant_turn_prepared")
         agent = turn_ctx.agent
@@ -4386,6 +4467,11 @@ class AgentIntelligence:
         )
         if _analytics_turn and _analytics_turn.get("stop_pipeline"):
             task_state = _analytics_turn.get("task_state") or task_state
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.mark("execution", path="analytics_short_circuit")
+            task_state = _merge_trace_into_state(
+                task_state if isinstance(task_state, dict) else None
+            )
             if conversation_id and isinstance(task_state, dict):
                 try:
                     patch = {
@@ -4415,7 +4501,20 @@ class AgentIntelligence:
                 )
             )
             dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
-            packed = await _composed_reply(response_text, kind="canned")
+            compose_extra: dict[str, Any] = {
+                "success": True,
+                "data": {"text": response_text},
+            }
+            _blocks = _analytics_turn.get("response_blocks")
+            if isinstance(_blocks, list) and _blocks:
+                compose_extra["response_blocks"] = _blocks
+                compose_extra["data"]["response_blocks"] = _blocks
+            packed = await _composed_reply(
+                response_text,
+                kind="canned",
+                extra=compose_extra,
+                trace_state=task_state if isinstance(task_state, dict) else None,
+            )
             response_text = packed.text
             for ev in packed.events:
                 yield ev

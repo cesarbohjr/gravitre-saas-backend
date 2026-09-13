@@ -248,17 +248,24 @@ def _history_excerpt(history: Iterable[dict[str, Any]] | None, *, limit: int = 4
 
 
 def _system_prompt(*, spoken: bool) -> str:
+    from app.services.cognitive_harness_behavior import (
+        HARNESS_COMPOSE_RULES,
+        harness_behavior_section,
+    )
+
     spoken_note = ""
     if spoken:
         spoken_note = (
             "\n\nThis turn is SPOKEN. Use Register 5 on top of the matching register: "
             "short sentences, no markdown, no bullets, no code.\n"
         )
+    harness = harness_behavior_section(HARNESS_COMPOSE_RULES)
     return (
         MODULE_D_UNIFIED_SYSTEM_SPEC
         + "\n"
         + CONVERSATIONAL_BEHAVIOR_SECTION
         + spoken_note
+        + (f"\n{harness}\n" if harness else "")
         + "\n## Response Composer (mandatory)\n"
         "You are writing the only text the user will see for this turn's outcome.\n"
         "Describe the structured result in natural, register-correct language.\n"
@@ -377,12 +384,24 @@ async def compose_user_reply(
     """Return the only user-visible prose for this outcome."""
     env = coerce_user_envelope(envelope or {"success": True, "data": {"text": draft or ""}})
     resolved_kind = kind or envelope_kind(env)
+    from app.services.structured_assistant_response import (
+        blocks_from_dicts,
+        merge_blocks_with_prose,
+    )
+
+    blocks_raw = env.get("response_blocks")
+    if not blocks_raw and isinstance(env.get("data"), dict):
+        blocks_raw = env["data"].get("response_blocks")
+    structured_blocks = blocks_from_dicts(blocks_raw if isinstance(blocks_raw, list) else None)
     must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
     if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
         must_compose = False
     used_model = False
     fallback = False
     text = (draft or "").strip()
+    if structured_blocks:
+        text = merge_blocks_with_prose(structured_blocks, text)
+        must_compose = must_compose and looks_like_raw_backend(text)
 
     if must_compose or not text:
         composed = await _llm_compose(
@@ -447,6 +466,12 @@ async def compose_user_reply(
             text = _fallback_text(resolved_kind)
         fallback = True
 
+    turn_id = None
+    trace = env.get("cognitive_turn_trace")
+    if isinstance(trace, dict):
+        turn_id = trace.get("turn_id")
+    elif isinstance(env.get("data"), dict):
+        turn_id = env["data"].get("turn_id")
     _emit_composer_audit(
         client=client,
         org_id=org_id,
@@ -457,6 +482,8 @@ async def compose_user_reply(
         fallback=fallback,
         success=bool(env.get("success")),
         error_code=env.get("error_code"),
+        turn_id=turn_id,
+        structured_blocks=len(structured_blocks),
     )
     return text
 
@@ -472,6 +499,8 @@ def _emit_composer_audit(
     fallback: bool,
     success: bool,
     error_code: str | None,
+    turn_id: str | None = None,
+    structured_blocks: int = 0,
 ) -> None:
     if client is None or not org_id:
         return
@@ -489,6 +518,8 @@ def _emit_composer_audit(
                 "fallback": fallback,
                 "success": success,
                 "errorCode": error_code,
+                "turnId": turn_id,
+                "structuredBlocks": structured_blocks,
             },
         )
     except Exception as exc:  # noqa: BLE001
