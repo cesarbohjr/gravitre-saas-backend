@@ -188,25 +188,33 @@ async def tool_knowledge_base(
 
 
 def tool_agent_status(org_id: str, settings: Settings, *, agent_id: str | None = None) -> dict[str, Any]:
+    """G1 — canonical agent roster (agents + operators), aligned with Intelligence map."""
     try:
+        from app.services.intelligence_agent_roster import load_canonical_agents
+
         client = get_supabase_client(settings)
-        query = client.table("agents").select("id,name,status,stats").eq("org_id", org_id)
+        canonical, _ = load_canonical_agents(client, org_id)
         if agent_id:
-            query = query.eq("id", agent_id)
-        rows = query.execute().data or []
-        agents = []
-        for row in rows:
-            stats = row.get("stats") if isinstance(row.get("stats"), dict) else {}
-            agents.append(
-                {
-                    "id": str(row.get("id")),
-                    "name": str(row.get("name") or "Agent"),
-                    "status": str(row.get("status") or "idle"),
-                    "tasksToday": int((stats or {}).get("tasksToday") or 0),
-                    "successRate": int((stats or {}).get("successRate") or 100),
-                }
-            )
-        return {"agents": agents}
+            canonical = [a for a in canonical if a.id == agent_id]
+        agents = [
+            {
+                "id": a.id,
+                "name": a.businessLabel,
+                "status": a.configuredStatus,
+                "department": a.department,
+                "isConfiguredActive": a.isConfiguredActive,
+                "isCurrentlyRunning": a.isCurrentlyRunning,
+                "executionStatus": a.executionStatus,
+                "source": a.source.system,
+            }
+            for a in canonical
+        ]
+        return {
+            "agents": agents,
+            "configuredActiveCount": sum(1 for a in canonical if a.isConfiguredActive),
+            "currentlyRunningCount": sum(1 for a in canonical if a.isCurrentlyRunning),
+            "canonical": True,
+        }
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant agent_status tool failed org_id=%s error=%s", org_id, str(exc))
         return {"agents": [], "error": "agent status unavailable"}

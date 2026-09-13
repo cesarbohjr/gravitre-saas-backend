@@ -9,6 +9,7 @@ export function buildLensMetrics({
   coreState,
   businessImpact,
   outcomesByEvent,
+  canonicalMetrics,
 }: {
   knowledgeGraph: { entity_count?: number; relationship_count?: number } | null | undefined
   readiness: Record<string, unknown> | null | undefined
@@ -19,17 +20,47 @@ export function buildLensMetrics({
     | null
     | undefined
   outcomesByEvent: Record<string, number> | null | undefined
+  /** G1 — when present, lens bar uses canonical typed metrics instead of legacy sources. */
+  canonicalMetrics?: {
+    knowledge?: Record<string, number | null | undefined>
+    learning?: Record<string, number | null | undefined>
+    predictions?: Record<string, number | null | undefined>
+    execution?: Record<string, number | null | undefined>
+    outcomes?: Record<string, number | null | undefined>
+  } | null
 }): IntelligenceLensMetrics {
   const readinessSummary = summarizeTrainingReadiness(readiness)
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
   const predictingLive = Object.values(orgTraining).filter((row) => row?.artifact_loaded).length
   const trackedModels = Object.keys(orgTraining).length
-  const entityCount = knowledgeGraph?.entity_count
-  const relationshipCount = knowledgeGraph?.relationship_count
+  const entityCount = canonicalMetrics?.knowledge?.knownEntities ?? knowledgeGraph?.entity_count
+  const relationshipCount =
+    canonicalMetrics?.knowledge?.knownRelationships ?? knowledgeGraph?.relationship_count
+  const configuredActive = canonicalMetrics?.execution?.configuredActiveAgents
+  const currentlyRunning = canonicalMetrics?.execution?.currentlyRunningAgents
   const activeRuns = coreState?.core?.activeAgentRuns
-  const actionsTaken = readNumber(outcomesByEvent?.recommendation_created, 0)
+  const actionsTaken = readNumber(
+    canonicalMetrics?.execution?.actionsCompleted ?? outcomesByEvent?.recommendation_created,
+    0,
+  )
+  const activePredictions = canonicalMetrics?.predictions?.activePredictions
+  const recentLearnings = canonicalMetrics?.learning?.recentLearnings
+  const measuredOutcomes = canonicalMetrics?.outcomes?.measuredOutcomes
   const impactScore = businessImpact?.businessImpactScore
   const winRate = businessImpact?.avgOutcomeWinRate
+
+  const actsValue =
+    configuredActive != null
+      ? String(configuredActive)
+      : activeRuns != null
+        ? String(activeRuns)
+        : "—"
+  const actsHint =
+    configuredActive != null && currentlyRunning != null
+      ? `${currentlyRunning} running now`
+      : actionsTaken > 0
+        ? `${actionsTaken} actions completed`
+        : "Configured active agents"
 
   return {
     knows: {
@@ -40,23 +71,50 @@ export function buildLensMetrics({
           : "Graph not populated",
     },
     learns: {
-      value: readinessSummary.total > 0 ? String(readinessSummary.ready) : "—",
-      hint: readinessSummary.total > 0 ? `${readinessSummary.total} models tracked` : "No training signals",
+      value:
+        recentLearnings != null
+          ? String(recentLearnings)
+          : readinessSummary.total > 0
+            ? String(readinessSummary.ready)
+            : "—",
+      hint:
+        recentLearnings != null
+          ? "Business learning insights"
+          : readinessSummary.total > 0
+            ? `${readinessSummary.total} models tracked`
+            : "No training signals",
     },
     predicts: {
-      value: trackedModels > 0 ? String(predictingLive) : "—",
-      hint: trackedModels > 0 ? `of ${trackedModels} in catalog` : "No catalog models",
+      value:
+        activePredictions != null
+          ? String(activePredictions)
+          : trackedModels > 0
+            ? String(predictingLive)
+            : "—",
+      hint:
+        activePredictions != null
+          ? "Deduped predictions"
+          : trackedModels > 0
+            ? `of ${trackedModels} in catalog`
+            : "No catalog models",
     },
     acts: {
-      value: activeRuns != null ? String(activeRuns) : "—",
-      hint: actionsTaken > 0 ? `${actionsTaken} recommendations` : "Active runs, 24h",
+      value: actsValue,
+      hint: actsHint,
     },
     improves: {
-      value: impactScore != null ? String(Math.round(impactScore)) : "—",
+      value:
+        measuredOutcomes != null
+          ? String(measuredOutcomes)
+          : impactScore != null
+            ? String(Math.round(impactScore))
+            : "—",
       hint:
-        winRate != null
-          ? `${Math.round(winRate * 100)}% win rate`
-          : businessImpact?.scoreLabel ?? "No outcomes yet",
+        measuredOutcomes != null
+          ? "Measured outcomes in window"
+          : winRate != null
+            ? `${Math.round(winRate * 100)}% win rate`
+            : businessImpact?.scoreLabel ?? "No outcomes yet",
     },
   }
 }

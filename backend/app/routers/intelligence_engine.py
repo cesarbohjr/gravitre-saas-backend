@@ -22,6 +22,7 @@ from app.services.outcome_tracker import get_outcome_tracker
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.ai_trust_layer import get_ai_trust_layer
 from app.services.swarm_coordinator_service import SWARM_AGGREGATING, SWARM_RUNNING, list_swarm_runs
+from app.services.intelligence_projection_service import get_intelligence_projection_service
 from app.services.training_signal_service import get_training_signal_service
 from app.workflows.audit import write_audit_event
 from app.workflows.constants import RUN_STATUS_PENDING_APPROVAL, RUN_TYPE_EXECUTE
@@ -425,6 +426,25 @@ async def intelligence_churn_risk_label(
             },
         )
     return result
+
+
+@router.get("/page-context")
+async def intelligence_page_context(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+    window_hours: int = 24,
+    active_lens: str = "knows",
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    """G1 — scoped VIEW over canonical Intelligence State (not a separate source of truth)."""
+    ctx = await get_intelligence_projection_service(settings).build_page_context(
+        org_id,
+        environment_name=environment_name,
+        window_hours=window_hours,
+        active_lens=active_lens,
+    )
+    return ctx.model_dump(by_alias=False)
 
 
 @router.get("/core/state")

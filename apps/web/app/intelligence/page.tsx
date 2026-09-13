@@ -10,7 +10,8 @@ import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { agentsApi, intelligenceApi } from "@/lib/api"
+import { intelligenceApi } from "@/lib/api"
+import { canonicalAgentsToMapAgents } from "@/lib/intelligence/canonical-agents"
 import { ApiError } from "@/lib/fetcher"
 import { readNumber } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -138,14 +139,21 @@ function IntelligenceCenterInner() {
     () => intelligenceApi.trainingReadiness(),
     { revalidateOnFocus: false },
   )
-  const { data: agentsResponse } = useSWR(user ? "intelligence/map/agents" : null, () =>
-    agentsApi.list(),
+  const { data: pageContext } = useSWR(
+    user ? ["intelligence/page-context", activeLens] : null,
+    () => intelligenceApi.pageContext({ windowHours: 24, activeLens }),
+    { revalidateOnFocus: false },
   )
 
   const { data: businessSignals, isLoading: signalsLoading } = useWhatMattersNow(Boolean(user))
   const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
   const { knowledgeGraph, coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
   const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
+
+  const mapAgents = useMemo(
+    () => canonicalAgentsToMapAgents(pageContext?.snapshot.agents),
+    [pageContext?.snapshot.agents],
+  )
 
   const lensMetrics = useMemo(
     () =>
@@ -156,8 +164,18 @@ function IntelligenceCenterInner() {
         coreState: coreState.data,
         businessImpact: businessImpact.data,
         outcomesByEvent: (outcomes?.by_event_type as Record<string, number> | undefined) ?? {},
+        canonicalMetrics: pageContext?.metrics ?? pageContext?.snapshot.metrics,
       }),
-    [knowledgeGraph.data, readiness, modelCatalog, coreState.data, businessImpact.data, outcomes],
+    [
+      knowledgeGraph.data,
+      readiness,
+      modelCatalog,
+      coreState.data,
+      businessImpact.data,
+      outcomes,
+      pageContext?.metrics,
+      pageContext?.snapshot.metrics,
+    ],
   )
 
   const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
@@ -166,14 +184,14 @@ function IntelligenceCenterInner() {
     (question: string) => {
       const focus = resolveAskMapFocus(question, {
         departments: coreState.data?.departments ?? [],
-        agents: agentsResponse?.agents ?? [],
+        agents: mapAgents,
         signals: signals ?? [],
       })
       setActiveLens(focus.lens)
       setMapHighlightIds(focus.highlightNodeIds)
       if (focus.selection) setMapSelection(focus.selection)
     },
-    [coreState.data?.departments, agentsResponse?.agents, signals],
+    [coreState.data?.departments, mapAgents, signals],
   )
 
   useEffect(() => {
@@ -237,7 +255,7 @@ function IntelligenceCenterInner() {
               <IntelligenceMap
                 lens={activeLens}
                 signals={signals}
-                agents={agentsResponse?.agents}
+                agents={mapAgents}
                 entityTypes={knowledgeGraph.data?.entity_types}
                 readiness={readiness}
                 orgTraining={modelCatalog?.orgTrainingStatus}

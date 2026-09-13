@@ -81,6 +81,7 @@ def sse_intelligence_metadata(
     research_cascade: dict[str, Any] | None = None,
     react_perf: dict[str, Any] | None = None,
     connected_integrations: list[str] | None = None,
+    visualization: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     from app.services.user_facing_activity import sanitize_user_activity_label, user_status_payload
 
@@ -131,6 +132,7 @@ def sse_intelligence_metadata(
                 "researchCascade": research_cascade or None,
                 "reactPerf": react_perf or None,
                 "connectedIntegrations": list(connected_integrations or []),
+                "visualization": visualization or None,
             },
         }
     )

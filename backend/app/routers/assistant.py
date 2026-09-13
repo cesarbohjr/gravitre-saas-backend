@@ -586,6 +586,7 @@ def _build_stream(
     department: str | None = None,
     spoken_mode: bool = False,
     composer_failure_probe: str | None = None,
+    intelligence_hub_visualization: dict[str, Any] | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -725,6 +726,17 @@ def _build_stream(
             logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
+        if intelligence_hub_visualization:
+            from app.operators.assistant_sse import sse_intelligence_metadata
+
+            yield assistant_event_to_sse_line(
+                sse_intelligence_metadata(
+                    message_id=complete.message_id if complete else None,
+                    confidence=complete.confidence if complete else None,
+                    answer_explanation=None,
+                    visualization=intelligence_hub_visualization,
+                )
+            )
         if not spoken_mode:
             from app.services.intent_gateway import response_cache_put
 
@@ -848,6 +860,7 @@ async def assistant_chat(
     resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)
     model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
 
+    intelligence_hub_visualization: dict[str, Any] | None = None
     system_prompt = _build_assistant_system_prompt(
         settings,
         org_id,
@@ -856,6 +869,23 @@ async def assistant_chat(
         query=last_user,
         environment_name=environment_name,
     )
+    if (body.surface or "").strip() == "intelligence_hub":
+        from app.services.intelligence_context_compiler import compile_intelligence_context_for_query
+        from app.services.intelligence_projection_service import get_intelligence_projection_service
+
+        snapshot = await get_intelligence_projection_service(settings).build_snapshot(
+            org_id,
+            environment_name=environment_name,
+        )
+        intel_block, viz = compile_intelligence_context_for_query(snapshot, last_user)
+        intelligence_hub_visualization = viz.model_dump() if viz else None
+        system_prompt = (
+            f"{system_prompt}\n\n<intelligence_hub_context>\n{intel_block}\n"
+            "</intelligence_hub_context>\n"
+            "You are answering from the Intelligence hub. Use ONLY the canonical intelligence "
+            "state above for agent status, predictions, and learning claims. "
+            "Do not say data is unavailable when canonical state lists it."
+        )
     if cross_department:
         system_prompt = (
             f"{system_prompt}\n\nOperator scope: cross-department cowork. "
@@ -1064,6 +1094,7 @@ async def assistant_chat(
             department=department_scope,
             spoken_mode=bool(getattr(body, "spoken_mode", False)),
             composer_failure_probe=composer_failure_probe,
+            intelligence_hub_visualization=intelligence_hub_visualization,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

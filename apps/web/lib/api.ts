@@ -2297,6 +2297,14 @@ export const intelligenceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<IntelligenceCoreStateResponse>(apiUrl(`/api/intelligence/core/state${suffix}`))
   },
+  /** G1 — scoped VIEW over canonical Intelligence State (not a separate source of truth). */
+  pageContext: (params?: { windowHours?: number; activeLens?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.windowHours != null) query.set("window_hours", String(params.windowHours))
+    if (params?.activeLens) query.set("active_lens", params.activeLens)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<IntelligencePageContextResponse>(apiUrl(`/api/intelligence/page-context${suffix}`))
+  },
   churnRiskAdvisory: (params?: { limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))
@@ -2657,6 +2665,46 @@ export type IntelligenceCoreStateResponse = {
   }
   departments: IntelligenceCoreDepartment[]
   note: string
+}
+
+/** G1 canonical intelligence metrics (typed semantics under UI lens labels). */
+export type IntelligenceCanonicalMetrics = {
+  knowledge: Record<string, number | null | undefined>
+  learning: Record<string, number | null | undefined>
+  predictions: Record<string, number | null | undefined>
+  execution: Record<string, number | null | undefined>
+  outcomes: Record<string, number | null | undefined>
+}
+
+export type IntelligencePageContextResponse = {
+  snapshot: {
+    generatedAt: string
+    tenantId: string
+    timeWindowHours: number
+    coreState: string
+    agents: Array<{
+      id: string
+      name: string
+      role?: string | null
+      department?: string | null
+      businessLabel: string
+      configuredStatus: string
+      executionStatus: string
+      isConfiguredActive: boolean
+      isCurrentlyRunning: boolean
+    }>
+    predictions: Array<Record<string, unknown>>
+    learnings: Array<Record<string, unknown>>
+    metrics: IntelligenceCanonicalMetrics
+    qualityFlags: string[]
+    departments: Array<Record<string, unknown>>
+  }
+  graph: { nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>> }
+  activeLens: string
+  availableLenses: string[]
+  metrics: IntelligenceCanonicalMetrics
+  qualityFlags: string[]
+  suggestedQuestions: string[]
 }
 
 // ============ Memory Promotion (v4) ============
