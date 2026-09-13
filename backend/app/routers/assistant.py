@@ -612,16 +612,12 @@ def _build_stream(
         base_prompt = (assistant_system_prompt or "").strip() or ASSISTANT_SYSTEM_PROMPT
 
         if intelligence_hub_deterministic_answer:
-            from app.operators.assistant_sse import (
-                chunk_text_deltas,
-                sse_intelligence_metadata,
-                sse_text_delta,
-                sse_text_end,
-                sse_text_start,
-            )
+            from app.operators.assistant_sse import sse_intelligence_metadata
+            from app.services.response_composer import compose_reply_events
 
             message_id = str(uuid.uuid4())
-            assistant_text = intelligence_hub_deterministic_answer.strip()
+            draft_text = intelligence_hub_deterministic_answer.strip()
+            client = get_supabase_client(settings)
             yield assistant_event_to_sse_line(
                 sse_intelligence_metadata(
                     message_id=message_id,
@@ -632,11 +628,21 @@ def _build_stream(
                     visualization=intelligence_hub_visualization,
                 )
             )
-            text_id, start_ev = sse_text_start()
-            yield assistant_event_to_sse_line(start_ev)
-            for delta in chunk_text_deltas(assistant_text):
-                yield assistant_event_to_sse_line(sse_text_delta(text_id, delta))
-            yield assistant_event_to_sse_line(sse_text_end(text_id))
+            packed = await compose_reply_events(
+                {"success": True, "data": {"text": draft_text}},
+                kind="shortcut",
+                draft=draft_text,
+                history=history_messages,
+                user_message=user_text,
+                settings=settings,
+                org_id=org_id,
+                client=client,
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            assistant_text = packed.text
+            for ev in packed.events:
+                yield assistant_event_to_sse_line(ev)
             yield assistant_event_to_sse_line(sse_finish_step())
             yield assistant_event_to_sse_line(sse_finish())
             try:
