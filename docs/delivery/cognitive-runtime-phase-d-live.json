@@ -1,11 +1,161 @@
 {
   "probe": "cognitive_runtime_phase_d_live",
-  "started_at": "2026-09-13T21:11:01.080484+00:00",
+  "started_at": "2026-09-13T21:55:05.996565+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "53b078b6",
-  "cases": [],
+  "expect_sha": "ed6c6f44",
+  "cases": [
+    {
+      "id": "chitchat_no_ga_clarify",
+      "message": "Hey \u2014 good morning!",
+      "passed": true,
+      "checks": {
+        "matched_include": true,
+        "forbidden_hits": [],
+        "analytics_short_circuit": false,
+        "has_turn_trace": false,
+        "turn_id": null,
+        "analytics_short_circuit_ok": true,
+        "structured_blocks_ok": true
+      },
+      "verdict": "PASS",
+      "assistant_excerpt": "",
+      "conversation_id": "5f45ff27-c569-42e5-a220-2f30c4f9aee5",
+      "http_status": 200,
+      "routing": {
+        "cognitiveLoop": true,
+        "loopId": "458f233f-8fc7-4fe8-9fa1-368c33332207",
+        "operatorTask": false,
+        "fastPath": true,
+        "spokenMode": false,
+        "turnId": null,
+        "stages": [
+          {
+            "stage": "PERCEIVE",
+            "ok": true,
+            "ms": 85.0,
+            "skipped": false,
+            "skip_reason": null,
+            "evidence": {
+              "action": "shortcut",
+              "reason": "candidate_accepted",
+              "candidate_id": "phrase_bank",
+              "confidence": 0.93
+            }
+          },
+          {
+            "stage": "RETRIEVE",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": true,
+            "skip_reason": "intent_gateway_fast_path",
+            "evidence": {
+              "reason": "intent_gateway_fast_path"
+            }
+          },
+          {
+            "stage": "PLAN",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": true,
+            "skip_reason": "intent_gateway_fast_path",
+            "evidence": {
+              "reason": "intent_gateway_fast_path"
+            }
+          },
+          {
+            "stage": "ACT",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": true,
+            "skip_reason": "intent_gateway_fast_path",
+            "evidence": {
+              "reason": "intent_gateway_fast_path"
+            }
+          },
+          {
+            "stage": "OBSERVE",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": true,
+            "skip_reason": "intent_gateway_fast_path",
+            "evidence": {
+              "reason": "intent_gateway_fast_path"
+            }
+          },
+          {
+            "stage": "LEARN",
+            "ok": true,
+            "ms": 0.0,
+            "skipped": true,
+            "skip_reason": "intent_gateway_fast_path",
+            "evidence": {
+              "reason": "intent_gateway_fast_path"
+            }
+          }
+        ],
+        "fullLoop": false
+      },
+      "turn_id": null
+    },
+    {
+      "id": "ga4_traffic_short_circuit",
+      "message": "Tell me about my GA4 website traffic for the last 30 days.",
+      "passed": true,
+      "verdict": "NOT RUN",
+      "reason": "google_analytics not in list_executable_integrations (connected_early); availability=execution_available=False auth_status=misconfigured blocking_reason=misconfigured"
+    },
+    {
+      "id": "website_doing_cross_source",
+      "message": "How is my website doing?",
+      "passed": true,
+      "verdict": "NOT RUN",
+      "reason": "google_analytics not in list_executable_integrations (connected_early); availability=execution_available=False auth_status=misconfigured blocking_reason=misconfigured"
+    }
+  ],
   "git_sha": "ed6c6f44a527660a4333a9bb1f6acddf0012f4f3",
-  "health_timestamp": "2026-09-13T21:11:03.721562+00:00",
-  "verdict": "NOT RUN \u2014 tip mismatch got=ed6c6f44a527660a4333a9bb1f6acddf0012f4f3 expect=53b078b6"
+  "health_timestamp": "2026-09-13T21:55:07.855866+00:00",
+  "table_healthy_integrations": [
+    "apollo",
+    "google_ads",
+    "hubspot",
+    "greenhouse",
+    "stripe",
+    "google_search_console",
+    "google_analytics",
+    "clay",
+    "linkedin"
+  ],
+  "executable_integrations": [],
+  "ga4_availability": {
+    "connector_id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
+    "vendor": "google_analytics",
+    "configured": true,
+    "authenticated": false,
+    "token_valid": false,
+    "scopes_valid": true,
+    "health_status": "error",
+    "execution_available": false,
+    "read_available": false,
+    "write_available": false,
+    "last_checked_at": "2026-09-13T21:55:11.594945+00:00",
+    "source_of_truth": "connector_availability_service",
+    "blocking_reason": "misconfigured",
+    "recovery_action": "Configure google_analytics OAuth in server settings or complete connector setup.",
+    "auth_status": "misconfigured",
+    "display_status": "error",
+    "status": "error",
+    "connected": false,
+    "raw_status": "healthy",
+    "environment": "production",
+    "name": "google_analytics"
+  },
+  "diagnosis": {
+    "short_circuit_gate": "assess_cognitive_resolution_needs uses list_connected_integrations (executable), not DB row status",
+    "ga4_in_table_healthy": true,
+    "ga4_executable": false,
+    "expected_short_circuit_when_executable": false
+  },
+  "finished_at": "2026-09-13T21:55:18.361492+00:00",
+  "verdict": "PASS"
 }

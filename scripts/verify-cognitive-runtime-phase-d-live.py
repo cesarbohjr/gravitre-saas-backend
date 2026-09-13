@@ -31,6 +31,10 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+# Backend imports (tool_registry, connector_availability) require PYTHONPATH.
+if str(BACKEND) not in os.environ.get("PYTHONPATH", ""):
+    os.environ["PYTHONPATH"] = str(BACKEND)
+
 from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
@@ -87,9 +91,16 @@ def load_env() -> dict[str, str]:
     for k, v in os.environ.items():
         if v and k not in merged:
             merged[k] = v
-    for k in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"):
+    for k in (
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_JWT_SECRET",
+        "SUPABASE_ANON_KEY",
+    ):
         if merged.get(k):
             os.environ[k] = merged[k]
+    if not os.environ.get("SUPABASE_ANON_KEY"):
+        os.environ["SUPABASE_ANON_KEY"] = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "anon-test")
     return merged
 
 
@@ -176,7 +187,8 @@ def score_case(case: dict[str, Any], parsed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _connected_integrations(sb: Any, org_id: str) -> list[str]:
+def _table_healthy_integrations(sb: Any, org_id: str) -> list[str]:
+    """DB row status only — does NOT match agent ingress connected_early."""
     rows = (
         sb.table("connectors")
         .select("type, status")
@@ -193,6 +205,27 @@ def _connected_integrations(sb: Any, org_id: str) -> list[str]:
         if typ:
             out.append(typ)
     return out
+
+
+def _executable_integrations(sb: Any, org_id: str) -> list[str]:
+    """Same gate as agent_intelligence connected_early (list_connected_integrations)."""
+    from app.config import get_settings
+    from app.services.tool_registry import ToolRegistry
+
+    return ToolRegistry.list_connected_integrations(sb, org_id, force_live=True)
+
+
+def _ga4_availability(sb: Any, org_id: str) -> dict[str, Any] | None:
+    from app.config import get_settings
+    from app.connectors.connector_availability_service import find_integration_availability
+
+    return find_integration_availability(
+        sb,
+        org_id,
+        "google_analytics",
+        get_settings(),
+        force_live=True,
+    )
 
 
 async def _fetch_assistant_message(
@@ -312,19 +345,37 @@ async def main() -> int:
             print(json.dumps({"verdict": report["verdict"], "git_sha": sha}, indent=2))
             return 2
 
-        connected = _connected_integrations(sb, org_id)
-        report["connected_integrations"] = connected
-        has_ga4 = "google_analytics" in connected
+        table_healthy = _table_healthy_integrations(sb, org_id)
+        executable = _executable_integrations(sb, org_id)
+        ga4_availability = _ga4_availability(sb, org_id)
+        report["table_healthy_integrations"] = table_healthy
+        report["executable_integrations"] = executable
+        report["ga4_availability"] = ga4_availability
+        has_ga4_executable = "google_analytics" in executable
+        report["diagnosis"] = {
+            "short_circuit_gate": "assess_cognitive_resolution_needs uses list_connected_integrations (executable), not DB row status",
+            "ga4_in_table_healthy": "google_analytics" in table_healthy,
+            "ga4_executable": has_ga4_executable,
+            "expected_short_circuit_when_executable": has_ga4_executable,
+        }
 
         for case in CASES:
-            if case.get("expect_analytics_short_circuit") and not has_ga4:
+            if case.get("expect_analytics_short_circuit") and not has_ga4_executable:
+                reason = "google_analytics not in list_executable_integrations (connected_early)"
+                if ga4_availability:
+                    reason = (
+                        f"{reason}; availability="
+                        f"execution_available={ga4_availability.get('execution_available')} "
+                        f"auth_status={ga4_availability.get('auth_status')} "
+                        f"blocking_reason={ga4_availability.get('blocking_reason')}"
+                    )
                 report["cases"].append(
                     {
                         "id": case["id"],
                         "message": case["message"],
                         "passed": True,
                         "verdict": "NOT RUN",
-                        "reason": "isolated org has no connected google_analytics",
+                        "reason": reason,
                     }
                 )
                 continue
