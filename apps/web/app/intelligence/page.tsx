@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
@@ -38,6 +38,7 @@ import {
   WhatGravitreLearnedSection,
   WhatNeedsAttentionCompact,
 } from "@/components/intelligence/map/intelligence-support-sections"
+import { resolveAskMapFocus } from "@/components/intelligence/map/resolve-ask-map-focus"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -116,6 +117,7 @@ function IntelligenceCenterInner() {
   const copy = SURFACE_COPY.insights
   const [activeLens, setActiveLens] = useState<IntelligenceMapLens>("knows")
   const [mapSelection, setMapSelection] = useState<IntelligenceMapSelection>(null)
+  const [mapHighlightIds, setMapHighlightIds] = useState<string[]>([])
 
   const { data: outcomes, error, mutate } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,
@@ -158,6 +160,28 @@ function IntelligenceCenterInner() {
     [knowledgeGraph.data, readiness, modelCatalog, coreState.data, businessImpact.data, outcomes],
   )
 
+  const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
+
+  const handleAskMapFocus = useCallback(
+    (question: string) => {
+      const focus = resolveAskMapFocus(question, {
+        departments: coreState.data?.departments ?? [],
+        agents: agentsResponse?.agents ?? [],
+        signals: signals ?? [],
+      })
+      setActiveLens(focus.lens)
+      setMapHighlightIds(focus.highlightNodeIds)
+      if (focus.selection) setMapSelection(focus.selection)
+    },
+    [coreState.data?.departments, agentsResponse?.agents, signals],
+  )
+
+  useEffect(() => {
+    if (mapHighlightIds.length === 0) return
+    const timer = window.setTimeout(() => setMapHighlightIds([]), 12_000)
+    return () => window.clearTimeout(timer)
+  }, [mapHighlightIds])
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
@@ -183,8 +207,6 @@ function IntelligenceCenterInner() {
   const avgConfidence = trust?.avg_confidence as number | null | undefined
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
   const hasRuntimeRows = Object.keys(orgTraining).length > 0
-  const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
-
   return (
     <AppShell title={copy.title}>
       <div className="relative bg-[color:var(--g-canvas)]">
@@ -208,6 +230,7 @@ function IntelligenceCenterInner() {
             <AskGravitreComposer
               variant="map"
               suggestions={dailyBriefing?.suggestions}
+              onAsk={handleAskMapFocus}
             />
 
             <div className="flex min-h-[52vh] flex-col gap-4 lg:flex-row">
@@ -222,6 +245,7 @@ function IntelligenceCenterInner() {
                 relationshipCount={knowledgeGraph.data?.relationship_count}
                 selection={mapSelection}
                 onSelectionChange={setMapSelection}
+                highlightNodeIds={mapHighlightIds}
                 className="min-h-[48vh] lg:min-h-[52vh]"
               />
               <IntelligenceMapContextPanel

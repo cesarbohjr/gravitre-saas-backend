@@ -67,11 +67,14 @@ export function AskGravitreComposer({
   suggestions,
   className,
   variant = "card",
+  onAsk,
 }: {
   suggestions: string[] | null | undefined
   className?: string
   /** `map` — command-palette bar atop the intelligence map (no card chrome). */
   variant?: "card" | "map"
+  /** Phase E — animate/highlight the intelligence map when a question is submitted. */
+  onAsk?: (question: string) => void
 }) {
   const { user } = useAuth()
   const questions = suggestions?.length ? suggestions.slice(0, 3) : FALLBACK_QUESTIONS
@@ -155,9 +158,10 @@ export function AskGravitreComposer({
       setExecutionResult(null)
       setPendingTask(null)
       setInput("")
+      onAsk?.(trimmed)
       void sendMessage({ text: trimmed })
     },
-    [isBusy, sendMessage],
+    [isBusy, onAsk, sendMessage],
   )
 
   const hasExecutionPanel = Boolean(executionResult) || Boolean(dialogueMode && pendingTask)

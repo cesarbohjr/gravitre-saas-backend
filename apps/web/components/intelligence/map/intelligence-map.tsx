@@ -101,6 +101,7 @@ export function IntelligenceMap({
   relationshipCount,
   selection,
   onSelectionChange,
+  highlightNodeIds,
   className,
 }: {
   lens: IntelligenceMapLens
@@ -113,8 +114,11 @@ export function IntelligenceMap({
   relationshipCount?: number | null
   selection?: IntelligenceMapSelection
   onSelectionChange?: (selection: IntelligenceMapSelection) => void
+  /** Phase E — pulse/highlight nodes matched from an Ask Gravitre question. */
+  highlightNodeIds?: string[]
   className?: string
 }) {
+  const highlightSet = useMemo(() => new Set(highlightNodeIds ?? []), [highlightNodeIds])
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -327,6 +331,7 @@ export function IntelligenceMap({
               const pos = positions.get(node.id)
               if (!pos) return null
               const isSelected = selectedId === node.id
+              const isHighlighted = highlightSet.has(node.id)
               const warning =
                 node.kind === "department" && node.department
                   ? warningsByDept.get(node.department.id.toLowerCase())
@@ -338,9 +343,21 @@ export function IntelligenceMap({
                   className="absolute -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${(pos.x / VB.w) * 100}%`, top: `${(pos.y / VB.h) * 100}%` }}
                 >
+                  {isHighlighted && !reduced ? (
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 -m-2 rounded-2xl border-2 border-[color:var(--g-brand)]"
+                      animate={{ opacity: [0.35, 0.9, 0.35], scale: [1, 1.06, 1] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  ) : null}
                   <button
                     type="button"
-                    className="relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]"
+                    className={cn(
+                      "relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+                      isHighlighted &&
+                        "ring-2 ring-[color:var(--g-brand)] ring-offset-2 ring-offset-[color:var(--g-surface-1)]",
+                    )}
                     onClick={() => toggleSelection(node)}
                     aria-label={`${node.label} ${node.kind} node`}
                   >
