@@ -29,7 +29,7 @@ import {
   type IntelligenceMapSelection,
 } from "@/components/intelligence/map/intelligence-map"
 import { IntelligenceLensBar } from "@/components/intelligence/map/intelligence-lens-bar"
-import { IntelligenceMapContextPanel } from "@/components/intelligence/map/intelligence-map-context-panel"
+import { IntelligenceInspectorDrawer } from "@/components/intelligence/map/intelligence-inspector-drawer"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -38,6 +38,10 @@ import {
   WhatNeedsAttentionCompact,
 } from "@/components/intelligence/map/intelligence-support-sections"
 import { resolveAskMapFocus } from "@/components/intelligence/map/resolve-ask-map-focus"
+import {
+  applyAssistantVisualizationToMapState,
+  type AssistantVisualization,
+} from "@/lib/intelligence/assistant-visualization"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -115,6 +119,9 @@ function IntelligenceCenterInner() {
   const [activeLens, setActiveLens] = useState<IntelligenceMapLens>("knows")
   const [mapSelection, setMapSelection] = useState<IntelligenceMapSelection>(null)
   const [mapHighlightIds, setMapHighlightIds] = useState<string[]>([])
+  const [mapDimIds, setMapDimIds] = useState<string[]>([])
+  const [mapFocusIds, setMapFocusIds] = useState<string[]>([])
+  const [composerPendingQuestion, setComposerPendingQuestion] = useState<string | null>(null)
 
   const { data: outcomes, error, mutate } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,
@@ -176,6 +183,27 @@ function IntelligenceCenterInner() {
 
   const signals = businessSignals?.signals as Record<string, unknown>[] | undefined
 
+  const graphNodeIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const node of pageContext?.graph?.nodes ?? []) {
+      const id = typeof node.id === "string" ? node.id : null
+      if (id) ids.add(id)
+    }
+    return ids
+  }, [pageContext?.graph?.nodes])
+
+  const applyMapVisualization = useCallback(
+    (state: ReturnType<typeof applyAssistantVisualizationToMapState>) => {
+      if (state.lens) setActiveLens(state.lens)
+      setMapHighlightIds(state.highlightNodeIds)
+      setMapDimIds(state.dimNodeIds)
+      setMapFocusIds(state.focusNodeIds)
+      if (state.selection) setMapSelection(state.selection)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    },
+    [],
+  )
+
   const handleAskMapFocus = useCallback(
     (question: string) => {
       const focus = resolveAskMapFocus(question, {
@@ -183,18 +211,45 @@ function IntelligenceCenterInner() {
         agents: mapAgents,
         signals: signals ?? [],
       })
-      setActiveLens(focus.lens)
-      setMapHighlightIds(focus.highlightNodeIds)
-      if (focus.selection) setMapSelection(focus.selection)
+      applyMapVisualization({
+        lens: focus.lens,
+        highlightNodeIds: focus.highlightNodeIds,
+        dimNodeIds: [],
+        focusNodeIds: focus.highlightNodeIds,
+        selection: focus.selection,
+      })
     },
-    [coreState.data?.departments, mapAgents, signals],
+    [applyMapVisualization, coreState.data?.departments, mapAgents, signals],
+  )
+
+  const handleAssistantVisualization = useCallback(
+    (visualization: AssistantVisualization) => {
+      const state = applyAssistantVisualizationToMapState(visualization, {
+        graphNodeIds: graphNodeIds.size > 0 ? graphNodeIds : undefined,
+        agents: mapAgents,
+        departments: coreState.data?.departments ?? [],
+        signals: signals ?? [],
+      })
+      applyMapVisualization(state)
+    },
+    [
+      applyMapVisualization,
+      graphNodeIds,
+      mapAgents,
+      coreState.data?.departments,
+      signals,
+    ],
   )
 
   useEffect(() => {
-    if (mapHighlightIds.length === 0) return
-    const timer = window.setTimeout(() => setMapHighlightIds([]), 12_000)
+    if (mapHighlightIds.length === 0 && mapDimIds.length === 0) return
+    const timer = window.setTimeout(() => {
+      setMapHighlightIds([])
+      setMapDimIds([])
+      setMapFocusIds([])
+    }, 12_000)
     return () => window.clearTimeout(timer)
-  }, [mapHighlightIds])
+  }, [mapHighlightIds, mapDimIds])
 
   if (!user) {
     return (
@@ -243,9 +298,12 @@ function IntelligenceCenterInner() {
               variant="map"
               suggestions={dailyBriefing?.suggestions}
               onAsk={handleAskMapFocus}
+              onVisualization={handleAssistantVisualization}
+              pendingQuestion={composerPendingQuestion}
+              onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
             />
 
-            <div className="flex min-h-[52vh] flex-col gap-4 lg:flex-row">
+            <div className="relative min-h-[52vh]">
               <IntelligenceMap
                 lens={activeLens}
                 signals={signals}
@@ -259,13 +317,33 @@ function IntelligenceCenterInner() {
                 selection={mapSelection}
                 onSelectionChange={setMapSelection}
                 highlightNodeIds={mapHighlightIds}
-                className="min-h-[48vh] lg:min-h-[52vh]"
+                dimNodeIds={mapDimIds}
+                focusNodeIds={mapFocusIds}
+                className="min-h-[52vh]"
               />
-              <IntelligenceMapContextPanel
-                selection={mapSelection}
-                className="w-full shrink-0 lg:w-80"
-              />
+              {!mapSelection ? (
+                <p
+                  className={cn(
+                    TYPE.meta,
+                    "pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-divide/80 bg-[color:var(--g-surface-1)]/90 px-3 py-1 shadow-sm backdrop-blur-sm",
+                  )}
+                >
+                  Click a node to inspect evidence and context
+                </p>
+              ) : null}
             </div>
+
+            <IntelligenceInspectorDrawer
+              selection={mapSelection}
+              onSelectionChange={setMapSelection}
+              pageContext={pageContext}
+              whyData={whyEvidence}
+              onAskAbout={(question) => {
+                handleAskMapFocus(question)
+                setComposerPendingQuestion(question)
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+            />
 
             <IntelligenceLensBar
               activeLens={activeLens}
@@ -273,6 +351,8 @@ function IntelligenceCenterInner() {
                 setActiveLens(lens)
                 setMapSelection(null)
                 setMapHighlightIds([])
+                setMapDimIds([])
+                setMapFocusIds([])
               }}
               metrics={lensMetrics}
             />

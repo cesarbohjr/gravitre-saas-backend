@@ -24,7 +24,7 @@
  * chose for `/ai` vs `/agents/[id]/chat` being independent mounts.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { useChat } from "@ai-sdk/react"
@@ -49,6 +49,10 @@ import {
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
+import {
+  parseAssistantVisualization,
+  type AssistantVisualization,
+} from "@/lib/intelligence/assistant-visualization"
 
 // Re-exported unchanged from ask-gravitre-entry.tsx — same daily-briefing
 // fetch, same real-suggestions-or-labeled-fallback contract. Not
@@ -61,6 +65,7 @@ type IntelligenceDataPart = {
   dialogueMode?: string
   executionResult?: ChatExecutionResult
   pendingTask?: ChatPendingTask
+  visualization?: unknown
 }
 
 export function AskGravitreComposer({
@@ -68,13 +73,21 @@ export function AskGravitreComposer({
   className,
   variant = "card",
   onAsk,
+  onVisualization,
+  pendingQuestion,
+  onPendingQuestionConsumed,
 }: {
   suggestions: string[] | null | undefined
   className?: string
   /** `map` — command-palette bar atop the intelligence map (no card chrome). */
   variant?: "card" | "map"
-  /** Phase E — animate/highlight the intelligence map when a question is submitted. */
+  /** Phase E — optimistic map focus while the answer streams (heuristic). */
   onAsk?: (question: string) => void
+  /** G4 — canonical map focus from backend `AssistantVisualization` SSE payload. */
+  onVisualization?: (visualization: AssistantVisualization) => void
+  /** G5 — inspector drawer can queue a contextual question. */
+  pendingQuestion?: string | null
+  onPendingQuestionConsumed?: () => void
 }) {
   const { user } = useAuth()
   const questions = suggestions?.length ? suggestions.slice(0, 3) : FALLBACK_QUESTIONS
@@ -141,6 +154,10 @@ export function AskGravitreComposer({
       if (payload.dialogueMode !== undefined) setDialogueMode(payload.dialogueMode ?? null)
       if (payload.executionResult !== undefined) setExecutionResult(payload.executionResult ?? null)
       if (payload.pendingTask !== undefined) setPendingTask(payload.pendingTask ?? null)
+      if (payload.visualization !== undefined) {
+        const viz = parseAssistantVisualization(payload.visualization)
+        if (viz) onVisualization?.(viz)
+      }
     },
   })
 
@@ -163,6 +180,13 @@ export function AskGravitreComposer({
     },
     [isBusy, onAsk, sendMessage],
   )
+
+  useEffect(() => {
+    const trimmed = pendingQuestion?.trim()
+    if (!trimmed) return
+    ask(trimmed)
+    onPendingQuestionConsumed?.()
+  }, [ask, onPendingQuestionConsumed, pendingQuestion])
 
   const hasExecutionPanel = Boolean(executionResult) || Boolean(dialogueMode && pendingTask)
   const assistantUrl = conversationId ? `/ai?c=${encodeURIComponent(conversationId)}` : "/ai"

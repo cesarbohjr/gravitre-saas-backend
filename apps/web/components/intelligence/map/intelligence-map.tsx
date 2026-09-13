@@ -106,6 +106,8 @@ export function IntelligenceMap({
   selection,
   onSelectionChange,
   highlightNodeIds,
+  dimNodeIds,
+  focusNodeIds,
   canonicalGraph,
   className,
 }: {
@@ -121,11 +123,17 @@ export function IntelligenceMap({
   relationshipCount?: number | null
   selection?: IntelligenceMapSelection
   onSelectionChange?: (selection: IntelligenceMapSelection) => void
-  /** Phase E — pulse/highlight nodes matched from an Ask Gravitre question. */
+  /** Phase E / G4 — pulse/highlight nodes matched from Ask Gravitre. */
   highlightNodeIds?: string[]
+  /** G4 — de-emphasize nodes from canonical AssistantVisualization. */
+  dimNodeIds?: string[]
+  /** G4 — spatial camera focus (defaults to highlightNodeIds). */
+  focusNodeIds?: string[]
   className?: string
 }) {
   const highlightSet = useMemo(() => new Set(highlightNodeIds ?? []), [highlightNodeIds])
+  const dimSet = useMemo(() => new Set(dimNodeIds ?? []), [dimNodeIds])
+  const spatialFocusIds = focusNodeIds?.length ? focusNodeIds : highlightNodeIds
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   const [lensTransition, setLensTransition] = useState(false)
@@ -196,11 +204,11 @@ export function IntelligenceMap({
   }, [data])
 
   const focusTransform = useMemo(() => {
-    if (highlightNodeIds == null || highlightNodeIds.length === 0) return null
+    if (spatialFocusIds == null || spatialFocusIds.length === 0) return null
     const allPositions = new Map(positions)
     allPositions.set(CORE_ID, { x: CENTER.cx, y: CENTER.cy })
-    return computeMapFocusTransform(highlightNodeIds, allPositions, CENTER, VB)
-  }, [highlightNodeIds, positions])
+    return computeMapFocusTransform(spatialFocusIds, allPositions, CENTER, VB)
+  }, [spatialFocusIds, positions])
 
   const hasAnyRealSignal =
     topology.nodes.length > 0 ||
@@ -386,6 +394,7 @@ export function IntelligenceMap({
               if (!pos) return null
               const isSelected = selectedId === node.id
               const isHighlighted = highlightSet.has(node.id)
+              const isDimmed = dimSet.has(node.id) && !isHighlighted
               const warning =
                 node.kind === "department" && node.department
                   ? warningsByDept.get(node.department.id.toLowerCase())
@@ -397,8 +406,8 @@ export function IntelligenceMap({
                   layout={!reduced}
                   initial={reduced ? false : { opacity: 0, scale: 0.88 }}
                   animate={{
-                    opacity: 1,
-                    scale: 1,
+                    opacity: isDimmed ? 0.35 : 1,
+                    scale: isDimmed ? 0.92 : 1,
                     left: `${(pos.x / VB.w) * 100}%`,
                     top: `${(pos.y / VB.h) * 100}%`,
                   }}
@@ -420,6 +429,7 @@ export function IntelligenceMap({
                       "relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
                       isHighlighted &&
                         "ring-2 ring-[color:var(--g-brand)] ring-offset-2 ring-offset-[color:var(--g-surface-1)]",
+                      isDimmed && "grayscale",
                     )}
                     onClick={() => toggleSelection(node)}
                     aria-label={`${node.label} ${node.kind} node`}
