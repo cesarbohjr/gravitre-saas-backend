@@ -1,0 +1,11 @@
+{
+  "probe": "cognitive_runtime_phase_d_live",
+  "started_at": "2026-09-13T21:11:01.080484+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "53b078b6",
+  "cases": [],
+  "git_sha": "ed6c6f44a527660a4333a9bb1f6acddf0012f4f3",
+  "health_timestamp": "2026-09-13T21:11:03.721562+00:00",
+  "verdict": "NOT RUN \u2014 tip mismatch got=ed6c6f44a527660a4333a9bb1f6acddf0012f4f3 expect=53b078b6"
+}

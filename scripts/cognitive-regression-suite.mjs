@@ -211,6 +211,33 @@ mustContain(
   "classical evidence envelope",
 )
 
+// --- 7b) Cognitive runtime Phase D (trace + structured blocks) ---
+mustExist("backend/app/services/cognitive_trace_engine.py")
+mustExist("backend/app/services/structured_assistant_response.py")
+mustExist("backend/app/services/cognitive_harness_behavior.py")
+mustExist("backend/app/services/cognitive_agent_benchmark.py")
+mustExist("backend/tests/services/test_phase_d_cognitive_runtime.py")
+mustContain(
+  "backend/app/operators/agent_intelligence.py",
+  "_boot_cognitive_trace",
+  "unified cognitive turn trace boot",
+)
+mustContain(
+  "backend/app/operators/agent_intelligence.py",
+  "response_blocks",
+  "analytics structured response_blocks",
+)
+mustContain(
+  "backend/app/services/response_composer.py",
+  "response_blocks",
+  "composer structured response_blocks",
+)
+mustContain(
+  "backend/app/services/conversation_state_service.py",
+  "cognitive_turn_trace",
+  "task_state cognitive_turn_trace",
+)
+
 {
   const scan = spawnSync("python", ["scripts/scan_response_composer_bypass.py"], {
     cwd: ROOT,
@@ -304,6 +331,11 @@ mustContain(
       "tests/test_cognitive_nlu_adversarial_battery.py",
       "tests/test_response_composer.py",
       "tests/test_response_composer_bypass.py",
+      "tests/services/test_canonical_cognitive_ingress.py",
+      "tests/services/test_phase_a_cognitive_runtime_benchmark.py",
+      "tests/services/test_phase_b_cognitive_runtime.py",
+      "tests/services/test_phase_c_cognitive_runtime.py",
+      "tests/services/test_phase_d_cognitive_runtime.py",
     ]
     const env = {
       ...process.env,
