@@ -255,6 +255,7 @@ function IntelligenceCenterInner() {
                 orgTraining={modelCatalog?.orgTrainingStatus}
                 entityCount={knowledgeGraph.data?.entity_count}
                 relationshipCount={knowledgeGraph.data?.relationship_count}
+                canonicalGraph={pageContext?.graph}
                 selection={mapSelection}
                 onSelectionChange={setMapSelection}
                 highlightNodeIds={mapHighlightIds}

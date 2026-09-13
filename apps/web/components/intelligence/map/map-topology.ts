@@ -4,7 +4,7 @@ import type { IntelligenceMapLens } from "./intelligence-map-lens"
 import { formatDepartmentLabel, radialLayout } from "@/components/intelligence/core/types"
 import { readString } from "@/lib/intelligence/helpers"
 
-export type MapNodeKind = "department" | "agent" | "entity-type" | "model" | "signal"
+export type MapNodeKind = "department" | "agent" | "entity-type" | "model" | "signal" | "learning"
 
 export type MapNode = {
   id: string
@@ -259,7 +259,7 @@ export function layoutMapNodes(
   const positions = new Map<string, { x: number; y: number }>()
   const agents = nodes.filter((n) => n.kind === "agent")
   const entities = nodes.filter((n) => n.kind === "entity-type")
-  const models = nodes.filter((n) => n.kind === "model")
+  const models = nodes.filter((n) => n.kind === "model" || n.kind === "learning")
   const signals = nodes.filter((n) => n.kind === "signal")
   const depts = nodes.filter((n) => n.kind === "department")
 

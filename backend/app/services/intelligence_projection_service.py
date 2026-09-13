@@ -359,7 +359,7 @@ class IntelligenceProjectionService:
         entry = self._cache.get(cache_key)
         graph = entry.graph if entry else build_intelligence_graph(snapshot)
         lens = active_lens if active_lens in {"knows", "learns", "predicts", "acts", "improves"} else "knows"
-        _ = filter_graph_for_lens(graph, lens)  # reserved for G3 lens views
+        graph = filter_graph_for_lens(graph, lens)  # G3 — lens is a projection of one graph
 
         exec_metrics = snapshot.metrics.execution
         configured = int(exec_metrics.get("configuredActiveAgents") or 0)

@@ -289,6 +289,27 @@ def test_load_canonical_agents_merges_agents_and_operators():
 
 
 @pytest.mark.asyncio
+async def test_page_context_returns_lens_filtered_graph_not_full_topology():
+    service = IntelligenceProjectionService()
+    service.invalidate("org-g3-lens")
+
+    agents = [_agent("a1", "Lead Scouting Analyst")]
+    snapshot = _snapshot(agents)
+    snapshot.predictions = normalize_signals_to_predictions(
+        [{"id": "p1", "title": "Risk", "summary": "Scoped", "confidence": 0.7}],
+        fetched_at=snapshot.generatedAt,
+    )
+    full_graph = build_intelligence_graph(snapshot)
+    acts_graph = filter_graph_for_lens(full_graph, "acts")
+    predicts_graph = filter_graph_for_lens(full_graph, "predicts")
+
+    assert any(n.type == "agent" for n in acts_graph.nodes)
+    assert not any(n.type == "prediction" for n in acts_graph.nodes)
+    assert any(n.type == "prediction" for n in predicts_graph.nodes)
+    assert not any(n.type == "agent" for n in predicts_graph.nodes)
+
+
+@pytest.mark.asyncio
 async def test_page_context_endpoint_returns_canonical_snapshot():
     from httpx import ASGITransport, AsyncClient
 

@@ -15,6 +15,7 @@ import { DepartmentNode } from "@/components/intelligence/core/department-node"
 import { SignalEdge } from "@/components/intelligence/core/signal-edge"
 import { IntelligenceNetworkWebGL } from "@/components/intelligence/intelligence-network-webgl"
 import type { IntelligenceMapLens } from "./intelligence-map-lens"
+import { buildTopologyFromCanonicalGraph } from "@/lib/intelligence/canonical-graph-topology"
 import {
   buildMapTopology,
   CORE_ID,
@@ -105,9 +106,12 @@ export function IntelligenceMap({
   selection,
   onSelectionChange,
   highlightNodeIds,
+  canonicalGraph,
   className,
 }: {
   lens: IntelligenceMapLens
+  /** G3 — lens-filtered canonical graph from page-context (preferred over legacy topology). */
+  canonicalGraph?: { nodes: Record<string, unknown>[]; edges: Record<string, unknown>[] } | null
   signals?: BusinessSignalRow[] | null
   agents?: Agent[] | null
   entityTypes?: string[] | null
@@ -138,6 +142,13 @@ export function IntelligenceMap({
   const { data, error, isLoading } = useIntelligenceCoreState(true, 24)
 
   const topology = useMemo(() => {
+    if (canonicalGraph?.nodes?.length) {
+      return buildTopologyFromCanonicalGraph({
+        graph: canonicalGraph as Parameters<typeof buildTopologyFromCanonicalGraph>[0]["graph"],
+        lens,
+        agents,
+      })
+    }
     if (!data) {
       return { nodes: [], edges: [], caption: "" }
     }
@@ -151,7 +162,7 @@ export function IntelligenceMap({
       signals,
       coreState: data.core.state,
     })
-  }, [lens, data, agents, entityTypes, readiness, orgTraining, signals])
+  }, [lens, data, agents, entityTypes, readiness, orgTraining, signals, canonicalGraph])
 
   const positions = useMemo(
     () => layoutMapNodes(topology.nodes, CENTER, lens),

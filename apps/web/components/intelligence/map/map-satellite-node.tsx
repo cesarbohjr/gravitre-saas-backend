@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import type { MapNode } from "./map-topology"
 import { cn } from "@/lib/utils"
-import { Brain, Cpu, Lightning, Robot, Warning } from "@phosphor-icons/react"
+import { BookOpen, Brain, Cpu, Lightning, Robot, Warning } from "@phosphor-icons/react"
 
 export function MapSatelliteNode({
   node,
@@ -20,11 +20,13 @@ export function MapSatelliteNode({
       ? Robot
       : node.kind === "model"
         ? Cpu
-        : node.kind === "entity-type"
-          ? Brain
-          : node.kind === "signal"
-            ? Warning
-            : Lightning
+        : node.kind === "learning"
+          ? BookOpen
+          : node.kind === "entity-type"
+            ? Brain
+            : node.kind === "signal"
+              ? Warning
+              : Lightning
 
   return (
     <motion.div
