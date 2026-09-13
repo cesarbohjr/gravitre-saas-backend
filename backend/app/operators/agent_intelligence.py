@@ -1852,6 +1852,22 @@ class AgentIntelligence:
         ):
             message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
+            gateway_task_state = gateway_state
+            if gateway.candidate_id == "analytics_traffic_overview":
+                patch = (gateway.extras or {}).get("task_state")
+                if isinstance(patch, dict) and conversation_id:
+                    try:
+                        await get_conversation_state_service(active_settings).update_task_state(
+                            conversation_id,
+                            org_id,
+                            patch,
+                            client=client,
+                        )
+                        gateway_task_state = await get_conversation_state_service(
+                            active_settings
+                        ).get_task_state(conversation_id, org_id, client=client)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("analytics_traffic_gateway_state_persist_skipped: %s", exc)
             gateway_confidence = {
                 "score": gateway.confidence,
                 "needs_clarification": False,
@@ -1879,6 +1895,7 @@ class AgentIntelligence:
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 proactive_suggestions=list((gateway.extras or {}).get("suggestions") or []),
+                task_state=gateway_task_state if isinstance(gateway_task_state, dict) else gateway_state,
             )
             return
 
@@ -4034,7 +4051,15 @@ class AgentIntelligence:
 
         tool_results: list[dict[str, Any]] = []
         named_progress_steps: list[str] = list(research_steps) + list(tool_progress)
-        if "knowledge_base" in tool_names:
+        from app.services.analytics_traffic_overview_service import (
+            should_suppress_knowledge_base_for_turn,
+        )
+
+        if "knowledge_base" in tool_names and not should_suppress_knowledge_base_for_turn(
+            task_text,
+            connected_integrations=connected_list,
+            task_state=task_state,
+        ):
             kb_output = knowledge_base_output_from_retrieval(
                 rag_sources,
                 retrieval.metrics,

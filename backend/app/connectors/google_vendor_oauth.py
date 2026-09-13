@@ -365,6 +365,17 @@ def google_vendor_connection_auth_status(
                     str(err or "missing_token")[:240],
                 )
                 return "connected"
+            if vendor == "google_analytics" and _google_analytics_inventory_ready(
+                client, org_id, connector_id, tokens
+            ):
+                logger.warning(
+                    "google_analytics_session_ensure_failed_inventory_connected "
+                    "org_id=%s connector_id=%s err=%s",
+                    org_id,
+                    connector_id,
+                    str(err or "missing_token")[:240],
+                )
+                return "connected"
             return "auth_expired"
     elif not str(tokens.get("access_token") or "").strip():
         return "pending_auth"
@@ -392,6 +403,20 @@ def _google_ads_inventory_ready(
     if not (getattr(settings, "google_ads_developer_token", None) or "").strip():
         return False
     return bool(_connector_ads_customer_id(client, org_id, connector_id))
+
+
+def _google_analytics_inventory_ready(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    tokens: dict[str, Any],
+) -> bool:
+    """Inventory vs execute: linked property + refresh token means GA4 is connected."""
+    if not str(tokens.get("access_token") or "").strip() and not str(
+        tokens.get("refresh_token") or ""
+    ).strip():
+        return False
+    return bool(_connector_property_id(client, org_id, connector_id))
 
 
 def _connector_ads_customer_id(client: Any, org_id: str, connector_id: str) -> str | None:

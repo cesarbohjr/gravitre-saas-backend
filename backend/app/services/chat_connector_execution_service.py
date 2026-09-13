@@ -188,7 +188,8 @@ CONNECTOR_MENTION = re.compile(
 )
 ACTION_VERB = re.compile(
     r"\b(search|find|list|get|lookup|query|show|fetch|create|update|post|send|write|"
-    r"close|log|notify|message|assign|enroll|add|draft|compose)\b",
+    r"close|log|notify|message|assign|enroll|add|draft|compose|tell|explain|describe|"
+    r"summarize|pull|report|analyze|analyse|check|review)\b",
     re.I,
 )
 QUOTED = re.compile(r'["\']([^"\']{1,500})["\']')
@@ -1126,6 +1127,33 @@ class ChatConnectorExecutionService:
         )
         if preview_turn is not None:
             return preview_turn
+
+        from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
+
+        business_turn = await try_analytics_traffic_overview_turn(
+            message=message,
+            org_id=org_id,
+            client=client,
+            settings=self.settings,
+            connected_integrations=connected_integrations,
+            task_state=task_state,
+        )
+        if business_turn and business_turn.get("stop_pipeline"):
+            patch = business_turn.get("task_state")
+            if isinstance(patch, dict) and conversation_id:
+                try:
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        patch,
+                        client=client,
+                    )
+                    business_turn["task_state"] = await self._state.get_task_state(
+                        conversation_id, org_id, client=client
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("analytics_traffic_overview_state_persist_failed: %s", exc)
+            return business_turn
 
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None

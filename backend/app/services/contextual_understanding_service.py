@@ -9,19 +9,6 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-CONNECTOR_ALIASES: dict[str, str] = {
-    "hubspot": "hubspot",
-    "salesforce": "salesforce",
-    "slack": "slack",
-    "notion": "notion",
-    "stripe": "stripe",
-    "zendesk": "zendesk",
-    "github": "github",
-    "microsoft 365": "microsoft365",
-    "microsoft365": "microsoft365",
-    "google analytics": "google_analytics",
-}
-
 OUTPUT_FORMAT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("report", re.compile(r"\b(report|analysis report)\b", re.I)),
     ("plan", re.compile(r"\b(plan|roadmap|step.by.step)\b", re.I)),
@@ -184,12 +171,9 @@ class ContextualUnderstandingService:
 
     @staticmethod
     def _detect_connector_refs(message: str) -> list[str]:
-        lowered = message.lower()
-        found: list[str] = []
-        for alias, connector_id in CONNECTOR_ALIASES.items():
-            if alias in lowered and connector_id not in found:
-                found.append(connector_id)
-        return found
+        from app.services.connector_semantic_registry import resolve_all_connectors_from_text
+
+        return resolve_all_connectors_from_text(message, exclude_generic=True)
 
     @staticmethod
     def _extract_from_history(message: str, history: list[dict]) -> dict[str, Any]:

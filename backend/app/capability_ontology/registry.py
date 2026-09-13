@@ -117,6 +117,25 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
             ),
         ),
     ),
+    "analytics.traffic_overview": CapabilityDefinition(
+        capability_id="analytics.traffic_overview",
+        label="Website traffic overview",
+        description=(
+            "Broad website-traffic summary from connected analytics — users, sessions, "
+            "views, source mix, and period-over-period change without asking the user "
+            "to design API queries."
+        ),
+        domain="analytics",
+        kind="read",
+        bindings=(
+            VendorCapabilityBinding(
+                "google_analytics",
+                "google_analytics.reports.run",
+                "GA4 traffic overview",
+                kind="read",
+            ),
+        ),
+    ),
     "payment.refund": CapabilityDefinition(
         capability_id="payment.refund",
         label="Issue payment refund",
