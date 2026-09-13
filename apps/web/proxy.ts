@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
-import { isMarketingContentRoute } from "@/lib/is-marketing-route"
+import { usesMarketingProviderTree } from "@/lib/is-marketing-route"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 function withRouteKind(
@@ -9,12 +9,9 @@ function withRouteKind(
   request: NextRequest,
   pathname: string,
 ): NextResponse {
-  // The unlisted /deck presentation is a standalone surface: route it through
-  // the lighter marketing provider tree so the operator AI helper / app shell
-  // is not mounted over the slides. Kept out of isMarketingContentRoute so it
-  // stays absent from the sitemap and remains noindex.
-  const isDeck = pathname === "/deck" || pathname.startsWith("/deck/")
-  const isMarketing = isMarketingContentRoute(pathname) || isDeck
+  // Shared with MarketingProviders' mismatch guard — see
+  // usesMarketingProviderTree for why the two must not drift.
+  const isMarketing = usesMarketingProviderTree(pathname)
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set("x-pathname", pathname)
