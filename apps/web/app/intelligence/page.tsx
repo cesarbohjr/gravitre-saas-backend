@@ -46,6 +46,8 @@ import {
   applyAssistantVisualizationToMapState,
   type AssistantVisualization,
 } from "@/lib/intelligence/assistant-visualization"
+import { resolveCanonicalGraphMapNode } from "@/lib/intelligence/canonical-graph-topology"
+import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-focus"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -119,8 +121,15 @@ function IntelligenceSectionRedirect() {
 
 function IntelligenceCenterInner() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const copy = SURFACE_COPY.insights
-  const [activeLens, setActiveLens] = useState<IntelligenceMapLens>("knows")
+  const deepLink = useMemo(
+    () => parseIntelligenceMapDeepLink(searchParams),
+    [searchParams],
+  )
+  const [activeLens, setActiveLens] = useState<IntelligenceMapLens>(
+    deepLink.lens ?? "knows",
+  )
   const [mapSelection, setMapSelection] = useState<IntelligenceMapSelection>(null)
   const [mapHighlightIds, setMapHighlightIds] = useState<string[]>([])
   const [mapDimIds, setMapDimIds] = useState<string[]>([])
@@ -264,6 +273,40 @@ function IntelligenceCenterInner() {
     }, 12_000)
     return () => window.clearTimeout(timer)
   }, [mapHighlightIds, mapDimIds])
+
+  useEffect(() => {
+    const { focusNodeId, lens } = deepLink
+    if (!focusNodeId || !pageContext?.graph?.nodes?.length) return
+    if (lens) setActiveLens(lens)
+    const viz: AssistantVisualization = {
+      lens: lens ?? undefined,
+      focusNodeIds: [focusNodeId],
+      highlightNodeIds: [focusNodeId],
+    }
+    const state = applyAssistantVisualizationToMapState(viz, {
+      graphNodeIds: graphNodeIds.size > 0 ? graphNodeIds : undefined,
+      agents: mapAgents,
+      departments: coreState.data?.departments ?? [],
+      signals: signals ?? [],
+    })
+    applyMapVisualization(state)
+    const mapNode = resolveCanonicalGraphMapNode(
+      focusNodeId,
+      pageContext.graph,
+      mapAgents,
+    )
+    if (mapNode) {
+      setMapSelection({ kind: "satellite", node: mapNode })
+    }
+  }, [
+    deepLink,
+    pageContext?.graph,
+    graphNodeIds,
+    mapAgents,
+    coreState.data?.departments,
+    signals,
+    applyMapVisualization,
+  ])
 
   if (!user) {
     return (

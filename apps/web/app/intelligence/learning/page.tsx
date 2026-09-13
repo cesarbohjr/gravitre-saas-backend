@@ -7,25 +7,21 @@ import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LearningInsightCard } from "@/components/intelligence/learning-insight-card"
+import { LearningHubLinks } from "@/components/intelligence/learning-hub-links"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { readNumber } from "@/lib/intelligence/helpers"
+import { formatLearningInsights } from "@/lib/intelligence/learning-insight-display"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { BusinessImpactCard } from "../../admin/intelligence/_components/business-impact-card"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import { ArrowsClockwise } from "@phosphor-icons/react"
-
-type LearningInsightRow = {
-  id?: string
-  businessStatement?: string
-  learnedAt?: string | null
-  confidence?: string | null
-  learnedFrom?: string[]
-}
 
 export default function IntelligenceLearningPage() {
   const { user } = useAuth()
@@ -37,12 +33,18 @@ export default function IntelligenceLearningPage() {
     { revalidateOnFocus: false },
   )
 
-  const learnings = (pageContext?.snapshot.learnings ?? []) as LearningInsightRow[]
+  const insights = formatLearningInsights(
+    pageContext?.snapshot.learnings as Record<string, unknown>[] | undefined,
+  )
   const learningMetrics =
     pageContext?.metrics.learning ?? pageContext?.snapshot.metrics.learning ?? {}
-  const recentCount = readNumber(learningMetrics.recentLearnings, learnings.length)
+  const outcomeMetrics =
+    pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
+  const recentCount = readNumber(learningMetrics.recentLearnings, insights.length)
   const relationshipsLearned = readNumber(learningMetrics.relationshipsLearned, 0)
+  const measuredOutcomes = readNumber(outcomeMetrics.measuredOutcomes, 0)
   const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET")
+  const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
   if (!user) {
     return (
@@ -63,7 +65,7 @@ export default function IntelligenceLearningPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
         <LearningSurfacesCallout current="org-learning" />
 
         <GravitrePageHeader
@@ -84,7 +86,7 @@ export default function IntelligenceLearningPage() {
 
         <IntelligenceHubTabs active="learning" />
 
-        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
+        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
           <GravitreMetric
             label="Recent learnings"
             value={isLoading ? "…" : recentCount}
@@ -96,9 +98,14 @@ export default function IntelligenceLearningPage() {
             hint="Knowledge graph connections"
           />
           <GravitreMetric
-            label="Memory promotions"
+            label="Measured outcomes"
+            value={isLoading ? "…" : measuredOutcomes}
+            hint="Window attribution"
+          />
+          <GravitreMetric
+            label="Models tracked"
             value={isLoading ? "…" : readNumber(learningMetrics.modelsTracked, 0)}
-            hint="Sources feeding learning"
+            hint="Registry scope — not learning claims"
           />
         </section>
 
@@ -108,50 +115,60 @@ export default function IntelligenceLearningPage() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">What Gravitre learned</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Business understanding from outcomes, memory, and evidence — not platform latency or model
-              readiness scores.
+              Business understanding from outcomes, memory promotion, and evidence — not platform
+              latency or model readiness scores.
             </p>
           </div>
 
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading business learning insights…</p>
-          ) : learnings.length === 0 || hasNoBusinessLearning ? (
+          ) : insights.length === 0 || hasNoBusinessLearning ? (
             <EmptyState
               variant="ai"
               title="No validated business learning yet"
               description="Insights appear here when Gravitre records durable business understanding from real work — not deployment health or training readiness."
               action={{
-                label: "Open Training",
+                label: "Open memory",
                 onClick: () => {
-                  window.location.href = APP_ROUTES.training
+                  window.location.href = APP_ROUTES.intelligenceMemory
                 },
                 variant: "outline",
               }}
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {learnings.map((row) => (
-                <Card key={row.id ?? row.businessStatement}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium leading-snug">
-                      {row.businessStatement ?? "Learning insight"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-muted-foreground">
-                    {row.learnedAt ? <p>Learned {new Date(row.learnedAt).toLocaleDateString()}</p> : null}
-                    {row.learnedFrom?.length ? (
-                      <p>From: {row.learnedFrom.join(", ")}</p>
-                    ) : null}
-                  </CardContent>
-                </Card>
+              {insights.map((insight) => (
+                <LearningInsightCard key={insight.id} insight={insight} />
               ))}
             </div>
           )}
         </section>
 
-        <p className="text-xs text-muted-foreground">
+        {suggestedQuestions.length > 0 ? (
+          <section className="space-y-3">
+            <p className={TYPE.eyebrow}>Ask Gravitre</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestedQuestions.slice(0, 4).map((question) => (
+                <Link
+                  key={question}
+                  href={`${APP_ROUTES.gravitreAi}?q=${encodeURIComponent(question)}`}
+                  className="rounded-full border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 text-xs font-medium hover:border-[color:var(--g-brand-border)]"
+                >
+                  {question}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <LearningHubLinks />
+
+        <p className={cn(TYPE.meta, "text-pretty")}>
           Platform telemetry (TTFT, cache hit rate, cognitive turn traces) lives in{" "}
-          <Link href={APP_ROUTES.adminIntelligence} className="font-medium text-[color:var(--g-brand)] hover:underline">
+          <Link
+            href={APP_ROUTES.adminIntelligence}
+            className="font-medium text-[color:var(--g-brand)] hover:underline"
+          >
             Platform intelligence (admin)
           </Link>
           .

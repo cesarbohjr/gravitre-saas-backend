@@ -70,6 +70,16 @@ function agentForNode(node: CanonicalGraphNode, agents: Agent[] | null | undefin
   }
 }
 
+export function resolveCanonicalGraphMapNode(
+  nodeId: string,
+  graph: { nodes: CanonicalGraphNode[] } | null | undefined,
+  agents?: Agent[] | null,
+): MapNode | null {
+  const node = graph?.nodes?.find((entry) => entry.id === nodeId)
+  if (!node) return null
+  return nodeToMapNode(node, agents)
+}
+
 function nodeToMapNode(node: CanonicalGraphNode, agents: Agent[] | null | undefined): MapNode | null {
   if (node.type === "core") return null
   const state = mapVisualState(node.status)
