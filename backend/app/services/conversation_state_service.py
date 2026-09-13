@@ -46,6 +46,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "previous_result": None,
     "active_analysis": None,
     "resolution_trace": None,
+    # Phase C — typed execution plan + normalized observations.
+    "execution_plan": None,
+    "execution_observations": [],
 }
 
 

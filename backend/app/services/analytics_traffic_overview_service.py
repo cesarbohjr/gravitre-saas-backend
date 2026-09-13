@@ -235,6 +235,253 @@ def _session_state_patch(
     }
 
 
+async def _try_cross_source_website_overview_turn(
+    *,
+    message: str,
+    org_id: str,
+    client: Any,
+    settings: Settings,
+    connected_integrations: list[str] | None,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Phase C — parallel GA4 + GSC reads when both connectors are connected."""
+    from app.services.cognitive_execution_engine import (
+        apply_observations_to_plan,
+        execute_read_steps_parallel,
+    )
+    from app.services.cognitive_execution_replanner import build_cross_source_analytics_plan
+    from app.services.execution_plan_service import (
+        ExecutionObservation,
+        ExecutionStep,
+        execution_plan_patch,
+        observations_patch,
+    )
+    from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
+
+    plan = build_cross_source_analytics_plan(
+        message,
+        capability_id="analytics.traffic_overview",
+        connected_integrations=connected_integrations,
+    )
+    if plan is None or len(plan.steps) < 2:
+        return None
+
+    async def _handler(step: ExecutionStep, ctx: dict[str, Any]) -> ExecutionObservation:
+        if step.connector_id == "google_analytics":
+            return await _ga4_read_observation(step, ctx)
+        if step.connector_id == "google_search_console":
+            return await _gsc_read_observation(step, ctx)
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id=str(step.connector_id or "unknown"),
+            success=False,
+            summary="Unknown read step",
+        )
+
+    ctx = {
+        "org_id": org_id,
+        "client": client,
+        "settings": settings,
+        "task_state": task_state or {},
+    }
+    observations = await execute_read_steps_parallel(plan, context=ctx, handler=_handler)
+    plan = apply_observations_to_plan(plan, observations)
+    if not any(o.success for o in observations):
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": enforce_terminal_turn_outcome(
+                "I couldn't pull live website performance from GA4 or Search Console on this turn.",
+                task_state=task_state,
+                workflow_status="blocked",
+            ),
+            "task_state": {**(task_state or {}), **execution_plan_patch(plan), **observations_patch(observations)},
+            "workflow_status": "blocked",
+        }
+
+    message_out = _compose_cross_source_message(observations)
+    merged_state = {
+        **(task_state or {}),
+        **execution_plan_patch(plan),
+        **observations_patch(observations),
+    }
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "answer",
+        "message": enforce_terminal_turn_outcome(
+            message_out,
+            task_state=merged_state,
+            workflow_status=str(plan.terminal_status),
+        ),
+        "task_state": merged_state,
+        "workflow_status": plan.terminal_status,
+        "business_intent": "analytics.traffic_overview",
+        "execution_plan": plan.as_dict(),
+    }
+
+
+async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> ExecutionObservation:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, run_ga4_report
+    from app.connectors.google_analytics_oauth import ensure_google_analytics_session
+    from app.services.execution_plan_service import ExecutionObservation
+
+    org_id = str(ctx.get("org_id") or "")
+    client = ctx.get("client")
+    settings = ctx.get("settings")
+    resolution = resolve_resource(
+        connector_id="google_analytics",
+        client=client,
+        org_id=org_id,
+        settings=settings,
+        conversation_context=ctx.get("task_state"),
+    )
+    if resolution.status != "resolved" or not resolution.resource_id:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_analytics",
+            success=False,
+            summary="GA4 property not resolved",
+        )
+    token, err = ensure_google_analytics_session(
+        client,
+        org_id,
+        str(resolution.connection_id or ""),
+        settings,
+    )
+    if err or not token:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_analytics",
+            success=False,
+            summary=str(err or "GA4 auth failed"),
+        )
+    try:
+        current = run_ga4_report(
+            token,
+            resolution.resource_id,
+            start_date="30daysAgo",
+            end_date="today",
+            metrics=["activeUsers", "sessions"],
+        )
+    except GoogleAnalyticsAPIError as exc:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_analytics",
+            success=False,
+            summary=str(exc)[:200],
+            error=str(exc),
+        )
+    users = _metric_total(current, "activeUsers")
+    sessions = _metric_total(current, "sessions")
+    return ExecutionObservation(
+        step_id=step.step_id,
+        connector_id="google_analytics",
+        success=True,
+        summary=f"GA4: {int(users or 0):,} active users, {int(sessions or 0):,} sessions (30d)",
+        structured={
+            "property_id": resolution.resource_id,
+            "property_name": resolution.display_name,
+            "active_users": users,
+            "sessions": sessions,
+        },
+    )
+
+
+async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> ExecutionObservation:
+    from app.connectors.google_search_console import GoogleSearchConsoleAPIError, query_search_analytics
+    from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+    from app.services.execution_plan_service import ExecutionObservation
+
+    org_id = str(ctx.get("org_id") or "")
+    client = ctx.get("client")
+    settings = ctx.get("settings")
+    resolution = resolve_resource(
+        connector_id="google_search_console",
+        client=client,
+        org_id=org_id,
+        settings=settings,
+        conversation_context=ctx.get("task_state"),
+    )
+    if resolution.status != "resolved" or not resolution.resource_id:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_search_console",
+            success=False,
+            summary="GSC site not resolved",
+        )
+    token, err = ensure_google_vendor_session(
+        client,
+        org_id,
+        str(resolution.connection_id or ""),
+        settings,
+    )
+    if err or not token:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_search_console",
+            success=False,
+            summary=str(err or "GSC auth failed"),
+        )
+    try:
+        report = query_search_analytics(
+            token,
+            resolution.resource_id,
+            start_date="28daysAgo",
+            end_date="today",
+            dimensions=["page"],
+            row_limit=5,
+        )
+    except GoogleSearchConsoleAPIError as exc:
+        return ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_search_console",
+            success=False,
+            summary=str(exc)[:200],
+            error=str(exc),
+        )
+    rows = report.get("rows") or []
+    top_page = None
+    top_clicks = 0
+    for row in rows:
+        clicks = int(float((row.get("clicks") or 0)))
+        if clicks >= top_clicks:
+            top_clicks = clicks
+            keys = row.get("keys") or []
+            top_page = keys[0] if keys else None
+    return ExecutionObservation(
+        step_id=step.step_id,
+        connector_id="google_search_console",
+        success=True,
+        summary=(
+            f"Search Console: top page **{top_page}** ({top_clicks:,} clicks, 28d)"
+            if top_page
+            else "Search Console: no page clicks in the last 28 days"
+        ),
+        structured={"top_page": top_page, "top_clicks": top_clicks, "site_url": resolution.resource_id},
+    )
+
+
+def _compose_cross_source_message(observations: list[Any]) -> str:
+    from app.services.execution_plan_service import ExecutionObservation
+
+    ga4 = next(
+        (o for o in observations if isinstance(o, ExecutionObservation) and o.connector_id == "google_analytics"),
+        None,
+    )
+    gsc = next(
+        (o for o in observations if isinstance(o, ExecutionObservation) and o.connector_id == "google_search_console"),
+        None,
+    )
+    lines = ["Here's a cross-source view of how your website is doing:", ""]
+    if ga4 and ga4.success:
+        lines.append(f"- **Analytics:** {ga4.summary.replace('GA4: ', '')}")
+    if gsc and gsc.success:
+        lines.append(f"- **Search:** {gsc.summary.replace('Search Console: ', '')}")
+    lines.append("")
+    lines.append("Want a deeper breakdown by channel, landing page, or conversion event?")
+    return "\n".join(lines)
+
+
 async def try_analytics_traffic_overview_turn(
     *,
     message: str,
@@ -246,6 +493,16 @@ async def try_analytics_traffic_overview_turn(
 ) -> dict[str, Any] | None:
     """Execute a READ-only traffic overview or return an honest clarify/connect message."""
     active_settings = settings or get_settings()
+    cross = await _try_cross_source_website_overview_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=active_settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+    if cross is not None:
+        return cross
     intent = detect_analytics_traffic_intent(
         message,
         task_state=task_state,
@@ -419,6 +676,13 @@ async def try_analytics_traffic_overview_turn(
         },
     )
 
+    from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
+
+    message_out = enforce_terminal_turn_outcome(
+        message_out,
+        task_state=merged_state,
+        workflow_status="completed",
+    )
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",

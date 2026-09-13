@@ -360,12 +360,16 @@ class ReActEngine:
         all_tools = await self.registry.get_available_tools(ctx.org_id, allowed, connected)
         from app.services.agent_platform_optimizer import narrow_tools_for_turn
 
+        from app.services.tool_router import react_max_tools_for_classification
+
+        _react_max_tools = react_max_tools_for_classification(tool_classification)
         tools, tool_visibility = narrow_tools_for_turn(
             all_tools,
             query=tool_query or task,
             classification=tool_classification,
             connector_names=tuple(connector_focus or ()),
             connected_integrations=list(connected or []),
+            max_tools=_react_max_tools,
         )
         if not tools:
             result = await self._run_reasoning_only(

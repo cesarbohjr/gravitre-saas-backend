@@ -2619,6 +2619,57 @@ class AgentIntelligence:
                 pipeline_classification,
             )
             _mark("router_enrichments")
+            from app.services.capability_router import (
+                apply_capability_route_to_classification,
+                route_capability_for_turn,
+            )
+
+            _capability_route = route_capability_for_turn(
+                task_text,
+                task_state=task_state if isinstance(task_state, dict) else _canonical_task_state,
+                connected_integrations=list(connected_early or []),
+                classification=pipeline_classification,
+                cognitive_resolution=_cognitive_resolution,
+            )
+            pipeline_classification = apply_capability_route_to_classification(
+                pipeline_classification,
+                _capability_route,
+                task_state=task_state if isinstance(task_state, dict) else _canonical_task_state,
+            )
+            if _capability_route is not None and conversation_id:
+                try:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "capability_id": _capability_route.capability_id,
+                            "capability_route_reason": _capability_route.reason,
+                        },
+                        client=client,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("capability_route_persist_skipped: %s", exc)
+            from app.services.execution_plan_service import execution_plan_patch, reconcile_execution_plan
+
+            _execution_plan = reconcile_execution_plan(
+                message=task_text,
+                task_state=task_state if isinstance(task_state, dict) else _canonical_task_state,
+                capability_id=pipeline_classification.get("capability_id"),
+                connected_integrations=list(connected_early or []),
+            )
+            if isinstance(task_state, dict):
+                task_state = {**task_state, **execution_plan_patch(_execution_plan)}
+            if conversation_id:
+                try:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        execution_plan_patch(_execution_plan),
+                        client=client,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("execution_plan_persist_skipped: %s", exc)
+            _mark("capability_route")
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
                 float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
@@ -3702,41 +3753,48 @@ class AgentIntelligence:
         # Only adopt the prefetch if the query it was built for is still the query
         # being asked; otherwise discard it and assemble for the real one.
         _context_prefetched = False
+        _prefetched_turn_ctx = None
         if _context_task is not None and _context_task_query == refined_query:
-            turn_ctx = await _context_task
+            _prefetched_turn_ctx = await _context_task
             _context_prefetched = True
         else:
             if _context_task is not None:
                 _context_task.cancel()
-            turn_ctx = await _prepare_turn_context(refined_query)
+        from app.services.context_compiler import compile_assistant_turn_context
+
+        async def _prepare_with_classification(enriched: dict[str, Any]) -> Any:
+            from app.services.intelligence_orchestrator import (
+                get_intelligence_orchestrator as _get_orchestrator,
+            )
+
+            return await _get_orchestrator(active_settings).prepare_assistant_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                query=refined_query,
+                classification=enriched,
+                client=client,
+                agent_id=agent_id,
+                environment_name=environment_name,
+                engine_settings=engine_settings,
+                task_state=task_state,
+                persona=persona,
+                conversation_history=conversation_history,
+                routing_tier=routing_control.tier,
+                mode=requested_mode,
+                research_scope=research_scope,
+                connected_integrations=list(connected_early or []),
+            )
+
+        turn_ctx, _compiled_meta = await compile_assistant_turn_context(
+            classification=pipeline_classification,
+            task_state=task_state if isinstance(task_state, dict) else None,
+            prepare_turn=_prepare_with_classification,
+            cognitive_ctx=cognitive_ctx,
+            prefetched_turn_ctx=_prefetched_turn_ctx,
+        )
         _mark("context_prefetch_adopted" if _context_prefetched else "context_inline")
         _mark("assistant_turn_prepared")
-        # Classical ACT still consumes kernel RECALL/KNOWLEDGE assembled before LIVE.
-        if cognitive_ctx is not None:
-            try:
-                from app.services.cognitive_turn_kernel import to_prompt_sections
-
-                _sections = to_prompt_sections(cognitive_ctx)
-                if _sections.get("memory_section") and hasattr(turn_ctx, "retrieval"):
-                    prior = getattr(turn_ctx.retrieval, "memory_section", "") or ""
-                    turn_ctx.retrieval.memory_section = "\n\n".join(
-                        p for p in (prior, _sections["memory_section"]) if p
-                    ).strip()
-                if _sections.get("knowledge_section"):
-                    prior_k = getattr(turn_ctx, "entity_relationship_section", None) or ""
-                    if hasattr(turn_ctx, "entity_relationship_section"):
-                        turn_ctx.entity_relationship_section = "\n\n".join(
-                            p for p in (prior_k, _sections["knowledge_section"]) if p
-                        ).strip()
-                # Mode A outcome→recommendation bias must reach classical prompts too.
-                bias = (_sections.get("outcome_bias_section") or "").strip()
-                if bias and hasattr(turn_ctx, "retrieval"):
-                    prior_m = getattr(turn_ctx.retrieval, "memory_section", "") or ""
-                    turn_ctx.retrieval.memory_section = "\n\n".join(
-                        p for p in (prior_m, bias) if p
-                    ).strip()
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("cognitive_classical_merge_skipped error=%s", exc)
         agent = turn_ctx.agent
         retrieval = turn_ctx.retrieval
         org_context = retrieval.org_context
@@ -3748,6 +3806,16 @@ class AgentIntelligence:
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
         permitted_registry = expand_registry_with_connected_integrations(permitted_registry, connected_list)
+        from app.services.tool_router import narrow_permitted_tools_for_capability
+
+        permitted_registry, _tool_route_meta = narrow_permitted_tools_for_capability(
+            permitted_registry,
+            classification={
+                **(pipeline_classification if isinstance(pipeline_classification, dict) else {}),
+                "_query": refined_query,
+            },
+            connected_integrations=connected_list,
+        )
 
         clarification = await get_clarification_engine(active_settings).should_clarify(
             pipeline_classification,
@@ -4337,7 +4405,15 @@ class AgentIntelligence:
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
-            response_text = _with_social(str(_analytics_turn.get("message") or ""))
+            from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
+
+            response_text = _with_social(
+                enforce_terminal_turn_outcome(
+                    str(_analytics_turn.get("message") or ""),
+                    task_state=_analytics_turn.get("task_state") if isinstance(_analytics_turn.get("task_state"), dict) else task_state,
+                    workflow_status=str(_analytics_turn.get("workflow_status") or "completed"),
+                )
+            )
             dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
             packed = await _composed_reply(response_text, kind="canned")
             response_text = packed.text

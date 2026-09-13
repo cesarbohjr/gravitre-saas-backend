@@ -123,7 +123,21 @@ def plan_context_registry(
     )
 
     reasons: list[str] = []
-    enabled: set[str] = {"user", "rag"}
+    intent_class = str(classification.get("intent_class") or "").strip().lower()
+    rag_suppressed = intent_class in {
+        "chitchat",
+        "simple_math",
+        "general_knowledge",
+        "reference_confirm",
+        "reference_reject",
+        "offered_action",
+        "pending_task",
+    }
+    enabled: set[str] = {"user"}
+    if not rag_suppressed:
+        enabled.add("rag")
+    elif intent_class:
+        reasons.append(f"rag_suppressed:{intent_class}")
 
     if tier == "simple" and mode_key == "fast" and not requires_action:
         token_budget = 8_000
