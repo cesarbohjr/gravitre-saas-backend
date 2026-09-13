@@ -141,6 +141,16 @@ class ClarificationEngine:
                 "reason": "Resuming connector action with previously staged parameters.",
             }
 
+        trace = task_state.get("resolution_trace")
+        if isinstance(trace, dict) and trace.get("clarification_required") is False:
+            if trace.get("resolved_connector_id") or trace.get("resource_id"):
+                return {
+                    "should_clarify": False,
+                    "trigger_type": None,
+                    "question": None,
+                    "reason": "Resource resolved by global clarification policy (auto-select).",
+                }
+
         rule_result = self._rule_based_trigger(
             classification,
             context,
@@ -446,21 +456,9 @@ class ClarificationEngine:
 
     def _named_connectors_in_text(self, text: str) -> list[str]:
         """Return catalog connector ids explicitly named in the user utterance."""
-        from app.services.chat_connector_models import INTEGRATION_ALIASES
+        from app.services.connector_semantic_registry import resolve_all_connectors_from_text
 
-        found: list[str] = []
-        lowered = (text or "").lower()
-        for connector_id, aliases in INTEGRATION_ALIASES.items():
-            # Always accept the canonical id as a word.
-            needles = (connector_id.replace("_", " "), connector_id) + tuple(aliases)
-            for alias in needles:
-                a = str(alias or "").strip().lower()
-                if not a or a in self._GENERIC_VENDOR_ALIASES:
-                    continue
-                if re.search(rf"\b{re.escape(a)}\b", lowered):
-                    found.append(connector_id)
-                    break
-        return found
+        return resolve_all_connectors_from_text(text, exclude_generic=True)
 
     def _humanize_action(self, value: str) -> str:
         """Never show snake_case classifier intents in user-facing copy."""

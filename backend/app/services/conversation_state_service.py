@@ -41,6 +41,11 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "voice_expression_last": {},
     # Structured continuation for a READ offer. Not a write pending_task.
     "offered_action": None,
+    # Phase A — structured reference resolution (not prose history).
+    "previous_option_set": [],
+    "previous_result": None,
+    "active_analysis": None,
+    "resolution_trace": None,
 }
 
 

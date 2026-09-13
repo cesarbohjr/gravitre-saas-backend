@@ -315,55 +315,6 @@ async def _propose_connector_status(ctx: GatewayContext) -> CandidateVerdict | N
     )
 
 
-async def _propose_analytics_traffic_overview(ctx: GatewayContext) -> CandidateVerdict | None:
-    from app.services.pending_reply_classifier import has_pending_family
-    from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
-
-    if has_pending_family(ctx.task_state):
-        return None
-    if not ctx.org_id or ctx.client is None:
-        return None
-    settings = ctx.settings
-    if settings is None:
-        from app.config import get_settings
-
-        settings = get_settings()
-
-    connected = list(ctx.connected_integrations or [])
-    if not connected:
-        from app.services.tool_registry import get_tool_registry
-
-        connected = get_tool_registry().list_connected_integrations(
-            ctx.client,
-            ctx.org_id,
-            force_live=False,
-        )
-
-    turn = await try_analytics_traffic_overview_turn(
-        message=ctx.message,
-        org_id=ctx.org_id,
-        client=ctx.client,
-        settings=settings,
-        connected_integrations=connected,
-        task_state=ctx.task_state if isinstance(ctx.task_state, dict) else {},
-    )
-    if not turn or not turn.get("stop_pipeline"):
-        return None
-    text = str(turn.get("message") or "").strip()
-    if not text:
-        return None
-    return CandidateVerdict(
-        candidate_id="analytics_traffic_overview",
-        confidence=_MATCH_CONFIDENCE,
-        answer=text,
-        extras={
-            "task_state": turn.get("task_state"),
-            "resolution": turn.get("resolution"),
-            "workflow_status": turn.get("workflow_status"),
-        },
-    )
-
-
 async def _propose_meta_capability(ctx: GatewayContext) -> CandidateVerdict | None:
     from app.services.pending_reply_classifier import has_pending_family
     from app.services.unified_turn_pending_live import resolve_unified_live_meta_capability_reply
@@ -419,7 +370,6 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
             proposals.append(verdict)
 
     for propose_async in (
-        _propose_analytics_traffic_overview,
         _propose_channel_override,
         _propose_connector_status,
         _propose_meta_capability,

@@ -73,3 +73,37 @@ def test_resolve_ga4_property_ambiguous() -> None:
         )
     assert resolution.status == "ambiguous"
     assert resolution.candidate_count == 3
+
+
+def test_resolve_resource_hubspot_connection() -> None:
+    conn = {"id": "hub-1", "config": {"portal_id": "4242"}, "name": "HubSpot"}
+    with patch(
+        "app.services.connector_resource_resolver._connector_row",
+        return_value=conn,
+    ):
+        from app.services.connector_resource_resolver import resolve_resource
+
+        resolution = resolve_resource(
+            connector_id="hubspot",
+            client=object(),
+            org_id="org-1",
+            settings=SimpleNamespace(),
+        )
+    assert resolution.status == "resolved"
+    assert resolution.resource_id == "4242"
+
+
+def test_resolve_resource_unimplemented_vendor() -> None:
+    with patch(
+        "app.services.connector_resource_resolver._connector_row",
+        return_value=None,
+    ):
+        from app.services.connector_resource_resolver import resolve_resource
+
+        resolution = resolve_resource(
+            connector_id="zendesk",
+            client=object(),
+            org_id="org-1",
+            settings=SimpleNamespace(),
+        )
+    assert resolution.status == "not_found"

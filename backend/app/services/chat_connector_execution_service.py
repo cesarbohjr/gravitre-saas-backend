@@ -251,6 +251,11 @@ class ChatConnectorExecutionService:
 
     @staticmethod
     def _detect_integration(message: str) -> str | None:
+        from app.services.connector_semantic_registry import resolve_connector_from_text
+
+        resolved = resolve_connector_from_text(message, exclude_generic=False)
+        if resolved:
+            return resolved
         lowered = message.lower()
         for integration, aliases in INTEGRATION_ALIASES.items():
             if any(alias in lowered for alias in aliases):
@@ -1002,6 +1007,26 @@ class ChatConnectorExecutionService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("parameter ledger ingest persist skipped: %s", exc)
 
+        from app.services.canonical_cognitive_resolution import resolution_already_applied
+        from app.services.cognitive_resolution_pipeline import run_cognitive_resolution
+        from app.services.resolution_trace_service import attach_resolution_trace
+
+        if resolution_already_applied(task_state, message):
+            logger.debug("process_turn_skipped_duplicate_cognitive_resolution")
+        else:
+            cognitive_resolution = await run_cognitive_resolution(
+                message=message,
+                task_state=task_state,
+                tenant_id=org_id,
+                user_id=user_id,
+                client=client,
+                settings=self.settings,
+                conversation_id=conversation_id,
+                connected_integrations=connected_integrations,
+            )
+            task_state = attach_resolution_trace(task_state, cognitive_resolution.trace)
+            task_state["cognitive_resolution_message"] = (message or "").strip()
+
         # Shared 7-way intents when caller did not already dispatch (direct process_turn).
         intent = pending_reply_intent or (task_state or {}).get("last_pending_reply_intent")
         if is_awaiting_params(task_state) and not intent:
@@ -1128,16 +1153,18 @@ class ChatConnectorExecutionService:
         if preview_turn is not None:
             return preview_turn
 
-        from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
+        business_turn = None
+        if not (task_state or {}).get("analytics_traffic_short_circuited"):
+            from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
 
-        business_turn = await try_analytics_traffic_overview_turn(
-            message=message,
-            org_id=org_id,
-            client=client,
-            settings=self.settings,
-            connected_integrations=connected_integrations,
-            task_state=task_state,
-        )
+            business_turn = await try_analytics_traffic_overview_turn(
+                message=message,
+                org_id=org_id,
+                client=client,
+                settings=self.settings,
+                connected_integrations=connected_integrations,
+                task_state=task_state,
+            )
         if business_turn and business_turn.get("stop_pipeline"):
             patch = business_turn.get("task_state")
             if isinstance(patch, dict) and conversation_id:

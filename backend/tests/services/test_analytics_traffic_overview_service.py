@@ -74,7 +74,7 @@ async def test_single_property_auto_executes_without_clarification() -> None:
         "metricHeaders": [{"name": "sessions"}],
     }
     with patch(
-        "app.services.analytics_traffic_overview_service.resolve_ga4_property",
+        "app.services.analytics_traffic_overview_service.resolve_resource",
         return_value=SimpleNamespace(
             status="resolved",
             resource_id="123",
@@ -82,6 +82,8 @@ async def test_single_property_auto_executes_without_clarification() -> None:
             connection_id="conn-1",
             resolution_reason="linked_config",
             candidate_count=1,
+            connector_id="google_analytics",
+            resource_type="property",
         ),
     ), patch(
         "app.connectors.google_analytics_oauth.ensure_google_analytics_session",
@@ -122,7 +124,7 @@ def test_multi_property_clarification_is_legitimate() -> None:
 @pytest.mark.asyncio
 async def test_ambiguous_property_returns_named_clarification() -> None:
     with patch(
-        "app.services.analytics_traffic_overview_service.resolve_ga4_property",
+        "app.services.analytics_traffic_overview_service.resolve_resource",
         return_value=SimpleNamespace(
             status="ambiguous",
             candidate_count=3,
@@ -132,6 +134,8 @@ async def test_ambiguous_property_returns_named_clarification() -> None:
                 {"display_name": "Documentation"},
             ),
             connection_id="conn-1",
+            connector_id="google_analytics",
+            resource_type="property",
         ),
     ):
         turn = await try_analytics_traffic_overview_turn(

@@ -26,6 +26,17 @@ class ResourceResolution:
     candidates: tuple[dict[str, Any], ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class ResourceResolutionRequest:
+    tenant_id: str
+    user_id: str | None = None
+    connector_id: str = ""
+    requested_capability: str | None = None
+    requested_resource_type: str | None = None
+    conversation_context: dict[str, Any] | None = None
+    environment_name: str = "default"
+
+
 def _connector_row(client: Any, org_id: str, connector_id: str) -> dict[str, Any] | None:
     from app.connectors.repository import get_connector_by_type
 
@@ -45,12 +56,35 @@ def _config_property_name(conn: dict[str, Any]) -> str:
     return str(cfg.get("property_name") or cfg.get("propertyName") or "").strip()
 
 
+def _context_resource_hint(context: dict[str, Any] | None, connector_id: str) -> str | None:
+    if not isinstance(context, dict):
+        return None
+    session = context.get("connector_session") if isinstance(context.get("connector_session"), dict) else {}
+    resolved = session.get("resolvedEntities") if isinstance(session.get("resolvedEntities"), dict) else {}
+    active = session.get("activeEntities") if isinstance(session.get("activeEntities"), dict) else {}
+    if connector_id == "google_analytics":
+        for bucket in (active, resolved, context.get("resolved_entities") or {}):
+            if not isinstance(bucket, dict):
+                continue
+            overview = bucket.get("analytics_traffic_overview")
+            if isinstance(overview, dict) and overview.get("propertyId"):
+                return str(overview.get("propertyId"))
+            if bucket.get("property_id"):
+                return str(bucket.get("property_id"))
+    if connector_id == "google_search_console":
+        for bucket in (resolved, context.get("resolved_entities") or {}):
+            if isinstance(bucket, dict) and bucket.get("site_url"):
+                return str(bucket.get("site_url"))
+    return None
+
+
 def resolve_ga4_property(
     *,
     client: Any,
     org_id: str,
     settings: Settings,
     environment_name: str = "default",
+    conversation_context: dict[str, Any] | None = None,
 ) -> ResourceResolution:
     """Discover GA4 property from linked config or Admin API listing."""
     connector_id = "google_analytics"
@@ -64,7 +98,8 @@ def resolve_ga4_property(
         )
 
     connection_id = str(conn.get("id") or "")
-    linked_id = _config_property_id(conn)
+    hint = _context_resource_hint(conversation_context, connector_id)
+    linked_id = _config_property_id(conn) or (hint or "")
     linked_name = _config_property_name(conn)
     if linked_id:
         return ResourceResolution(
@@ -74,8 +109,8 @@ def resolve_ga4_property(
             resource_type="property",
             resource_id=linked_id,
             display_name=linked_name or f"Property {linked_id}",
-            confidence=0.98,
-            resolution_reason="linked_config",
+            confidence=0.98 if _config_property_id(conn) else 0.9,
+            resolution_reason="linked_config" if _config_property_id(conn) else "conversation_context",
             candidate_count=1,
         )
 
@@ -154,20 +189,63 @@ def resolve_resource(
     settings: Settings,
     resource_type: str | None = None,
     environment_name: str = "default",
+    conversation_context: dict[str, Any] | None = None,
 ) -> ResourceResolution:
-    """Generic entry — vendor-specific resolvers added incrementally."""
+    """Generic entry — dispatches to vendor-specific adapters."""
     vendor = str(connector_id or "").strip().lower()
     rtype = str(resource_type or "").strip().lower()
+
     if vendor == "google_analytics" and (not rtype or rtype == "property"):
         return resolve_ga4_property(
             client=client,
             org_id=org_id,
             settings=settings,
             environment_name=environment_name,
+            conversation_context=conversation_context,
         )
-    return ResourceResolution(
-        status="unavailable",
-        connector_id=vendor,
-        resource_type=rtype or "unknown",
-        resolution_reason="resolver_not_implemented",
+
+    conn = _connector_row(client, org_id, vendor)
+    if not conn:
+        return ResourceResolution(
+            status="not_found",
+            connector_id=vendor,
+            resource_type=rtype or "connection",
+            resolution_reason="connector_not_configured",
+        )
+
+    from app.services.connector_resource_adapters import RESOURCE_ADAPTER_REGISTRY
+
+    adapter = RESOURCE_ADAPTER_REGISTRY.get(vendor)
+    if adapter is None:
+        return ResourceResolution(
+            status="unavailable",
+            connector_id=vendor,
+            resource_type=rtype or "unknown",
+            resolution_reason="resolver_not_implemented",
+        )
+
+    return adapter(
+        client=client,
+        org_id=org_id,
+        settings=settings,
+        conn=conn,
+        environment_name=environment_name,
+    )
+
+
+def resolve_resource_request(
+    request: ResourceResolutionRequest,
+    *,
+    client: Any,
+    settings: Settings,
+) -> ResourceResolution:
+    """Structured resolveResource entry used by the cognitive resolution pipeline."""
+    return resolve_resource(
+        connector_id=request.connector_id,
+        client=client,
+        org_id=request.tenant_id,
+        settings=settings,
+        resource_type=request.requested_resource_type,
+        environment_name=request.environment_name,
+        conversation_context=request.conversation_context,
     )

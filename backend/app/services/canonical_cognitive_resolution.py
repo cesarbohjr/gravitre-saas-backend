@@ -1,0 +1,201 @@
+"""Canonical Phase A ingress: one resolution decision for every chat turn."""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any
+
+from app.config import Settings, get_settings
+from app.services.cognitive_resolution_pipeline import CognitiveResolutionResult, run_cognitive_resolution
+from app.services.connector_semantic_registry import (
+    mentions_analytics_traffic_language,
+    mentions_website_performance_language,
+    resolve_all_connectors_from_text,
+    resolve_analytics_capabilities_for_message,
+    resolve_connector_from_text,
+)
+from app.services.reference_resolver import resolve_reference
+from app.services.resolution_trace_service import attach_resolution_trace
+
+_CHITCHAT_RE = re.compile(
+    r"^\s*(hello|hi|hey|thanks|thank you|thankyou|good morning|good afternoon|good evening|"
+    r"how are you|what'?s up|sup)\s*[.!?]?\s*$",
+    re.I,
+)
+_SIMPLE_MATH_RE = re.compile(r"^\s*\d+\s*[\+\-\*\/×÷]\s*\d+\s*[.!?]?\s*$")
+_GENERAL_KNOWLEDGE_RE = re.compile(
+    r"(?is)^\s*(?:what is|what'?s|explain|define|tell me about)\s+"
+    r"(?:oauth|api|machine learning|ai|llm|javascript|python|sql)\b"
+)
+
+
+@dataclass(frozen=True)
+class CognitiveResolutionNeeds:
+    """What Phase A work is required for this turn."""
+
+    run_semantic: bool = True
+    run_resource: bool = False
+    analytics_short_circuit: bool = False
+    reason: str = ""
+
+
+def assess_cognitive_resolution_needs(
+    message: str,
+    task_state: dict[str, Any] | None,
+    *,
+    connected_integrations: list[str] | None = None,
+) -> CognitiveResolutionNeeds:
+    """Selective resolution — chitchat/math/general-knowledge skip resource discovery."""
+    text = (message or "").strip()
+    state = task_state if isinstance(task_state, dict) else {}
+    if not text:
+        return CognitiveResolutionNeeds(run_semantic=False, run_resource=False, reason="empty")
+
+    reference = resolve_reference(text, state)
+    if reference.matched and reference.kind in {"confirm", "reject", "select_all_options", "select_option"}:
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=False,
+            reason=f"reference_{reference.kind}",
+        )
+
+    if _CHITCHAT_RE.match(text):
+        return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="chitchat")
+
+    if _SIMPLE_MATH_RE.match(text):
+        return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="simple_math")
+
+    if _GENERAL_KNOWLEDGE_RE.match(text) and not resolve_all_connectors_from_text(text):
+        return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="general_knowledge")
+
+    connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
+    analytics_caps = resolve_analytics_capabilities_for_message(text, connected_integrations=list(connected))
+    connector_id = resolve_connector_from_text(text)
+
+    if analytics_caps and connected.intersection(analytics_caps):
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=True,
+            analytics_short_circuit="google_analytics" in analytics_caps and "google_analytics" in connected,
+            reason="analytics_capabilities",
+        )
+
+    if connector_id:
+        if connector_id in connected:
+            return CognitiveResolutionNeeds(
+                run_semantic=True,
+                run_resource=True,
+                reason=f"named_connected_connector:{connector_id}",
+            )
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=False,
+            reason=f"named_disconnected_connector:{connector_id}",
+        )
+
+    if mentions_analytics_traffic_language(text) or mentions_website_performance_language(text):
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=bool(connected),
+            analytics_short_circuit="google_analytics" in connected,
+            reason="analytics_language",
+        )
+
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if pending.get("status") in {
+        "awaiting_confirm",
+        "awaiting_plan_confirm",
+        "awaiting_params",
+        "awaiting_step_confirm",
+    }:
+        return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="pending_task")
+
+    offered = state.get("offered_action") if isinstance(state.get("offered_action"), dict) else {}
+    if offered.get("status") == "awaiting_user_confirmation":
+        return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="offered_action")
+
+    return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="default_semantic_only")
+
+
+async def apply_canonical_cognitive_resolution(
+    *,
+    message: str,
+    task_state: dict[str, Any] | None,
+    tenant_id: str,
+    user_id: str | None,
+    client: Any,
+    settings: Settings | None = None,
+    conversation_id: str | None = None,
+    connected_integrations: list[str] | None = None,
+) -> tuple[CognitiveResolutionResult | None, dict[str, Any]]:
+    """Run Phase A resolution once at canonical ingress; return updated task_state."""
+    state = dict(task_state) if isinstance(task_state, dict) else {}
+    needs = assess_cognitive_resolution_needs(
+        message,
+        state,
+        connected_integrations=connected_integrations,
+    )
+    if not needs.run_semantic:
+        return None, state
+
+    result = await run_cognitive_resolution(
+        message=message,
+        task_state=state,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        client=client,
+        settings=settings,
+        conversation_id=conversation_id,
+        connected_integrations=connected_integrations,
+        skip_resource=not needs.run_resource,
+    )
+    merged = attach_resolution_trace(state, result.trace)
+    merged["cognitive_resolution_message"] = (message or "").strip()
+    merged["cognitive_resolution_needs"] = {
+        "run_resource": needs.run_resource,
+        "analytics_short_circuit": needs.analytics_short_circuit,
+        "reason": needs.reason,
+    }
+    return result, merged
+
+
+async def try_analytics_short_circuit_turn(
+    *,
+    message: str,
+    resolution: CognitiveResolutionResult | None,
+    org_id: str,
+    client: Any,
+    settings: Settings | None,
+    connected_integrations: list[str] | None,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Execute analytics traffic overview before ReAct when resolution says so."""
+    needs = (task_state or {}).get("cognitive_resolution_needs") or {}
+    if not isinstance(needs, dict) or not needs.get("analytics_short_circuit"):
+        return None
+    if resolution is not None and not resolution.analytics_capabilities:
+        caps = resolve_analytics_capabilities_for_message(
+            message,
+            connected_integrations=connected_integrations,
+        )
+        if not caps or "google_analytics" not in caps:
+            return None
+
+    from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
+
+    return await try_analytics_traffic_overview_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings or get_settings(),
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+
+
+def resolution_already_applied(task_state: dict[str, Any] | None, message: str) -> bool:
+    """True when canonical ingress already ran resolution for this message."""
+    state = task_state if isinstance(task_state, dict) else {}
+    if state.get("cognitive_resolution_message") != (message or "").strip():
+        return False
+    return isinstance(state.get("resolution_trace"), dict)

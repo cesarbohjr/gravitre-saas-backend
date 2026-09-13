@@ -16,50 +16,10 @@ LIST_CREATE_INTENT = re.compile(
     re.I,
 )
 
-INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
-    "hubspot": ("hubspot", "crm"),
-    "salesforce": ("salesforce", "sfdc"),
-    "slack": ("slack",),
-    "zendesk": ("zendesk", "support ticket", "support tickets"),
-    "github": ("github", "gh", "pull request", "pull requests"),
-    "jira": ("jira", "atlassian ticket"),
-    "confluence": ("confluence", "wiki page", "wiki"),
-    "monday": ("monday", "monday.com", "monday board"),
-    "google_drive": ("google drive", "drive", "gdrive", "google sheet"),
-    "google_sheets": ("google sheets", "spreadsheet", "sheet"),
-    "google_docs": ("google docs", "google doc"),
-    "google_calendar": ("google calendar", "calendar event", "calendar"),
-    "gmail": ("gmail", "email", "send email", "send mail"),
-    "microsoft365": ("microsoft 365", "m365", "outlook", "microsoft graph", "teams"),
-    "microsoft_teams": ("teams", "microsoft teams"),
-    "intercom": ("intercom",),
-    "clickup": ("clickup", "click up"),
-    "pipedrive": ("pipedrive",),
-    "canva": ("canva", "design"),
-    "figma": ("figma",),
-    "stripe": ("stripe",),
-    "pagerduty": ("pagerduty", "on-call", "oncall"),
-    "quickbooks": ("quickbooks", "qbo"),
-    "asana": ("asana",),
-    "apollo": ("apollo", "apollo.io"),
-    "clay": ("clay",),
-    "notion": ("notion",),
-    "odoo": ("odoo",),
-    "netsuite": ("netsuite",),
-    "workday": ("workday",),
-    "constant_contact": ("constant contact",),
-    "google_analytics": ("google analytics", "ga4", "analytics"),
-    "google_search_console": ("google search console", "search console", "gsc"),
-    "google_ads": ("google ads", "googleads", "adwords", "ad words", "ads campaign"),
-    # Cold connectors exercised in Phase 1 breadth — first-use must equal thousandth-use.
-    "twilio": ("twilio", "sms", "text message"),
-    "sendgrid": ("sendgrid", "send grid"),
-    "airtable": ("airtable",),
-    "linear": ("linear", "linear.app"),
-    "mailchimp": ("mailchimp",),
-    "freshdesk": ("freshdesk",),
-    "gorgias": ("gorgias",),
-}
+# Deprecated: use connector_semantic_registry.integration_aliases_dict() for new code.
+from app.services.connector_semantic_registry import integration_aliases_dict
+
+INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = integration_aliases_dict()
 
 
 @dataclass(frozen=True)

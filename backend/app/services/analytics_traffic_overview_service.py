@@ -8,16 +8,19 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.clarification_policy import (
-    decide_resource_clarification,
+    decide_from_resource_resolution,
     format_not_connected_message,
 )
-from app.services.connector_resource_resolver import ResourceResolution, resolve_ga4_property
+from app.services.connector_resource_resolver import resolve_resource
 from app.services.connector_semantic_registry import (
     connector_display_name,
     mentions_analytics_traffic_language,
+    mentions_website_performance_language,
     resolve_all_connectors_from_text,
+    resolve_analytics_capabilities_for_message,
     resolve_connector_from_text,
 )
+from app.services.reference_resolver import resolve_reference, store_active_analysis
 
 logger = get_logger(__name__)
 
@@ -92,6 +95,11 @@ def detect_analytics_traffic_intent(
     if resolve_connector_from_text(message) == "google_analytics":
         return AnalyticsTrafficIntent(connector_id="google_analytics")
     if mentions_analytics_traffic_language(message) and "google_analytics" in connected:
+        return AnalyticsTrafficIntent(connector_id="google_analytics")
+    if mentions_website_performance_language(message) and "google_analytics" in connected:
+        return AnalyticsTrafficIntent(connector_id="google_analytics")
+    caps = resolve_analytics_capabilities_for_message(message, connected_integrations=list(connected))
+    if caps and caps[0] == "google_analytics":
         return AnalyticsTrafficIntent(connector_id="google_analytics")
     return None
 
@@ -259,19 +267,33 @@ async def try_analytics_traffic_overview_turn(
             "workflow_status": "connector_not_connected",
         }
 
-    resolution = resolve_ga4_property(
+    reference = resolve_reference(message, task_state)
+    if reference.matched and reference.kind == "referent" and reference.referent:
+        # Follow-up like "compare that to last month" — referent resolved; caller may extend.
+        merged = store_active_analysis(task_state or {}, reference.referent)
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": (
+                "I'll use your previous analysis as the baseline. "
+                "Comparison reporting across periods is rolling out — "
+                "ask again for a fresh traffic overview if you need updated numbers."
+            ),
+            "task_state": merged,
+            "workflow_status": "partial",
+            "reference_resolution": reference.reason,
+        }
+
+    resolution = resolve_resource(
+        connector_id=intent.connector_id,
         client=client,
         org_id=org_id,
         settings=active_settings,
+        conversation_context=task_state,
     )
     if resolution.status == "ambiguous":
-        labels = [
-            str(item.get("display_name") or item.get("property_id") or "")
-            for item in resolution.candidates
-        ]
-        decision = decide_resource_clarification(
-            candidate_count=resolution.candidate_count,
-            candidate_labels=labels,
+        decision = decide_from_resource_resolution(
+            resolution,
             resource_label="Google Analytics property",
         )
         return {
@@ -387,7 +409,15 @@ async def try_analytics_traffic_overview_turn(
         property_name=property_name,
         connector_id=intent.connector_id,
     )
-    merged_state = {**(task_state or {}), **state_patch}
+    merged_state = store_active_analysis(
+        {**(task_state or {}), **state_patch},
+        {
+            "kind": "analytics.traffic_overview",
+            "connector_id": intent.connector_id,
+            "property_id": property_id,
+            "property_name": property_name,
+        },
+    )
 
     return {
         "stop_pipeline": True,

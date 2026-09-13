@@ -1899,6 +1899,13 @@ class AgentIntelligence:
             )
             return
 
+        # Phase A canonical ingress: cognitive resolution runs once per turn after
+        # connected_integrations load (below) and before offered_action / ReAct.
+        _cognitive_resolution = None
+        _canonical_task_state: dict[str, Any] = (
+            dict(gateway_state) if isinstance(gateway_state, dict) else {}
+        )
+
         from app.services.cognitive_loop_controller import is_plan_without_execute_turn
 
         _plan_hold = is_plan_without_execute_turn(task_text)
@@ -1966,6 +1973,23 @@ class AgentIntelligence:
         _mark("connected_integrations")
         _mark("mcp_tools")
         _mark("engine_settings")
+        if not conversation_id and (task_text or "").strip():
+            from app.services.canonical_cognitive_resolution import (
+                apply_canonical_cognitive_resolution,
+                resolution_already_applied,
+            )
+
+            if not resolution_already_applied(_canonical_task_state, task_text):
+                _cognitive_resolution, _canonical_task_state = await apply_canonical_cognitive_resolution(
+                    message=task_text,
+                    task_state=_canonical_task_state,
+                    tenant_id=org_id,
+                    user_id=user_id,
+                    client=client,
+                    settings=active_settings,
+                    conversation_id=None,
+                    connected_integrations=list(connected_early or []),
+                )
         # Same mode resolver for text and voice when the caller did not pin one.
         if mode is None:
             from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
@@ -2171,6 +2195,51 @@ class AgentIntelligence:
                     )
                     early_pending = None
                     early_plan = None
+            from app.services.canonical_cognitive_resolution import (
+                apply_canonical_cognitive_resolution,
+                resolution_already_applied,
+            )
+
+            _resolution_base = (
+                early_state if isinstance(early_state, dict) else _canonical_task_state
+            )
+            if not resolution_already_applied(_resolution_base, task_text):
+                _cognitive_resolution, _canonical_task_state = await apply_canonical_cognitive_resolution(
+                    message=task_text,
+                    task_state=_resolution_base,
+                    tenant_id=org_id,
+                    user_id=user_id,
+                    client=client,
+                    settings=active_settings,
+                    conversation_id=conversation_id,
+                    connected_integrations=list(connected_early or []),
+                )
+                if isinstance(early_state, dict):
+                    early_state = {**early_state, **_canonical_task_state}
+                else:
+                    early_state = dict(_canonical_task_state)
+                try:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "resolution_trace": _canonical_task_state.get("resolution_trace"),
+                            "cognitive_resolution_message": _canonical_task_state.get(
+                                "cognitive_resolution_message"
+                            ),
+                            "cognitive_resolution_needs": _canonical_task_state.get(
+                                "cognitive_resolution_needs"
+                            ),
+                        },
+                        client=client,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("canonical_resolution_persist_skipped: %s", exc)
+            else:
+                _canonical_task_state = _resolution_base
+                if isinstance(early_state, dict):
+                    early_state = {**early_state, **_canonical_task_state}
+
             from app.services.offered_action_continuation import (
                 PROGRESS_ACK,
                 execute_offered_read,
@@ -4233,6 +4302,101 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
+        from app.services.canonical_cognitive_resolution import try_analytics_short_circuit_turn
+
+        _analytics_task_state = task_state if isinstance(task_state, dict) else _canonical_task_state
+        if isinstance(_analytics_task_state, dict) and isinstance(_canonical_task_state, dict):
+            _analytics_task_state = {**_canonical_task_state, **_analytics_task_state}
+        _analytics_turn = await try_analytics_short_circuit_turn(
+            message=task_text,
+            resolution=_cognitive_resolution,
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+            connected_integrations=list(connected_early or []),
+            task_state=_analytics_task_state,
+        )
+        if _analytics_turn and _analytics_turn.get("stop_pipeline"):
+            task_state = _analytics_turn.get("task_state") or task_state
+            if conversation_id and isinstance(task_state, dict):
+                try:
+                    patch = {
+                        **task_state,
+                        "analytics_traffic_short_circuited": True,
+                    }
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        patch,
+                        client=client,
+                    )
+                    task_state = await get_conversation_state_service(active_settings).get_task_state(
+                        conversation_id,
+                        org_id,
+                        client=client,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
+            response_text = _with_social(str(_analytics_turn.get("message") or ""))
+            dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
+            packed = await _composed_reply(response_text, kind="canned")
+            response_text = packed.text
+            for ev in packed.events:
+                yield ev
+            loop_trace.record(
+                "RETRIEVE",
+                ok=True,
+                skipped=True,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            loop_trace.record(
+                "PLAN",
+                ok=True,
+                skipped=True,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            loop_trace.record(
+                "ACT",
+                ok=True,
+                skipped=False,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            await _complete_cognitive_loop(pending_task=_analytics_turn.get("pending_task"))
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Analytics traffic overview (canonical short-circuit)",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                task_state=task_state,
+                execution_result=_analytics_turn.get("execution_result"),
+                pending_task=_analytics_turn.get("pending_task"),
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing={
+                    **(routing_sse if isinstance(routing_sse, dict) else {}),
+                    **loop_trace.to_sse(),
+                    "analyticsShortCircuit": True,
+                },
+            )
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=_tool_results_from_connector_turn(_analytics_turn),
+                react_result=None,
+                model="analytics_traffic_overview",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Analytics traffic overview (canonical short-circuit)",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=list(_analytics_turn.get("suggestions") or []),
+                task_state=task_state,
+                execution_result=_analytics_turn.get("execution_result"),
+                pending_task=_analytics_turn.get("pending_task"),
+            )
+            return
+
         if spoken_mode:
             # The window between pre_kernel_entry and here was ~4.7s of a 12.3s
             # spoken tool turn and had no instrumentation at all, so the head

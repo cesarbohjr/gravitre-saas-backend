@@ -45,3 +45,12 @@ def test_gsc_alias() -> None:
 
 def test_qbo_alias() -> None:
     assert resolve_connector_from_text("sync QBO invoices") == "quickbooks"
+    assert resolve_connector_from_text("QBO") == "quickbooks"
+
+
+def test_sfdc_alias() -> None:
+    assert resolve_connector_from_text("SFDC") == "salesforce"
+
+
+def test_ga_standalone_alias() -> None:
+    assert resolve_connector_from_text("GA") == "google_analytics"
