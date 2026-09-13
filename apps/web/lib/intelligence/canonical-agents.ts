@@ -7,10 +7,18 @@ export type CanonicalAgentRow = {
   role?: string | null
   department?: string | null
   businessLabel: string
-  configuredStatus: AgentStatus
-  executionStatus: "running" | "idle"
+  configuredStatus: string
+  executionStatus: string
   isConfiguredActive: boolean
   isCurrentlyRunning: boolean
+}
+
+function parseConfiguredStatus(raw: string): AgentStatus {
+  const normalized = raw.toLowerCase()
+  if (normalized === "active") return "active"
+  if (normalized === "processing" || normalized === "running") return "processing"
+  if (normalized === "error" || normalized === "failed") return "error"
+  return "idle"
 }
 
 const DEPARTMENTS = new Set<string>([
@@ -43,10 +51,9 @@ function mapDepartment(raw: string | null | undefined): AgentDepartment {
 export function canonicalAgentsToMapAgents(rows: CanonicalAgentRow[] | undefined): Agent[] {
   if (!rows?.length) return []
   return rows.map((row) => {
+    const configured = parseConfiguredStatus(row.configuredStatus)
     const status: AgentStatus =
-      row.isCurrentlyRunning && row.configuredStatus !== "error"
-        ? "processing"
-        : row.configuredStatus
+      row.isCurrentlyRunning && configured !== "error" ? "processing" : configured
     return {
       id: row.id,
       name: row.businessLabel || row.name,
@@ -54,8 +61,17 @@ export function canonicalAgentsToMapAgents(rows: CanonicalAgentRow[] | undefined
       department: mapDepartment(row.department),
       description: "",
       status,
-      personality: { color: "#6366f1", tone: "professional", traits: [] },
-      stats: { tasksCompleted: 0, successRate: 0, avgResponseTime: 0 },
+      personality: {
+        color: "#6366f1",
+        gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+        glow: "rgba(99, 102, 241, 0.35)",
+      },
+      stats: {
+        tasksToday: 0,
+        successRate: null,
+        avgResponseTime: "—",
+        workflowsUsing: 0,
+      },
       capabilities: [],
       permissions: [],
       lastAction: row.isCurrentlyRunning ? "Running" : status,
