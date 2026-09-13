@@ -259,6 +259,7 @@ function IntelligenceCenterInner() {
               onLensChange={(lens) => {
                 setActiveLens(lens)
                 setMapSelection(null)
+                setMapHighlightIds([])
               }}
               metrics={lensMetrics}
             />

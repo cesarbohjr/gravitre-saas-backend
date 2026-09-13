@@ -3,7 +3,8 @@
  *
  * Reuses the visual signature proven in the marketing department-network component
  * (components/marketing/system/department-network) — CSS + SVG + Framer Motion, no
- * WebGL/Three.js (per redesign decision #5). Unlike that marketing component, every
+ * CSS + SVG + Framer Motion for nodes/edges; Phase F adds a scoped WebGL2 core aura
+ * on the map surface only (no three.js). Unlike that marketing component, every
  * state here comes from GET /api/intelligence/core/state — there is no scripted
  * story engine and no fixed 4-department set: department nodes only render for
  * departments the backend actually reports real recent activity for.

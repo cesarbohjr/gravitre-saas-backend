@@ -13,6 +13,7 @@ import { useIntelligenceCoreState } from "@/lib/intelligence/use-core-state"
 import { CoreHubNode } from "@/components/intelligence/core/core-hub-node"
 import { DepartmentNode } from "@/components/intelligence/core/department-node"
 import { SignalEdge } from "@/components/intelligence/core/signal-edge"
+import { IntelligenceNetworkWebGL } from "@/components/intelligence/intelligence-network-webgl"
 import type { IntelligenceMapLens } from "./intelligence-map-lens"
 import {
   buildMapTopology,
@@ -21,6 +22,8 @@ import {
   signalDepartmentKey,
   type MapNode,
 } from "./map-topology"
+import { CoreHubWebGL } from "./core-hub-webgl"
+import { computeMapFocusTransform } from "./map-spatial-focus"
 import { MapSatelliteNode } from "./map-satellite-node"
 import { TYPE } from "@/lib/design-system"
 import { readString } from "@/lib/intelligence/helpers"
@@ -121,8 +124,16 @@ export function IntelligenceMap({
   const highlightSet = useMemo(() => new Set(highlightNodeIds ?? []), [highlightNodeIds])
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
+  const [lensTransition, setLensTransition] = useState(false)
   useEffect(() => setMounted(true), [])
   const reduced = mounted && !!reducePreference
+
+  useEffect(() => {
+    if (reduced) return
+    setLensTransition(true)
+    const timer = window.setTimeout(() => setLensTransition(false), 480)
+    return () => window.clearTimeout(timer)
+  }, [lens, reduced])
 
   const { data, error, isLoading } = useIntelligenceCoreState(true, 24)
 
@@ -164,6 +175,22 @@ export function IntelligenceMap({
   }, [signals])
 
   const selectedId = selectionKey(selection ?? null)
+
+  const coreActivity = useMemo(() => {
+    if (!data) return 0.3
+    const runs = data.core.activeAgentRuns
+    const pending = data.core.pendingApprovalsTotal
+    const deptActivity = data.departments.filter((d) => d.eventsInWindow > 0).length
+    return Math.min(1, 0.2 + runs * 0.1 + pending * 0.06 + deptActivity * 0.04)
+  }, [data])
+
+  const focusTransform = useMemo(() => {
+    if (highlightNodeIds == null || highlightNodeIds.length === 0) return null
+    const allPositions = new Map(positions)
+    allPositions.set(CORE_ID, { x: CENTER.cx, y: CENTER.cy })
+    return computeMapFocusTransform(highlightNodeIds, allPositions, CENTER, VB)
+  }, [highlightNodeIds, positions])
+
   const hasAnyRealSignal =
     topology.nodes.length > 0 ||
     (data?.core.pendingApprovalsTotal ?? 0) > 0 ||
@@ -200,6 +227,7 @@ export function IntelligenceMap({
       role="img"
       aria-label={`Interactive Gravitre intelligence map — ${lens} lens`}
     >
+      {!reduced ? <IntelligenceNetworkWebGL className="opacity-25" nodeCount={32} /> : null}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         aria-hidden
@@ -275,58 +303,73 @@ export function IntelligenceMap({
           </p>
         </div>
       ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={lens}
-            initial={reduced ? false : { opacity: 0 }}
+        <motion.div
+          className="relative z-10 h-full min-h-[44vh] w-full origin-center"
+          style={{ aspectRatio: `${VB.w} / ${VB.h}` }}
+          animate={
+            reduced
+              ? { scale: 1, x: "0%", y: "0%" }
+              : {
+                  scale: focusTransform?.scale ?? (lensTransition ? 0.94 : 1),
+                  x: focusTransform ? `${focusTransform.translateX}%` : "0%",
+                  y: focusTransform ? `${focusTransform.translateY}%` : "0%",
+                }
+          }
+          transition={{ type: "spring", stiffness: 140, damping: 22, mass: 0.85 }}
+        >
+          <motion.svg
+            key={`edges-${lens}`}
+            viewBox={`0 0 ${VB.w} ${VB.h}`}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            aria-hidden
+            preserveAspectRatio="xMidYMid meet"
+            initial={reduced ? false : { opacity: 0.35 }}
             animate={{ opacity: 1 }}
-            exit={reduced ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="relative z-10 h-full min-h-[44vh] w-full"
-            style={{ aspectRatio: `${VB.w} / ${VB.h}` }}
+            transition={{ duration: 0.35 }}
           >
-            <svg
-              viewBox={`0 0 ${VB.w} ${VB.h}`}
-              className="pointer-events-none absolute inset-0 h-full w-full"
-              aria-hidden
-              preserveAspectRatio="xMidYMid meet"
-            >
-              {topology.edges.map((edge) => {
-                const from = posById.get(edge.fromId === CORE_ID ? CORE_ID : edge.fromId)
-                const to = posById.get(edge.toId)
-                if (!from || !to) return null
-                return (
-                  <g key={edge.id} opacity={edge.opacity * (edge.toId.startsWith("dept:") ? 1 : 1)}>
-                    <SignalEdge
-                      x1={from.x}
-                      y1={from.y}
-                      x2={to.x}
-                      y2={to.y}
-                      state={edge.state}
-                      reduced={reduced}
-                    />
-                  </g>
-                )
-              })}
-            </svg>
+            {topology.edges.map((edge) => {
+              const from = posById.get(edge.fromId === CORE_ID ? CORE_ID : edge.fromId)
+              const to = posById.get(edge.toId)
+              if (!from || !to) return null
+              return (
+                <g key={edge.id} opacity={edge.opacity}>
+                  <SignalEdge
+                    x1={from.x}
+                    y1={from.y}
+                    x2={to.x}
+                    y2={to.y}
+                    state={edge.state}
+                    reduced={reduced}
+                  />
+                </g>
+              )
+            })}
+          </motion.svg>
 
-            <div
-              className="absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${(CENTER.cx / VB.w) * 100}%`, top: `${(CENTER.cy / VB.h) * 100}%` }}
-            >
-              <CoreHubNode state={data?.core.state ?? "idle"} reduced={reduced} />
-            </div>
-
-            {data ? (
-              <CoreStats
-                data={data}
-                lens={lens}
-                entityCount={entityCount}
-                relationshipCount={relationshipCount}
-                caption={topology.caption}
+          <div
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${(CENTER.cx / VB.w) * 100}%`, top: `${(CENTER.cy / VB.h) * 100}%` }}
+          >
+            {!reduced ? (
+              <CoreHubWebGL
+                state={data?.core.state ?? "idle"}
+                activity={coreActivity}
               />
             ) : null}
+            <CoreHubNode state={data?.core.state ?? "idle"} reduced={reduced} />
+          </div>
 
+          {data ? (
+            <CoreStats
+              data={data}
+              lens={lens}
+              entityCount={entityCount}
+              relationshipCount={relationshipCount}
+              caption={topology.caption}
+            />
+          ) : null}
+
+          <AnimatePresence mode="popLayout">
             {topology.nodes.map((node) => {
               const pos = positions.get(node.id)
               if (!pos) return null
@@ -338,10 +381,19 @@ export function IntelligenceMap({
                   : null
 
               return (
-                <div
+                <motion.div
                   key={node.id}
+                  layout={!reduced}
+                  initial={reduced ? false : { opacity: 0, scale: 0.88 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    left: `${(pos.x / VB.w) * 100}%`,
+                    top: `${(pos.y / VB.h) * 100}%`,
+                  }}
+                  exit={reduced ? undefined : { opacity: 0, scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 170, damping: 22, mass: 0.75 }}
                   className="absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${(pos.x / VB.w) * 100}%`, top: `${(pos.y / VB.h) * 100}%` }}
                 >
                   {isHighlighted && !reduced ? (
                     <motion.span
@@ -385,11 +437,11 @@ export function IntelligenceMap({
                       <Warning className="h-3.5 w-3.5" weight="fill" aria-hidden />
                     </button>
                   ) : null}
-                </div>
+                </motion.div>
               )
             })}
-          </motion.div>
-        </AnimatePresence>
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {data?.note ? (
