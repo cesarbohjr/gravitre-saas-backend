@@ -585,14 +585,15 @@ async def cancel_job(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
+    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
+    # .update() already returns the full updated row(s) by default.
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     response = (
         client.table("training_jobs")
         .update({"status": "failed", "error": "Cancelled by user"})
         .eq("org_id", org_id)
         .eq("id", job_id)
-        .select("id, dataset_id, model_base, status, progress, metrics, started_at, completed_at, error, created_at")
-        .limit(1)
         .execute()
     )
     if _is_missing_table_error(response_error(response)):
@@ -689,14 +690,15 @@ async def update_instruction(
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     if not payload:
         raise HTTPException(status_code=400, detail="No updates provided")
+    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
+    # .update() already returns the full updated row(s) by default.
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     response = (
         client.table("custom_instructions")
         .update(payload)
         .eq("org_id", org_id)
         .eq("id", instruction_id)
-        .select("id, agent_id, name, content, is_active, created_at, updated_at")
-        .limit(1)
         .execute()
     )
     if _is_missing_table_error(response_error(response)):

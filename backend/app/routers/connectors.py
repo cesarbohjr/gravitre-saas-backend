@@ -24,6 +24,7 @@ from app.connectors.repository import (
 )
 from app.core.crypto import decrypt_value, encrypt_value
 from app.core.errors import error_detail
+from app.core.supabase_response import response_error
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
@@ -569,8 +570,9 @@ async def list_connectors_route_alias(
                 "CONNECTORS_LIST_QUERY_FAILED",
             ),
         ) from exc
-    if getattr(q, "error", None):
-        logger.error("connectors list query error org_id=%s error=%s", org_id, q.error)
+    q_error = response_error(q)
+    if q_error:
+        logger.error("connectors list query error org_id=%s error=%s", org_id, q_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(

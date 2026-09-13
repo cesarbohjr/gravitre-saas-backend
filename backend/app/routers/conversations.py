@@ -167,13 +167,15 @@ def _hard_delete_owned_conversation(
     org_id: str,
     user_id: str,
 ) -> None:
+    # Bug fix: .delete() returns SyncFilterRequestBuilder, which has no
+    # .select() — chaining it raised AttributeError. .delete() already
+    # returns the deleted row(s) (including "id") by default.
     response = (
         client.table("conversations")
         .delete()
         .eq("id", conversation_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
-        .select("id")
         .execute()
     )
     error = response_error(response)
@@ -193,13 +195,15 @@ def _delete_owned_conversation(
     """Soft-delete a conversation, falling back to hard delete when lifecycle columns are missing."""
     now = _now_iso()
     try:
+        # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+        # .select() — chaining it raised AttributeError. .update() already
+        # returns the full updated row(s) (including "id") by default.
         response = (
             client.table("conversations")
             .update({"deleted_at": now, "updated_at": now})
             .eq("id", conversation_id)
             .eq("org_id", org_id)
             .eq("user_id", user_id)
-            .select("id")
             .execute()
         )
         error = response_error(response)

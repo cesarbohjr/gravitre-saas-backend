@@ -11,6 +11,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_department_context, get_org_context
 from app.config import Settings, get_settings
+from app.core.supabase_response import response_error
 from app.workflows.execute import execute_workflow_steps
 from app.workers.workflow_dispatch import try_enqueue_workflow_run_sync
 
@@ -143,15 +144,16 @@ async def get_lite_home(
         .limit(20)
         .execute()
     )
-    if _is_missing_table_error(runs_resp.error):
+    runs_error = response_error(runs_resp)
+    if _is_missing_table_error(runs_error):
         return {
             "recent_tasks": [],
             "pending_deliverables": [],
             "quick_actions": [],
             "stats": {"tasks_this_week": 0, "completed_this_week": 0, "pending_deliverables": 0},
         }
-    if runs_resp.error:
-        raise HTTPException(status_code=500, detail=str(runs_resp.error))
+    if runs_error:
+        raise HTTPException(status_code=500, detail=str(runs_error))
     runs = list(runs_resp.data or [])
 
     workflow_ids = list({str(row.get("workflow_id")) for row in runs if row.get("workflow_id")})
@@ -165,8 +167,9 @@ async def get_lite_home(
             .in_("id", workflow_ids)
             .execute()
         )
-        if wf_resp.error and not _is_missing_table_error(wf_resp.error):
-            raise HTTPException(status_code=500, detail=str(wf_resp.error))
+        wf_error = response_error(wf_resp)
+        if wf_error and not _is_missing_table_error(wf_error):
+            raise HTTPException(status_code=500, detail=str(wf_error))
         workflows = list(wf_resp.data or [])
         workflow_names = {str(row.get("id")): row.get("name") or "Workflow" for row in workflows}
 
@@ -286,7 +289,7 @@ async def get_lite_workflows(
         .limit(100)
         .execute()
     )
-    resp_err = getattr(response, "error", None)
+    resp_err = response_error(response)
     if _is_missing_table_error(resp_err):
         return {"workflows": []}
     if resp_err:
@@ -335,8 +338,9 @@ async def assign_lite_work(
         .limit(1)
         .execute()
     )
-    if wf_resp.error:
-        raise HTTPException(status_code=500, detail=str(wf_resp.error))
+    wf_resp_error = response_error(wf_resp)
+    if wf_resp_error:
+        raise HTTPException(status_code=500, detail=str(wf_resp_error))
     if not wf_resp.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
 
@@ -364,8 +368,9 @@ async def assign_lite_work(
         "started_at": now_iso,
     }
     insert_resp = client.table("workflow_runs").insert(insert_payload).execute()
-    if insert_resp.error:
-        raise HTTPException(status_code=500, detail=str(insert_resp.error))
+    insert_error = response_error(insert_resp)
+    if insert_error:
+        raise HTTPException(status_code=500, detail=str(insert_error))
     if not insert_resp.data:
         raise HTTPException(status_code=500, detail="Failed to create task")
     run_id = str(insert_resp.data[0].get("id"))
@@ -433,10 +438,11 @@ async def list_lite_tasks(
         .limit(200)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {"tasks": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     rows = list(response.data or [])
 
     workflow_ids = list({str(row.get("workflow_id")) for row in rows if row.get("workflow_id")})
@@ -449,8 +455,9 @@ async def list_lite_tasks(
             .in_("id", workflow_ids)
             .execute()
         )
-        if wf_resp.error and not _is_missing_table_error(wf_resp.error):
-            raise HTTPException(status_code=500, detail=str(wf_resp.error))
+        wf_resp_err = response_error(wf_resp)
+        if wf_resp_err and not _is_missing_table_error(wf_resp_err):
+            raise HTTPException(status_code=500, detail=str(wf_resp_err))
         workflow_names = {
             str(row.get("id")): row.get("name") or "Workflow"
             for row in (wf_resp.data or [])
@@ -487,8 +494,9 @@ async def get_lite_task(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    response_err = response_error(response)
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     if not response.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     row = response.data[0]
@@ -504,7 +512,7 @@ async def get_lite_task(
             .limit(1)
             .execute()
         )
-        if not wf_resp.error and wf_resp.data:
+        if not response_error(wf_resp) and wf_resp.data:
             workflow_name = wf_resp.data[0].get("name") or workflow_name
 
     return _build_task_out(row, workflow_name)
@@ -532,8 +540,9 @@ async def cancel_lite_task(
         .limit(1)
         .execute()
     )
-    if check.error:
-        raise HTTPException(status_code=500, detail=str(check.error))
+    check_err = response_error(check)
+    if check_err:
+        raise HTTPException(status_code=500, detail=str(check_err))
     if not check.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
@@ -545,8 +554,9 @@ async def cancel_lite_task(
         .eq("id", task_id)
         .execute()
     )
-    if update.error:
-        raise HTTPException(status_code=500, detail=str(update.error))
+    update_err = response_error(update)
+    if update_err:
+        raise HTTPException(status_code=500, detail=str(update_err))
     return {"ok": True}
 
 
@@ -572,10 +582,11 @@ async def list_lite_deliverables(
         .limit(200)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {"deliverables": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     rows = list(response.data or [])
 
     workflow_ids = list({str(row.get("workflow_id")) for row in rows if row.get("workflow_id")})
@@ -588,8 +599,9 @@ async def list_lite_deliverables(
             .in_("id", workflow_ids)
             .execute()
         )
-        if wf_resp.error and not _is_missing_table_error(wf_resp.error):
-            raise HTTPException(status_code=500, detail=str(wf_resp.error))
+        wf_resp_err = response_error(wf_resp)
+        if wf_resp_err and not _is_missing_table_error(wf_resp_err):
+            raise HTTPException(status_code=500, detail=str(wf_resp_err))
         workflow_names = {
             str(row.get("id")): row.get("name") or "Workflow"
             for row in (wf_resp.data or [])
@@ -628,8 +640,9 @@ async def download_lite_deliverable(
         .limit(1)
         .execute()
     )
-    if run_resp.error:
-        raise HTTPException(status_code=500, detail=str(run_resp.error))
+    run_resp_err = response_error(run_resp)
+    if run_resp_err:
+        raise HTTPException(status_code=500, detail=str(run_resp_err))
     if not run_resp.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deliverable not found")
     run = run_resp.data[0]
@@ -645,7 +658,7 @@ async def download_lite_deliverable(
             .limit(1)
             .execute()
         )
-        if not wf_resp.error and wf_resp.data:
+        if not response_error(wf_resp) and wf_resp.data:
             workflow_name = (wf_resp.data[0].get("name") or "workflow").strip() or "workflow"
 
     payload = {
@@ -695,7 +708,8 @@ async def get_lite_results(
         .limit(500)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {
             "summary": {
                 "period": range_value,
@@ -706,8 +720,8 @@ async def get_lite_results(
             },
             "recent": [],
         }
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     rows = list(response.data or [])
 
     workflow_ids = list({str(row.get("workflow_id")) for row in rows if row.get("workflow_id")})
@@ -720,8 +734,9 @@ async def get_lite_results(
             .in_("id", workflow_ids)
             .execute()
         )
-        if wf_resp.error and not _is_missing_table_error(wf_resp.error):
-            raise HTTPException(status_code=500, detail=str(wf_resp.error))
+        wf_resp_err = response_error(wf_resp)
+        if wf_resp_err and not _is_missing_table_error(wf_resp_err):
+            raise HTTPException(status_code=500, detail=str(wf_resp_err))
         workflow_names = {
             str(row.get("id")): row.get("name") or "Workflow"
             for row in (wf_resp.data or [])

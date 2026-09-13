@@ -12,6 +12,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.supabase_response import response_error
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 logger = get_logger(__name__)
@@ -198,8 +199,9 @@ def _record_search_history(
             )
             .execute()
         )
-        if history_insert.error and not _is_missing_table_error(history_insert.error):
-            logger.warning("search history insert failed: %s", history_insert.error)
+        history_insert_err = response_error(history_insert)
+        if history_insert_err and not _is_missing_table_error(history_insert_err):
+            logger.warning("search history insert failed: %s", history_insert_err)
     except Exception as exc:  # noqa: BLE001
         logger.warning("search history insert failed: %s", exc)
 
@@ -290,8 +292,9 @@ async def search_route(
             request = request.or_(",".join(keyword_filters))
             rows: list[dict[str, Any]] = []
             response = request.limit(limit).execute()
-            if response.error and not _is_missing_table_error(response.error):
-                logger.warning("search %s query failed: %s", table, response.error)
+            response_err = response_error(response)
+            if response_err and not _is_missing_table_error(response_err):
+                logger.warning("search %s query failed: %s", table, response_err)
                 return rows
             rows.extend(list(response.data or []))
             return rows
@@ -315,8 +318,9 @@ async def search_route(
                 since = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
                 run_query = run_query.gte("created_at", since.isoformat())
             runs = run_query.order("created_at", desc=True).limit(12).execute()
-            if runs.error and not _is_missing_table_error(runs.error):
-                logger.warning("search run intent query failed: %s", runs.error)
+            runs_err = response_error(runs)
+            if runs_err and not _is_missing_table_error(runs_err):
+                logger.warning("search run intent query failed: %s", runs_err)
             for run in runs.data or []:
                 add_result(
                     item_id=str(run.get("id") or ""),
@@ -341,8 +345,9 @@ async def search_route(
                 .limit(12)
                 .execute()
             )
-            if connectors.error and not _is_missing_table_error(connectors.error):
-                logger.warning("search connector issue query failed: %s", connectors.error)
+            connectors_err = response_error(connectors)
+            if connectors_err and not _is_missing_table_error(connectors_err):
+                logger.warning("search connector issue query failed: %s", connectors_err)
             for connector in connectors.data or []:
                 add_result(
                     item_id=str(connector.get("id") or ""),
@@ -370,8 +375,9 @@ async def search_route(
                     .limit(12)
                     .execute()
                 )
-                if workflows.error and not _is_missing_table_error(workflows.error):
-                    logger.warning("search workflow vendor query failed: %s", workflows.error)
+                workflows_err = response_error(workflows)
+                if workflows_err and not _is_missing_table_error(workflows_err):
+                    logger.warning("search workflow vendor query failed: %s", workflows_err)
                 for workflow in workflows.data or []:
                     add_result(
                         item_id=str(workflow.get("id") or ""),
@@ -398,8 +404,9 @@ async def search_route(
                         .limit(12)
                         .execute()
                     )
-                    if connectors.error and not _is_missing_table_error(connectors.error):
-                        logger.warning("search connector vendor query failed: %s", connectors.error)
+                    connectors_err = response_error(connectors)
+                    if connectors_err and not _is_missing_table_error(connectors_err):
+                        logger.warning("search connector vendor query failed: %s", connectors_err)
                     for connector in connectors.data or []:
                         add_result(
                             item_id=str(connector.get("id") or ""),
@@ -427,8 +434,9 @@ async def search_route(
                     .limit(12)
                     .execute()
                 )
-                if agents.error and not _is_missing_table_error(agents.error):
-                    logger.warning("search agent department query failed: %s", agents.error)
+                agents_err = response_error(agents)
+                if agents_err and not _is_missing_table_error(agents_err):
+                    logger.warning("search agent department query failed: %s", agents_err)
                 for agent in agents.data or []:
                     add_result(
                         item_id=str(agent.get("id") or ""),
@@ -453,8 +461,9 @@ async def search_route(
                 .limit(12)
                 .execute()
             )
-            if agents.error and not _is_missing_table_error(agents.error):
-                logger.warning("search active agents query failed: %s", agents.error)
+            agents_err = response_error(agents)
+            if agents_err and not _is_missing_table_error(agents_err):
+                logger.warning("search active agents query failed: %s", agents_err)
             for agent in agents.data or []:
                 add_result(
                     item_id=str(agent.get("id") or ""),
@@ -624,10 +633,11 @@ async def search_history_route(
         .limit(30)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {"searches": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     return {"searches": list(response.data or [])}
 
 
@@ -649,10 +659,11 @@ async def delete_search_history_item_route(
         .eq("user_id", user["user_id"])
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     return {"ok": True}
 
 
@@ -672,8 +683,9 @@ async def clear_search_history_route(
         .eq("user_id", user["user_id"])
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    response_err = response_error(response)
+    if _is_missing_table_error(response_err):
         return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_err:
+        raise HTTPException(status_code=500, detail=str(response_err))
     return {"ok": True}

@@ -354,19 +354,23 @@ async def update_lite_seat_department_route(
         payload["department_admin_id"] = body.department_admin_id
     if not payload:
         raise HTTPException(status_code=400, detail="No updates provided")
+    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+    # .select()/.single() — chaining them raised AttributeError -> HTTP 500.
+    # .update() already returns the full updated row(s) by default; since
+    # .single() was removed, .data is now a list, so index [0] explicitly.
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     updated = (
         client.table("departments")
         .update(payload)
         .eq("org_id", org_id)
         .eq("id", body.id)
-        .select("id, org_id, name, lite_seat_allocation, department_admin_id, created_at")
-        .single()
         .execute()
     )
     if response_error(updated):
         raise HTTPException(status_code=500, detail=str(response_error(updated)))
-    return {"department": updated.data}
+    if not updated.data:
+        raise HTTPException(status_code=404, detail="Department not found")
+    return {"department": updated.data[0]}
 
 
 @router.delete("/lite-seats")

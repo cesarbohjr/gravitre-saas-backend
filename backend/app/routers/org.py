@@ -544,13 +544,14 @@ async def update_organization_member_role(
     member_user_id = str(user_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     _require_org_admin(client, org_id_str, current_user["user_id"])
+    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
+    # .update() already returns the full updated row(s) by default.
     updated = (
         client.table("organization_members")
         .update({"role": body.role})
         .eq("org_id", org_id_str)
         .eq("user_id", member_user_id)
-        .select("user_id, role")
-        .limit(1)
         .execute()
     )
     if not updated.data:

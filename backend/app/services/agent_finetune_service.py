@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 from app.core.errors import error_detail
+from app.core.supabase_response import response_error
 from app.services.model_router import ModelResponse, ModelRouter, TaskType
 from app.services.providers.base import AllProvidersFailedError, ProviderInvalidResponseError
 from app.workflows.audit import write_audit_event
@@ -201,9 +202,10 @@ def list_deployable_fine_tuned_models(client: Any, org_id: str) -> list[dict[str
         if is_schema_unavailable_error(exc):
             return []
         raise
-    if is_schema_unavailable_error(getattr(result, "error", None)):
+    result_error = response_error(result)
+    if is_schema_unavailable_error(result_error):
         return []
-    if result.error:
+    if result_error:
         return []
     models: list[dict[str, Any]] = []
     for row in result.data or []:

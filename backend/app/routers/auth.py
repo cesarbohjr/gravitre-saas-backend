@@ -14,6 +14,7 @@ from app.billing.entitlements import compute_app_access, normalize_billing_statu
 from app.billing.service import DEFAULT_PLAN_CODE, get_org_billing
 from app.config import Settings, get_settings
 from app.services.org_membership import load_user_organizations, pick_default_org_id, load_user_primary_org_id
+from app.core.supabase_response import response_error
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -138,7 +139,7 @@ def _resolve_user_row(client, auth_user_id: str) -> dict:
             if _is_missing_error(exc):
                 continue
             raise HTTPException(status_code=500, detail=str(exc)) from exc
-        if getattr(user_resp, "error", None) and _is_missing_error(user_resp.error):
+        if _is_missing_error(response_error(user_resp)):
             continue
         if not user_resp.data:
             return {}
@@ -232,25 +233,24 @@ async def update_me(
     if not db_payload:
         return {"id": current_user["user_id"], "email": current_user.get("email"), **payload}
 
+    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
+    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
+    # .update() already returns the full updated row(s) by default.
     update_resp = (
         client.table("users")
         .update(db_payload)
         .eq("auth_user_id", current_user["user_id"])
-        .select(
-            "id, email, full_name, avatar_url, job_title, department, "
-            "role, created_at, updated_at"
-        )
-        .limit(1)
         .execute()
     )
-    if _is_missing_error(update_resp.error):
+    update_error = response_error(update_resp)
+    if _is_missing_error(update_error):
         return {
             "id": current_user["user_id"],
             "email": current_user.get("email"),
             **payload,
         }
-    if update_resp.error:
-        raise HTTPException(status_code=500, detail=str(update_resp.error))
+    if update_error:
+        raise HTTPException(status_code=500, detail=str(update_error))
     row = (update_resp.data or [{}])[0]
     return dict(row)
 

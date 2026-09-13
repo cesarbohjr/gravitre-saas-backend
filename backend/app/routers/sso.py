@@ -14,6 +14,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.core.supabase_response import response_error
 from app.middleware.entitlements import require_feature
 
 router = APIRouter(prefix="/api/auth/sso", tags=["sso"])
@@ -34,8 +35,9 @@ def _assert_org_admin(client, org_id: str, user_id: str) -> None:
         .limit(1)
         .execute()
     )
-    if membership.error:
-        raise HTTPException(status_code=500, detail=str(membership.error))
+    membership_err = response_error(membership)
+    if membership_err:
+        raise HTTPException(status_code=500, detail=str(membership_err))
     if not membership.data:
         raise HTTPException(status_code=403, detail="Not a member of this organization")
     role = str(membership.data[0].get("role") or "").strip().lower()
@@ -181,10 +183,11 @@ async def get_sso_config(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     result = client.table("sso_configurations").select("*").eq("org_id", org_id).limit(1).execute()
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         return None
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     if not result.data:
         return None
     config = result.data[0]
@@ -253,14 +256,15 @@ async def create_or_update_sso_config(
         .limit(1)
         .execute()
     )
-    if not owner_lookup.error and owner_lookup.data:
+    if not response_error(owner_lookup) and owner_lookup.data:
         config_data["created_by"] = owner_lookup.data[0].get("id")
 
     result = client.table("sso_configurations").upsert(config_data, on_conflict="org_id").execute()
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         raise HTTPException(status_code=500, detail="SSO tables are missing. Run migrations first.")
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     config = result.data[0]
     return SSOConfigurationResponse(
         id=str(config["id"]),
@@ -295,10 +299,11 @@ async def enable_sso(
         .eq("org_id", org_id)
         .execute()
     )
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         raise HTTPException(status_code=500, detail="SSO tables are missing. Run migrations first.")
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     if not result.data:
         raise HTTPException(status_code=404, detail="SSO not configured")
     return {"enabled": True}
@@ -321,10 +326,11 @@ async def disable_sso(
         .eq("org_id", org_id)
         .execute()
     )
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         raise HTTPException(status_code=500, detail="SSO tables are missing. Run migrations first.")
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     return {"enabled": False}
 
 
@@ -340,10 +346,11 @@ async def delete_sso_config(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     _assert_org_admin(client, org_id, user["user_id"])
     result = client.table("sso_configurations").delete().eq("org_id", org_id).execute()
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         raise HTTPException(status_code=500, detail="SSO tables are missing. Run migrations first.")
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     return {"status": "deleted"}
 
 
@@ -358,7 +365,7 @@ async def saml_metadata(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     result = client.table("sso_configurations").select("*").eq("org_id", org_id).limit(1).execute()
-    if result.error or not result.data:
+    if response_error(result) or not result.data:
         raise HTTPException(status_code=404, detail="SSO configuration not found")
     config = result.data[0]
     if config.get("provider_type") != "saml":
@@ -389,10 +396,11 @@ async def init_sso(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(result.error):
+    result_err = response_error(result)
+    if _is_missing_table_error(result_err):
         raise HTTPException(status_code=404, detail="SSO not configured or disabled")
-    if result.error:
-        raise HTTPException(status_code=500, detail=str(result.error))
+    if result_err:
+        raise HTTPException(status_code=500, detail=str(result_err))
     if not result.data:
         raise HTTPException(status_code=404, detail="SSO not configured or disabled")
     config = result.data[0]
@@ -413,10 +421,11 @@ async def init_sso(
         )
         .execute()
     )
-    if _is_missing_table_error(session_insert.error):
+    session_insert_err = response_error(session_insert)
+    if _is_missing_table_error(session_insert_err):
         raise HTTPException(status_code=500, detail="SSO tables are missing. Run migrations first.")
-    if session_insert.error:
-        raise HTTPException(status_code=500, detail=str(session_insert.error))
+    if session_insert_err:
+        raise HTTPException(status_code=500, detail=str(session_insert_err))
 
     if config["provider_type"] == "saml":
         redirect_url = _build_saml_authn_request(request, config, state, settings)
@@ -445,8 +454,9 @@ async def sso_callback(
         raise HTTPException(status_code=400, detail="Missing state parameter")
 
     session_result = client.table("sso_sessions").select("*").eq("state", state).limit(1).execute()
-    if session_result.error:
-        raise HTTPException(status_code=500, detail=str(session_result.error))
+    session_result_err = response_error(session_result)
+    if session_result_err:
+        raise HTTPException(status_code=500, detail=str(session_result_err))
     if not session_result.data:
         raise HTTPException(status_code=400, detail="Invalid or expired session")
     session = session_result.data[0]
@@ -458,8 +468,9 @@ async def sso_callback(
     config_result = (
         client.table("sso_configurations").select("*").eq("org_id", session["org_id"]).limit(1).execute()
     )
-    if config_result.error:
-        raise HTTPException(status_code=500, detail=str(config_result.error))
+    config_result_err = response_error(config_result)
+    if config_result_err:
+        raise HTTPException(status_code=500, detail=str(config_result_err))
     if not config_result.data:
         raise HTTPException(status_code=400, detail="SSO configuration not found")
     config = config_result.data[0]
@@ -592,16 +603,18 @@ async def _provision_user(client, user_info: dict[str, Any], config: dict[str, A
     full_name = f"{first_name} {last_name}".strip()
 
     existing = client.table("users").select("*").eq("org_id", org_id).eq("email", email).limit(1).execute()
-    if existing.error:
-        raise HTTPException(status_code=500, detail=str(existing.error))
+    existing_err = response_error(existing)
+    if existing_err:
+        raise HTTPException(status_code=500, detail=str(existing_err))
     if existing.data:
         user = existing.data[0]
         update_payload = {"updated_at": datetime.now(timezone.utc).isoformat()}
         if full_name:
             update_payload["full_name"] = full_name
         update_result = client.table("users").update(update_payload).eq("id", user["id"]).execute()
-        if update_result.error:
-            raise HTTPException(status_code=500, detail=str(update_result.error))
+        update_result_err = response_error(update_result)
+        if update_result_err:
+            raise HTTPException(status_code=500, detail=str(update_result_err))
         return user
 
     if not config.get("auto_provision_users", True):
@@ -628,8 +641,9 @@ async def _provision_user(client, user_info: dict[str, Any], config: dict[str, A
         )
         .execute()
     )
-    if create_user_result.error:
-        raise HTTPException(status_code=500, detail=str(create_user_result.error))
+    create_user_result_err = response_error(create_user_result)
+    if create_user_result_err:
+        raise HTTPException(status_code=500, detail=str(create_user_result_err))
 
     member_result = (
         client.table("organization_members")
@@ -639,6 +653,7 @@ async def _provision_user(client, user_info: dict[str, Any], config: dict[str, A
         )
         .execute()
     )
-    if member_result.error:
-        raise HTTPException(status_code=500, detail=str(member_result.error))
+    member_result_err = response_error(member_result)
+    if member_result_err:
+        raise HTTPException(status_code=500, detail=str(member_result_err))
     return create_user_result.data[0]
