@@ -9,7 +9,7 @@ export const SURFACE_COPY = {
     title: "Intelligence",
     shortTitle: "Intelligence",
     description:
-      "Operational health, business outcomes, learning signals, models, and memory — one hub.",
+      "Business intelligence hub — map, learning, predictions, performance, models, and memory.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -19,7 +19,7 @@ export const SURFACE_COPY = {
     title: "Learning",
     shortTitle: "Learning",
     description:
-      "See how Gravitre improves from real work: knowledge readiness, relationships, quality, and outcomes.",
+      "Business learning from real work — validated insights, relationships, and measured outcomes. Not platform telemetry.",
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
@@ -77,9 +77,14 @@ export const SURFACE_COPY = {
       route: APP_ROUTES.intelligenceReports,
     },
     learning: {
-      title: "Learning & golden signals",
-      summary: "Query, memory, and search learning, including items to review.",
+      title: "Business learning",
+      summary: "Validated insights from outcomes, memory, and evidence.",
       route: APP_ROUTES.learning,
+    },
+    platformIntelligence: {
+      title: "Platform intelligence (admin)",
+      summary: "Golden signals, latency, cognitive turns, and engine settings.",
+      route: APP_ROUTES.adminIntelligence,
     },
     builtIn: {
       title: "Built-in model confidence",
@@ -136,7 +141,7 @@ export const SURFACE_COPY = {
     outcomes: "Outcomes",
     learning: "Trends",
     engine: "Engine",
-    performance: "Performance",
+    performance: "Latency & cache",
     cognitive: "Recent turns",
   },
   pages: {
@@ -229,6 +234,13 @@ export const SURFACE_COPY = {
     warmingTitle: "Insights are warming up",
     warmingHint: "Run workflows and connect tools to begin learning.",
     reportsLink: "Reports",
+  },
+  platformIntelligence: {
+    title: "Platform intelligence",
+    shortTitle: "Platform intelligence",
+    description:
+      "Engineering telemetry for org admins: golden signals, TTFT, cache rates, cognitive turns, and engine settings.",
+    route: APP_ROUTES.adminIntelligence,
   },
   learningAdmin: {
     businessImpactTitle: "Business impact",

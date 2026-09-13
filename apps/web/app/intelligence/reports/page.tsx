@@ -113,7 +113,6 @@ export default function IntelligenceReportsPage() {
             <TabsTrigger value="ai-search">{reportsCopy.tabAiSearch}</TabsTrigger>
             <TabsTrigger value="finance">{reportsCopy.tabFinance}</TabsTrigger>
             <TabsTrigger value="hr-talent">{reportsCopy.tabHrTalent}</TabsTrigger>
-            <TabsTrigger value="platform-health">{reportsCopy.tabPlatformHealth}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -231,12 +230,6 @@ export default function IntelligenceReportsPage() {
             />
           </TabsContent>
 
-          <TabsContent value="platform-health" className="mt-6 space-y-4">
-            <PackKpiPanel
-              packId="platform-health-intelligence-pack"
-              packTitle="Platform Health / Workflow Intelligence Pack"
-            />
-          </TabsContent>
         </Tabs>
       </div>
     </AppShell>

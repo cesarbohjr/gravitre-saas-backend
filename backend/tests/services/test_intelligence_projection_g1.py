@@ -14,8 +14,12 @@ from app.schemas.intelligence_projection import (
 )
 from app.services.intelligence_agent_roster import load_canonical_agents
 from app.services.intelligence_context_compiler import (
+    FORBIDDEN_UNAVAILABLE_AGENT_PHRASES,
     active_agent_trust_answer,
     compile_intelligence_context_for_query,
+    current_activity_trust_answer,
+    learning_trust_answer,
+    prediction_trust_answer,
     resolve_intelligence_hub_deterministic_answer,
     running_agent_trust_answer,
 )
@@ -326,6 +330,88 @@ async def test_page_context_endpoint_returns_canonical_snapshot():
     body = resp.json()
     assert body["snapshot"]["tenantId"] == org_id
     assert "What agents are currently active?" in body["suggestedQuestions"]
+
+
+def test_prod_active_agent_regression_never_claims_status_unavailable():
+    """Locks the prod failure: map showed active agents while chat claimed unavailable."""
+    agents = [_agent("a1", "Email Campaign Reporting Agent", configured="active")]
+    snapshot = _snapshot(agents)
+    answer = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "What agents are currently active?"
+    )
+    assert answer is not None
+    assert "Email Campaign Reporting Agent" in answer
+    lowered = answer.lower()
+    for phrase in FORBIDDEN_UNAVAILABLE_AGENT_PHRASES:
+        assert phrase not in lowered
+
+
+def test_section15_predictions_learning_and_activity_acceptance():
+    fetched = datetime.now(timezone.utc).isoformat()
+    agents = [
+        _agent("a1", "Email Campaign Reporting Agent"),
+        _agent("a2", "Lead Enrichment", running=True),
+    ]
+    snapshot = _snapshot(agents)
+    snapshot.predictions = normalize_signals_to_predictions(
+        [
+            {
+                "id": "p1",
+                "title": "OAuth token expiring",
+                "summary": "Salesforce connector needs refresh",
+                "department": "operations",
+                "confidence": 0.82,
+            }
+        ],
+        fetched_at=fetched,
+    )
+    from app.schemas.intelligence_projection import IntelligenceProvenance, LearningInsight
+
+    snapshot.learnings = [
+        LearningInsight(
+            id="l1",
+            businessStatement="Customer churn risk elevated for segment A",
+            source=IntelligenceProvenance(system="memory_promotion", recordId="l1", fetchedAt=fetched),
+        )
+    ]
+    snapshot.metrics.predictions["activePredictions"] = len(snapshot.predictions)
+    snapshot.metrics.learning["recentLearnings"] = len(snapshot.learnings)
+
+    pred_answer = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "What predictions need attention?"
+    )
+    learn_answer = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "What has Gravitre learned recently?"
+    )
+    activity_answer = resolve_intelligence_hub_deterministic_answer(
+        snapshot, "What is Gravitre doing right now?"
+    )
+    assert pred_answer is not None
+    assert "OAuth token expiring" in pred_answer
+    assert str(len(snapshot.predictions)) in pred_answer
+    assert learn_answer is not None
+    assert "Customer churn risk" in learn_answer
+    assert activity_answer is not None
+    assert "Lead Enrichment" in activity_answer
+    assert "configured active" in activity_answer.lower()
+
+    ctx, viz = compile_intelligence_context_for_query(snapshot, "What predictions need attention?")
+    assert "ACTIVE PREDICTIONS" in ctx
+    assert viz is not None and viz.lens == "predicts"
+    assert snapshot.metrics.predictions["activePredictions"] == len(snapshot.predictions)
+
+
+def test_prediction_and_learning_trust_answers_match_metrics():
+    fetched = datetime.now(timezone.utc).isoformat()
+    snapshot = _snapshot([_agent("a1", "Test Agent")])
+    snapshot.predictions = normalize_signals_to_predictions(
+        [{"id": "p1", "title": "Risk", "summary": "Scoped risk", "confidence": 0.7}],
+        fetched_at=fetched,
+    )
+    snapshot.metrics.predictions["activePredictions"] = 1
+    assert "Scoped risk" in prediction_trust_answer(snapshot)
+    assert "No validated business learning" in learning_trust_answer(snapshot)
+    assert "No agents are currently running" in current_activity_trust_answer(snapshot)
 
 
 @pytest.mark.asyncio

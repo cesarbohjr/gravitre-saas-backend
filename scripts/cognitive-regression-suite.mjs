@@ -150,7 +150,32 @@ mustContain(
   "run_kernel_for_entry",
 )
 
-// --- 6) Phase D structural wiring ---
+// --- 6) G1 canonical intelligence state ---
+mustExist("backend/app/services/intelligence_projection_service.py")
+mustExist("backend/app/services/intelligence_context_compiler.py")
+mustExist("backend/app/schemas/intelligence_projection.py")
+mustContain(
+  "backend/app/services/assistant_tools.py",
+  "load_canonical_agents",
+  "tool_agent_status uses canonical roster",
+)
+mustContain(
+  "backend/app/routers/assistant.py",
+  "resolve_intelligence_hub_deterministic_answer",
+  "intelligence_hub deterministic trust path",
+)
+mustContain(
+  "backend/app/routers/assistant.py",
+  "assistant_system_prompt",
+  "intelligence_hub enriched system prompt passthrough",
+)
+mustContain(
+  "backend/app/services/intelligence_context_compiler.py",
+  "FORBIDDEN_UNAVAILABLE_AGENT_PHRASES",
+  "active-agent unavailable regression guard",
+)
+
+// --- 7) Phase D structural wiring ---
 mustExist("backend/app/services/cognitive_evidence_envelope.py")
 mustExist("backend/app/knowledge_fabric/temporal.py")
   mustExistAny(

@@ -1,7 +1,5 @@
 import type { IntelligenceLensMetrics } from "./intelligence-map-lens"
 import { readNumber } from "@/lib/intelligence/helpers"
-import { summarizeTrainingReadiness } from "@/components/intelligence/training-readiness-strip"
-
 export function buildLensMetrics({
   knowledgeGraph,
   readiness,
@@ -29,7 +27,6 @@ export function buildLensMetrics({
     outcomes?: Record<string, number | null | undefined>
   } | null
 }): IntelligenceLensMetrics {
-  const readinessSummary = summarizeTrainingReadiness(readiness)
   const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
   const predictingLive = Object.values(orgTraining).filter((row) => row?.artifact_loaded).length
   const trackedModels = Object.keys(orgTraining).length
@@ -71,18 +68,11 @@ export function buildLensMetrics({
           : "Graph not populated",
     },
     learns: {
-      value:
-        recentLearnings != null
-          ? String(recentLearnings)
-          : readinessSummary.total > 0
-            ? String(readinessSummary.ready)
-            : "—",
+      value: recentLearnings != null ? String(recentLearnings) : "—",
       hint:
         recentLearnings != null
           ? "Business learning insights"
-          : readinessSummary.total > 0
-            ? `${readinessSummary.total} models tracked`
-            : "No training signals",
+          : "No business learning yet",
     },
     predicts: {
       value:

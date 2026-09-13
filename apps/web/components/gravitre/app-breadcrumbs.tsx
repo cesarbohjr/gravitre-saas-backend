@@ -55,7 +55,7 @@ const LABELS: Record<string, string> = {
   goals: "Goals",
   memory: SURFACE_COPY.hubLinks.memory.title,
   reports: SURFACE_COPY.hubLinks.reports.title,
-  performance: SURFACE_COPY.adminTabs.performance,
+  performance: "Performance",
   learning: SURFACE_COPY.learning.title,
   outcomes: SURFACE_COPY.adminTabs.outcomes,
 }

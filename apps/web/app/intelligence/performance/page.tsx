@@ -45,6 +45,9 @@ export default function IntelligencePerformancePage() {
   const { data: trust } = useSWR(user ? "intelligence/performance/trust-summary" : null, () =>
     intelligenceApi.trustSummary({ periodDays: 30 }),
   )
+  const { data: pageContext } = useSWR(user ? "intelligence/performance/page-context" : null, () =>
+    intelligenceApi.pageContext({ windowHours: 24 * 30, activeLens: "improves" }),
+  )
 
   if (!user) {
     return (
@@ -68,7 +71,10 @@ export default function IntelligencePerformancePage() {
 
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
   const byEvent = (outcomes?.by_event_type as Record<string, number> | undefined) ?? {}
+  const canonicalOutcomes =
+    pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
+  const measuredOutcomes = readNumber(canonicalOutcomes.measuredOutcomes, totalEvents)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
   const trustRecord = trust as Record<string, unknown> | undefined
   const confidenceIsEstimate = Boolean(
@@ -88,7 +94,7 @@ export default function IntelligencePerformancePage() {
 
         {isLoading && !outcomes ? (
           <StatsSkeleton count={4} />
-        ) : totalEvents === 0 ? (
+        ) : totalEvents === 0 && measuredOutcomes === 0 ? (
           <EmptyState
             variant="ai"
             title="No measured outcomes yet"
@@ -97,9 +103,9 @@ export default function IntelligencePerformancePage() {
         ) : (
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
             <GravitreMetric
-              label="Outcomes (30d)"
-              value={totalEvents}
-              hint="Business outcomes measured"
+              label="Measured outcomes"
+              value={measuredOutcomes}
+              hint="Canonical IMPROVES projection (30d window)"
               icon={<NucleoIntelligence className="h-4 w-4" />}
             />
             <GravitreMetric

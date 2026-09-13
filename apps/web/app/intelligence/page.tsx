@@ -17,8 +17,6 @@ import { readNumber } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
-import { GibeHonestyStrip } from "@/components/intelligence/gibe-honesty-strip"
-import { TrainingReadinessStrip } from "@/components/intelligence/training-readiness-strip"
 import { useWhatMattersNow } from "@/components/intelligence/what-matters-now"
 import { AskGravitreComposer, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
 import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
@@ -49,16 +47,14 @@ import {
   ChartLineUp,
   Cpu,
   Database,
-  Heartbeat,
   Sparkle,
 } from "@phosphor-icons/react"
 
 const ADVANCED_LINK_GROUPS = [
   {
     heading: "Measure",
-    description: "Operational health, reports, and predictive ops.",
+    description: "Business reports and predictive ops.",
     links: [
-      { ...SURFACE_COPY.hubLinks.operationalHealth, icon: Heartbeat },
       { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
       { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
     ],
@@ -134,7 +130,7 @@ function IntelligenceCenterInner() {
   const { data: modelCatalog } = useSWR(user ? "intelligence/model-catalog" : null, () =>
     intelligenceApi.modelCatalog(),
   )
-  const { data: readiness, isLoading: readinessLoading } = useSWR(
+  const { data: readiness } = useSWR(
     user ? "intelligence/training-readiness" : null,
     () => intelligenceApi.trainingReadiness(),
     { revalidateOnFocus: false },
@@ -223,8 +219,6 @@ function IntelligenceCenterInner() {
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
-  const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
-  const hasRuntimeRows = Object.keys(orgTraining).length > 0
   return (
     <AppShell title={copy.title}>
       <div className="relative bg-[color:var(--g-canvas)]">
@@ -317,8 +311,6 @@ function IntelligenceCenterInner() {
               </div>
             </summary>
             <div className="space-y-6 border-t border-divide px-5 py-5">
-              <GibeHonestyStrip orgTraining={hasRuntimeRows ? orgTraining : null} />
-              <TrainingReadinessStrip readiness={readiness} loading={readinessLoading} />
               <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 
               <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">

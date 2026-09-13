@@ -163,13 +163,129 @@ def running_agent_trust_answer(snapshot: IntelligenceSnapshot) -> str:
     )
 
 
+def _is_predictions_attention_question(question: str) -> bool:
+    q = question.lower()
+    if not _mentions_predictions(question):
+        return False
+    return any(
+        phrase in q
+        for phrase in (
+            "need attention",
+            "needs attention",
+            "watch",
+            "priority",
+            "what predictions",
+            "which predictions",
+        )
+    )
+
+
+def _is_learning_recent_question(question: str) -> bool:
+    q = question.lower()
+    return _mentions_learning(question) and any(
+        phrase in q for phrase in ("recent", "recently", "what has", "what have", "learned")
+    )
+
+
+def _is_current_activity_question(question: str) -> bool:
+    q = question.lower()
+    return any(
+        phrase in q
+        for phrase in (
+            "doing right now",
+            "doing now",
+            "happening now",
+            "what is gravitre doing",
+            "what's gravitre doing",
+        )
+    )
+
+
+def prediction_trust_answer(snapshot: IntelligenceSnapshot) -> str:
+    """Deterministic answer for prediction attention queries."""
+    preds = snapshot.predictions
+    if not preds:
+        return "No active predictions in canonical intelligence state right now."
+    needing_evidence = [
+        p for p in preds if "UNSCOPED_PREDICTION" in p.qualityFlags or not p.evidence
+    ]
+    high_priority = [p for p in preds if (p.confidence or 0) >= 0.65]
+    focus = needing_evidence or high_priority or preds
+    statements = [p.businessStatement for p in focus[:6]]
+    joined = "; ".join(statements)
+    extra = len(focus) - len(statements)
+    suffix = f" (+{extra} more)" if extra > 0 else ""
+    metric_count = snapshot.metrics.predictions.get("activePredictions", len(preds))
+    return (
+        f"{metric_count} deduped prediction{'s' if metric_count != 1 else ''} in canonical state. "
+        f"Top items needing attention: {joined}{suffix}."
+    )
+
+
+def learning_trust_answer(snapshot: IntelligenceSnapshot) -> str:
+    """Deterministic answer for recent business learning queries."""
+    if not snapshot.learnings:
+        return (
+            "No validated business learning insights in canonical intelligence state yet. "
+            "Platform telemetry and model readiness are not business learning."
+        )
+    statements = [insight.businessStatement for insight in snapshot.learnings[:5]]
+    joined = "; ".join(statements)
+    count = snapshot.metrics.learning.get("recentLearnings", len(snapshot.learnings))
+    return (
+        f"{count} recent business learning insight{'s' if count != 1 else ''}: {joined}."
+    )
+
+
+def current_activity_trust_answer(snapshot: IntelligenceSnapshot) -> str:
+    """Distinguish configured-active agents from currently-running execution."""
+    configured = [a for a in snapshot.agents if a.isConfiguredActive]
+    running = [a for a in snapshot.agents if a.isCurrentlyRunning]
+    exec_metrics = snapshot.metrics.execution
+    running_workflows = int(exec_metrics.get("runningWorkflows") or 0)
+    swarm_runs = int(exec_metrics.get("concurrentSwarmRuns") or 0)
+    parts: list[str] = []
+    if running:
+        names = ", ".join(a.businessLabel for a in running[:4])
+        parts.append(
+            f"{len(running)} agent{'s' if len(running) != 1 else ''} currently running ({names})"
+        )
+    else:
+        parts.append("No agents are currently running in swarm execution")
+    if configured:
+        parts.append(
+            f"{len(configured)} agent{'s' if len(configured) != 1 else ''} configured active"
+        )
+    if running_workflows:
+        parts.append(f"{running_workflows} workflow{'s' if running_workflows != 1 else ''} executing")
+    if swarm_runs:
+        parts.append(f"{swarm_runs} concurrent swarm run{'s' if swarm_runs != 1 else ''}")
+    return ". ".join(parts) + "."
+
+
+# Permanent regression guard — prod once returned these while map showed active agents.
+FORBIDDEN_UNAVAILABLE_AGENT_PHRASES: tuple[str, ...] = (
+    "don't have the active-agent list",
+    "don't have the current agent status",
+    "agent status is unavailable",
+    "need to fetch the current agent statuses",
+    "i don't have the active-agent list yet",
+)
+
+
 def resolve_intelligence_hub_deterministic_answer(
     snapshot: IntelligenceSnapshot,
     question: str,
 ) -> str | None:
-    """Return a canonical roster answer for intelligence_hub trust queries."""
+    """Return a canonical answer for intelligence_hub trust queries."""
     if _is_running_agent_status_question(question):
         return running_agent_trust_answer(snapshot)
     if _is_active_agent_status_question(question):
         return active_agent_trust_answer(snapshot)
+    if _is_predictions_attention_question(question):
+        return prediction_trust_answer(snapshot)
+    if _is_learning_recent_question(question):
+        return learning_trust_answer(snapshot)
+    if _is_current_activity_question(question):
+        return current_activity_trust_answer(snapshot)
     return None

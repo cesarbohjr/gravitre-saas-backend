@@ -23,9 +23,7 @@ import { PerformanceTab } from "./_components/performance-tab"
 import { GoldenSignalsPanel } from "./_components/golden-signals-panel"
 import { LearningTrendsTab } from "./_components/learning-trends-tab"
 import { CognitiveTurnsTab } from "./_components/cognitive-turns-tab"
-import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
@@ -43,7 +41,7 @@ type TabKey =
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>("overview")
-  const copy = SURFACE_COPY.learning
+  const copy = SURFACE_COPY.platformIntelligence
   const tabs = SURFACE_COPY.adminTabs
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -55,7 +53,7 @@ export default function AdminIntelligencePage() {
   if (!user) {
     return (
       <AppShell title={copy.title}>
-        <EmptyState title="Sign in required" description="Log in to view learning signals." />
+        <EmptyState title="Sign in required" description="Log in to view platform intelligence." />
       </AppShell>
     )
   }
@@ -64,7 +62,7 @@ export default function AdminIntelligencePage() {
     const message = error instanceof ApiError ? error.message : "Failed to load learning data."
     return (
       <AppShell title={copy.title}>
-        <ErrorState title="Unable to load learning" description={message} onRetry={() => mutate()} />
+        <ErrorState title="Unable to load platform intelligence" description={message} onRetry={() => mutate()} />
       </AppShell>
     )
   }
@@ -72,8 +70,6 @@ export default function AdminIntelligencePage() {
   return (
     <AppShell title={copy.title}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-        <LearningSurfacesCallout current="org-learning" />
-
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
@@ -85,8 +81,6 @@ export default function AdminIntelligencePage() {
             </Button>
           }
         />
-
-        <IntelligenceHubTabs active="learning" />
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
           <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto scrollbar-hide rounded-full border border-border/70 bg-secondary/30 p-1 lg:flex-wrap">

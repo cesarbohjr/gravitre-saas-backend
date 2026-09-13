@@ -38,7 +38,7 @@ const TABS: Array<HubTabItem<IntelligenceHubTab>> = [
 ]
 
 export function resolveIntelligenceHubTab(pathname: string): IntelligenceHubTab {
-  if (pathname.startsWith("/intelligence/learning") || pathname.startsWith("/admin/intelligence")) {
+  if (pathname.startsWith("/intelligence/learning")) {
     return "learning"
   }
   if (pathname.startsWith("/intelligence/predictive")) return "predictions"

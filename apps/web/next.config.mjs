@@ -120,8 +120,6 @@ const nextConfig = {
       { source: "/agents/swarm", destination: "/multi-agent-run", permanent: true },
       { source: "/tasks", destination: "/activity", permanent: true },
       { source: "/systems", destination: "/connectors", permanent: true },
-      { source: "/admin/intelligence", destination: "/intelligence/learning", permanent: true },
-      { source: "/admin/intelligence/:path*", destination: "/intelligence/learning/:path*", permanent: true },
       { source: "/intelligence/models", destination: "/models/built-in", permanent: true },
       { source: "/intelligence/models/:name", destination: "/models/built-in/:name", permanent: true },
       // Frontend IA consolidation — retired top-level destinations

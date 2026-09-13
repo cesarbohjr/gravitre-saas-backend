@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
@@ -9,22 +9,42 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { intelligenceApi } from "@/lib/api"
-import { normalizeDomainPredictions } from "@/lib/intelligence/normalize-domain-predictions"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
+import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 
 const copy = SURFACE_COPY.pages.predictive
 
 const DOMAINS = ["sales", "support", "operations", "finance", "marketing", "customer_success"] as const
 
+type CanonicalPredictionRow = {
+  id: string
+  businessStatement: string
+  department?: string | null
+  confidence?: number | null
+  status?: string
+}
+
 export default function PredictiveOpsPage() {
   const [domain, setDomain] = useState<(typeof DOMAINS)[number]>("support")
-  const { data, isLoading, error } = useSWR(
-    ["intelligence/predictive-ops", domain],
-    () => intelligenceApi.predictiveOpsDomain(domain),
+  const { data: pageContext, isLoading, error } = useSWR(
+    ["intelligence/page-context", "predicts", domain],
+    () => intelligenceApi.pageContext({ windowHours: 24, activeLens: "predicts" }),
     { refreshInterval: 60_000 },
   )
-  const predictions = normalizeDomainPredictions(data?.predictions)
+
+  const predictions = useMemo(() => {
+    const raw = (pageContext?.snapshot.predictions ?? []) as CanonicalPredictionRow[]
+    const domainNorm = domain.replace("_", " ").toLowerCase()
+    return raw.filter((row) => {
+      const dept = String(row.department ?? "").toLowerCase().replace("_", " ")
+      return !dept || dept.includes(domainNorm) || domainNorm.includes(dept)
+    })
+  }, [pageContext?.snapshot.predictions, domain])
+
+  const activeCount =
+    pageContext?.metrics.predictions.activePredictions ??
+    pageContext?.snapshot.metrics.predictions.activePredictions ??
+    predictions.length
 
   return (
     <AppShell title={copy.title}>
@@ -35,53 +55,55 @@ export default function PredictiveOpsPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
         <IntelligenceHubTabs active="predictions" />
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Domain pack</span>
-        <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DOMAINS.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading domain predictions…</p> : null}
-      {error ? <p className="text-sm text-destructive">Unable to load predictive ops for this domain.</p> : null}
-      <div className="grid gap-4 md:grid-cols-2">
-        {predictions.map((row) => {
-          const status = String(row.status || "unknown")
-          const model = String(row.model || "model")
-          return (
-            <Card key={model}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-muted-foreground">Domain filter</span>
+          <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOMAINS.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">
+            {activeCount} active prediction{activeCount === 1 ? "" : "s"}
+          </span>
+        </div>
+        {isLoading ? <p className="text-sm text-muted-foreground">Loading predictions…</p> : null}
+        {error ? <p className="text-sm text-destructive">Unable to load predictions.</p> : null}
+        {!isLoading && !error && predictions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No predictions for this domain right now.</p>
+        ) : null}
+        <div className="grid gap-4 md:grid-cols-2">
+          {predictions.map((row) => (
+            <Card key={row.id}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base font-medium">{model.replace(/_/g, " ")}</CardTitle>
-                  <ModelStatusBadge status={status} size="sm" />
+                  <CardTitle className="text-base font-medium">{row.businessStatement}</CardTitle>
+                  {row.confidence != null ? (
+                    <ConfidenceBadge score={row.confidence} showScore />
+                  ) : null}
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
-                {row.reason ? <p>{String(row.reason)}</p> : null}
-                {row.risk_score != null ? (
+                {row.department ? (
                   <p>
-                    Risk score: <span className="font-medium text-foreground">{String(row.risk_score)}</span>
+                    Department: <span className="font-medium text-foreground">{row.department}</span>
                   </p>
                 ) : null}
-                {row.data_gate ? (
+                {row.status ? (
                   <p>
-                    Data gate: {String((row.data_gate as Record<string, unknown>).current ?? 0)} /{" "}
-                    {String((row.data_gate as Record<string, unknown>).required ?? "?")}
+                    Status: <span className="font-medium text-foreground">{row.status}</span>
                   </p>
                 ) : null}
               </CardContent>
             </Card>
-          )
-        })}
-      </div>
+          ))}
+        </div>
       </div>
     </AppShell>
   )
