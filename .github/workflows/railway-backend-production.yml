@@ -190,6 +190,7 @@ jobs:
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: |
           set +e
+          pip install httpx python-dotenv supabase pydantic pydantic-settings PyJWT
           python3 scripts/smoke-msp-enrichment-workflow-live.py
           CODE=$?
           set -e

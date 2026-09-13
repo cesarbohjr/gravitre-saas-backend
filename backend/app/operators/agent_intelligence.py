@@ -1640,6 +1640,11 @@ class AgentIntelligence:
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
+        # Phase D compose reads task_state from closure; gateway shortcuts run before
+        # the full task_state reload below — seed from gateway_state to avoid UnboundLocalError.
+        task_state: dict[str, Any] | None = (
+            dict(gateway_state) if isinstance(gateway_state, dict) else None
+        )
         gateway = await evaluate_intent_gateway(
             GatewayContext(
                 message=task_text,

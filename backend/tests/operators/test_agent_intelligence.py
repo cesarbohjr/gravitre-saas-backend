@@ -511,6 +511,68 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
 
 
 @pytest.mark.asyncio
+async def test_gateway_shortcut_composes_before_task_state_reload(intelligence: AgentIntelligence):
+    """Phase D: gateway shortcuts call _composed_reply before task_state is reloaded."""
+    from app.services.intent_gateway import GatewayDecision
+    from app.services.response_composer import ComposerPacked
+
+    client = MagicMock()
+    state_svc = MagicMock()
+    state_svc.get_task_state = AsyncMock(return_value={})
+
+    gateway_decision = GatewayDecision(
+        action="shortcut",
+        reason="phrase",
+        candidate_id="phrase_bank",
+        confidence=0.93,
+        answer="Hello! How can I help you today?",
+    )
+    packed = ComposerPacked(
+        text="Hello! How can I help you today?",
+        text_id="txt-gateway",
+        events=[
+            AssistantStreamEvent(sse_type="text-start", payload={"id": "txt-gateway"}),
+            AssistantStreamEvent(
+                sse_type="text-delta",
+                payload={"id": "txt-gateway", "delta": "Hello! How can I help you today?"},
+            ),
+            AssistantStreamEvent(sse_type="text-end", payload={"id": "txt-gateway"}),
+        ],
+        kind="shortcut",
+        used_model=False,
+    )
+
+    events: list[object] = []
+    with patch(
+        "app.services.intent_gateway.evaluate_intent_gateway",
+        AsyncMock(return_value=gateway_decision),
+    ):
+        with patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=state_svc,
+        ):
+            with patch(
+                "app.operators.agent_intelligence.compose_reply_events",
+                AsyncMock(return_value=packed),
+            ):
+                async for event in intelligence.execute_task_streaming(
+                    org_id="org-1",
+                    user_id="user-1",
+                    query="hello",
+                    mode="fast",
+                    conversation_id="conv-gateway",
+                    client=client,
+                ):
+                    events.append(event)
+
+    complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
+    assert complete.full_content == "Hello! How can I help you today?"
+    assert complete.model == "intent_gateway:phrase_bank"
+    sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
+    assert "text-delta" in sse_types
+
+
+@pytest.mark.asyncio
 async def test_spoken_mode_skips_tier0_cache(intelligence: AgentIntelligence):
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = (
