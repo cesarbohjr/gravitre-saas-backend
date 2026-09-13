@@ -5,6 +5,9 @@ import useSWR from "swr"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { organizationsApi } from "@/lib/api"
+import type { Organization } from "@/types/api"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -35,8 +38,6 @@ import {
   type AppEnvironment,
 } from "@/lib/environment-context"
 import {
-  DEFAULT_DEMO_ORG_ID,
-  SECONDARY_DEMO_ORG_ID,
   ensureSelectedOrg,
   getSelectedOrgFromStorage,
   invalidateOrgCache,
@@ -57,7 +58,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
-  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
+  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Organization")
+  const [orgId, setOrgId] = useState(() => getSelectedOrgFromStorage()?.id ?? null)
+  const [isSwitchingOrg, setIsSwitchingOrg] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
@@ -116,6 +119,19 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     refreshInterval: 120_000,
   })
 
+  // Real org-switcher membership list — the same organizationsApi.list() call
+  // that already correctly powers /settings/organizations and the current-org
+  // label below. Previously this dropdown rendered two hardcoded demo orgs
+  // ("Acme Corp" / "Gravitre Labs") that were never wired to any API, so any
+  // real user who clicked one would switch their session's x-org-id to a
+  // legacy demo org they aren't a member of and get 403s app-wide.
+  const { data: orgsData } = useSWR(
+    user ? "organizations:list" : null,
+    () => organizationsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const memberOrgs = (orgsData?.organizations as Organization[] | undefined) ?? []
+
   const planCodeKnown = Boolean(
     billingStatus?.planCode && billingStatus.billingKnown !== false && !billingStatus._auth_degraded,
   )
@@ -146,10 +162,11 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     userEmail.split("@")[0]
 
   useEffect(() => {
-    void ensureSelectedOrg().then((orgId) => {
+    void ensureSelectedOrg().then((resolvedOrgId) => {
       const stored = getSelectedOrgFromStorage()
       if (stored?.name) setOrg(stored.name)
-      else if (orgId) setOrg("Organization")
+      else if (resolvedOrgId) setOrg("Organization")
+      setOrgId(stored?.id ?? resolvedOrgId ?? null)
     })
     setEnvironment(getSelectedEnvironmentFromStorage())
     const onEnvChange = (event: Event) => {
@@ -165,11 +182,23 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     setSelectedEnvironmentInStorage(next)
   }
 
-  const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
-    setOrg(nextOrgName)
-    setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
-    invalidateOrgCache()
-    window.location.reload()
+  const handleOrgChange = async (nextOrgId: string, nextOrgName: string) => {
+    if (nextOrgId === orgId || isSwitchingOrg) return
+    setIsSwitchingOrg(true)
+    try {
+      // Real backend switch (STA-72 multi-org) — same call already proven at
+      // /settings/organizations. Persisting to localStorage afterwards keeps
+      // every org-scoped fetch's `x-org-id` header (lib/fetcher.ts) in sync.
+      await organizationsApi.switch(nextOrgId)
+      setOrg(nextOrgName)
+      setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
+      invalidateOrgCache()
+      window.location.reload()
+    } catch (error) {
+      console.error("Failed to switch organization", error)
+      toast.error(error instanceof Error ? error.message : "Failed to switch organization")
+      setIsSwitchingOrg(false)
+    }
   }
 
   const userInitials = useMemo(() => {
@@ -243,20 +272,26 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuItem
-                onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
-                className="gap-2.5"
-              >
-                <OrgMonogram name="Acme Corp" size="sm" />
-                Acme Corp
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
-                className="gap-2.5"
-              >
-                <OrgMonogram name="Gravitre Labs" size="sm" />
-                Gravitre Labs
-              </DropdownMenuItem>
+              {memberOrgs.length > 0 ? (
+                memberOrgs.map((memberOrg) => (
+                  <DropdownMenuItem
+                    key={memberOrg.id}
+                    onClick={() => void handleOrgChange(memberOrg.id, memberOrg.name)}
+                    disabled={isSwitchingOrg}
+                    className="gap-2.5"
+                  >
+                    <OrgMonogram name={memberOrg.name} size="sm" />
+                    <span className="flex-1 truncate">{memberOrg.name}</span>
+                    {memberOrg.id === orgId ? (
+                      <Icon name="check" size="sm" className="text-primary" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled className="gap-2.5 text-muted-foreground">
+                  {org}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
                 <Link href="/settings/organizations">
