@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-27T20:45:05.033055+00:00",
+  "generated_at": "2026-09-13T21:01:17.129577+00:00",
   "base": "https://gravitre-saas-backend-production.up.railway.app",
-  "health_git_sha": "794ee295920536866d2d378800d13232ee98271d",
+  "health_git_sha": "53b078b66313ade7862242f77980f0fcdf4a6568",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "smoke": {
@@ -25,9 +25,9 @@
       "job_execute_task": true
     },
     "results": {
-      "probe_tag": "onebrain-3fa10da404",
+      "probe_tag": "onebrain-82eb841f2e",
       "agent_chat": {
-        "turn_id": "6dfc25e5-c806-473d-a491-5a1d003b856d",
+        "turn_id": "cd22b25e-f8fd-44f8-82e5-fe0efecb1b10",
         "surface": "agent_chat",
         "stages": [
           "RETRIEVE",
@@ -40,7 +40,7 @@
         "ok": true
       },
       "voice": {
-        "turn_id": "e6d87969-8495-482e-a414-846e47e60feb",
+        "turn_id": "bb0dfbe0-2bb7-477c-b878-c0b4ea4bfc34",
         "surface": "voice",
         "stages": [
           "RETRIEVE",
@@ -53,36 +53,36 @@
         "ok": true
       },
       "extension_enrich": {
-        "cognitiveTurnId": "e5fea697-e541-4ac8-b8ea-abf724cb4017",
+        "cognitiveTurnId": "ce5988ab-3832-45b8-b71c-402d347f7fcd",
         "ok": true
       },
       "extension_action": {
-        "turn_id": "d99124fc-bb73-420e-817e-d386ad7e5d89",
+        "turn_id": "a487e0ef-ddb6-4d7f-bf3a-8fbe5492525d",
         "ok": true
       },
       "council": {
-        "session_id": "951a7c5e-7738-4cfa-8267-1570e56d53ad:onebrain-3fa10da404 coun",
-        "turn_id": "7c7021bd-f7f8-4af1-b76e-e611d60d69cf",
+        "session_id": "71289683-4d58-4cf5-8a39-91c5bde5ce82:onebrain-82eb841f2e coun",
+        "turn_id": "454464d1-908d-4dbc-9e32-3c03ef699998",
         "surface": "council",
         "ok": true
       },
       "cross_org": {
         "foreign_org_id": "658c76b3-04b7-489b-bb7e-64a5f3ec1cbe",
         "foreign_memory_id": null,
-        "turn_id": "45bb8687-e944-422d-94dd-3974fed46148",
+        "turn_id": "0dd3f22d-d78c-41fb-b757-07efb68a58cd",
         "leaked_marker": false,
         "foreign_org_rows_in_pack": 0,
         "ok": true
       },
       "workspace_cross_conversation": {
-        "convo_a": "5f4fe28d-a999-41ac-8521-ed7a5fd41524",
-        "convo_b": "3ace84c5-ad9e-4aa2-913e-a99817fa0d41",
+        "convo_a": "894860b0-6950-4148-8c21-1b345ca8e416",
+        "convo_b": "d27fffd4-acaa-443d-8049-1213fb0adb0b",
         "promoted_ids": [
-          "09a8cd59-b01a-4313-90df-b4bd11a29c3e"
+          "e4a4d5cc-e538-4035-aa69-48af36c24c28"
         ],
         "recall_hit": true,
         "kernel_hit": true,
-        "turn_id_b": "b67b2636-c51e-41f3-8c5b-b1bdc3fa1454",
+        "turn_id_b": "0c021f95-c18a-49ab-8aa1-ff59e0ee8de1",
         "foreign_leak": false,
         "ok": true
       },
@@ -166,14 +166,14 @@
         "ok": true
       },
       "knowledge_nodes": {
-        "node_id": "f6f1befd-fdb3-43a8-a0ca-a2dd98e92968",
+        "node_id": "f0270783-fb2f-409d-bcfa-330459531c75",
         "node_name": "ProbeCo-onebrain",
-        "turn_id": "b4db2b37-829e-4054-a1ae-194a9ed5539b",
+        "turn_id": "d2adc7f2-c935-4596-9bda-2b0a5cc30b19",
         "in_knowledge_pack": true,
         "ok": true
       },
       "field_acl": {
-        "turn_id": "c98d0569-318e-443c-928a-f6b857c64365",
+        "turn_id": "0d31330b-ec92-4977-ad40-2b6fbdf00987",
         "blocked": true,
         "govern": {
           "ok": false,
@@ -191,41 +191,41 @@
           "redacted_args": null,
           "actions": []
         },
-        "audit_id": "37018a9d-286c-416e-8db0-9674ce984e8a",
-        "audit_at": "2026-08-27T20:46:13.164568+00:00",
+        "audit_id": "1b106c26-7ae6-46df-9ec7-777220a0bb23",
+        "audit_at": "2026-09-13T21:02:01.063864+00:00",
         "ok": true
       },
       "outcome_loop": {
-        "recommendation_id": "90f0222a-6cb3-47a3-93d6-a9375aed7748",
-        "situation": "onebrain-3fa10da404 recommend next CRM outreach step",
+        "recommendation_id": "da0ae22a-0f26-4fc7-82b7-864688b9fe8d",
+        "situation": "onebrain-82eb841f2e recommend next CRM outreach step",
         "record_closed_loop": {
           "ok": true,
-          "recommendation_id": "90f0222a-6cb3-47a3-93d6-a9375aed7748",
+          "recommendation_id": "da0ae22a-0f26-4fc7-82b7-864688b9fe8d",
           "outcome_event": "recommendation_rejected"
         },
         "before_weight_delta": -0.1,
         "after_weight_delta": -0.1,
         "before_bias_notes": [
-          "Org has 25 recent outcome events (0 positive-leaning, 15 negative-leaning)."
+          "Org has 25 recent outcome events (0 positive-leaning, 1 negative-leaning)."
         ],
         "after_bias_notes": [
-          "Prior outcome recommendation_rejected on onebrain-3fa10da404 recommend next CRM outreach "
+          "Prior outcome recommendation_rejected on onebrain-82eb841f2e recommend next CRM outreach "
         ],
-        "before_bias_prompt_len": 427,
+        "before_bias_prompt_len": 426,
         "after_bias_prompt_len": 440,
         "prompt_injected": true,
         "plan_outcome_bias": {
           "bias_notes": [
-            "Prior outcome recommendation_rejected on onebrain-3fa10da404 recommend next CRM outreach "
+            "Prior outcome recommendation_rejected on onebrain-82eb841f2e recommend next CRM outreach "
           ],
           "weight_delta": -0.1
         },
-        "turn_id_before": "fc112eaa-0d13-43d5-a04b-56c037db2b9a",
-        "turn_id_after": "35ce130c-40b4-4ff8-a726-905d07caf7e7",
+        "turn_id_before": "9f0b7efa-0bb4-4501-b057-66d3886b6643",
+        "turn_id_after": "980e5edb-cd06-4de8-932f-5a234d23b72f",
         "ok": true
       },
       "job_execute_task": {
-        "turn_id": "8b57bd63-3040-43de-96e6-92e8f7a93e89",
+        "turn_id": "489bd525-51e7-471d-bb84-470a7781c9e3",
         "surface": "job",
         "stages": [
           "RETRIEVE",

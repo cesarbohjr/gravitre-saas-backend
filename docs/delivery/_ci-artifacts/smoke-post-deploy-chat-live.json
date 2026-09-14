@@ -14,6 +14,6 @@
   "assistant": "smoke-ok",
   "stream_errors": [],
   "raw_bytes": 8119,
-  "verdict": "PASS — post-deploy chat ok @ 8cfe12c4",
+  "verdict": "PASS \u2014 post-deploy chat ok @ 8cfe12c4",
   "finished_at": "2026-09-14T03:00:12.023823+00:00"
 }
