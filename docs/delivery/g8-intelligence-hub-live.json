@@ -1,0 +1,243 @@
+{
+  "probe": "g8_intelligence_hub_live",
+  "started_at": "2026-09-14T02:16:36.093066+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "expect_sha": "91a020",
+  "cases": [
+    {
+      "id": "g3-page-context-all-lenses",
+      "phase": "G3",
+      "passed": true,
+      "verdict": "PASS",
+      "lens_results": [
+        {
+          "lens": "knows",
+          "passed": true,
+          "verdict": "PASS",
+          "checks": {
+            "has_graph_nodes": true,
+            "has_graph_edges": true,
+            "active_lens_matches": true,
+            "has_snapshot": true
+          },
+          "node_count": 4,
+          "edge_count": 3
+        },
+        {
+          "lens": "learns",
+          "passed": true,
+          "verdict": "PASS",
+          "checks": {
+            "has_graph_nodes": true,
+            "has_graph_edges": true,
+            "active_lens_matches": true,
+            "has_snapshot": true
+          },
+          "node_count": 12,
+          "edge_count": 11
+        },
+        {
+          "lens": "predicts",
+          "passed": true,
+          "verdict": "PASS",
+          "checks": {
+            "has_graph_nodes": true,
+            "has_graph_edges": true,
+            "active_lens_matches": true,
+            "has_snapshot": true
+          },
+          "node_count": 6,
+          "edge_count": 2
+        },
+        {
+          "lens": "acts",
+          "passed": true,
+          "verdict": "PASS",
+          "checks": {
+            "has_graph_nodes": true,
+            "has_graph_edges": true,
+            "active_lens_matches": true,
+            "has_snapshot": true
+          },
+          "node_count": 5,
+          "edge_count": 2
+        },
+        {
+          "lens": "improves",
+          "passed": true,
+          "verdict": "PASS",
+          "checks": {
+            "has_graph_nodes": true,
+            "has_graph_edges": true,
+            "active_lens_matches": true,
+            "has_snapshot": true
+          },
+          "node_count": 4,
+          "edge_count": 0
+        }
+      ]
+    },
+    {
+      "id": "g6-metrics-semantics",
+      "phase": "G6",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "configured_active_key": true,
+        "currently_running_key": true,
+        "predictions_deduped": true
+      }
+    },
+    {
+      "id": "g5-g7-inspector-evidence",
+      "phase": "G5/G7",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "predictions_have_evidence_field": true,
+        "learnings_have_evidence_field": true,
+        "learnings_have_business_statement": true
+      },
+      "prediction_count": 2,
+      "learning_count": 0
+    },
+    {
+      "id": "g8-learning-map-focus",
+      "phase": "G8",
+      "passed": true,
+      "verdict": "NOT RUN",
+      "reason": "no learnings in canonical snapshot for isolated org",
+      "checks": {
+        "learning_nodes_prefixed": true,
+        "graph_covers_insights": true
+      }
+    },
+    {
+      "id": "g1-g4-active-agents",
+      "phase": "G1/G4",
+      "message": "What agents are currently active?",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "http_ok": true,
+        "has_assistant_text": true,
+        "has_visualization": true,
+        "visualization_lens": "acts",
+        "deterministic_path": true,
+        "no_sse_errors": true,
+        "lens_matches": true,
+        "deterministic_ok": true,
+        "forbidden_hits": [],
+        "matched_include": true,
+        "highlights_are_agent_ids": true
+      },
+      "assistant_excerpt": "Currently active: **Lead Qualification Slack Agent**. That\u2019s 1 active agent across 1 department.",
+      "visualization": {
+        "lens": "acts",
+        "focusNodeIds": [
+          "agent:7dc35224-6cd5-43eb-81ba-01529e5ae639"
+        ],
+        "highlightNodeIds": [
+          "agent:7dc35224-6cd5-43eb-81ba-01529e5ae639"
+        ],
+        "dimNodeIds": [],
+        "expandNodeIds": [],
+        "edgeTypes": [],
+        "timeWindowHours": 24
+      },
+      "conversation_id": "9c8a0477-dc0f-41f5-bf84-9a834863a968",
+      "http_status": 200,
+      "answer_explanations": [
+        "intelligence_hub:canonical_agent_roster"
+      ]
+    },
+    {
+      "id": "g4-predictions-attention",
+      "phase": "G4/G6",
+      "message": "What predictions need attention?",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "http_ok": true,
+        "has_assistant_text": true,
+        "has_visualization": true,
+        "visualization_lens": "predicts",
+        "deterministic_path": true,
+        "no_sse_errors": true,
+        "lens_matches": true,
+        "deterministic_ok": true,
+        "forbidden_hits": [],
+        "matched_include": true,
+        "highlights_are_agent_ids": true
+      },
+      "assistant_excerpt": "Two predictions need attention: - **HubSpot contact creation is failing:** 2 of the last 5 recent runs failed \u2014 **40% failure rate**.\n- **HubSpot OAuth token is expiring now:** the connector token expires in **0 hours**, so HubSpot contact creation may fail until it\u2019s refreshed. Recommended next step: reconnect or refresh HubSpot first, then review the failed contact creation runs.",
+      "visualization": {
+        "lens": "predicts",
+        "focusNodeIds": [
+          "prediction:a42b4a3c-31aa-46e1-a0c5-4bc0a49a5482",
+          "prediction:317c0f19-10ff-4960-82b6-b48c5f9cbc82"
+        ],
+        "highlightNodeIds": [
+          "prediction:a42b4a3c-31aa-46e1-a0c5-4bc0a49a5482",
+          "prediction:317c0f19-10ff-4960-82b6-b48c5f9cbc82"
+        ],
+        "dimNodeIds": [],
+        "expandNodeIds": [],
+        "edgeTypes": [],
+        "timeWindowHours": 24
+      },
+      "conversation_id": "59808315-1d3f-4921-b098-8607fadf8d3c",
+      "http_status": 200,
+      "answer_explanations": [
+        "intelligence_hub:canonical_agent_roster"
+      ]
+    },
+    {
+      "id": "g4-g7-recent-learning",
+      "phase": "G4/G7",
+      "message": "What has Gravitre learned recently?",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "http_ok": true,
+        "has_assistant_text": true,
+        "has_visualization": true,
+        "visualization_lens": "learns",
+        "deterministic_path": true,
+        "no_sse_errors": true,
+        "lens_matches": true,
+        "deterministic_ok": true,
+        "forbidden_hits": [],
+        "matched_include": true,
+        "highlights_are_agent_ids": true
+      },
+      "assistant_excerpt": "No validated business learning insights yet. The platform has telemetry and model-readiness signals, but those don\u2019t count as business learning.",
+      "visualization": {
+        "lens": "learns",
+        "focusNodeIds": [],
+        "highlightNodeIds": [],
+        "dimNodeIds": [],
+        "expandNodeIds": [],
+        "edgeTypes": [],
+        "timeWindowHours": 24
+      },
+      "conversation_id": "2d1948e0-30e3-4f45-b810-35a20d13a814",
+      "http_status": 200,
+      "answer_explanations": [
+        "intelligence_hub:canonical_agent_roster"
+      ]
+    }
+  ],
+  "git_sha": "91a020835a635e9ed8bc65fb3637cc4059651bdb",
+  "health_timestamp": "2026-09-14T02:16:36.828176+00:00",
+  "page_context_sample": {
+    "generated_at": "2026-09-14T02:16:37.017269+00:00",
+    "active_lens": "acts"
+  },
+  "finished_at": "2026-09-14T02:17:37.436144+00:00",
+  "not_run_cases": [
+    "g8-learning-map-focus"
+  ],
+  "verdict": "PASS"
+}

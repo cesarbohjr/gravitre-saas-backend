@@ -34,6 +34,62 @@ const LENS_CAPTIONS: Record<IntelligenceMapLens, string> = {
   improves: "Outcomes — measured improvements from canonical intelligence graph",
 }
 
+function normalizeEdgeType(raw: string): MapEdge["edgeType"] {
+  const upper = raw.toUpperCase()
+  const allowed: MapEdge["edgeType"][] = [
+    "KNOWS",
+    "RELATED_TO",
+    "LEARNED_FROM",
+    "EVIDENCE_FOR",
+    "PREDICTS",
+    "AFFECTS",
+    "USED_BY",
+    "ASSIGNED_TO",
+    "EXECUTED",
+    "READ_FROM",
+    "WROTE_TO",
+    "REQUIRES_APPROVAL",
+    "PRODUCED",
+    "CONTRIBUTED_TO",
+    "IMPROVED",
+    "CONTRADICTS",
+  ]
+  return allowed.includes(upper as MapEdge["edgeType"]) ? (upper as MapEdge["edgeType"]) : "RELATED_TO"
+}
+
+function edgeVisualStyle(edgeType: MapEdge["edgeType"]): {
+  state: IntelligenceCoreVisualState
+  opacity: number
+  emphasis: number
+} {
+  switch (edgeType) {
+    case "CONTRADICTS":
+      return { state: "low-confidence", opacity: 0.35, emphasis: 0.5 }
+    case "EVIDENCE_FOR":
+    case "LEARNED_FROM":
+      return { state: "resolved", opacity: 0.82, emphasis: 1.1 }
+    case "PREDICTS":
+    case "AFFECTS":
+      return { state: "pending-approval", opacity: 0.78, emphasis: 1 }
+    case "EXECUTED":
+    case "ASSIGNED_TO":
+    case "USED_BY":
+      return { state: "trace", opacity: 0.72, emphasis: 1 }
+    case "IMPROVED":
+    case "PRODUCED":
+    case "CONTRIBUTED_TO":
+      return { state: "resolved", opacity: 0.7, emphasis: 0.95 }
+    case "REQUIRES_APPROVAL":
+      return { state: "pending-approval", opacity: 0.68, emphasis: 0.9 }
+    case "KNOWS":
+    case "READ_FROM":
+    case "WROTE_TO":
+      return { state: "flow-inward", opacity: 0.62, emphasis: 0.85 }
+    default:
+      return { state: "idle", opacity: 0.55, emphasis: 0.75 }
+  }
+}
+
 function mapVisualState(status: string | null | undefined): IntelligenceCoreVisualState {
   const normalized = (status ?? "").toLowerCase()
   if (normalized.includes("running") || normalized === "processing" || normalized === "trace") {
@@ -205,12 +261,16 @@ export function buildTopologyFromCanonicalGraph({
       const toId = remapCoreId(edge.toId)
       if (fromId !== CORE_ID && !nodeIds.has(fromId)) return null
       if (toId !== CORE_ID && !nodeIds.has(toId)) return null
+      const edgeType = normalizeEdgeType(edge.type)
+      const style = edgeVisualStyle(edgeType)
       return {
         id: edge.id,
         fromId,
         toId,
-        state: mapVisualState(edge.type.toLowerCase()),
-        opacity: edge.type === "CONTRADICTS" ? 0.35 : 0.65,
+        state: style.state,
+        opacity: style.opacity,
+        edgeType,
+        emphasis: style.emphasis,
       }
     })
     .filter((edge): edge is MapEdge => edge != null)

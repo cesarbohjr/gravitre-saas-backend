@@ -19,12 +19,35 @@ export type MapNode = {
   emphasis: number
 }
 
+export type MapEdgeType =
+  | "KNOWS"
+  | "RELATED_TO"
+  | "LEARNED_FROM"
+  | "EVIDENCE_FOR"
+  | "PREDICTS"
+  | "AFFECTS"
+  | "USED_BY"
+  | "ASSIGNED_TO"
+  | "EXECUTED"
+  | "READ_FROM"
+  | "WROTE_TO"
+  | "REQUIRES_APPROVAL"
+  | "PRODUCED"
+  | "CONTRIBUTED_TO"
+  | "IMPROVED"
+  | "CONTRADICTS"
+  | "core"
+
 export type MapEdge = {
   id: string
   fromId: string
   toId: string
   state: IntelligenceCoreVisualState
   opacity: number
+  /** G3 — canonical IntelligenceEdgeType for semantic edge styling. */
+  edgeType?: MapEdgeType
+  /** Emphasis multiplier for highlighted edge types (G4 expandNodeIds / edgeTypes). */
+  emphasis?: number
 }
 
 export type MapTopology = {
@@ -251,16 +274,124 @@ export function buildMapTopology({
   }
 }
 
+const KIND_RING_RADIUS: Partial<Record<MapNodeKind, number>> = {
+  agent: 145,
+  "entity-type": 130,
+  model: 165,
+  learning: 165,
+  signal: 230,
+  department: 200,
+}
+
+/** G3 — Semantic layout: group by node kind + edge connectivity, not one flat ring. */
+export function layoutSemanticGraphNodes(
+  nodes: MapNode[],
+  center: { cx: number; cy: number },
+  lens: IntelligenceMapLens,
+  edges: MapEdge[],
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>()
+  if (nodes.length === 0) return positions
+
+  const byKind = new Map<MapNodeKind, MapNode[]>()
+  for (const node of nodes) {
+    const bucket = byKind.get(node.kind) ?? []
+    bucket.push(node)
+    byKind.set(node.kind, bucket)
+  }
+
+  const neighborWeight = new Map<string, number>()
+  for (const edge of edges) {
+    if (edge.fromId === CORE_ID || edge.toId === CORE_ID) {
+      const satelliteId = edge.fromId === CORE_ID ? edge.toId : edge.fromId
+      neighborWeight.set(satelliteId, (neighborWeight.get(satelliteId) ?? 0) + 1)
+    }
+  }
+
+  const sortByConnectivity = (ringNodes: MapNode[]) =>
+    [...ringNodes].sort((a, b) => {
+      const delta = (neighborWeight.get(b.id) ?? 0) - (neighborWeight.get(a.id) ?? 0)
+      if (delta !== 0) return delta
+      return a.label.localeCompare(b.label)
+    })
+
+  const placeKindRing = (kind: MapNodeKind, radius: number, phase = 0) => {
+    const ringNodes = sortByConnectivity(byKind.get(kind) ?? [])
+    if (ringNodes.length === 0) return
+    const coords = radialLayout(ringNodes.length, { cx: center.cx, cy: center.cy, radius })
+    ringNodes.forEach((node, i) => {
+      const base = coords[i]
+      if (!base) return
+      const angle = Math.atan2(base.y - center.cy, base.x - center.cx) + phase
+      positions.set(node.id, {
+        x: center.cx + radius * Math.cos(angle),
+        y: center.cy + radius * Math.sin(angle),
+      })
+    })
+  }
+
+  if (lens === "acts") {
+    placeKindRing("agent", KIND_RING_RADIUS.agent ?? 145)
+    placeKindRing("department", KIND_RING_RADIUS.department ?? 210, Math.PI / 16)
+    for (const node of nodes) {
+      if (!positions.has(node.id)) placeKindRing(node.kind, 195)
+    }
+    return positions
+  }
+  if (lens === "knows") {
+    placeKindRing("entity-type", KIND_RING_RADIUS["entity-type"] ?? 130)
+    placeKindRing("department", KIND_RING_RADIUS.department ?? 200, Math.PI / 12)
+    for (const node of nodes) {
+      if (!positions.has(node.id)) placeKindRing(node.kind, 195)
+    }
+    return positions
+  }
+  if (lens === "predicts") {
+    placeKindRing("department", 175)
+    placeKindRing("signal", KIND_RING_RADIUS.signal ?? 230, Math.PI / 10)
+    for (const node of nodes) {
+      if (!positions.has(node.id)) placeKindRing(node.kind, 195)
+    }
+    return positions
+  }
+  if (lens === "learns") {
+    placeKindRing("learning", KIND_RING_RADIUS.learning ?? 165)
+    placeKindRing("model", KIND_RING_RADIUS.model ?? 185, Math.PI / 8)
+    for (const node of nodes) {
+      if (!positions.has(node.id)) placeKindRing(node.kind, 195)
+    }
+    return positions
+  }
+  if (lens === "improves") {
+    placeKindRing("department", KIND_RING_RADIUS.department ?? 200)
+    for (const node of nodes) {
+      if (!positions.has(node.id)) placeKindRing(node.kind, 195)
+    }
+    return positions
+  }
+
+  const coords = radialLayout(nodes.length, { cx: center.cx, cy: center.cy, radius: 195 })
+  nodes.forEach((node, i) => {
+    const pos = coords[i]
+    if (pos) positions.set(node.id, pos)
+  })
+  return positions
+}
+
 /** Assign x/y in viewBox space for each node id. */
 export function layoutMapNodes(
   nodes: MapNode[],
   center: { cx: number; cy: number },
   lens: IntelligenceMapLens,
+  edges?: MapEdge[],
 ): Map<string, { x: number; y: number }> {
+  if (edges && edges.length > 0 && nodes.length > 0) {
+    return layoutSemanticGraphNodes(nodes, center, lens, edges)
+  }
+
   const positions = new Map<string, { x: number; y: number }>()
   const agents = nodes.filter((n) => n.kind === "agent")
   const entities = nodes.filter((n) => n.kind === "entity-type")
-  const models = nodes.filter((n) => n.kind === "model" || n.kind === "learning")
   const signals = nodes.filter((n) => n.kind === "signal")
   const depts = nodes.filter((n) => n.kind === "department")
 

@@ -173,8 +173,8 @@ export function IntelligenceMap({
   }, [lens, data, agents, entityTypes, readiness, orgTraining, signals, canonicalGraph])
 
   const positions = useMemo(
-    () => layoutMapNodes(topology.nodes, CENTER, lens),
-    [topology.nodes, lens],
+    () => layoutMapNodes(topology.nodes, CENTER, lens, topology.edges),
+    [topology.nodes, topology.edges, lens],
   )
 
   const posById = useMemo(() => {
@@ -350,8 +350,18 @@ export function IntelligenceMap({
               const from = posById.get(edge.fromId === CORE_ID ? CORE_ID : edge.fromId)
               const to = posById.get(edge.toId)
               if (!from || !to) return null
+              const isContradiction = edge.edgeType === "CONTRADICTS"
+              const strokeBoost = edge.emphasis ?? 1
               return (
-                <g key={edge.id} opacity={edge.opacity}>
+                <g
+                  key={edge.id}
+                  opacity={Math.min(1, edge.opacity * strokeBoost)}
+                  style={
+                    isContradiction
+                      ? { filter: "drop-shadow(0 0 2px color-mix(in oklch, #d97706 35%, transparent))" }
+                      : undefined
+                  }
+                >
                   <SignalEdge
                     x1={from.x}
                     y1={from.y}

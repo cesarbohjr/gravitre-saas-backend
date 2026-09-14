@@ -33,5 +33,23 @@ describe("buildTopologyFromCanonicalGraph", () => {
     }
     const topology = buildTopologyFromCanonicalGraph({ graph, lens: "acts" })
     expect(topology.edges[0]?.fromId).toBe("__core__")
+    expect(topology.edges[0]?.edgeType).toBe("ASSIGNED_TO")
+    expect(topology.edges[0]?.state).toBe("trace")
+  })
+
+  it("styles CONTRADICTS edges with low-confidence visual state", () => {
+    const graph = {
+      nodes: [
+        { id: "prediction:p1", type: "prediction", businessLabel: "Conflict signal", status: "active" },
+        { id: "prediction:p2", type: "prediction", businessLabel: "Other signal", status: "active" },
+      ],
+      edges: [
+        { id: "e1", type: "CONTRADICTS", fromId: "prediction:p1", toId: "prediction:p2" },
+      ],
+    }
+    const topology = buildTopologyFromCanonicalGraph({ graph, lens: "predicts" })
+    expect(topology.edges[0]?.edgeType).toBe("CONTRADICTS")
+    expect(topology.edges[0]?.state).toBe("low-confidence")
+    expect(topology.edges[0]?.opacity).toBeLessThan(0.5)
   })
 })

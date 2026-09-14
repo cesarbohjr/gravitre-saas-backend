@@ -1,7 +1,7 @@
 # G8 — Learning → Map Focus E2E (Delivery Report)
 
 **Date:** 2026-09-13  
-**G8 COMPLETE:** **PARTIAL** — deep link bridge wired; prod verify **NOT RUN**
+**G8 COMPLETE:** **PARTIAL** — deep link bridge wired; backend battery **PASS** (see `g8-intelligence-hub-live-2026-09-13.md`); UI click-through **NOT RUN**
 
 ---
 
@@ -39,7 +39,8 @@ Close the loop between the customer Learning hub (G7) and Intelligence Overview 
 | Learning card links to overview with learns lens | **CODE** |
 | Overview focuses + selects learning node from URL | **CODE** |
 | Node ids use `learning:{id}` canonical prefix | **CODE** |
-| Prod Learning → map click-through | **NOT RUN** |
+| Prod Learning → map click-through | **NOT RUN** (no promoted learnings in isolated org) |
+| Prod page-context + chat SSE battery | **PASS** — `g8-intelligence-hub-live.json` |
 
 ---
 
