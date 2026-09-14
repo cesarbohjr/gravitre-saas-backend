@@ -40,6 +40,35 @@ def build_intelligence_graph(snapshot: IntelligenceSnapshot) -> IntelligenceGrap
         )
     )
 
+    for entity_type in snapshot.knowledgeEntityTypes:
+        et = str(entity_type or "").strip()
+        if not et:
+            continue
+        nid = f"entity:{et}"
+        add_node(
+            IntelligenceGraphNode(
+                id=nid,
+                type="entity",
+                businessLabel=et.replace("_", " ").title(),
+                technicalLabel=et,
+                status="active",
+                source=IntelligenceProvenance(
+                    system="knowledge_graph",
+                    recordId=et,
+                    fetchedAt=snapshot.generatedAt,
+                ),
+                metadata={"entityType": et},
+            )
+        )
+        edges.append(
+            IntelligenceGraphEdge(
+                id=f"edge:core:{nid}",
+                type="KNOWS",
+                fromId=CORE_NODE_ID,
+                toId=nid,
+            )
+        )
+
     for dept in snapshot.departments:
         dept_id = str(dept.get("id") or "")
         if not dept_id:

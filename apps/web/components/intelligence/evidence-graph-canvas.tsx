@@ -102,6 +102,7 @@ export function EvidenceGraphCanvas({
 
   return (
     <div
+      data-testid="evidence-graph-canvas"
       className={cn(
         "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-b from-[color:var(--g-surface-2)]/30 to-[color:var(--g-surface-1)]",
         className,

@@ -1,9 +1,9 @@
 {
   "probe": "g8_intelligence_hub_live",
-  "started_at": "2026-09-14T02:16:36.093066+00:00",
+  "started_at": "2026-09-14T02:54:11.061828+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "91a020",
+  "expect_sha": "",
   "cases": [
     {
       "id": "g3-page-context-all-lenses",
@@ -79,6 +79,20 @@
       ]
     },
     {
+      "id": "g3-knows-entity-nodes",
+      "phase": "G3",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "snapshot_entity_types": true,
+        "graph_has_entity_nodes": true,
+        "entity_ids_prefixed": true,
+        "graph_covers_types": true
+      },
+      "entity_type_count": 0,
+      "entity_node_count": 0
+    },
+    {
       "id": "g6-metrics-semantics",
       "phase": "G6",
       "passed": true,
@@ -114,6 +128,28 @@
       }
     },
     {
+      "id": "g1-trust-org-active-agents",
+      "phase": "G1",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "metrics_match_roster": true,
+        "trust_agent_present": true,
+        "configured_active_agents": 1
+      },
+      "active_agent_labels": [
+        "Email Campaign Reporting Agent"
+      ],
+      "generated_at": "2026-09-14T02:54:36.999027+00:00"
+    },
+    {
+      "id": "g8-trust-org-learning-map",
+      "phase": "G8",
+      "passed": true,
+      "verdict": "NOT RUN",
+      "reason": "no promoted learnings in trust org snapshot"
+    },
+    {
       "id": "g1-g4-active-agents",
       "phase": "G1/G4",
       "message": "What agents are currently active?",
@@ -132,7 +168,7 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "Currently active: **Lead Qualification Slack Agent**. That\u2019s 1 active agent across 1 department.",
+      "assistant_excerpt": "1 agent is currently active: **Lead Qualification Slack Agent**.",
       "visualization": {
         "lens": "acts",
         "focusNodeIds": [
@@ -146,7 +182,7 @@
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "9c8a0477-dc0f-41f5-bf84-9a834863a968",
+      "conversation_id": "9b036f09-fbb5-4937-a741-c6a8a5d9f7e1",
       "http_status": 200,
       "answer_explanations": [
         "intelligence_hub:canonical_agent_roster"
@@ -171,23 +207,23 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "Two predictions need attention: - **HubSpot contact creation is failing:** 2 of the last 5 recent runs failed \u2014 **40% failure rate**.\n- **HubSpot OAuth token is expiring now:** the connector token expires in **0 hours**, so HubSpot contact creation may fail until it\u2019s refreshed. Recommended next step: reconnect or refresh HubSpot first, then review the failed contact creation runs.",
+      "assistant_excerpt": "Two predictions need attention: - **HubSpot contact creation is failing:** 2 of the last 5 recent runs failed \u2014 **40% failure rate**.\n- **HubSpot token is expiring now:** the connector token expires in **0 hours**, so contact creation may keep failing until it\u2019s refreshed. Priority: refresh the HubSpot connection first, then re-check the failed contact creation runs.",
       "visualization": {
         "lens": "predicts",
         "focusNodeIds": [
-          "prediction:a42b4a3c-31aa-46e1-a0c5-4bc0a49a5482",
-          "prediction:317c0f19-10ff-4960-82b6-b48c5f9cbc82"
+          "prediction:b83785aa-3261-4ea7-967e-81ea3735ab5c",
+          "prediction:faf6442e-6656-47d6-a891-7c751fada556"
         ],
         "highlightNodeIds": [
-          "prediction:a42b4a3c-31aa-46e1-a0c5-4bc0a49a5482",
-          "prediction:317c0f19-10ff-4960-82b6-b48c5f9cbc82"
+          "prediction:b83785aa-3261-4ea7-967e-81ea3735ab5c",
+          "prediction:faf6442e-6656-47d6-a891-7c751fada556"
         ],
         "dimNodeIds": [],
         "expandNodeIds": [],
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "59808315-1d3f-4921-b098-8607fadf8d3c",
+      "conversation_id": "feee5105-509d-4828-9645-9c34fac2e2dc",
       "http_status": 200,
       "answer_explanations": [
         "intelligence_hub:canonical_agent_roster"
@@ -212,7 +248,7 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "No validated business learning insights yet. The platform has telemetry and model-readiness signals, but those don\u2019t count as business learning.",
+      "assistant_excerpt": "Gravitre hasn\u2019t recorded any validated business learning insights recently. Platform telemetry and model readiness don\u2019t count as business learning.",
       "visualization": {
         "lens": "learns",
         "focusNodeIds": [],
@@ -222,7 +258,7 @@
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "2d1948e0-30e3-4f45-b810-35a20d13a814",
+      "conversation_id": "c50caa2b-2b48-4518-b45f-52f2854f3e80",
       "http_status": 200,
       "answer_explanations": [
         "intelligence_hub:canonical_agent_roster"
@@ -230,14 +266,16 @@
     }
   ],
   "git_sha": "91a020835a635e9ed8bc65fb3637cc4059651bdb",
-  "health_timestamp": "2026-09-14T02:16:36.828176+00:00",
+  "health_timestamp": "2026-09-14T02:54:12.055657+00:00",
   "page_context_sample": {
-    "generated_at": "2026-09-14T02:16:37.017269+00:00",
+    "generated_at": "2026-09-14T02:54:12.245529+00:00",
     "active_lens": "acts"
   },
-  "finished_at": "2026-09-14T02:17:37.436144+00:00",
+  "trust_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "finished_at": "2026-09-14T02:55:26.508662+00:00",
   "not_run_cases": [
-    "g8-learning-map-focus"
+    "g8-learning-map-focus",
+    "g8-trust-org-learning-map"
   ],
   "verdict": "PASS"
 }

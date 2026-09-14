@@ -1,0 +1,21 @@
+{
+  "probe": "g8_intelligence_hub_ui_live",
+  "started_at": "2026-09-14T03:02:00.000000+00:00",
+  "web_base": "https://gravitre.app",
+  "org_id": "2ebbcbab-3dba-4b3b-b2ed-524ff9600e03",
+  "login_mode": "billing_fixture_password",
+  "cases": [
+    {
+      "id": "ui-battery",
+      "phase": "G5/G8",
+      "passed": false,
+      "verdict": "FAIL",
+      "error": "TimeoutError: Timeout 90000ms exceeded while waiting for event \"response\"",
+      "page_url": "https://gravitre.app/login?error=session_expired"
+    }
+  ],
+  "debug_screenshot": "docs/delivery/_ci-artifacts/g8-ui-live-failure.png",
+  "finished_at": "2026-09-14T03:04:00.000000+00:00",
+  "verdict": "FAIL",
+  "ci_e2e_fallback": "e2e/intelligence-hub-ui.spec.ts covers G4/G5/G8 UI on local Playwright stack"
+}

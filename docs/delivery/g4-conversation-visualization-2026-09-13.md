@@ -1,7 +1,7 @@
 # G4 — Conversation ↔ Visualization (Delivery Report)
 
 **Date:** 2026-09-13  
-**G4 COMPLETE:** **PARTIAL** — SSE visualization wired to map; prod live verify **NOT RUN**
+**G4 COMPLETE:** **PARTIAL** — SSE visualization wired to map; prod chat SSE **PASS** (`g8-intelligence-hub-live.json`); heuristic fallback **removed**; UI e2e in `e2e/intelligence-hub-ui.spec.ts`
 
 ---
 
@@ -65,7 +65,8 @@ IntelligenceMap lens + highlight + dim + focus + inspector selection
 | Prediction question → predicts lens + prediction ids | **CODE** |
 | Node ids filtered to current canonical graph | **CODE** |
 | Dim inactive agents on active-agent queries | **CODE** |
-| Prod chat → map focus alignment | **NOT RUN** |
+| Prod chat → map focus alignment | **PASS** — SSE `visualization.lens` @ conv `9c8a0477-…` / `59808315-…` |
+| Heuristic optimistic focus removed | **CODE** — authoritative SSE only |
 
 ---
 
@@ -73,7 +74,7 @@ IntelligenceMap lens + highlight + dim + focus + inspector selection
 
 - `expandNodeIds` / `edgeTypes` rendering (schema exists; no map behavior yet)
 - Inspector auto-open for learning/outcome satellite nodes
-- Remove heuristic fallback once prod proves SSE always arrives (G6)
+- ~~Remove heuristic fallback once prod proves SSE always arrives~~ **Done** (2026-09-13)
 
 ---
 

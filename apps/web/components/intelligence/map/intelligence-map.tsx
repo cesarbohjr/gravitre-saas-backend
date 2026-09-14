@@ -239,6 +239,7 @@ export function IntelligenceMap({
   return (
     <div
       id="intelligence-map-canvas"
+      data-testid="intelligence-map-canvas"
       className={cn(
         "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)]/30 bg-gradient-to-b from-[color:var(--g-intelligence-surface)]/40 via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] shadow-[var(--np-shadow)]",
         className,

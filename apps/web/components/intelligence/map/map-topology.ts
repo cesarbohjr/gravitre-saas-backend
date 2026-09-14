@@ -274,6 +274,75 @@ export function buildMapTopology({
   }
 }
 
+/** G3 — Lightweight force-directed refinement (prefers-reduced-motion skips via caller). */
+export function refineLayoutWithForces(
+  positions: Map<string, { x: number; y: number }>,
+  edges: MapEdge[],
+  center: { cx: number; cy: number },
+  iterations = 24,
+): Map<string, { x: number; y: number }> {
+  if (positions.size < 3) return positions
+  const ids = [...positions.keys()]
+  const next = new Map(positions)
+
+  for (let step = 0; step < iterations; step += 1) {
+    const displacement = new Map<string, { dx: number; dy: number }>()
+    ids.forEach((id) => displacement.set(id, { dx: 0, dy: 0 }))
+
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const idA = ids[i]!
+        const idB = ids[j]!
+        const a = next.get(idA)
+        const b = next.get(idB)
+        if (!a || !b) continue
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.max(Math.hypot(dx, dy), 12)
+        const repulse = 4200 / (dist * dist)
+        const fx = (dx / dist) * repulse
+        const fy = (dy / dist) * repulse
+        displacement.get(idA)!.dx -= fx
+        displacement.get(idA)!.dy -= fy
+        displacement.get(idB)!.dx += fx
+        displacement.get(idB)!.dy += fy
+      }
+    }
+
+    for (const edge of edges) {
+      const fromId = edge.fromId === CORE_ID ? null : edge.fromId
+      const toId = edge.toId === CORE_ID ? null : edge.toId
+      if (!fromId || !toId) continue
+      const from = next.get(fromId)
+      const to = next.get(toId)
+      if (!from || !to) continue
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      const dist = Math.max(Math.hypot(dx, dy), 1)
+      const pull = (dist - 95) * 0.04
+      const fx = (dx / dist) * pull
+      const fy = (dy / dist) * pull
+      displacement.get(fromId)!.dx += fx
+      displacement.get(fromId)!.dy += fy
+      displacement.get(toId)!.dx -= fx
+      displacement.get(toId)!.dy -= fy
+    }
+
+    const damp = 0.82 - step / (iterations * 4)
+    ids.forEach((id) => {
+      const pos = next.get(id)
+      const delta = displacement.get(id)
+      if (!pos || !delta) return
+      pos.x += delta.dx * damp
+      pos.y += delta.dy * damp
+      pos.x += (center.cx - pos.x) * 0.002
+      pos.y += (center.cy - pos.y) * 0.002
+    })
+  }
+
+  return next
+}
+
 const KIND_RING_RADIUS: Partial<Record<MapNodeKind, number>> = {
   agent: 145,
   "entity-type": 130,
@@ -330,13 +399,15 @@ export function layoutSemanticGraphNodes(
     })
   }
 
+  const finalize = () => refineLayoutWithForces(positions, edges, center)
+
   if (lens === "acts") {
     placeKindRing("agent", KIND_RING_RADIUS.agent ?? 145)
     placeKindRing("department", KIND_RING_RADIUS.department ?? 210, Math.PI / 16)
     for (const node of nodes) {
       if (!positions.has(node.id)) placeKindRing(node.kind, 195)
     }
-    return positions
+    return finalize()
   }
   if (lens === "knows") {
     placeKindRing("entity-type", KIND_RING_RADIUS["entity-type"] ?? 130)
@@ -344,7 +415,7 @@ export function layoutSemanticGraphNodes(
     for (const node of nodes) {
       if (!positions.has(node.id)) placeKindRing(node.kind, 195)
     }
-    return positions
+    return finalize()
   }
   if (lens === "predicts") {
     placeKindRing("department", 175)
@@ -352,7 +423,7 @@ export function layoutSemanticGraphNodes(
     for (const node of nodes) {
       if (!positions.has(node.id)) placeKindRing(node.kind, 195)
     }
-    return positions
+    return finalize()
   }
   if (lens === "learns") {
     placeKindRing("learning", KIND_RING_RADIUS.learning ?? 165)
@@ -360,14 +431,14 @@ export function layoutSemanticGraphNodes(
     for (const node of nodes) {
       if (!positions.has(node.id)) placeKindRing(node.kind, 195)
     }
-    return positions
+    return finalize()
   }
   if (lens === "improves") {
     placeKindRing("department", KIND_RING_RADIUS.department ?? 200)
     for (const node of nodes) {
       if (!positions.has(node.id)) placeKindRing(node.kind, 195)
     }
-    return positions
+    return finalize()
   }
 
   const coords = radialLayout(nodes.length, { cx: center.cx, cy: center.cy, radius: 195 })
@@ -375,7 +446,7 @@ export function layoutSemanticGraphNodes(
     const pos = coords[i]
     if (pos) positions.set(node.id, pos)
   })
-  return positions
+  return finalize()
 }
 
 /** Assign x/y in viewBox space for each node id. */

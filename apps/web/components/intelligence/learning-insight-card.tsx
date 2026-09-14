@@ -57,6 +57,7 @@ export function LearningInsightCard({ insight }: { insight: LearningInsightDispl
         ) : null}
         <Link
           href={mapHref}
+          data-testid="learning-insight-map-link"
           className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
         >
           <MapTrifold className="h-3.5 w-3.5" aria-hidden />

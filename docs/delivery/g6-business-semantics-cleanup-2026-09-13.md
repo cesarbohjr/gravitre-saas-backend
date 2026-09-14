@@ -1,7 +1,7 @@
 # G6 — Business Semantics Cleanup (Delivery Report)
 
 **Date:** 2026-09-13  
-**G6 COMPLETE:** **PARTIAL** — Overview canonical-first; prod verify **NOT RUN**
+**G6 COMPLETE:** **PARTIAL** — Overview canonical-first; prod metrics semantics **PASS** (`g8-intelligence-hub-live.json`)
 
 ---
 
@@ -42,7 +42,7 @@ Align customer-facing intelligence copy with canonical semantics: business model
 | Attention cards from deduped predictions | **CODE** |
 | Acts hint distinguishes configured vs running | **CODE** |
 | Learning section honest empty state | **CODE** |
-| Prod Overview without duplicate signal nodes | **NOT RUN** |
+| Prod Overview without duplicate signal nodes | **PARTIAL** — deduped predictions PASS on page-context |
 
 ---
 

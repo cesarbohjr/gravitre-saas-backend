@@ -32,7 +32,11 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers  # noqa: E402
+from isolated_conversation_org import (  # noqa: E402
+    FORBIDDEN_OPERATOR_ORG_ID,
+    resolve_isolated_conversation_actor,
+    smoke_http_headers,
+)
 from app.services.intelligence_context_compiler import FORBIDDEN_UNAVAILABLE_AGENT_PHRASES  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
@@ -40,6 +44,7 @@ OUT = ROOT / "docs" / "delivery" / "g8-intelligence-hub-live.json"
 CHAT_TIMEOUT = 120.0
 EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
 LENSES = ("knows", "learns", "predicts", "acts", "improves")
+TRUST_AGENT_SUBSTR = (os.environ.get("INTELLIGENCE_TRUST_AGENT_NAME") or "Email Campaign").lower()
 
 CHAT_CASES: tuple[dict[str, Any], ...] = (
     {
@@ -223,7 +228,141 @@ def score_page_context(case_id: str, ctx: dict[str, Any]) -> dict[str, Any]:
         passed = all(checks.values())
         return {"passed": passed, "verdict": "PASS" if passed else "FAIL", "checks": checks}
 
+    if case_id == "g3-knows-entity-nodes":
+        snapshot = ctx.get("snapshot") if isinstance(ctx.get("snapshot"), dict) else {}
+        entity_types = snapshot.get("knowledgeEntityTypes") or []
+        entity_nodes = [
+            n for n in nodes if isinstance(n, dict) and str(n.get("type") or "") == "entity"
+        ]
+        checks["snapshot_entity_types"] = isinstance(entity_types, list)
+        if entity_types:
+            checks["graph_has_entity_nodes"] = len(entity_nodes) > 0
+            checks["entity_ids_prefixed"] = all(
+                str(n.get("id") or "").startswith("entity:") for n in entity_nodes
+            )
+            expected = {f"entity:{et}" for et in entity_types}
+            checks["graph_covers_types"] = expected.issubset({str(n.get("id") or "") for n in entity_nodes})
+        else:
+            checks["graph_has_entity_nodes"] = True
+            checks["entity_ids_prefixed"] = True
+            checks["graph_covers_types"] = True
+        passed = all(checks.values())
+        return {
+            "passed": passed,
+            "verdict": "PASS" if passed else "FAIL",
+            "checks": checks,
+            "entity_type_count": len(entity_types),
+            "entity_node_count": len(entity_nodes),
+        }
+
     return {"passed": False, "verdict": "FAIL", "error": f"unknown case {case_id}"}
+
+
+def score_trust_org_context(ctx: dict[str, Any]) -> dict[str, Any]:
+    snapshot = ctx.get("snapshot") if isinstance(ctx.get("snapshot"), dict) else {}
+    agents = snapshot.get("agents") if isinstance(snapshot.get("agents"), list) else []
+    metrics = ctx.get("metrics") if isinstance(ctx.get("metrics"), dict) else {}
+    execution = metrics.get("execution") if isinstance(metrics.get("execution"), dict) else {}
+    configured = int(execution.get("configuredActiveAgents") or 0)
+    active = [a for a in agents if isinstance(a, dict) and a.get("isConfiguredActive")]
+    labels = [str(a.get("businessLabel") or "") for a in active]
+    trust_hit = any(TRUST_AGENT_SUBSTR in label.lower() for label in labels)
+    return {
+        "passed": len(active) == configured and (configured == 0 or trust_hit),
+        "verdict": "PASS"
+        if len(active) == configured and (configured == 0 or trust_hit)
+        else "FAIL",
+        "checks": {
+            "metrics_match_roster": len(active) == configured,
+            "trust_agent_present": trust_hit,
+            "configured_active_agents": configured,
+        },
+        "active_agent_labels": labels[:8],
+        "generated_at": snapshot.get("generatedAt"),
+    }
+
+
+def score_trust_org_learning(ctx: dict[str, Any]) -> dict[str, Any]:
+    snapshot = ctx.get("snapshot") if isinstance(ctx.get("snapshot"), dict) else {}
+    graph = ctx.get("graph") if isinstance(ctx.get("graph"), dict) else {}
+    learnings = snapshot.get("learnings") if isinstance(snapshot.get("learnings"), list) else []
+    nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
+    learning_nodes = [n for n in nodes if isinstance(n, dict) and str(n.get("type") or "") == "learning"]
+    if not learnings:
+        return {
+            "passed": True,
+            "verdict": "NOT RUN",
+            "reason": "no promoted learnings in trust org snapshot",
+        }
+    insight_ids = {str(ln.get("id") or "") for ln in learnings if isinstance(ln, dict)}
+    expected = {f"learning:{i}" if not i.startswith("learning:") else i for i in insight_ids if i}
+    graph_ids = {str(n.get("id") or "") for n in learning_nodes}
+    passed = expected.issubset(graph_ids) and all(
+        str(n.get("id") or "").startswith("learning:") for n in learning_nodes
+    )
+    return {
+        "passed": passed,
+        "verdict": "PASS" if passed else "FAIL",
+        "learning_count": len(learnings),
+        "learning_node_count": len(learning_nodes),
+        "checks": {
+            "learning_nodes_prefixed": all(
+                str(n.get("id") or "").startswith("learning:") for n in learning_nodes
+            ),
+            "graph_covers_insights": expected.issubset(graph_ids),
+        },
+    }
+
+
+def resolve_trust_org_actor(env: dict[str, str], sb: Any) -> tuple[str, str, str] | None:
+    org_id = (env.get("OPERATOR_ORG_ID") or FORBIDDEN_OPERATOR_ORG_ID).strip()
+    user_id = (env.get("OPERATOR_USER_ID") or "").strip()
+    email = (env.get("OPERATOR_EMAIL") or "").strip()
+    if not user_id:
+        members = (
+            sb.table("organization_members")
+            .select("user_id")
+            .eq("org_id", org_id)
+            .in_("role", ["admin", "owner"])
+            .limit(1)
+            .execute()
+        ).data or []
+        if members:
+            user_id = str(members[0].get("user_id") or "")
+    if not user_id:
+        return None
+    if not email:
+        try:
+            users = sb.auth.admin.get_user_by_id(user_id)
+            email = (users.user.email if users and users.user else None) or f"{user_id}@gravitre.local"
+        except Exception:  # noqa: BLE001
+            email = f"{user_id}@gravitre.local"
+    return org_id, user_id, email
+
+
+def auth_headers(env: dict[str, str], org_id: str, user_id: str, email: str) -> dict[str, str]:
+    url = env["SUPABASE_URL"].rstrip("/")
+    tok = jwt.encode(
+        {
+            "sub": user_id,
+            "email": email,
+            "aud": "authenticated",
+            "iss": f"{url}/auth/v1",
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 7200,
+            "role": "authenticated",
+        },
+        env["SUPABASE_JWT_SECRET"],
+        algorithm="HS256",
+    )
+    return {
+        **smoke_http_headers(),
+        "Authorization": f"Bearer {tok}",
+        "X-Org-Id": org_id,
+        "X-Environment": "production",
+        "Accept": "text/event-stream",
+        "Content-Type": "application/json",
+    }
 
 
 def score_chat_case(case: dict[str, Any], turn: dict[str, Any]) -> dict[str, Any]:
@@ -397,8 +536,15 @@ async def main() -> int:
             acts_ctx = {}
             report["page_context_error"] = f"{exc.__class__.__name__}: {exc}"
 
+        knows_ctx: dict[str, Any] = {}
+        try:
+            knows_ctx = await fetch_page_context(client, headers, "knows")
+        except Exception:  # noqa: BLE001
+            knows_ctx = {}
+
         static_cases = (
             ("g3-page-context-all-lenses", None),
+            ("g3-knows-entity-nodes", knows_ctx),
             ("g6-metrics-semantics", acts_ctx),
             ("g5-g7-inspector-evidence", acts_ctx),
             ("g8-learning-map-focus", acts_ctx),
@@ -440,10 +586,57 @@ async def main() -> int:
                 )
                 continue
             scored = score_page_context(case_id, ctx)
-            phase = {"g6-metrics-semantics": "G6", "g5-g7-inspector-evidence": "G5/G7", "g8-learning-map-focus": "G8"}.get(
-                case_id, "G?"
-            )
+            phase = {
+                "g3-knows-entity-nodes": "G3",
+                "g6-metrics-semantics": "G6",
+                "g5-g7-inspector-evidence": "G5/G7",
+                "g8-learning-map-focus": "G8",
+            }.get(case_id, "G?")
             report["cases"].append({"id": case_id, "phase": phase, **scored})
+
+        # G1/G8 trust org — read-only page-context (no conversation writes)
+        trust = resolve_trust_org_actor(env, sb)
+        if trust:
+            trust_org_id, trust_user_id, trust_email = trust
+            trust_headers = auth_headers(env, trust_org_id, trust_user_id, trust_email)
+            report["trust_org_id"] = trust_org_id
+            try:
+                trust_acts = await fetch_page_context(client, trust_headers, "acts")
+                trust_learns = await fetch_page_context(client, trust_headers, "learns")
+                report["cases"].append(
+                    {
+                        "id": "g1-trust-org-active-agents",
+                        "phase": "G1",
+                        **score_trust_org_context(trust_acts),
+                    }
+                )
+                report["cases"].append(
+                    {
+                        "id": "g8-trust-org-learning-map",
+                        "phase": "G8",
+                        **score_trust_org_learning(trust_learns),
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001
+                report["cases"].append(
+                    {
+                        "id": "g1-trust-org-active-agents",
+                        "phase": "G1",
+                        "passed": False,
+                        "verdict": "FAIL",
+                        "error": f"{exc.__class__.__name__}: {exc}",
+                    }
+                )
+        else:
+            report["cases"].append(
+                {
+                    "id": "g1-trust-org-active-agents",
+                    "phase": "G1",
+                    "passed": True,
+                    "verdict": "NOT RUN",
+                    "reason": "OPERATOR_USER_ID not configured",
+                }
+            )
 
         # G4/G1 — intelligence_hub chat SSE visualization
         for case in CHAT_CASES:

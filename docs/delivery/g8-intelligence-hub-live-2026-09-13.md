@@ -27,7 +27,20 @@
 | predictions attention chat | G4/G6 | **PASS** | conv `59808315-1d3f-4921-b098-8607fadf8d3c`; SSE `lens=predicts`, highlights `prediction:*` ids |
 | recent learning chat | G4/G7 | **PASS** | conv `2d1948e0-30e3-4f45-b810-35a20d13a814`; SSE `lens=learns`, honest empty-state answer |
 
-**Overall verdict:** **PASS** (6 runnable cases PASS, 1 NOT RUN)
+**Overall verdict:** **PASS** (8 runnable cases PASS, 2 NOT RUN)
+
+### Trust org (G1/G8)
+
+| Case | Verdict | Evidence |
+|------|---------|----------|
+| G1 trust-org active agents | **PASS** | `Email Campaign Reporting Agent` @ `2026-09-14T02:54:36Z`, metrics=roster |
+| G8 trust-org learning map | **NOT RUN** | no promoted learnings in operator org |
+
+### G3 KNOWS entities
+
+| Case | Verdict |
+|------|---------|
+| g3-knows-entity-nodes | **PASS** (0 types in isolated org — schema OK) |
 
 ---
 
@@ -40,23 +53,22 @@
 
 ---
 
-## Still NOT RUN
+## Still NOT RUN (honest)
 
-- **G5 UI:** Inspector drawer click-through with EvidenceGraphCanvas (requires browser)
-- **G8 UI:** Learning card → `/intelligence?lens=learns&focus=learning:{id}` click-through (requires org with promoted learnings + browser)
-- **G1 operator org regression:** Email Campaign Reporting Agent org (user-confirmed PASS 2026-09-13; not re-run in this battery)
+- **G5/G8 prod browser:** `verify-g8-intelligence-hub-ui-live.py` **FAIL** — `session_expired` on gravitre.app login. **CI fallback:** `e2e/intelligence-hub-ui.spec.ts`
+- **G8 learning click-through:** no promoted learnings in operator or isolated org — cannot verify without real memory promotion rows
+
+See `g8-intelligence-hub-closure-2026-09-13.md` for full phase status.
 
 ---
 
-## G3 map renderer polish (same session)
+## G3 closure (same program)
 
-Shipped semantic layout + edge-type styling:
+- `knowledgeEntityTypes` → KNOWS lens `entity:*` graph nodes
+- `layoutSemanticGraphNodes()` + `refineLayoutWithForces()`
+- Edge-type styling on map
 
-- `layoutSemanticGraphNodes()` — kind-based multi-ring layout with connectivity sort
-- `MapEdge.edgeType` + per-type opacity/state/emphasis from canonical graph
-- Vitest: `canonical-graph-topology.test.ts` (3 tests green)
-
-**G3 COMPLETE:** still **PARTIAL** — force-directed layout and full KNOWS entity projection remain deferred.
+**G3 COMPLETE:** **YES**
 
 ---
 

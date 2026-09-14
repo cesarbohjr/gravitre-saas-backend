@@ -71,6 +71,7 @@ export function IntelligenceInspectorDrawer({
     >
       <SheetContent
         side="right"
+        data-testid="intelligence-inspector-drawer"
         className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
         aria-describedby={context ? "inspector-drawer-description" : undefined}
       >

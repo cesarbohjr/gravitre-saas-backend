@@ -81,7 +81,7 @@ export function AskGravitreComposer({
   className?: string
   /** `map` — command-palette bar atop the intelligence map (no card chrome). */
   variant?: "card" | "map"
-  /** Phase E — optimistic map focus while the answer streams (heuristic). */
+  /** Optional pre-stream hook (legacy heuristic path — prefer `onVisualization`). */
   onAsk?: (question: string) => void
   /** G4 — canonical map focus from backend `AssistantVisualization` SSE payload. */
   onVisualization?: (visualization: AssistantVisualization) => void

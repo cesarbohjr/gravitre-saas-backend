@@ -185,6 +185,17 @@ def test_graph_builder_agent_nodes_match_snapshot():
     assert labels == {"Lead Scouting Analyst", "Lead Enrichment"}
 
 
+def test_graph_builder_knowledge_entity_types_on_knows_lens():
+    snap = _snapshot([])
+    snap.knowledgeEntityTypes = ["contact", "company", "deal"]
+    graph = build_intelligence_graph(snap)
+    knows = filter_graph_for_lens(graph, "knows")
+    entity_nodes = [n for n in knows.nodes if n.type == "entity"]
+    assert len(entity_nodes) == 3
+    assert {n.id for n in entity_nodes} == {"entity:contact", "entity:company", "entity:deal"}
+    assert all(e.type == "KNOWS" for e in knows.edges if e.toId.startswith("entity:"))
+
+
 def test_lens_filter_same_graph_not_separate_topology():
     agents = [
         _agent("a1", "Lead Scouting Analyst"),

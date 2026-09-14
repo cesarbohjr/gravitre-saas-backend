@@ -1,7 +1,7 @@
 # G3 — Semantic Graph Engine (Delivery Report)
 
 **Date:** 2026-09-13  
-**G3 COMPLETE:** **PARTIAL** — canonical graph drives map topology; visual renderer polish deferred
+**G3 COMPLETE:** **YES** — canonical graph, KNOWS entity nodes, semantic + force-directed layout, edge-type styling
 
 ---
 
@@ -47,12 +47,17 @@ Legacy `buildMapTopology()` remains as fallback when page-context is unavailable
 
 ---
 
-## Deferred (full G3 polish)
+## Shipped (2026-09-13 closure)
 
-- Force-directed / semantic layout beyond radial rings
-- Full entity/knowledge nodes on KNOWS lens (requires richer KG projection in snapshot)
-- Remove legacy parallel fetches on Overview (G6)
-- G4 conversation ↔ map focus via SSE visualization
+- `knowledgeEntityTypes` → `entity:{type}` nodes on KNOWS lens (`intelligence_graph_builder.py`)
+- `layoutSemanticGraphNodes()` + `refineLayoutWithForces()` (`map-topology.ts`)
+- Canonical edge-type visual styling (`canonical-graph-topology.ts`)
+- Prod verify: `g3-knows-entity-nodes` in `g8-intelligence-hub-live.json`
+
+## Deferred
+
+- Per-entity instance nodes (only entity **types** from KG summary today)
+- Remove legacy parallel fetches on Overview (partially done in G6)
 
 ---
 

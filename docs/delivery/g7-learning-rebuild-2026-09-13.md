@@ -1,7 +1,7 @@
 # G7 — Learning Rebuilt (Delivery Report)
 
 **Date:** 2026-09-13  
-**G7 COMPLETE:** **PARTIAL** — customer Learning hub enriched; prod verify **NOT RUN**
+**G7 COMPLETE:** **PARTIAL** — customer Learning hub enriched; prod chat empty-state **PASS**; UI deep-link e2e in `e2e/intelligence-hub-ui.spec.ts`
 
 ---
 
@@ -36,7 +36,7 @@ Rebuild `/intelligence/learning` around canonical business learning — rich ins
 | Learning page reads canonical learnings only | **CODE** |
 | Evidence/provenance on insight cards | **CODE** |
 | No admin snapshot API on customer Learning | **CODE** |
-| Prod Learning hub with real promoted memory | **NOT RUN** |
+| Prod Learning hub with real promoted memory | **NOT RUN** (isolated org); chat honest empty **PASS** |
 
 ---
 

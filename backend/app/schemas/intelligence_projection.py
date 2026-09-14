@@ -166,6 +166,7 @@ class IntelligenceSnapshot(BaseModel):
     signals: list[dict[str, Any]] = Field(default_factory=list)
     workflows: list[dict[str, Any]] = Field(default_factory=list)
     outcomes: list[dict[str, Any]] = Field(default_factory=list)
+    knowledgeEntityTypes: list[str] = Field(default_factory=list)
 
 
 class AssistantVisualization(BaseModel):

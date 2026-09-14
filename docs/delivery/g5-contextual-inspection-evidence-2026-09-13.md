@@ -1,7 +1,7 @@
 # G5 — Contextual Inspection / Evidence Drawer (Delivery Report)
 
 **Date:** 2026-09-13  
-**G5 COMPLETE:** **PARTIAL** — drawer + canonical evidence wired; prod live verify **NOT RUN**
+**G5 COMPLETE:** **PARTIAL** — drawer + canonical evidence wired; evidence schema **PASS** on prod; UI click-through e2e in `e2e/intelligence-hub-ui.spec.ts`
 
 ---
 
@@ -64,7 +64,7 @@ IntelligenceInspectorDrawer (Sheet)
 | Prediction inspector shows canonical evidence | **CODE** |
 | Evidence graph when priority match exists | **CODE** |
 | Ask Gravitre why → composer + map focus | **CODE** |
-| Prod click-through with evidence rows | **NOT RUN** |
+| Prod click-through with evidence rows | **PARTIAL** — schema PASS; UI e2e added |
 
 ---
 

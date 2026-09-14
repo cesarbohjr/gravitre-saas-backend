@@ -204,10 +204,16 @@ class IntelligenceProjectionService:
         # Knowledge graph summary
         entity_count = 0
         relationship_count = 0
+        knowledge_entity_types: list[str] = []
         try:
             kg = await get_knowledge_graph_service().get_admin_summary(org_id, settings=self.settings)
             entity_count = int(kg.get("entity_count") or 0)
             relationship_count = int(kg.get("relationship_count") or 0)
+            knowledge_entity_types = [
+                str(et).strip()
+                for et in (kg.get("entity_types") or [])
+                if str(et).strip()
+            ][:12]
         except Exception as exc:  # noqa: BLE001
             logger.debug("projection_knowledge_graph_skipped org_id=%s error=%s", org_id, exc)
             quality_flags.append("MISSING_RELATIONSHIP")
@@ -338,6 +344,7 @@ class IntelligenceProjectionService:
             signals=raw_signals,
             workflows=[],
             outcomes=[{"event": r.get("outcome_event"), "department": r.get("department")} for r in recent_events[:20]],
+            knowledgeEntityTypes=knowledge_entity_types,
         )
 
         graph = build_intelligence_graph(snapshot)

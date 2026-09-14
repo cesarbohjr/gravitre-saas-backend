@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13  
 **Deploy tip at close:** `d43f0867` (+ follow-up G1 closure commits pending push)  
-**G1 COMPLETE:** **YES** — Active Agent Trust Test **PASS** (user-confirmed production)
+**G1 COMPLETE:** **YES** — Active Agent Trust Test **PASS** (user-confirmed + trust-org repro `2026-09-14T02:54:36Z`)
 
 ---
 
