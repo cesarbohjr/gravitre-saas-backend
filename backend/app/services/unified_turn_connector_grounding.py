@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 
-from app.services.chat_connector_models import INTEGRATION_ALIASES
+from app.services.connector_semantic_registry import integration_slug_for_label
 
 _DISCONNECT_CLAIM_RE = re.compile(
     r"(?i)\b(?P<label>[\w\s]+?)\s+(?:isn't|is\s+not|not)\s+connected\b"
@@ -18,18 +18,7 @@ _DISCONNECT_HERE_RE = re.compile(
 
 
 def _integration_slug_for_label(label: str) -> str | None:
-    text = re.sub(r"\s+", " ", (label or "").strip().lower())
-    if not text:
-        return None
-    for slug, aliases in INTEGRATION_ALIASES.items():
-        slug_norm = slug.replace("_", " ")
-        if text == slug or text == slug_norm:
-            return slug
-        for alias in aliases:
-            alias_norm = alias.strip().lower()
-            if text == alias_norm or text.endswith(alias_norm) or alias_norm in text:
-                return slug
-    return None
+    return integration_slug_for_label(label)
 
 
 def integrations_claimed_disconnected(message: str) -> list[str]:

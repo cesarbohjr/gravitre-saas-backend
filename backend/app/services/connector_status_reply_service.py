@@ -74,23 +74,11 @@ def _normalize_vendor(vendor: str) -> str:
 
 def resolve_connector_slug_from_text(text: str) -> str | None:
     """Resolve a catalog vendor slug from user text (aliases + word-boundary match)."""
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
+    from app.services.connector_semantic_registry import resolve_connector_slug_from_text as registry_resolve
 
-    lowered = (text or "").lower()
-    best: tuple[str, int] | None = None
-    for slug, aliases in INTEGRATION_ALIASES.items():
-        needles = (slug, slug.replace("_", " ")) + tuple(aliases)
-        for alias in needles:
-            alias_norm = str(alias or "").strip().lower()
-            if not alias_norm or len(alias_norm) < 2:
-                continue
-            if re.search(rf"\b{re.escape(alias_norm)}\b", lowered):
-                score = len(alias_norm)
-                if best is None or score > best[1]:
-                    best = (slug, score)
-                break
-    if best:
-        return best[0]
+    slug = registry_resolve(text)
+    if slug:
+        return slug
 
     match = _IS_VENDOR_CONNECTED_RE.match((text or "").strip())
     if match:

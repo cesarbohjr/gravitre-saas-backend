@@ -41,12 +41,14 @@ import {
   WhatGravitreLearnedSection,
   WhatNeedsAttentionCompact,
 } from "@/components/intelligence/map/intelligence-support-sections"
-import { resolveAskMapFocus } from "@/components/intelligence/map/resolve-ask-map-focus"
 import {
   applyAssistantVisualizationToMapState,
   type AssistantVisualization,
 } from "@/lib/intelligence/assistant-visualization"
-import { resolveCanonicalGraphMapNode } from "@/lib/intelligence/canonical-graph-topology"
+import {
+  resolveCanonicalGraphMapNode,
+  type CanonicalGraphNode,
+} from "@/lib/intelligence/canonical-graph-topology"
 import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-focus"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -227,24 +229,6 @@ function IntelligenceCenterInner() {
     [],
   )
 
-  const handleAskMapFocus = useCallback(
-    (question: string) => {
-      const focus = resolveAskMapFocus(question, {
-        departments: coreState.data?.departments ?? [],
-        agents: mapAgents,
-        signals: signals ?? [],
-      })
-      applyMapVisualization({
-        lens: focus.lens,
-        highlightNodeIds: focus.highlightNodeIds,
-        dimNodeIds: [],
-        focusNodeIds: focus.highlightNodeIds,
-        selection: focus.selection,
-      })
-    },
-    [applyMapVisualization, coreState.data?.departments, mapAgents, signals],
-  )
-
   const handleAssistantVisualization = useCallback(
     (visualization: AssistantVisualization) => {
       const state = applyAssistantVisualizationToMapState(visualization, {
@@ -292,7 +276,9 @@ function IntelligenceCenterInner() {
     applyMapVisualization(state)
     const mapNode = resolveCanonicalGraphMapNode(
       focusNodeId,
-      pageContext.graph,
+      {
+        nodes: pageContext.graph.nodes as CanonicalGraphNode[],
+      },
       mapAgents,
     )
     if (mapNode) {
@@ -354,7 +340,6 @@ function IntelligenceCenterInner() {
             <AskGravitreComposer
               variant="map"
               suggestions={dailyBriefing?.suggestions}
-              onAsk={handleAskMapFocus}
               onVisualization={handleAssistantVisualization}
               pendingQuestion={composerPendingQuestion}
               onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
@@ -396,7 +381,6 @@ function IntelligenceCenterInner() {
               pageContext={pageContext}
               whyData={whyEvidence}
               onAskAbout={(question) => {
-                handleAskMapFocus(question)
                 setComposerPendingQuestion(question)
                 window.scrollTo({ top: 0, behavior: "smooth" })
               }}

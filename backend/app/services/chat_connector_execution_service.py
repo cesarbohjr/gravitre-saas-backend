@@ -19,7 +19,12 @@ from app.services.entity_link_service import build_connector_management_url
 from app.services.notification_emitter import emit_notification
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.chat_action_mapper import get_chat_action_mapper
-from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.connector_semantic_registry import (
+    message_mentions_any_connector,
+    resolve_connector_from_text,
+    text_mentions_connector,
+)
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_service import list_registered_actions
 from app.services.tool_types import ToolContext
@@ -251,15 +256,9 @@ class ChatConnectorExecutionService:
 
     @staticmethod
     def _detect_integration(message: str) -> str | None:
-        from app.services.connector_semantic_registry import resolve_connector_from_text
-
         resolved = resolve_connector_from_text(message, exclude_generic=False)
         if resolved:
             return resolved
-        lowered = message.lower()
-        for integration, aliases in INTEGRATION_ALIASES.items():
-            if any(alias in lowered for alias in aliases):
-                return integration
         match = CONNECTOR_MENTION.search(message)
         if not match:
             return None
@@ -649,12 +648,7 @@ class ChatConnectorExecutionService:
         text = message.strip()
         if not text or len(text) < 8:
             return False
-        lowered = text.lower()
-        if any(
-            alias in lowered
-            for aliases in INTEGRATION_ALIASES.values()
-            for alias in aliases
-        ) or CONNECTOR_MENTION.search(text):
+        if message_mentions_any_connector(text) or CONNECTOR_MENTION.search(text):
             return bool(ACTION_VERB.search(text))
         return False
 
@@ -2709,8 +2703,7 @@ class ChatConnectorExecutionService:
     def _score_tool(self, message: str, spec: Any) -> int:
         text = message.lower()
         score = 0
-        aliases = INTEGRATION_ALIASES.get(spec.integration, (spec.integration,))
-        if not any(alias in text for alias in aliases):
+        if not text_mentions_connector(text, spec.integration, exclude_generic=False):
             return 0
         score += 12
         action_tail = spec.invoke_action.split(".")[-1]

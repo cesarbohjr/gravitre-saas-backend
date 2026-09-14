@@ -72,20 +72,14 @@ def _mentioned_connectors(
     classification: dict[str, Any] | None,
     connected: list[str],
 ) -> set[str]:
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
+    from app.services.connector_semantic_registry import resolve_all_connectors_from_text
 
     text = (query or "").lower()
     hits = {c.lower() for c in connected if c.lower() in text}
     for match in _CONNECTOR_HINT.finditer(text):
         hits.add(match.group(1).lower())
-    for slug, aliases in INTEGRATION_ALIASES.items():
-        if slug in hits:
-            continue
-        for alias in aliases:
-            alias_norm = alias.strip().lower()
-            if alias_norm and re.search(rf"\b{re.escape(alias_norm)}\b", text, re.I):
-                hits.add(slug)
-                break
+    for slug in resolve_all_connectors_from_text(query or "", exclude_generic=False):
+        hits.add(slug.lower())
     cls = classification or {}
     for key in ("integration", "connector", "preferred_connector", "channel_override"):
         value = str(cls.get(key) or "").strip().lower()

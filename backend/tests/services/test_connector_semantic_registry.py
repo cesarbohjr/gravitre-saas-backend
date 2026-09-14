@@ -6,6 +6,7 @@ import pytest
 from app.services.connector_semantic_registry import (
     resolve_all_connectors_from_text,
     resolve_connector_from_text,
+    text_mentions_connector,
 )
 
 
@@ -54,3 +55,9 @@ def test_sfdc_alias() -> None:
 
 def test_ga_standalone_alias() -> None:
     assert resolve_connector_from_text("GA") == "google_analytics"
+
+
+def test_text_mentions_connector_word_boundary() -> None:
+    assert text_mentions_connector("update hubspot deal", "hubspot")
+    assert not text_mentions_connector("hubspotty workflow", "hubspot")
+    assert "hubspot" in resolve_all_connectors_from_text("hubspot and slack")

@@ -255,15 +255,15 @@ export function buildTopologyFromCanonicalGraph({
     .filter((node): node is MapNode => node != null)
 
   const nodeIds = new Set(nodes.map((n) => n.id))
-  const edges: MapEdge[] = graph.edges
-    .map((edge) => {
-      const fromId = remapCoreId(edge.fromId)
-      const toId = remapCoreId(edge.toId)
-      if (fromId !== CORE_ID && !nodeIds.has(fromId)) return null
-      if (toId !== CORE_ID && !nodeIds.has(toId)) return null
-      const edgeType = normalizeEdgeType(edge.type)
-      const style = edgeVisualStyle(edgeType)
-      return {
+  const edges: MapEdge[] = graph.edges.flatMap((edge) => {
+    const fromId = remapCoreId(edge.fromId)
+    const toId = remapCoreId(edge.toId)
+    if (fromId !== CORE_ID && !nodeIds.has(fromId)) return []
+    if (toId !== CORE_ID && !nodeIds.has(toId)) return []
+    const edgeType = normalizeEdgeType(edge.type)
+    const style = edgeVisualStyle(edgeType)
+    return [
+      {
         id: edge.id,
         fromId,
         toId,
@@ -271,9 +271,9 @@ export function buildTopologyFromCanonicalGraph({
         opacity: style.opacity,
         edgeType,
         emphasis: style.emphasis,
-      }
-    })
-    .filter((edge): edge is MapEdge => edge != null)
+      },
+    ]
+  })
 
   return {
     nodes,

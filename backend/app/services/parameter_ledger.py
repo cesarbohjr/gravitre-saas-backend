@@ -1036,7 +1036,7 @@ def format_awaiting_params_meta_answer(
 
 def _followup_fill_text(message: str) -> str | None:
     from app.services.chat_message_normalize import strip_assistant_scope_prefix
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
+    from app.services.connector_semantic_registry import connector_mention_pattern
 
     text = strip_assistant_scope_prefix(message or "")
     if not text:
@@ -1065,17 +1065,7 @@ def _followup_fill_text(message: str) -> str | None:
         r"\b(create|update|post|send|write|delete|search|find|list)\b",
         re.I,
     )
-    connector_mention = re.compile(
-        r"\b("
-        + "|".join(
-            re.escape(alias)
-            for aliases in INTEGRATION_ALIASES.values()
-            for alias in aliases
-        )
-        + r")\b",
-        re.I,
-    )
-    if connector_mention.search(cleaned) and action_verb.search(cleaned):
+    if connector_mention_pattern().search(cleaned) and action_verb.search(cleaned):
         return None
     return cleaned[:3000]
 

@@ -18,7 +18,7 @@ import { formatLearningInsights } from "@/lib/intelligence/learning-insight-disp
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { BusinessImpactCard } from "../../admin/intelligence/_components/business-impact-card"
-import { APP_ROUTES } from "@/lib/app-routes"
+import { APP_ROUTES, LEGACY_APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { ArrowsClockwise } from "@phosphor-icons/react"
@@ -166,7 +166,7 @@ export default function IntelligenceLearningPage() {
         <p className={cn(TYPE.meta, "text-pretty")}>
           Platform telemetry (TTFT, cache hit rate, cognitive turn traces) lives in{" "}
           <Link
-            href={APP_ROUTES.adminIntelligence}
+            href={LEGACY_APP_ROUTES.adminIntelligence}
             className="font-medium text-[color:var(--g-brand)] hover:underline"
           >
             Platform intelligence (admin)

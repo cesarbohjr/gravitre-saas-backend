@@ -13,7 +13,7 @@ from app.services.chat_connector_execution_service import (
     ChatConnectorExecutionService,
     ConnectorActionPlan,
 )
-from app.services.chat_connector_models import INTEGRATION_ALIASES
+from app.services.connector_semantic_registry import primary_connector_alias
 from app.services.chat_orchestration_service import ChatOrchestrationService
 from app.services.conversation_state_service import DEFAULT_TASK_STATE
 from app.services.conversational_execution_service import ExecutionResult
@@ -632,5 +632,4 @@ async def run_live_cleanup(
 
 
 def integration_label(integration: str) -> str:
-    alias = INTEGRATION_ALIASES.get(integration, (integration.replace("_", " "),))
-    return alias[0].title()
+    return primary_connector_alias(integration).title()

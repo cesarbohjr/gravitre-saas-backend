@@ -15,7 +15,7 @@ import re
 from functools import lru_cache
 from typing import Any, Iterable, Mapping
 
-from app.services.chat_connector_models import INTEGRATION_ALIASES
+from app.services.connector_semantic_registry import get_connector_aliases
 
 # Markers too generic to attribute a knowledge hit to one vendor.
 _GENERIC_MARKERS = frozenset(
@@ -128,7 +128,7 @@ def _vendor_markers() -> dict[str, tuple[str, ...]]:
 
     for vendor in sorted(vendors):
         found = {vendor, vendor.replace("_", " ")}
-        for alias in INTEGRATION_ALIASES.get(vendor, ()):
+        for alias in get_connector_aliases(vendor):
             token = str(alias).strip().lower()
             if token and token not in _GENERIC_MARKERS:
                 found.add(token)

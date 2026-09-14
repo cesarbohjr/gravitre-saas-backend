@@ -32,11 +32,11 @@ export function buildLensMetrics({
   const predictingLive = Object.values(orgTraining).filter((row) => row?.artifact_loaded).length
   const trackedModels = Object.keys(orgTraining).length
   const entityCount = hasCanonical
-    ? canonicalMetrics?.knowledge?.knownEntities
-    : (canonicalMetrics?.knowledge?.knownEntities ?? knowledgeGraph?.entity_count)
+    ? canonicalMetrics!.knowledge?.knownEntities
+    : knowledgeGraph?.entity_count
   const relationshipCount = hasCanonical
-    ? canonicalMetrics?.knowledge?.knownRelationships
-    : (canonicalMetrics?.knowledge?.knownRelationships ?? knowledgeGraph?.relationship_count)
+    ? canonicalMetrics!.knowledge?.knownRelationships
+    : knowledgeGraph?.relationship_count
   const configuredActive = canonicalMetrics?.execution?.configuredActiveAgents
   const currentlyRunning = canonicalMetrics?.execution?.currentlyRunningAgents
   const activeRuns = hasCanonical ? undefined : coreState?.core?.activeAgentRuns

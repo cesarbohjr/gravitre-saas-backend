@@ -2,7 +2,7 @@
  * Canonical labels and copy for Insights, Learning, Training, and Models surfaces.
  * Tone: smart, concise, practical, transparent — facts first, action-oriented.
  */
-import { APP_ROUTES } from "@/lib/app-routes"
+import { APP_ROUTES, LEGACY_APP_ROUTES } from "@/lib/app-routes"
 
 export const SURFACE_COPY = {
   insights: {
@@ -84,7 +84,7 @@ export const SURFACE_COPY = {
     platformIntelligence: {
       title: "Platform intelligence (admin)",
       summary: "Golden signals, latency, cognitive turns, and engine settings.",
-      route: APP_ROUTES.adminIntelligence,
+      route: LEGACY_APP_ROUTES.adminIntelligence,
     },
     builtIn: {
       title: "Built-in model confidence",
@@ -240,7 +240,7 @@ export const SURFACE_COPY = {
     shortTitle: "Platform intelligence",
     description:
       "Engineering telemetry for org admins: golden signals, TTFT, cache rates, cognitive turns, and engine settings.",
-    route: APP_ROUTES.adminIntelligence,
+    route: LEGACY_APP_ROUTES.adminIntelligence,
   },
   learningAdmin: {
     businessImpactTitle: "Business impact",

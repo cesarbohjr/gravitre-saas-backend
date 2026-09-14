@@ -197,7 +197,7 @@ def resolve_gsc_site(
             resource_id=linked,
             display_name=linked,
             reason="linked_config",
-            confidence=0.98,
+            confidence=0.98,  # confidence-honesty-ok: linked config resolution prior
         )
 
     token, err = ensure_google_vendor_session(
@@ -244,7 +244,7 @@ def resolve_gsc_site(
             resource_id=site_url,
             display_name=site_url,
             reason="single_discovered_site",
-            confidence=0.95,
+            confidence=0.95,  # confidence-honesty-ok: single-candidate discovery prior
         )
     return ResourceResolution(
         status="ambiguous",
@@ -279,7 +279,7 @@ def resolve_google_ads_customer(
             resource_id=linked,
             display_name=f"Ads customer {linked}",
             reason="linked_config",
-            confidence=0.98,
+            confidence=0.98,  # confidence-honesty-ok: linked config resolution prior
         )
 
     token, err = ensure_google_vendor_session(
@@ -327,7 +327,7 @@ def resolve_google_ads_customer(
             resource_id=cid,
             display_name=str(customer.get("descriptive_name") or f"Ads customer {cid}"),
             reason="single_discovered_customer",
-            confidence=0.95,
+            confidence=0.95,  # confidence-honesty-ok: single-candidate discovery prior
         )
     return ResourceResolution(
         status="ambiguous",

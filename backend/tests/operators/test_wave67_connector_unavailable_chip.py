@@ -99,6 +99,17 @@ def test_clarification_engine_passes_template_vars_for_connector_unavailable():
     assert result["template_vars"]["connector"]
 
 
+def test_connector_unavailable_trigger_uses_global_policy_copy():
+    """Phase E3 — disconnected connector copy comes from clarification_policy."""
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine(settings=None)
+    trigger = engine._connector_unavailable_trigger("slack")
+    assert trigger["trigger_type"] == "connector_unavailable"
+    assert "/connectors" in trigger["reason"]
+    assert trigger["template_vars"]["connector"] == "Slack"
+
+
 def test_clarification_skips_connector_unavailable_for_multi_connector():
     """STA-307 — HubSpot+Slack must not collapse to single-connector clarify."""
     from app.services.clarification_engine import ClarificationEngine

@@ -1927,6 +1927,9 @@ class AgentIntelligence:
             message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
             gateway_task_state = gateway_state
+            _boot_cognitive_trace(
+                gateway_task_state if isinstance(gateway_task_state, dict) else _canonical_task_state
+            )
             if gateway.candidate_id == "analytics_traffic_overview":
                 patch = (gateway.extras or {}).get("task_state")
                 if isinstance(patch, dict) and conversation_id:
@@ -1959,6 +1962,9 @@ class AgentIntelligence:
             response_text = packed.text
             for ev in packed.events:
                 yield ev
+            shortcut_state = _merge_trace_into_state(
+                gateway_task_state if isinstance(gateway_task_state, dict) else gateway_state
+            )
             yield AssistantStreamComplete(
                 full_content=response_text,
                 tool_results=[],
@@ -1969,7 +1975,7 @@ class AgentIntelligence:
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 proactive_suggestions=list((gateway.extras or {}).get("suggestions") or []),
-                task_state=gateway_task_state if isinstance(gateway_task_state, dict) else gateway_state,
+                task_state=shortcut_state,
             )
             return
 
@@ -3874,10 +3880,17 @@ class AgentIntelligence:
             prefetched_turn_ctx=_prefetched_turn_ctx,
         )
         if _cognitive_trace_builder is not None:
+            from dataclasses import asdict, is_dataclass
+
+            _meta_snapshot = (
+                asdict(_compiled_meta)
+                if is_dataclass(_compiled_meta)
+                else (_compiled_meta if isinstance(_compiled_meta, dict) else {})
+            )
             _cognitive_trace_builder.mark(
                 "context_compile",
                 prefetched=_context_prefetched,
-                slices=list((_compiled_meta or {}).keys())[:8],
+                slices=list(_meta_snapshot.keys())[:8],
             )
         _mark("context_prefetch_adopted" if _context_prefetched else "context_inline")
         _mark("assistant_turn_prepared")

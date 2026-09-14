@@ -47,12 +47,10 @@ def _connected_slugs(connected_integrations: list[str] | None) -> list[str]:
 
 
 def _resolve_integration_from_query(query: str, connected: list[str]) -> str | None:
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
+    from app.services.connector_semantic_registry import text_mentions_connector
 
-    lowered = (query or "").lower()
     for slug in connected:
-        aliases = INTEGRATION_ALIASES.get(slug, (slug,))
-        if any(alias in lowered for alias in aliases):
+        if text_mentions_connector(query or "", slug, exclude_generic=False):
             return slug
     return connected[0] if connected else None
 

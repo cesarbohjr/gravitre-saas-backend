@@ -568,6 +568,9 @@ async def test_gateway_shortcut_composes_before_task_state_reload(intelligence: 
     complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
     assert complete.full_content == "Hello! How can I help you today?"
     assert complete.model == "intent_gateway:phrase_bank"
+    trace = (complete.task_state or {}).get("cognitive_turn_trace")
+    assert isinstance(trace, dict)
+    assert trace.get("turn_id")
     sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
     assert "text-delta" in sse_types
 

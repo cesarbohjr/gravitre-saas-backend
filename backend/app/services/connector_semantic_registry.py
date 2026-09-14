@@ -263,6 +263,24 @@ def resolve_connector_from_text(
     return None
 
 
+def text_mentions_connector(
+    text: str,
+    connector_id: str,
+    *,
+    exclude_generic: bool = True,
+) -> bool:
+    """Word-boundary check that a message mentions a connector (registry aliases only)."""
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return False
+    for alias in get_connector_aliases(connector_id):
+        if exclude_generic and alias in GENERIC_CONNECTOR_ALIASES:
+            continue
+        if re.search(rf"\b{re.escape(alias)}\b", lowered):
+            return True
+    return False
+
+
 def resolve_all_connectors_from_text(
     text: str,
     *,
@@ -278,6 +296,103 @@ def resolve_all_connectors_from_text(
         if re.search(rf"\b{re.escape(alias)}\b", lowered):
             found.append(connector_id)
     return found
+
+
+def primary_connector_alias(connector_id: str) -> str:
+    """Human-readable primary alias for prompt/orchestration injection."""
+    aliases = get_connector_aliases(connector_id)
+    if aliases:
+        return aliases[0]
+    cid = str(connector_id or "").strip().lower()
+    return cid.replace("_", " ") if cid else ""
+
+
+def resolve_connector_slug_from_text(text: str) -> str | None:
+    """Best single connector match — longest alias wins (status reply paths)."""
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return None
+    best: tuple[str, int] | None = None
+    for connector_id, alias, score in _all_alias_needles():
+        if re.search(rf"\b{re.escape(alias)}\b", lowered):
+            if best is None or score > best[1]:
+                best = (connector_id, score)
+    return best[0] if best else None
+
+
+def ordered_connectors_from_text(
+    text: str,
+    *,
+    exclude_generic: bool = True,
+) -> list[str]:
+    """Connectors mentioned in text, ordered by first appearance."""
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return []
+    hits: list[tuple[int, str]] = []
+    seen: set[str] = set()
+    for connector_id, alias, _score in _all_alias_needles():
+        if connector_id in seen:
+            continue
+        if exclude_generic and alias in GENERIC_CONNECTOR_ALIASES:
+            continue
+        match = re.search(rf"\b{re.escape(alias)}\b", lowered)
+        if match:
+            hits.append((match.start(), connector_id))
+            seen.add(connector_id)
+    hits.sort(key=lambda item: item[0])
+    return [connector_id for _, connector_id in hits]
+
+
+def resolve_integration_token(token: str) -> str | None:
+    """Map a correction/override token to a connector id (voice paths)."""
+    raw = re.sub(r"\s+", " ", (token or "").strip().lower())
+    if not raw:
+        return None
+    for connector_id, definition in connector_definitions().items():
+        slug_norm = connector_id.replace("_", " ")
+        if raw == connector_id or raw == slug_norm:
+            return connector_id
+        for alias in definition.aliases:
+            alias_norm = alias.strip().lower()
+            if raw == alias_norm or raw.startswith(alias_norm):
+                return connector_id
+    return None
+
+
+def integration_slug_for_label(label: str) -> str | None:
+    """Map a user-facing label fragment to connector id (grounding paths)."""
+    text = re.sub(r"\s+", " ", (label or "").strip().lower())
+    if not text:
+        return None
+    for connector_id, definition in connector_definitions().items():
+        slug_norm = connector_id.replace("_", " ")
+        if text == connector_id or text == slug_norm:
+            return connector_id
+        for alias in definition.aliases:
+            alias_norm = alias.strip().lower()
+            if text == alias_norm or text.endswith(alias_norm) or alias_norm in text:
+                return connector_id
+    return None
+
+
+@lru_cache(maxsize=1)
+def connector_mention_pattern() -> re.Pattern[str]:
+    """Word-boundary regex over registry aliases (parameter-ledger guard)."""
+    parts: list[str] = []
+    seen: set[str] = set()
+    for _connector_id, alias, _score in _all_alias_needles():
+        if len(alias) < 2 or alias in seen:
+            continue
+        seen.add(alias)
+        parts.append(re.escape(alias))
+    parts.sort(key=len, reverse=True)
+    return re.compile(r"\b(" + "|".join(parts) + r")\b", re.I)
+
+
+def message_mentions_any_connector(text: str) -> bool:
+    """True when any registry alias appears in text (word boundaries)."""
+    return bool(connector_mention_pattern().search(text or ""))
 
 
 def connector_display_name(connector_id: str) -> str:

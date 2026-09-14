@@ -122,19 +122,9 @@ _CHANNEL_OVERRIDE_RE = re.compile(
 
 
 def _resolve_integration_token(token: str) -> str | None:
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
+    from app.services.connector_semantic_registry import resolve_integration_token
 
-    raw = re.sub(r"\s+", " ", (token or "").strip().lower())
-    if not raw:
-        return None
-    for slug, aliases in INTEGRATION_ALIASES.items():
-        if raw == slug or raw == slug.replace("_", " "):
-            return slug
-        for alias in aliases:
-            alias_norm = alias.strip().lower()
-            if raw == alias_norm or raw.startswith(alias_norm):
-                return slug
-    return None
+    return resolve_integration_token(token)
 
 
 def detect_channel_override_integration(text: str) -> str | None:

@@ -10,7 +10,13 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.artifact_registry_service import serialize_execution_result
 from app.services.chat_action_mapper import get_chat_action_mapper
-from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan
+from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.connector_semantic_registry import (
+    get_connector_aliases,
+    ordered_connectors_from_text,
+    primary_connector_alias,
+    resolve_all_connectors_from_text,
+)
 from app.services.chat_connector_execution_service import (
     ChatConnectorExecutionService,
     get_chat_connector_execution_service,
@@ -2032,11 +2038,11 @@ class ChatOrchestrationService:
             return text
         connected = [c.lower() for c in connected_integrations]
         if len(connected) == 1:
-            alias = INTEGRATION_ALIASES.get(connected[0], (connected[0],))[0]
+            alias = primary_connector_alias(connected[0])
             return f"{text} in {alias}"
         goal_vendors = ChatOrchestrationService._mentioned_integrations(goal, connected_integrations)
         if len(goal_vendors) == 1:
-            alias = INTEGRATION_ALIASES.get(goal_vendors[0], (goal_vendors[0],))[0]
+            alias = primary_connector_alias(goal_vendors[0])
             return f"{text} in {alias}"
         return text
 
@@ -2166,7 +2172,7 @@ class ChatOrchestrationService:
         segments: list[str] = []
         lowered = text.lower()
         for integration in integrations:
-            aliases = INTEGRATION_ALIASES.get(integration, (integration,))
+            aliases = get_connector_aliases(integration)
             alias = next(
                 (
                     a
@@ -2199,22 +2205,16 @@ class ChatOrchestrationService:
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:
-        lowered = message.lower()
-        found: list[str] = []
-        for integration, aliases in INTEGRATION_ALIASES.items():
-            if any(ChatOrchestrationService._alias_matches(alias, lowered) for alias in aliases):
-                if integration not in found:
-                    found.append(integration)
-        return found
+        return resolve_all_connectors_from_text(message, exclude_generic=False)
 
     @staticmethod
     def _mentioned_integrations_ordered(message: str, connected_integrations: list[str]) -> list[str]:
         """Same as _mentioned_integrations but ordered by first appearance in text."""
         lowered = message.lower()
-        found = ChatOrchestrationService._mentioned_integrations(message, connected_integrations)
+        found = ordered_connectors_from_text(message, exclude_generic=False)
 
         def first_pos(integration: str) -> int:
-            aliases = INTEGRATION_ALIASES.get(integration, (integration,))
+            aliases = get_connector_aliases(integration)
             positions = []
             for alias in aliases:
                 if " " in alias:

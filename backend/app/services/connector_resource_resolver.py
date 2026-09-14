@@ -109,7 +109,7 @@ def resolve_ga4_property(
             resource_type="property",
             resource_id=linked_id,
             display_name=linked_name or f"Property {linked_id}",
-            confidence=0.98 if _config_property_id(conn) else 0.9,
+            confidence=0.98 if _config_property_id(conn) else 0.9,  # confidence-honesty-ok: resolution prior
             resolution_reason="linked_config" if _config_property_id(conn) else "conversation_context",
             candidate_count=1,
         )
@@ -164,7 +164,7 @@ def resolve_ga4_property(
             resource_type="property",
             resource_id=str(prop.get("property_id") or ""),
             display_name=str(prop.get("display_name") or prop.get("property_id") or ""),
-            confidence=0.95,
+            confidence=0.95,  # confidence-honesty-ok: single-candidate discovery prior
             resolution_reason="single_discovered_property",
             candidate_count=1,
             candidates=(prop,),

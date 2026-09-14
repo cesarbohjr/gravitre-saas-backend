@@ -5,7 +5,11 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.connector_semantic_registry import (
+    resolve_all_connectors_from_text,
+    text_mentions_connector,
+)
 from app.services.chat_tool_visibility import chat_visible_connector_tool_names
 from app.services.parameter_ledger import quoted_strings
 from app.services.connector_action_workflows import extract_asana_assignee_only
@@ -307,8 +311,7 @@ class ChatActionMapper:
 
     def _score(self, message: str, entry: ConnectorActionMatrixEntry) -> float:
         text = message.lower()
-        aliases = INTEGRATION_ALIASES.get(entry.connector_id, (entry.connector_id.replace("_", " "),))
-        if not any(alias in text for alias in aliases):
+        if not text_mentions_connector(text, entry.connector_id, exclude_generic=False):
             return 0.0
         score = 12.0
         suffix = entry.action_key.split(".", 1)[-1]
@@ -876,12 +879,11 @@ class ChatActionMapper:
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:
-        lowered = message.lower()
-        found: list[str] = []
-        all_vendors = set(INTEGRATION_ALIASES.keys()) | set(connected_integrations)
-        for integration in all_vendors:
-            aliases = INTEGRATION_ALIASES.get(integration, (integration.replace("_", " "),))
-            if any(alias in lowered for alias in aliases):
+        found = resolve_all_connectors_from_text(message, exclude_generic=False)
+        for integration in connected_integrations:
+            if integration not in found and text_mentions_connector(
+                message, integration, exclude_generic=False
+            ):
                 found.append(integration)
         return found
 

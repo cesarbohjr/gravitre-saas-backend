@@ -284,11 +284,9 @@ class ClarificationEngine:
         if not advisory_plan and len(connectors_needed) < 2:
             for connector in connectors_needed:
                 if connector.lower() not in connected and clarified.get(f"connector_{connector}") != "connected":
-                    return {
-                        "trigger_type": "connector_unavailable",
-                        "reason": f"Required connector {connector} is not connected.",
-                        "template_vars": {"connector": connector.replace("_", " ").title()},
-                    }
+                    trigger = self._connector_unavailable_trigger(connector)
+                    if trigger:
+                        return trigger
 
         # Follow-up for a staged connector action should not hit generic "missing target".
         from app.services.parameter_ledger import is_awaiting_params
@@ -330,12 +328,28 @@ class ClarificationEngine:
                 # User explicitly deferred choice — do not block with a blank target ask.
                 if self.AUTONOMY_HINT.search(request):
                     return None
+                from app.services.clarification_policy import apply_clarification_policy_to_missing_param
+
+                policy = apply_clarification_policy_to_missing_param(
+                    param_name="a specific target",
+                    discoverable=bool(understanding.get("entities")),
+                    inferable=bool(clarified.get("action_target")),
+                    has_safe_default=bool(self.AUTONOMY_HINT.search(request)),
+                    ambiguity_material=True,
+                    default_disclosure=(
+                        "Reply with a name, ID, or link, or ask me to search HubSpot/contacts "
+                        "first and pick from results"
+                    ),
+                )
+                if not policy.should_ask:
+                    return None
                 return {
                     "trigger_type": "missing_required_param",
                     "reason": "Action request missing target.",
                     "template_vars": {
                         "action": self._humanize_action(classification.get("intent") or "complete this"),
-                        "missing_param": (
+                        "missing_param": policy.message
+                        or (
                             "a specific target — reply with a name, ID, or link, "
                             "or ask me to search HubSpot/contacts first and pick from results"
                         ),
@@ -386,13 +400,9 @@ class ClarificationEngine:
                         if connector.lower() not in connected and clarified.get(
                             f"connector_{connector}"
                         ) != "connected":
-                            return {
-                                "trigger_type": "connector_unavailable",
-                                "reason": f"Required connector {connector} is not connected.",
-                                "template_vars": {
-                                    "connector": connector.replace("_", " ").title()
-                                },
-                            }
+                            trigger = self._connector_unavailable_trigger(connector)
+                            if trigger:
+                                return trigger
                     # Vendor named and connected — let mapper/ReAct proceed.
                     return None
                 # Explicit email/slack write phrasing must not become "which workflow".
@@ -453,6 +463,18 @@ class ClarificationEngine:
             "pull requests",
         }
     )
+
+    def _connector_unavailable_trigger(self, connector_id: str) -> dict[str, Any]:
+        """Apply global clarification policy for disconnected required connectors."""
+        from app.services.clarification_policy import format_not_connected_message
+        from app.services.connector_semantic_registry import connector_display_name
+
+        message = format_not_connected_message(connector_id)
+        return {
+            "trigger_type": "connector_unavailable",
+            "reason": message,
+            "template_vars": {"connector": connector_display_name(connector_id)},
+        }
 
     def _named_connectors_in_text(self, text: str) -> list[str]:
         """Return catalog connector ids explicitly named in the user utterance."""
@@ -631,8 +653,6 @@ class ClarificationEngine:
         if not missing:
             return None
 
-        # Low / no match → ask cleanly. When ledger already has high-confidence
-        # fields, surface them so we never look like we forgot (Fix 1 / test 2).
         ask = ", ".join(missing)
         known_bits: list[str] = []
         for key in ("to", "email", "channel", "subject"):
