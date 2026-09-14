@@ -2695,6 +2695,8 @@ export type IntelligencePageContextResponse = {
     }>
     predictions: Array<Record<string, unknown>>
     learnings: Array<Record<string, unknown>>
+    models?: Array<Record<string, unknown>>
+    knowledgeEntityTypes?: string[]
     metrics: IntelligenceCanonicalMetrics
     qualityFlags: string[]
     departments: Array<Record<string, unknown>>

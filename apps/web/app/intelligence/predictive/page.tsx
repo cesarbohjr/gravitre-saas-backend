@@ -1,31 +1,22 @@
 "use client"
 
-import { useMemo, useState } from "react"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
+import { PredictionsStage } from "@/components/intelligence/pages/predictions-stage"
+import { useAuth } from "@/lib/auth-context"
+import { ApiError } from "@/lib/fetcher"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { ArrowsClockwise } from "@phosphor-icons/react"
 
 const copy = SURFACE_COPY.pages.predictive
 
-const DOMAINS = ["sales", "support", "operations", "finance", "marketing", "customer_success"] as const
-
-type CanonicalPredictionRow = {
-  id: string
-  businessStatement: string
-  department?: string | null
-  confidence?: number | null
-  status?: string
-}
-
 export default function PredictiveOpsPage() {
-  const [domain, setDomain] = useState<(typeof DOMAINS)[number]>("support")
+  const { user } = useAuth()
   const {
     data: pageContext,
     loadState,
@@ -34,97 +25,61 @@ export default function PredictiveOpsPage() {
     mutate,
     error,
   } = useIntelligenceSnapshot({
+    enabled: Boolean(user),
     activeLens: "predicts",
-    swrKeySuffix: domain,
+    swrKeySuffix: "predictions",
   })
-  const isLoading = !isSnapshotMetricsReady(loadState) && loadState !== "ERROR"
+  const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
-  const predictions = useMemo(() => {
-    const raw = (pageContext?.snapshot.predictions ?? []) as CanonicalPredictionRow[]
-    const domainNorm = domain.replace("_", " ").toLowerCase()
-    return raw.filter((row) => {
-      const dept = String(row.department ?? "").toLowerCase().replace("_", " ")
-      return !dept || dept.includes(domainNorm) || domainNorm.includes(dept)
-    })
-  }, [pageContext?.snapshot.predictions, domain])
+  if (!user) {
+    return (
+      <AppShell title={copy.title}>
+        <EmptyState title="Sign in required" description="Log in to view business predictions." />
+      </AppShell>
+    )
+  }
 
-  const activeCount = isSnapshotMetricsReady(loadState)
-    ? (pageContext?.metrics.predictions.activePredictions ??
-      pageContext?.snapshot.metrics.predictions.activePredictions ??
-      predictions.length)
-    : null
+  if (error) {
+    const message = error instanceof ApiError ? error.message : "Failed to load predictions."
+    return (
+      <AppShell title={copy.title}>
+        <ErrorState title="Unable to load predictions" description={message} onRetry={() => mutate()} />
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell title={copy.title}>
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+              <ArrowsClockwise
+                className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`}
+                weight="bold"
+                aria-hidden
+              />
+              Refresh
+            </Button>
+          }
         />
+
         <IntelligenceShell
           activeTab="predictions"
           loadState={loadState}
           generatedAt={generatedAt}
           isValidating={isValidating}
           onRefresh={() => mutate()}
-          filters={
-            <>
-              <span className="text-sm text-muted-foreground">Domain filter</span>
-              <Select
-                value={domain}
-                onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DOMAINS.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">
-                {activeCount != null
-                  ? `${activeCount} active prediction${activeCount === 1 ? "" : "s"}`
-                  : "— active predictions"}
-              </span>
-            </>
-          }
         >
-        {isLoading ? <p className="text-sm text-muted-foreground">Loading predictions…</p> : null}
-        {error ? <p className="text-sm text-destructive">Unable to load predictions.</p> : null}
-        {!isLoading && !error && predictions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No predictions for this domain right now.</p>
-        ) : null}
-        <div className="grid gap-4 md:grid-cols-2">
-          {predictions.map((row) => (
-            <Card key={row.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base font-medium">{row.businessStatement}</CardTitle>
-                  {row.confidence != null ? (
-                    <ConfidenceBadge score={row.confidence} showScore />
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                {row.department ? (
-                  <p>
-                    Department: <span className="font-medium text-foreground">{row.department}</span>
-                  </p>
-                ) : null}
-                {row.status ? (
-                  <p>
-                    Status: <span className="font-medium text-foreground">{row.status}</span>
-                  </p>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          <PredictionsStage
+            pageContext={pageContext}
+            loadState={loadState}
+            enabled={Boolean(user)}
+            suggestedQuestions={suggestedQuestions}
+          />
         </IntelligenceShell>
       </div>
     </AppShell>

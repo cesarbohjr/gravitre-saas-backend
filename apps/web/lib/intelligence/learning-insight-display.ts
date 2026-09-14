@@ -6,6 +6,7 @@ import { readString } from "@/lib/intelligence/helpers"
 export type LearningInsightDisplay = {
   id: string
   statement: string
+  learnedAt?: string
   learnedAtLabel?: string
   learnedFrom: string[]
   evidence: string[]
@@ -46,6 +47,7 @@ export function formatLearningInsightRow(row: Record<string, unknown>): Learning
   return {
     id: readString(row.id, readString(row.businessStatement, "learning").slice(0, 32)),
     statement: readString(row.businessStatement, "Learning insight"),
+    learnedAt: learnedAt || undefined,
     learnedAtLabel,
     learnedFrom: readStringArray(row.learnedFrom),
     evidence: readStringArray(row.evidence),

@@ -1,25 +1,19 @@
 "use client"
 
-import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
-import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
-import { LearningInsightCard } from "@/components/intelligence/learning-insight-card"
-import { LearningHubLinks } from "@/components/intelligence/learning-hub-links"
+import { LearningStage } from "@/components/intelligence/pages/learning-stage"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { ApiError } from "@/lib/fetcher"
 import { readNumber } from "@/lib/intelligence/helpers"
 import { formatLearningInsights } from "@/lib/intelligence/learning-insight-display"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-import { BusinessImpactCard } from "../../admin/intelligence/_components/business-impact-card"
-import { APP_ROUTES, LEGACY_APP_ROUTES } from "@/lib/app-routes"
-import { TYPE } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
 import { ArrowsClockwise } from "@phosphor-icons/react"
 
 export default function IntelligenceLearningPage() {
@@ -60,7 +54,6 @@ export default function IntelligenceLearningPage() {
   const modelsTracked = metricsReady
     ? readNumber(learningMetrics.modelsTracked, 0)
     : null
-  const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET")
   const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
   if (!user) {
@@ -106,93 +99,35 @@ export default function IntelligenceLearningPage() {
           isValidating={isValidating}
           onRefresh={() => mutate()}
         >
-        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-          <GravitreMetric
-            label="Recent learnings"
-            value={recentCount ?? "—"}
-            hint={isLoading ? "Loading intelligence…" : "Validated business insights"}
-          />
-          <GravitreMetric
-            label="Relationships known"
-            value={relationshipsLearned ?? "—"}
-            hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
-          />
-          <GravitreMetric
-            label="Measured outcomes"
-            value={measuredOutcomes ?? "—"}
-            hint={isLoading ? "Loading intelligence…" : "Window attribution"}
-          />
-          <GravitreMetric
-            label="Models tracked"
-            value={modelsTracked ?? "—"}
-            hint={isLoading ? "Loading intelligence…" : "Registry scope — not learning claims"}
-          />
-        </section>
-
-        <BusinessImpactCard />
-
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">What Gravitre learned</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Business understanding from outcomes, memory promotion, and evidence — not platform
-              latency or model readiness scores.
-            </p>
-          </div>
-
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading business learning insights…</p>
-          ) : insights.length === 0 || hasNoBusinessLearning ? (
-            <EmptyState
-              variant="ai"
-              title="No validated business learning yet"
-              description="Insights appear here when Gravitre records durable business understanding from real work — not deployment health or training readiness."
-              action={{
-                label: "Open memory",
-                onClick: () => {
-                  window.location.href = APP_ROUTES.intelligenceMemory
-                },
-                variant: "outline",
-              }}
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+            <GravitreMetric
+              label="Recent learnings"
+              value={recentCount ?? "—"}
+              hint={isLoading ? "Loading intelligence…" : "Validated business insights"}
             />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {insights.map((insight) => (
-                <LearningInsightCard key={insight.id} insight={insight} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {suggestedQuestions.length > 0 ? (
-          <section className="space-y-3">
-            <p className={TYPE.eyebrow}>Ask Gravitre</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestedQuestions.slice(0, 4).map((question) => (
-                <Link
-                  key={question}
-                  href={`${APP_ROUTES.gravitreAi}?q=${encodeURIComponent(question)}`}
-                  className="rounded-full border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 text-xs font-medium hover:border-[color:var(--g-brand-border)]"
-                >
-                  {question}
-                </Link>
-              ))}
-            </div>
+            <GravitreMetric
+              label="Relationships known"
+              value={relationshipsLearned ?? "—"}
+              hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
+            />
+            <GravitreMetric
+              label="Measured outcomes"
+              value={measuredOutcomes ?? "—"}
+              hint={isLoading ? "Loading intelligence…" : "Window attribution"}
+            />
+            <GravitreMetric
+              label="Models tracked"
+              value={modelsTracked ?? "—"}
+              hint={isLoading ? "Loading intelligence…" : "Registry scope — not learning claims"}
+            />
           </section>
-        ) : null}
 
-        <LearningHubLinks />
-
-        <p className={cn(TYPE.meta, "text-pretty")}>
-          Platform telemetry (TTFT, cache hit rate, cognitive turn traces) lives in{" "}
-          <Link
-            href={LEGACY_APP_ROUTES.adminIntelligence}
-            className="font-medium text-[color:var(--g-brand)] hover:underline"
-          >
-            Platform intelligence (admin)
-          </Link>
-          .
-        </p>
+          <LearningStage
+            pageContext={pageContext}
+            loadState={loadState}
+            enabled={Boolean(user)}
+            suggestedQuestions={suggestedQuestions}
+          />
         </IntelligenceShell>
       </div>
     </AppShell>

@@ -215,9 +215,9 @@ export const SURFACE_COPY = {
       tabPlatformHealth: "Platform Health",
     },
     predictive: {
-      title: "Predictive ops",
+      title: "Predictions",
       description:
-        "Domain model packs with TRAINED / not_trained / data_gate status. All outputs are advisory only.",
+        "Forward-looking business predictions — risks, opportunities, confidence, and evidence. Advisory only; not platform telemetry.",
     },
     assignments: {
       title: "Assignments",
